@@ -282,7 +282,7 @@ describe("WhyListSidesheet", () => {
 
     expect(
       screen.getByText(
-        "Blocked in every group Sandy Sales is in. To let Sandy Sales see this table, give one of those groups access.",
+        "Sandy Sales is blocked in every group they're in. To let them see this table, give one of those groups access.",
       ),
     ).toBeInTheDocument();
   });
@@ -344,7 +344,7 @@ describe("WhyListSidesheet", () => {
 
     expect(
       screen.getByText(
-        "Blocked in every group Sandy Sales is in. To let Sandy Sales see this table, give one of those groups access.",
+        "Sandy Sales is blocked in every group they're in. To let them see this table, give one of those groups access.",
       ),
     ).toBeInTheDocument();
   });
@@ -720,6 +720,23 @@ describe("WhyListSidesheet", () => {
       screen.queryByText("Tenant Collection: Globex"),
     ).not.toBeInTheDocument();
   });
+
+  it("starts a tenant preview's sentences with A user of Acme, and keeps a user of Acme mid-sentence", async () => {
+    setup({
+      openedItem: null,
+      isAllCollections: true,
+      whoName: "a user of Acme",
+      sentenceWhoName: "A user of Acme",
+    });
+
+    await userEvent.click(
+      await screen.findByText("See everything a user of Acme can access"),
+    );
+
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "A user of Acme can open",
+    );
+  });
 });
 
 type SetupOpts = {
@@ -739,6 +756,9 @@ type SetupOpts = {
   /** Whether the dashboard opens, and whether its cards load; both allowed unless given. */
   dashboardRead?: PermissionDebugResponse;
   dashboardQuery?: PermissionDebugResponse;
+  /** How the sheet names the person, Sandy Sales unless given. */
+  whoName?: string;
+  sentenceWhoName?: string;
 };
 
 function setup({
@@ -760,6 +780,8 @@ function setup({
   tableIds = [ORDERS_ID],
   dashboardRead = ALLOW,
   dashboardQuery = ALLOW,
+  whoName = "Sandy Sales",
+  sentenceWhoName = whoName,
 }: SetupOpts) {
   setupPermissionPreviewCollectionsEndpoint("default", mainCollections);
   setupPermissionPreviewCollectionsEndpoint("shared", sharedCollections);
@@ -799,6 +821,8 @@ function setup({
   return renderWithProviders(
     <WhyListSidesheet
       {...getProps(openedItem)}
+      whoName={whoName}
+      sentenceWhoName={sentenceWhoName}
       isAllCollections={isAllCollections}
       isInPage={isInPage}
       onClose={onClose}
@@ -811,6 +835,7 @@ function getProps(openedItem: OpenedItem | null) {
     isOpen: true,
     preview: { userId: SANDY.id },
     whoName: "Sandy Sales",
+    sentenceWhoName: "Sandy Sales",
     openedItem,
     onClose: jest.fn<void, []>(),
   };

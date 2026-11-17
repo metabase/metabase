@@ -208,3 +208,19 @@ export function getPrincipalWhoName(
       return t`a user of ${principalName}`;
   }
 }
+
+/** Who a sentence starts with: "Sandy Sales", "A member of Sales", "A user of Acme". */
+export function getPrincipalSentenceName(
+  principalType: PrincipalType,
+  userName: string,
+  principalName: string,
+) {
+  switch (principalType) {
+    case "user":
+      return userName;
+    case "group":
+      return t`A member of ${principalName}`;
+    case "tenant":
+      return t`A user of ${principalName}`;
+  }
+}

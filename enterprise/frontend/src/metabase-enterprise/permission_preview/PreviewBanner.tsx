@@ -21,6 +21,7 @@ import {
 import {
   ExplainAccessButton,
   PreviewBand,
+  getPrincipalSentenceName,
   getPrincipalWhoName,
   isNarrowPreview,
   useIsNarrowPreview,
@@ -285,6 +286,11 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
             : undefined,
         }}
         whoName={whoName}
+        sentenceWhoName={getPrincipalSentenceName(
+          state.principalType,
+          state.userName,
+          state.principalName,
+        )}
         openedItem={openedItem}
         onClose={() => setIsWhyOpen(false)}
       />

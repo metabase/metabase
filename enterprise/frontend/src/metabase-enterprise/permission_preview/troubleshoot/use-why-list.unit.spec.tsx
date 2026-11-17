@@ -348,7 +348,7 @@ describe("useWhyList", () => {
   });
 
   describe("All collections", () => {
-    it("lists Our analytics, the top shared collections and the personal collection, only those the person can open", async () => {
+    it("lists Our analytics, the top shared collections and the person's own personal collection by name, only those the person can open", async () => {
       const { result } = setup({
         path: "/",
         isAllCollections: true,
@@ -375,7 +375,7 @@ describe("useWhyList", () => {
         expect(getPageCollections(result.current)).toEqual([
           "Our analytics",
           "Onboarding kit",
-          "Their personal collection",
+          "Sandy Sales's personal collection",
         ]),
       );
     });

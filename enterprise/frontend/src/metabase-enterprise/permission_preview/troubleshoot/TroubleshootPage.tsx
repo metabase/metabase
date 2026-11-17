@@ -17,6 +17,7 @@ import {
 import {
   ExplainAccessButton,
   PreviewBand,
+  getPrincipalSentenceName,
   getPrincipalWhoName,
   useIsNarrowPreview,
 } from "../PreviewBand";
@@ -168,7 +169,7 @@ export function TroubleshootPage() {
       {principal == null ? (
         <PermissionsEditorEmptyState
           icon="eye"
-          message={t`Select a user, group, or tenant to see the app the way they do`}
+          message={t`Select a user, group, or tenant to see what they can open`}
         />
       ) : (
         <Flex direction="column" flex={1} miw={0} p="md" gap="sm">
@@ -290,6 +291,15 @@ export function TroubleshootPage() {
             : null
         }
         whoName={whoName}
+        sentenceWhoName={
+          preview != null
+            ? getPrincipalSentenceName(
+                principalType,
+                preview.user_name,
+                preview.principal_name,
+              )
+            : ""
+        }
         openedItem={openedItem}
         isAllCollections={framePath === START_PATH}
         // next to the person list, a panel in the page would leave the frame too little room below 1280px

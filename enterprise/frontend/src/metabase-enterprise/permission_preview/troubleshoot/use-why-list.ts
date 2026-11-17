@@ -590,10 +590,14 @@ function getCollectionWhyTarget(
   who: string,
   collection: PreviewCollection,
 ): WhyTarget {
+  const name =
+    collection.source === "personal"
+      ? t`${who}'s personal collection`
+      : collection.name;
   return {
-    title: collection.name,
+    title: name,
     who,
-    subject: { label: t`Collection`, value: collection.name },
+    subject: { label: t`Collection`, value: name },
     column: "collection",
     cell: collection.access,
     security: null,

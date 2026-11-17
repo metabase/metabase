@@ -54,7 +54,7 @@ describe("WhyContent", () => {
 
     expect(
       screen.getByText(
-        "Blocked in every group Sandy Sales is in. To let Sandy Sales see this table, give one of those groups access.",
+        "Sandy Sales is blocked in every group they're in. To let them see this table, give one of those groups access.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Applies")).not.toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("WhyContent", () => {
 
     expect(
       screen.getByText(
-        "Every group Sandy Sales is in sets View data to Can view.",
+        "Sandy Sales has View data set to Can view in every group they're in.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Applies")).not.toBeInTheDocument();

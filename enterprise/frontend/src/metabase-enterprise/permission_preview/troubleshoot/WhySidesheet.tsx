@@ -151,18 +151,21 @@ export function getSameValueInEveryGroup(
   return values.every((value) => value === first) ? (first ?? null) : null;
 }
 
-/** Under the groups when none differs, so none applies over another: "Every group Sandy Sales is in sets View data to Can view." */
+/**
+ * Under the groups when none differs, so none applies over another: "Sandy Sales has View data set to Can view in
+ * every group they're in." `who` starts it, since a group preview's "A member of Sales" can't sit mid-sentence.
+ */
 export function getSameInEveryGroupSentence(
   who: string,
   column: PreviewColumn,
   value: string,
 ) {
   if (column === "view_data" && value === "blocked") {
-    return t`Blocked in every group ${who} is in. To let ${who} see this table, give one of those groups access.`;
+    return t`${who} is blocked in every group they're in. To let them see this table, give one of those groups access.`;
   }
   const permission = getPreviewColumnName(column);
   const label = getWhyValueLabel(column, value);
-  return t`Every group ${who} is in sets ${permission} to ${label}.`;
+  return t`${who} has ${permission} set to ${label} in every group they're in.`;
 }
 
 /** A value's name in the "why" sheets, as the permission grids show it. */

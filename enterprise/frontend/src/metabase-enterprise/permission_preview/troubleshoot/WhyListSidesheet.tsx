@@ -59,6 +59,8 @@ type WhyListSidesheetProps = {
   /** Null until the preview has started. */
   preview: WhyPreview | null;
   whoName: string;
+  /** `whoName` at the start of a sentence: "A member of Sales" for "a member of Sales". */
+  sentenceWhoName: string;
   /** The item the page shows now; the sheet follows it while open. */
   openedItem: OpenedItem | null;
   /** Whether the page shows its collection browser's top, "All collections", rather than a page with no item. */
@@ -100,6 +102,7 @@ export function WhyListSidesheet({
   isOpen,
   preview,
   whoName,
+  sentenceWhoName,
   openedItem,
   isAllCollections = false,
   isInPage = false,
@@ -108,7 +111,7 @@ export function WhyListSidesheet({
   const list = useWhyList(
     isOpen ? preview : null,
     openedItem,
-    whoName,
+    sentenceWhoName,
     isAllCollections,
   );
   const itemKey =
