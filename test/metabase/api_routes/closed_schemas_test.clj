@@ -42,6 +42,7 @@
     :metabase.testing-api.api/query-spec
     :metabase.user-key-value.schema/value.object
     :metabase.users.schema/user.settings
+    :metabase.util.malli/value.object
     :metabase.warehouse-schema-rest.api.table/csv-upload.parts
     :metabase.warehouses.schema/database.connection-details
     :metabase.warehouses.schema/database.local-settings})

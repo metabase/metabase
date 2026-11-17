@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.closed-schemas :as mu.closed-schemas]))
+   [metabase.util.malli.closed-schemas :as mu.closed-schemas]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,6 +17,37 @@
     [:map [:a :any]]                        [:any]
     [:map-of :string :some]                 [:any]
     [:map [:a [:sequential [:maybe any?]]]] [:any]))
+
+(mr/def ::cycle.head
+  [:map [:tail {:optional true} [:ref ::cycle.tail]] [:bag :any]])
+
+(mr/def ::cycle.tail
+  [:map [:head {:optional true} [:ref ::cycle.head]]])
+
+(mr/def ::cycle.user
+  [:map [:tail ::cycle.tail]])
+
+(mr/def ::redefined.child
+  [:map [:a :int]])
+
+(mr/def ::redefined.parent
+  [:map [:child ::redefined.child]])
+
+(defn- kinds [schema]
+  (mapv :kind (mu.closed-schemas/findings schema)))
+
+(deftest findings-do-not-depend-on-earlier-walks-test
+  (testing "a schema reached after a cycle was cut short"
+    (mu.closed-schemas/forget-results!)
+    (is (= [:any] (kinds [:map [:head ::cycle.head] [:user ::cycle.user]])))
+    (is (= [:any] (kinds ::cycle.user))))
+  (testing "a schema whose child is registered again"
+    (is (= [] (kinds ::redefined.parent)))
+    (try
+      (mr/def ::redefined.child [:map [:a :any]])
+      (is (= [:any] (kinds ::redefined.parent)))
+      (finally
+        (mr/def ::redefined.child [:map [:a :int]])))))
 
 (deftest check-args-test
   (binding [mu.closed-schemas/*enabled* true]

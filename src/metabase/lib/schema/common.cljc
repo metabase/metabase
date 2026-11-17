@@ -124,7 +124,7 @@
 
 (mr/def ::clause-tag-candidate
   "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
-  :metabase.util.malli/value)
+  [:maybe :metabase.util.malli/object])
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
@@ -193,11 +193,11 @@
    ::open-json.object])
 
 (mr/def ::database-details
-  "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
+  "Connection details for a Database; the `.cljc` equivalent of `:metabase.warehouses.schema/database.connection-details`."
   [:map {:closed false, :description "database connection details"}])
 
 (mr/def ::database-settings
-  "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
+  "A Database's `:settings`; the `.cljc` equivalent of `:metabase.warehouses.schema/database.local-settings`."
   [:map {:closed false, :description "database settings"}])
 
 (mr/def ::exception-data

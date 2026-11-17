@@ -20,7 +20,7 @@
 
 (mr/def ::value
   "Anything a message can interpolate or [[render]]: a message, raw text, or any other value, which renders cleaned."
-  :metabase.util.malli/value)
+  [:maybe :metabase.util.malli/object])
 
 (mu/defn message? :- :boolean
   "Whether `x` is a message built by [[msg]]."

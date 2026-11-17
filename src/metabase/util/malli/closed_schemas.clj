@@ -127,13 +127,29 @@
 (declare walk)
 
 (def ^:private results
-  "The result of each registry key walked so far, per leaf rule, with the definition it was computed from."
+  "The result of each registry key walked so far, per leaf rule, for one state of the registry."
   (atom {}))
+
+(defn- registry-state
+  "An object that is replaced whenever a schema is registered."
+  []
+  (mr/cached ::registry-state ::registry-state #(Object.)))
+
+(defn- cached-result [cache-key registry-key]
+  (let [{:keys [state by-key]} @results]
+    (when (identical? state (registry-state))
+      (get by-key [cache-key registry-key]))))
+
+(defn- cache-result! [cache-key registry-key result]
+  (let [state (registry-state)]
+    (swap! results (fn [{current :state, :keys [by-key]}]
+                     {:state  state
+                      :by-key (assoc (if (identical? current state) by-key {}) [cache-key registry-key] result)}))))
 
 (defn- walk-registry-key
   "The result of the schema registered as `registry-key`: walked once per walk, and cached across walks unless a
   cycle cut it short."
-  [schema registry-key trail {:keys [in-progress cycles seen cache-key], :as state}]
+  [schema registry-key trail {:keys [in-progress cycles seen cut-short cache-key], :as state}]
   (cond
     (external-registry-key? registry-key)
     {:typed? true}
@@ -143,29 +159,26 @@
         {:typed? true})
 
     :else
-    (let [definition (mr/registered-schema registry-key)
-          cached     (get @results [cache-key registry-key])
-          result     (cond
-                       (and definition (identical? definition (:definition cached)))
-                       (:result cached)
-
-                       (contains? @seen registry-key)
-                       (get @seen registry-key)
-
-                       :else
-                       (do
-                         (vswap! in-progress conj registry-key)
-                         (let [result (-> (if-let [dereffed (deref-safe schema)]
-                                            (walk dereffed [] state)
-                                            {:typed? true})
-                                          (update :passes one-per-schema)
-                                          (update :nested one-per-schema))]
-                           (vswap! in-progress disj registry-key)
-                           (vswap! cycles disj registry-key)
-                           (vswap! seen assoc registry-key result)
-                           (when (and definition (empty? @cycles))
-                             (swap! results assoc [cache-key registry-key] {:definition definition, :result result}))
-                           result)))]
+    (let [result (or (cached-result cache-key registry-key)
+                     (when-let [result (get @seen registry-key)]
+                       (when (contains? @cut-short registry-key)
+                         (vswap! cycles conj registry-key))
+                       result)
+                     (do
+                       (vswap! in-progress conj registry-key)
+                       (let [result (-> (if-let [dereffed (deref-safe schema)]
+                                          (walk dereffed [] state)
+                                          {:typed? true})
+                                        (update :passes one-per-schema)
+                                        (update :nested one-per-schema))]
+                         (vswap! in-progress disj registry-key)
+                         (vswap! cycles disj registry-key)
+                         (vswap! seen assoc registry-key result)
+                         (if (empty? @cycles)
+                           (when (mr/registered-schema registry-key)
+                             (cache-result! cache-key registry-key result))
+                           (vswap! cut-short conj registry-key))
+                         result)))]
       (under result (conj trail registry-key)))))
 
 (defn- walk-map [schema trail state]
@@ -276,6 +289,7 @@
   ([schema {rule :any-schema?, key-rule :open-key?, :keys [cache-key skip-entry? guards?]}]
    (one-per-schema (unstripped (walk schema [] {:in-progress (volatile! #{})
                                                 :seen        (volatile! {})
+                                                :cut-short   (volatile! #{})
                                                 :cycles      (volatile! #{})
                                                 :any-schema? (or rule any-schema?)
                                                 :open-key?   (or key-rule (constantly false))

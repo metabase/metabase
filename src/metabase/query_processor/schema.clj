@@ -103,7 +103,7 @@
 
 (mr/def ::accumulator
   "The running accumulator of a QP reducing function, whose shape is whatever that (possibly caller-supplied) reducing function accumulates."
-  [:maybe [:fn {:error/message "a reducing function accumulator"} some?]])
+  [:maybe :metabase.util.malli/object])
 
 (mr/def ::rf
   "Schema for a reducing function."

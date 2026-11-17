@@ -8,7 +8,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.match :as match]
    [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -18,16 +17,10 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 (defn- stringify-keys
-  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces -- and, when `recursive?`, the
-  keys of every map nested inside it too. Request decoding keywordizes every JSON object key; this undoes that for the
-  objects we do not type."
-  ([x]
-   (stringify-keys x false))
-  ([x recursive?]
-   (if recursive?
-     (match/replace-all x #'map? (stringify-keys &match))
-     (cond-> x
-       (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))))
+  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces."
+  [x]
+  (cond-> x
+    (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 ;;;
@@ -287,20 +280,13 @@
   (open-map "user settings"))
 
 (defn string-keyed-map
-  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema`.
-  Normalizing stringifies its keys -- a request on its way in, or a keywordized JSON column read back from the
-  application database -- so the value looks the way it did on the wire and nothing can quietly start reading it by
-  keyword. Only the keys of the map itself, unless `recursive?`, which stringifies the keys of every map nested inside
-  it as well. Dispatching on `map?` keeps a value that is not a map out of the `:map-of`, whose request-decoding strip
-  step would otherwise throw on it instead of leaving it to validation."
-  ([value-schema]
-   (string-keyed-map value-schema false))
-  ([value-schema recursive?]
-   (mu/with-api-error-message
-    [:multi {:dispatch map?}
-     [true  [:map-of {:decode/normalize {:enter #(stringify-keys % recursive?)}} :string value-schema]]
-     [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
-    (deferred-tru "Value must be a map."))))
+  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema` whose keys normalizing stringifies."
+  [value-schema]
+  (mu/with-api-error-message
+   [:multi {:dispatch map?}
+    [true  [:map-of {:decode/normalize {:enter stringify-keys}} :string value-schema]]
+    [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
+   (deferred-tru "Value must be a map.")))
 
 (def Email
   "Schema for a valid email string."
