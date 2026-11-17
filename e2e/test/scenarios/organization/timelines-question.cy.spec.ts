@@ -56,6 +56,67 @@ describe("scenarios > organization > timelines > question", () => {
     });
   });
 
+  it("should hide unrelated chips while a stack of close events is spread", () => {
+    H.createTimelineWithEvents({
+      timeline: { name: "Releases" },
+      events: [
+        {
+          name: "Jan release",
+          timestamp: "2027-01-30T00:00:00Z",
+          icon: "star",
+        },
+        { name: "Feb fix", timestamp: "2027-02-02T00:00:00Z", icon: "warning" },
+        {
+          name: "Summer party",
+          timestamp: "2028-07-04T00:00:00Z",
+          icon: "cake",
+        },
+      ],
+    });
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    cy.log("adjacent-month events collapse into an overlapped stack");
+    cy.findByTestId("timeline-event-stack").should(
+      "have.attr",
+      "data-expanded",
+      "false",
+    );
+    H.timelineEventChip("Summer party").should("be.visible");
+
+    cy.log("hovering the stack spreads it and hides unrelated chips");
+    H.timelineEventChip("Feb fix").realHover({ position: "right" });
+    cy.findByTestId("timeline-event-stack").should(
+      "have.attr",
+      "data-expanded",
+      "true",
+    );
+    H.timelineEventChip("Summer party").should("not.be.visible");
+    H.timelineEventMarkerLine().should("exist");
+
+    cy.log("moving away collapses the stack and restores other chips");
+    cy.findByTestId("qb-header").realHover();
+    cy.findByTestId("timeline-event-stack").should(
+      "have.attr",
+      "data-expanded",
+      "false",
+    );
+    H.timelineEventChip("Summer party").should("be.visible");
+  });
+
   it("should save a timeline from another collection and hidden events for dashboards using the question", () => {
     H.createCollection({ name: "Migration calendar" }).then(
       ({ body: collection }) =>

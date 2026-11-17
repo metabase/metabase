@@ -122,12 +122,6 @@ export function cartesianChartCircleWithColors(colors) {
   return colors.map((color) => cartesianChartCircleWithColor(color));
 }
 
-export function cartesianChartCircleWithFillColor(color) {
-  return echartsContainer()
-    .find(`path[d="${CIRCLE_PATH}"]`)
-    .filter((_, element) => getComputedStyle(element).fill === color);
-}
-
 export function otherSeriesChartPaths() {
   return chartPathWithFillColor("#949AAB");
 }
