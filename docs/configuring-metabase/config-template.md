@@ -388,4 +388,5 @@ config:
     use-native-pivot-tables: false
     use-tenants: false
     user-visibility: all
+    workspaces-enabled: false
 ```

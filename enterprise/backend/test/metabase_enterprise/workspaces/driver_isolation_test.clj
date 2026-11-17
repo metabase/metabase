@@ -634,9 +634,12 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
+  ;; The test skips MySQL: its init refuses an existing database with a 409, which
+  ;; `metabase.driver.mysql.workspace-test` covers.
   ;; ClickHouse refuses the collision: `init-workspace-isolation-refuses-existing-objects-test`.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
-                           (remove #{:postgres :clickhouse} (mt/normal-drivers-with-feature :workspace)))
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:mysql :postgres :clickhouse}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1037,9 +1040,11 @@
           ;; Elsewhere, pre-create ws-b's namespace so the leading
           ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
           ;; helps engines that check existence before privileges (SQL Server's
-          ;; guarded EXEC); MySQL checks privileges regardless, so there the
-          ;; batch dies on the namespace statement and never reaches CREATE
-          ;; USER. ClickHouse runs plain CREATEs, after reading `system.users`
+          ;; guarded EXEC). MySQL runs no `IF NOT EXISTS`, so the pre-created
+          ;; namespace does not matter there: its init first checks that the
+          ;; login can see and end other users' sessions, which the
+          ;; low-privilege login cannot, so init fails with a 412 before any
+          ;; DDL. ClickHouse runs plain CREATEs, after reading `system.users`
           ;; before any DDL; the low-privilege login cannot read it, so init
           ;; fails there and never reaches CREATE USER either. The leak
           ;; assertion still covers whatever exception surfaces, it just can't
