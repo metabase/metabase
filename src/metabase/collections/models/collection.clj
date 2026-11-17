@@ -2278,6 +2278,16 @@
   [_ _]
   true)
 
+(defn searchable-namespace-clause
+  "HoneySQL clause matching rows whose `namespace-column` is one of the [[default-allowed-namespaces]]. Search indexes
+  the Collections in these namespaces and the content inside them. Query-time permissions narrow this further, e.g.
+  `analytics` is only visible with the audit app enabled."
+  [namespace-column]
+  (into [:or]
+        (map (fn [collection-namespace]
+               [:= namespace-column (some-> collection-namespace name)]))
+        (sort-by str default-allowed-namespaces)))
+
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
   `allowed-namespaces`), or throw an Exception.
@@ -2607,10 +2617,7 @@
                    ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                    ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                    :location                   true}
-    :where [:or [:= :namespace nil]
-            [:= :namespace "analytics"]
-            [:= :namespace "shared-tenant-collection"]
-            [:= :namespace "tenant-specific"]]
+    :where        (searchable-namespace-clause :namespace)
     ;; depends on the current user, used for rendering and ranking
     ;; TODO not sure this is what it'll look like
     :bookmark     [:model/CollectionBookmark [:and

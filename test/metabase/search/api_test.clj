@@ -1222,6 +1222,20 @@
             (testing "datasets in shared-tenant-collection namespace are returned"
               (is (=? {:name model-name} results)))))))))
 
+(deftest analytics-collection-card-search-test
+  (testing "Search returns questions, models and metrics in the audit app's analytics namespace (#79819)"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Analytics Tree" :namespace "analytics"}
+                     :model/Card       _ {:name "Abandoned alerts" :type :question :collection_id coll-id}
+                     :model/Card       _ {:name "Abandoned alerts model" :type :model :collection_id coll-id}
+                     :model/Card       _ {:name "Abandoned alerts metric" :type :metric :collection_id coll-id}]
+        (is (= #{["card" "Abandoned alerts"]
+                 ["dataset" "Abandoned alerts model"]
+                 ["metric" "Abandoned alerts metric"]}
+               (into #{}
+                     (map (juxt :model :name))
+                     (search-request-data :crowberto :q "Abandoned alerts"))))))))
+
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
