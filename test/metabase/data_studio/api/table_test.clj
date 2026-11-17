@@ -219,7 +219,7 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:object event)))))]
+                                                (swap! deleted conj (:id (:previous-object event)))))]
           (data-studio.db/delete-field-values-for-tables! [table-id]))
         (is (contains? @deleted fv-id))))))
 

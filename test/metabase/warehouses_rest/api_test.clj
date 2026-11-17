@@ -1807,7 +1807,7 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:object event)))))]
+                                                (swap! deleted conj (:id (:previous-object event)))))]
           (warehouses-rest.db/delete-field-values-for-database! db-id))
         (is (contains? @deleted fv-id))))))
 

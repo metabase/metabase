@@ -121,6 +121,13 @@
   (mt/test-driver :mysql
     (is (nil? (driver.sql/default-schema :mysql (lib.metadata/database (mt/metadata-provider)))))))
 
+(defmacro ^:private without-background-sync
+  "Run `body` with the background sync that creating a Database as a user starts turned off, so that it cannot race
+  the explicit syncs of a test."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_task#] nil)]
+     ~@body))
+
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.
@@ -128,8 +135,8 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_task] nil)]
-                          (mt/with-test-user :rasta (thunk))))))
+                        (without-background-sync
+                         (mt/with-test-user :rasta (thunk))))))
 
 (deftest ^:parallel inline-value-string-test
   (testing "inlined strings use a representation that is independent of the session's backslash-escaping mode"

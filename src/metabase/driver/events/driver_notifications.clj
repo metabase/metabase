@@ -20,8 +20,9 @@
   "What of `database` the resources of its driver depend on, which leaves out the settings that do not change what
   they serve (metabase#27877)."
   [database]
-  (cond-> (perf/select-keys database [:engine :details :settings])
-    (map? (:settings database)) (m/dissoc-in [:settings :database-enable-actions])))
+  (-> (perf/select-keys database [:engine :details :settings])
+      (cond-> (map? (:settings database)) (m/dissoc-in [:settings :database-enable-actions]))
+      (update :settings not-empty)))
 
 (methodical/defmethod events/publish-event! ::event
   [topic {:keys [object previous-object]}]

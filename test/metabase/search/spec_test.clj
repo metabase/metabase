@@ -161,12 +161,12 @@
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
 
 (deftest ^:parallel search-index-model-test
-  (testing "All the required models descend from :hook/search-index\n"
+  (testing "All the required models descend from :search/indexed\n"
     ;; TODO restore hooks to ModelIndex when toucan issue is resolved
     (let [expected-models (keys (dissoc (#'search.spec/model-hooks) :model/ModelIndex :model/ModelIndexValue))
           ;; Some models have submodels, so absorb those too
           expected-models (into (set expected-models) (mapcat descendants) expected-models)
-          actual-models   (set (descendants :hook/search-index))]
+          actual-models   (set (descendants :search/indexed))]
       (doseq [em (sort-by name expected-models)]
         (testing (str "- " em)
           (is (actual-models em))))
@@ -180,7 +180,7 @@
 
 (deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
   (testing "replacing a spec method invalidates the cached model-hooks"
-    ;; Registering a throwaway spec would derive a fake model into :hook/search-index and break
+    ;; Registering a throwaway spec would derive a fake model into :search/indexed and break
     ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.
     (let [spec-multifn search.spec/spec*
           ;; The first call resolves lazily loaded models, registering spec methods as it goes, so it caches

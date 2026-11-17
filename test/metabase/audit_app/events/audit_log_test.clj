@@ -591,7 +591,7 @@
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-create (:id comment)))))
        (testing :event/comment-update
-         (t2/update! :model/Comment (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+         (t2/update! :model/Comment :id (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
          (is (=? {:model_id (:id comment)
                   :user_id (mt/user->id :rasta)
                   :details {}
@@ -599,7 +599,7 @@
                   :model "Comment"}
                  (mt/latest-audit-log-entry :comment-update (:id comment)))))
        (testing :event/comment-delete
-         (t2/delete! :model/Comment (:id comment))
+         (t2/delete! :model/Comment :id (:id comment))
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
                  :details {:target_type "document"
@@ -662,7 +662,7 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
       (testing :event/glossary-update
-        (t2/update! :model/Glossary (:id glossary) {:term "Updated Term"})
+        (t2/update! :model/Glossary :id (:id glossary) {:term "Updated Term"})
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
                 :details {:previous {:term "Test Term"}
@@ -671,7 +671,7 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-update (:id glossary)))))
       (testing :event/glossary-delete
-        (t2/delete! :model/Glossary (:id glossary))
+        (t2/delete! :model/Glossary :id (:id glossary))
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
                 :details {:term "Updated Term"}

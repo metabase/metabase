@@ -480,9 +480,12 @@
          (get (model-hooks) model))))
 
 (defn- instance->db-values
-  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  "Given a transformed toucan map, get back a mapping to the raw db values of the columns the hooks of its model read,
+  that we can use in a query. A column no hook reads is left out, since its stored value may not survive its write
+  transform."
   [instance]
-  (let [xforms (try
+  (let [fields (hook-where-fields (t2/model instance))
+        xforms (try
                  (let [model (t2/model instance)]
                    ;; We know ModelIndexValue to have no transforms.
                    (when-not (and (keyword? model) (= (name model) "ModelIndexValue"))
@@ -491,7 +494,8 @@
                    nil))]
     (reduce-kv
      (fn [m k v]
-       (assoc m k (if-let [f (get xforms k)] (f v) v)))
+       (cond-> m
+         (contains? fields k) (assoc k (if-let [f (get xforms k)] (f v) v))))
      {}
      instance)))
 
