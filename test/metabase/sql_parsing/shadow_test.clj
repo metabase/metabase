@@ -14,7 +14,6 @@
   (reify protocol/SqlParser
     (referenced-tables [_ dialect sql] (f :referenced-tables [dialect sql]))
     (referenced-fields [_ dialect sql] (f :referenced-fields [dialect sql]))
-    (validate-query [_ dialect sql schema sqlglot-schema] (f :validate-query [dialect sql schema sqlglot-schema]))
     (simple-query [_ dialect sql] (f :simple-query [dialect sql]))
     (add-into-clause [_ dialect sql table-name] (f :add-into-clause [dialect sql table-name]))
     (add-insert-clause [_ dialect sql table-name] (f :add-insert-clause [dialect sql table-name]))
@@ -54,7 +53,6 @@
   [parser]
   {:referenced-tables        (protocol/referenced-tables parser "postgres" "sql")
    :referenced-fields        (protocol/referenced-fields parser "postgres" "sql")
-   :validate-query           (protocol/validate-query parser "postgres" "sql" "public" {})
    :simple-query             (protocol/simple-query parser "postgres" "sql")
    :add-into-clause          (protocol/add-into-clause parser "postgres" "sql" "t")
    :add-insert-clause        (protocol/add-insert-clause parser "postgres" "sql" "t")
@@ -268,14 +266,7 @@
       (is (= :match (shadow/classify :simple-query
                                      (outcome {:is_simple false :reason "Contains a Union"})
                                      (outcome {:is_simple false :reason "Contains a UNION"}))))
-      (is (= :mismatch (shadow/classify :simple-query (outcome {:is_simple false}) (outcome {:is_simple true})))))
-    (testing "validate-query: the wording of the message"
-      (is (= :match (shadow/classify :validate-query
-                                     (outcome {:status "error" :type "column_not_resolved" :column "a" :message "x"})
-                                     (outcome {:status "error" :type "column_not_resolved" :column "a" :message "y"}))))
-      (is (= :mismatch (shadow/classify :validate-query
-                                        (outcome {:status "error" :type "column_not_resolved" :column "a"})
-                                        (outcome {:status "error" :type "column_not_resolved" :column "b"})))))))
+      (is (= :mismatch (shadow/classify :simple-query (outcome {:is_simple false}) (outcome {:is_simple true})))))))
 
 (deftest sampling-failure-answers-with-the-primary-test
   (mt/with-prometheus-system! [_ system]

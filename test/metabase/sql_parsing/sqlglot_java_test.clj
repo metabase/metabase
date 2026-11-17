@@ -8,7 +8,6 @@
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
    [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as sqlglot-java.field-references]
-   [metabase.sql-parsing.sqlglot-java.qualify :as sqlglot-java.qualify]
    [metabase.sql-parsing.sqlglot-java.references :as sqlglot-java.references]
    [metabase.sql-parsing.sqlglot-java.rewrite :as sqlglot-java.rewrite]
    [metabase.sql-parsing.sqlglot-java.statements :as sqlglot-java.statements]
@@ -25,10 +24,9 @@
 
 (deftest java-protocol-contract-test
   (let [java-parser (sqlglot-java/parser)]
-    (testing "all ten SqlParser operations run on the Java parser"
+    (testing "all nine SqlParser operations run on the Java parser"
       (is (= [[nil nil "orders"]] (protocol/referenced-tables java-parser "postgres" "SELECT id FROM orders")))
       (is (= [[nil nil "orders" "id"]] (protocol/referenced-fields java-parser "postgres" "SELECT id FROM orders")))
-      (is (= {:status "ok"} (protocol/validate-query java-parser "postgres" "SELECT id FROM orders" nil {})))
       (is (= {:is_simple true} (protocol/simple-query java-parser "postgres" "SELECT id FROM orders")))
       (is (string? (protocol/add-into-clause java-parser "tsql" "SELECT id FROM orders" "result_table")))
       (let [fields (protocol/field-references java-parser "postgres" "SELECT total * 1.08 AS gross FROM orders")]
@@ -115,14 +113,11 @@
                           (protocol/referenced-tables (sqlglot-java/parser) "postgres" "SELECT FROM WHERE (")))))
 
 (defn- wide-select
-  "A SELECT of `n` CASE columns. Validating 8000 of them against a schema takes over a second."
+  "A SELECT of `n` CASE columns. Reading the fields of 40000 of them takes about a second."
   [n]
   (str "SELECT "
        (str/join ", " (for [i (range n)] (str "CASE WHEN a > " i " THEN 'x' END AS col" i)))
        " FROM t"))
-
-(def ^:private wide-select-schema
-  {"t" {"a" "INT"}})
 
 (defn- interrupted-error?
   "Whether `e`, or an exception in its cause chain, is the port's interrupt."
@@ -130,15 +125,15 @@
   (boolean (some #(instance? SqlglotInterruptedException %) (take-while some? (iterate ex-cause e)))))
 
 (deftest interrupt-stops-a-slow-port-call-test
-  (testing "an interrupt stops a slow validation promptly, with the port's interrupt, and the thread keeps its flag"
-    (let [sql      (wide-select 8000)
+  (testing "an interrupt stops a slow call promptly, with the port's interrupt, and the thread keeps its flag"
+    (let [sql      (wide-select 40000)
           started  (promise)
           finished (promise)
           worker   (Thread. ^Runnable
                     (fn []
                       (deliver started true)
                       (try
-                        (sqlglot-java.qualify/validate-query "postgres" sql nil wide-select-schema)
+                        (sqlglot-java.references/referenced-fields "postgres" sql)
                         (deliver finished {:at (System/nanoTime)})
                         (catch Throwable e
                           (deliver finished {:at           (System/nanoTime)
@@ -147,7 +142,7 @@
       (.start worker)
       (is (true? (deref started 10000 false)))
       (Thread/sleep 300)
-      (is (not (realized? finished)) "the validation finished before the interrupt")
+      (is (not (realized? finished)) "the call finished before the interrupt")
       (let [interrupted-at (System/nanoTime)
             _              (.interrupt worker)
             {:keys [at error interrupted?]} (deref finished 30000 nil)]
@@ -159,11 +154,10 @@
   (testing "slow calls that time out stop their threads, so all three threads are free for the next calls"
     (mt/with-temp-env-var-value! [mb-sql-parsing-timeout-ms 100]
       (let [java-parser (sqlglot-java/parser)
-            slow-sql    (wide-select 8000)]
+            slow-sql    (wide-select 40000)]
         (doseq [result (mapv deref (doall (repeatedly 3 #(future
                                                            (try
-                                                             (protocol/validate-query
-                                                              java-parser "postgres" slow-sql nil wide-select-schema)
+                                                             (protocol/referenced-fields java-parser "postgres" slow-sql)
                                                              (catch Throwable e e))))))]
           (is (instance? TimeoutException result) (pr-str result)))
         (let [start   (System/nanoTime)
@@ -180,7 +174,6 @@
       (doseq [[op-name f]
               {"referenced-tables"        #(sqlglot-java.references/referenced-tables "postgres" sql)
                "referenced-fields"        #(sqlglot-java.references/referenced-fields "postgres" sql)
-               "validate-query"           #(sqlglot-java.qualify/validate-query "postgres" sql nil wide-select-schema)
                "simple-query"             #(sqlglot-java.statements/simple-query "postgres" sql)
                "single-stmt-of-type"      #(sqlglot-java.statements/single-stmt-of-type "postgres" sql "read")
                "field-references"         #(sqlglot-java.field-references/field-references "postgres" sql)
@@ -265,13 +258,7 @@
 
 (deftest java-map-inputs-and-persistent-results-test
   (let [java-parser (sqlglot-java/parser)]
-    (testing "keyword keys and values in schema maps and replacements are read as strings, as sql_tools.py reads its JSON"
-      (is (= {:status "ok"}
-             (protocol/validate-query java-parser "postgres" "SELECT id FROM orders" nil
-                                      {:orders {:id "INT"}})))
-      (is (= {:status "ok"}
-             (protocol/validate-query java-parser "postgres" "SELECT id FROM \"ns/orders\"" nil
-                                      {:ns/orders {:id :INT}})))
+    (testing "keyword keys and values in replacements are read as strings, as sql_tools.py reads its JSON"
       (is (= "SELECT id FROM archived_orders"
              (protocol/replace-names java-parser "postgres" "SELECT id FROM orders"
                                      {:tables [[{:table :orders} :archived_orders]]}))))
@@ -303,7 +290,6 @@
           sql         "WITH c AS (SELECT id, total FROM orders) SELECT c.id, total * 2 AS t FROM c JOIN people p ON p.id = c.id"]
       (doseq [result [(protocol/referenced-tables java-parser "postgres" sql)
                       (protocol/referenced-fields java-parser "postgres" sql)
-                      (protocol/validate-query java-parser "postgres" sql "public" nil)
                       (protocol/simple-query java-parser "postgres" sql)
                       (protocol/field-references java-parser "postgres" sql)
                       (protocol/single-stmt-of-type java-parser "postgres" sql "read-only")

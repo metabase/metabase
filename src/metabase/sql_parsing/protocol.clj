@@ -16,9 +16,6 @@
   (referenced-fields [parser dialect sql]
     "Field references from actual database tables, as a vector of `[catalog schema table field]`
     4-tuples (wildcards as `\"*\"`).")
-  (validate-query [parser dialect sql default-table-schema sqlglot-schema]
-    "Validate the query against `sqlglot-schema` (strict) or its own structure (permissive when the
-    schema is nil/empty). Returns a keywordized `{:status \"ok\"}` or `{:status \"error\" ...}` map.")
   (simple-query [parser dialect sql]
     "Whether the SQL is a simple SELECT without LIMIT, OFFSET, or CTEs. Returns a keywordized
     `{:is_simple ...}` map with a `:reason` when false.")

@@ -59,7 +59,6 @@
   (case method
     (:referenced-tables
      :referenced-fields)      (set value)
-    :validate-query           (select-keys value [:status :type :column :table])
     :simple-query             (select-keys value [:is_simple])
     (:add-into-clause
      :add-insert-clause
@@ -256,9 +255,6 @@
         (run ctx :referenced-tables dialect sql [] #(protocol/referenced-tables % dialect sql)))
       (referenced-fields [_ dialect sql]
         (run ctx :referenced-fields dialect sql [] #(protocol/referenced-fields % dialect sql)))
-      (validate-query [_ dialect sql default-table-schema sqlglot-schema]
-        (run ctx :validate-query dialect sql [default-table-schema sqlglot-schema]
-             #(protocol/validate-query % dialect sql default-table-schema sqlglot-schema)))
       (simple-query [_ dialect sql]
         (run ctx :simple-query dialect sql [] #(protocol/simple-query % dialect sql)))
       (add-into-clause [_ dialect sql table-name]

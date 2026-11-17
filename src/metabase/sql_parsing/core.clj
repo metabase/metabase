@@ -7,7 +7,6 @@
   API (`parser` is a [[parser]], chosen by the caller):
     (referenced-tables parser dialect sql) → [[catalog schema table] ...]
     (referenced-fields parser dialect sql) → [[catalog schema table field] ...]
-    (validate-query parser dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
   GraalPy or Java implementation); this namespace owns the JVM-side pre- and post-processing around it."
@@ -407,38 +406,6 @@
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [parser dialect sql]
   (protocol/referenced-fields parser dialect (strip-large-literal-lists sql)))
-
-(defn validate-query
-  "Validate a SQL query against a schema using sqlglot's qualify optimizer.
-
-   Operates in two modes based on whether a schema is provided:
-
-   **Strict mode** (sqlglot-schema provided):
-   Validates that column and table references exist in the provided schema.
-   Returns errors for unknown tables, unresolved columns, missing table aliases.
-
-   **Permissive mode** (sqlglot-schema is nil or empty):
-   Only checks SQL syntax. Infers schema from query structure.
-   Useful for UDTFs and queries where the schema is unknown.
-
-   Parameters:
-   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil
-   - sql: The SQL query string to validate
-   - default-table-schema: Default schema name for unqualified table references
-   - sqlglot-schema: Schema map of {schema-name {table-name {column-name type}}},
-                     or nil/empty for permissive mode
-
-   Returns a map with:
-   - If valid: {:status \"ok\"}
-   - If error: {:status \"error\", :type \"...\", :message \"...\", ...}
-
-   Error types (strict mode):
-   - \"unknown_table\": Table not found in schema
-   - \"column_not_resolved\": Column not found (includes :column key)
-   - \"invalid_expression\": Syntax/parse error
-   - \"unhandled\": Other errors"
-  [parser dialect sql default-table-schema & [sqlglot-schema]]
-  (protocol/validate-query parser dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.

@@ -7,7 +7,7 @@
   `metabase.sql-parsing.sqlglot-java-test` checks both.
 
   Every failure is a [[metabase.sql-parsing.protocol/call-failed-ex]]. Port errors keep their sqlglot name (`ParseError`,
-  `OptimizeError`, ...), the errors `sql_tools.py` raises itself carry the Python name (`ValueError`, `KeyError`,
+  `TokenError`, ...), the errors `sql_tools.py` raises itself carry the Python name (`ValueError`, `KeyError`,
   `AssertionError`, `AttributeError`, `RecursionError`, `TypeError` for nil SQL), and any other JVM exception carries
   its Java class name."
   (:require
@@ -16,7 +16,6 @@
    [metabase.sql-parsing.settings :as sql-parsing.settings]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as field-references]
-   [metabase.sql-parsing.sqlglot-java.qualify :as qualify]
    [metabase.sql-parsing.sqlglot-java.references :as references]
    [metabase.sql-parsing.sqlglot-java.rewrite :as rewrite]
    [metabase.sql-parsing.sqlglot-java.statements :as statements]
@@ -131,8 +130,6 @@
       (call #(references/referenced-tables dialect sql)))
     (referenced-fields [_ dialect sql]
       (call #(references/referenced-fields dialect sql)))
-    (validate-query [_ dialect sql default-table-schema sqlglot-schema]
-      (call #(qualify/validate-query dialect sql default-table-schema (json-shaped sqlglot-schema))))
     (simple-query [_ dialect sql]
       (call #(statements/simple-query dialect sql)))
     (add-into-clause [_ dialect sql table-name]

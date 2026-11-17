@@ -37,7 +37,13 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/transform-test
-  "Create a transform test."
+  "Create a transform test.
+
+  An input that gives rows must declare every column that the transform's query reads from the input's table. A test
+  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that
+  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or
+  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
+  declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
    {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]
