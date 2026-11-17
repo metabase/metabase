@@ -7,7 +7,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
-import { setDataAppDevHeader } from "./lib/auth/set-data-app-dev-header";
+import { setDataAppDevHeader } from "./data-apps/set-data-app-dev-header";
 import { setEmbedPreviewHeader } from "./lib/auth/set-embed-preview-header";
 import { setReactSdkEmbedReferrerHeader } from "./lib/auth/set-react-sdk-embed-referrer-header";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";

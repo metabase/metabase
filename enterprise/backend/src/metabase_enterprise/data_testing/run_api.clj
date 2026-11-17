@@ -26,9 +26,10 @@
   (into #{}
         (comp (filter mi/can-read?)
               (map :id))
-        (case test-type
-          :transform (data-testing.db/transform-tests {})
-          :card      (data-testing.db/card-tests {}))))
+        (t2/hydrate (case test-type
+                      :transform (data-testing.db/transform-tests {})
+                      :card      (data-testing.db/card-tests {}))
+                    :can_read)))
 
 (mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]
   "The `[start end]` instants of the date filter `date-string`, or nil when it is nil."

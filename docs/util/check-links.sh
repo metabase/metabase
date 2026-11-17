@@ -7,7 +7,7 @@
 #   docs/util/check-links.sh docs              # only the markdown under docs/, incl. the SDK snippets
 #   docs/util/check-links.sh nav               # only nav.yml
 #   docs/util/check-links.sh src               # only the source code
-#   docs/util/check-links.sh site              # metabase.com and GitHub wiki links against the live sites
+#   docs/util/check-links.sh site              # metabase.com links against the live site
 #   docs/util/check-links.sh --external [nav]  # also fetch external links (slow, needs network)
 #
 # Without --external, links to other sites are skipped, which is how CI runs it
@@ -204,18 +204,17 @@ check_src() {
 # The offline checks only see pages under docs/. The rest of metabase.com (/learn, /product, /cloud, and
 # redirects the site sets up itself) can only be checked live, so this fetches every metabase.com url in
 # the repo and fails on a redirect as well as a 404: a link that works only through a redirect breaks
-# silently when the site drops the redirect. Our GitHub wikis get the same treatment, because a wiki
-# that's been turned off redirects every page to the repo instead of answering 404. Too slow and too
-# dependent on the sites for every PR, so CI runs it weekly (.github/workflows/docs-links-site.yml).
+# silently when the site drops the redirect. Too slow and too dependent on the site for every PR, so CI
+# runs it weekly (.github/workflows/docs-links-site.yml).
 check_site() {
-  echo "Checking metabase.com and GitHub wiki links against the live sites"
+  echo "Checking metabase.com links against the live site"
   local tmpdir locations rendered report total count
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' RETURN
   locations=$tmpdir/locations
   rendered=$tmpdir/site-links.md
 
-  git grep -nIoE 'https?://(www\.)?metabase\.com(/[^][:space:]"'"'"'`<>()\\|]*)?|https://github\.com/metabase/[^/[:space:]]+/wiki(/[^][:space:]"`<>()\\|]*)?' \
+  git grep -nIoE 'https?://(www\.)?metabase\.com(/[^][:space:]"'"'"'`<>()\\|]*)?' \
     -- docs frontend/src enterprise/frontend/src src enterprise/backend/src resources modules \
        .github/ISSUE_TEMPLATE README.md ':!*.unit.spec.*' ':!resources/openapi' ':!docs/embedding/sdk/api' ':!docs/api.json' |
     grep -v -e '\${' -e '{{' -e '{%' | sed -E "s/[.,;:']+\$//" > "$locations" || true
@@ -225,7 +224,7 @@ check_site() {
                   --timeout 30 --accept '200..=204,429' \
                   "${site_not_links[@]/#/--exclude=}" "$rendered" || true)
   print_failures "$report" "$locations" || return 1
-  echo "Checked $total metabase.com and GitHub wiki links, $count broken or redirected"
+  echo "Checked $total metabase.com links, $count broken or redirected"
   [ "$count" -eq 0 ]
 }
 
