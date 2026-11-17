@@ -11,6 +11,7 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
@@ -45,34 +46,40 @@
      :rows    [{"id" 1 "name" "paid"} {"id" 2 "name" "paid"}]}))
 
 (defn- write-plan
-  "A `::data-testing.subject/subject-plan` that runs `sql` with `params` on the test database."
-  [sql params]
-  {:database (data-testing.subject/testable-database (mt/id))
+  "A `::data-testing.subject/subject-plan` that runs `sql` with `params` on the Database with `database-id`."
+  [database-id sql params]
+  {:database (data-testing.subject/testable-database database-id)
    :compiled {:query sql :params params}
    :writes?  true})
 
 (defn- do-with-write-subject!
   "Call `f` with a card and a function returning the `:parameters` of each definition `subject-plan` was called with.
-  While `f` runs, `subject-plan` returns the write `sql` with `params` for any subject."
-  [sql params f]
-  (let [asked (atom [])]
-    (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                      (str "SELECT id FROM " (qualified :people)))}]
-      (with-redefs [data-testing.subject/subject-plan (fn [_subject-type _subject definition]
-                                                        (swap! asked conj (:parameters definition))
-                                                        (write-plan sql params))]
-        (f card #(deref asked))))))
+  While `f` runs, `subject-plan` returns the write `sql` with `params`, on the Database with `database-id` (by
+  default the test database), for any subject."
+  ([sql params f]
+   (do-with-write-subject! (mt/id) sql params f))
+  ([database-id sql params f]
+   (let [asked (atom [])]
+     (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                       (str "SELECT id FROM " (qualified :people)))}]
+       (with-redefs [data-testing.subject/subject-plan (fn [_subject-type _subject definition]
+                                                         (swap! asked conj (:parameters definition))
+                                                         (write-plan database-id sql params))]
+         (f card #(deref asked)))))))
 
 (defn- run-write!
-  "Run a saved test of the write `sql` with `params`, over `inputs`, checking `expectations`."
-  [sql params inputs expectations]
-  (do-with-write-subject!
-   sql params
-   (fn [card _asked]
-     (mt/with-temp [:model/CardTest card-test {:card_id      (:id card)
-                                               :inputs       inputs
-                                               :expectations expectations}]
-       (data-testing.runner/run-test! :card card card-test)))))
+  "Run a saved test of the write `sql` with `params`, over `inputs`, checking `expectations`, on the Database with
+  `database-id` (by default the test database)."
+  ([sql params inputs expectations]
+   (run-write! (mt/id) sql params inputs expectations))
+  ([database-id sql params inputs expectations]
+   (do-with-write-subject!
+    database-id sql params
+    (fn [card _asked]
+      (mt/with-temp [:model/CardTest card-test {:card_id      (:id card)
+                                                :inputs       inputs
+                                                :expectations expectations}]
+        (data-testing.runner/run-test! :card card card-test))))))
 
 (defn- refusal!
   "The `:error-type` of the refusal of a test of the write `sql` with `params`, or nil when it is not refused."
@@ -282,3 +289,33 @@
         (testing "the run drops the temp table of its one input, and nothing else"
           (is (= 1 (count @created)))
           (is (= (set @created) (set @dropped))))))))
+
+(defn- string-setting
+  "`standard_conforming_strings` as a query on the Database with `database-id` sees it, outside any test run."
+  [database-id]
+  (ffirst (mt/rows (qp/process-query {:database database-id
+                                      :type     :native
+                                      :native   {:query "SHOW standard_conforming_strings"}}))))
+
+(deftest write-runs-with-standard-conforming-strings-on-test
+  (mt/test-driver :postgres
+    (testing "on a database whose connections turn standard_conforming_strings off"
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                  :details (assoc (:details (mt/db))
+                                                                  :additional-options
+                                                                  "options=-c%20standard_conforming_strings%3Doff")}]
+        (testing "premise: a query on the database sees the setting off"
+          (is (= "off" (string-setting db-id))))
+        (testing "a run turns the setting on: the write records it, and the expectation reads it"
+          (is (=? {:status       :passed
+                   :expectations [{:name "the write saw the setting on" :status :passed}]}
+                  (run-write! db-id
+                              (str "UPDATE " (qualified :people)
+                                   " SET name = current_setting('standard_conforming_strings') WHERE id = ?")
+                              [1]
+                              [(people-rows)]
+                              [(reading {:type :empty
+                                         :name "the write saw the setting on"
+                                         :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
+        (testing "the setting is back off for queries after the run"
+          (is (= "off" (string-setting db-id))))))))
