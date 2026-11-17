@@ -604,6 +604,21 @@
                 (is (= [(str "renamed this " (#'revision.diff/model-str->i18n-str model) " from \"t\" to \"u\"")]
                        (strings {:name "u"})))))))))))
 
+(deftest action-test-revisions-describe-a-change-of-action-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-actions [_                 {:type :model :dataset_query (data-testing.test-util/categories-query)}
+                      {from :action-id} {:name "Rename category"}
+                      {to :action-id}   {:name "Reprice category"}]
+      (let [before  {:action_id from :name "t" :description nil :parameters nil :inputs [] :expectations []}
+            strings #(let [after (merge before %)]
+                       (mapv str (revision.diff/diff-strings* "ActionTest" before after
+                                                              (revision/readable-names [before after]))))]
+        (testing "a change of the action names both actions"
+          (is (= ["moved this Action test from Rename category to Reprice category"]
+                 (strings {:action_id to}))))
+        (testing "control: a change of the parameter values"
+          (is (= ["changed the parameter values"] (strings {:parameters {"id" 1}}))))))))
+
 (deftest a-moved-test-names-only-the-subjects-the-reader-may-read-test
   (let [moved (fn [from to]
                 (let [before {:segment_id from :name "t"}

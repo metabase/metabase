@@ -50,6 +50,7 @@
   "The model of the subject of a data test, by the key that holds the subject's id."
   {:transform_id :model/Transform
    :card_id      :model/Card
+   :action_id    :model/Action
    :segment_id   :model/Segment})
 
 (defn- match-2 [k v1 v2 identifier names]
