@@ -24,7 +24,6 @@ import {
   Loader,
   Stack,
   Text,
-  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -198,7 +197,7 @@ export function WhyListSidesheet({
             <SummaryCard summary={list.summary} onOpen={handleOpenTarget} />
           ) : page?.kind === "item" ? (
             <>
-              <ItemCard
+              <ItemCards
                 page={page}
                 onOpen={handleOpenTarget}
                 onOpenExplore={(targets) =>
@@ -334,10 +333,11 @@ function ItemLine({ icon, name, whoName }: SheetHeading) {
 }
 
 /**
- * Three answers, each under its own heading: opening the item (its collection), its data (View data on each table),
- * and exploring it (Create queries); then every permission on it, folded away.
+ * The verdict, then one card per answer: the cards that can't load, opening the item (its collection), its data (View
+ * data on each table) and exploring it (Create queries); then every permission on it, folded away, when that list
+ * holds more than the cards above show.
  */
-function ItemCard({
+function ItemCards({
   page,
   onOpen,
   onOpenExplore,
@@ -347,24 +347,30 @@ function ItemCard({
   onOpenExplore: (targets: WhyTarget[]) => void;
 }) {
   const copy = getItemSectionsCopy(page.itemType, page.permissions.length);
+  // the explore card is one row for every table, so it shows every value only when there's one table
+  const shownRowCount =
+    (page.collection != null ? 1 : 0) +
+    page.tables.length +
+    (page.explore.length > 0 ? 1 : 0);
+  const hasMorePermissions = page.permissions.length > shownRowCount;
   return (
-    <SidesheetCard>
+    <>
       {page.verdict.kind === "blocked" ? (
         <VerdictAlert verdict={page.verdict} />
       ) : (
         <Verdict verdict={page.verdict} />
       )}
       {page.blockedCards.length > 0 && (
-        <SidesheetCardSection title={t`Cards that can't load`}>
+        <SidesheetCard title={t`Cards that can't load`}>
           <Stack gap={0}>
             {page.blockedCards.map((card, index) => (
               <BlockedCardRow key={index} card={card} onOpen={onOpen} />
             ))}
           </Stack>
-        </SidesheetCardSection>
+        </SidesheetCard>
       )}
       {page.collection != null && (
-        <ItemCollectionSection
+        <ItemCollectionCard
           heading={copy.open}
           info={copy.openInfo}
           target={page.collection}
@@ -372,44 +378,54 @@ function ItemCard({
         />
       )}
       {page.tables.length > 0 && (
-        <SidesheetCardSection>
-          <SectionHeading
-            heading={copy.data}
-            info={copy.dataInfo}
-            infoLabel={t`About View data`}
-          />
+        <SidesheetCard
+          title={
+            <CardHeading
+              heading={copy.data}
+              info={copy.dataInfo}
+              infoLabel={t`About View data`}
+            />
+          }
+        >
           <DataRows targets={page.tables} onOpen={onOpen} />
-        </SidesheetCardSection>
+        </SidesheetCard>
       )}
       {page.explore.length > 0 && (
-        <SidesheetCardSection>
-          <SectionHeading
-            heading={copy.explore}
-            info={copy.exploreInfo}
-            infoLabel={t`About Create queries`}
-          />
+        <SidesheetCard
+          title={
+            <CardHeading
+              heading={copy.explore}
+              info={copy.exploreInfo}
+              infoLabel={t`About Create queries`}
+            />
+          }
+        >
           <ExploreRow
             targets={page.explore}
             onOpen={() => onOpenExplore(page.explore)}
           />
-        </SidesheetCardSection>
+        </SidesheetCard>
       )}
-      <Disclosure rowKey="all-permissions" label={copy.allPermissions}>
-        <Stack gap={0}>
-          {page.permissions.map((target, index) => (
-            <PermissionRow
-              key={index}
-              target={target}
-              onOpen={() =>
-                target.column === "create_queries"
-                  ? onOpenExplore(page.explore)
-                  : onOpen(target)
-              }
-            />
-          ))}
-        </Stack>
-      </Disclosure>
-    </SidesheetCard>
+      {hasMorePermissions && (
+        <SidesheetCard>
+          <Disclosure rowKey="all-permissions" label={copy.allPermissions}>
+            <Stack gap={0}>
+              {page.permissions.map((target, index) => (
+                <PermissionRow
+                  key={index}
+                  target={target}
+                  onOpen={() =>
+                    target.column === "create_queries"
+                      ? onOpenExplore(page.explore)
+                      : onOpen(target)
+                  }
+                />
+              ))}
+            </Stack>
+          </Disclosure>
+        </SidesheetCard>
+      )}
+    </>
   );
 }
 
@@ -458,7 +474,7 @@ function BlockedCardRow({
  * "Opening this dashboard": the item's collection decides, since dashboards and cards have no permissions of their
  * own (`:perms/use-parent-collection-perms` in `dashboard.clj` and `card.clj`).
  */
-function ItemCollectionSection({
+function ItemCollectionCard({
   heading,
   info,
   target,
@@ -470,12 +486,15 @@ function ItemCollectionSection({
   onOpen: (target: WhyTarget) => void;
 }) {
   return (
-    <SidesheetCardSection>
-      <SectionHeading
-        heading={heading}
-        info={info}
-        infoLabel={t`About collection permissions`}
-      />
+    <SidesheetCard
+      title={
+        <CardHeading
+          heading={heading}
+          info={info}
+          infoLabel={t`About collection permissions`}
+        />
+      }
+    >
       <AccessRow
         target={target}
         label={
@@ -492,12 +511,12 @@ function ItemCollectionSection({
         }
         onOpen={() => onOpen(target)}
       />
-    </SidesheetCardSection>
+    </SidesheetCard>
   );
 }
 
-/** A section's heading, with an ⓘ that says what decides its answer, on hover or keyboard focus. */
-function SectionHeading({
+/** A card's title, with an ⓘ that says what decides its answer, on hover or keyboard focus. */
+function CardHeading({
   heading,
   info,
   infoLabel,
@@ -507,10 +526,8 @@ function SectionHeading({
   infoLabel: string;
 }) {
   return (
-    <Flex align="center" gap="xs" mb="sm">
-      <Title c="text-secondary" order={4}>
-        {heading}
-      </Title>
+    <Flex component="span" align="center" gap="xs">
+      {heading}
       <InfoButton info={info} label={infoLabel} />
     </Flex>
   );

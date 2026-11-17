@@ -400,12 +400,11 @@ describe("WhyListSidesheet", () => {
   });
 
   it("opens Create queries from its line in All permissions too", async () => {
-    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: /All permissions on this dashboard \(3\)/,
-      }),
-    );
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+    });
+    await userEvent.click(await findAllPermissions());
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Orders\s*Create queries/ }),
@@ -419,10 +418,11 @@ describe("WhyListSidesheet", () => {
   });
 
   it("folds every permission away, Create queries included, until asked", async () => {
-    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
-    const disclosure = await screen.findByRole("button", {
-      name: /All permissions on this dashboard \(3\)/,
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, ACCOUNTS_ID],
     });
+    const disclosure = await findAllPermissions();
     expect(disclosure).toHaveAttribute("aria-expanded", "false");
     expect(getVisibleTexts("Create queries")).toHaveLength(0);
 
@@ -430,8 +430,17 @@ describe("WhyListSidesheet", () => {
 
     expect(disclosure).toHaveAttribute("aria-expanded", "true");
     await waitFor(() =>
-      expect(getVisibleTexts("Create queries")).toHaveLength(1),
+      expect(getVisibleTexts("Create queries")).toHaveLength(2),
     );
+  });
+
+  it("leaves out All permissions when the cards above show every one: a collection and one table", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await screen.findByText("Exploring this dashboard");
+
+    expect(
+      screen.queryByRole("button", { name: /All permissions/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("gives the See everything summary no icon, even with a table blocked, while the partly blocked dashboard keeps its own", async () => {
@@ -459,7 +468,10 @@ describe("WhyListSidesheet", () => {
   });
 
   it("keeps All permissions open after opening one of its lines and going Back", async () => {
-    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, ACCOUNTS_ID],
+    });
     await userEvent.click(await findAllPermissions());
     await userEvent.click(
       await screen.findByRole("button", { name: /Orders\s*View data/ }),
@@ -507,6 +519,7 @@ describe("WhyListSidesheet", () => {
   it("folds All permissions again when the sheet closes and opens", async () => {
     const { rerender } = setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, ACCOUNTS_ID],
     });
     await userEvent.click(await findAllPermissions());
     const props = getProps({ type: "dashboard", id: SALES_OVERVIEW_ID });
@@ -523,6 +536,7 @@ describe("WhyListSidesheet", () => {
   it("folds All permissions again when another item opens", async () => {
     const { rerender } = setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, ACCOUNTS_ID],
     });
     await userEvent.click(await findAllPermissions());
 
@@ -781,9 +795,10 @@ function getCollection(
   return { id, name, depth, source: "group", access: getCell(access) };
 }
 
+/** All permissions on a dashboard with two tables: one value per table more than the cards above it show. */
 function findAllPermissions() {
   return screen.findByRole("button", {
-    name: /All permissions on this dashboard \(3\)/,
+    name: /All permissions on this dashboard \(5\)/,
   });
 }
 
