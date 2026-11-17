@@ -274,6 +274,11 @@
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/ActionTest :action_id action-id))
 
+(mu/defn delete-model-action-tests!
+  "Delete the ActionTests of the Actions of the model Card with `model-id`."
+  [model-id :- ::lib.schema.id/card]
+  (t2/delete! :model/ActionTest :action_id [:in ^:allow-subquery {:select [:id] :from [:action] :where [:= :model_id model-id]}]))
+
 (mu/defn synced-action-test-items :- [:sequential ::data-testing.schema/action-test]
   "The ActionTests with `ids`, as remote sync lists them: each with its Action, in the shape remote sync lists Actions
   in."

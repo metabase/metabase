@@ -35,3 +35,24 @@
                    :model/DataTestRun _                             {:test_type :card, :test_id test-id}]
       (testing "the newest run of the test, not a run of a card test with the same id"
         (is (= action-run (-> (t2/hydrate action-test :last_run) :last_run :id)))))))
+
+(deftest deleting-a-model-clears-the-test-id-of-its-action-tests-runs-test
+  (doseq [[description delete!] [["deleting the action"
+                                  (fn [_coll-id _model-id action-id] (t2/delete! :model/Action :id action-id))]
+                                 ["deleting the model, not archived"
+                                  (fn [_coll-id model-id _action-id] (t2/delete! :model/Card :id model-id))]
+                                 ["deleting the model's collection"
+                                  (fn [coll-id _model-id _action-id] (t2/delete! :model/Collection :id coll-id))]]]
+    (testing description
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/categories-query)
+                                               :collection_id coll-id}
+                          {:keys [action-id]} {}]
+          (mt/with-temp [:model/ActionTest  {test-id :id} {:action_id action-id}
+                         :model/DataTestRun {run-id :id}  {:test_type :action, :test_id test-id}]
+            (delete! coll-id model-id action-id)
+            (testing "premise: the action and its test are gone"
+              (is (not (t2/exists? :model/Action :id action-id)))
+              (is (not (t2/exists? :model/ActionTest :id test-id))))
+            (testing "no run names the deleted test"
+              (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id))))))))))

@@ -59,6 +59,13 @@
   [action-id]
   (data-testing.db/delete-action-tests! action-id))
 
+(defenterprise delete-model-action-tests!
+  "Enterprise implementation: delete the tests of the actions of the model `model-id`, each through its own hook. Runs
+  whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [model-id]
+  (data-testing.db/delete-model-action-tests! model-id))
+
 (t2/define-before-delete :model/ActionTest [action-test]
   ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
   ;; delete's transaction.
