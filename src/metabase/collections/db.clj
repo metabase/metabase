@@ -88,6 +88,14 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :personal_owner_id [:not= nil]))
 
+(mu/defn collection-ids-in-namespace :- [:set ::lib.schema.id/collection]
+  "The subset of `collection-ids` whose Collections are in `collection-namespace`."
+  [collection-namespace :- :string
+   collection-ids       :- [:sequential ::lib.schema.id/collection]]
+  (if (empty? collection-ids)
+    #{}
+    (t2/select-pks-set :model/Collection :namespace collection-namespace :id [:in collection-ids])))
+
 (mu/defn collection-sync-columns
   "The id, type, namespace and `is_remote_synced` of the Collections with `collection-ids`, which tell whether remote
   sync syncs each."

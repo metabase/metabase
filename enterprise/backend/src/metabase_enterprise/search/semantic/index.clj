@@ -1003,6 +1003,17 @@
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
     result))
 
+(defn- remove-hidden-analytics-cards
+  "Drops the `docs` that are cards in the audit app's `analytics` namespace, unless the context of `search-context`
+  returns them. The appdb and in-place engines apply the same rule in their query."
+  [search-context docs]
+  (if (search.config/analytics-cards-allowed? (:context search-context))
+    docs
+    (let [card-model?   (set search.config/card-models)
+          card-doc?     #(card-model? (:model %))
+          analytics-ids (collection/analytics-collection-ids (keep :collection_id (filter card-doc? docs)))]
+      (into [] (remove #(and (card-doc? %) (contains? analytics-ids (:collection_id %)))) docs))))
+
 (defn- filter-by-collection-id
   "Filter documents by collection and all descendant collections."
   [docs collection-id]
@@ -1249,6 +1260,7 @@
                                  {:search.semantic/raw-count (count raw-results)}
                                  (->> raw-results
                                       filter-read-permitted
+                                      (remove-hidden-analytics-cards search-context)
                                       (apply-collection-id-filter search-context)
                                       (mapv search/collapse-id)))
               filter-time-ms (u/since-ms filter-timer)

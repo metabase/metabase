@@ -806,6 +806,24 @@
         (testing "handles empty input"
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
+(deftest remove-hidden-analytics-cards-test
+  (mt/with-temp [:model/Collection {analytics :id} {:namespace "analytics"}
+                 :model/Collection {plain :id}     {}]
+    (let [docs [{:id 1, :model "card",      :collection_id analytics}
+                {:id 2, :model "dataset",   :collection_id analytics}
+                {:id 3, :model "metric",    :collection_id analytics}
+                {:id 4, :model "dashboard", :collection_id analytics}
+                {:id 5, :model "card",      :collection_id plain}
+                {:id 6, :model "card",      :collection_id nil}]
+          kept (fn [context]
+                 (map :id (#'semantic.index/remove-hidden-analytics-cards {:context context} docs)))]
+      (testing "Broad search keeps cards in the analytics namespace"
+        (is (= [1 2 3 4 5 6] (kept :command-palette))))
+      (testing "Other contexts, and searches without one, drop them and keep everything else"
+        (doseq [context [:data-picker :embedding-setup nil]]
+          (testing context
+            (is (= [4 5 6] (kept context)))))))))
+
 (deftest filter-read-permitted-document-scoped-cards-test
   (mt/with-premium-features #{:semantic-search}
     (testing "card scoped to document is filtered by that document, though filter loads only few columns"

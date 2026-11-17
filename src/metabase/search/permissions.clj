@@ -16,17 +16,13 @@
             (false? is-sandboxed-user?)
             (false? is-routed-user?))))
 
-(def ^:private card-models
-  "The search models stored as cards."
-  ["card" "dataset" "metric"])
-
 (defn- analytics-cards-clause
   "Clause dropping cards in the `analytics` namespace, or nil when `context` is one of
   [[search.config/analytics-card-contexts]]. `model-expr` is the HoneySQL expression for each row's search model."
   [context model-expr]
-  (when-not (contains? search.config/analytics-card-contexts (search.config/normalized-context context))
+  (when-not (search.config/analytics-cards-allowed? context)
     [:or
-     [:not-in model-expr card-models]
+     [:not-in model-expr search.config/card-models]
      [:= :collection.namespace nil]
      [:not= :collection.namespace "analytics"]]))
 
