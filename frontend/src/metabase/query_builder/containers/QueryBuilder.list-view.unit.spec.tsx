@@ -17,7 +17,13 @@ import {
 } from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
+import { getIsRunning } from "../store/selectors";
+
 import { setup } from "./test-utils";
+
+type QueryBuilderStore = Awaited<ReturnType<typeof setup>>["store"];
+
+const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
 
 registerVisualizations();
 
@@ -97,25 +103,22 @@ const parseBody = (body: unknown): Partial<Card> => {
 };
 
 /**
- * Stands in for the backend: a PUT stores the card, and the model's query
- * returns the columns of the stored model metadata, as the backend does.
+ * Stands in for the backend: a PUT stores the card, and later reads of the card
+ * and runs of its query return the stored card and its model metadata.
+ * The routes are added before the shared QueryBuilder setup, so they match
+ * first.
  */
 const setupStoredModelEndpoints = (card: Card) => {
   let storedCard = card;
   const getDataset = () =>
     createDataset(storedCard.result_metadata ?? ORDERS_COLUMNS);
 
-  fetchMock.removeRoute(`card-${card.id}-put`);
-  fetchMock.put(
-    `path:/api/card/${card.id}`,
-    (call) => {
-      storedCard = { ...storedCard, ...parseBody(call.options.body) };
-      return storedCard;
-    },
-    { name: `card-${card.id}-put` },
-  );
-  fetchMock.removeRoute("dataset-post");
-  fetchMock.post("path:/api/dataset", getDataset, { name: "dataset-post" });
+  fetchMock.get(`path:/api/card/${card.id}`, () => storedCard);
+  fetchMock.put(`path:/api/card/${card.id}`, (call) => {
+    storedCard = { ...storedCard, ...parseBody(call.options.body) };
+    return storedCard;
+  });
+  fetchMock.post("path:/api/dataset", getDataset);
   fetchMock.post(`path:/api/card/${card.id}/query`, getDataset);
 };
 
@@ -128,14 +131,13 @@ const setupModel = async ({
   card = createModel(),
   withUndos = false,
 }: SetupOpts = {}) => {
-  const result = await setup({
+  setupStoredModelEndpoints(card);
+  return setup({
     card,
     dataset: createDataset(card.result_metadata ?? ORDERS_COLUMNS),
     initialRoute: `/model/${card.id}`,
     withUndos,
   });
-  setupStoredModelEndpoints(card);
-  return result;
 };
 
 const getUpdatedCard = () =>
@@ -169,11 +171,20 @@ const clickEditorTab = async (name: string) => {
   );
 };
 
-const saveModelChanges = async () => {
+const getQueryRunCount = () =>
+  fetchMock.callHistory
+    .calls()
+    .filter((call) => QUERY_RUN_PATH.test(new URL(call.url).pathname)).length;
+
+/** Saves the model and waits for the query that runs after the save to end. */
+const saveModelChanges = async (store: QueryBuilderStore) => {
+  const runCount = getQueryRunCount();
   await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => {
     expect(screen.queryByTestId("dataset-edit-bar")).not.toBeInTheDocument();
   });
+  await waitFor(() => expect(getQueryRunCount()).toBeGreaterThan(runCount));
+  await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
 };
 
 const openListViewSettings = async () => {
@@ -204,7 +215,7 @@ describe("QueryBuilder > models list view", () => {
   });
 
   it("sets list as the default view of a model and saves it", async () => {
-    await setupModel();
+    const { store } = await setupModel();
 
     await openListViewSettings();
     expect(screen.getByTestId("list-view")).toBeInTheDocument();
@@ -216,7 +227,7 @@ describe("QueryBuilder > models list view", () => {
       within(screen.getByTestId("sidebar-right")).getByLabelText("List"),
     ).toBeChecked();
 
-    await saveModelChanges();
+    await saveModelChanges(store);
 
     expect(getUpdatedCard()).toMatchObject({ display: "list" });
     expect(await screen.findByTestId("list-view")).toBeInTheDocument();
@@ -278,7 +289,7 @@ describe("QueryBuilder > models list view", () => {
   });
 
   it("customizes the list columns and icon, and saves them", async () => {
-    await setupModel();
+    const { store } = await setupModel();
     await openListViewSettings();
 
     await userEvent.click(
@@ -378,7 +389,7 @@ describe("QueryBuilder > models list view", () => {
       color: "var(--mantine-color-accent1-text)",
     });
 
-    await saveModelChanges();
+    await saveModelChanges(store);
 
     expect(getUpdatedCard()).toMatchObject({
       display: "list",
@@ -415,7 +426,7 @@ describe("QueryBuilder > models list view", () => {
   });
 
   it("turns off the mini bar chart of a quantity column", async () => {
-    await setupModel({
+    const { store } = await setupModel({
       card: createModel({ display: "list", result_metadata: MINI_BAR_COLUMNS }),
     });
 
@@ -438,7 +449,7 @@ describe("QueryBuilder > models list view", () => {
       ),
     );
 
-    await saveModelChanges();
+    await saveModelChanges(store);
 
     const subtotal = getUpdatedCard().result_metadata?.find(
       (column) => column.name === "SUBTOTAL",
