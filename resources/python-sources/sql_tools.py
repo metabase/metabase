@@ -9,10 +9,9 @@ import sqlglot
 # stderr/server logs.
 logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.optimizer as optimizer
-import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
-from sqlglot.errors import OptimizeError, ParseError
+from sqlglot.errors import ParseError
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
@@ -280,99 +279,6 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
 
     # Sort for deterministic output: catalog, schema, table, field
     return json.dumps(sorted(fields, key=lambda x: (x[0] or "", x[1] or "", x[2], x[3])))
-
-def serialize_error(e):
-    """
-    Convert SQLGlot exceptions to structured error dicts.
-
-    Unrecognized error formats fall through to 'unhandled' type - the Clojure
-    layer can add more specific handling if needed.
-    """
-
-    message = e.args[0]
-    assert isinstance(message, str), "Unexpected error format."
-
-    match = re.search(r'^Unknown table:\s*(?P<table>.*)', message)
-    if match:
-        return {"status": "error",
-                "type": "unknown_table",
-                "message": match.group(),
-                "table": match.group('table')}
-
-    match = re.search(r'''(?P<message>^Column '(?P<column>\S+)' could not be resolved.)(?P<details>.*)''', message)
-    if match:
-        return {"status": "error",
-                "type": "column_not_resolved",
-                "message": match.group('message'),
-                "column": match.group('column'),
-                "details": match.group('details')}
-
-    # ('Invalid expression / Unexpected token. Line 1, Col: 23.\n  complete nonsense \x1b[4mquery\x1b[0m',)
-    match = re.search(r'(?P<message>^Invalid expression.*?\.)(?P<details>.*)', message)
-    if match:
-        return {"status": "error",
-                "type": "invalid_expression",
-                "message": match.group('message'),
-                "details": match.group('details')}
-
-    return {"status": "error",
-            "type": "unhandled",
-            "message": message}
-
-def validate_query(dialect, sql, default_table_schema, sqlglot_schema_json):
-    """
-    Validate a SQL query against a schema using sqlglot's qualify optimizer.
-
-    Validation modes:
-    - Strict mode (sqlglot_schema provided): Validates columns and tables exist in schema.
-      Returns errors for unknown tables, unresolved columns, missing table aliases.
-    - Permissive mode (sqlglot_schema is None/empty): Only checks SQL syntax, infers schema
-      from query structure. Useful for UDTFs and queries against unknown tables.
-
-    Returns JSON with:
-    - If valid: {"status": "ok"}
-    - If error: {"status": "error", "type": "...", "message": "...", ...}
-
-    Error types:
-    - unknown_table: Table reference not found in schema (strict mode only)
-    - column_not_resolved: Column not found (includes 'column' and optionally 'details')
-    - invalid_expression: Syntax/parse error
-    - unhandled: Other errors
-
-    :param dialect: SQLGlot dialect string (e.g., "postgres", "mysql")
-    :param sql: SQL query string to validate
-    :param default_table_schema: Default schema for unqualified tables
-    :param sqlglot_schema_json: JSON-encoded schema dict {schema: {table: {column: type}}},
-                                or None/empty for permissive mode
-    """
-    status = {"status": "ok"}
-
-    # Decode JSON schema if provided (GraalVM Polyglot passes complex maps as JSON strings)
-    sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
-
-    # Determine validation mode based on whether schema is provided
-    # - Strict mode: schema provided → validate columns/tables exist
-    # - Permissive mode: no schema → only check syntax, infer schema from query
-    strict_mode = sqlglot_schema is not None and len(sqlglot_schema) > 0
-
-    try:
-        ast = sqlglot.parse_one(sql, read=dialect)
-        ast = qualify.qualify(ast,
-                            db=default_table_schema,
-                            dialect=dialect,
-                            schema=sqlglot_schema if strict_mode else None,
-                            # In strict mode: don't infer, validate against provided schema
-                            # In permissive mode: infer schema from query (handles UDTFs)
-                            infer_schema=not strict_mode,
-                            # In strict mode: validate that columns can be resolved
-                            validate_qualify_columns=strict_mode,
-                            sql=sql)
-    except ParseError as e:
-        status |= serialize_error(e)
-    except OptimizeError as e:
-        status |= serialize_error(e)
-
-    return json.dumps(status)
 
 def simple_query(sql: str, dialect: str = None) -> str:
     """

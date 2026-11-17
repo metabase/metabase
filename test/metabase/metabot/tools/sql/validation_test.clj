@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.test :as mt]))
 
 ;;;; contains-template-tags?
@@ -202,30 +201,6 @@
   (doseq [{:keys [context dialect expected sql]} quoting-cases]
     (testing context
       (is (= expected (transpiled-sql dialect sql))))))
-
-(deftest ^:parallel transpiled-sql-resolves-test
-  (testing "transpiled SQL must resolve against the folded-case names the warehouse reports;
-           quoting it (the old identify=True behavior) makes exactly these fail"
-    (doseq [[dialect sql default-schema sqlglot-schema]
-            [["snowflake" "select subtotal from orders"
-              "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]
-             ["snowflake" "select SubTotal from Orders as O where o.Total > 0"
-              "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT", "TOTAL" "FLOAT"}}}]
-             ["postgres" "SELECT subtotal AS \"Total\" FROM orders WHERE total > 0"
-              "public" {"public" {"orders" {"subtotal" "FLOAT", "total" "FLOAT"}}}]
-             ["postgres" "SELECT SubTotal FROM Orders WHERE Total > 0"
-              "public" {"public" {"orders" {"subtotal" "FLOAT", "total" "FLOAT"}}}]
-             ["postgres" "SELECT \"order\" FROM t"
-              "public" {"public" {"t" {"order" "FLOAT"}}}]
-             ["postgres" "SELECT order FROM t"
-              "public" {"public" {"t" {"order" "FLOAT"}}}]
-             ["postgres" "WITH Orders AS (SELECT 1 AS id) SELECT id FROM ORDERS"
-              "public" {"public" {"unrelated" {"x" "INT"}}}]
-             ["snowflake" "WITH x AS (SELECT * FROM orders) SELECT subtotal FROM x"
-              "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]]]
-      (testing sql
-        (is (= "ok" (:status (sql-parsing/validate-query
-                              dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
 
 ;;;; system-table?
 
