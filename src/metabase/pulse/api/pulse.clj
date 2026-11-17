@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
-   [metabase.collections.models.collection :as collection]
    [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -317,7 +316,6 @@
           pulse-updates (cond->> pulse-updates
                           (:dashboard_id pulse-before-update) (drop-unchanged-collection-keys pulse-before-update))]
       (check-card-read-permissions cards)
-      (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
       (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
         (t2/with-transaction [_conn]
           ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,

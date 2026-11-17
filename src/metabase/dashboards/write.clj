@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -100,9 +99,6 @@
   ([{:keys [name description parameters cache_ttl collection_id collection_position
             width auto_apply_filters]} :- NewDashboard
     {:keys [in-transaction]}           :- [:maybe [:map {:closed true} [:in-transaction {:optional true} ifn?]]]]
-   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-   (api/create-check :model/Dashboard {:collection_id collection_id})
-   (check-new-references (constantly no-references) {:parameters parameters})
    (let [dashboard-data (cond-> {:name                name
                                  :description         description
                                  :parameters          (or parameters [])
@@ -113,6 +109,8 @@
                           ;; both columns are NOT NULL with defaults, so only set them when asked
                           (some? width)              (assoc :width width)
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
+         _              (api/create-check :model/Dashboard dashboard-data)
+         _              (check-new-references (constantly no-references) {:parameters parameters})
          dash           (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
@@ -333,7 +331,6 @@
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
           dash-updates                       (api/updates-without-collection-when-archiving current-dash dash-updates)]
       (api/update-check current-dash dash-updates)
-      (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-embedding-enabled current-dash dash-updates)
       (api/check-500
        (do
@@ -595,7 +592,8 @@
   `:event/dashboard-create` and `:event/card-create` for each duplicated card."
   [from-dashboard-id {:keys [name description collection_id collection_position is_deep_copy]}]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (api/create-check :model/Dashboard {:collection_id collection_id})
+  (api/create-check :model/Dashboard {:name name, :description description, :collection_id collection_id
+                                      :collection_position collection_position})
   (api/check-400 (not (and (not is_deep_copy)
                            (contains-dashboard-questions? from-dashboard-id)))
                  (tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))

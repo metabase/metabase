@@ -189,20 +189,6 @@
     (api/checkp (= target-database-id (warehouse-schema.db/table-database-id table_id))
                 :fk_target_field_id (tru "Target field must belong to the same database"))))
 
-(defn- fk-semantic-type?
-  "Whether `semantic-type` marks a foreign key."
-  [semantic-type]
-  (isa? (some-> semantic-type keyword) :type/FK))
-
-(defn- internal-remapping-allowed?
-  "Whether a Field of `base-type` and `semantic-type` can hold an internal remapping."
-  [base-type semantic-type]
-  (let [semantic-type (some-> semantic-type keyword)]
-    (and (isa? (keyword base-type) :type/Integer)
-         (or (nil? semantic-type)
-             (isa? semantic-type :type/Category)
-             (isa? semantic-type :type/Enum)))))
-
 (defn nested-fields-pattern
   "The SQL LIKE pattern matching the NFC paths of the Fields nested in the JSON Field named `field-name`."
   [field-name]
@@ -219,13 +205,8 @@
 
 (t2/define-before-update :model/Field
   [{:keys [id table_id] :as field}]
-  (let [changes     (t2/changes field)
-        original    (t2/original field)
-        removed-fk? (and (contains? changes :semantic_type)
-                         (fk-semantic-type? (:semantic_type original))
-                         (not (fk-semantic-type? (:semantic_type field))))
-        field       (cond-> (merge field (coercion-changes field changes))
-                      removed-fk? (assoc :fk_target_field_id nil))]
+  (let [changes (t2/changes field)
+        field   (merge field (coercion-changes field changes))]
     (when (contains? changes :table_id)
       (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
     (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))
@@ -234,14 +215,8 @@
       (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
       (warehouse-schema.db/clear-fk-targets-to-field! id)
       (warehouse-schema.db/delete-dimensions-reading-field! id))
-    (when removed-fk?
-      (warehouse-schema.db/unset-user-settings-fk-target! id)
-      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :external))
-    (when (and (:display_name changes) (not removed-fk?))
+    (when (:display_name changes)
       (warehouse-schema.db/rename-dimension-for-field! id (:display_name field)))
-    (when (and (some #(contains? changes %) [:semantic_type :base_type])
-               (not (internal-remapping-allowed? (:base_type field) (:semantic_type field))))
-      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :internal))
     (when (contains? changes :json_unfolding)
       (warehouse-schema.db/set-nested-fields-active! table_id
                                                      (nested-fields-pattern (:name field))

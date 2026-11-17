@@ -336,8 +336,9 @@
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/write-check :model/Transform id)
-  (transforms-rest.db/reset-checkpoint! id)
+  (let [transform (api/write-check :model/Transform id)]
+    (transforms-rest.db/reset-checkpoint! id)
+    (transforms.core/publish-update-event! transform))
   nil)
 
 (mu/defn- check-feature-and-lock! :- :nil

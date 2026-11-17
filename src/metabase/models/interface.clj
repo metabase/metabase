@@ -756,10 +756,11 @@
   "An atom holding what [[cached-for-update-check]] computed, or nil outside [[with-update-check-cache]]."
   nil)
 
-(defmacro with-update-check-cache
-  "Runs `body`, a permission check of many rows, in which [[cached-for-update-check]] computes each answer once."
+(defmacro ^:private with-update-check-cache
+  "Runs `body`, a permission check of many rows, in which [[cached-for-update-check]] computes each answer once, in the
+  cache of the check it is nested in if there is one."
   [& body]
-  `(binding [*update-check-cache* (atom {})]
+  `(binding [*update-check-cache* (or *update-check-cache* (atom {}))]
      ~@body))
 
 (defn cached-for-update-check
@@ -780,10 +781,11 @@
   once together, with the model's [[can-update?]] or, for a model without one, [[can-write?]]."
   [model rows changes]
   (or (empty? rows)
-      (let [rows (t2/hydrate (vec rows) :can_write)]
-        (if (contains? (methods can-update?) model)
-          (every? #(can-update? % changes) rows)
-          (every? can-write? rows)))))
+      (with-update-check-cache
+        (let [rows (t2/hydrate (vec rows) :can_write)]
+          (if (contains? (methods can-update?) model)
+            (every? #(can-update? % changes) rows)
+            (every? can-write? rows))))))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation

@@ -75,14 +75,6 @@
         (throw (ex-info (tru "Document content must be a ProseMirror document.")
                         {:status-code 400, :errors {:document (tru "invalid document content")}}))))))
 
-(defn- check-collection
-  "Throws unless `document` may go in its Collection: it takes one that holds Documents and is not archived, unless
-  `document` is."
-  [{:keys [collection_id archived]}]
-  (collection/check-collection-namespace :model/Document collection_id)
-  (collection/check-allowed-content :model/Document collection_id)
-  (collection/check-collection-not-archived archived collection_id))
-
 (defn- document-parent-archived?
   "Whether the Collection that `document` is in, or the Exploration it summarizes, is archived."
   [{:keys [collection_id exploration_id]}]
@@ -98,7 +90,7 @@
 
 (t2/define-before-insert :model/Document
   [document]
-  (check-collection document)
+  (collection/check-collection-for :model/Document document)
   (check-name (:name document))
   (check-content (:content_type document) (:document document))
   (public-sharing/add-public-uuid-prefix document))
@@ -107,7 +99,7 @@
   [{:keys [id] :as document}]
   (let [changes (t2/changes document)]
     (when (contains? changes :collection_id)
-      (check-collection document))
+      (collection/check-collection-for :model/Document document))
     (when (contains? changes :name)
       (check-name (:name document)))
     (when (some #(contains? changes %) [:document :content_type])
@@ -202,42 +194,20 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
-(defn- check-can-read-keys
-  "Throws unless `document` has the columns its `:can_read` and `:can_write` hydrations read."
-  [document]
-  (api/check-500 (contains? document :collection_id) "No :collection_id is set for a Document."))
-
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
   "Whether the current user reads each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (run! #(when % (check-can-read-keys %)) documents)
-  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? documents))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [document documents]
-      (when document
-        (vary-meta document assoc :can_read (boolean (and (contains? readable (:collection_id document))
-                                                          (content-visible? document))))))))
+  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? content-visible?}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_write]
   "Whether the current user writes each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (run! #(when % (check-can-read-keys %)) documents)
-  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? documents))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [document documents]
-      (when document
-        (assoc document :can_write (boolean (and (contains? writable (:collection_id document))
-                                                 (content-visible? document))))))))
+  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? content-visible?}))
 
 (defn- collection-writable?
   "Whether the current user writes the Collection with `collection-id`, or the root Collection for nil."
   [collection-id]
   (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
-
-(defn- collection-move?
-  "Whether `changes` move `document` to another Collection."
-  [document changes]
-  (api/column-will-change? (:collection_id document) (get changes :collection_id ::api/not-provided)))
 
 (defmethod mi/can-create? :model/Document
   [_model {collection-id :collection_id}]
@@ -247,21 +217,18 @@
   "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
   [document changes]
   (or (not (mi/changes-archived? document changes))
-      (mi/with-update-check-cache
-        (mi/can-update-each? :model/Card
-                             (if (:archived changes)
-                               (documents.db/cards-archived-with-document (:id document))
-                               (documents.db/cards-restored-with-document (:id document)))
-                             changes))))
+      (mi/can-update-each? :model/Card
+                           (if (:archived changes)
+                             (documents.db/cards-archived-with-document (:id document))
+                             (documents.db/cards-restored-with-document (:id document)))
+                           changes)))
 
 (defmethod mi/can-update? :model/Document
   [document changes]
   (boolean
    (and (mi/can-write? document)
         (archive-followers-updatable? document changes)
-        (or (not (collection-move? document changes))
-            (and (collection-writable? (:collection_id document))
-                 (collection-writable? (:collection_id changes))))
+        (collection/can-move? document changes)
         (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
             (mi/superuser?)))))
 ;;; ---------- Hydration -----------------------------------------------------------------------------------------

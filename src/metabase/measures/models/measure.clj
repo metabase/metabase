@@ -2,8 +2,6 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
-   [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -13,7 +11,6 @@
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
@@ -80,46 +77,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_read]
   "Whether the current user can read each of `measures`, which they can when they read its Table, the Tables answered
   together."
-  [_model k measures]
-  (let [rows  (t2/hydrate (into [] (remove nil?) measures) [:table :can_read])
-        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
-    (for [measure measures]
-      (when measure
-        (vary-meta measure assoc k (get flags (:id measure) false))))))
-
-(defn- writable-table-ids
-  "The ids of those of `tables` whose Measures the current user can write: every Table for a superuser, those a data
-  analyst has unrestricted view-data permissions on, answered together, and never one a read-only instance syncs."
-  [tables]
-  (let [permitted (cond
-                    (mi/superuser?)
-                    tables
-
-                    (api/entitled-data-analyst?)
-                    (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
-                                                                   :perms/view-data
-                                                                   (into {} (map (juxt :id :db_id)) tables))]
-                      (filter #(perms/at-least-as-permissive? :perms/view-data (get values (:id %)) :unrestricted)
-                              tables))
-
-                    :else
-                    [])]
-    (into #{} (comp (filter collection/remote-sync-writable-table?) (map :id)) permitted)))
+  [_model _k measures]
+  (collection/hydrate-table-content-can-read measures))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
   "Whether the current user can write each of `measures`, which they can when they write Measures of its Table."
-  [_model k measures]
-  (let [rows     (t2/hydrate (into [] (remove nil?) measures) :table)
-        writable (writable-table-ids (into [] (comp (keep :table) (m/distinct-by :id)) rows))]
-    (for [measure measures]
-      (when measure
-        (assoc measure k (contains? writable (:table_id measure)))))))
+  [_model _k measures]
+  (collection/hydrate-table-content-can-write measures))
 
 (defn- definition-writable?
   "Whether the current user can write Measures of the Table `definition` is built on."
   [definition]
   (let [table (some-> definition not-empty definition-table-id measures.db/table)]
-    (boolean (and table (seq (writable-table-ids [table]))))))
+    (boolean (and table (seq (collection/writable-table-ids [table]))))))
 
 (defmethod mi/can-create? :model/Measure
   [_model {:keys [definition]}]

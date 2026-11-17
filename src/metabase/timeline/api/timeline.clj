@@ -114,7 +114,6 @@
                                      :present #{:description :icon :collection_id :default :archived}
                                      :non-nil #{:name})]
     (api/update-check existing changes)
-    (collection/check-allowed-to-change-collection existing timeline-updates)
     (timeline.db/update-timeline! id changes)
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))

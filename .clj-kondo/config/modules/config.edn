@@ -1554,7 +1554,6 @@
            measures.schema
            metrics
            models
-           permissions
            premium-features
            remote-sync
            search
@@ -2527,7 +2526,6 @@
            metabase.revisions.init
            metabase.revisions.models.revision}
    :uses #{api
-           collections
            dashboards
            events
            explorations.schema
@@ -2664,13 +2662,11 @@
    :module-exports #{segments.rest
                      segments.schema}
    :api  #{metabase.segments.init}
-   :uses #{api
-           collections
+   :uses #{collections
            lib
            lib.be
            lib.schema
            models
-           permissions
            premium-features
            remote-sync
            search
@@ -3280,6 +3276,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           events
            lib.schema
            models
            request

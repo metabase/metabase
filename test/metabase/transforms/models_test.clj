@@ -12,8 +12,6 @@
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.models.transform-run :as transform-run]
-   [metabase.transforms.models.transform-tag :as transform-tag]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;; Use the default test fixture which sets up the test database
@@ -64,20 +62,6 @@
       ;; Verify tag still exists
       (is (t2/exists? :model/TransformTag :id (:id tag))
           "Tag should still exist after job deletion"))))
-
-(deftest transform-tag-helper-functions-test
-  (testing "TransformTag helper functions"
-    (mt/with-temp [:model/TransformTag tag {}]
-      (testing "tag-name-exists?"
-        (is (transform-tag/tag-name-exists? (:name tag))
-            "Should return true for existing tag name")
-        (is (not (transform-tag/tag-name-exists? (str "nonexistent-" (u/generate-nano-id))))
-            "Should return false for non-existing tag name"))
-      (testing "tag-name-exists-excluding?"
-        (is (not (transform-tag/tag-name-exists-excluding? (:name tag) (:id tag)))
-            "Should return false when checking same tag's name")
-        (is (transform-tag/tag-name-exists-excluding? (:name tag) (inc (:id tag)))
-            "Should return true when name exists but with different ID")))))
 
 (deftest hydrate-tag-ids-test
   (testing "TransformJob tag_ids hydration preserves position order"

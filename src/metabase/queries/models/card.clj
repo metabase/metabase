@@ -493,10 +493,18 @@
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
-(defenterprise pre-delete-check-sandbox-constraints
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+(defenterprise sandboxes-allow-card-delete?
+  "Whether sandboxing lets the current user delete `card`: only an admin may delete one a sandbox is built out of. OSS
+  always does."
   metabase-enterprise.sandbox.models.sandbox
-  [_])
+  [_card]
+  true)
+
+(defn can-delete?
+  "Whether the current user may hard delete `card`: they write it and sandboxing lets them."
+  [card]
+  (and (mi/can-write? (t2/hydrate card :can_write))
+       (sandboxes-allow-card-delete? card)))
 
 (defn- value-field-gone?
   [metadata-columns value-field]
@@ -967,6 +975,14 @@
         (some? (:action_id dashcard))
         (some? (:virtual_card settings)))))
 
+(defn- shared-dashboard-timelines-readable?
+  "Whether the current user reads the timelines of `cards` that a public or embedded `dashboard` shows to anyone."
+  [dashboard cards]
+  (or (not (and api/*current-user-id*
+                (or (:public_uuid dashboard) (:enable_embedding dashboard))))
+      (every? mi/can-read?
+              (t2/hydrate (queries.db/timelines (into #{} (mapcat card-exposed-timeline-ids) cards)) :can_read))))
+
 (defn check-shared-dashboard-timeline-permissions!
   "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
   publicly shared or embedded, so the current user needs read access to those timelines."
@@ -1088,10 +1104,22 @@
   (and (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
        (timeline-selection-readable? card *copy-source-card*)))
 
+(defn- dashboard-move-permitted?
+  "Whether the current user may do what `changes` do to the Dashboard of `card`: write the Dashboards it appears in,
+  and read the timelines it shows on the Dashboard it moves into when that is shared."
+  [card changes]
+  (or (not (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
+      (and (every? mi/can-write? (t2/hydrate (queries.db/card-dashboards card) :can_write))
+           (or (nil? (:dashboard_id changes))
+               (shared-dashboard-timelines-readable? (queries.db/dashboard (:dashboard_id changes))
+                                                     [(merge card changes)])))))
+
 (defmethod mi/can-update? :model/Card
   [card changes]
   (and (or (public-link-changes-only? changes) (mi/can-write? card))
        (public-link-change-permitted? changes)
+       (collection/can-move? card changes)
+       (dashboard-move-permitted? card changes)
        (or (empty? (changing-columns card changes embedding-columns))
            (boolean api/*is-superuser?*))
        (timeline-selection-readable? (merge card changes) card)
@@ -1310,8 +1338,7 @@
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
-  [{:keys [id] :as card}]
-  (pre-delete-check-sandbox-constraints card)
+  [{:keys [id]}]
   ;; The `card_test.card_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the CardTest hook is what sets the
   ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
   ;; test.

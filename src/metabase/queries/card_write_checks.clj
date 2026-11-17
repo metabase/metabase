@@ -4,17 +4,14 @@
    same checks and can't drift apart."
   (:require
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
-   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -60,11 +57,6 @@
 
       :else nil)))
 
-(defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (t2/hydrate (queries.db/card-dashboards card) :can_write)]
-    (doseq [dashboard dashboards]
-      (api/write-check dashboard))))
-
 (mu/defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates :- ::queries.schema/card
@@ -79,16 +71,6 @@
             (api/column-will-change? (:embedding_type card-before-updates) (get card-updates :embedding_type ::api/not-provided))
             (api/column-will-change? (:embedding_params card-before-updates) (get card-updates :embedding_params ::api/not-provided)))
     (embedding.validation/check-embedding-enabled)))
-
-(mu/defn- check-allowed-to-move
-  [card-before-update :- ::queries.schema/card
-   card-updates       :- ::queries.schema/card]
-  (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
-    (check-allowed-to-remove-from-existing-dashboards card-before-update)
-    (when-let [dashboard-id (:dashboard_id card-updates)]
-      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
-                                                         [(merge card-before-update card-updates)])))
-  (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms
   [card-before-updates :- ::queries.schema/card
@@ -121,13 +103,12 @@
   "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.
    Run *after* the card's write-check: `card-before-update` is the existing card, `card-updates`
    the patch (after [[metabase.api.common/updates-without-collection-when-archiving]]). Checks
-   that embedding is enabled when it changes, the update permission, result-metadata data perms,
-   collection/dashboard moves, and query-run perms."
+   that embedding is enabled when it changes, the update permission, which covers collection and dashboard moves,
+   result-metadata data perms, and query-run perms."
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
   (check-embedding-enabled-to-change-embedding card-before-update card-updates)
   (api/update-check card-before-update card-updates)
   (doseq [f [check-update-result-metadata-data-perms
-             check-allowed-to-move
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))

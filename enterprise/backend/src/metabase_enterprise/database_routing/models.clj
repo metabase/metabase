@@ -29,7 +29,7 @@
 (defn- check-not-destination
   "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
   [database-id]
-  (when (seq (database-routing.db/destination-database-ids [database-id]))
+  (when (database-routing.db/destination-database? database-id)
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
 (t2/define-before-insert :model/DatabaseRouter

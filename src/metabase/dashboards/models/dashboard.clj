@@ -81,14 +81,6 @@
   "The widths a Dashboard takes."
   #{"fixed" "full"})
 
-(defn- check-collection
-  "Throws unless the Collection of `dashboard`, if any, can hold Dashboards, and is not archived unless `dashboard` is."
-  [{:keys [collection_id archived]}]
-  (when collection_id
-    (collection/check-allowed-content :model/Dashboard collection_id)
-    (collection/check-collection-namespace :model/Dashboard collection_id)
-    (collection/check-collection-not-archived archived collection_id)))
-
 (defmethod mi/after-archived-change! :model/Dashboard
   [_model rows changes]
   (doseq [{:keys [id]} rows]
@@ -116,7 +108,7 @@
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
-  (check-collection dashboard)
+  (collection/check-collection-for :model/Dashboard dashboard)
   (let [defaults  {:parameters []}
         dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
                       maybe-populate-initially-published-at)]
@@ -134,29 +126,28 @@
     (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
 (t2/define-before-update :model/Dashboard
-  [dashboard]
-  (let [changes             (t2/changes dashboard)
-        archived-directly   (when (contains? changes :archived)
-                              (mi/archived-directly dashboard #(collection/archived? (:collection_id dashboard))))
-        dashboard           (lib/normalize ::dashboards.schema/dashboard dashboard)
-        changes             (lib/normalize ::dashboards.schema/dashboard changes)]
+  [row]
+  (let [changes   (lib/normalize ::dashboards.schema/dashboard (t2/changes row))
+        dashboard (lib/normalize ::dashboards.schema/dashboard row)]
     (when (contains? changes :collection_id)
-      (check-collection dashboard))
+      (collection/check-collection-for :model/Dashboard dashboard))
     (when (contains? changes :name)
       (check-name dashboard))
     (when (contains? changes :width)
       (check-width dashboard))
     (when (contains? changes :auto_apply_filters)
       (check-auto-apply-filters dashboard))
-    (when (contains? changes :collection_id)
-      (dashboards.db/move-dashboard-questions! (:id dashboard) (:collection_id dashboard)))
-    (u/prog1 (-> dashboard
-                 (cond-> (contains? changes :archived) (assoc :archived_directly archived-directly))
-                 maybe-populate-initially-published-at
-                 public-sharing/add-public-uuid-prefix-if-changed)
-      (params/assert-valid-parameters dashboard)
+    (params/assert-valid-parameters dashboard)
+    (let [dashboard (-> dashboard
+                        (cond-> (contains? changes :archived)
+                          (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id dashboard)))))
+                        maybe-populate-initially-published-at
+                        public-sharing/add-public-uuid-prefix-if-changed)]
+      (when (contains? changes :collection_id)
+        (dashboards.db/move-dashboard-questions! (:id dashboard) (:collection_id dashboard)))
       (when (:parameters changes)
-        (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))))
+        (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      dashboard)))
 
 (mi/define-update-in-transaction :model/Dashboard)
 
@@ -191,30 +182,15 @@
 
 ;;; --------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- check-can-read-keys
-  "Throws unless `dashboard` has the columns its `:can_read` and `:can_write` hydrations read."
-  [dashboard]
-  (api/check-500 (contains? dashboard :collection_id) "No :collection_id is set for a Dashboard."))
-
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_read]
   "Whether the current user reads each of `dashboards`, as the content of its Collection."
   [_model _k dashboards]
-  (run! #(when % (check-can-read-keys %)) dashboards)
-  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? dashboards))
-                                                             {:root-namespace nil, :audit-rules? true})]
-    (for [dashboard dashboards]
-      (when dashboard
-        (vary-meta dashboard assoc :can_read (contains? readable (:collection_id dashboard)))))))
+  (collection/hydrate-content-can-read :model/Dashboard dashboards {:audit-rules? true}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_write]
   "Whether the current user writes each of `dashboards`, as the content of its Collection."
   [_model _k dashboards]
-  (run! #(when % (check-can-read-keys %)) dashboards)
-  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? dashboards))
-                                                             {:root-namespace nil, :audit-rules? true})]
-    (for [dashboard dashboards]
-      (when dashboard
-        (assoc dashboard :can_write (contains? writable (:collection_id dashboard)))))))
+  (collection/hydrate-content-can-write :model/Dashboard dashboards {:audit-rules? true}))
 
 (def ^:private embedding-columns
   "The columns that decide whether and how a Dashboard is embedded."
@@ -224,13 +200,6 @@
   "Whether the current user writes the Collection with `collection-id`, nil for the root."
   [collection-id]
   (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
-
-(defn- can-change-collection?
-  "Whether the current user may do what `changes` do to the Collection of `dashboard`: write both Collections."
-  [dashboard changes]
-  (or (not (api/column-will-change? (:collection_id dashboard) (get changes :collection_id ::api/not-provided)))
-      (and (can-write-collection? (:collection_id dashboard))
-           (can-write-collection? (:collection_id changes)))))
 
 (defn changes-embedding?
   "Whether `changes` change the embedding of `dashboard`."
@@ -284,12 +253,11 @@
   takes along."
   [dashboard changes]
   (or (not (mi/changes-archived? dashboard changes))
-      (mi/with-update-check-cache
-        (mi/can-update-each? :model/Card
-                             (if (:archived changes)
-                               (dashboards.db/questions-archived-with-dashboard (:id dashboard))
-                               (dashboards.db/questions-restored-with-dashboard (:id dashboard)))
-                             changes))))
+      (mi/can-update-each? :model/Card
+                           (if (:archived changes)
+                             (dashboards.db/questions-archived-with-dashboard (:id dashboard))
+                             (dashboards.db/questions-restored-with-dashboard (:id dashboard)))
+                           changes)))
 
 (defmethod mi/can-update? :model/Dashboard
   [dashboard changes]
@@ -297,7 +265,7 @@
    (and (or (changes-only-public-link? dashboard changes)
             (mi/can-write? dashboard))
         (archive-followers-updatable? dashboard changes)
-        (can-change-collection? dashboard changes)
+        (collection/can-move? dashboard changes)
         (can-change-embedding? dashboard changes)
         (can-change-public-link? dashboard changes))))
 
@@ -363,8 +331,7 @@
 (defn- set-questions-archived!
   "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
   [card-ids archived?]
-  (mi/with-update-check-cache
-    (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived card-ids archived?) {:archived archived?})))
+  (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived card-ids archived?) {:archived archived?}))
   (dashboards.db/set-cards-archived! card-ids archived?))
 
 (defn archive-or-unarchive-internal-dashboard-questions!

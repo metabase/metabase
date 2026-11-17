@@ -179,15 +179,6 @@
                    cards)
         (select-keys [:card :snippet :segment :measure]))))
 
-(defn- sandbox-dependency-error [entity-kind id]
-  (case entity-kind
-    :card    (ex-info
-              (tru "You do not have permissions to modify a question that is used for row and column level security.")
-              {:status-code 403, :card-id id})
-    :snippet (ex-info
-              (tru "You do not have permissions to modify a snippet that is used for row and column level security.")
-              {:status-code 403, :snippet-id id})))
-
 (defn- non-admin-affects-sandboxing?
   "Whether the current user is a non-admin and the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`)
   entity with `id` is in the sandbox dependency set."
@@ -196,14 +187,6 @@
                 api/*current-user-id*
                 (not api/*is-superuser?*)
                 (contains? (get (mi/cached-for-update-check ::sandbox-dependency-set sandbox-dependency-set) entity-kind) id))))
-
-(defn- check-non-admin-cannot-affect-sandboxing!
-  "Throws a 403 if the `entity-kind` (`:card` or `:snippet`) entity with `id` is in the sandbox dependency set and
-  the current user is not an admin. Server-side writes (sync, serdes and the like) run with no user
-  bound, or as a superuser, and are not subject to the check."
-  [entity-kind id]
-  (when (non-admin-affects-sandboxing? entity-kind id)
-    (throw (sandbox-dependency-error entity-kind id))))
 
 (defn- check-result-metadata-still-matches-sandboxed-tables!
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
@@ -246,11 +229,11 @@
   (not (and (some #(contains? changes %) [:dataset_query :archived :result_metadata])
             (non-admin-affects-sandboxing? :card card-id))))
 
-(defenterprise pre-delete-check-sandbox-constraints
-  "Checks sandbox constraints when a Card a sandbox is built out of is deleted."
+(defenterprise sandboxes-allow-card-delete?
+  "Whether sandboxing lets the current user delete a Card: only an admin may delete one in the sandbox dependency set."
   :feature :sandboxes
   [{card-id :id}]
-  (check-non-admin-cannot-affect-sandboxing! :card card-id))
+  (not (non-admin-affects-sandboxing? :card card-id)))
 
 (defenterprise sandboxes-allow-snippet-update?
   "Whether sandboxing lets the current user apply `changes` to a snippet: only an admin may change the `:content`,

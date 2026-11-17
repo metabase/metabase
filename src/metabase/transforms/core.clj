@@ -45,6 +45,7 @@
   get-transforms
   get-transform
   create-transform!
+  publish-update-event!
   update-transform!
   delete-transform!]
  [metabase.transforms.canceling
@@ -84,7 +85,4 @@
  [metabase.transforms.models.transform-job
   activate-job!
   deactivate-job!
-  update-job-tags!]
- [metabase.transforms.models.transform-tag
-  tag-name-exists?
-  tag-name-exists-excluding?])
+  update-job-tags!])

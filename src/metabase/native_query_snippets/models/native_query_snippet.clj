@@ -70,14 +70,6 @@
   (when-not (valid-name? snippet-name)
     (throw (ex-info (str name-error) {:status-code 400, :errors {:name (str name-error)}}))))
 
-(defn- check-collection
-  "Throws unless the Collection of `snippet`, if any, can hold snippets, and is not archived unless `snippet` is."
-  [{:keys [collection_id archived]}]
-  (when collection_id
-    (collection/check-allowed-content :model/NativeQuerySnippet collection_id)
-    (collection/check-collection-namespace :model/NativeQuerySnippet collection_id)
-    (collection/check-collection-not-archived archived collection_id)))
-
 (defn- snippet-tag?
   "Whether `tag` is a reference to a snippet."
   [tag]
@@ -120,7 +112,7 @@
 
 (t2/define-before-insert :model/NativeQuerySnippet
   [snippet]
-  (check-collection snippet)
+  (collection/check-collection-for :model/NativeQuerySnippet snippet)
   (check-name snippet)
   (assoc snippet :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))
 
@@ -133,7 +125,7 @@
   [snippet]
   (let [changes (t2/changes snippet)]
     (when (contains? changes :collection_id)
-      (check-collection snippet))
+      (collection/check-collection-for :model/NativeQuerySnippet snippet))
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
     (when (contains? changes :name)

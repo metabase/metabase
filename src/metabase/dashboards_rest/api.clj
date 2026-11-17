@@ -540,7 +540,8 @@
                                               [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (api/create-check :model/Dashboard {:collection_id collection_id})
+  (api/create-check :model/Dashboard {:name name, :description description, :collection_id collection_id
+                                      :collection_position collection_position})
   (api/check-400 (not (and (= is_deep_copy false)
                            (dashboards-rest.db/unarchived-dashboard-question-exists? from-dashboard-id)))
                  (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
@@ -897,7 +898,7 @@
                                       [:parent-collection-id ms/PositiveInt]]
    _query-params
    dashboard :- TransientDashboard]
-  (api/create-check :model/Dashboard {:collection_id parent-collection-id})
+  (api/create-check :model/Dashboard (assoc dashboard :collection_id parent-collection-id))
   (check-create-transient-dashboard-cards dashboard parent-collection-id)
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})

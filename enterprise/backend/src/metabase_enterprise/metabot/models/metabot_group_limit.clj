@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot.models.metabot-group-limit
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
-   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -20,8 +19,8 @@
 (defn- check-max-usage
   "Throw a 400 unless `max-usage` is nil or a non-negative integer."
   [max-usage]
-  (api/check-400 (or (nil? max-usage) (nat-int? max-usage))
-                 (tru "max_usage must be a non-negative integer")))
+  (when-not (or (nil? max-usage) (nat-int? max-usage))
+    (throw (ex-info (tru "max_usage must be a non-negative integer") {:status-code 400}))))
 
 (t2/define-before-insert :model/MetabotGroupLimit
   [row]

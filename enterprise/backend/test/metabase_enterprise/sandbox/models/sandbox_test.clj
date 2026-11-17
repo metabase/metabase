@@ -17,6 +17,7 @@
    [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -217,46 +218,10 @@
 
 ;;; ------------------------------------------ sandbox dependency set guard -------------------------------------------
 
-(def ^:private card-msg
-  #"You do not have permissions to modify a question that is used for row and column level security")
-(def ^:private snippet-msg
-  #"You do not have permissions to modify a snippet that is used for row and column level security")
 (def ^:private forbidden-msg
   #"You don't have permissions to do that")
 (def ^:private forbidden-message
   "You don't have permissions to do that.")
-
-(defn- guarded-writes-test
-  "Runs the sandbox-guard contract against a policy built by `with-policy`, a function that creates the policy's
-  entities and a sandbox on VENUES and calls its argument with a map of those entities. `ops` is a function of that
-  map returning the guarded writes in order, as `[op-name expected-message thunk]` triples, deletes last; every thunk
-  returns the number of rows it writes.
-
-  Every write is refused with its message for a non-admin, and all of them go through, in order, for an admin and for
-  a server-side write with no user bound; each pass gets its own policy."
-  [with-policy ops]
-  (testing "a non-admin is refused"
-    (with-policy
-      (fn [policy]
-        (mt/with-test-user :rasta
-          (doseq [[op-name msg f] (ops policy)]
-            (testing op-name
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (f)))))))))
-  (testing "an admin may do all of it"
-    (with-policy
-      (fn [policy]
-        (mt/with-test-user :crowberto
-          (doseq [[op-name _msg f] (ops policy)]
-            (testing op-name
-              (is (= 1 (f)))))))))
-  (testing "a server-side write with no user bound may do all of it"
-    (with-policy
-      (fn [policy]
-        (mt/with-test-user :rasta
-          (binding [api/*current-user-id* nil]
-            (doseq [[op-name _msg f] (ops policy)]
-              (testing op-name
-                (is (= 1 (f)))))))))))
 
 (defn- untouched-test
   "Asserts a non-admin may still write an unrelated entity of the same kind: `write` is called with the map from
@@ -286,12 +251,28 @@
                  :model/Sandbox          _     {:table_id (mt/id :venues), :group_id (:id group), :card_id (:id card)}]
     (f {:card card, :other other})))
 
-(deftest only-admins-can-change-a-card-a-sandbox-is-built-out-of-test
+(deftest only-admins-can-delete-a-card-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-card-policy
-     (fn [{:keys [card]}]
-       [["delete" card-msg #(t2/delete! :model/Card :id (:id card))]]))
+    (testing "a non-admin who writes the card may not delete it, through the permission question or the endpoint"
+      (with-card-policy
+        (fn [{:keys [card]}]
+          (mt/with-test-user :rasta
+            (is (false? (boolean (queries/can-delete? card)))))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 (str "card/" (:id card)))))
+          (is (t2/exists? :model/Card :id (:id card))))))
+    (testing "an admin may delete it"
+      (with-card-policy
+        (fn [{:keys [card]}]
+          (mt/with-test-user :crowberto
+            (is (true? (boolean (queries/can-delete? card)))))
+          (mt/user-http-request :crowberto :delete 204 (str "card/" (:id card)))
+          (is (not (t2/exists? :model/Card :id (:id card)))))))
+    (testing "a non-admin may delete an unrelated card"
+      (with-card-policy
+        (fn [{:keys [other]}]
+          (mt/user-http-request :rasta :delete 204 (str "card/" (:id other)))
+          (is (not (t2/exists? :model/Card :id (:id other)))))))
     (untouched-test
      with-card-policy
      (fn [{:keys [other]}]
@@ -751,24 +732,16 @@
         (with-mixed-policies!
           (fn [{:keys [policy chain free policy-snippet dep-snippet free-snippet]}]
             (mt/with-test-user :rasta
-              (doseq [[coll msg] [[policy         card-msg]
-                                  [chain          card-msg]
-                                  [policy-snippet snippet-msg]
-                                  [dep-snippet    snippet-msg]]]
+              (doseq [coll [policy chain policy-snippet dep-snippet]]
                 (testing (str "a Collection with a policy dependency in it: " (:name coll))
                   (testing "archiving is refused and rolled back"
                     (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (archive-collection! coll)))
                     (is (false? (archived? coll)))
                     (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
                     (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))
-                  (when (t2/exists? :model/Card :collection_id (:id coll))
-                    (testing "deleting is refused and nothing is deleted"
-                      (let [before (+ (t2/count :model/Card :collection_id (:id coll))
-                                      (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
-                        (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection :id (:id coll))))
-                        (is (t2/exists? :model/Collection :id (:id coll)))
-                        (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
-                                         (t2/count :model/NativeQuerySnippet :collection_id (:id coll))))))))))
+                  (testing "deleting is for admins only"
+                    (mt/user-http-request :rasta :delete 403 (str "collection/" (:id coll)))
+                    (is (t2/exists? :model/Collection :id (:id coll))))))
               (doseq [coll [free free-snippet]]
                 (testing (str "a Collection with no policy dependency in it: " (:name coll))
                   (testing "may be archived"

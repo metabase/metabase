@@ -1,7 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -33,13 +32,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-collection
-  "Throws unless the Collection with `collection-id`, if any, can hold a Timeline."
-  [collection-id]
-  (when collection-id
-    (collection/check-allowed-content :model/Timeline collection-id)
-    (collection/check-collection-namespace :model/Timeline collection-id)))
-
 (defn- check-columns
   "Throws unless the `:name` and `:icon` among `columns`, the columns a Timeline is written with, are valid."
   [columns]
@@ -55,8 +47,7 @@
 
 (t2/define-before-insert :model/Timeline
   [row]
-  (check-collection (:collection_id row))
-  (collection/check-collection-not-archived (:archived row) (:collection_id row))
+  (collection/check-collection-for :model/Timeline row)
   (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
     (check-columns (assoc row :name (:name row)))
     row))
@@ -64,9 +55,8 @@
 (t2/define-before-update :model/Timeline
   [row]
   (let [changes (t2/changes row)]
-    (check-collection (:collection_id changes))
     (when (contains? changes :collection_id)
-      (collection/check-collection-not-archived (:archived row) (:collection_id row)))
+      (collection/check-collection-for :model/Timeline row))
     (check-columns changes)
     (cond-> row
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
@@ -75,30 +65,15 @@
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
-(defn- check-can-read-keys
-  "Throws unless `timeline` has the columns its `:can_read` and `:can_write` hydrations read."
-  [timeline]
-  (api/check-500 (contains? timeline :collection_id) "No :collection_id is set for a Timeline."))
-
 (methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]
   "Whether the current user reads each of `timelines`, as the content of its Collection."
   [_model _k timelines]
-  (run! #(when % (check-can-read-keys %)) timelines)
-  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? timelines))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [timeline timelines]
-      (when timeline
-        (vary-meta timeline assoc :can_read (contains? readable (:collection_id timeline)))))))
+  (collection/hydrate-content-can-read :model/Timeline timelines {:audit-rules? false}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Timeline :can_write]
   "Whether the current user writes each of `timelines`, as the content of its Collection."
   [_model _k timelines]
-  (run! #(when % (check-can-read-keys %)) timelines)
-  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? timelines))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [timeline timelines]
-      (when timeline
-        (assoc timeline :can_write (contains? writable (:collection_id timeline)))))))
+  (collection/hydrate-content-can-write :model/Timeline timelines {:audit-rules? false}))
 
 (defn- collection-writable?
   "Whether the current user can write the Collection with `collection-id`, nil for the root Collection."
@@ -112,9 +87,7 @@
 (defmethod mi/can-update? :model/Timeline
   [timeline changes]
   (and (mi/can-write? timeline)
-       (or (not (api/column-will-change? (:collection_id timeline) (get changes :collection_id ::api/not-provided)))
-           (and (collection-writable? (:collection_id timeline))
-                (collection-writable? (:collection_id changes))))))
+       (collection/can-move? timeline changes)))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

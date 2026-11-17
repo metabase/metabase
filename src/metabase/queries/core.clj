@@ -35,6 +35,7 @@
   card-query-info
   cards-queries-info]
  [metabase.queries.models.card
+  can-delete?
   card-read-check-columns
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!

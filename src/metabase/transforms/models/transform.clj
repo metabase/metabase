@@ -26,7 +26,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -104,11 +104,14 @@
   [{:keys [target_db_id]}]
   (when target_db_id
     (let [database (transforms.db/database target_db_id)]
-      (api/check-400 database (deferred-tru "The target database cannot be found."))
-      (api/check-400 (not (:is_sample database)) (deferred-tru "Cannot run transforms on the sample database."))
-      (api/check-400 (not (:is_audit database)) (deferred-tru "Cannot run transforms on audit databases."))
-      (api/check-400 (not (:router_database_id database))
-                     (deferred-tru "Cannot run transforms on a destination database of database routing.")))))
+      (when-not database
+        (throw (ex-info (tru "The target database cannot be found.") {:status-code 400})))
+      (when (:is_sample database)
+        (throw (ex-info (tru "Cannot run transforms on the sample database.") {:status-code 400})))
+      (when (:is_audit database)
+        (throw (ex-info (tru "Cannot run transforms on audit databases.") {:status-code 400})))
+      (when (:router_database_id database)
+        (throw (ex-info (tru "Cannot run transforms on a destination database of database routing.") {:status-code 400}))))))
 
 (defn check-incremental-table-tag
   "Throws a 400 when `transform` writes an incremental table from a native query that has no table variable for the

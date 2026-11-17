@@ -143,18 +143,30 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
+(defn- payload-readable-fn
+  "A function of a notification, whether the current user can read its payload, with the Cards of the payloads of
+  `notifications` read together."
+  [notifications]
+  (let [card-ids       (into #{}
+                             (comp (filter #(= :notification/card (:payload_type %)))
+                                   (keep #(-> % :payload :card_id)))
+                             notifications)
+        readable-cards (into #{} (map :id) (when (seq card-ids) (mi/readable (notification.db/cards card-ids))))]
+    (fn [notification]
+      (case (:payload_type notification)
+        :notification/card
+        (contains? readable-cards (-> notification :payload :card_id))
+
+        :notification/system-event
+        (mi/superuser?)
+
+        :notification/testing
+        true))))
+
 (defn current-user-can-read-payload?
   "Check if the current user can read the payload of a notification."
   [notification]
-  (case (:payload_type notification)
-    :notification/card
-    (some-> (notification.db/card (-> notification :payload :card_id)) (t2/hydrate :can_read) mi/can-read?)
-
-    :notification/system-event
-    (mi/superuser?)
-
-    :notification/testing
-    true))
+  (boolean ((payload-readable-fn [notification]) notification)))
 
 (defn current-user-is-recipient?
   "Check if the current user is a recipient of a notification."
@@ -171,14 +183,24 @@
   [notification]
   (= (:creator_id notification) (mi/current-user-id)))
 
-(methodical/defmethod t2/simple-hydrate [:model/Notification :can_read]
-  [_model k notification]
-  (vary-meta notification assoc k
-             (boolean
-              (or
-               (mi/superuser?)
-               (current-user-is-creator? notification)
-               (current-user-is-recipient? notification)))))
+(methodical/defmethod t2/batched-hydrate [:model/Notification :can_read]
+  "Whether the current user reads each of `notifications`: a superuser, the creator or a recipient, the recipients
+  answered together."
+  [_model _k notifications]
+  (let [rows          (remove nil? notifications)
+        candidates    (when-not (mi/superuser?) (remove current-user-is-creator? rows))
+        recipient-ids (into #{}
+                            (comp (filter (fn [notification]
+                                            (some #(some #{(mi/current-user-id)} (map :user_id (:recipients %)))
+                                                  (:handlers notification))))
+                                  (map :id))
+                            (when (seq candidates) (t2/hydrate (vec candidates) [:handlers :recipients])))]
+    (for [notification notifications]
+      (when notification
+        (vary-meta notification assoc :can_read
+                   (boolean (or (mi/superuser?)
+                                (current-user-is-creator? notification)
+                                (contains? recipient-ids (:id notification)))))))))
 
 (defmethod mi/can-create? :model/Notification
   [_ notification]
@@ -200,19 +222,23 @@
    (or (mi/superuser?)
        (current-user-can-read-payload? (merge instance changes)))))
 
-(methodical/defmethod t2/simple-hydrate [:model/Notification :can_write]
-  ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)
-  [_model k notification]
-  (assoc notification k
-         (boolean
-          (or
-           (mi/superuser?)
-           (and
-            (current-user-is-creator? notification)
-            (or
-             (not (premium-features/enable-advanced-permissions?))
-             (perms/current-user-has-application-permissions? :subscription))
-            (current-user-can-read-payload? notification))))))
+(methodical/defmethod t2/batched-hydrate [:model/Notification :can_write]
+  "Whether the current user writes each of `notifications`: a superuser, or the creator with subscription permissions
+  who can read the payload, as [[mi/can-update?]] asks, the payloads answered together."
+  [_model _k notifications]
+  (let [rows          (remove nil? notifications)
+        candidates    (when-not (mi/superuser?) (filter current-user-is-creator? rows))
+        subscription? (or (empty? candidates)
+                          (not (premium-features/enable-advanced-permissions?))
+                          (perms/current-user-has-application-permissions? :subscription))
+        readable?     (payload-readable-fn (when subscription? candidates))]
+    (for [notification notifications]
+      (when notification
+        (assoc notification :can_write
+               (boolean (or (mi/superuser?)
+                            (and (current-user-is-creator? notification)
+                                 subscription?
+                                 (readable? notification)))))))))
 
 ;;; ---------------------------------------------- Hydration ----------------------------------------------
 

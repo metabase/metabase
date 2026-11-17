@@ -2,14 +2,11 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
-   [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
@@ -76,46 +73,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_read]
   "Whether the current user can read each of `segments`, which they can when they read its Table, the Tables answered
   together."
-  [_model k segments]
-  (let [rows  (t2/hydrate (into [] (remove nil?) segments) [:table :can_read])
-        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
-    (for [segment segments]
-      (when segment
-        (vary-meta segment assoc k (get flags (:id segment) false))))))
-
-(defn- writable-table-ids
-  "The ids of those of `tables` whose Segments the current user can write: every Table for a superuser, those a data
-  analyst has unrestricted view-data permissions on, answered together, and never one a read-only instance syncs."
-  [tables]
-  (let [permitted (cond
-                    (mi/superuser?)
-                    tables
-
-                    (api/entitled-data-analyst?)
-                    (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
-                                                                   :perms/view-data
-                                                                   (into {} (map (juxt :id :db_id)) tables))]
-                      (filter #(perms/at-least-as-permissive? :perms/view-data (get values (:id %)) :unrestricted)
-                              tables))
-
-                    :else
-                    [])]
-    (into #{} (comp (filter collection/remote-sync-writable-table?) (map :id)) permitted)))
+  [_model _k segments]
+  (collection/hydrate-table-content-can-read segments))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Whether the current user can write each of `segments`, which they can when they write Segments of its Table."
-  [_model k segments]
-  (let [rows     (t2/hydrate (into [] (remove nil?) segments) :table)
-        writable (writable-table-ids (into [] (comp (keep :table) (m/distinct-by :id)) rows))]
-    (for [segment segments]
-      (when segment
-        (assoc segment k (contains? writable (:table_id segment)))))))
+  [_model _k segments]
+  (collection/hydrate-table-content-can-write segments))
 
 (defn- definition-writable?
   "Whether the current user can write Segments of the Table `definition` is built on."
   [definition]
   (let [table (some-> definition not-empty definition-table-id segments.db/table)]
-    (boolean (and table (seq (writable-table-ids [table]))))))
+    (boolean (and table (seq (collection/writable-table-ids [table]))))))
 
 (defmethod mi/can-create? :model/Segment
   [_model {:keys [definition]}]

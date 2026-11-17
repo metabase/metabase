@@ -394,6 +394,45 @@
         (or (not is_published)
             (contains? (remote-sync-writable-collection-ids [collection_id]) collection_id)))))
 
+(defn writable-table-ids
+  "The ids of those of `tables` whose content the current user can write: every Table for a superuser, those a data
+  analyst has unrestricted view-data permissions on, answered together, and never one a read-only instance syncs."
+  [tables]
+  (let [permitted (cond
+                    (mi/superuser?)
+                    tables
+
+                    (api/entitled-data-analyst?)
+                    (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                   :perms/view-data
+                                                                   (into {} (map (juxt :id :db_id)) tables))]
+                      (filter #(perms/at-least-as-permissive? :perms/view-data (get values (:id %)) :unrestricted)
+                              tables))
+
+                    :else
+                    [])]
+    (into #{} (comp (filter remote-sync-writable-table?) (map :id)) permitted)))
+
+(defn hydrate-table-content-can-read
+  "Each of `rows`, a model's rows with nil ones kept, with `:can_read` in its metadata: whether the current user reads
+  the Table of each, the Tables answered together."
+  [rows]
+  (let [tables (t2/hydrate (into [] (remove nil?) rows) [:table :can_read])
+        flags  (into {} (map (juxt :id (comp mi/can-read? :table))) tables)]
+    (for [row rows]
+      (when row
+        (vary-meta row assoc :can_read (get flags (:id row) false))))))
+
+(defn hydrate-table-content-can-write
+  "Each of `rows`, a model's rows with nil ones kept, with `:can_write`: whether the current user writes the content of
+  the Table of each, the Tables answered together."
+  [rows]
+  (let [tables   (t2/hydrate (into [] (remove nil?) rows) :table)
+        writable (writable-table-ids (into [] (keep :table) tables))]
+    (for [row rows]
+      (when row
+        (assoc row :can_write (contains? writable (:table_id row)))))))
+
 (defn- audit-collection-hidden?
   "Whether the Collection with `collection-id` is the audit Collection while the audit app is off, which hides it."
   [collection-id]
@@ -510,6 +549,37 @@
                          (not (and id (= id audit-id)))
                          (contains? sync-writable id))))
           (keys permissions))))
+
+(defn- check-content-keys
+  "Throws a 500 unless every non-nil row of `rows` has a `:collection_id` key, naming `model` in the message."
+  [model rows]
+  (run! #(when %
+           (api/check-500 (contains? % :collection_id) (str "No :collection_id is set for a " (name model) ".")))
+        rows))
+
+(defn hydrate-content-can-read
+  "Each of `rows`, a model's rows with nil ones kept, with `:can_read` in its metadata: whether the current user reads
+  the content of its Collection, in the `:root-namespace` nil, with the `:audit-rules?` option of
+  [[content-readable-collection-ids]] and the `:visible?` option, a further predicate on a row."
+  [model rows {:keys [visible?] :or {visible? (constantly true)} :as options}]
+  (check-content-keys model rows)
+  (let [readable (content-readable-collection-ids (map :collection_id (remove nil? rows))
+                                                  (assoc (select-keys options [:audit-rules?]) :root-namespace nil))]
+    (for [row rows]
+      (when row
+        (vary-meta row assoc :can_read (boolean (and (contains? readable (:collection_id row)) (visible? row))))))))
+
+(defn hydrate-content-can-write
+  "Each of `rows`, a model's rows with nil ones kept, with `:can_write`: whether the current user writes the content
+  of its Collection, in the `:root-namespace` nil, with the `:audit-rules?` option of
+  [[content-writable-collection-ids]] and the `:visible?` option, a further predicate on a row."
+  [model rows {:keys [visible?] :or {visible? (constantly true)} :as options}]
+  (check-content-keys model rows)
+  (let [writable (content-writable-collection-ids (map :collection_id (remove nil? rows))
+                                                  (assoc (select-keys options [:audit-rules?]) :root-namespace nil))]
+    (for [row rows]
+      (when row
+        (assoc row :can_write (boolean (and (contains? writable (:collection_id row)) (visible? row))))))))
 
 (defn can-write-collection-or-root?
   "Whether the current user can write the Collection with `collection-id`, or, for nil, the root Collection of the
@@ -1512,23 +1582,30 @@
 (defn- archive-followers-updatable?
   "Whether the current user may apply `changes`, which archive or restore `collection`, to every item the change takes
   along, the items of the Collections under it too: each kind of item loaded once, and hydrated once, by the selection
-  the cascade writes. The Collections themselves are the subtree write check."
+  the cascade writes."
   [collection changes]
   (or (not (mi/changes-archived? collection changes))
-      (mi/with-update-check-cache
-        (let [archive?    (boolean (:archived changes))
-              children    (str (children-location collection) "%")
-              descendants (cond
-                            archive?                         (collections.db/unarchived-collection-ids-with-location-like children)
-                            (:archived_directly collection)  (collections.db/archived-collection-ids-in-operation-with-location-like
-                                                              children (:archive_operation_id collection))
-                            :else                            [])
-              ids         (vec (cons (:id collection) descendants))
-              rows-of     (if archive?
-                            collections.db/items-archived-with-collections
-                            collections.db/items-restored-with-collections)]
-          (or (and (not archive?) (not (:archived_directly collection)))
-              (every? #(mi/can-update-each? % (rows-of % ids) changes) archivable-item-models))))))
+      (let [archive?    (boolean (:archived changes))
+            children    (str (children-location collection) "%")
+            descendants (cond
+                          archive?                         (collections.db/unarchived-collection-ids-with-location-like children)
+                          (:archived_directly collection)  (collections.db/archived-collection-ids-in-operation-with-location-like
+                                                            children (:archive_operation_id collection))
+                          :else                            [])
+            ids         (vec (cons (:id collection) descendants))
+            rows-of     (if archive?
+                          collections.db/items-archived-with-collections
+                          collections.db/items-restored-with-collections)]
+        (or (and (not archive?) (not (:archived_directly collection)))
+            (every? #(mi/can-update-each? % (rows-of % ids) changes) archivable-item-models)))))
+
+(defn- archive-subtree-writable?
+  "Whether the current user may write every Collection that archiving `collection` takes along, which `changes` need
+  only when they archive it."
+  [collection changes]
+  (or (not (mi/changes-archived? collection changes))
+      (not (:archived changes))
+      (can-write-collection-ids? (vec (collection-ids-for-archiving collection)))))
 
 (defmethod mi/can-update? :model/Collection
   [collection changes]
@@ -1537,6 +1614,7 @@
         (if-let [new-parent (move-target collection changes)]
           (can-move-to? collection new-parent)
           true)
+        (archive-subtree-writable? collection changes)
         (archive-followers-updatable? collection changes))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -1694,13 +1772,10 @@
     (check-library-placement (or (:type row) :collection) (:type parent))))
 
 (defn- check-single-library
-  "Throws a 400 when `library-rows` and the stored Collections of the library type are more than one."
-  [library-rows]
-  (when (seq library-rows)
-    (let [stored (set/difference (collections.db/collection-ids-with-type library-collection-type)
-                                 (into #{} (keep :id) library-rows))]
-      (when (< 1 (+ (count stored) (count library-rows)))
-        (throw (ex-info (tru "Semantic layer already exists") {:status-code 400}))))))
+  "Throws a 400 when `row` is a second Collection of the library type."
+  [row]
+  (when (seq (disj (collections.db/collection-ids-with-type library-collection-type) (:id row)))
+    (throw (ex-info (tru "Semantic layer already exists") {:status-code 400}))))
 
 (defn- remote-synced-type->flag
   "`row`, an insert, with the `remote-synced` type turned into the `is_remote_synced` flag."
@@ -1732,7 +1807,7 @@
     (when located?
       (check-ancestors-exist row ancestors))
     (when (= library-collection-type (:type row))
-      (check-single-library [row]))
+      (check-single-library row))
     (before-insert-row row ancestors)))
 
 (defn- copy-collection-permissions!
@@ -2065,7 +2140,7 @@
     (when moved?
       (check-ancestors-exist row ancestors))
     (when (and (contains? changes :type) (= library-collection-type (:type row)))
-      (check-single-library [row]))
+      (check-single-library row))
     (before-update-row row ancestors)))
 
 (mi/define-update-in-transaction :model/Collection)
@@ -2170,29 +2245,13 @@
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn check-allowed-to-change-collection
-  "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
-  Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
-  as the original, this check is a no-op.
-
-  As usual, an `collection-id` of `nil` represents the Root Collection.
-
-  Intended for use with `PUT` or `PATCH`-style operations. Usage should look something like:
-
-    ;; `object-before-update` is the object as it currently exists in the application DB
-    ;; `object-updates` is a map of updated values for the object
-    (check-allowed-to-change-collection (t2/select-one Card :id 100) http-request-body)"
-  [object-before-update object-updates]
-  ;; if collection_id is set to change...
-  (when (api/column-will-change? (:collection_id object-before-update) (get object-updates :collection_id ::api/not-provided))
-    ;; check that we're allowed to modify the old Collection
-    (if-let [coll-id (:collection_id object-before-update)]
-      (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))
-    ;; check that we're allowed to modify the new Collection
-    (if-let [coll-id (:collection_id object-updates)]
-      (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))))
+(defn can-move?
+  "Whether the current user may apply `changes` to the `:collection_id` of `row`: when it changes, write access to the
+  old Collection and the new one, the root Collection for nil. Always true when it does not."
+  [row changes]
+  (or (not (api/column-will-change? (:collection_id row) (get changes :collection_id ::api/not-provided)))
+      (and (can-write-collection-or-root? (:collection_id row) {:root-namespace nil})
+           (can-write-collection-or-root? (:collection_id changes) {:root-namespace nil}))))
 
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
@@ -2232,6 +2291,15 @@
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace
                                :response/keys        #{:allowed-namespaces :collection-namespace}})))))))
+
+(defn check-collection-for
+  "Throws unless the Collection of `row`, if any, can hold `model`, is in an allowed namespace, and is not archived
+  unless `row` is."
+  [model {:keys [collection_id archived]}]
+  (when collection_id
+    (check-allowed-content model collection_id)
+    (check-collection-namespace model collection_id)
+    (check-collection-not-archived archived collection_id)))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are

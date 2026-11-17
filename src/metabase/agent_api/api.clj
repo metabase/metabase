@@ -902,7 +902,6 @@
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
     ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
     (api/update-check card-before-update card-updates)
-    (collection/check-allowed-to-change-collection card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
@@ -1259,7 +1258,7 @@
   (let [collection_id (if (contains? body :collection_id)
                         (:collection_id body)
                         (personal-collection-id))]
-    (api/create-check :model/Dashboard {:collection_id collection_id})
+    (api/create-check :model/Dashboard {:name dashboard-name, :description description, :collection_id collection_id})
     (let [cards (when (seq question_ids)
                   (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
                                                              :can_read))]
@@ -1580,7 +1579,6 @@
         ;; A move requires write on BOTH source and target collection: the update check asks it, and the
         ;; collection check refuses an archived target. Mirror the REST endpoint's gate.
         _            (api/update-check current-dash updates)
-        _            (collection/check-allowed-to-change-collection current-dash updates)
         mutations    (:dashcards body)
         ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes
         ;; a dashboard being archived by THIS request — otherwise the post-mutation

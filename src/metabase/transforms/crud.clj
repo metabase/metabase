@@ -229,6 +229,12 @@
     (-> transform
         transforms.u/add-source-readable)))
 
+(mu/defn publish-update-event! :- :nil
+  "Publishes the update event of `transform`, which the audit log records, for a write that skips [[update-transform!]]."
+  [transform :- ::transforms.schema/transform]
+  (events/publish-event! :event/update-transform {:object transform})
+  nil)
+
 (mu/defn delete-transform! :- :nil
   "Delete a transform and publish the delete event."
   [transform :- ::transforms.schema/transform]

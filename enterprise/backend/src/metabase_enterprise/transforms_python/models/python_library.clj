@@ -60,16 +60,6 @@
 (doseq [e [:event/python-library-create :event/python-library-update :event/python-library-delete]]
   (events/derive! e ::event))
 
-(t2/define-after-insert :model/PythonLibrary
-  [library]
-  (events/publish-event! :event/python-library-create {:object library})
-  library)
-
-(t2/define-after-update :model/PythonLibrary
-  [library]
-  (events/publish-event! :event/python-library-update {:object library})
-  library)
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
@@ -98,9 +88,12 @@
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
   (let [normalized-path (normalize-path path)
+        existing        (transforms-python.db/python-library-by-path normalized-path)
         id              (transforms-python.db/upsert-python-library-source!
-                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})]
-    (transforms-python.db/python-library id)))
+                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
+        library         (transforms-python.db/python-library id)]
+    (events/publish-event! (if existing :event/python-library-update :event/python-library-create) {:object library})
+    library))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

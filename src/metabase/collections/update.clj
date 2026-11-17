@@ -59,11 +59,6 @@
   (doseq [document (collections.db/documents-in-collections-not-archived-directly (vec collection-ids))]
     (events/publish-event! :event/document-update {:object document})))
 
-(defn- check-can-archive
-  "Throws a 403 unless the current user may archive `collection` with everything under it."
-  [collection]
-  (api/check-403 (collection/can-write-collection-ids? (vec (collection/collection-ids-for-archiving collection)))))
-
 (defn- check-can-restore
   "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that
   `collection-updates` name or else the one it was in, which must not be archived."
@@ -105,8 +100,7 @@
                                 (collections.db/archived-collection-ids-in-operation-with-location-like
                                  (str (collection/children-location collection-before-update) "%")
                                  (:archive_operation_id collection-before-update))))]
-    (if archive?
-      (check-can-archive collection-before-update)
+    (when-not archive?
       (check-can-restore collection-before-update collection-updates))
     (let [stopped (when archive? (stopped-alerts id))]
       (collections.db/update-collection! id {:archived archive?})

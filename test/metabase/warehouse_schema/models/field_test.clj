@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
@@ -409,3 +410,33 @@
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))
+
+(deftest sync-base-type-change-keeps-fk-remapping-test
+  (testing "A base type change written by sync keeps the foreign key target and external remapping of a Field"
+    (mt/with-temp [:model/Database  {db-id :id}    {}
+                   :model/Table     {products :id} {:db_id db-id :name "PRODUCTS"}
+                   :model/Table     {orders :id}   {:db_id db-id :name "ORDERS"}
+                   :model/Field     {pk-id :id}    {:table_id products :name "ID" :base_type :type/Integer
+                                                    :semantic_type :type/PK}
+                   :model/Field     {title-id :id} {:table_id products :name "TITLE" :base_type :type/Text}
+                   :model/Field     {fk-id :id}    {:table_id orders :name "PRODUCT_ID" :base_type :type/Integer
+                                                    :semantic_type :type/FK :fk_target_field_id pk-id}
+                   :model/Dimension _              {:field_id fk-id :type :external :name "Product"
+                                                    :human_readable_field_id title-id}]
+      (sync-util/update-field-unless-user-set! fk-id {:base_type           :type/BigInteger
+                                                      :effective_type      :type/BigInteger
+                                                      :coercion_strategy   nil
+                                                      :fingerprint_version 0
+                                                      :fingerprint         nil
+                                                      :semantic_type       nil})
+      (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))
+      (is (t2/exists? :model/Dimension :field_id fk-id :type "external")))))
+
+(deftest sync-classification-keeps-internal-remapping-test
+  (testing "A semantic type written by sync keeps the internal remapping of a Field"
+    (mt/with-temp [:model/Database  {db-id :id}    {}
+                   :model/Table     {table-id :id} {:db_id db-id :name "ORDERS"}
+                   :model/Field     {field-id :id} {:table_id table-id :name "RATING" :base_type :type/Integer}
+                   :model/Dimension _              {:field_id field-id :type :internal :name "Rating"}]
+      (sync-util/update-field-unless-user-set! field-id {:semantic_type :type/Score})
+      (is (t2/exists? :model/Dimension :field_id field-id :type "internal")))))

@@ -664,6 +664,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card    (api/write-check :model/Card id)
+        _       (api/check-403 (queries/can-delete? card))
         ;; the database deletes the card's actions through the foreign key, with no events of their own
         actions (queries-rest.db/actions-for-model id)]
     (queries-rest.db/delete-card! id)
