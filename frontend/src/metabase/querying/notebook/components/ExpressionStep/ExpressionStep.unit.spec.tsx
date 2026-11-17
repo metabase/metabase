@@ -1,11 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   ORDERS_ID,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -33,9 +40,7 @@ function setup({
     return recentQuery;
   }
 
-  setupDatabaseEndpoints(createSampleDatabase());
-
-  renderWithProviders(
+  const { unmount } = renderWithProviders(
     <ExpressionStep
       step={step}
       // @ts-expect-error unit test
@@ -48,10 +53,48 @@ function setup({
     />,
   );
 
-  return { getRecentQuery };
+  return { getRecentQuery, unmount };
+}
+
+function createProductsQuery() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+  });
+}
+
+function getExpressionNames(query: Lib.Query) {
+  return Lib.expressions(query, 0).map(
+    (expression) => Lib.displayInfo(query, 0, expression).displayName,
+  );
+}
+
+/** Adds a custom column through the step's popover and returns the next query. */
+async function addExpression(
+  query: Lib.Query,
+  { formula, name }: { formula: string; name: string },
+) {
+  const { getRecentQuery, unmount } = setup({ query });
+
+  await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+  const input = await screen.findByTestId("custom-expression-query-editor");
+  // `[[` types a literal `[` in user-event
+  await userEvent.type(input, formula.replaceAll("[", "[["));
+  await act(async () => {
+    input.blur();
+  });
+  await userEvent.type(screen.getByTestId("expression-name"), name);
+  await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+  const nextQuery = getRecentQuery();
+  unmount();
+  return nextQuery;
 }
 
 describe("Notebook Editor > Expression Step", () => {
+  beforeEach(() => {
+    setupDatabaseEndpoints(createSampleDatabase());
+  });
+
   it("should handle adding expression", async () => {
     const { getRecentQuery } = setup();
 
@@ -170,5 +213,48 @@ describe("Notebook Editor > Expression Step", () => {
     expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
       "Total (1)",
     );
+  });
+
+  it("should append indexes to duplicate custom column names (metabase#12104)", async () => {
+    let query = createProductsQuery();
+    for (let index = 0; index < 3; index++) {
+      query = await addExpression(query, {
+        formula: "[Category]",
+        name: "EXPR",
+      });
+    }
+    expect(getExpressionNames(query)).toEqual(["EXPR", "EXPR (1)", "EXPR (2)"]);
+
+    setup({ query });
+    expect(screen.getByText("EXPR")).toBeInTheDocument();
+    expect(screen.getByText("EXPR (1)")).toBeInTheDocument();
+    expect(screen.getByText("EXPR (2)")).toBeInTheDocument();
+  });
+
+  it("should handle custom columns that reference other custom columns", async () => {
+    let query = createProductsQuery();
+    query = await addExpression(query, { formula: "[Price]", name: "Foo" });
+    query = await addExpression(query, { formula: "[Foo]", name: "Bar" });
+    query = await addExpression(query, { formula: "[Bar]", name: "Quu" });
+    expect(getExpressionNames(query)).toEqual(["Foo", "Bar", "Quu"]);
+
+    setup({ query });
+    for (const [name, formula] of [
+      ["Foo", "[Price]"],
+      ["Bar", "[Foo]"],
+      ["Quu", "[Bar]"],
+    ]) {
+      await userEvent.click(screen.getByText(name));
+      expect(
+        await screen.findByTestId("custom-expression-query-editor"),
+      ).toHaveValue(formula);
+      expect(screen.getByTestId("expression-name")).toHaveValue(name);
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("custom-expression-query-editor"),
+        ).not.toBeInTheDocument(),
+      );
+    }
   });
 });
