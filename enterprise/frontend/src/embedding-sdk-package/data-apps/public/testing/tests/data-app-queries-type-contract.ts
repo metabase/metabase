@@ -4,10 +4,7 @@ import {
 } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
 
-import {
-  mockDataAppQuery,
-  mockDataAppQueryError,
-} from "../lib/public/data-app-queries";
+import { mockDataAppQuery, mockDataAppQueryError } from "../data-app-queries";
 
 const ORDERS_QUERY = defineQuery({
   source: {

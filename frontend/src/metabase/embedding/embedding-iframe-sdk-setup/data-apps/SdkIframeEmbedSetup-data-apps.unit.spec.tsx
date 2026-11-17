@@ -9,7 +9,7 @@ import { defer } from "metabase/utils/promise";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
-import { setup } from "./test-setup";
+import { setup } from "../components/tests/test-setup";
 
 jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: () => true,

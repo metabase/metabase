@@ -1,4 +1,4 @@
-import { MetabaseDataAppElement } from "./embed";
+import { MetabaseDataAppElement } from "../embed";
 
 const INSTANCE_URL = "https://gizmo.example.com/mb";
 
