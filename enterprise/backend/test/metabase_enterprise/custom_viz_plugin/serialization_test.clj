@@ -122,6 +122,23 @@
           (is (re-find #"The bundle of custom viz plugin \"unreadable\" can't be unpacked"
                        (ex-message (ex-cause e)))))))))
 
+(deftest export-by-ids-takes-bundled-plugins-only-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (let [{picked :id} (insert-plugin! "picked" (cv.tu/valid-bundle-bytes "picked"))
+          _            (insert-plugin! "other" (cv.tu/valid-bundle-bytes "other"))
+          dev-only     (t2/insert-returning-pk! :model/CustomVizPlugin {:identifier     "dev-only"
+                                                                        :display_name   "dev-only"
+                                                                        :status         :active
+                                                                        :dev_bundle_url "http://localhost:4000/"})
+          selected     (fn [ids]
+                         {:rows (into [] (map :identifier) (ee.serialization/select-rows :model/CustomVizPlugin {:ids ids}))
+                          :ids  (vec (ee.serialization/select-ids :model/CustomVizPlugin {:ids ids}))})]
+      (testing "the ids narrow the plugins with bundles"
+        (is (= {:rows ["picked"] :ids [picked]} (selected [picked]))))
+      (testing "a dev-only plugin isn't taken even when named"
+        (is (= {:rows ["picked"] :ids [picked]} (selected [picked dev-only])))
+        (is (= {:rows [] :ids []} (selected [dev-only])))))))
+
 (deftest import-packs-the-declared-files-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
