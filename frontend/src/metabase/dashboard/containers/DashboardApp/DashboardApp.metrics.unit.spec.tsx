@@ -414,12 +414,16 @@ describe("DashboardApp > metrics", () => {
       within(sidebar).getByPlaceholderText("Search…"),
       TIMESERIES_METRIC.name,
     );
-    // The browse list shows both metrics; only the search results drop the scalar one
-    await waitFor(() =>
+    // The browse list shows both metrics and a loader shows neither;
+    // only the search results show the timeseries metric without the scalar one
+    await waitFor(() => {
+      expect(
+        within(sidebar).getByText(TIMESERIES_METRIC.name),
+      ).toBeInTheDocument();
       expect(
         within(sidebar).queryByText(SCALAR_METRIC.name),
-      ).not.toBeInTheDocument(),
-    );
+      ).not.toBeInTheDocument();
+    });
     await userEvent.click(within(sidebar).getByText(TIMESERIES_METRIC.name));
     const searchCall = fetchMock.callHistory.lastCall("metric-search");
     expect(new URL(String(searchCall?.url)).searchParams.get("q")).toBe(
@@ -481,6 +485,9 @@ describe("DashboardApp > metrics", () => {
     await userEvent.click(screen.getByLabelText("Edit dashboard"));
 
     const getOrdersDashcard = () => getDashcards()[1];
+    expect(
+      await within(getOrdersDashcard()).findByText("Order row"),
+    ).toBeInTheDocument();
     await userEvent.click(
       within(getOrdersDashcard()).getByLabelText("Replace"),
     );
@@ -517,8 +524,18 @@ describe("DashboardApp > metrics", () => {
       await within(getOrdersDashcard()).findByText(ORDERS_QUESTION.name),
     ).toBeInTheDocument();
     expect(
-      within(getOrdersDashcard()).getByText("Order row"),
+      await within(getOrdersDashcard()).findByText("Order row"),
     ).toBeInTheDocument();
+    // Swapping the saved card back reruns it through its saved dashcard
+    expect(
+      fetchMock.callHistory
+        .calls("dashcard-query")
+        .map((call) => new URL(call.url).pathname)
+        .filter((path) => path.includes("/dashcard/11/")),
+    ).toEqual([
+      `/api/dashboard/${DASHBOARD_ID}/dashcard/11/card/${ORDERS_QUESTION.id}/query`,
+      `/api/dashboard/${DASHBOARD_ID}/dashcard/11/card/${ORDERS_QUESTION.id}/query`,
+    ]);
     expect(
       within(getOrdersDashcard()).queryByTestId("scalar-value"),
     ).not.toBeInTheDocument();
