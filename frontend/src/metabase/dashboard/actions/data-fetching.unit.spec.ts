@@ -462,12 +462,14 @@ describe("fetchDashboard", () => {
         createMockDashboardCard({
           id: 1,
           dashboard_id: 42,
+          card_id: 11,
           card: createMockCard({ id: 11, display: "line" }),
           visualization_settings: linkTo("dashboard", 2),
         }),
         createMockDashboardCard({
           id: 2,
           dashboard_id: 42,
+          card_id: 12,
           card: createMockCard({ id: 12, display: "line" }),
           visualization_settings: linkTo("question", 3),
         }),
@@ -478,9 +480,13 @@ describe("fetchDashboard", () => {
     const dashboardQueryRoute =
       "express:/api/dashboard/:id/dashcard/:dashcardId/card/:cardId/query";
     fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
-    fetchMock.get(embedQueryPath(1, 11), createMockDataset());
-    fetchMock.get(embedQueryPath(2, 12), createMockDataset());
-    fetchMock.post(dashboardQueryRoute, createMockDataset());
+    const dataset = createMockDataset({
+      data: { rows: [["Example"]] },
+      row_count: 1,
+    });
+    fetchMock.get(embedQueryPath(1, 11), dataset);
+    fetchMock.get(embedQueryPath(2, 12), dataset);
+    fetchMock.post(dashboardQueryRoute, dataset);
     const store = setup({
       dashboard: createMockDashboardState({
         linkTargets: {
@@ -498,10 +504,12 @@ describe("fetchDashboard", () => {
       if (!isQuestionDashCard(dashcard)) {
         throw new Error("Expected a question dashcard");
       }
-      const result = await store.dispatch(
-        fetchCardDataAction({ card: dashcard.card, dashcard, options: {} }),
-      );
-      expect(result.type).toBe(fetchCardDataAction.fulfilled.type);
+      const result = await store
+        .dispatch(
+          fetchCardDataAction({ card: dashcard.card, dashcard, options: {} }),
+        )
+        .unwrap();
+      expect(result).toMatchObject({ result: dataset });
     }
     expect(fetchMock.callHistory.called(embedQueryPath(1, 11))).toBe(true);
     expect(fetchMock.callHistory.called(embedQueryPath(2, 12))).toBe(true);
