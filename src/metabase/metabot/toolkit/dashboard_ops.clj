@@ -1043,12 +1043,14 @@
                                    (for [[parameter-id dashcard-id card-id] (connections (:dashcards payload))]
                                      [parameter-id dashcard-id (slot (saved-dashcards dashcard-id) card-id)]))]
     (->> (for [[parameter-id dashcard-id card-id] (connections (:dashcards current))
-               :let  [dashcard (saved-dashcards dashcard-id)
+               :let  [dashcard    (saved-dashcards dashcard-id)
+                      ;; A stored mapping onto a card the dashcard doesn't show filtered nothing, so it has no slot.
+                      stored-slot (slot (stored-dashcards dashcard-id) card-id)
                       ;; A replaced card leaves the dashcard's own slot to the new card, and `replace_card` can promote
                       ;; a series card to that slot.
-                      new-slot (when dashcard
-                                 (or (slot dashcard card-id)
-                                     (when (= :card (slot (stored-dashcards dashcard-id) card-id)) :card)))]
+                      new-slot    (when (and dashcard stored-slot)
+                                    (or (slot dashcard card-id)
+                                        (when (= :card stored-slot) :card)))]
                :when (and (surviving-parameter? parameter-id)
                           new-slot
                           (not (contains? after [parameter-id dashcard-id new-slot]))

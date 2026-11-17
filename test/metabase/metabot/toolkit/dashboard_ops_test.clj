@@ -1491,7 +1491,9 @@
            (dropped-connections (assoc (p1-dash (assoc series-connected-dashcard :dashboard_tab_id 5))
                                        :tabs [{:id 5 :name "One"} {:id 6 :name "Two"}])
                                 [{:op "remove_tab" :tab_id 5}]))))
-  (testing "a stored mapping onto a card the dashcard doesn't show is not reported"
-    (is (= []
-           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 77)]))
-                                [{:op "replace_card" :dashcard_id 7 :card_id 99}])))))
+  (testing "a stored mapping onto a card the dashcard doesn't show is not reported, even once the card is shown"
+    (doseq [card-id [99 77]]
+      (testing (str "replaced by card " card-id)
+        (is (= []
+               (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 77)]))
+                                    [{:op "replace_card" :dashcard_id 7 :card_id card-id}])))))))
