@@ -26,8 +26,8 @@ info:
 
     Tagging:
     - Every operation carries `x-status`: `master`, `hardening` or `proposed`.
-    - `master`: on the master branch of metabase/metabase at commit 1c5733ade15.
-    - `hardening`: added by a PR that has not merged, named in `x-pr`. One PR is open: #86790.
+    - `master`: on the master branch of metabase/metabase at commit 31cfd83a122.
+    - `hardening`: added by a PR that has not merged, named in `x-pr`. No such PR is open, so no item carries it.
     - `proposed`: needed by MB Code, not built; a sketch, not a commitment.
     - A response, parameter or field that an open PR adds carries `x-status: hardening` and `x-pr`.
     - A response or field that is on master but that an open PR changes carries `x-pr`; its description says what
@@ -44,16 +44,16 @@ info:
     Every route needs a session, an API key, or a scoped credential (see `components.securitySchemes`),
     the `:workspaces` premium feature (402 otherwise), and a superuser (403 otherwise).
 
-    Contract version (hardening, #86790, decision 0021). Every response that these routes build carries
+    Contract version (#86790, decision 0021). Every response that these routes build carries
     `X-Metabase-Workspaces-Version: 2`: a 2xx, the 401, and every error that an endpoint throws (400, 403, 404,
     409, 412, 422, 500). A client can read the version from any of them.
     Responses the server builds before a request reaches these routes carry no header and say nothing about the
     version: the 402 for a missing `:workspaces` feature, the 404 of a path or method no route matches, and the 400
     for a body that is not valid JSON.
-    Version 2 is what a server that sends the header implements: the items of this contract tagged `master` or
-    `hardening`, and none tagged `proposed`. #86790 sets the header.
+    Version 2 is what a server that sends the header implements: the items of this contract tagged `master`,
+    and none tagged `proposed`. #86790 sets the header.
     Any other response without the header comes from a server that predates the header. Read that as version 1.
-    A version 1 server can be older than commit 1c5733ade15 and lack some of the behavior tagged `master`. So do
+    A version 1 server can be older than commit 31cfd83a122 and lack some of the behavior tagged `master`. So do
     not assume that behavior from a missing header: read each response by its shape.
 
     Request bodies are marked `additionalProperties: false`, but the server does not reject unknown keys: it strips
@@ -671,12 +671,12 @@ components:
   headers:
     WorkspacesVersion:
       description: |
-        hardening (#86790, decision 0021): the workspaces contract version this parent implements. On every 2xx,
+        The workspaces contract version this parent implements (#86790, decision 0021). On every 2xx,
         on the 401, and on every error an endpoint throws. Not on the 402, on the 404 of a path or method no route
         matches, or on the 400 for a body that is not valid JSON; those say nothing about the version. Any other
         response without it comes from a server that predates the header (version 1): see "Contract version" in
         the description.
-      x-status: hardening
+      x-status: master
       x-pr: [86790]
       schema: { type: string, const: "2" }
 
@@ -690,8 +690,8 @@ components:
   responses:
     Unauthenticated:
       description: |
-        No valid session or API key. Body is the plain-text `Unauthenticated`. hardening (#86790): carries the
-        version header, which the workspaces routes add outside the auth check.
+        No valid session or API key. Body is the plain-text `Unauthenticated`. Carries the version header
+        (#86790), which the workspaces routes add outside the auth check.
       x-source: src/metabase/api/routes/common.clj:87
       headers:
         X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }

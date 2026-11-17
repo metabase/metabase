@@ -53,7 +53,7 @@ info:
     feature (402 otherwise), and a superuser on the sidecar (403 otherwise). The two core routes at the end of
     `paths` (#86735) need no premium feature.
 
-    Contract version (hardening, #86790, decision 0021). Every response that the `/api/ee/workspace-instance`
+    Contract version (#86790, decision 0021). Every response that the `/api/ee/workspace-instance`
     routes build carries `X-Metabase-Workspaces-Version: 2`: a 2xx, the 401, and every error that an endpoint
     throws (400, 403, 500). A client can read the version from any of them.
     Responses the server builds before a request reaches these routes carry no header and say nothing about the
@@ -415,7 +415,7 @@ components:
 
   headers:
     WorkspacesVersion:
-      x-status: hardening
+      x-status: master
       x-pr: 86790
       description: |
         The contract version this instance implements (decision 0021). On every 2xx of the
@@ -428,8 +428,8 @@ components:
   responses:
     Unauthenticated:
       description: |
-        No valid session or API key. Body is the plain-text `Unauthenticated`. hardening (#86790): carries the
-        version header.
+        No valid session or API key. Body is the plain-text `Unauthenticated`. Carries the version header
+        (#86790).
       x-source: src/metabase/api/routes/common.clj:87
       headers:
         X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
@@ -450,7 +450,7 @@ components:
               message: { type: string }
               status: { type: string }
     Forbidden:
-      description: Not a superuser on the sidecar. Plain-text body. hardening (#86790) adds the version header.
+      description: Not a superuser on the sidecar. Plain-text body. Carries the version header (#86790).
       headers:
         X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
