@@ -49,10 +49,6 @@
               {:feature :expression-aggregations
                :label   "Custom expressions in summaries"
                :doc     "../questions/query-builder/expressions.md#aggregations"}
-              ;; no `:doc` until the custom expression docs cover them. Where the driver doesn't support them, the
-              ;; expression editor says "Standalone constants are not supported."
-              {:feature :expression-literals
-               :label   "Standalone constants in custom expressions"}
               {:feature :binning
                :label   "Binning numbers and coordinates"
                :doc     "../questions/query-builder/summarizing-and-grouping.md#grouping-your-metrics"}
@@ -119,12 +115,6 @@
               {:feature :expressions/today
                :label   "today"
                :doc     "../questions/query-builder/expressions-list.md#today"}]}
-
-  {:title    "SQL and native queries"
-   :features [;; native queries, not only SQL: MongoDB supports these
-              {:feature :native-parameters
-               :label   "Field filters and basic variables"
-               :doc     "../questions/native-editor/sql-parameters.md"}]}
 
   {:title    "Data modeling"
    :features [{:feature :persist-models

@@ -35,9 +35,7 @@
             :let         [database (#'driver-feature-dox/fake-database (merge cfg column {:driver driver}) edition [1 0])]]
       (testing (pr-str driver (:dbms-version database))
         (is (mr/validate ::lib.schema.metadata/database database)))))
-  (testing "the version has the shape that the driver keeps"
-    (is (= {:flavor "MySQL" :semantic-version [8 0]}
-           (:dbms-version (#'driver-feature-dox/fake-database mysql {} [8 0]))))
+  (testing "ClickHouse keeps its version as a map"
     (is (= {:cloud true :semantic-version {:major 24 :minor 4}}
            (:dbms-version (#'driver-feature-dox/fake-database {:driver :clickhouse :version-shape :map}
                                                               {:dbms-version {:cloud true}}

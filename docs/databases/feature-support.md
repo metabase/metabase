@@ -30,7 +30,6 @@ Metabase supports these features on every database on this page:
 - [Inner join](../questions/query-builder/join.md)
 - [Custom expressions in columns and filters](../questions/query-builder/expressions.md)
 - [Custom expressions in summaries](../questions/query-builder/expressions.md#aggregations)
-- Standalone constants in custom expressions
 
 | Feature                                                                                                         | Amazon Athena | Amazon Redshift | BigQuery | ClickHouse | Databricks | Druid JDBC | MariaDB | MongoDB | MySQL | Oracle | PostgreSQL | Presto | Snowflake | Spark SQL | SQL Server | SQLite | Starburst (Trino) | Vertica |
 | --------------------------------------------------------------------------------------------------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
@@ -74,12 +73,6 @@ Metabase supports these features on every database on this page:
 | [date](../questions/query-builder/expressions-list.md#date)                                | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ❌      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [datetimeDiff](../questions/query-builder/expressions/datetimediff.md)                     | ✅             | ✅               | ✅        | ✅          | ✅          | ❌          | ✅       | ✅       | ✅     | ✅      | ✅          | ❌      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [convertTimezone](../questions/query-builder/expressions/converttimezone.md)               | ❌             | ✅               | ✅        | ❌          | ❌          | ❌          | ✅       | ❌       | ✅     | ✅      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ✅                 | ✅       |
-
-## SQL and native queries
-
-Metabase supports these features on every database on this page:
-
-- [Field filters and basic variables](../questions/native-editor/sql-parameters.md)
 
 ## Data modeling
 

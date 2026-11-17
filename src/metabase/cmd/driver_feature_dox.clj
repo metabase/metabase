@@ -23,7 +23,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -43,7 +42,7 @@
   [{:keys [drivers sections]}]
   (concat
    (for [{:keys [feature]} (mapcat :features sections)
-         k                 (if (vector? feature) feature [feature])
+         k                 (u/one-or-many feature)
          :when             (not (driver/features k))]
      (str "Not a driver feature: " k))
    (for [driver (keys drivers)
@@ -58,9 +57,8 @@
   [driver]
   (when-let [manifest (io/resource (format "metabase/%s/metabase-plugin.yaml" (name driver)))]
     (with-open [r (io/reader manifest)]
-      (let [entries (:driver (yaml/parse-stream r))]
-        (some #(when (= (name driver) (:name %)) (:display-name %))
-              (if (sequential? entries) entries [entries]))))))
+      (some #(when (= (name driver) (:name %)) (:display-name %))
+            (u/one-or-many (:driver (yaml/parse-stream r)))))))
 
 (defn- columns
   "The table's columns, in label order: one for each official driver that isn't `:exclude`d in `drivers-config`, or
@@ -100,19 +98,17 @@
                                             [major minor]))})
 
 (defn- supports?
-  "Whether `feature`, or any feature of a vector row like JSON unfolding, works on `column`'s `edition` at `version`.
-  Throws when the driver does: `driver.u/supports?` would turn that into a wrong ❌."
+  "Whether `feature` works on `column`'s `edition` at `version`. A vector row, like JSON unfolding, works when any of
+  its features does. Throws when the driver does: `driver.u/supports?` would turn that into a wrong ❌."
   [{:keys [driver label] :as column} feature edition version]
-  (if (vector? feature)
-    (boolean (some #(supports? column % edition version) feature))
-    (let [database (fake-database column edition version)]
-      (try
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (boolean (driver/database-supports? driver feature database))
-        (catch Throwable e
-          (throw (ex-info (format "Could not tell whether %s supports %s" label feature)
-                          {:feature feature :database database}
-                          e)))))))
+  (let [database (fake-database column edition version)]
+    (try
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (boolean (some #(driver/database-supports? driver % database) (u/one-or-many feature)))
+      (catch Throwable e
+        (throw (ex-info (format "Could not tell whether %s supports %s" label feature)
+                        {:feature feature :database database}
+                        e))))))
 
 (defn- first-version
   "The lowest `[major minor]` at which `on?` is true, for an `on?` that is false for old versions and true for new ones."
@@ -134,12 +130,14 @@
                                     {:column column :feature feature})))))
 
 (defn- note
-  "The note for a cell that only some versions or editions support, for example \"MongoDB 5.0 and later.\", from the
-  `support` of each of `column`'s `editions`."
+  "The note for a cell that only some versions or editions support, for example \"SQL Server 16.0 and later.\", from
+  the `support` of each of `column`'s `editions`."
   [{:keys [label]} editions support]
   (let [since (fn [[major minor]] (format " %d.%d and later" major minor))]
     (if (and (apply = support) (vector? (first support)))
+      ;; every edition starts at the same version: "SQL Server 16.0 and later."
       (str label (since (first support)) ".")
+      ;; or, name the editions that support it: "ClickHouse Cloud and self-managed single-node deployments."
       (str (str/join " and " (for [[edition s] (map vector editions support)
                                    :when       (not= s :none)]
                                (cond-> (:label edition)
@@ -169,17 +167,18 @@
   features with a column per database, and the notes that the table's `:depends` cells point to. `rows` are
   `{:row <curated row> :cells [<cell> ...]}`."
   [title labels rows]
-  (let [everywhere?              (fn [{:keys [cells]}] (every? #(= :yes (:support %)) cells))
+  (let [everywhere? (fn [{:keys [cells]}] (every? #(= :yes (:support %)) cells))
         ;; a row of ✅ only says that the feature works everywhere, and a list says that in less space
-        [everywhere table-rows] ((juxt filter remove) everywhere? rows)
+        everywhere  (filter everywhere? rows)
+        table-rows  (remove everywhere? rows)
         ;; numbered in the order they first appear, row by row; cells that share a note share its number
-        notes                   (into [] (comp (mapcat :cells) (keep :note) (distinct)) table-rows)
-        number                  (zipmap notes (iterate inc 1))
-        mark                    (fn [{s :support n :note}]
-                                  (case s
-                                    :yes     "✅"
-                                    :no      "❌"
-                                    :depends (str "✅ (" (number n) ")")))]
+        notes       (->> table-rows (mapcat :cells) (keep :note) distinct)
+        number      (zipmap notes (iterate inc 1))
+        mark        (fn [{s :support n :note}]
+                      (case s
+                        :yes     "✅"
+                        :no      "❌"
+                        :depends (str "✅ (" (number n) ")")))]
     (md/paragraphs
      [(md/heading 2 title)
       (when (seq everywhere)
@@ -207,14 +206,16 @@
 
 (defn generate-dox!
   "Write the database feature support page to `path`, by default `docs/databases/feature-support.md`. Returns
-  `{:path ... :databases n :features n}`. Throws, and writes nothing, when the curated file has a mistake."
+  `{:path ... :databases n :features n}`. Throws, and writes nothing, in test mode or when the curated file has a
+  mistake."
   ([]
    (generate-dox! output-path))
   ([path]
-   (printf "Generating database feature support documentation in %s\n" path)
    (when config/is-test?
-     (log/warn "Running in test mode, so drivers that turn features off in tests will look unsupported."
-               "Run with the :doc alias to write the page."))
+     (throw (ex-info (str "In test mode, drivers that turn features off in tests look unsupported. "
+                          "Run with the :doc alias to write the page.")
+                     {})))
+   (printf "Generating database feature support documentation in %s\n" path)
    (let [{:keys [drivers sections] :as cfg} (curated-config)]
      (when-let [problems (seq (config-problems cfg))]
        (throw (ex-info (str "Change src/" config-resource " first:\n" (str/join "\n" problems))
