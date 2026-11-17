@@ -7,6 +7,7 @@
   Essentially, this is a translation layer between the graph used by the v1 permissions schema and the v2 permissions
   schema."
   (:require
+   [clojure.data :as data]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
@@ -622,6 +623,21 @@
     (when (some #{audit/audit-db-id} changes-ids)
       (throw (ex-info (tru "Audit database permissions can only be changed by updating audit collection permissions.")
                       {:status-code 400})))))
+
+(mu/defn unsaved-graph-changes :- [:map [:to-delete [:sequential pos-int?]] [:to-insert [:sequential :map]]]
+  "The DataPermissions rows that `PUT /api/permissions/graph` with these `groups` would delete (`:to-delete`, ids) and
+  insert (`:to-insert`), computed as [[update-data-perms-graph!*]] does but writing nothing, so a preview can read the
+  unsaved graph."
+  [groups :- [:maybe [:map-of ::permissions-rest.schema/group-id
+                      [:maybe [:map-of ::permissions-rest.schema/id ::permissions-rest.schema/db-perms]]]]]
+  (let [[_old graph]        (data/diff (:groups (api-graph {:group-ids (keys groups)})) groups)
+        affected-db-ids     (into #{} (mapcat keys) (vals graph))
+        all-tables          (when (seq affected-db-ids)
+                              (permissions-rest.db/tables-for-databases affected-db-ids))
+        current-perms       (or (perms/index-database-permissions (keys graph) affected-db-ids) {})]
+    (compute-diff (compute-desired-state graph (group-by (juxt :db_id :schema) all-tables))
+                  current-perms
+                  (group-by :db_id all-tables))))
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly.

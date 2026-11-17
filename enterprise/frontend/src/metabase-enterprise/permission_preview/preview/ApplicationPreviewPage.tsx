@@ -71,7 +71,7 @@ export function ApplicationPreviewPage() {
       {!principal && (
         <PermissionsEditorEmptyState
           icon="eye"
-          message={t`Select a user, a group or a tenant to preview their access`}
+          message={t`Select a user, group, or tenant to preview their access`}
         />
       )}
       {principal && data && !data.applies && (
@@ -84,14 +84,14 @@ export function ApplicationPreviewPage() {
           title={t`Application`}
           filterPlaceholder={t`Search for a permission`}
           columns={[{ name: t`Permission` }, { name: t`Access` }]}
-          entities={data ? getEntities(data, setWhyTarget) : []}
+          entities={data ? getEntities(data, setWhyTarget, whyTarget) : []}
           onChange={_.noop}
           preHeaderContent={
             data
               ? () => (
                   <PrincipalHeader
                     principal={data.principal}
-                    hint={t`Admin features they can use. Click a value for why.`}
+                    hint={t`Admin features they can use. Click a value to see why.`}
                   />
                 )
               : undefined
@@ -106,6 +106,7 @@ export function ApplicationPreviewPage() {
 function getEntities(
   data: PreviewApplicationResponse,
   onWhy: (target: WhyTarget) => void,
+  explained: WhyTarget | null,
 ): PermissionEditorEntity[] {
   return data.permissions.map(({ key, access }) => {
     const name = getPermissionName(key);
@@ -123,6 +124,7 @@ function getEntities(
             security: null,
           },
           onWhy,
+          explained,
         ),
       ],
     };

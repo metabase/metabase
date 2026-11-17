@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, memo } from "react";
+import { type ComponentProps, type ReactNode, memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
@@ -28,6 +28,8 @@ export interface PermissionsSidebarContentProps {
   entityViews?: EntityView[];
   /** Shown between the view switch and the searchable list. */
   headerContent?: ReactNode;
+  /** Shown when the search matches nothing, "Nothing here" by default. */
+  emptyState?: ComponentProps<typeof FilterableTree>["emptyState"];
 }
 
 export const PermissionsSidebarContent = memo(
@@ -42,6 +44,7 @@ export const PermissionsSidebarContent = memo(
     entityViewFocus,
     entityViews,
     headerContent,
+    emptyState,
     selectedId,
     onEntityChange,
     onSelect,
@@ -88,6 +91,7 @@ export const PermissionsSidebarContent = memo(
           itemGroupTitles={entityGroupTitles}
           rightSection={rightSection}
           getSearchText={getSearchText}
+          emptyState={emptyState}
           selectedId={selectedId}
         />
       </>

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { memo, useEffect, useRef, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
+import { Badge, Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DataPermissionValue, IconName } from "metabase-types/api";
 
@@ -43,10 +43,20 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   isHighlighted,
   onValueClick,
   valueTooltip,
+  isValueSelected = false,
+  valueMarker,
 }: PermissionSelectProps) {
   const [toggleState, setToggleState] = useState(toggleDefaultValue ?? null);
   const [opened, setOpened] = useState(false);
-  const [valueTooltipOpened, valueTooltipHandlers] = useRestingHover();
+  const [valueTooltipOpened, valueTooltipHandlers, closeValueTooltip] =
+    useRestingHover();
+  const valueRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isValueSelected) {
+      valueRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [isValueSelected]);
   let selectedOption = options.find((option) => option.value === value);
   if (!selectedOption) {
     console.warn(`${value} is not a valid option`);
@@ -67,29 +77,46 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     return (
       <Tooltip
         label={valueTooltip}
-        disabled={valueTooltip == null}
+        disabled={valueTooltip == null || isValueSelected}
         opened={valueTooltipOpened}
         position="bottom-start"
         transitionProps={{ duration: 0 }}
       >
         <Flex
+          ref={valueRef}
           component="button"
-          className={CS.cursorPointer}
+          className={cx(CS.cursorPointer, S.explainableValue)}
           align="center"
+          gap="xs"
           miw="11.25rem"
+          aria-pressed={isValueSelected}
           data-testid="permissions-select"
-          onClick={onValueClick}
+          onClick={() => {
+            closeValueTooltip();
+            onValueClick();
+          }}
           {...valueTooltipHandlers}
         >
-          <PermissionsSelectOption
-            {...selectedOption}
-            className={S.selectedOption}
-          />
+          <PermissionsSelectOption {...selectedOption} />
+          {valueMarker != null && (
+            <Badge variant="light" color="negative" style={{ flexShrink: 0 }}>
+              {valueMarker}
+            </Badge>
+          )}
           {warning && (
             <Tooltip label={warning}>
               <Icon name="warning" size={18} mr="xxs" c="text-secondary" />
             </Tooltip>
           )}
+          {/* every value says it explains itself; the hovered one also points at where the click goes */}
+          <Icon name="info_outline" size={14} c="text-secondary" aria-hidden />
+          <Icon
+            aria-hidden
+            className={S.explainChevron}
+            name="chevronright"
+            size={12}
+            c="text-secondary"
+          />
         </Flex>
       </Tooltip>
     );
@@ -221,6 +248,19 @@ function useRestingHover() {
 
   useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
+  useEffect(() => {
+    if (!opened) {
+      return;
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpened(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [opened]);
+
   function restart() {
     if (opened) {
       return;
@@ -240,5 +280,6 @@ function useRestingHover() {
   return [
     opened,
     { onMouseEnter: restart, onMouseMove: restart, onMouseLeave: stop },
+    stop,
   ] as const;
 }

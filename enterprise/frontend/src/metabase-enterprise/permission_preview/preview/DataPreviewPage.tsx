@@ -13,6 +13,7 @@ import type {
   PermissionEditorBreadcrumb,
   PermissionEditorEntity,
   PermissionEditorType,
+  PermissionSectionConfig,
 } from "metabase/permissions";
 import { useNavigate, useParams } from "metabase/router";
 import { List, Text } from "metabase/ui";
@@ -25,6 +26,11 @@ import {
   useGetDataPreviewQuery,
 } from "../api";
 
+import {
+  PreviewEditsBanner,
+  PreviewEditsSheet,
+  usePreviewEdits,
+} from "./PreviewEditsBanner";
 import { PreviewSidebar } from "./PreviewSidebar";
 import { PrincipalHeader, getWhoName } from "./PrincipalHeader";
 import { WhySidesheet, type WhyTarget, getWhySection } from "./WhySidesheet";
@@ -69,9 +75,20 @@ export function DataPreviewPage() {
     params.databaseId != null ? Number(params.databaseId) : undefined;
   const schemaName = params.schemaName;
   const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
+  const previewEdits = usePreviewEdits();
+  const { unsavedEditsId } = previewEdits;
 
-  const { data, isFetching, error } = useGetDataPreviewQuery(
-    principal ?? skipToken,
+  const {
+    currentData: data,
+    isFetching,
+    error,
+  } = useGetDataPreviewQuery(
+    principal && !previewEdits.isKeeping
+      ? { ...principal, unsavedEditsId }
+      : skipToken,
+  );
+  const { currentData: savedData } = useGetDataPreviewQuery(
+    principal && unsavedEditsId != null ? principal : skipToken,
   );
 
   useRememberPrincipal("data", principal, params.principalType == null);
@@ -80,11 +97,13 @@ export function DataPreviewPage() {
     principal && data
       ? getEditor({
           data,
+          savedData: unsavedEditsId != null ? savedData : undefined,
           principal,
           databaseId,
           schemaName,
           onNavigate: navigate,
           onWhy: setWhyTarget,
+          explained: whyTarget,
         })
       : null;
 
@@ -107,12 +126,12 @@ export function DataPreviewPage() {
       {!principal && (
         <PermissionsEditorEmptyState
           icon="eye"
-          message={t`Select a user, a group or a tenant to preview their access`}
+          message={t`Select a user, group, or tenant to preview their access`}
         />
       )}
       {principal && (
         <PermissionsEditor
-          isLoading={isFetching && !data}
+          isLoading={(isFetching && !data) || previewEdits.isKeeping}
           error={error ? t`Couldn't load the preview` : undefined}
           title={editor?.title ?? ""}
           filterPlaceholder={editor?.filterPlaceholder ?? ""}
@@ -125,10 +144,18 @@ export function DataPreviewPage() {
           preHeaderContent={
             data
               ? () => (
-                  <PrincipalHeader
-                    principal={data.principal}
-                    hint={t`What they get from all their groups combined. Click a value for why.`}
-                  />
+                  <>
+                    {previewEdits.hasEdits && (
+                      <PreviewEditsBanner
+                        previewEdits={previewEdits}
+                        principal={data.principal}
+                      />
+                    )}
+                    <PrincipalHeader
+                      principal={data.principal}
+                      hint={t`What they get from all their groups combined. Click a value to see why.`}
+                    />
+                  </>
                 )
               : undefined
           }
@@ -140,6 +167,11 @@ export function DataPreviewPage() {
         />
       )}
       <WhySidesheet target={whyTarget} onClose={() => setWhyTarget(null)} />
+      <PreviewEditsSheet
+        previewEdits={previewEdits}
+        principal={data?.principal ?? null}
+        onNavigate={navigate}
+      />
     </>
   );
 }
@@ -158,11 +190,14 @@ function RoutingReasons({ reasons }: { reasons: string[] }) {
 
 type GetEditorOptions = {
   data: PreviewDataResponse;
+  /** The saved access, when `data` includes unsaved edits: values that differ get an "Unsaved" marker. */
+  savedData: PreviewDataResponse | undefined;
   principal: Principal;
   databaseId: number | undefined;
   schemaName: string | undefined;
   onNavigate: (url: string) => void;
   onWhy: (target: WhyTarget) => void;
+  explained: WhyTarget | null;
 };
 
 type PreviewEditor = PermissionEditorType & {
@@ -212,38 +247,54 @@ function getEditor(options: GetEditorOptions): PreviewEditor {
 }
 
 function getTableEntity(
-  { data, onWhy }: GetEditorOptions,
+  { data, savedData, onWhy, explained }: GetEditorOptions,
   database: PreviewDatabase,
   table: PreviewTableAccess,
 ): PermissionEditorEntity {
   const tableName = table.display_name ?? table.name;
+  const savedTable = savedData?.databases
+    .find(({ id }) => id === database.id)
+    ?.tables.find(({ id }) => id === table.id);
   return {
     id: table.id,
     name: tableName,
     permissions: TABLE_COLUMNS.map((column) =>
-      getWhySection(
-        {
-          title: `${tableName} · ${getPreviewColumnName(column)}`,
-          who: getWhoName(data.principal),
-          subject: {
-            label: t`Table`,
-            value: `${database.name} / ${tableName}`,
+      withUnsavedMarker(
+        savedTable != null && savedTable[column].value !== table[column].value,
+        getWhySection(
+          {
+            title: `${tableName} · ${getPreviewColumnName(column)}`,
+            who: getWhoName(data.principal),
+            subject: {
+              label: t`Table`,
+              value: `${database.name} / ${tableName}`,
+            },
+            column,
+            cell: table[column],
+            security: table.security,
           },
-          column,
-          cell: table[column],
-          security: table.security,
-        },
-        onWhy,
+          onWhy,
+          explained,
+        ),
       ),
     ),
   };
 }
 
+function withUnsavedMarker(
+  isChanged: boolean,
+  section: PermissionSectionConfig,
+): PermissionSectionConfig {
+  return isChanged ? { ...section, valueMarker: t`Unsaved` } : section;
+}
+
 function getDatabasesEditor({
   data,
+  savedData,
   principal,
   onNavigate,
   onWhy,
+  explained,
 }: GetEditorOptions): PreviewEditor {
   return {
     title: t`Databases`,
@@ -252,17 +303,25 @@ function getDatabasesEditor({
     entities: data.databases.map((database) => {
       const openDatabase = () =>
         onNavigate(getDataPreviewUrl(principal, database.id));
+      const savedDatabase = savedData?.databases.find(
+        ({ id }) => id === database.id,
+      );
       const databaseCell = (column: "manage_database" | "transforms") =>
-        getWhySection(
-          {
-            title: `${database.name} · ${getPreviewColumnName(column)}`,
-            who: getWhoName(data.principal),
-            subject: { label: t`Database`, value: database.name },
-            column,
-            cell: database[column],
-            security: null,
-          },
-          onWhy,
+        withUnsavedMarker(
+          savedDatabase != null &&
+            savedDatabase[column].value !== database[column].value,
+          getWhySection(
+            {
+              title: `${database.name} · ${getPreviewColumnName(column)}`,
+              who: getWhoName(data.principal),
+              subject: { label: t`Database`, value: database.name },
+              column,
+              cell: database[column],
+              security: null,
+            },
+            onWhy,
+            explained,
+          ),
         );
       return {
         id: database.id,
@@ -270,10 +329,17 @@ function getDatabasesEditor({
         canSelect: true,
         permissions: [
           ...TABLE_COLUMNS.map((column) =>
-            getPreviewSection(
-              column,
-              getSummaryValue(database.tables, column),
-              openDatabase,
+            withUnsavedMarker(
+              savedDatabase != null &&
+                !_.isEqual(
+                  getColumnValues(savedDatabase.tables, column),
+                  getColumnValues(database.tables, column),
+                ),
+              getPreviewSection(
+                column,
+                getSummaryValue(database.tables, column),
+                openDatabase,
+              ),
             ),
           ),
           databaseCell("manage_database"),
@@ -290,10 +356,13 @@ function getDatabasesEditor({
 }
 
 function getSchemasEditor(
-  { principal, onNavigate }: GetEditorOptions,
+  { principal, savedData, onNavigate }: GetEditorOptions,
   database: PreviewDatabase,
   schemaNames: string[],
 ): PreviewEditor {
+  const savedDatabase = savedData?.databases.find(
+    ({ id }) => id === database.id,
+  );
   const openSchema = (schemaName: string) =>
     onNavigate(getDataPreviewUrl(principal, database.id, schemaName));
   return {
@@ -304,13 +373,23 @@ function getSchemasEditor(
       const tables = database.tables.filter(
         (table) => table.schema === schemaName,
       );
+      const savedTables = savedDatabase?.tables.filter(
+        (table) => table.schema === schemaName,
+      );
       return {
         id: schemaName,
         name: schemaName,
         canSelect: true,
         permissions: TABLE_COLUMNS.map((column) =>
-          getPreviewSection(column, getSummaryValue(tables, column), () =>
-            openSchema(schemaName),
+          withUnsavedMarker(
+            savedTables != null &&
+              !_.isEqual(
+                getColumnValues(savedTables, column),
+                getColumnValues(tables, column),
+              ),
+            getPreviewSection(column, getSummaryValue(tables, column), () =>
+              openSchema(schemaName),
+            ),
           ),
         ),
       };
@@ -337,6 +416,10 @@ function getSchemaNames(database: PreviewDatabase): string[] {
       table.schema != null ? [table.schema] : [],
     ),
   );
+}
+
+function getColumnValues(tables: PreviewTableAccess[], column: TableColumn) {
+  return tables.map((table) => table[column].value);
 }
 
 /** One value when every table agrees, else `null`, which the grid shows as "Granular". */

@@ -175,6 +175,12 @@
              :type [:not= "internal"]
              {:order-by [[:first_name :asc] [:last_name :asc] [:id :asc]]}))
 
+(mu/defn group-ids-by-user
+  "A map of user ID to the IDs of their groups, for every user."
+  []
+  (update-vals (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id :group_id]))
+               #(into (sorted-set) (map :group_id) %)))
+
 (mu/defn previewable-groups
   "The `:id`, `:name`, `:magic_group_type` and `:is_tenant_group` of every group, by name."
   []
@@ -203,11 +209,16 @@
    perm-type   :- :keyword
    database-id :- ::lib.schema.id/database]
   (if (seq group-ids)
-    (t2/select-fn->fn :group_id (comp keyword :perm_value) :model/DataPermissions
-                      :group_id [:in group-ids]
-                      :perm_type (u/qualified-name perm-type)
-                      :db_id database-id
-                      :table_id nil)
+    ;; through the permissions module's source, so a preview of unsaved edits reads them too
+    (into {}
+          (map (juxt :group_id (comp keyword :perm_value)))
+          (t2/query {:select [:p.group_id :p.perm_value]
+                     :from   [[(perms/data-permissions-source) :p]]
+                     :where  [:and
+                              [:in :p.group_id group-ids]
+                              [:= :p.perm_type (u/qualified-name perm-type)]
+                              [:= :p.db_id database-id]
+                              [:= :p.table_id nil]]}))
     {}))
 
 (mu/defn group-ids-with-permission-objects
@@ -366,6 +377,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :display_name :model/Field :id field-id))
 
+(mu/defn field-table-id
+  "The ID of the Table the Field with `field-id` belongs to, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one-fn :table_id :model/Field :id field-id))
+
 (mu/defn field-column-values
   "The listed values of the Field with `field-id` (the ones filter widgets offer), or nil."
   [field-id :- ::lib.schema.id/field]
@@ -405,6 +421,11 @@
   "Whether the Dashboard with `dashboard-id` exists."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Dashboard :id dashboard-id))
+
+(mu/defn dashboard
+  "The name and collection of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one [:model/Dashboard :name :collection_id] :id dashboard-id))
 
 ;;; ------------------------------------------------ Preview sessions ------------------------------------------------
 ;; Written straight to the table, past the Session model's hooks: its insert hook records a login for the user, and

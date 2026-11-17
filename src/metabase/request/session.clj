@@ -1,5 +1,6 @@
 (ns metabase.request.session
   (:require
+   [clojure.string :as str]
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -89,3 +90,14 @@
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))
+
+(defn with-attribute-overrides
+  "`attributes` with a preview's `overrides` (attribute to value) in place of their own values; an empty value removes
+  one."
+  [attributes overrides]
+  (reduce-kv (fn [merged attribute value]
+               (if (str/blank? value)
+                 (dissoc merged attribute)
+                 (assoc merged attribute value)))
+             (or attributes {})
+             overrides))

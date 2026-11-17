@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
+  PLUGIN_PERMISSION_PREVIEW,
 } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { Box, Tabs } from "metabase/ui";
@@ -31,6 +32,7 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
     { name: t`Collections`, value: "collections" },
     ...adminPermissionsTabs,
     ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
+    ...PLUGIN_PERMISSION_PREVIEW.tabs,
   ];
 
   return (

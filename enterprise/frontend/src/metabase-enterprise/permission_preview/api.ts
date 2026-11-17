@@ -5,6 +5,7 @@ import type {
   DatabaseId,
   FieldId,
   GroupId,
+  GroupsPermissions,
   TableId,
   UserAttributeMap,
 } from "metabase-types/api";
@@ -16,11 +17,22 @@ export type Principal = {
   id: number;
 };
 
+/**
+ * Who to preview, with the admin's unsaved data permission edits kept with `unsavedEditsId`, if any. A user's
+ * `previewId` reads the attribute values that preview runs with.
+ */
+export type PreviewDataRequest = Principal & {
+  unsavedEditsId?: string;
+  previewId?: string;
+};
+
 export type PreviewPrincipal = {
   type: PrincipalType;
   id: number;
   name: string;
-  detail: string;
+  detail: string | null;
+  /** A group's members or a tenant's users. */
+  member_count: number | null;
   superuser: boolean;
   tenant_side: boolean;
   attributes: UserAttributeMap | null;
@@ -30,14 +42,18 @@ export type PreviewPrincipal = {
 export type PrincipalListItem = {
   id: number;
   name: string;
-  detail: string;
+  /** A user's tenant. */
+  detail: string | null;
+  /** A group's members or a tenant's users. */
+  member_count: number | null;
   tenant_side: boolean;
 };
 
-export type PreviewPrincipalsResponse = Record<
-  "users" | "groups" | "tenants",
-  PrincipalListItem[]
->;
+export type PreviewPrincipalsResponse = {
+  users: (PrincipalListItem & { email: string | null; group_ids: GroupId[] })[];
+  groups: (PrincipalListItem & { built_in: boolean })[];
+  tenants: PrincipalListItem[];
+};
 
 /** One resolved value: the winning group's value, and each group's own. */
 export type PreviewCell = {
@@ -51,7 +67,17 @@ export type PreviewSecurity = {
   kind: "sandbox" | "impersonation";
   group_id: GroupId;
   group_name: string;
-  rows: string;
+  database_name: string;
+  table_name: string;
+  /** The rule's rows as a sentence; null for a filter on user attributes, which `filters` shows instead. */
+  rows: string | null;
+  /** The attributes the rule reads, one per filter; `each_member` for a group, whose members bring their own. */
+  filters: {
+    attribute: string;
+    value: string | null;
+    each_member: boolean;
+    column: string | null;
+  }[];
   columns: string;
 };
 
@@ -122,9 +148,24 @@ export type PreviewApplicationResponse = {
   permissions: { key: ApplicationPermissionKey; access: PreviewCell }[];
 };
 
+/** One unsaved edit on the permissions page, as "See changes" lists it: "Sample Database · Reviews · View data: Blocked → Can view". */
+export type UnsavedEdit = {
+  group_id: GroupId;
+  group_name: string;
+  database_id: DatabaseId;
+  /** Set when the edit is on one table, unset when it's on the whole database. */
+  table_id?: TableId;
+  label: string;
+  permission: string;
+  before: string;
+  after: string;
+};
+
 export type StartPreviewRequest = Principal & {
   /** A group's attribute values; an empty string means no value. */
   attributes?: Record<string, string>;
+  /** Previews the admin's unsaved data permission edits kept with this id, as if they were saved. */
+  unsavedEditsId?: string;
 };
 
 export type StartPreviewResponse = {
@@ -159,15 +200,6 @@ export type PreviewGrantResponse = StartPreviewResponse & {
   expires_at: number;
 };
 
-/** An attribute a group's access depends on, with the values to pick from. */
-export type PreviewAttribute = {
-  attribute: string;
-  uses: string[];
-  member_values: { value: string; count: number }[];
-  other_values: string[];
-  default: string | null;
-};
-
 export type AttributeRuleKind = "sandbox" | "impersonation" | "routing";
 
 /** A security rule that reads an attribute. */
@@ -193,6 +225,38 @@ export type AffectingAttribute = {
   /** Where a user's value comes from; tenant < JWT < admin-set when more than one sets it. */
   source?: "tenant" | "jwt" | "admin";
   tenant_name?: string;
+};
+
+/** A question's or dashboard's collection and the tables and databases it queries; a native one queries a whole database. */
+export type ItemDependencies = {
+  name: string;
+  collection_id: number | null;
+  table_ids: TableId[];
+  whole_database_ids: DatabaseId[];
+  database_ids: DatabaseId[];
+};
+
+/** A permission check `GET /api/ee/permission_debug` runs as the user: opening an item, or running its queries. */
+export type PermissionDebugActionType =
+  | "card/read"
+  | "card/query"
+  | "dashboard/read"
+  | "dashboard/query"
+  | "collection/read";
+
+export type PermissionDebugRequest = {
+  userId: number;
+  modelId: number;
+  actionType: PermissionDebugActionType;
+};
+
+export type PermissionDebugResponse = {
+  decision: "allow" | "denied" | "limited";
+  data: {
+    /** A dashboard's cards, and how many of them have a blocked table. */
+    "card-count"?: number;
+    "blocked-card-count"?: number;
+  };
 };
 
 export type AffectingAttributesRequest = {
@@ -247,17 +311,55 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/permission_debug/preview/principals",
       }),
     }),
-    getDataPreview: builder.query<PreviewDataResponse, Principal>({
-      query: (principal) => ({
+    getDataPreview: builder.query<PreviewDataResponse, PreviewDataRequest>({
+      query: ({ unsavedEditsId, previewId, ...principal }) => ({
         method: "GET",
         url: "/api/ee/permission_debug/preview/data",
-        params: principalParams(principal),
+        params: {
+          ...principalParams(principal),
+          "unsaved-edits-id": unsavedEditsId,
+          "preview-id": previewId,
+        },
       }),
     }),
-    getTableUsersPreview: builder.query<PreviewTableUsersResponse, TableId>({
-      query: (tableId) => ({
+    debugPermissions: builder.query<
+      PermissionDebugResponse,
+      PermissionDebugRequest
+    >({
+      query: ({ userId, modelId, actionType }) => ({
+        method: "GET",
+        url: "/api/ee/permission_debug",
+        params: {
+          user_id: userId,
+          model_id: modelId,
+          action_type: actionType,
+        },
+      }),
+    }),
+    getTableUsersPreview: builder.query<
+      PreviewTableUsersResponse,
+      { tableId: TableId; unsavedEditsId?: string }
+    >({
+      query: ({ tableId, unsavedEditsId }) => ({
         method: "GET",
         url: `/api/ee/permission_debug/preview/table/${tableId}`,
+        params: { "unsaved-edits-id": unsavedEditsId },
+      }),
+    }),
+    createUnsavedEdits: builder.mutation<
+      { unsaved_edits_id: string },
+      { groups: GroupsPermissions; edits: UnsavedEdit[] }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/permission_debug/preview/unsaved-edits",
+        body,
+      }),
+    }),
+    getUnsavedEdits: builder.query<{ edits: UnsavedEdit[] }, string>({
+      query: (unsavedEditsId) => ({
+        method: "GET",
+        url: `/api/ee/permission_debug/preview/unsaved-edits/${unsavedEditsId}`,
       }),
     }),
     getCollectionsPreview: builder.query<
@@ -279,13 +381,6 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
         }),
       },
     ),
-    getPreviewAttributes: builder.query<PreviewAttribute[], GroupId>({
-      query: (groupId) => ({
-        method: "GET",
-        url: "/api/ee/permission_debug/preview/attributes",
-        params: { "group-id": groupId },
-      }),
-    }),
     getAffectingAttributes: builder.query<
       AffectingAttribute[],
       AffectingAttributesRequest
@@ -298,6 +393,16 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
           card_id: cardId,
           dashboard_id: dashboardId,
         },
+      }),
+    }),
+    getItemDependencies: builder.query<
+      ItemDependencies,
+      { cardId?: CardId; dashboardId?: DashboardId }
+    >({
+      query: ({ cardId, dashboardId }) => ({
+        method: "GET",
+        url: "/api/ee/permission_debug/preview/item-scope",
+        params: { card_id: cardId, dashboard_id: dashboardId },
       }),
     }),
     endPreview: builder.mutation<
@@ -337,10 +442,15 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     startPreview: builder.mutation<StartPreviewResponse, StartPreviewRequest>({
-      query: ({ type, id, attributes }) => ({
+      query: ({ type, id, attributes, unsavedEditsId }) => ({
         method: "POST",
         url: "/api/ee/permission_debug/preview/start",
-        body: { principal_type: type, principal_id: id, attributes },
+        body: {
+          principal_type: type,
+          principal_id: id,
+          attributes,
+          unsaved_edits_id: unsavedEditsId,
+        },
       }),
     }),
     issuePreviewGrant: builder.mutation<
@@ -359,11 +469,14 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
 export const {
   useListPreviewPrincipalsQuery,
   useGetDataPreviewQuery,
+  useDebugPermissionsQuery,
   useGetTableUsersPreviewQuery,
+  useCreateUnsavedEditsMutation,
+  useGetUnsavedEditsQuery,
   useGetCollectionsPreviewQuery,
   useGetApplicationPreviewQuery,
-  useGetPreviewAttributesQuery,
   useGetAffectingAttributesQuery,
+  useGetItemDependenciesQuery,
   useEndPreviewMutation,
   useStartPreviewMutation,
   useStartPreviewSessionMutation,

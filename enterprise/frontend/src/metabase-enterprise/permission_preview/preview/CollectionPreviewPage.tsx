@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -60,6 +60,7 @@ export function CollectionPreviewPage({
   const principal = parsePrincipal(params);
   const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
   useRememberPrincipal(tab, principal, params.principalType == null);
+  useNoTenantOnSharedTab(tab, namespace, principalType);
 
   const { data, isFetching, error } = useGetCollectionsPreviewQuery(
     principal ? { principal, namespace } : skipToken,
@@ -71,11 +72,17 @@ export function CollectionPreviewPage({
       helpContent={<CollectionPermissionsHelp />}
     >
       <PreviewSidebar
-        title={getTabTitle(tab)}
+        // core's collections sidebar title (`getCollectionsSidebar`)
+        title={t`Collections`}
         principalType={principalType}
         principal={principal}
         entityViews={COLLECTION_VIEWS}
         onEntityChange={() => navigate(`${getPermissionsBasePath()}/${tab}`)}
+        tenantDisabledReason={
+          namespace === "shared"
+            ? t`Shared collections are granted to groups, not tenants. Pick a tenant user to see what they get.`
+            : undefined
+        }
         onPrincipalTypeChange={(type) => navigate(getPreviewUrl(tab, { type }))}
         onPrincipalChange={(principal) =>
           navigate(getPreviewUrl(tab, principal))
@@ -84,7 +91,7 @@ export function CollectionPreviewPage({
       {!principal && (
         <PermissionsEditorEmptyState
           icon="eye"
-          message={t`Select a user, a group or a tenant to preview their access`}
+          message={t`Select a user, group, or tenant to preview their access`}
         />
       )}
       {principal && data && !data.applies && (
@@ -97,14 +104,14 @@ export function CollectionPreviewPage({
           title={getTabTitle(tab)}
           filterPlaceholder={t`Search for a collection`}
           columns={[{ name: t`Collection` }, { name: t`Access` }]}
-          entities={data ? getEntities(data, setWhyTarget) : []}
+          entities={data ? getEntities(data, setWhyTarget, whyTarget) : []}
           onChange={_.noop}
           preHeaderContent={
             data
               ? () => (
                   <PrincipalHeader
                     principal={data.principal}
-                    hint={getHint(namespace, data.principal.type)}
+                    hint={getHint(namespace)}
                   />
                 )
               : undefined
@@ -114,6 +121,23 @@ export function CollectionPreviewPage({
       <WhySidesheet target={whyTarget} onClose={() => setWhyTarget(null)} />
     </PermissionsPageLayout>
   );
+}
+
+/** Tenant is disabled on Shared collections: a tenant brought along from another tab, or a link, becomes User. */
+function useNoTenantOnSharedTab(
+  tab: CollectionTab,
+  namespace: CollectionNamespace,
+  principalType: PreviewPrincipal["type"],
+) {
+  const navigate = useNavigate();
+  const isTenantOnSharedTab =
+    namespace === "shared" && principalType === "tenant";
+
+  useEffect(() => {
+    if (isTenantOnSharedTab) {
+      navigate(getPreviewUrl(tab, { type: "user" }), { replace: true });
+    }
+  }, [isTenantOnSharedTab, tab, navigate]);
 }
 
 function getTabTitle(tab: CollectionTab) {
@@ -130,6 +154,7 @@ function getTabTitle(tab: CollectionTab) {
 function getEntities(
   data: PreviewCollectionsResponse,
   onWhy: (target: WhyTarget) => void,
+  explained: WhyTarget | null,
 ): PermissionEditorEntity[] {
   return data.collections.map((collection, index) => ({
     id: collection.id ?? `row-${index}`,
@@ -150,6 +175,7 @@ function getEntities(
           security: null,
         },
         onWhy,
+        explained,
       ),
     ],
   }));
@@ -160,7 +186,7 @@ function getSourceNote(source: PreviewCollection["source"]) {
     case "personal":
       return t`Their own personal collection`;
     case "tenant":
-      return t`From being a user of this tenant`;
+      return t`Because they're a user of this tenant`;
     case "other-tenant":
       return t`Another tenant's collection`;
     case "group":
@@ -168,18 +194,13 @@ function getSourceNote(source: PreviewCollection["source"]) {
   }
 }
 
-function getHint(
-  namespace: CollectionNamespace,
-  principalType: PreviewPrincipal["type"],
-) {
+function getHint(namespace: CollectionNamespace) {
   switch (namespace) {
     case "default":
-      return t`Which collections they can open, and through which group. Click a value for why.`;
+      return t`The collections they can open, and the group each one's access comes from. Click a value to see why.`;
     case "shared":
-      return principalType === "tenant"
-        ? t`The same for every tenant: shared collections are granted to groups, not tenants. Preview a tenant's user to include their own tenant groups.`
-        : t`Shared collections they can open. Tenant groups get View at most.`;
+      return t`Shared collections they can open. Tenant groups can get View access at most.`;
     case "tenant":
-      return t`Tenant collections they can open. A tenant's own users get their tenant's collection from membership, never from a group.`;
+      return t`Tenant collections they can open. Tenant users get access to their own tenant's collection because they belong to the tenant, not through a group.`;
   }
 }

@@ -3,6 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.permission-debug.preview-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.permission-debug.preview :as preview]
    [metabase-enterprise.test :as met]
    [metabase.api-keys.core :as api-key]
    [metabase.permissions.core :as perms]
@@ -55,16 +56,28 @@
                                  :uri    (str "/api/" query-url)}}
                      (mt/latest-audit-log-entry :permissions-preview))))))))))
 
+(deftest attribute-use-names-its-table-test
+  (testing "a sandbox's use of an attribute names the table it filters, for the chip's \"Used by row and column security on Venues\""
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      (mt/with-additional-premium-features #{:advanced-permissions}
+        (is (=? [{:attribute "cat"
+                  :uses      [{:kind "sandbox" :label "Venues" :table_id (mt/id :venues)}]}]
+                (mt/user-http-request :crowberto :get 200 "ee/permission_debug/preview/attributes"
+                                      :user_id (mt/user->id :rasta))))))))
+
 (deftest preview-refuses-writes-test
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-temp [:model/Card card {:name "Before"}]
       (testing "an update in preview is refused before it reaches the endpoint"
-        (is (= {:message "You're previewing another user, so changes aren't allowed."}
+        (is (= {:message    "You're previewing another user, so changes aren't allowed."
+                :error_code "permission-preview-read-only"}
                (mt/client :put 403 (format "card/%d" (:id card)) (browser-session :crowberto (mt/user->id :rasta))
                           {:name "After"})))
         (is (= "Before" (t2/select-one-fn :name :model/Card :id (:id card)))))
       (testing "a POST that isn't on the read-only list is refused"
-        (is (= {:message "You're previewing another user, so changes aren't allowed."}
+        (is (= {:message    "You're previewing another user, so changes aren't allowed."
+                :error_code "permission-preview-read-only"}
                (mt/client :post 403 "collection" (browser-session :crowberto (mt/user->id :rasta))
                           {:name "Made in preview"})))
         (is (not (t2/exists? :model/Collection :name "Made in preview"))))
@@ -108,18 +121,25 @@
 (deftest start-preview-test
   (mt/with-premium-features #{:advanced-permissions :audit-app}
     (testing "a user principal is that user, and the start is audited under the admin"
-      (is (= {:user_id        (mt/user->id :rasta)
-              :user_name      "Rasta Toucan"
-              :principal_name "Rasta Toucan"
-              :attributes     {}}
-             (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
-                                   {:principal_type "user" :principal_id (mt/user->id :rasta)})))
-      (is (= {:topic    :permissions-preview
-              :user_id  (mt/user->id :crowberto)
-              :model    "User"
-              :model_id (mt/user->id :rasta)
-              :details  {:action "start" :principal-type "user" :principal-id (mt/user->id :rasta)}}
-             (mt/latest-audit-log-entry :permissions-preview))))
+      (let [{:keys [preview_id] :as started} (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                                                   {:principal_type "user" :principal_id (mt/user->id :rasta)})]
+        (is (= {:user_id        (mt/user->id :rasta)
+                :user_name      "Rasta Toucan"
+                :principal_name "Rasta Toucan"
+                :attributes     {}
+                :preview_id     preview_id}
+               started))
+        (is (string? preview_id))
+        (is (= {:topic    :permissions-preview
+                :user_id  (mt/user->id :crowberto)
+                :model    "User"
+                :model_id (mt/user->id :rasta)
+                :details  {:action         "start"
+                           :principal-type "user"
+                           :principal-id   (mt/user->id :rasta)
+                           :preview-id     preview_id
+                           :attributes     {}}}
+               (mt/latest-audit-log-entry :permissions-preview)))))
     (testing "a group previews as its hidden preview user, created once, in that group and All Users only"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Preview group"}
                      :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :lucky)}]
@@ -154,9 +174,87 @@
             (is (= {} (:attributes (start {:attributes {"cat" ""}})))))
           (finally
             (t2/delete! :model/User :type "permission-preview")))))
+    (testing "a tenant's picked values replace its own in this admin's preview only"
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Picked tenant" :slug "picked" :attributes {"cat" "1"}}]
+            (try
+              (let [{user-id :user_id :as started} (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                                                         {:principal_type "tenant"
+                                                                          :principal_id   tenant-id
+                                                                          :attributes     {"cat" "7"}})]
+                (is (= {:cat "7"} (:attributes started)))
+                (is (= {"cat" "7"} (preview/attribute-overrides-of (mt/user->id :crowberto) user-id)))
+                (is (nil? (preview/attribute-overrides-of (mt/user->id :rasta) user-id)))
+                (is (= {"cat" "1"} (t2/select-one-fn :attributes :model/Tenant :id tenant-id))))
+              (finally
+                (t2/delete! :model/User :type "permission-preview")))))))
     (testing "an admin can't be previewed"
       (mt/user-http-request :crowberto :post 400 "ee/permission_debug/preview/start"
                             {:principal_type "user" :principal_id (mt/user->id :crowberto)}))
     (testing "a non-admin can't start a preview"
       (mt/user-http-request :rasta :post 403 "ee/permission_debug/preview/start"
                             {:principal_type "user" :principal_id (mt/user->id :lucky)}))))
+
+(deftest unsaved-edits-preview-test
+  (mt/with-premium-features #{:advanced-permissions :audit-app}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Unsaved edits group"}
+                   :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+        (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+        (let [table-id    (mt/id :venues)
+              edit        {:group_id    group-id
+                           :group_name  "Unsaved edits group"
+                           :database_id (mt/id)
+                           :label       "test-data · Venues"
+                           :permission  "View data"
+                           :before      "Blocked"
+                           :after       "Can view"}
+              saved-graph #(t2/select-fn-set (juxt :perm_type :perm_value) :model/DataPermissions
+                                             :group_id group-id :table_id table-id)
+              before      (saved-graph)
+              edits-id    (:unsaved_edits_id
+                           (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/unsaved-edits"
+                                                 {:groups {group-id {(mt/id) {:view-data      "unrestricted"
+                                                                              :create-queries "query-builder"}}}
+                                                  :edits  [edit]}))
+              venues      (fn [& query-params]
+                            (->> (apply mt/user-http-request :crowberto :get 200 "ee/permission_debug/preview/data"
+                                        :principal-type "user" :principal-id (mt/user->id :rasta) query-params)
+                                 :databases
+                                 (filter #(= (mt/id) (:id %)))
+                                 first
+                                 :tables
+                                 (filter #(= table-id (:id %)))
+                                 first))]
+          (testing "the edits list comes back as it was sent"
+            (is (= {:edits [edit]}
+                   (mt/user-http-request :crowberto :get 200 (str "ee/permission_debug/preview/unsaved-edits/" edits-id)))))
+          (testing "the data preview reads the unsaved edits only when asked to"
+            (let [group-value (fn [table]
+                                (->> (get-in table [:create_queries :groups])
+                                     (filter #(= group-id (:group_id %)))
+                                     first
+                                     :value))]
+              (is (= "no" (group-value (venues))))
+              (is (= "query-builder" (group-value (venues :unsaved-edits-id edits-id))))))
+          (testing "a preview started without the edits refuses the person's query"
+            (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                  {:principal_type "user" :principal_id (mt/user->id :rasta)})
+            (mt/client :post 403 "dataset" (browser-session :crowberto (mt/user->id :rasta))
+                       (mt/mbql-query venues {:aggregation [[:count]]})))
+          (testing "a preview started with the edits runs the person's queries with them"
+            (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                  {:principal_type "user" :principal_id (mt/user->id :rasta) :unsaved_edits_id edits-id})
+            (is (= [[100]]
+                   (mt/rows (mt/client :post 202 "dataset" (browser-session :crowberto (mt/user->id :rasta))
+                                       (mt/mbql-query venues {:aggregation [[:count]]}))))))
+          (testing "nothing is saved"
+            (is (= before (saved-graph))))
+          (testing "another admin can't use them"
+            (mt/with-temp [:model/User {other-admin :id} {:is_superuser true}]
+              (mt/user-http-request other-admin :get 404 (str "ee/permission_debug/preview/unsaved-edits/" edits-id))))
+          (testing "an unknown id is refused"
+            (mt/user-http-request :crowberto :post 400 "ee/permission_debug/preview/start"
+                                  {:principal_type "user" :principal_id (mt/user->id :rasta) :unsaved_edits_id "gone"})))))))

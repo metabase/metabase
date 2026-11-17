@@ -357,7 +357,8 @@
 
 (defenterprise preview-as-request
   "Returns `{:request request}` to bind and handle, possibly rebound to another user (then with `:admin-id`, the admin
-  previewing), or `{:response response}` to answer without handling the request. OSS: the request, unchanged."
+  previewing, and optionally `:run-with`, a function that runs the thunk it's given with the preview's own bindings),
+  or `{:response response}` to answer without handling the request. OSS: the request, unchanged."
   metabase-enterprise.permission-debug.preview
   [request]
   {:request request})
@@ -392,17 +393,6 @@
           (binding [api/*previewing-admin-id* admin-id]
             (handler request respond raise)))))))
 
-(defn- with-attribute-overrides
-  "`user` with `overrides` (attribute to value) in place of its own attribute values; an empty value removes one."
-  [user overrides]
-  (update user :attributes (fn [attributes]
-                             (reduce-kv (fn [merged attribute value]
-                                          (if (str/blank? value)
-                                            (dissoc merged attribute)
-                                            (assoc merged attribute value)))
-                                        (or attributes {})
-                                        overrides))))
-
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
   [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].
@@ -417,20 +407,22 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (let [{request :request, response :response, admin-id :admin-id, overrides :attributes}
+    (let [{request :request, response :response, admin-id :admin-id, overrides :attributes, run-with :run-with}
           (if (:metabase/preview-session request)
             (preview-session-request request)
             (preview-as-request request))]
       (if response
         (respond response)
-        (let [handle (fn []
-                       (with-current-user-for-request request
-                         (if (seq overrides)
-                           ;; a preview's attribute values (EE): every security rule reads them from the current user
-                           (binding [api/*current-user* (let [user api/*current-user*]
-                                                          (delay (some-> @user (with-attribute-overrides overrides))))]
-                             (handler request respond raise))
-                           (handler request respond raise))))]
+        (let [handle (cond->> (fn []
+                                (with-current-user-for-request request
+                                  (if (seq overrides)
+                                    ;; a preview's attribute values (EE): every security rule reads them from the current user
+                                    (binding [api/*current-user* (let [user api/*current-user*]
+                                                                   (delay (some-> @user (update :attributes request/with-attribute-overrides overrides))))]
+                                      (handler request respond raise))
+                                    (handler request respond raise))))
+                       ;; a preview's own bindings (EE: its unsaved permission edits)
+                       run-with (partial run-with))]
           ;; only when this preview rebinds: a grant preview has bound its admin already
           (if admin-id
             (binding [api/*previewing-admin-id* admin-id] (handle))

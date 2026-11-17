@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { useSelector } from "metabase/redux";
 import { getEntityTypes } from "metabase/redux/embedding-data-picker";
-import { useUserSetting } from "metabase/settings";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -11,6 +10,7 @@ import { SidebarHeading } from "../Sidebar";
 import { SidebarLink } from "../SidebarItems";
 import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
+import { useNavSectionSetting } from "../use-nav-section-setting";
 
 import { useCanAddData } from "./use-can-add-data";
 
@@ -29,7 +29,7 @@ export const BrowseNavSection = ({
   const BROWSE_DATA_URL = "/browse/databases";
   const BROWSE_METRICS_URL = "/browse/metrics";
 
-  const [expandBrowse = true, setExpandBrowse] = useUserSetting(
+  const [expandBrowse = true, setExpandBrowse] = useNavSectionSetting(
     "expand-browse-in-nav",
   );
 

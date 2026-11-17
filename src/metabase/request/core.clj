@@ -44,6 +44,7 @@
   as-admin
   do-as-admin
   do-with-current-user
+  with-attribute-overrides
   with-current-user]
  [metabase.request.settings
   session-timeout

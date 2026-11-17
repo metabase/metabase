@@ -109,6 +109,7 @@ export {
   hasPermissionValueInSubgraph,
   updateEntityPermission,
 } from "./utils/graph";
+export { getModifiedGroupsPermissionsGraphParts } from "./utils/graph/partial-updates";
 export { isEmbeddingHubPermissions } from "./utils/is-embedding-hub";
 export {
   getDatabaseFocusPermissionsUrl,

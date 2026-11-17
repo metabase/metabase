@@ -72,4 +72,28 @@ describe("permission preview state", () => {
       await handler({ method: "GET", url: "/api/user/current", data: {} }),
     ).toEqual({ headers: { "X-Metabase-Preview-As": "7" } });
   });
+
+  it("sends the admin's own permission check as the admin, without the header", async () => {
+    const handler = getPreviewAsHeaderHandler(STATE);
+
+    expect(
+      await handler({
+        method: "GET",
+        url: "/api/ee/permission_debug",
+        data: { user_id: 10, model_id: 12, action_type: "collection/read" },
+      }),
+    ).toBeUndefined();
+  });
+
+  it("sends the admin's other debugging calls as the admin, without the header", async () => {
+    const handler = getPreviewAsHeaderHandler(STATE);
+
+    expect(
+      await handler({
+        method: "GET",
+        url: "/api/ee/permission_debug/preview/data",
+        data: {},
+      }),
+    ).toBeUndefined();
+  });
 });

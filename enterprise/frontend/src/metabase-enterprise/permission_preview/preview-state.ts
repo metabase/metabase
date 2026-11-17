@@ -14,6 +14,8 @@ const URL_PARAMS = {
   attributes: "preview_as_attributes",
   returnPath: "preview_return",
   previewId: "preview_as_id",
+  unsavedEditsId: "preview_unsaved_edits",
+  isWithUnsavedEdits: "preview_with_unsaved_edits",
 };
 
 export type PreviewState = {
@@ -28,6 +30,11 @@ export type PreviewState = {
   returnPath: string;
   /** Names the preview for `POST /preview/end`. */
   previewId?: string;
+  /**
+   * The admin's unsaved permission edits this tab was opened with, from the permissions page, and whether the preview
+   * reads them. Such a tab closes on "Exit preview", back to the page still holding the edits.
+   */
+  unsavedEdits?: { id: string; isApplied: boolean };
 };
 
 /** Marks the app loaded in the troubleshooting page's frame. */
@@ -125,7 +132,17 @@ function parseUrlState(params: URLSearchParams): PreviewState | null {
     attributes: parseAttributes(params.get(URL_PARAMS.attributes)),
     returnPath: getSafeReturnPath(params.get(URL_PARAMS.returnPath)),
     previewId: params.get(URL_PARAMS.previewId) ?? undefined,
+    unsavedEdits: parseUnsavedEdits(
+      params.get(URL_PARAMS.unsavedEditsId),
+      params.get(URL_PARAMS.isWithUnsavedEdits) !== "0",
+    ),
   };
+}
+
+function parseUnsavedEdits(id: unknown, isApplied: unknown) {
+  return typeof id === "string" && id !== "" && typeof isApplied === "boolean"
+    ? { id, isApplied }
+    : undefined;
 }
 
 function removeParams(params: URLSearchParams, names: string[]) {
@@ -196,6 +213,17 @@ function parseStoredState(stored: string | null): PreviewState | null {
           "previewId" in parsed && typeof parsed.previewId === "string"
             ? parsed.previewId
             : undefined,
+        unsavedEdits:
+          "unsavedEdits" in parsed &&
+          typeof parsed.unsavedEdits === "object" &&
+          parsed.unsavedEdits != null &&
+          "id" in parsed.unsavedEdits &&
+          "isApplied" in parsed.unsavedEdits
+            ? parseUnsavedEdits(
+                parsed.unsavedEdits.id,
+                parsed.unsavedEdits.isApplied,
+              )
+            : undefined,
       };
     }
   } catch {
@@ -227,6 +255,13 @@ export function getPreviewUrl(path: string, state: PreviewState) {
   if (state.previewId != null) {
     url.searchParams.set(URL_PARAMS.previewId, state.previewId);
   }
+  if (state.unsavedEdits != null) {
+    url.searchParams.set(URL_PARAMS.unsavedEditsId, state.unsavedEdits.id);
+    url.searchParams.set(
+      URL_PARAMS.isWithUnsavedEdits,
+      state.unsavedEdits.isApplied ? "1" : "0",
+    );
+  }
   return url.toString();
 }
 
@@ -247,6 +282,9 @@ export async function restartStoredPreview(state: PreviewState) {
       principal_type: state.principalType,
       principal_id: state.principalId,
       attributes: state.attributes,
+      unsaved_edits_id: state.unsavedEdits?.isApplied
+        ? state.unsavedEdits.id
+        : undefined,
     }),
   });
   const started: unknown = response.ok ? await response.json() : null;
@@ -264,8 +302,8 @@ export async function restartStoredPreview(state: PreviewState) {
   }
 }
 
-/** The admin's own debugging calls (the people list, attributes, "Why?") run as the admin, not the person. */
-const ADMIN_URL_PREFIX = "/api/ee/permission_debug/";
+/** The admin's own debugging calls (the people list, attributes, "Explain access") run as the admin, not the person. */
+const ADMIN_URL = "/api/ee/permission_debug";
 
 /** `ready`: the tab's preview has started, so the person's requests wait for it. */
 export function getPreviewAsHeaderHandler(
@@ -273,7 +311,7 @@ export function getPreviewAsHeaderHandler(
   ready?: Promise<void>,
 ): OnBeforeRequestHandler {
   return async ({ url }) => {
-    if (url.startsWith(ADMIN_URL_PREFIX)) {
+    if (url === ADMIN_URL || url.startsWith(`${ADMIN_URL}/`)) {
       return undefined;
     }
     await ready;

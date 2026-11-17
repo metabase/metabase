@@ -42,8 +42,9 @@ export type ResponseErrorInfo = {
 };
 
 export type EventMap = {
-  401: [string];
-  403: [string];
+  /** The relative path, and the response body when it was read. */
+  401: [url: string, body?: unknown];
+  403: [url: string, body?: unknown];
   responseError: [ResponseErrorInfo];
 };
 

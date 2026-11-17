@@ -12,6 +12,8 @@
    [clojure.string :as str]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
    [metabase.events.core :as events]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -69,9 +71,67 @@
                                  (dissoc [admin-id user-id])))))
 
 (defn attribute-overrides-of
-  "The attribute values that replace `user-id`'s own in `admin-id`'s preview, or nil."
-  [admin-id user-id]
-  (get-in @attribute-overrides [[admin-id user-id] :overrides]))
+  "The attribute values that replace `user-id`'s own in `admin-id`'s preview, or nil. With `preview-id`, only those of
+  that preview."
+  ([admin-id user-id]
+   (get-in @attribute-overrides [[admin-id user-id] :overrides]))
+  ([admin-id user-id preview-id]
+   (let [{entry-preview-id :preview-id, :keys [overrides]} (get @attribute-overrides [admin-id user-id])]
+     (when (= preview-id entry-preview-id)
+       overrides))))
+
+;; TODO (proof of concept): unsaved edits live in this JVM until it restarts, never cleaned up. Assumes an admin
+;; makes a handful per session.
+(defonce ^:private unsaved-edits (atom {}))
+
+(defn create-unsaved-edits!
+  "Keep `admin-id`'s unsaved data permission edits: `groups`, the body of `PUT /api/permissions/graph`'s `groups`, and
+  `edits`, the list the preview shows. Returns their id. Nothing is written to the app database: the rows saving
+  `groups` would write are computed and kept here."
+  [admin-id groups edits]
+  (let [edits-id (str (random-uuid))]
+    (swap! unsaved-edits assoc edits-id {:admin-id admin-id
+                                         :changes  (data-perms.graph/unsaved-graph-changes groups)
+                                         :edits    edits})
+    edits-id))
+
+(defn unsaved-edits-of
+  "`admin-id`'s unsaved edits with `edits-id` (`:changes` and `:edits`), or nil, also for another admin's id."
+  [admin-id edits-id]
+  (let [entry (get @unsaved-edits edits-id)]
+    (when (= admin-id (:admin-id entry))
+      entry)))
+
+(defn do-with-unsaved-edits
+  "Run `thunk` with every permission check reading `admin-id`'s unsaved edits `edits-id` as if they were saved; a
+  400 when there are no such edits (the server restarted, or another admin's)."
+  [admin-id edits-id thunk]
+  (if (nil? edits-id)
+    (thunk)
+    (let [{:keys [changes]} (unsaved-edits-of admin-id edits-id)]
+      (when-not changes
+        (throw (ex-info "These unsaved permission edits are gone: go back to the permissions page and preview again."
+                        {:status-code 400})))
+      (perms/do-with-unsaved-data-permissions changes thunk))))
+
+;; one entry per admin and previewed user, like [[attribute-overrides]]
+(defonce ^:private preview-edits (atom {}))
+
+(defn set-preview-edits!
+  "Run every preview `admin-id` makes as `user-id` with the unsaved edits `edits-id` (nil for the saved permissions),
+  until the preview `preview-id` ends or a new start replaces them."
+  [admin-id user-id preview-id edits-id]
+  (if edits-id
+    (swap! preview-edits assoc [admin-id user-id] {:preview-id preview-id :edits-id edits-id})
+    (swap! preview-edits dissoc [admin-id user-id])))
+
+(defn clear-preview-edits!
+  "Stop the preview `preview-id` reading unsaved edits, unless a newer start of the same person replaced it."
+  [admin-id user-id preview-id]
+  (swap! preview-edits (fn [entries]
+                         (cond-> entries
+                           (= preview-id (get-in entries [[admin-id user-id] :preview-id]))
+                           (dissoc [admin-id user-id])))))
 
 (def ^:private user-info-keys
   "The keys of a request's current-user info, all replaced by the previewed user's own."
@@ -96,11 +156,18 @@
       (and (= :post request-method)
            (boolean (some #(re-matches % uri) read-only-posts)))))
 
+(def ^:private read-only-error-code
+  "Marks the 403 of a write refused in preview, so the frontend can say the preview is read-only."
+  "permission-preview-read-only")
+
 (defn- refusal
-  [message]
-  {:response {:status  403
-              :headers {"Content-Type" "application/json; charset=utf-8"}
-              :body    (json/encode {:message message})}})
+  ([message]
+   (refusal message nil))
+  ([message error-code]
+   {:response {:status  403
+               :headers {"Content-Type" "application/json; charset=utf-8"}
+               :body    (json/encode (cond-> {:message message}
+                                       error-code (assoc :error_code error-code)))}}))
 
 (defn- parse-user-id
   [header-value]
@@ -152,7 +219,7 @@
           (not (read-only-request? request))
           (do (log/infof "Refused %s %s while admin %d previews user %d"
                          (u/upper-case-en (name (:request-method request))) (:uri request) admin-id target-id)
-              (refusal "You're previewing another user, so changes aren't allowed."))
+              (refusal "You're previewing another user, so changes aren't allowed." read-only-error-code))
 
           :else
           (do
@@ -163,6 +230,8 @@
                                       :model-id target-id
                                       :details  {:action "query"
                                                  :uri    (:uri request)}}))
-            {:request    (merge (apply dissoc request user-info-keys) target-info)
-             :admin-id   admin-id
-             :attributes (attribute-overrides-of admin-id target-id)}))))))
+            (let [edits-id (get-in @preview-edits [[admin-id target-id] :edits-id])]
+              (cond-> {:request    (merge (apply dissoc request user-info-keys) target-info)
+                       :admin-id   admin-id
+                       :attributes (attribute-overrides-of admin-id target-id)}
+                edits-id (assoc :run-with (partial do-with-unsaved-edits admin-id edits-id))))))))))

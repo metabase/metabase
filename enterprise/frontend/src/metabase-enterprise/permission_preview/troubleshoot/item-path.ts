@@ -1,11 +1,16 @@
+import type { CardType } from "metabase-types/api";
 import {
   type BaseEntityId,
   isBaseEntityID,
 } from "metabase-types/api/entity-id";
 
-/** An item opened in the frame, read from its path; the root collection has a `null` ID. */
+/**
+ * An item opened in the frame, read from its path; the root collection has a `null` ID. A card's kind is the path's:
+ * the app moves a model to `/model/…` and a metric to `/metric/…`.
+ */
 export type OpenedItem =
-  | { type: "card" | "dashboard"; id: number }
+  | { type: "card"; id: number; cardType: CardType }
+  | { type: "dashboard"; id: number }
   | { type: "collection"; id: number | null };
 
 /** What the link bar was given: a path, an entity id, or a bare numeric ID whose type it has to ask. */
@@ -38,8 +43,12 @@ export function parseOpenedItem(path: string): OpenedItem | null {
       return { type: "dashboard", id };
     case "collection":
       return { type: "collection", id };
+    case "model":
+      return { type: "card", id, cardType: "model" };
+    case "metric":
+      return { type: "card", id, cardType: "metric" };
     default:
-      return { type: "card", id };
+      return { type: "card", id, cardType: "question" };
   }
 }
 

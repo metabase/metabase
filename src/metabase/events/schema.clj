@@ -145,7 +145,9 @@
                [:principal-id   {:optional true} pos-int?]
                [:attributes     {:optional true} [:map-of :string :string]]
                ;; a user preview's values in place of their own ("" for no value)
-               [:overrides      {:optional true} [:map-of :string :string]]]]])
+               [:overrides      {:optional true} [:map-of :string :string]]
+               ;; the admin's unsaved permission edits the preview read as if saved, as "See changes" lists them
+               [:unsaved-edits  {:optional true} [:sequential :map]]]]])
 
 ;; action events
 

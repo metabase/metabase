@@ -2060,7 +2060,8 @@
   permissions.rest
   {:team "Security Engineering"
    :ns-prefix "metabase.permissions-rest"
-   :api  #{metabase.permissions-rest.api}
+   :api  #{metabase.permissions-rest.api
+           metabase.permissions-rest.data-permissions.graph}
    :uses #{api
            audit-app
            events
@@ -4357,6 +4358,7 @@
            lib.schema
            models
            permissions
+           permissions.rest
            premium-features
            query-processor
            request
@@ -4370,7 +4372,6 @@
                     :model/ConnectionImpersonation
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DataPermissions
                     :model/Database
                     :model/DatabaseRouter
                     :model/Field

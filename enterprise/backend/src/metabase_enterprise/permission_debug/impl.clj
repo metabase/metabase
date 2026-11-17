@@ -9,6 +9,9 @@
   | `:card/read` | get a card model via API | card | perms/collection-access |
   | `:card/query` | run the query associated with the card | card → tables used in query | perms/view-data perms/collection-access |
   | `:card/download-data` | download data from the card query | card → tables used in query | perms/download-results perms/collection-access |
+  | `:dashboard/read` | get a dashboard via API | dashboard | perms/collection-access |
+  | `:dashboard/query` | run the dashboard's cards | dashboard → its cards → tables used in their queries | perms/view-data perms/collection-access |
+  | `:collection/read` | open a collection | collection | perms/collection-access |
   "
   (:require
    [clojure.set :as set]
@@ -36,7 +39,7 @@
   [:schema {:registry
             {::group-id :int
              ::perm-debug-info [:map {:closed true}
-                                [:model-type  [:enum "card" "invalid"]]
+                                [:model-type  [:enum "card" "dashboard" "collection" "invalid"]]
                                 [:model-id    :string]
                                 [:decision    [:enum "allow" "denied" "limited"]]
                                 [:segment     [:set [:enum "sandboxed" "impersonated" "routed"]]]
@@ -44,13 +47,16 @@
                                 [:data        [:map {:closed true}
                                                [:blocked-tables           {:optional true} [:map-of :string [:set :string]]]
                                                [:download-limited-tables  {:optional true} [:map-of :string [:set :string]]]
-                                               [:download-no-tables       {:optional true} [:map-of :string [:set :string]]]]]
+                                               [:download-no-tables       {:optional true} [:map-of :string [:set :string]]]
+                                               ;; a dashboard's cards, and how many of them have a blocked table
+                                               [:card-count               {:optional true} nat-int?]
+                                               [:blocked-card-count       {:optional true} nat-int?]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
 (def ActionType
   "Type of the action in the debugger API to dispatch on"
-  [:enum :card/read :card/query :card/download-data])
+  [:enum :card/read :card/query :card/download-data :dashboard/read :dashboard/query :collection/read])
 
 (def DebuggerArguments
   "Arguments for the Debugger function. The model type being operated on is inferred by the requested action type"
@@ -90,8 +96,7 @@
 (mu/defmethod debug-permissions ::is-superuser :- DebuggerSchema
   [{:keys [action-type model-id]} :- DebuggerArguments]
   {:decision    "allow"
-   :model-type  (case (namespace action-type)
-                  "card" "card")
+   :model-type  (namespace action-type)
    :model-id    (str model-id)
    :segment     #{}
    :message     [(tru "Superuser is allowed full access")]
@@ -99,11 +104,11 @@
    :suggestions {}})
 
 (defn- user-can-read?
-  "Reset the bound permissions to run a can read check for a specific user"
+  "Whether the User with `user-id` can read the `model` instance with `pk`, checked as that User: a superuser caller's
+  own flags would otherwise let every check pass."
   [model pk user-id]
-  (binding [api/*current-user-id* user-id
-            api/*current-user-permissions-set* (delay (perms/user-permissions-set user-id))]
-    (mi/can-read? model pk)))
+  (request/with-current-user user-id
+    (boolean (mi/can-read? model pk))))
 
 (mu/defn- merge-permission-check :- DebuggerSchema
   "Merges n permissions responses with right most wins semantics. model-type and model-id must match across
@@ -247,6 +252,58 @@
                      (not-empty blocked-by-group) (assoc :download-no-tables (format-blocked blocked-by-group)))
       :suggestions {}})))
 
+(mu/defmethod debug-permissions :dashboard/read :- DebuggerSchema
+  [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
+  (let [can-read? (user-can-read? :model/Dashboard model-id user-id)]
+    {:decision    (if can-read? "allow" "denied")
+     :model-type  "dashboard"
+     :model-id    (str model-id)
+     :segment     #{}
+     :message     [(if can-read?
+                     (tru "User has permission to read this dashboard")
+                     (tru "User does not have permission to read this dashboard"))]
+     :data        {}
+     :suggestions {}}))
+
+(mu/defmethod debug-permissions :dashboard/query :- DebuggerSchema
+  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
+  (merge-permission-check
+   (debug-permissions (assoc debug-info :action-type :dashboard/read))
+   (let [card-ids         (permission-debug.db/dashboard-card-ids model-id)
+         blocked-by-card  (for [card-id card-ids]
+                            (check-table-permissions user-id (permission-debug.db/card card-id)
+                                                     {:perms/view-data :blocked}
+                                                     {:perms/view-data :legacy-no-self-service}))
+         blocked-by-group (apply merge-with set/union {} blocked-by-card)
+         blocked-count    (count (filter seq blocked-by-card))]
+     {:decision    (cond
+                     (zero? blocked-count)               "allow"
+                     (= blocked-count (count card-ids)) "denied"
+                     :else                               "limited")
+      :model-type  "dashboard"
+      :model-id    (str model-id)
+      :segment     #{}
+      :message     [(if (pos? blocked-count)
+                      (tru "User does not have permission to query some cards on this dashboard")
+                      (tru "User has permission to query every card on this dashboard"))]
+      :data        (cond-> {:card-count         (count card-ids)
+                            :blocked-card-count blocked-count}
+                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)))
+      :suggestions {}})))
+
+(mu/defmethod debug-permissions :collection/read :- DebuggerSchema
+  [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
+  (let [can-read? (user-can-read? :model/Collection model-id user-id)]
+    {:decision    (if can-read? "allow" "denied")
+     :model-type  "collection"
+     :model-id    (str model-id)
+     :segment     #{}
+     :message     [(if can-read?
+                     (tru "User has permission to read this collection")
+                     (tru "User does not have permission to read this collection"))]
+     :data        {}
+     :suggestions {}}))
+
 ;;; ------------------------------------------------ Preview as user ------------------------------------------------
 
 (def PrincipalType
@@ -279,6 +336,18 @@
                      (pos-int? (second form)))
             (second form)))
         (tree-seq sequential? seq target)))
+
+(defn- field-column-label
+  ;; the field's own table: a rule on Orders can filter by its product's category, Products.Category
+  [field-id]
+  (str (some-> (permission-debug.db/field-table-id field-id) permission-debug.db/table-display-name)
+       "."
+       (permission-debug.db/field-display-name field-id)))
+
+(defn remapping-column-label
+  "The column a sandbox's attribute remapping `target` filters, like `Products.Category`, or nil when it names none."
+  [target]
+  (some-> (field-id-in-target target) field-column-label))
 
 (defn- attribute-uses
   "One `{:attribute :use :values}` per place the group's access reads an attribute: a row-level security filter, a
@@ -334,6 +403,7 @@
                 [:value [:maybe :string]]
                 [:uses [:sequential [:map
                                      [:kind [:enum "sandbox" "impersonation" "routing"]]
+                                     ;; what the rule acts on: a sandbox's table, or the database it impersonates or routes
                                      [:label :string]
                                      [:table_id {:optional true} ::lib.schema.id/table]
                                      [:field_id {:optional true} ::lib.schema.id/field]
@@ -370,20 +440,20 @@
      (let [table-name (or (permission-debug.db/table-display-name table_id) (str table_id))]
        (cond-> {:attribute   attribute
                 :kind        "sandbox"
-                :label       (tru "Filters {0}" table-name)
+                :label       table-name
                 :table_id    table_id
                 :database_id db_id}
          field-id (assoc :field_id field-id
-                         :column   (str table-name "." (permission-debug.db/field-display-name field-id))))))
+                         :column   (field-column-label field-id)))))
    (for [{:keys [db_id attribute]} (permission-debug.db/impersonations-of-groups group-ids)]
      {:attribute   attribute
       :kind        "impersonation"
-      :label       (tru "Sets the database role on {0}" (:name (permission-debug.db/database db_id)))
+      :label       (or (:name (permission-debug.db/database db_id)) (str db_id))
       :database_id db_id})
    (for [{:keys [database_id user_attribute]} (permission-debug.db/database-routers)]
      {:attribute   user_attribute
       :kind        "routing"
-      :label       (tru "Picks the database behind {0}" (:name (permission-debug.db/database database_id)))
+      :label       (or (:name (permission-debug.db/database database_id)) (str database_id))
       :database_id database_id})))
 
 (defn- card-scope
@@ -405,6 +475,20 @@
                      (apply merge-with set/union
                             {:table-ids #{} :whole-database-ids #{} :database-ids #{}}
                             (map card-scope (permission-debug.db/dashboard-card-ids dashboard-id))))))
+
+(defn item-dependencies
+  "The name and collection of the Card with `card-id` or the Dashboard with `dashboard-id`, and the tables and databases
+  it, or every Card on the Dashboard, queries."
+  [card-id dashboard-id]
+  (let [{:keys [table-ids whole-database-ids database-ids]} (item-scope card-id dashboard-id)
+        item (if card-id
+               (permission-debug.db/card card-id)
+               (permission-debug.db/dashboard dashboard-id))]
+    {:name               (:name item)
+     :collection_id      (:collection_id item)
+     :table_ids          (vec (sort table-ids))
+     :whole_database_ids (vec (sort whole-database-ids))
+     :database_ids       (vec (sort database-ids))}))
 
 (defn- use-touches-scope?
   [{:keys [table-ids whole-database-ids database-ids]} {:keys [kind table_id database_id]}]
@@ -441,7 +525,8 @@
 (mu/defn affecting-attributes :- AffectingAttributesResponse
   "The attributes a security rule on the principal's groups reads (sandbox remappings, connection impersonation, database
   routing), each with its rules and the principal's value. With `card-id` or `dashboard-id`, `:applies` says whether any
-  of the attribute's rules touch the tables and databases the item queries."
+  of the attribute's rules touch the tables and databases the item queries. Then the principal's other attributes, with
+  no rules and `:applies` false, leaving out the `@` system keys (`@tenant.slug`) no rule reads."
   [{:keys [principal-type principal-id card-id dashboard-id]}
    :- [:map {:closed true}
        [:principal-type PrincipalType]
@@ -454,24 +539,35 @@
         group-pick (when (= "group" principal-type)
                      (m/index-by :attribute (preview-attributes principal-id)))
         sources    (when (= "user" principal-type)
-                     (user-value-sources principal-id))]
-    (for [[attribute uses] (group-by :attribute (rule-uses group-ids))
-          :let [other-values (->> uses
-                                  (keep (fn [{:keys [kind field_id database_id]}]
-                                          (case kind
-                                            "sandbox"       (some-> field_id permission-debug.db/field-column-values)
-                                            "routing"       (permission-debug.db/destination-database-names database_id)
-                                            nil)))
-                                  (apply concat)
-                                  (remove nil?) (map str) distinct sort vec)]]
-      (cond-> {:attribute    attribute
-               :value        (some-> (get values attribute) str)
-               :uses         (mapv #(dissoc % :attribute) (distinct uses))
-               :applies      (or (nil? scope) (boolean (some #(use-touches-scope? scope %) uses)))
-               :other_values other-values}
-        group-pick                   (assoc :member_values (get-in group-pick [attribute :member_values] [])
-                                            :other_values  (get-in group-pick [attribute :other_values] other-values))
-        (get sources attribute)      (merge (m/remove-vals nil? (get sources attribute)))))))
+                     (user-value-sources principal-id))
+        rule-reads (group-by :attribute (rule-uses group-ids))]
+    (concat
+     (for [[attribute uses] rule-reads
+           :let [other-values (->> uses
+                                   (keep (fn [{:keys [kind field_id database_id]}]
+                                           (case kind
+                                             "sandbox"       (some-> field_id permission-debug.db/field-column-values)
+                                             "routing"       (permission-debug.db/destination-database-names database_id)
+                                             nil)))
+                                   (apply concat)
+                                   (remove nil?) (map str) distinct sort vec)]]
+       (cond-> {:attribute    attribute
+                :value        (some-> (get values attribute) str)
+                :uses         (mapv #(dissoc % :attribute) (distinct uses))
+                :applies      (or (nil? scope) (boolean (some #(use-touches-scope? scope %) uses)))
+                :other_values other-values}
+         group-pick                   (assoc :member_values (get-in group-pick [attribute :member_values] [])
+                                             :other_values  (get-in group-pick [attribute :other_values] other-values))
+         (get sources attribute)      (merge (m/remove-vals nil? (get sources attribute)))))
+     (for [attribute (sort (keys values))
+           :when     (and (not (str/starts-with? attribute "@"))
+                          (not (contains? rule-reads attribute)))]
+       (cond-> {:attribute    attribute
+                :value        (some-> (get values attribute) str)
+                :uses         []
+                :applies      false
+                :other_values []}
+         (get sources attribute) (merge (m/remove-vals nil? (get sources attribute))))))))
 
 (defn- preview-user-email
   [principal-type principal-id]
@@ -497,7 +593,7 @@
               tenant-id     (cond
                               (= "tenant" principal-type) principal-id
                               tenant-group?               (api/check (most-common-tenant-id principal-id)
-                                                                     [400 (tru "This tenant group has no users, so there''s no tenant to preview it in.")]))
+                                                                     [400 (tru "This tenant group can''t be previewed until it has at least one user.")]))
               user-id       (permission-debug.db/insert-preview-user! {:email      email
                                                                        :first_name (tru "{0} preview" principal-name)
                                                                        :tenant_id  tenant-id})
@@ -517,23 +613,28 @@
   because permission checks look the user's groups up again by id, so the binding needs a user row; a real member
   would bring their other groups and their own attributes. A group's preview user carries `attributes`, defaulting to
   the most common value among members for each attribute the group's access depends on; a tenant's carries the
-  tenant's own. A user's `attributes` override their own values in this admin's previews of them only."
-  [{:keys [principal-type principal-id attributes]} :- [:map {:closed true}
-                                                        [:principal-type PrincipalType]
-                                                        [:principal-id pos-int?]
-                                                        [:attributes {:optional true} [:maybe Attributes]]]]
+  tenant's own. A user's or tenant's `attributes` override those values in this admin's previews of them only. With
+  `unsaved-edits-id` (from [[preview/create-unsaved-edits!]]), every request of the preview reads the admin's unsaved
+  permission edits as if they were saved."
+  [{:keys [principal-type principal-id attributes unsaved-edits-id]}
+   :- [:map {:closed true}
+       [:principal-type PrincipalType]
+       [:principal-id pos-int?]
+       [:attributes {:optional true} [:maybe Attributes]]
+       [:unsaved-edits-id {:optional true} [:maybe :string]]]]
   (let [principal-name (case principal-type
                          "user"   (:user_name (some-> (permission-debug.db/user-summary principal-id) user-display))
-                         "group"  (api/check-404 (permission-debug.db/group-name principal-id))
+                         "group"  (-> (api/check-404 (first (permission-debug.db/groups #{principal-id})))
+                                      (perms/group-display-name (perms/use-tenants)))
                          "tenant" (:name (api/check-404 (permission-debug.db/tenant principal-id))))
         _              (api/check (not (and (= "group" principal-type)
                                             (= principal-id (:id (perms/admin-group)))))
-                                  [400 (tru "Administrators can''t be previewed: they see everything.")])
+                                  [400 (tru "Admins can''t be previewed, because they can see everything.")])
         user-id        (if (= "user" principal-type)
                          principal-id
                          (ensure-preview-user! principal-type principal-id principal-name))
-        ;; a user's own values stay on their row; these replace them in this admin's preview only
-        overrides      (when (= "user" principal-type) (or attributes {}))
+        ;; a user's or tenant's own values stay on their rows; these replace them in this admin's preview only
+        overrides      (when (#{"user" "tenant"} principal-type) (or attributes {}))
         attributes     (if (= "group" principal-type)
                          (into {}
                                (keep (fn [{:keys [attribute default]}]
@@ -546,15 +647,19 @@
                                (keep (fn [{:keys [attribute value]}] (when value [attribute value])))
                                (affecting-attributes {:principal-type principal-type
                                                       :principal-id   principal-id})))
-        preview-id     (str (random-uuid))]
+        preview-id     (str (random-uuid))
+        unsaved-edits  (when unsaved-edits-id
+                         (api/check (preview/unsaved-edits-of api/*current-user-id* unsaved-edits-id)
+                                    [400 (tru "These unsaved changes are no longer available. Go back to the permissions page and start the preview again.")]))]
     (api/check (permission-debug.db/previewable-user-info user-id)
-               [400 (tru "This user can''t be previewed: only active users who aren''t admins can.")])
+               [400 (tru "Only active users who aren''t admins can be previewed.")])
     ;; TODO (proof of concept): one preview user per group stores the picked values on its own row, so two admins
     ;; previewing the same group with different values overwrite each other. Assumes one admin at a time.
     (when (= "group" principal-type)
       (permission-debug.db/set-user-login-attributes! user-id attributes))
-    (when (= "user" principal-type)
+    (when overrides
       (preview/set-attribute-overrides! api/*current-user-id* user-id preview-id overrides))
+    (preview/set-preview-edits! api/*current-user-id* user-id preview-id unsaved-edits-id)
     (events/publish-event! :event/permissions-preview
                            {:user-id  api/*current-user-id*
                             :model    :model/User
@@ -564,15 +669,13 @@
                                                :principal-type principal-type
                                                :principal-id   principal-id
                                                :attributes     attributes}
-                                        (seq overrides) (assoc :overrides overrides))})
+                                        (seq overrides) (assoc :overrides overrides)
+                                        unsaved-edits   (assoc :unsaved-edits (:edits unsaved-edits)))})
     {:user_id        user-id
      :user_name      principal-name
      :principal_name principal-name
-     ;; a tenant's own values are on its row; the preview binds a group's, and a user's overrides
-     :attributes     (case principal-type
-                       "group"  attributes
-                       "user"   overrides
-                       "tenant" {})
+     ;; the preview binds a group's values, and a user's or tenant's overrides
+     :attributes     (if (= "group" principal-type) attributes overrides)
      :preview_id     preview-id}))
 
 (mu/defn end-preview! :- :nil
@@ -595,6 +698,7 @@
                                              :principal-id   principal-id}
                                       (seq attributes) (assoc :attributes attributes))})
   (preview/clear-attribute-overrides! api/*current-user-id* user-id preview-id)
+  (preview/clear-preview-edits! api/*current-user-id* user-id preview-id)
   nil)
 
 (mu/defn preview-card-query :- :map

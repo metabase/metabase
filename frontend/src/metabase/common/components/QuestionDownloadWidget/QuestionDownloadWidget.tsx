@@ -6,7 +6,10 @@ import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useUserKeyValue } from "metabase/current-user";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_PERMISSION_PREVIEW,
+} from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import {
   ActionIcon,
@@ -171,7 +174,9 @@ export const QuestionDownloadWidget = ({
     format === "xlsx" &&
     isPivoted &&
     !dismissedExcelPivotExportsBanner &&
-    showMetabaseLinks;
+    showMetabaseLinks &&
+    // a permissions preview can't save the dismissal
+    PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId() == null;
 
   return (
     <FocusTrap>

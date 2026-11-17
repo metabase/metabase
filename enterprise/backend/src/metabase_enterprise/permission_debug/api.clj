@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.permission-debug.explain :as permission-debug.explain]
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.permission-debug.preview :as preview]
    [metabase-enterprise.permission-debug.preview-grant :as preview-grant]
    [metabase-enterprise.permission-debug.preview-session :as preview-session]
    [metabase.api.common :as api]
@@ -34,6 +35,8 @@
   - Check if user can read a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/read`
   - Check if user can query a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/query`
   - Check if user can download data: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/download-data`
+  - Check if user can read a dashboard, or query its cards: `action_type=dashboard/read`, `action_type=dashboard/query`
+  - Check if user can read a collection: `action_type=collection/read`
 
   Example responses:
   - Allowed access:
@@ -103,16 +106,52 @@
   resolves to its hidden preview user) and the attribute values it carries, and records the start of the preview in
   the audit log. `attributes` sets a group's attribute values; any it leaves out take the most common member value,
   and an empty string means no value. The browser tab then sends `X-Metabase-Preview-As: <user_id>` on every API
-  call. `preview_id` links this start to its `POST /preview/end`."
+  call. `preview_id` links this start to its `POST /preview/end`. With `unsaved_edits_id` (from `POST
+  /preview/unsaved-edits`), the preview reads those unsaved permission edits as if they were saved."
   [_route-params
    _query-params
-   {:keys [principal_type principal_id attributes]} :- [:map {:closed true}
-                                                        [:principal_type permission-debug.impl/PrincipalType]
-                                                        [:principal_id ms/PositiveInt]
-                                                        [:attributes {:optional true} [:maybe [:map-of :string :string]]]]]
-  (permission-debug.impl/start-preview! {:principal-type principal_type
-                                         :principal-id   principal_id
-                                         :attributes     attributes}))
+   {:keys [principal_type principal_id attributes unsaved_edits_id]}
+   :- [:map {:closed true}
+       [:principal_type permission-debug.impl/PrincipalType]
+       [:principal_id ms/PositiveInt]
+       [:attributes {:optional true} [:maybe [:map-of :string :string]]]
+       [:unsaved_edits_id {:optional true} [:maybe ms/NonBlankString]]]]
+  (permission-debug.impl/start-preview! {:principal-type   principal_type
+                                         :principal-id     principal_id
+                                         :attributes       attributes
+                                         :unsaved-edits-id unsaved_edits_id}))
+
+(def ^:private UnsavedEdit
+  "One unsaved edit as the permissions page lists it, kept as sent and shown in a preview tab's \"See changes\"."
+  [:map {:closed true}
+   [:group_id ms/PositiveInt]
+   [:group_name :string]
+   [:database_id ms/PositiveInt]
+   ;; set when the edit is on one table, unset when it's on the whole database
+   [:table_id {:optional true} ms/PositiveInt]
+   [:label :string]
+   [:permission :string]
+   [:before :string]
+   [:after :string]])
+
+(api.macros/defendpoint :post "/preview/unsaved-edits" :- [:map [:unsaved_edits_id :string]]
+  "Keep the admin's unsaved data permission edits for previews: `groups` as `PUT /api/permissions/graph` takes them,
+  and `edits`, the list the preview shows. Nothing is saved: the rows saving them would write are kept in memory, and
+  `GET /preview/data`, `GET /preview/table/:table-id` and `POST /preview/start` read them with the returned id."
+  [_route-params
+   _query-params
+   {:keys [groups edits]} :- [:map {:closed true}
+                              [:groups [:map-of :metabase.permissions-rest.schema/group-id
+                                        [:maybe [:map-of :metabase.permissions-rest.schema/id
+                                                 :metabase.permissions-rest.schema/db-perms]]]]
+                              [:edits [:sequential UnsavedEdit]]]]
+  {:unsaved_edits_id (preview/create-unsaved-edits! api/*current-user-id* groups edits)})
+
+(api.macros/defendpoint :get "/preview/unsaved-edits/:id" :- [:map [:edits [:sequential UnsavedEdit]]]
+  "The list of unsaved edits that `POST /preview/unsaved-edits` kept with `id`, for a preview tab's \"See changes\"."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/NonBlankString]]]
+  {:edits (:edits (api/check-404 (preview/unsaved-edits-of api/*current-user-id* id)))})
 
 (api.macros/defendpoint :post "/preview/end" :- :map
   "End the preview `preview_id` that `POST /preview/start` (or `/preview/grant`, or `/preview/session`) returned,
@@ -273,6 +312,25 @@
       :card-id        card_id
       :dashboard-id   dashboard_id})))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/preview/item-scope" :- [:map
+                                                       [:name :string]
+                                                       [:collection_id [:maybe pos-int?]]
+                                                       [:table_ids [:sequential pos-int?]]
+                                                       [:whole_database_ids [:sequential pos-int?]]
+                                                       [:database_ids [:sequential pos-int?]]]
+  "A question's or dashboard's name and collection, read as the admin even in a \"View app as…\" tab, and the tables
+  and databases it, or every question on the dashboard, queries. A native question counts as querying its whole
+  database."
+  [_route-params
+   {:keys [card_id dashboard_id]} :- [:and
+                                      [:map {:closed true}
+                                       [:card_id {:optional true} ms/PositiveInt]
+                                       [:dashboard_id {:optional true} ms/PositiveInt]]
+                                      [:fn {:error/message "exactly one of card_id or dashboard_id"}
+                                       (fn [params] (= 1 (count (keep params [:card_id :dashboard_id]))))]]]
+  (permission-debug.impl/item-dependencies card_id dashboard_id))
+
 (api.macros/defendpoint :get "/preview/principals" :- permission-debug.explain/PrincipalsResponse
   "Every user, group and tenant an admin can preview permissions as."
   []
@@ -286,17 +344,32 @@
 (api.macros/defendpoint :get "/preview/data" :- permission-debug.explain/DataAccessResponse
   "What a user, group or tenant gets on every database and table: view data (with row and column security), create
   queries, download results, manage table metadata, manage database and transforms. Each value comes with every group's
-  own value and the group that applies. Runs no query and returns no rows."
+  own value and the group that applies. Runs no query and returns no rows. With `unsaved-edits-id`, as if those
+  unsaved edits were saved. With `preview-id` (a user's only), with the attribute values that preview runs with."
   [_route-params
-   {:keys [principal-type principal-id]} :- PrincipalParams]
-  (permission-debug.explain/explain-data-access {:principal-type principal-type
-                                                 :principal-id   principal-id}))
+   {:keys [principal-type principal-id unsaved-edits-id preview-id]}
+   :- [:map {:closed true}
+       [:principal-type permission-debug.impl/PrincipalType]
+       [:principal-id ms/PositiveInt]
+       [:unsaved-edits-id {:optional true} ms/NonBlankString]
+       [:preview-id {:optional true} ms/NonBlankString]]]
+  (preview/do-with-unsaved-edits
+   api/*current-user-id* unsaved-edits-id
+   #(permission-debug.explain/explain-data-access
+     {:principal-type      principal-type
+      :principal-id        principal-id
+      :attribute-overrides (when (and preview-id (= "user" principal-type))
+                             (preview/attribute-overrides-of api/*current-user-id* principal-id preview-id))})))
 
 (api.macros/defendpoint :get "/preview/table/:table-id" :- permission-debug.explain/TableUsersResponse
-  "What every active user gets on the Table with `table-id`, with the same detail as `GET /preview/data`."
+  "What every active user gets on the Table with `table-id`, with the same detail as `GET /preview/data`. With
+  `unsaved-edits-id`, as if those unsaved edits were saved."
   [{:keys [table-id]} :- [:map {:closed true}
-                          [:table-id ms/PositiveInt]]]
-  (permission-debug.explain/explain-table-access-by-user table-id))
+                          [:table-id ms/PositiveInt]]
+   {:keys [unsaved-edits-id]} :- [:map {:closed true}
+                                  [:unsaved-edits-id {:optional true} ms/NonBlankString]]]
+  (preview/do-with-unsaved-edits api/*current-user-id* unsaved-edits-id
+                                 #(permission-debug.explain/explain-table-access-by-user table-id)))
 
 (api.macros/defendpoint :get "/preview/collections" :- permission-debug.explain/CollectionsResponse
   "What a user, group or tenant gets on the collections of one Permissions tab: `default` (Collections), `shared`

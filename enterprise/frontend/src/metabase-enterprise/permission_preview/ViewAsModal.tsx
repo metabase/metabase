@@ -1,22 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
-import {
-  AttributeValueSelect,
-  getAttributeValues,
-} from "./AttributeValueSelect";
 import { PrincipalPicker } from "./PrincipalPicker";
 import {
-  type PreviewAttribute,
   type Principal,
-  useGetPreviewAttributesQuery,
+  type PrincipalType,
+  useGetAffectingAttributesQuery,
   useStartPreviewMutation,
 } from "./api";
 import { getPreviewUrl } from "./preview-state";
+import { getLastPrincipal } from "./preview/urls";
+import {
+  type PrincipalSection,
+  usePrincipalSections,
+} from "./principal-sections";
+import { AttributeBar } from "./troubleshoot/AttributeBar";
+import { useUnsavedEdits } from "./unsaved-edits";
 
 type ViewAsModalProps = {
   opened: boolean;
@@ -39,40 +42,70 @@ export function ViewAsModal({
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [pickedValues, setPickedValues] = useState<Record<string, string>>({});
   const [startPreview, { error, isLoading }] = useStartPreviewMutation();
-  const groupId =
-    principal?.type === "group" && principal.id > 0 ? principal.id : null;
+  const pickedPrincipal =
+    principal != null && principal.id > 0 ? principal : null;
   const { data: attributes = [], isFetching: isLoadingAttributes } =
-    useGetPreviewAttributesQuery(groupId ?? skipToken);
-  const shownAttributes = groupId != null ? attributes : [];
-  const isReady = principal != null && principal.id > 0 && !isLoadingAttributes;
+    useGetAffectingAttributesQuery(
+      pickedPrincipal != null ? { principal: pickedPrincipal } : skipToken,
+    );
+  const { sections } = usePrincipalSections(principal?.type ?? "user");
+  const { edits, unsavedEditsId } = useUnsavedEdits();
+  const hasEdits = edits.length > 0;
+  useStartOnPreviewedPrincipal({
+    opened,
+    hasEdits,
+    principal,
+    onPrincipalChange: setPrincipal,
+  });
+  const isReady =
+    pickedPrincipal != null &&
+    !isLoadingAttributes &&
+    (!hasEdits || unsavedEditsId != null);
 
   const handlePrincipalChange = (newPrincipal: Principal | null) => {
     setPrincipal(newPrincipal);
     setPickedValues({});
   };
 
+  const handlePick = (attribute: string, value: string | null) => {
+    setPickedValues(({ [attribute]: _previous, ...others }) =>
+      value == null ? others : { ...others, [attribute]: value },
+    );
+  };
+
   const handleOpen = async () => {
     if (!isReady) {
       return;
     }
+    // like Troubleshoot, only the picked values go: the backend fills in the rest as the chips show them
     const result = await startPreview({
-      ...principal,
-      attributes: getAttributeValues(shownAttributes, pickedValues),
+      ...pickedPrincipal,
+      attributes: pickedValues,
+      unsavedEditsId,
     });
     if (result.data) {
-      // a full load, so nothing fetched as the admin stays cached in the preview
-      window.location.assign(
-        getPreviewUrl(path, {
-          userId: result.data.user_id,
-          userName: result.data.user_name,
-          principalType: principal.type,
-          principalId: principal.id,
-          principalName: result.data.principal_name,
-          attributes: result.data.attributes,
-          returnPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-          previewId: result.data.preview_id,
-        }),
-      );
+      const url = getPreviewUrl(path, {
+        userId: result.data.user_id,
+        userName: result.data.user_name,
+        principalType: pickedPrincipal.type,
+        principalId: pickedPrincipal.id,
+        principalName: result.data.principal_name,
+        attributes: result.data.attributes,
+        returnPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        previewId: result.data.preview_id,
+        unsavedEdits:
+          unsavedEditsId != null
+            ? { id: unsavedEditsId, isApplied: true }
+            : undefined,
+      });
+      if (unsavedEditsId != null) {
+        // a new tab, so this one keeps the unsaved edits; the preview tab closes on exit
+        window.open(url, "_blank");
+        onClose();
+      } else {
+        // a full load, so nothing fetched as the admin stays cached in the preview
+        window.location.assign(url);
+      }
     }
   };
 
@@ -85,17 +118,26 @@ export function ViewAsModal({
     >
       <Stack gap="lg">
         <Text c="text-secondary">
-          {t`Switches this tab to the app as this user, group or tenant, read-only, until you exit the preview.`}
+          {hasEdits
+            ? t`See the app the way a user, group, or tenant sees it, in a new tab that includes your unsaved changes. The preview is read-only and saves nothing.`
+            : t`See the app the way a user, group, or tenant sees it, in this tab. The preview stays read-only until you exit it.`}
         </Text>
         <PrincipalPicker value={principal} onChange={handlePrincipalChange} />
-        {shownAttributes.length > 0 && (
-          <AttributeRows
-            attributes={shownAttributes}
-            values={getAttributeValues(shownAttributes, pickedValues)}
-            onChange={(attribute, value) =>
-              setPickedValues((values) => ({ ...values, [attribute]: value }))
-            }
-          />
+        {pickedPrincipal != null && attributes.length > 0 && (
+          <Stack gap="xs">
+            <Text c="text-secondary" size="sm">
+              {getAttributesHint(pickedPrincipal.type)}
+            </Text>
+            <AttributeBar
+              key={`${pickedPrincipal.type}-${pickedPrincipal.id}`}
+              principalType={pickedPrincipal.type}
+              whoName={getRowName(sections, pickedPrincipal.id)}
+              attributes={attributes}
+              isLoading={isLoadingAttributes}
+              pickedValues={pickedValues}
+              onPick={handlePick}
+            />
+          </Stack>
         )}
         {error != null && (
           <Text c="feedback-negative">{getErrorMessage(error)}</Text>
@@ -116,40 +158,49 @@ export function ViewAsModal({
   );
 }
 
+type UseStartOnPreviewedPrincipalOptions = {
+  opened: boolean;
+  hasEdits: boolean;
+  principal: Principal | null;
+  onPrincipalChange: (principal: Principal) => void;
+};
+
+/** Opened from a permissions preview with unsaved edits, the modal starts on whoever that preview shows. */
+function useStartOnPreviewedPrincipal({
+  opened,
+  hasEdits,
+  principal,
+  onPrincipalChange,
+}: UseStartOnPreviewedPrincipalOptions) {
+  const isOnPreviewPage = window.location.pathname.includes("/preview/");
+  const shouldStart =
+    opened && hasEdits && isOnPreviewPage && principal == null;
+  useEffect(() => {
+    const previewedPrincipal = getLastPrincipal();
+    if (shouldStart && previewedPrincipal != null) {
+      onPrincipalChange(previewedPrincipal);
+    }
+  }, [shouldStart, onPrincipalChange]);
+}
+
 function getTitle(entityName?: string) {
   return entityName ? t`View “${entityName}” as…` : t`View app as…`;
 }
 
-type AttributeRowsProps = {
-  attributes: PreviewAttribute[];
-  values: Record<string, string>;
-  onChange: (attribute: string, value: string) => void;
-};
+function getAttributesHint(type: PrincipalType) {
+  switch (type) {
+    case "group":
+      return t`Pick the user attribute values to preview this group with.`;
+    case "user":
+      return t`Their user attributes. Change any value to preview with a different one; their saved values stay the same.`;
+    case "tenant":
+      return t`This tenant's user attributes.`;
+  }
+}
 
-function AttributeRows({ attributes, values, onChange }: AttributeRowsProps) {
-  return (
-    <Stack gap="sm">
-      <Text fw="bold">{t`This group's access depends on user attributes`}</Text>
-      <Text c="text-secondary" size="sm">
-        {t`A group has no attributes of its own, so pick the values to preview with.`}
-      </Text>
-      {attributes.map((attribute) => (
-        <Group key={attribute.attribute} gap="md" wrap="nowrap">
-          <Box flex={1}>
-            <Text fw="bold">{attribute.attribute}</Text>
-            <Text c="text-secondary" size="sm">
-              {attribute.uses.join(", ")}
-            </Text>
-          </Box>
-          <Box w="16rem">
-            <AttributeValueSelect
-              attribute={attribute}
-              value={values[attribute.attribute] ?? ""}
-              onChange={(value) => onChange(attribute.attribute, value)}
-            />
-          </Box>
-        </Group>
-      ))}
-    </Stack>
-  );
+function getRowName(sections: PrincipalSection[], id: number) {
+  const row = sections
+    .flatMap((section) => section.rows)
+    .find((candidate) => candidate.id === id);
+  return row?.name ?? "";
 }

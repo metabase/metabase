@@ -104,6 +104,10 @@ export type PermissionSectionConfig = {
   onValueClick?: () => void;
   /** Shown on hovering a read-only value (one with `onValueClick`). */
   valueTooltip?: ReactNode;
+  /** Marks the read-only value whose explanation is open: pressed, scrolled into view, and without its tooltip. */
+  isValueSelected?: boolean;
+  /** A short label beside a read-only value, such as "Unsaved". */
+  valueMarker?: string;
 };
 
 // most entity ids are numbers, and many call sites expect a number, so here's a helper

@@ -1,14 +1,14 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- request header names */
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { PLUGIN_API } from "metabase/api/client";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { useGetSettingsQuery } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
 import {
   CONTENT_PREVIEW_LOCATION_MESSAGE_TYPE,
   CONTENT_PREVIEW_PATH,
   CONTENT_PREVIEW_READY_MESSAGE_TYPE,
-  type ContentPreviewItem,
   getContentPreviewItemPath,
   isContentPreviewSessionMessage,
   isCookieContentPreview,
@@ -65,12 +65,22 @@ export function PermissionPreviewContentApp() {
 
   return (
     <DataAppProvider appSlug="permission-preview-content">
-      <PreviewContent
-        initialItem={readInitialItem()}
-        onItemChange={reportItem}
-      />
+      <PersonSettingsGate>
+        <PreviewContent
+          initialItem={readInitialItem()}
+          onLocationChange={reportLocation}
+        />
+      </PersonSettingsGate>
     </DataAppProvider>
   );
+}
+
+// This document's bootstrap holds the public settings only; the person's own (such as `use-tenants`, which decides
+// whether the collection browser lists shared tenant collections) load once their session signs requests in, as the
+// SDK loads them after sign-in.
+function PersonSettingsGate({ children }: { children: ReactNode }) {
+  const { isLoading } = useGetSettingsQuery();
+  return isLoading ? null : <>{children}</>;
 }
 
 // `DataAppProvider` and the SDK stamp these; the server confines a request carrying them to a data app's scope
@@ -107,9 +117,9 @@ function readInitialItem() {
   );
 }
 
-// The frame's own address follows the item, so a reload reopens it.
-function reportItem(item: ContentPreviewItem | null) {
-  const path = item != null ? getContentPreviewItemPath(item) : "";
+// The frame's own address follows the item or collection, so a reload reopens it.
+function reportLocation(path: string) {
+  const item = parseContentPreviewItem(path);
   const { pathname, search } = window.location;
   const base = pathname.slice(
     0,
@@ -118,12 +128,9 @@ function reportItem(item: ContentPreviewItem | null) {
   window.history.replaceState(
     window.history.state,
     "",
-    `${base}${path}${search}`,
+    `${base}${item != null ? getContentPreviewItemPath(item) : ""}${search}`,
   );
-  postToPage({
-    type: CONTENT_PREVIEW_LOCATION_MESSAGE_TYPE,
-    path: path || "/collection/root",
-  });
+  postToPage({ type: CONTENT_PREVIEW_LOCATION_MESSAGE_TYPE, path });
 }
 
 // On the preview host the page is on the site URL's origin, the only one allowed to frame this document.

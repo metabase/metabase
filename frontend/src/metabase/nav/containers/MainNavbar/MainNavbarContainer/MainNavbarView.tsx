@@ -31,7 +31,7 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
-import { useSetting, useUserSetting } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
@@ -44,6 +44,7 @@ import {
   trackNewCollectionFromNavInitiated,
 } from "../analytics";
 import type { SelectedItem } from "../types";
+import { useNavSectionSetting } from "../use-nav-section-setting";
 
 import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
@@ -86,10 +87,10 @@ export function MainNavbarView({
   canCreateSharedCollection,
   showExternalCollectionsSection,
 }: Props) {
-  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
+  const [expandBookmarks = true, setExpandBookmarks] = useNavSectionSetting(
     "expand-bookmarks-in-nav",
   );
-  const [expandCollections = true, setExpandCollections] = useUserSetting(
+  const [expandCollections = true, setExpandCollections] = useNavSectionSetting(
     "expand-collections-in-nav",
   );
 

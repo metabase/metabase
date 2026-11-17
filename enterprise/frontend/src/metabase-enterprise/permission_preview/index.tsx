@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
 import { PLUGIN_API } from "metabase/api/client";
-import {
-  PLUGIN_ADMIN_PERMISSIONS_TABS,
-  PLUGIN_PERMISSION_PREVIEW,
-} from "metabase/plugins";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
 import { PreviewBanner } from "./PreviewBanner";
+import { ReadOnlyToast, isReadOnlyRefusal } from "./ReadOnlyToast";
 import { ViewAsButton } from "./ViewAsButton";
+import { useOutlinedGridCell } from "./grid-outline";
 import {
   getActivePreviewUserId,
   getPreviewAsHeaderHandler,
@@ -29,12 +28,14 @@ export function initializePlugin() {
   }
 
   PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId = getActivePreviewUserId;
+  PLUGIN_PERMISSION_PREVIEW.isReadOnlyRefusal = isReadOnlyRefusal;
 
-  // The host page around the frame shows who is previewed, so the frame has no banner.
+  // The host page around the frame shows who is previewed, so the frame has no banner, only the read-only toast.
   const framePreviewState = readFramePreviewState();
   if (framePreviewState != null) {
     PLUGIN_API.onBeforeRequestHandlers.setPreviewAsHeader =
       getPreviewAsHeaderHandler(framePreviewState);
+    PLUGIN_PERMISSION_PREVIEW.PreviewBanner = ReadOnlyToast;
     return;
   }
 
@@ -47,15 +48,19 @@ export function initializePlugin() {
         restartStoredPreview(previewState),
       );
     PLUGIN_PERMISSION_PREVIEW.PreviewBanner = function PreviewBannerSlot() {
-      return <PreviewBanner state={previewState} />;
+      return (
+        <>
+          <ReadOnlyToast />
+          <PreviewBanner state={previewState} />
+        </>
+      );
     };
     return;
   }
 
-  PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
-    name: t`Troubleshoot`,
-    value: "troubleshoot",
-  });
+  PLUGIN_PERMISSION_PREVIEW.tabs = [
+    { name: t`Troubleshoot`, value: "troubleshoot" },
+  ];
   PLUGIN_PERMISSION_PREVIEW.isEnabled = true;
   PLUGIN_PERMISSION_PREVIEW.getDataRoutes = getDataRoutes;
   PLUGIN_PERMISSION_PREVIEW.getTabRoutes = getTabRoutes;
@@ -63,4 +68,5 @@ export function initializePlugin() {
   PLUGIN_PERMISSION_PREVIEW.PermissionsToolbarButtons =
     PermissionsToolbarButtons;
   PLUGIN_PERMISSION_PREVIEW.ViewAsButton = ViewAsButton;
+  PLUGIN_PERMISSION_PREVIEW.useOutlinedGridCell = useOutlinedGridCell;
 }

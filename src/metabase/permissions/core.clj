@@ -39,6 +39,8 @@
 
 (p/import-vars
  [metabase.permissions.db
+  data-permissions-source
+  do-with-unsaved-data-permissions
   group-tenant-flags
   groups-by-ids]
  [metabase.permissions.models.data-permissions

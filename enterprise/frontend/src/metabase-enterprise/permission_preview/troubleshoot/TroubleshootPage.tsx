@@ -6,18 +6,30 @@ import { PermissionsPageLayout } from "metabase/admin/permissions/components/Per
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+import { DataPermissionsHelp } from "metabase/permissions";
 import { useNavigate, useParams } from "metabase/router";
 import {
   Box,
   Button,
   Flex,
-  Group,
   Icon,
   Loader,
-  SegmentedControl,
+  Menu,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
+import {
+  GroupPreviewInfo,
+  useGroupMemberCount,
+  useStandInGroupNames,
+} from "../GroupPreviewInfo";
+import {
+  ExplainAccessButton,
+  PreviewBand,
+  getPrincipalWhoName,
+  useIsNarrowPreview,
+} from "../PreviewBand";
 import {
   type PreviewCodeResponse,
   type PreviewSessionResponse,
@@ -29,29 +41,30 @@ import {
   useEndPreviewMutation,
   useGetAffectingAttributesQuery,
   useStartPreviewCodeMutation,
+  useStartPreviewMutation,
   useStartPreviewSessionMutation,
 } from "../api";
 import {
+  CONTENT_PREVIEW_ALL_COLLECTIONS_PATH,
   getContentPreviewUrl,
   getPreviewHostContentUrl,
   getPreviewHostSignInUrl,
 } from "../content-preview";
+import { getPreviewUrl } from "../preview-state";
 import { PreviewSidebar } from "../preview/PreviewSidebar";
-import { WhySidesheet, type WhyTarget } from "../preview/WhySidesheet";
 import {
   type PreviewRouteParams,
   parsePrincipal,
   parsePrincipalType,
 } from "../preview/urls";
 
-import { AccessSummarySidesheet } from "./AccessSummarySidesheet";
 import { AttributeBar } from "./AttributeBar";
 import { ContentPreviewFrame } from "./ContentPreviewFrame";
 import { LinkBar } from "./LinkBar";
+import { WhyListSidesheet } from "./WhyListSidesheet";
 import { parseOpenedItem } from "./item-path";
-import { useAccessSummary, useWhyTarget } from "./use-why-target";
 
-const START_PATH = "/collection/root";
+const START_PATH = CONTENT_PREVIEW_ALL_COLLECTIONS_PATH;
 
 type FramePreview = PreviewSessionResponse | PreviewCodeResponse;
 
@@ -60,6 +73,8 @@ type FramePreview = PreviewSessionResponse | PreviewCodeResponse;
  * with the person's own cookie.
  */
 type FrameMode = "same-origin" | "subdomain";
+
+const FRAME_MODES: FrameMode[] = ["same-origin", "subdomain"];
 
 /**
  * Admin › Permissions › Troubleshoot: pick a user, group or tenant, and the app runs as them,
@@ -74,13 +89,14 @@ export function TroubleshootPage() {
   const [openedPath, setOpenedPath] = useState(START_PATH);
   const [openCount, setOpenCount] = useState(0);
   const [framePath, setFramePath] = useState(START_PATH);
-  const [whyOpen, setWhyOpen] = useState<"item" | "summary" | null>(null);
-  const [summaryWhyTarget, setSummaryWhyTarget] = useState<WhyTarget | null>(
-    null,
-  );
+  const [isWhyOpen, setIsWhyOpen] = useState(false);
   const [frameMode, setFrameMode] = useState<FrameMode>("same-origin");
   const [restartCount, setRestartCount] = useState(0);
+  const standInGroupNames = useStandInGroupNames(principal);
+  const groupMemberCount = useGroupMemberCount(principal);
+  const isNarrow = useIsNarrowPreview();
 
+  const [startPreview] = useStartPreviewMutation();
   const request = usePreviewRequest(principal, pickedValues);
   const { preview, error } = usePreviewSession(
     request,
@@ -91,27 +107,8 @@ export function TroubleshootPage() {
   const openedItem = parseOpenedItem(framePath);
   const { data: attributes = [], isFetching: isLoadingAttributes } =
     useGetAffectingAttributesQuery(
-      principal != null
-        ? {
-            principal,
-            cardId: openedItem?.type === "card" ? openedItem.id : undefined,
-            dashboardId:
-              openedItem?.type === "dashboard" ? openedItem.id : undefined,
-          }
-        : skipToken,
+      principal != null ? { principal } : skipToken,
     );
-  const whyTarget = useWhyTarget(principal, openedItem, attributes);
-  const accessSummary = useAccessSummary(
-    whyOpen === "summary" ? principal : null,
-  );
-
-  // a collection, dashboard or question explains itself; anything else gets a summary of the person's access
-  const handleWhy = () => setWhyOpen(openedItem != null ? "item" : "summary");
-  const handleWhyClose = () => {
-    setWhyOpen(null);
-    setSummaryWhyTarget(null);
-  };
-
   // The person changes, the open item stays.
   const keepFramePath = () => setOpenedPath(framePath);
 
@@ -128,8 +125,41 @@ export function TroubleshootPage() {
   };
 
   const handleFrameModeChange = (mode: FrameMode) => {
+    if (mode === frameMode) {
+      return;
+    }
     keepFramePath();
     setFrameMode(mode);
+  };
+
+  // the frame's item in a "View app as…" tab of its own, as the same person with the same values
+  const handleOpenInNewTab = async () => {
+    if (principal == null) {
+      return;
+    }
+    // opened before the request, while the click still counts, so the popup blocker lets it through
+    const newTab = window.open("about:blank", "_blank");
+    const result = await startPreview({
+      ...principal,
+      attributes: pickedValues,
+    });
+    if (newTab == null || result.data == null) {
+      newTab?.close();
+      return;
+    }
+    newTab.opener = null;
+    newTab.location.assign(
+      getPreviewUrl(framePath, {
+        userId: result.data.user_id,
+        userName: result.data.user_name,
+        principalType: principal.type,
+        principalId: principal.id,
+        principalName: result.data.principal_name,
+        attributes: result.data.attributes,
+        returnPath: `${window.location.pathname}${window.location.search}`,
+        previewId: result.data.preview_id,
+      }),
+    );
   };
 
   const handleContentFrameRestart = () => {
@@ -149,11 +179,18 @@ export function TroubleshootPage() {
     [preview, openCount],
   );
 
+  // a new key remounts the frame, which shows the loader until its first load
+  const frameKey = `${preview?.preview_id}-${openCount}`;
+  const [loadedFrameKey, setLoadedFrameKey] = useState<string | null>(null);
+
   const whoName = getWhoName(principalType, preview);
   const frameTitle = t`What ${whoName} sees`;
 
   return (
-    <PermissionsPageLayout tab="troubleshoot">
+    <PermissionsPageLayout
+      tab="troubleshoot"
+      helpContent={<DataPermissionsHelp />}
+    >
       <Flex
         direction="column"
         w="18.75rem"
@@ -176,51 +213,77 @@ export function TroubleshootPage() {
       {principal == null ? (
         <PermissionsEditorEmptyState
           icon="eye"
-          message={t`Select a user, a group or a tenant to see the app as them`}
+          message={t`Select a user, group, or tenant to see the app the way they do`}
         />
       ) : (
         <Flex direction="column" flex={1} miw={0} p="md" gap="sm">
-          <Group
-            role="status"
-            aria-label={t`Viewing as`}
-            bg="feedback-warning"
-            px="md"
-            py="sm"
-            gap="md"
-            wrap="nowrap"
-            style={{ borderRadius: "var(--mantine-radius-md)" }}
+          <PreviewBand
+            variant="troubleshoot"
+            whoName={preview != null ? whoName : null}
+            sentenceSection={
+              principal.type !== "user" &&
+              preview != null && (
+                <GroupPreviewInfo
+                  type={principal.type}
+                  groupNames={standInGroupNames}
+                  attributeValues="picked"
+                  isCompact={isNarrow}
+                />
+              )
+            }
           >
-            <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
-              <Icon name="eye" c="text-primary" />
-              <Text fw="bold" c="text-primary">
-                {preview != null
-                  ? t`Viewing as ${whoName} · Read-only · Audited`
-                  : t`Starting the preview…`}
-              </Text>
-            </Group>
+            {/* the item kept across a person switch may be one the new person can't open */}
+            <Tooltip label={t`Back to all collections`}>
+              <Button
+                size="sm"
+                style={{ flexShrink: 0 }}
+                aria-label={t`Back to all collections`}
+                leftSection={<Icon name="home" />}
+                onClick={() => handleOpen(START_PATH)}
+              />
+            </Tooltip>
             <LinkBar framePath={framePath} onOpen={handleOpen} />
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              disabled={
-                preview == null || (openedItem != null && whyTarget == null)
-              }
-              onClick={handleWhy}
-            >
-              {t`Why?`}
-            </Button>
-            <SegmentedControl
-              ml="auto"
-              style={{ flexShrink: 0 }}
-              aria-label={t`Frame mode`}
-              value={frameMode}
-              data={[
-                { value: "same-origin", label: t`Same origin` },
-                { value: "subdomain", label: t`Subdomain` },
-              ]}
-              onChange={handleFrameModeChange}
+            <ExplainAccessButton
+              isOpen={isWhyOpen}
+              // the band wraps instead of hiding the words
+              isCompact={false}
+              disabled={preview == null}
+              onClick={() => setIsWhyOpen((isOpen) => !isOpen)}
             />
-          </Group>
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <Button
+                  size="sm"
+                  style={{ flexShrink: 0 }}
+                  aria-label={t`More preview options`}
+                  leftSection={<Icon name="ellipsis" />}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="external" />}
+                  onClick={handleOpenInNewTab}
+                >
+                  {t`Open in new tab`}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Label>{t`Frame mode (proof of concept only)`}</Menu.Label>
+                {FRAME_MODES.map((mode) => (
+                  <Menu.Item
+                    key={mode}
+                    role="menuitemradio"
+                    aria-checked={frameMode === mode}
+                    rightSection={
+                      frameMode === mode ? <Icon name="check" /> : null
+                    }
+                    onClick={() => handleFrameModeChange(mode)}
+                  >
+                    {getFrameModeName(mode)}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          </PreviewBand>
           <AttributeBar
             key={`${principal.type}-${principal.id}`}
             principalType={principalType}
@@ -228,6 +291,7 @@ export function TroubleshootPage() {
             attributes={attributes}
             isLoading={isLoadingAttributes}
             pickedValues={pickedValues}
+            groupMemberCount={groupMemberCount}
             onPick={(attribute, value) => {
               keepFramePath();
               setPickedValues((values) => {
@@ -246,18 +310,31 @@ export function TroubleshootPage() {
             mih={0}
             pos="relative"
             style={{
-              border: "4px double var(--mb-color-border-strong)",
+              border: "1px solid var(--mb-color-border-neutral-strong)",
               borderRadius: "var(--mantine-radius-md)",
               overflow: "hidden",
             }}
           >
-            {preview == null ? (
-              <Flex h="100%" align="center" justify="center">
+            {(preview == null || loadedFrameKey !== frameKey) && (
+              <Flex
+                pos="absolute"
+                inset={0}
+                direction="column"
+                align="center"
+                justify="center"
+                gap="md"
+                bg="background_page-primary"
+                style={{ zIndex: 1 }}
+              >
                 <Loader />
+                <Text c="text-secondary">
+                  {whoName !== "" ? t`Loading ${whoName}'s view…` : t`Loading…`}
+                </Text>
               </Flex>
-            ) : (
+            )}
+            {preview != null && (
               <ContentPreviewFrame
-                key={`${preview.preview_id}-${openCount}`}
+                key={frameKey}
                 title={frameTitle}
                 src={frameSrc ?? "about:blank"}
                 frameOrigin={
@@ -272,22 +349,23 @@ export function TroubleshootPage() {
                 onRestart={handleContentFrameRestart}
                 onLoad={() => {
                   signedInPreviewIdRef.current = preview.preview_id;
+                  setLoadedFrameKey(frameKey);
                 }}
               />
             )}
           </Box>
         </Flex>
       )}
-      <AccessSummarySidesheet
-        isOpen={whyOpen === "summary" && summaryWhyTarget == null}
+      <WhyListSidesheet
+        isOpen={isWhyOpen}
+        preview={
+          preview != null
+            ? { userId: preview.user_id, previewId: preview.preview_id }
+            : null
+        }
         whoName={whoName}
-        summary={accessSummary}
-        onWhy={setSummaryWhyTarget}
-        onClose={handleWhyClose}
-      />
-      <WhySidesheet
-        target={summaryWhyTarget ?? (whyOpen === "item" ? whyTarget : null)}
-        onClose={handleWhyClose}
+        openedItem={openedItem}
+        onClose={() => setIsWhyOpen(false)}
       />
     </PermissionsPageLayout>
   );
@@ -317,16 +395,21 @@ function getWhoName(
   principalType: PrincipalType,
   preview: StartPreviewResponse | null,
 ) {
-  if (preview == null) {
-    return "";
-  }
-  switch (principalType) {
-    case "user":
-      return preview.user_name;
-    case "group":
-      return t`a member of ${preview.principal_name}`;
-    case "tenant":
-      return t`a user of ${preview.principal_name}`;
+  return preview != null
+    ? getPrincipalWhoName(
+        principalType,
+        preview.user_name,
+        preview.principal_name,
+      )
+    : "";
+}
+
+function getFrameModeName(mode: FrameMode) {
+  switch (mode) {
+    case "same-origin":
+      return t`Same origin`;
+    case "subdomain":
+      return t`Subdomain`;
   }
 }
 

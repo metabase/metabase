@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import { Button, Flex, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 
@@ -21,7 +22,10 @@ export const ModelExplanationBanner = () => {
     setHasDismissedBanner(true);
   };
 
-  if (hasDismissedBanner) {
+  // a permissions preview can't save the dismissal
+  const isPreviewing =
+    PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId() != null;
+  if (hasDismissedBanner || isPreviewing) {
     return null;
   }
 

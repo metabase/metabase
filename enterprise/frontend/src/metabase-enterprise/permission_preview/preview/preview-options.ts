@@ -156,6 +156,27 @@ export function getPreviewOption(
   return OPTIONS_BY_COLUMN[column][value] ?? NO_OPTION;
 }
 
+/** A value as the permissions graph stores it ("full", "all", "none"), named the way the preview grids name it. */
+export function getGraphValueLabel(
+  column: PreviewColumn,
+  value: string,
+): string {
+  const option = Object.values(OPTIONS_BY_COLUMN[column]).find(
+    (option) => option.value === value,
+  );
+  if (option != null) {
+    return option.label;
+  }
+  switch (value) {
+    case DataPermissionValue.CONTROLLED:
+      return GRANULAR_OPTION.label;
+    case DataPermissionValue.ALL:
+      return YES_OPTION.label;
+    default:
+      return NO_OPTION.label;
+  }
+}
+
 // The grid keys a row's cells by `type`, so each column needs its own.
 const PERMISSION_BY_COLUMN: Record<
   PreviewColumn,

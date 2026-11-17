@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { render, screen } from "__support__/ui";
 
@@ -73,4 +74,41 @@ describe("Sidesheet", () => {
     await userEvent.click(backdrop);
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("moves focus to a non-modal sheet's title and back to its opener on close", async () => {
+    render(<NonModalSheetWithOpener />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.getByText("My Title")).toHaveFocus();
+
+    await userEvent.click(screen.getByLabelText("Close"));
+    expect(screen.getByRole("button", { name: "Open" })).toHaveFocus();
+  });
+
+  it("returns focus to a non-modal sheet's opener when Escape closes it", async () => {
+    render(<NonModalSheetWithOpener />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open" })).toHaveFocus();
+  });
 });
+
+function NonModalSheetWithOpener() {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)}>Open</button>
+      <Sidesheet
+        title="My Title"
+        isOpen={isOpen}
+        isModal={false}
+        onClose={() => setIsOpen(false)}
+      >
+        hello world
+      </Sidesheet>
+    </>
+  );
+}

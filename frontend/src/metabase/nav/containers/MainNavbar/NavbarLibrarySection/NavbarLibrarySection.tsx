@@ -16,8 +16,9 @@ import {
 } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
+
+import { useNavSectionSetting } from "../use-nav-section-setting";
 
 type LibraryCollectionSectionProps = {
   collections: Collection[];
@@ -90,7 +91,7 @@ export function NavbarLibrarySection({
   selectedId,
   onItemSelect,
 }: LibraryCollectionSectionProps) {
-  const [expandLibrary = true, setExpandLibrary] = useUserSetting(
+  const [expandLibrary = true, setExpandLibrary] = useNavSectionSetting(
     "expand-library-in-nav",
   );
 

@@ -3,6 +3,7 @@
   group's own and the group that applies, and no rows."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.permission-debug.preview :as permission-debug.preview]
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -33,6 +34,33 @@
   [cell]
   (some #(when (= (:group_id cell) (:group_id %)) (:name %)) (:groups cell)))
 
+(deftest group-member-count-test
+  (testing "A group's member count comes back as a number, for the frontend to pluralize"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {one-id :id}   {}
+                     :model/PermissionsGroup {seven-id :id} {}
+                     :model/User             {user-4 :id}   {}
+                     :model/User             {user-5 :id}   {}
+                     :model/User             {user-6 :id}   {}
+                     :model/User             {user-7 :id}   {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) one-id)
+        (doseq [user-id (concat (map mt/user->id [:rasta :lucky :crowberto]) [user-4 user-5 user-6 user-7])]
+          (perms/add-user-to-group! user-id seven-id))
+        (is (= 1 (get-in (preview "data" "group" one-id) [:principal :member_count])))
+        (is (= 7 (get-in (preview "data" "group" seven-id) [:principal :member_count])))))))
+
+(deftest principals-user-group-ids-test
+  (testing "Each user in the picker lists their groups, so a group's members can be listed"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+        (let [users     (:users (mt/user-http-request :crowberto :get 200 "ee/permission_debug/preview/principals"))
+              group-ids (fn [user-key]
+                          (some #(when (= (mt/user->id user-key) (:id %)) (set (:group_ids %))) users))]
+          (is (contains? (group-ids :rasta) group-id))
+          (is (contains? (group-ids :rasta) (:id (perms/all-users-group))))
+          (is (not (contains? (group-ids :lucky) group-id))))))))
+
 (deftest data-sandboxed-and-blocked-tables-test
   (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                     :attributes {"cat" 50}}
@@ -48,11 +76,14 @@
             (is (= "sandboxed" (:value view_data)))
             (is (= group-name (applies view_data)))
             (is (= {"All Users" "blocked" group-name "sandboxed"} (group-values view_data)))
-            (is (= {:kind       "sandbox"
-                    :group_id   (u/the-id &group)
-                    :group_name group-name
-                    :rows       "Filtered by the \"cat\" attribute (\"50\")."
-                    :columns    "All columns."}
+            (is (= {:kind          "sandbox"
+                    :group_id      (u/the-id &group)
+                    :group_name    group-name
+                    :database_name (:name (mt/db))
+                    :table_name    "Venues"
+                    :rows          nil
+                    :filters       [{:attribute "cat" :value "50" :each_member false :column "Venues.Category ID"}]
+                    :columns       "All columns."}
                    security))))
         (testing "a table blocked in every group is blocked, with every group's value"
           (let [{:keys [view_data security]} (table-entry response :users)]
@@ -66,8 +97,30 @@
                    :transforms      {:value "no"}}
                   (first (:databases response)))))
         (testing "a group previews any member: the sandbox names each member's own attribute value"
-          (is (= "Filtered by the \"cat\" attribute (each member's own value)."
-                 (:rows (:security (table-entry (preview "data" "group" (u/the-id &group)) :venues))))))))))
+          (let [security (:security (table-entry (preview "data" "group" (u/the-id &group)) :venues))]
+            (is (nil? (:rows security)))
+            (is (= [{:attribute "cat" :value nil :each_member true :column "Venues.Category ID"}]
+                   (:filters security)))))))))
+
+(deftest data-with-preview-attribute-values-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                    :attributes {"cat" 50}}
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (let [admin-id (mt/user->id :crowberto)
+            rasta-id (mt/user->id :rasta)
+            cat-of   (fn [& params]
+                       (-> (apply preview "data" "user" rasta-id params)
+                           (table-entry :venues)
+                           :security :filters first :value))]
+        (permission-debug.preview/set-attribute-overrides! admin-id rasta-id "preview-1" {"cat" "40"})
+        (try
+          (testing "the values the admin picked for the preview, in place of the user's own"
+            (is (= "40" (cat-of :preview-id "preview-1"))))
+          (testing "the user's own values for another preview, or with none"
+            (is (= "50" (cat-of :preview-id "another-preview")))
+            (is (= "50" (cat-of))))
+          (finally
+            (permission-debug.preview/clear-attribute-overrides! admin-id rasta-id "preview-1")))))))
 
 (deftest data-sandbox-overridden-by-another-group-test
   (met/with-gtaps! {:gtaps {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}}
@@ -80,7 +133,7 @@
             (is (= "unrestricted" (:value view_data)))
             (is (= "Unrestricted group" (applies view_data)))
             (is (= (str "Row and column security from " (:name &group)
-                        " doesn't apply: another group grants unrestricted access.")
+                        " doesn't apply, because another group has Can view.")
                    (:note view_data)))
             (is (nil? security))))))))
 

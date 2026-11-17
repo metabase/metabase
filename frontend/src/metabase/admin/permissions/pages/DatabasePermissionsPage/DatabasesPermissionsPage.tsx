@@ -142,7 +142,7 @@ export function DatabasesPermissionsPage() {
       <Box w="14rem" mb="md">
         <SegmentedControl
           fullWidth
-          aria-label={t`Rows`}
+          aria-label={t`Rows to show`}
           data={[
             { value: "groups", label: t`Groups` },
             { value: "preview", label: t`Preview` },

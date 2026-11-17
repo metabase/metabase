@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { t } from "ttag";
+import { useLayoutEffect, useRef, useState } from "react";
+import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
-import { useGetFieldQuery } from "metabase/api";
-import { FieldValuesWidget } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget";
-import { Button, Group, Popover, Stack, Text, TextInput } from "metabase/ui";
-import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
-import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import type { FieldId } from "metabase-types/api";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Popover,
+  Stack,
+  Text,
+  TextInput,
+  UnstyledButton,
+} from "metabase/ui";
 
-import { AttributeValueSelect } from "../AttributeValueSelect";
-import type { AffectingAttribute, AttributeUse, PrincipalType } from "../api";
+import type {
+  AffectingAttribute,
+  AttributeRuleKind,
+  AttributeUse,
+  PrincipalType,
+} from "../api";
+import { formatList } from "../format-list";
 
 type AttributeBarProps = {
   principalType: PrincipalType;
@@ -20,14 +31,13 @@ type AttributeBarProps = {
   pickedValues: Record<string, string>;
   /** `null` resets the attribute to the person's own value. */
   onPick: (attribute: string, value: string | null) => void;
-  /**
-   * Whether the picker may load the filtered column's values itself. Off in the "View app as…" tab, where that call
-   * would run as the previewed person: it offers the values the backend listed as the admin instead.
-   */
-  canQueryFields?: boolean;
+  /** "User attributes:" above the chips, for a narrow panel. */
+  isLabelOnOwnRow?: boolean;
+  /** A group's size, so its chips say how many members share the value: "Gadget · 2 of 7 members". */
+  groupMemberCount?: number | null;
 };
 
-/** The attributes a security rule reads for the previewed person, as chips under the band; each opens its picker. */
+/** The previewed person's attributes, as chips under the band; each opens its picker and says where it's used. */
 export function AttributeBar({
   principalType,
   whoName,
@@ -35,34 +45,43 @@ export function AttributeBar({
   isLoading,
   pickedValues,
   onPick,
-  canQueryFields = true,
+  isLabelOnOwnRow = false,
+  groupMemberCount,
 }: AttributeBarProps) {
+  // nothing beside "User attributes:" until they load
+  const label = !isLoading && (
+    <Text fz="sm" c="text-secondary">{t`User attributes:`}</Text>
+  );
+
   return (
-    <Group
-      gap="xs"
-      aria-label={t`Attributes`}
-      role="toolbar"
-      wrap="wrap"
-      mih="1.75rem"
-    >
-      <Text fz="sm" c="text-secondary">{t`Attributes:`}</Text>
-      {!isLoading && attributes.length === 0 && (
-        <Text c="text-secondary" fz="sm">
-          {t`No security rule reads an attribute here.`}
-        </Text>
-      )}
-      {attributes.map((attribute) => (
-        <AttributeChip
-          key={attribute.attribute}
-          principalType={principalType}
-          whoName={whoName}
-          attribute={attribute}
-          pickedValue={pickedValues[attribute.attribute]}
-          canQueryFields={canQueryFields}
-          onPick={(value) => onPick(attribute.attribute, value)}
-        />
-      ))}
-    </Group>
+    <Stack gap="xs">
+      {isLabelOnOwnRow && label}
+      <Group
+        gap="xs"
+        aria-label={t`User attributes`}
+        role="toolbar"
+        wrap="wrap"
+        mih="1.75rem"
+      >
+        {!isLabelOnOwnRow && label}
+        {!isLoading && attributes.length === 0 && (
+          <Text c="text-secondary" fz="sm">
+            {t`No user attributes`}
+          </Text>
+        )}
+        {attributes.map((attribute) => (
+          <AttributeChip
+            key={attribute.attribute}
+            principalType={principalType}
+            whoName={whoName}
+            attribute={attribute}
+            pickedValue={pickedValues[attribute.attribute]}
+            groupMemberCount={groupMemberCount}
+            onPick={(value) => onPick(attribute.attribute, value)}
+          />
+        ))}
+      </Group>
+    </Stack>
   );
 }
 
@@ -71,7 +90,7 @@ type AttributeChipProps = {
   whoName: string;
   attribute: AffectingAttribute;
   pickedValue: string | undefined;
-  canQueryFields: boolean;
+  groupMemberCount?: number | null;
   onPick: (value: string | null) => void;
 };
 
@@ -80,12 +99,11 @@ function AttributeChip({
   whoName,
   attribute,
   pickedValue,
-  canQueryFields,
+  groupMemberCount,
   onPick,
 }: AttributeChipProps) {
   const [isOpened, setIsOpened] = useState(false);
   const value = pickedValue ?? attribute.value ?? "";
-  const column = attribute.uses.find((use) => use.column != null)?.column;
   const isOverridden =
     principalType === "user" &&
     pickedValue != null &&
@@ -99,30 +117,37 @@ function AttributeChip({
   return (
     <Popover opened={isOpened} onChange={setIsOpened} position="bottom-start">
       <Popover.Target>
-        <Button
-          size="compact-sm"
-          radius="xl"
-          variant={isOverridden ? "light" : "default"}
-          td={attribute.applies ? undefined : "line-through"}
-          c={attribute.applies ? undefined : "text-secondary"}
+        {/* a chip, not a link: bordered, the same on every page */}
+        <UnstyledButton
+          px="sm"
+          py={2}
+          maw="100%"
+          bg={
+            isOverridden
+              ? "background_surface-brand-subtle"
+              : "background_page-primary"
+          }
+          c="text-primary"
+          style={CHIP_BORDER}
           onClick={() => setIsOpened((opened) => !opened)}
         >
-          <Group gap="xs" wrap="nowrap">
+          <Group gap={4} wrap="nowrap">
             <Text fw="bold" fz="sm" c="inherit">
-              {`${attribute.attribute}:`}
+              {attribute.attribute}
             </Text>
-            <Text fz="sm" c="inherit">
+            <Text fz="sm" c="inherit" truncate>
               {value === "" ? t`No value` : value}
             </Text>
-            {column != null && (
-              <Text fz="xs" c="text-secondary">
-                {`→ ${column}`}
+            {principalType === "group" && groupMemberCount != null && (
+              <Text fz="sm" c="text-secondary" style={{ whiteSpace: "nowrap" }}>
+                {`· ${getMemberShare(attribute, value, groupMemberCount)}`}
               </Text>
             )}
+            <Icon name="chevrondown" size={10} c="text-secondary" />
           </Group>
-        </Button>
+        </UnstyledButton>
       </Popover.Target>
-      <Popover.Dropdown p="md" maw="22rem">
+      <Popover.Dropdown p="md" w="22rem">
         <Stack gap="sm">
           <Text fw="bold" fz="sm">
             {attribute.attribute}
@@ -130,19 +155,13 @@ function AttributeChip({
           <AttributePicker
             attribute={attribute}
             value={value}
-            canQueryFields={canQueryFields}
             onPick={handlePick}
           />
-          {attribute.uses.map((use, index) => (
-            <Text key={index} fz="xs" c="text-secondary">
-              {getUseLabel(use)}
+          {getUseLines(attribute.uses).map((line) => (
+            <Text key={line} fz="xs" c="text-secondary">
+              {line}
             </Text>
           ))}
-          {!attribute.applies && (
-            <Text fz="xs" c="text-secondary">
-              {t`The open item doesn't use this rule.`}
-            </Text>
-          )}
           {principalType === "user" && (
             <Group gap="xs" justify="space-between" wrap="nowrap">
               <Text fz="xs" c="text-secondary">
@@ -161,14 +180,69 @@ function AttributeChip({
   );
 }
 
+/** "2 of 7 members": how many of the group's members have the value. */
+function getMemberShare(
+  attribute: AffectingAttribute,
+  value: string,
+  memberCount: number,
+) {
+  const count =
+    attribute.member_values?.find((memberValue) => memberValue.value === value)
+      ?.count ?? 0;
+  return ngettext(
+    msgid`${count} of ${memberCount} member`,
+    `${count} of ${memberCount} members`,
+    memberCount,
+  );
+}
+
+const CHIP_BORDER = {
+  border: "1px solid var(--mb-color-border-neutral)",
+  borderRadius: "var(--mantine-radius-xl)",
+};
+
+type AttributeTagProps = {
+  attribute: string;
+  /** The value, or the words for none, such as "each member's own". */
+  value: string;
+};
+
+/** The same chip as the attribute bar's, read-only: "category Gizmo". */
+export function AttributeTag({ attribute, value }: AttributeTagProps) {
+  return (
+    <Group
+      gap={4}
+      wrap="nowrap"
+      px="sm"
+      py={2}
+      maw="100%"
+      miw={0}
+      bg="background_page-primary"
+      c="text-primary"
+      style={CHIP_BORDER}
+    >
+      <Text fw="bold" fz="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
+        {attribute}
+      </Text>
+      <Text fz="sm" c="inherit" truncate>
+        {value}
+      </Text>
+    </Group>
+  );
+}
+
 /** "Sandy Sales's value: Gizmo, from JWT": a user's own value and where it comes from. */
 function getOwnValueLabel(whoName: string, attribute: AffectingAttribute) {
   const value = attribute.value ?? t`No value`;
   switch (attribute.source) {
     case "jwt":
       return t`${whoName}'s value: ${value}, from JWT`;
-    case "tenant":
-      return t`${whoName}'s value: ${value}, from tenant ${attribute.tenant_name ?? ""}`;
+    case "tenant": {
+      const tenantName = attribute.tenant_name;
+      return tenantName != null
+        ? t`${whoName}'s value: ${value}, from the ${tenantName} tenant`
+        : t`${whoName}'s value: ${value}, from their tenant`;
+    }
     case "admin":
       return t`${whoName}'s value: ${value}, set by an admin`;
     default:
@@ -176,15 +250,27 @@ function getOwnValueLabel(whoName: string, attribute: AffectingAttribute) {
   }
 }
 
-function getUseLabel(use: AttributeUse) {
-  switch (use.kind) {
-    case "sandbox":
-      return t`Row security: ${use.label}`;
-    case "impersonation":
-      return t`Connection impersonation: ${use.label}`;
-    case "routing":
-      return t`Database routing: ${use.label}`;
+/**
+ * Where the person's rules read the attribute, whatever page is open: "Used by row and column security on Orders and
+ * Products", one line per kind of rule, or "No permission rule uses this attribute."
+ */
+function getUseLines(uses: AttributeUse[]) {
+  if (uses.length === 0) {
+    return [t`No permission rule uses this attribute.`];
   }
+  const labelsOf = (kind: AttributeRuleKind) =>
+    _.uniq(uses.filter((use) => use.kind === kind).map((use) => use.label));
+  const sandboxTables = labelsOf("sandbox");
+  const impersonatedDatabases = labelsOf("impersonation");
+  const routedDatabases = labelsOf("routing");
+  return [
+    sandboxTables.length > 0 &&
+      t`Used by row and column security on ${formatList(sandboxTables)}`,
+    impersonatedDatabases.length > 0 &&
+      t`Used by connection impersonation on ${formatList(impersonatedDatabases)}`,
+    routedDatabases.length > 0 &&
+      t`Used by database routing on ${formatList(routedDatabases)}`,
+  ].filter((line): line is string => typeof line === "string");
 }
 
 type AttributePickerProps = {
@@ -193,118 +279,162 @@ type AttributePickerProps = {
   onPick: (value: string) => void;
 };
 
-/** The picker the attribute's rule calls for: the filtered column's values, the router's databases, or free text. */
-function AttributePicker({
-  attribute,
-  value,
-  canQueryFields,
-  onPick,
-}: AttributePickerProps & { canQueryFields: boolean }) {
-  const sandboxFieldId = attribute.uses.find(
-    (use) => use.kind === "sandbox" && use.field_id != null,
-  )?.field_id;
-  const hasListedValues =
-    (attribute.member_values?.length ?? 0) > 0 ||
-    (attribute.other_values?.length ?? 0) > 0;
-
-  if (sandboxFieldId != null && canQueryFields) {
-    return (
-      <FieldValuePicker
-        fieldId={sandboxFieldId}
-        attribute={attribute}
-        value={value}
-        onPick={onPick}
-      />
-    );
-  }
-  if (
-    attribute.uses.some((use) => use.kind === "routing") ||
-    (sandboxFieldId != null && hasListedValues)
-  ) {
-    return (
-      <AttributeValueSelect
-        size="xs"
-        attribute={{
-          attribute: attribute.attribute,
-          uses: [],
-          member_values: attribute.member_values ?? [],
-          other_values: attribute.other_values ?? [],
-          default: attribute.value,
-        }}
-        value={value}
-        withinPortal={false}
-        onChange={onPick}
-      />
-    );
-  }
-  return (
+/** The values the backend lists for the attribute (members' first, with their count), or free text when it lists none. */
+function AttributePicker({ attribute, value, onPick }: AttributePickerProps) {
+  const memberValues = attribute.member_values ?? [];
+  const otherValues = attribute.other_values ?? [];
+  return memberValues.length > 0 || otherValues.length > 0 ? (
+    <ValueList
+      attribute={attribute}
+      value={value}
+      memberValues={memberValues}
+      otherValues={otherValues}
+      onPick={onPick}
+    />
+  ) : (
     <TextValuePicker attribute={attribute} value={value} onPick={onPick} />
   );
 }
 
-type FieldValuePickerProps = AttributePickerProps & { fieldId: FieldId };
+type ValueListProps = AttributePickerProps & {
+  memberValues: { value: string; count: number }[];
+  otherValues: string[];
+};
 
-function FieldValuePicker({
-  fieldId,
+/** A searchable list in the popover itself, so nothing opens on top of it; a click picks. */
+function ValueList({
   attribute,
   value,
+  memberValues,
+  otherValues,
   onPick,
-}: FieldValuePickerProps) {
-  const { data: field } = useGetFieldQuery({ id: fieldId });
-  const [draft, setDraft] = useState(value);
-  if (field == null) {
-    return null;
-  }
-  const fieldInfo = getParameterFieldInfo(field);
-  const parameter: FieldFilterUiParameter = {
-    id: `attribute-${attribute.attribute}`,
-    name: attribute.attribute,
-    slug: attribute.attribute,
-    type: "string/=",
-    fields: [fieldInfo],
-  };
-  const memberValues = attribute.member_values ?? [];
+}: ValueListProps) {
+  const [search, setSearch] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    // opens on the current value, which can be far down a long list (TX for state)
+    const list = listRef.current;
+    const selected = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (list != null && selected != null) {
+      list.scrollTop =
+        selected.offsetTop - (list.clientHeight - selected.offsetHeight) / 2;
+    }
+  }, []);
+  const matches = (candidate: string) =>
+    candidate.toLowerCase().includes(search.trim().toLowerCase());
+  const memberSet = new Set(
+    memberValues.map((memberValue) => memberValue.value),
+  );
+  const shownMembers = memberValues.filter((memberValue) =>
+    matches(memberValue.value),
+  );
+  const shownOthers = otherValues.filter(
+    (otherValue) => !memberSet.has(otherValue) && matches(otherValue),
+  );
 
   return (
     <Stack gap="xs">
-      <FieldValuesWidget
-        parameter={parameter}
-        fields={[fieldInfo]}
-        value={draft === "" ? [] : [draft]}
-        onChange={(values) => {
-          const last = values[values.length - 1];
-          setDraft(last == null ? "" : String(last));
-        }}
-        minWidth={280}
-        maxWidth={280}
+      <TextInput
+        size="xs"
+        aria-label={attribute.attribute}
+        placeholder={t`Search the values`}
+        leftSection={<Icon name="search" />}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        autoFocus
       />
-      <Group justify="flex-end">
-        <Button
-          size="compact-sm"
-          variant="filled"
-          disabled={draft === value}
-          onClick={() => onPick(draft)}
-        >
-          {t`Apply`}
-        </Button>
-      </Group>
-      {memberValues.length > 0 && (
-        <Group gap={4}>
-          <Text fz="xs" c="text-secondary">{t`Members:`}</Text>
-          {memberValues.map((memberValue) => (
-            <Button
-              key={memberValue.value}
-              size="compact-sm"
-              variant={memberValue.value === value ? "filled" : "default"}
-              onClick={() => onPick(memberValue.value)}
-            >
-              {`${memberValue.value} (${memberValue.count})`}
-            </Button>
-          ))}
-        </Group>
-      )}
+      <Box
+        ref={listRef}
+        role="listbox"
+        aria-label={t`Values of ${attribute.attribute}`}
+        mah="20rem"
+        pos="relative"
+        style={{ overflowY: "auto" }}
+      >
+        {shownMembers.length > 0 && (
+          <ValueListHeading>{t`Members' values`}</ValueListHeading>
+        )}
+        {shownMembers.map((memberValue) => (
+          <ValueListRow
+            key={memberValue.value}
+            label={memberValue.value}
+            detail={getMemberCount(memberValue.count)}
+            isSelected={memberValue.value === value}
+            onClick={() => onPick(memberValue.value)}
+          />
+        ))}
+        {shownMembers.length > 0 && shownOthers.length > 0 && (
+          <ValueListHeading>{t`Other values`}</ValueListHeading>
+        )}
+        {shownOthers.map((otherValue) => (
+          <ValueListRow
+            key={otherValue}
+            label={otherValue}
+            isSelected={otherValue === value}
+            onClick={() => onPick(otherValue)}
+          />
+        ))}
+        {matches(t`No value`) && (
+          <ValueListRow
+            label={t`No value`}
+            isSelected={value === ""}
+            onClick={() => onPick("")}
+          />
+        )}
+      </Box>
     </Stack>
   );
+}
+
+function ValueListHeading({ children }: { children: string }) {
+  return (
+    <Text fz="xs" c="text-secondary" px="sm" pt="sm" pb="xs">
+      {children}
+    </Text>
+  );
+}
+
+function ValueListRow({
+  label,
+  detail,
+  isSelected,
+  onClick,
+}: {
+  label: string;
+  detail?: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <UnstyledButton
+      role="option"
+      aria-selected={isSelected}
+      w="100%"
+      px="sm"
+      py="xs"
+      bg={isSelected ? "core-brand" : undefined}
+      style={{ borderRadius: "var(--mantine-radius-sm)" }}
+      onClick={onClick}
+    >
+      <Group justify="space-between" wrap="nowrap" gap="sm">
+        <Text c={isSelected ? "text-primary-inverse" : undefined} truncate>
+          {label}
+        </Text>
+        {detail != null && (
+          <Text
+            fz="sm"
+            c={isSelected ? "text-primary-inverse" : "text-secondary"}
+          >
+            {detail}
+          </Text>
+        )}
+      </Group>
+    </UnstyledButton>
+  );
+}
+
+function getMemberCount(count: number) {
+  return ngettext(msgid`${count} member`, `${count} members`, count);
 }
 
 function TextValuePicker({ attribute, value, onPick }: AttributePickerProps) {

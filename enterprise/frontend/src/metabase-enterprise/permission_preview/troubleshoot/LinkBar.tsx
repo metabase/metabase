@@ -2,15 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { entityIdApi } from "metabase/api";
-import {
-  ActionIcon,
-  Button,
-  Group,
-  Icon,
-  Menu,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 
 import {
   NUMERIC_ID_TYPES,
@@ -28,7 +20,7 @@ type LinkBarProps = {
   onOpen: (path: string) => void;
 };
 
-/** Opens a pasted link, path, entity id or numeric ID in the frame. */
+/** The frame's address bar: follows the frame, and opens a pasted link, path, entity id or numeric ID in it. */
 export function LinkBar({ framePath, onOpen }: LinkBarProps) {
   const [text, setText] = useState(framePath);
   const [numericId, setNumericId] = useState<number | null>(null);
@@ -66,7 +58,9 @@ export function LinkBar({ framePath, onOpen }: LinkBarProps) {
         if (found?.id != null) {
           onOpen(getEntityPath(found.type, found.id));
         } else {
-          setError(t`No question, dashboard or collection has this entity ID`);
+          setError(
+            t`No question, dashboard, or collection has this entity ID.`,
+          );
         }
       }
     }
@@ -80,59 +74,50 @@ export function LinkBar({ framePath, onOpen }: LinkBarProps) {
   };
 
   return (
-    <Group gap="xs" wrap="nowrap" flex={1}>
-      <TextInput
-        flex={1}
-        size="xs"
-        aria-label={t`Link, entity ID or ID`}
-        placeholder={t`Paste a link, entity ID or ID`}
-        value={text}
-        error={error}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            handleOpen();
+    <Menu
+      opened={numericId != null}
+      onChange={(isOpened) => !isOpened && setNumericId(null)}
+      position="bottom-end"
+    >
+      <Menu.Target>
+        {/* an address bar: Enter opens what's in it, and it shows where the frame is */}
+        <TextInput
+          miw="12rem"
+          // shrinks first: a factor this large leaves the band's sentence less than a layout unit until this is at its
+          // minimum, so the sentence doesn't truncate early
+          style={{ flex: "1 1000000 24rem" }}
+          size="xs"
+          aria-label={t`Address`}
+          placeholder={t`Paste a link, entity ID, or ID`}
+          value={text}
+          error={error}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              handleOpen();
+            }
+          }}
+          leftSection={<Icon name="link" />}
+          rightSection={
+            isFetching ? (
+              <Loader size="xs" />
+            ) : (
+              <Icon name="enter_or_return" c="text-secondary" />
+            )
           }
-        }}
-        rightSection={
-          text !== "" ? (
-            <ActionIcon
-              size="xs"
-              aria-label={t`Clear`}
-              onClick={() => setText("")}
-            >
-              <Icon name="close" />
-            </ActionIcon>
-          ) : null
-        }
-      />
-      <Menu
-        opened={numericId != null}
-        onChange={(isOpened) => !isOpened && setNumericId(null)}
-        position="bottom-end"
-      >
-        <Menu.Target>
-          <Button
-            size="compact-sm"
-            variant="filled"
-            loading={isFetching}
-            onClick={handleOpen}
-          >
-            {t`Open`}
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Text px="sm" py="xs" c="text-secondary" fz="sm">
-            {t`Open ID ${numericId} as a`}
-          </Text>
-          {NUMERIC_ID_TYPES.map((type) => (
-            <Menu.Item key={type} onClick={() => handleNumericIdType(type)}>
-              {getNumericIdTypeName(type)}
-            </Menu.Item>
-          ))}
-        </Menu.Dropdown>
-      </Menu>
-    </Group>
+        />
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Text px="sm" py="xs" c="text-secondary" fz="sm">
+          {t`Which item has ID ${numericId}?`}
+        </Text>
+        {NUMERIC_ID_TYPES.map((type) => (
+          <Menu.Item key={type} onClick={() => handleNumericIdType(type)}>
+            {getNumericIdTypeName(type)}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 

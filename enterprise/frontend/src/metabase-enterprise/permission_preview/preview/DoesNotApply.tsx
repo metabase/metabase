@@ -20,7 +20,7 @@ export function DoesNotApply({ principal, reason }: DoesNotApplyProps) {
         <Flex gap="md" align="flex-start">
           <Icon name="close" size={20} c="feedback-negative" mt="xs" />
           <Stack gap="xs">
-            <Title order={4}>{t`Doesn't apply`}</Title>
+            <Title order={4}>{t`This tab doesn't apply to tenant users`}</Title>
             {reason && <Text>{reason}</Text>}
           </Stack>
         </Flex>

@@ -21,9 +21,12 @@ export const CONTENT_PREVIEW_SESSION_MESSAGE_TYPE =
 export const CONTENT_PREVIEW_LOCATION_MESSAGE_TYPE =
   "metabase.permission-preview-content.location";
 
+/** The frame's collection browser at its top, "All collections": no item is open. */
+export const CONTENT_PREVIEW_ALL_COLLECTIONS_PATH = "/";
+
 /** The item the content frame shows. */
 export type ContentPreviewItem = {
-  type: "dashboard" | "question" | "collection";
+  type: "dashboard" | "question" | "model" | "metric" | "collection";
   id: number;
 };
 
@@ -89,6 +92,10 @@ export function parseContentPreviewItem(
       return { type: "dashboard", id };
     case "collection":
       return { type: "collection", id };
+    case "model":
+      return { type: "model", id };
+    case "metric":
+      return { type: "metric", id };
     default:
       return { type: "question", id };
   }

@@ -9,6 +9,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
@@ -402,6 +403,17 @@ describe("QB Actions > initializeQB", () => {
               user: createMockUser({ is_qbnewb: true }),
             });
             expect(result.uiControls.isShowingNewbModal).toBe(true);
+          });
+
+          it("does not show modal during a permissions preview, which can't save that it was seen", async () => {
+            jest
+              .spyOn(PLUGIN_PERMISSION_PREVIEW, "getActivePreviewUserId")
+              .mockReturnValue(3);
+            const { result } = await setup({
+              card: card,
+              user: createMockUser({ is_qbnewb: true }),
+            });
+            expect(result.uiControls.isShowingNewbModal).toBeFalsy();
           });
 
           it("does not show modal if user has seen it", async () => {

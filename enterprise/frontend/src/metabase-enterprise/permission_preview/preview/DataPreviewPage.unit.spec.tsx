@@ -1,11 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupGroupsEndpoint,
+  setupPermissionPreviewAttributesEndpoint,
   setupPermissionPreviewDataEndpoint,
-  setupPermissionPreviewPrincipalsEndpoint,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
+import { createMockUserListResult } from "metabase-types/api/mocks";
 
 import type {
   PreviewCell,
@@ -50,6 +53,7 @@ const DATA_PREVIEW: PreviewDataResponse = {
     id: 3,
     name: "Sandy Sales",
     detail: "sandy@example.com",
+    member_count: null,
     superuser: false,
     tenant_side: false,
     attributes: { category: "Gizmo" },
@@ -77,7 +81,17 @@ const DATA_PREVIEW: PreviewDataResponse = {
             kind: "sandbox",
             group_id: SALES.id,
             group_name: SALES.name,
-            rows: 'Filtered by the "category" attribute ("Gizmo").',
+            database_name: "Sample Database",
+            table_name: "Products",
+            rows: null,
+            filters: [
+              {
+                attribute: "category",
+                value: "Gizmo",
+                each_member: false,
+                column: "Products.Category",
+              },
+            ],
             columns: "All columns.",
           },
         }),
@@ -91,19 +105,12 @@ type SetupOpts = {
 };
 
 function setup({ initialRoute }: SetupOpts) {
-  setupPermissionPreviewPrincipalsEndpoint({
-    users: [
-      {
-        id: 3,
-        name: "Sandy Sales",
-        detail: "sandy@example.com",
-        tenant_side: false,
-      },
-    ],
-    groups: [],
-    tenants: [],
-  });
+  setupUsersEndpoints([
+    createMockUserListResult({ id: 3, common_name: "Sandy Sales" }),
+  ]);
+  setupGroupsEndpoint([]);
   setupPermissionPreviewDataEndpoint(DATA_PREVIEW);
+  setupPermissionPreviewAttributesEndpoint([]);
 
   renderWithProviders(
     <>
@@ -133,7 +140,7 @@ describe("DataPreviewPage", () => {
     expect(createQueries).toHaveTextContent("Query builder only");
   });
 
-  it("explains a table's value with its row and column security and the group that applies", async () => {
+  it("explains a table's value with its row security and the group that applies", async () => {
     setup({
       initialRoute: "/admin/permissions/data/preview/user/3/database/1",
     });
@@ -149,11 +156,36 @@ describe("DataPreviewPage", () => {
     ).toBeInTheDocument();
     expect(
       within(sidesheet).getByText(
-        'Filtered by the "category" attribute ("Gizmo").',
+        "Sandy Sales sees only the Products rows that match the user attributes below.",
       ),
     ).toBeInTheDocument();
-    expect(within(sidesheet).getByLabelText("Groups")).toHaveTextContent(
-      "All UsersBlockedSalesRow and column securityAppliesThe most permissive group applies.",
+    expect(
+      within(sidesheet).getByLabelText("Row and column security"),
+    ).toHaveTextContent(
+      "Set bySalesRowscategoryGizmo→ Products.CategoryColumnsAll columns.",
     );
+    expect(within(sidesheet).getByLabelText("Groups")).toHaveTextContent(
+      "SalesAppliesRow and column securityAll UsersBlockedThe most permissive group applies.",
+    );
+  });
+
+  it("marks the value the sheet explains, and leaves the grid reachable behind it", async () => {
+    setup({
+      initialRoute: "/admin/permissions/data/preview/user/3/database/1",
+    });
+
+    const row = await screen.findByRole("row", {
+      name: "Products permissions",
+    });
+    const value = within(row).getAllByTestId("permissions-select")[0];
+    expect(value).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(value);
+
+    expect(await screen.findByRole("dialog")).toHaveAttribute(
+      "aria-modal",
+      "false",
+    );
+    expect(value).toHaveAttribute("aria-pressed", "true");
   });
 });

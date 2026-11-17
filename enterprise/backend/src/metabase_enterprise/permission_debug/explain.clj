@@ -16,6 +16,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
+   [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -37,6 +38,8 @@
    [:id          pos-int?]
    [:name        :string]
    [:detail      [:maybe :string]]
+   ;; a group's members or a tenant's users; the frontend pluralizes it
+   [:member_count [:maybe nat-int?]]
    [:superuser   :boolean]
    [:tenant_side :boolean]
    [:groups      [:sequential [:map {:closed true}
@@ -59,8 +62,17 @@
   [:map {:closed true}
    [:kind       [:enum "sandbox" "impersonation"]]
    [:group_id   pos-int?]
-   [:group_name :string]
-   [:rows       :string]
+   [:group_name    :string]
+   [:database_name :string]
+   [:table_name    :string]
+   ;; nil for a filter on user attributes, which `:filters` shows instead
+   [:rows          [:maybe :string]]
+   ;; the attributes the rule reads, one per filter: `each_member` for a group, whose members bring their own values
+   [:filters    [:sequential [:map {:closed true}
+                              [:attribute   :string]
+                              [:value       [:maybe :string]]
+                              [:each_member :boolean]
+                              [:column      [:maybe :string]]]]]
    [:columns    :string]])
 
 (def ^:private TableAccess
@@ -130,15 +142,18 @@
 
 (def PrincipalsResponse
   "What [[previewable-principals]] returns."
-  (let [Entry [:map {:closed true}
-               [:id          pos-int?]
-               [:name        :string]
-               [:detail      [:maybe :string]]
-               [:tenant_side :boolean]]]
+  (let [entry (fn [& extra-keys]
+                (into [:map {:closed true}
+                       [:id          pos-int?]
+                       [:name        :string]
+                       [:detail      [:maybe :string]]
+                       [:member_count [:maybe nat-int?]]
+                       [:tenant_side :boolean]]
+                      extra-keys))]
     [:map {:closed true}
-     [:users   [:sequential Entry]]
-     [:groups  [:sequential Entry]]
-     [:tenants [:sequential Entry]]]))
+     [:users   [:sequential (entry [:email [:maybe :string]] [:group_ids [:sequential pos-int?]])]]
+     [:groups  [:sequential (entry [:built_in :boolean])]]
+     [:tenants [:sequential (entry)]]]))
 
 ;;; ------------------------------------------------- Principals --------------------------------------------------
 
@@ -152,16 +167,6 @@
     (str (get tenant-names tenant_id) " · " email)
     email))
 
-(defn- group-detail
-  [group-id]
-  (let [members (permission-debug.db/group-member-count group-id)]
-    (trun "{0} member" "{0} members" members)))
-
-(defn- tenant-detail
-  [tenant-id]
-  (let [users (permission-debug.db/tenant-user-count tenant-id)]
-    (trun "{0} user" "{0} users" users)))
-
 (defn- user-principal
   [user-id]
   (let [user (api/check-404 (permission-debug.db/user-for-explain user-id))]
@@ -169,6 +174,7 @@
      :id                     user-id
      :name                   (user-name user)
      :detail                 (user-detail user (permission-debug.db/tenant-names))
+     :member_count           nil
      :superuser              (boolean (:is_superuser user))
      :tenant_side            (some? (:tenant_id user))
      :tenant-id              (:tenant_id user)
@@ -180,12 +186,13 @@
 
 (defn- group-principal
   [group-id]
-  (let [group-name (api/check-404 (permission-debug.db/group-name group-id))
+  (let [group      (api/check-404 (first (permission-debug.db/groups #{group-id})))
         tenant?    (permission-debug.db/tenant-group? group-id)]
     {:type        "group"
      :id          group-id
-     :name        group-name
-     :detail      (group-detail group-id)
+     :name        (perms/group-display-name group (perms/use-tenants))
+     :detail      nil
+     :member_count (permission-debug.db/group-member-count group-id)
      :superuser   (= group-id (:id (perms/admin-group)))
      :tenant_side tenant?
      ;; not a set literal: previewing All Users or All tenant users itself names the same id twice
@@ -198,7 +205,8 @@
     {:type        "tenant"
      :id          tenant-id
      :name        (:name tenant)
-     :detail      (tenant-detail tenant-id)
+     :detail      nil
+     :member_count (permission-debug.db/tenant-user-count tenant-id)
      :superuser   false
      :tenant_side true
      :tenant-id   tenant-id
@@ -212,31 +220,49 @@
             "user"   (user-principal principal-id)
             "group"  (group-principal principal-id)
             "tenant" (tenant-principal principal-id))]
-    (assoc p :group-rows (permission-debug.db/groups (:group-ids p)))))
+    (assoc p :group-rows (let [using-tenants? (perms/use-tenants)]
+                           ;; the names the Permissions group list shows ("All internal users" once tenants are on)
+                           (mapv #(assoc % :name (perms/group-display-name % using-tenants?))
+                                 (permission-debug.db/groups (:group-ids p)))))))
 
 (defn- principal-response
   [p]
-  (-> (select-keys p [:type :id :name :detail :superuser :tenant_side :attributes])
+  (-> (select-keys p [:type :id :name :detail :member_count :superuser :tenant_side :attributes])
       (assoc :groups (mapv #(select-keys % [:id :name]) (:group-rows p)))))
 
 (mu/defn previewable-principals :- PrincipalsResponse
   "Every user, group and tenant an admin can preview, for the picker."
   []
-  (let [tenant-names (permission-debug.db/tenant-names)]
-    {:users   (for [user (permission-debug.db/previewable-users)]
+  ;; the same people as the Permissions tabs' preview list: no admins and no Administrators group (an admin sees
+  ;; everything), groups named and marked built-in as there
+  (let [tenant-names    (permission-debug.db/tenant-names)
+        using-tenants?  (perms/use-tenants)
+        admin-group-id  (:id (perms/admin-group))
+        built-in-ids    #{(:id (perms/all-users-group)) (:id (perms/all-external-users-group))}
+        group-ids-of    (permission-debug.db/group-ids-by-user)]
+    {:users   (for [user  (permission-debug.db/previewable-users)
+                    :when (not (:is_superuser user))]
                 {:id          (:id user)
                  :name        (user-name user)
-                 :detail      (user-detail user tenant-names)
+                 :email       (:email user)
+                 ;; for "Preview a real member", which lists a group's members
+                 :group_ids   (vec (group-ids-of (:id user)))
+                 :detail      (some-> (:tenant_id user) tenant-names)
+                 :member_count nil
                  :tenant_side (some? (:tenant_id user))})
-     :groups  (for [group (permission-debug.db/previewable-groups)]
+     :groups  (for [group (permission-debug.db/previewable-groups)
+                    :when (not= (:id group) admin-group-id)]
                 {:id          (:id group)
-                 :name        (:name group)
-                 :detail      (group-detail (:id group))
+                 :name        (perms/group-display-name group using-tenants?)
+                 :detail      nil
+                 :member_count (permission-debug.db/group-member-count (:id group))
+                 :built_in    (contains? built-in-ids (:id group))
                  :tenant_side (boolean (:is_tenant_group group))})
      :tenants (for [tenant (permission-debug.db/previewable-tenants)]
                 {:id          (:id tenant)
                  :name        (:name tenant)
-                 :detail      (tenant-detail (:id tenant))
+                 :detail      nil
+                 :member_count (permission-debug.db/tenant-user-count (:id tenant))
                  :tenant_side true})}))
 
 ;;; ---------------------------------------------------- Cells ----------------------------------------------------
@@ -281,12 +307,12 @@
 ;;; ------------------------------------------------- Data access -------------------------------------------------
 
 (defn- attribute-value-text
-  "How the value of `attribute` reads for this principal: the value, missing, or per member for a group."
+  "How the value of `attribute` reads for this principal: the value, no value, or per member for a group."
   [attributes attribute]
   (cond
     (nil? attributes)                (tru "each member''s own value")
-    (contains? attributes attribute) (tru "\"{0}\"" (str (get attributes attribute)))
-    :else                            (tru "missing")))
+    (contains? attributes attribute) (str "\"" (get attributes attribute) "\"")
+    :else                            (tru "no value")))
 
 (defn- routing-reasons
   [database-id attributes superuser?]
@@ -294,35 +320,42 @@
     (let [value (get attributes attribute)]
       [(cond
          (nil? attributes)
-         (tru "Database routing on attribute \"{0}\": each member goes to the destination their own value names." attribute)
+         (tru "Database routing uses the \"{0}\" user attribute: each member goes to the destination their own value names." attribute)
 
          (= value "__METABASE_ROUTER__")
-         (tru "Database routing on attribute \"{0}\": the value sends queries to the router database itself." attribute)
+         (tru "Database routing uses the \"{0}\" user attribute: the value sends queries to the router database itself." attribute)
 
          (and (nil? value) superuser?)
-         (tru "Database routing on attribute \"{0}\": admins without the attribute query the router database." attribute)
+         (tru "Database routing uses the \"{0}\" user attribute: admins with no value query the router database." attribute)
 
          (nil? value)
-         (tru "Database routing on attribute \"{0}\": the attribute is missing, so every query fails." attribute)
+         (tru "Database routing uses the \"{0}\" user attribute: there''s no value, so every query fails." attribute)
 
          (permission-debug.db/destination-database-name-exists? database-id (str value))
-         (tru "Database routing on attribute \"{0}\": queries go to the destination database \"{1}\"." attribute (str value))
+         (tru "Database routing uses the \"{0}\" user attribute: queries go to the destination database \"{1}\"." attribute (str value))
 
          :else
-         (tru "Database routing on attribute \"{0}\": no destination database is named \"{1}\", so every query fails."
+         (tru "Database routing uses the \"{0}\" user attribute: no destination database is named \"{1}\", so every query fails."
               attribute (str value)))])))
+
+(defn- attribute-filter
+  [attributes attribute column]
+  {:attribute   attribute
+   :value       (some-> (get attributes attribute) str)
+   :each_member (nil? attributes)
+   :column      column})
 
 (defn- sandbox-security
   [{:keys [group_id card_id attribute_remappings]} group-name attributes]
   {:kind       "sandbox"
    :group_id   group_id
    :group_name group-name
-   :rows       (if card_id
-                 (tru "Rows come from the saved question \"{0}\"." (:name (permission-debug.db/card card_id)))
-                 (tru "Filtered by {0}."
-                      (str/join ", " (for [attribute (sort (keys attribute_remappings))]
-                                       (tru "the \"{0}\" attribute ({1})" attribute
-                                            (attribute-value-text attributes attribute))))))
+   :rows       (when card_id
+                 (tru "Rows come from the saved question \"{0}\"." (:name (permission-debug.db/card card_id))))
+   :filters    (if card_id
+                 []
+                 (for [[attribute target] (sort-by key attribute_remappings)]
+                   (attribute-filter attributes attribute (permission-debug.impl/remapping-column-label target))))
    :columns    (if card_id
                  (tru "Only the saved question''s columns.")
                  (tru "All columns."))})
@@ -332,12 +365,13 @@
   {:kind       "impersonation"
    :group_id   group_id
    :group_name group-name
-   :rows       (tru "The database role from the \"{0}\" attribute ({1}) decides." attribute
+   :rows       (tru "Queries use the database role named in the \"{0}\" user attribute ({1})." attribute
                     (attribute-value-text attributes attribute))
-   :columns    (tru "The database role decides.")})
+   :filters    [(attribute-filter attributes attribute nil)]
+   :columns    (tru "The database role decides which columns show.")})
 
 (defn- table-access
-  [{:keys [group-rows attributes]} database-id sandboxes impersonations {table-id :id :as table}]
+  [{:keys [group-rows attributes]} {database-id :id database-name :name} sandboxes impersonations {table-id :id :as table}]
   (let [table-sandboxes  (filter #(= table-id (:table_id %)) sandboxes)
         sandboxed-ids    (set (map :group_id table-sandboxes))
         impersonated-ids (set (map :group_id impersonations))
@@ -363,16 +397,18 @@
                                :else                        value)))
         view-data        (cell group-rows view-data-of view-data-rank)
         group-name       (into {} (map (juxt :id :name)) group-rows)
-        security         (case (:value view-data)
-                           "sandboxed"    (sandbox-security (some #(when (= (:group_id view-data) (:group_id %)) %)
-                                                                  table-sandboxes)
-                                                            (group-name (:group_id view-data))
-                                                            attributes)
-                           "impersonated" (impersonation-security (some #(when (= (:group_id view-data) (:group_id %)) %)
-                                                                        impersonations)
-                                                                  (group-name (:group_id view-data))
-                                                                  attributes)
-                           nil)
+        security         (some-> (case (:value view-data)
+                                   "sandboxed"    (sandbox-security (some #(when (= (:group_id view-data) (:group_id %)) %)
+                                                                          table-sandboxes)
+                                                                    (group-name (:group_id view-data))
+                                                                    attributes)
+                                   "impersonated" (impersonation-security (some #(when (= (:group_id view-data) (:group_id %)) %)
+                                                                                impersonations)
+                                                                          (group-name (:group_id view-data))
+                                                                          attributes)
+                                   nil)
+                                 (assoc :database_name database-name
+                                        :table_name (or (:display_name table) (:name table))))
         overridden       (when (= "unrestricted" (:value view-data))
                            (seq (keep #(when (#{"sandboxed" "impersonated"} (:value %)) (:name %)) (:groups view-data))))
         metadata         (cell group-rows (value-of :perms/manage-table-metadata) (ranks :perms/manage-table-metadata))
@@ -382,7 +418,7 @@
      :name                  (:name table)
      :display_name          (:display_name table)
      :view_data             (cond-> view-data
-                              overridden (assoc :note (tru "Row and column security from {0} doesn''t apply: another group grants unrestricted access."
+                              overridden (assoc :note (tru "Row and column security from {0} doesn''t apply, because another group has Can view."
                                                            (str/join ", " overridden))))
      :create_queries        (cell group-rows (value-of :perms/create-queries) (ranks :perms/create-queries))
      :download_results      (cell group-rows (value-of :perms/download-results) (ranks :perms/download-results))
@@ -407,16 +443,19 @@
      :reasons         (vec (routing-reasons database-id attributes superuser))
      :manage_database (database-cell p :perms/manage-database database-id)
      :transforms      (database-cell p :perms/transforms database-id)
-     :tables          (mapv #(table-access p database-id sandboxes impersonations %)
+     :tables          (mapv #(table-access p database sandboxes impersonations %)
                             (permission-debug.db/active-tables-of-database database-id))}))
 
 (mu/defn explain-data-access :- DataAccessResponse
   "What the principal gets on every database and table, each value with every group's own and the one that applies.
-  Shows no data."
-  [{:keys [principal-type principal-id]} :- [:map {:closed true}
-                                             [:principal-type PrincipalType]
-                                             [:principal-id   pos-int?]]]
-  (let [p (principal principal-type principal-id)]
+  Shows no data. `attribute-overrides` replace the principal's own attribute values, as a preview's do."
+  [{:keys [principal-type principal-id attribute-overrides]} :- [:map {:closed true}
+                                                                 [:principal-type      PrincipalType]
+                                                                 [:principal-id        pos-int?]
+                                                                 [:attribute-overrides {:optional true}
+                                                                  [:maybe [:map-of :string :string]]]]]
+  (let [p (cond-> (principal principal-type principal-id)
+            (seq attribute-overrides) (update :attributes request/with-attribute-overrides attribute-overrides))]
     {:principal (principal-response p)
      :databases (mapv #(database-access p %) (permission-debug.db/previewable-databases))}))
 
@@ -435,7 +474,7 @@
                   :let [{:keys [group-ids] :as p} (principal "user" user-id)]]
               {:principal (principal-response p)
                :access    (table-access p
-                                        database-id
+                                        database
                                         (permission-debug.db/sandboxes-for-groups-in-database group-ids database-id)
                                         (permission-debug.db/impersonations-for-groups-in-database group-ids database-id)
                                         table)})}))
@@ -493,14 +532,14 @@
      (case p-type
        "user"  (when personal-collection-id
                  [(membership-row personal-collection-id (tru "Their personal collection") 0 "personal" "write"
-                                  (tru "Everyone curates their own personal collection. It isn''t set per group."))])
+                                  (tru "Everyone has Curate access to their own personal collection, whatever their groups."))])
        "group" [(membership-row nil (tru "Each member''s personal collection") 0 "personal" "write"
-                                (tru "Everyone curates their own personal collection. It isn''t set per group."))]
+                                (tru "Everyone has Curate access to their own personal collection, whatever their groups."))]
        nil))))
 
 (defn- shared-collection-rows
   [p graph]
-  (cons (group-collection-row p graph :root (tru "Root shared collection") 0)
+  (cons (group-collection-row p graph :root (tru "Shared collections") 0)
         (for [{:keys [id name depth]} (tree-order (permission-debug.db/collections-in-namespace "shared-tenant-collection") 1)]
           (group-collection-row p graph id name depth))))
 
@@ -510,7 +549,7 @@
   can't open other tenants'."
   [{:keys [tenant_side tenant-id] :as p} graph]
   (let [collections (tree-order (permission-debug.db/collections-in-namespace "tenant-specific") 0)
-        membership  (tru "A tenant''s users curate their tenant''s collection from being members of the tenant. It isn''t set per group.")]
+        membership  (tru "Tenant users have Curate access to their own tenant''s collection because they belong to the tenant, whatever their groups.")]
     (cond
       (not tenant_side)
       (for [{:keys [id name depth]} collections]
@@ -523,11 +562,11 @@
           (if own?
             (membership-row id name depth "tenant" "write" membership)
             (membership-row id name depth "other-tenant" "none"
-                            (tru "Tenant users only ever open their own tenant''s collection.")))))
+                            (tru "Tenant users can only open their own tenant''s collection.")))))
 
       :else
       [(membership-row nil (tru "Each member''s own tenant collection") 0 "tenant" "write"
-                       (str membership " " (tru "Other tenants'' collections stay closed.")))])))
+                       (tru "Tenant users have Curate access to their own tenant''s collection because they belong to the tenant, whatever their groups. They can''t open other tenants'' collections."))])))
 
 (mu/defn explain-collection-access :- CollectionsResponse
   "What the principal gets on each collection of one tab: main collections, shared collections or tenant collections."
@@ -541,7 +580,7 @@
     {:principal   (principal-response p)
      :applies     applies?
      :reason      (when-not applies?
-                    (tru "Tenant users never see the main collections: tenant groups can''t be given access to them, so they aren''t on this tab. Check Shared collections and Tenant collections instead."))
+                    (tru "Tenant users can''t see the collections on this tab, because tenant groups can''t get access to them. Check the Shared collections and Tenant collections tabs instead."))
      :collections (if applies?
                     (vec (case collection-namespace
                            "default" (main-collection-rows p graph)
@@ -564,7 +603,7 @@
     {:principal   (principal-response p)
      :applies     (not tenant_side)
      :reason      (when tenant_side
-                    (tru "Tenant groups can''t be given application permissions, so tenant users never get settings, monitoring or subscription access."))
+                    (tru "Tenant groups can''t get application permissions, so tenant users never get settings, monitoring, or subscription access."))
      :permissions (if tenant_side
                     []
                     (for [perm-type perm-types]

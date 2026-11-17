@@ -14,6 +14,7 @@ import {
   selectQuestionFromOpts,
 } from "metabase/metadata-store";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import {
   getTemplateTagCardIds,
   hasSnippetTemplateTags,
@@ -433,7 +434,10 @@ async function handleQBInit(
       question = question.lockDisplay();
     }
 
-    if (currentUser?.is_qbnewb) {
+    // a permissions preview can't save that the previewed user has seen the intro, so it doesn't show it
+    const isPreviewing =
+      PLUGIN_PERMISSION_PREVIEW.getActivePreviewUserId() != null;
+    if (currentUser?.is_qbnewb && !isPreviewing) {
       uiControls.isShowingNewbModal = true;
     }
   }

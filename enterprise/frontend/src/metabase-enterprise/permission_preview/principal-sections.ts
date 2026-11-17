@@ -12,17 +12,18 @@ import type {
 } from "metabase-types/api";
 
 import {
-  type PrincipalListItem,
+  type PreviewPrincipalsResponse,
   type PrincipalType,
   useListPreviewPrincipalsQuery,
 } from "./api";
 
-/** One row of a who-picker: icon, name, email under it, and a dimmed detail on the right. */
+/** One row of a who-picker, the same in every list: icon, name, a line under the name, and a dimmed detail on the right. */
 export type PrincipalRow = {
   id: number;
   name: string;
-  email?: string;
-  /** A user's tenant, or a group's or tenant's size. */
+  /** A user's email, after their tenant's name for a tenant user ("Acme · tina@acme.example"). */
+  secondary?: string;
+  /** A group's or tenant's size. */
   detail?: string;
   icon: IconName;
 };
@@ -67,39 +68,57 @@ export function usePrincipalSections(type: PrincipalType) {
 export function usePreviewPrincipalSections(type: PrincipalType) {
   const hasTenants = Boolean(hasPremiumFeature("tenants"));
   const { data, isLoading, error } = useListPreviewPrincipalsQuery();
-  const items = data?.[`${type}s`] ?? [];
-  const toRow = (item: PrincipalListItem): PrincipalRow => ({
-    id: item.id,
-    name: item.name,
-    detail: item.detail || undefined,
-    icon: PRINCIPAL_ICONS[type],
-  });
-  const [tenantSide, internal] = _.partition(items, (item) => item.tenant_side);
-  const sections =
-    type === "tenant"
-      ? [{ rows: items.map(toRow) }]
-      : toSections(hasTenants, [
-          {
-            title: type === "user" ? t`Internal users` : t`Internal groups`,
-            rows: internal.map(toRow),
-          },
-          {
-            title: type === "user" ? t`Tenant users` : t`Tenant groups`,
-            rows: tenantSide.map(toRow),
-          },
-        ]);
+  const sections = getPreviewSections(type, hasTenants, data);
   return { sections, isLoading, error };
 }
 
-const PRINCIPAL_ICONS: Record<PrincipalType, IconName> = {
-  user: "person",
-  group: "group",
-  tenant: "globe",
-};
+function getPreviewSections(
+  type: PrincipalType,
+  hasTenants: boolean,
+  data: PreviewPrincipalsResponse | undefined,
+): PrincipalSection[] {
+  switch (type) {
+    case "user":
+      return getUserSections(
+        hasTenants,
+        (data?.users ?? []).map((user) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email ?? undefined,
+          tenantName: user.detail ?? undefined,
+        })),
+      );
+    case "group":
+      return getGroupSections(
+        hasTenants,
+        (data?.groups ?? []).map((group) => ({
+          isTenantGroup: group.tenant_side,
+          isBuiltIn: group.built_in,
+          row: {
+            id: group.id,
+            name: group.name,
+            detail: getMemberCount(group.member_count ?? 0),
+            icon: getGroupIcon(group.built_in, group.tenant_side),
+          },
+        })),
+      );
+    case "tenant":
+      return [
+        {
+          rows: (data?.tenants ?? []).map((tenant) => ({
+            id: tenant.id,
+            name: tenant.name,
+            detail: getUserCount(tenant.member_count ?? 0),
+            icon: "globe",
+          })),
+        },
+      ];
+  }
+}
 
-/** Matches the name, the email and the detail, so a tenant's name finds its users. */
+/** Matches the name, the line under it and the detail, so a tenant's name finds its users. */
 export function matchesPrincipalSearch(row: PrincipalRow, query: string) {
-  const text = [row.name, row.email, row.detail].join(" ").toLowerCase();
+  const text = [row.name, row.secondary, row.detail].join(" ").toLowerCase();
   return text.includes(query.trim().toLowerCase());
 }
 
@@ -123,54 +142,44 @@ function getSections({
       const tenantNames = new Map(
         tenants.map((tenant) => [tenant.id, tenant.name]),
       );
-      const rows = users
-        .filter((user) => !user.is_superuser)
-        .map((user) => ({
-          tenantId: user.tenant_id,
-          row: {
+      return getUserSections(
+        hasTenants,
+        users
+          .filter((user) => !user.is_superuser)
+          .map((user) => ({
             id: user.id,
             name: user.common_name,
             email: user.email,
-            detail:
+            tenantName:
               user.tenant_id != null
                 ? tenantNames.get(user.tenant_id)
                 : undefined,
-            icon: "person" as const,
-          },
-        }));
-      const [tenantUsers, internalUsers] = _.partition(
-        rows,
-        ({ tenantId }) => tenantId != null,
+          })),
       );
-      return toSections(hasTenants, [
-        { title: t`Internal users`, rows: sortByName(internalUsers) },
-        {
-          title: t`Tenant users`,
-          rows: _.sortBy(sortByName(tenantUsers), (row) => row.detail ?? ""),
-        },
-      ]);
     }
-    case "group": {
-      const rows = groups
-        .filter((group) => group.magic_group_type !== "admin")
-        .map((group) => ({
-          isTenantGroup: Boolean(group.is_tenant_group),
-          row: {
-            id: group.id,
-            name: group.name,
-            detail: getMemberCount(group.member_count ?? 0),
-            icon: getGroupIcon(group),
-          },
-        }));
-      const [tenantGroups, internalGroups] = _.partition(
-        rows,
-        ({ isTenantGroup }) => isTenantGroup,
+    case "group":
+      return getGroupSections(
+        hasTenants,
+        groups
+          .filter((group) => group.magic_group_type !== "admin")
+          .map((group) => {
+            // the Permissions group sidebar pins these (`group-sidebar.ts`)
+            const isBuiltIn =
+              group.magic_group_type != null &&
+              group.magic_group_type !== "data-analyst";
+            const isTenantGroup = Boolean(group.is_tenant_group);
+            return {
+              isTenantGroup,
+              isBuiltIn,
+              row: {
+                id: group.id,
+                name: group.name,
+                detail: getMemberCount(group.member_count ?? 0),
+                icon: getGroupIcon(isBuiltIn, isTenantGroup),
+              },
+            };
+          }),
       );
-      return toSections(hasTenants, [
-        { title: t`Internal groups`, rows: builtInFirst(internalGroups) },
-        { title: t`Tenant groups`, rows: builtInFirst(tenantGroups) },
-      ]);
-    }
     case "tenant":
       return [
         {
@@ -187,16 +196,61 @@ function getSections({
   }
 }
 
-function sortByName(entries: { row: PrincipalRow }[]) {
-  return _.sortBy(
-    entries.map(({ row }) => row),
-    (row) => row.name.toLowerCase(),
+type UserEntry = {
+  id: number;
+  name: string;
+  email?: string;
+  tenantName?: string;
+};
+
+/** Internal users by name, then tenant users by tenant and name, each with the tenant first on the line under the name. */
+function getUserSections(
+  hasTenants: boolean,
+  users: UserEntry[],
+): PrincipalSection[] {
+  const [tenantUsers, internalUsers] = _.partition(
+    _.sortBy(users, (user) => user.name.toLowerCase()),
+    (user) => user.tenantName != null,
   );
+  const toRow = (user: UserEntry): PrincipalRow => ({
+    id: user.id,
+    name: user.name,
+    secondary:
+      [user.tenantName, user.email].filter(Boolean).join(" · ") || undefined,
+    icon: "person",
+  });
+  return toSections(hasTenants, [
+    { title: t`Internal users`, rows: internalUsers.map(toRow) },
+    {
+      title: t`Tenant users`,
+      rows: _.sortBy(tenantUsers, (user) => user.tenantName ?? "").map(toRow),
+    },
+  ]);
 }
 
-/** Built-in groups lead, as in the Permissions group sidebar. */
-function builtInFirst(entries: { row: PrincipalRow }[]) {
-  return _.sortBy(sortByName(entries), (row) => (row.icon === "bolt" ? 0 : 1));
+type GroupEntry = {
+  isTenantGroup: boolean;
+  isBuiltIn: boolean;
+  row: PrincipalRow;
+};
+
+/** Internal groups, then tenant groups, built-in ones first, as in the Permissions group sidebar. */
+function getGroupSections(
+  hasTenants: boolean,
+  groups: GroupEntry[],
+): PrincipalSection[] {
+  const sorted = _.sortBy(
+    _.sortBy(groups, (group) => group.row.name.toLowerCase()),
+    (group) => (group.isBuiltIn ? 0 : 1),
+  );
+  const [tenantGroups, internalGroups] = _.partition(
+    sorted,
+    (group) => group.isTenantGroup,
+  );
+  return toSections(hasTenants, [
+    { title: t`Internal groups`, rows: internalGroups.map(({ row }) => row) },
+    { title: t`Tenant groups`, rows: tenantGroups.map(({ row }) => row) },
+  ]);
 }
 
 /** Without tenants there's one kind of entry, so no headings. */
@@ -208,19 +262,17 @@ function toSections(hasTenants: boolean, sections: PrincipalSection[]) {
 }
 
 /** The icons the Permissions group sidebar uses (`group-sidebar.ts`). */
-function getGroupIcon(group: GroupListQuery): IconName {
-  const isPinned =
-    group.magic_group_type != null && group.magic_group_type !== "data-analyst";
-  if (isPinned) {
+function getGroupIcon(isBuiltIn: boolean, isTenantGroup: boolean): IconName {
+  if (isBuiltIn) {
     return "bolt";
   }
-  return group.is_tenant_group ? "globe" : "group";
+  return isTenantGroup ? "globe" : "group";
 }
 
 function getMemberCount(count: number) {
   return ngettext(msgid`${count} member`, `${count} members`, count);
 }
 
-function getUserCount(count: number) {
+export function getUserCount(count: number) {
   return ngettext(msgid`${count} user`, `${count} users`, count);
 }
