@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";

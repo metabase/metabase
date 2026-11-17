@@ -268,6 +268,37 @@ describe("EntityPickerModal", () => {
       await expectInactiveItem("Question in Nested Coll"); // level 3
     });
 
+    it.each<{ pickerName: string; models: OmniPickerItem["model"][] }>([
+      { pickerName: "collection picker", models: ["collection"] },
+      {
+        pickerName: "data picker",
+        models: ["table", "card", "dataset", "metric"],
+      },
+    ])(
+      "should not list the trash in Our analytics in the $pickerName",
+      async ({ models }) => {
+        await setup({
+          models,
+          value: { id: "root", model: "collection" },
+          archivedRootCollectionItems: [
+            createMockCollectionItem({
+              id: 20000000,
+              model: "collection",
+              name: "Trash",
+              type: "trash",
+              here: ["card", "dataset", "collection"],
+              below: ["card", "dataset", "collection"],
+              collection_id: null,
+            }),
+          ],
+        });
+
+        await expectActiveItem("Our analytics");
+        expect(await screen.findByText("First Collection")).toBeInTheDocument();
+        expect(screen.queryByText("Trash")).not.toBeInTheDocument();
+      },
+    );
+
     it("should navigate back", async () => {
       await setup({ value: { id: 33, model: "collection" } });
 
@@ -1101,13 +1132,13 @@ describe("EntityPickerModal", () => {
   describe("Data apps", () => {
     const OWLS = createMockDataApp({
       id: 8,
-      name: "owls",
-      display_name: "Owls",
+      slug: "owls",
+      name: "Owls",
     });
     const HERONS = createMockDataApp({
       id: 9,
-      name: "herons",
-      display_name: "Herons",
+      slug: "herons",
+      name: "Herons",
     });
     const options = { hasDataApps: true, hasConfirmButtons: false };
     const models: OmniPickerItem["model"][] = ["card", "data-app"];

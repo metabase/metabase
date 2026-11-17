@@ -4,7 +4,7 @@
   The appdb (`osi_ai_context` + library membership) is authoritative; the index carries one embedding
   per value-document and serves the `retrieve_library_entities` Metabot tool's similarity search.
   These `defenterprise` shims route to [[metabase-enterprise.search.entity-retrieval.core]] when an enterprise
-  license with library retrieval is present; otherwise they no-op or return empty."
+  license with library retrieval is present; otherwise searches are unavailable and writes no-op."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
@@ -36,14 +36,15 @@
 (defenterprise search-unfiltered
   "Similarity-search the library entity index for the documents nearest `user-search-prompt`.
   Returns up to `limit` matches shaped `{:entity {:model :id} :doc_type :doc_text :score}`,
-  best score first; [] in OSS or when no pgvector store is configured.
+  best score first, or [] for no matches. Returns :busy when the index is being updated and :unavailable
+  when the index or embedding configuration cannot serve a search (including OSS).
 
   The index is user-agnostic, so a hit's names, descriptions, synonyms, and examples may belong to an entity
   the current user cannot read. Anything user-facing must first resolve each entity against the appdb, keep
   only the readable ones, and drop hits that no longer resolve."
   metabase-enterprise.search.entity-retrieval.core
   [_user-search-prompt _limit]
-  [])
+  :unavailable)
 
 (defenterprise library-entity-keys
   "Set of `[entity_type entity_local_id]` for every entity currently in the library; nil in OSS.

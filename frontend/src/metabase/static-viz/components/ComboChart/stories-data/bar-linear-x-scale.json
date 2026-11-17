@@ -102,7 +102,6 @@
       "include_csv": false,
       "display": "bar",
       "entity_id": "F0ilvRwx1c9FxZEr9p1fa",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["generation"],
         "graph.x_axis.scale": "linear",

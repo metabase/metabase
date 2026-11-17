@@ -10,7 +10,8 @@
    [metabase.transforms.models.transform-run-cancelation :as trc]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)))
+   (java.time OffsetDateTime)
+   (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -83,7 +84,7 @@
           (t2/insert! :model/TransformRunCancelation
                       {:run_id run-id
                        :time   (.minusMinutes (OffsetDateTime/now) 5)})
-          (@#'canceling/cancel-old-transform-runs! nil)
+          (@#'canceling/cancel-old-transform-runs! (reify JobExecutionContext))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
@@ -112,7 +113,7 @@
             (t2/insert! :model/TransformRunCancelation {:run_id r2 :time old}))
           ;; Simulate r2 already finished by a concurrent path before the sweep fires.
           (t2/update! :model/TransformRun :id r2 {:is_active nil :status :canceled})
-          (@#'canceling/cancel-old-transform-runs! nil)
+          (@#'canceling/cancel-old-transform-runs! (reify JobExecutionContext))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
           (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id r1)))))
@@ -125,7 +126,7 @@
           (t2/insert! :model/TransformRunCancelation
                       {:run_id run-id :time (.minusMinutes (OffsetDateTime/now) 5)})
           (with-redefs [t2/update! (fn [& _] (throw (ex-info "boom" {})))]
-            (@#'canceling/cancel-old-transform-runs! nil))
+            (@#'canceling/cancel-old-transform-runs! (reify JobExecutionContext)))
           ;; Aggregate error: we don't know per-row magnitude after a rollback, just that the sweep failed.
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))))

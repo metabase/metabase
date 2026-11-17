@@ -196,6 +196,12 @@ const SEARCH_SEMANTICS_DATABASE = createMockDatabase({
   ],
 });
 
+const DATABASE_WITH_NO_TABLES = createMockDatabase({
+  id: nextId(),
+  name: "DATABASE_WITH_NO_TABLES",
+  tables: [],
+});
+
 const MOCK_DATABASES = [
   DATABASE_WITH_MULTIPLE_SCHEMAS,
   DATABASE_WITH_SINGLE_SCHEMA,
@@ -417,6 +423,17 @@ describe("TablePicker", () => {
       // the schema is flattened into the parent
       expect(item(QUU)).toBeInTheDocument();
       expect(item(QUX)).toBeInTheDocument();
+    });
+
+    it("stops loading and hides the chevron when an expanded database has no tables (metabase#79450)", async () => {
+      setup({
+        databases: [DATABASE_WITH_MULTIPLE_SCHEMAS, DATABASE_WITH_NO_TABLES],
+      });
+      await waitLoading();
+
+      await clickItem(DATABASE_WITH_NO_TABLES);
+
+      await expectRowToBeEmpty(DATABASE_WITH_NO_TABLES);
     });
 
     it("should be possible to navigate with the keyboard", async () => {
@@ -1122,6 +1139,22 @@ function item(input: string | { display_name?: string; name: string } | null) {
     return null;
   }
   return textElement.closest('[data-testid="tree-item"]') ?? null;
+}
+
+async function expectRowToBeEmpty(database: Database) {
+  const row = screen
+    .getAllByTestId("tree-item")
+    .find((row) => within(row).queryByText(database.name) != null);
+  if (!row) {
+    throw new Error(`No tree item for ${database.name}`);
+  }
+
+  await waitFor(() => {
+    expect(
+      within(row).queryByRole("button", { name: /Expand|Collapse/ }),
+    ).not.toBeInTheDocument();
+  });
+  expect(within(row).queryByLabelText("Loading")).not.toBeInTheDocument();
 }
 
 async function clickItem(

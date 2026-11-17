@@ -1,3 +1,4 @@
+import { DataApp } from "embedding-sdk-bundle/components/public/DataApp";
 import { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
@@ -46,6 +47,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,
+  DataApp,
   DateRangeCalendar,
   DateRangePopover,
   EditableDashboard,

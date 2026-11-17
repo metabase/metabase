@@ -1,0 +1,4 @@
+services:
+  metabase:
+    volumes:
+      - /tmp/metabase-head-jar/metabase.jar:/app/metabase.jar:ro

@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,7 +21,7 @@
 (defn permissions-for-group
   "Returns the full set of permissions for a group, filling in defaults for any missing perm types."
   [group-id stored-perms]
-  (let [stored-by-type (into {} (map (juxt :perm_type identity)) stored-perms)]
+  (let [stored-by-type (u/index-by :perm_type stored-perms)]
     (for [[perm-type default-value] (sort-by key scope/perm-type-defaults)]
       (or (get stored-by-type perm-type)
           {:group_id   group-id

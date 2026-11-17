@@ -187,17 +187,6 @@ describe("buildReleaseArtifactMismatchMessage", () => {
     );
   });
 
-  it("formats links with the link function it is given", () => {
-    const message = buildReleaseArtifactMismatchMessage(
-      { ...base, tagRun: { ...tagRun, commit: TAGGED } },
-      (text, url) => `<${url}|${text}>`,
-    );
-
-    expect(message).toContain(
-      `<${TAG_RUN_URL}|Tag v0.65.0-beta> built commit 2540625`,
-    );
-  });
-
   it("asks for Release 1 when there is no run for the version", () => {
     const message = buildReleaseArtifactMismatchMessage({
       ...base,

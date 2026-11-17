@@ -50,7 +50,7 @@ const TEMPLATE_TAGS: TemplateTags = {
     "display-name": "Internal",
     type: "dimension",
     "widget-type": "number/=",
-    dimension: ["field", ORDERS.QUANTITY, null],
+    "field-id": ORDERS.QUANTITY,
   },
   product_id_fk: {
     id: "product_id_fk",
@@ -58,7 +58,7 @@ const TEMPLATE_TAGS: TemplateTags = {
     "display-name": "FK",
     type: "dimension",
     "widget-type": "id",
-    dimension: ["field", ORDERS.PRODUCT_ID, null],
+    "field-id": ORDERS.PRODUCT_ID,
   },
   user_id_pk: {
     id: "user_id_pk",
@@ -66,7 +66,7 @@ const TEMPLATE_TAGS: TemplateTags = {
     "display-name": "PK->Name",
     type: "dimension",
     "widget-type": "id",
-    dimension: ["field", PEOPLE.ID, null],
+    "field-id": PEOPLE.ID,
   },
 };
 
@@ -176,7 +176,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "User",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.USER_ID, null],
+          "field-id": ORDERS.USER_ID,
         },
       };
 
@@ -286,7 +286,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "Internal",
           type: "dimension",
           "widget-type": "number/=",
-          dimension: ["field", ORDERS.QUANTITY, null],
+          "field-id": ORDERS.QUANTITY,
         },
         product_id_fk: {
           id: "product_id_fk",
@@ -294,7 +294,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "FK",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.PRODUCT_ID, null],
+          "field-id": ORDERS.PRODUCT_ID,
         },
         user_id_pk: {
           id: "user_id_pk",
@@ -302,7 +302,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "PK->Name",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", PEOPLE.ID, null],
+          "field-id": PEOPLE.ID,
         },
       };
 
@@ -619,7 +619,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "User",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.USER_ID, null],
+          "field-id": ORDERS.USER_ID,
         },
       };
 
@@ -747,7 +747,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "Internal",
           type: "dimension",
           "widget-type": "number/=",
-          dimension: ["field", ORDERS.QUANTITY, null],
+          "field-id": ORDERS.QUANTITY,
         },
         product_id_fk: {
           id: "product_id_fk",
@@ -755,7 +755,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "FK",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", ORDERS.PRODUCT_ID, null],
+          "field-id": ORDERS.PRODUCT_ID,
         },
         user_id_pk: {
           id: "user_id_pk",
@@ -763,7 +763,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           "display-name": "PK->Name",
           type: "dimension",
           "widget-type": "id",
-          dimension: ["field", PEOPLE.ID, null],
+          "field-id": PEOPLE.ID,
         },
       };
 

@@ -20,7 +20,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter.impl :as formatter]
    [metabase.pulse.send :as pulse.send]
@@ -29,6 +28,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
@@ -92,6 +92,7 @@
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
+                              :display (:display card)
                               :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
@@ -280,13 +281,9 @@
   "Walk `form` and normalise every numeric leaf to 2 decimal places — both numeric-looking strings (via
   [[normalize-num-str]]) and native doubles/BigDecimals (via `Math/round`). Non-numeric values pass through."
   [form]
-  (walk/prewalk
-   (fn [x]
-     (cond
-       (string? x) (normalize-num-str x)
-       (double? x) (double (/ (Math/round (* 100.0 x)) 100.0))
-       :else       x))
-   form))
+  (match/replace-all form
+    #'string? (normalize-num-str &match)
+    #'double? (double (/ (Math/round (* 100.0 &match)) 100.0))))
 
 (defn- all-outputs!
   [card-or-dashcard opts]
@@ -1754,6 +1751,42 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))))))
+
+(deftest details-only-columns-export-test
+  (testing "The table viz hides `:details-only` columns, so table exports drop them; other displays keep them (#70909)"
+    (mt/dataset test-data
+      (mt/with-temp-vals-in-db :model/Field (mt/id :orders :discount) {:visibility_type :details-only}
+        (let [query         {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table (mt/id :orders)
+                                        :limit        1}}
+              header-names  (fn [download] (set (first download)))
+              has-discount? (fn [names] (boolean (some #(str/starts-with? % "Discount") names)))]
+          (mt/with-temp [:model/Card table-card  {:display :table, :dataset_query query}
+                         :model/Card object-card {:display :object, :dataset_query query}]
+            (doseq [export-format [:csv :xlsx :json]]
+              (testing (name export-format)
+                (testing "saved card"
+                  (is (false? (has-discount? (header-names (card-download table-card {:export-format export-format})))))
+                  (is (true? (has-discount? (header-names (card-download object-card {:export-format export-format}))))))
+                (testing "unsaved question"
+                  (is (false? (has-discount? (header-names (unsaved-card-download table-card {:export-format export-format})))))
+                  (is (true? (has-discount? (header-names (unsaved-card-download object-card {:export-format export-format})))))
+                  (testing "with no display given, nothing is dropped"
+                    (is (true? (has-discount? (header-names (unsaved-card-download (dissoc object-card :display)
+                                                                                   {:export-format export-format})))))))))
+            (testing "the browser form-encodes ad-hoc downloads, so the display arrives as a JSON string"
+              (is (false? (has-discount? (header-names (unsaved-card-download (assoc table-card :display "\"table\"")
+                                                                              {:export-format :csv}))))))
+            (testing "a visualizer dashcard exports as the display it renders, not the card's"
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                             :model/DashboardCard plain-dashcard {:dashboard_id dashboard-id
+                                                                  :card_id      (:id object-card)}
+                             :model/DashboardCard table-dashcard {:dashboard_id           dashboard-id
+                                                                  :card_id                (:id object-card)
+                                                                  :visualization_settings {:visualization {:display "table"}}}]
+                (is (true? (has-discount? (header-names (dashcard-download plain-dashcard {:export-format :csv})))))
+                (is (false? (has-discount? (header-names (dashcard-download table-dashcard {:export-format :csv})))))))))))))
 
 (deftest ^:parallel ^:mb/driver-tests pivot-xlsx-export-respects-custom-title
   (testing "Pivot tables exported as xlsx should respect column title viz settings #51342"

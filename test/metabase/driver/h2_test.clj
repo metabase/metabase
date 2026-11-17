@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
@@ -230,7 +231,7 @@
                                                    :display-name "date"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                   :field-id     (mt/id :checkins :date)}}}
               :parameters [{:type :date/all-options
                             :target [:dimension [:template-tag "date"]]
                             :value "past30years"}]}))))))
@@ -526,3 +527,15 @@
   (testing "ordinary values still read normally"
     (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
       (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))
+
+(deftest workspace-isolation-details-uses-admin-overlay-test
+  (mt/test-driver :h2
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (testing "a Toucan Database row's admin overlay supplies the connection string the workspace user's is built off"
+         (let [database (assoc (mt/db) :admin_details {:db "mem:ws_admin_overlay;USER=ADMIN;PASSWORD=admin"})]
+           (driver.conn/with-admin-connection
+             (is (str/starts-with? (-> (driver/workspace-isolation-details :h2 database {:id 1 :name "ws"})
+                                       :database_details
+                                       :db)
+                                   "mem:ws_admin_overlay")))))))))

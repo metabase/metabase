@@ -94,11 +94,6 @@ type SearchSection = {
 const getSearchSections = (): Record<LibrarySearchModel, SearchSection> => ({
   table: { id: "search-section:data", name: t`Data`, icon: "table" },
   metric: { id: "search-section:metrics", name: t`Metrics`, icon: "metric" },
-  dashboard: {
-    id: "search-section:dashboards",
-    name: t`Dashboards`,
-    icon: "dashboard",
-  },
 });
 
 /** Search results across the Library, grouped under a row per section */

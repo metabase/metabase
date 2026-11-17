@@ -1,14 +1,21 @@
 import { devDiagnostics } from "../components/DevToolbar/diagnostics";
-import { DATA_APP_MB_URL_ENV } from "../constants/env";
+import {
+  DATA_APP_DEV_INSTANCE_PING_URL,
+  DATA_APP_DEV_RELAY_ERROR_HEADER,
+} from "../constants/diagnostics-channel";
+import { DATA_APP_MB_URL_ENV, parseInstanceUrl } from "../constants/env";
 import type { InstanceConnectionStatus } from "../types/diagnostics-channel";
 
 export interface InstanceConnectionCheckOptions {
-  metabaseUrl: string | undefined;
+  /** `DATA_APP_MB_URL`, or null when it's unset. */
+  metabaseUrl: string | null;
   sdkVersion: string | null;
 }
 
 /**
- * Answers one question — is the instance URL reachable — and nothing else.
+ * Answers one question — is the instance URL reachable — and nothing else. The
+ * page reaches the instance only through the dev server, so it asks the dev
+ * server to ping the instance's root.
  */
 export class InstanceConnectionCheck {
   async install({
@@ -31,20 +38,24 @@ export class InstanceConnectionCheck {
       return;
     }
 
-    // Without a scheme the browser resolves it against the preview origin, so
-    // the dev server would answer and the instance would look reachable.
-    if (!URL.canParse(base)) {
-      status.error = `${DATA_APP_MB_URL_ENV} must be an absolute URL like http://localhost:3000, not "${base}".`;
+    // The dev server relays only to an http(s) URL, so nothing would answer for any other.
+    if (!parseInstanceUrl(base)) {
+      status.error = `${DATA_APP_MB_URL_ENV} must be an http(s) URL like http://localhost:3000, not "${base}".`;
       devDiagnostics.setConnectionStatus(status);
 
       return;
     }
 
     try {
-      await window.fetch(base, { mode: "no-cors" });
-      status.reachable = true;
+      const response = await window.fetch(DATA_APP_DEV_INSTANCE_PING_URL);
+
+      if (response.headers.has(DATA_APP_DEV_RELAY_ERROR_HEADER)) {
+        status.error = `Could not reach ${status.metabaseUrl}: ${await response.text()}`;
+      } else {
+        status.reachable = true;
+      }
     } catch (error) {
-      status.error = `Could not reach ${status.metabaseUrl}: ${this.describeFailure(error)}`;
+      status.error = `Could not reach ${status.metabaseUrl} through the dev server: ${this.describeFailure(error)}`;
     }
 
     devDiagnostics.setConnectionStatus(status);

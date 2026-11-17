@@ -1,9 +1,5 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  getQuestionIdFromVirtualTableId,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
 import { SourceModelBreadcrumbs } from "./SourceModelBreadcrumbs";
@@ -30,10 +26,8 @@ export function QuestionDataSource({
   }
 
   const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-
   const { isNative } = Lib.queryDisplayInfo(query);
-  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
+  const sourceQuestionId = Lib.primarySourceCardId(query);
 
   const variant = subHead ? "subhead" : "head";
 
@@ -43,7 +37,7 @@ export function QuestionDataSource({
     );
   }
 
-  if (!isVirtualCardId(sourceTableId)) {
+  if (sourceQuestionId == null) {
     return (
       <SourceTableBreadcrumbs
         question={question}

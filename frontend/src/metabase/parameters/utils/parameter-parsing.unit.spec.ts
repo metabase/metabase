@@ -1,4 +1,5 @@
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   Field,
   Parameter,
@@ -33,22 +34,18 @@ describe("parameters/utils/parameter-values", () => {
   beforeEach(() => {
     field1 = createMockField({
       id: 1,
-      table_id: 1,
       base_type: UNTYPED,
     });
     field2 = createMockField({
       id: 2,
-      table_id: 1,
       base_type: UNTYPED,
     });
     field3 = createMockField({
       id: 3,
-      table_id: 1,
       base_type: UNTYPED,
     });
     field4 = createMockField({
       id: 4,
-      table_id: 1,
       base_type: UNTYPED,
     });
 
@@ -58,7 +55,9 @@ describe("parameters/utils/parameter-values", () => {
         id: "111",
         slug: "foo",
       }),
-      fields: [field1, field4],
+      get fields() {
+        return [field1, field4].map(getParameterFieldInfo);
+      },
     };
     // found in queryParams and defaulted
     parameter2 = {
@@ -67,7 +66,9 @@ describe("parameters/utils/parameter-values", () => {
         slug: "bar",
         default: "parameter2 default value",
       }),
-      fields: [field2],
+      get fields() {
+        return [field2].map(getParameterFieldInfo);
+      },
     };
     // not found in queryParams and defaulted
     parameter3 = {
@@ -76,7 +77,9 @@ describe("parameters/utils/parameter-values", () => {
         slug: "baz",
         default: "parameter3 default value",
       }),
-      fields: [field3],
+      get fields() {
+        return [field3].map(getParameterFieldInfo);
+      },
     };
     // not found in queryParams and not defaulted
     parameter4 = createMockParameter({
@@ -181,7 +184,6 @@ describe("parameters/utils/parameter-values", () => {
       // a unix timestamp is stored as a number and coerced to a date
       field1.base_type = "type/BigInteger";
       field1.effective_type = "type/DateTime";
-      field1.coercion_strategy = "Coercion/UNIXSeconds->DateTime";
       field4.base_type = "type/Integer";
 
       expect(
@@ -240,6 +242,17 @@ describe("parameters/utils/parameter-values", () => {
           [parameter1.slug]: "123",
         }),
       ).toEqual("123");
+    });
+
+    it("should keep a relative date value of a month-year parameter (metabase#34129)", () => {
+      const parameter = createMockParameter({
+        slug: "time",
+        type: "date/month-year",
+      });
+
+      expect(
+        getParameterValueFromQueryParams(parameter, { time: "thisday" }),
+      ).toEqual("thisday");
     });
 
     it("should not normalize parameters mapped to non-field targets", () => {
@@ -304,7 +317,9 @@ describe("parameters/utils/parameter-values", () => {
       const typelessParameter = {
         id: "555",
         slug: "legacy",
-        fields: [field1, field4],
+        get fields() {
+          return [field1, field4].map(getParameterFieldInfo);
+        },
       } as unknown as FieldFilterUiParameter;
 
       expect(
@@ -405,6 +420,10 @@ describe("parameters/utils/parameter-values", () => {
         expect(runGetParameterValueFromQueryParams("123.456")).toEqual([
           123.456,
         ]);
+      });
+
+      it("should keep a zero value of a number parameter without fields (metabase#27257)", () => {
+        expect(runGetParameterValueFromQueryParams("0")).toEqual([0]);
       });
 
       describe("when parsing parameter value that is a comma-separated list of numbers", () => {

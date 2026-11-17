@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { getNullDisplayValue } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";

@@ -36,14 +36,14 @@ export function registerDataAppsPagePrefetch(): void {
 /**
  * Data-app host routes. Open to any signed-in user.
  *
- * Path can't be `/app/:name` because the server reserves `/app/*` for static
+ * Path can't be `/app/:slug` because the server reserves `/app/*` for static
  * asset serving.
  */
 export function getRoutes() {
   return (
-    <Route path={`${Urls.DATA_APP_URL_SEGMENT}/:name`} lazy={dataAppLayout}>
+    <Route path={`${Urls.DATA_APP_URL_SEGMENT}/:slug`} lazy={dataAppLayout}>
       <Route index lazy={dataAppView} />
-      {/* Sub-paths under /apps/:name are owned by the iframe's router.
+      {/* Sub-paths under /apps/:slug are owned by the iframe's router.
           Same component — `DataAppView` just keeps the iframe mounted; the URL
           change is mirrored back from inside the iframe via
           `history.replaceState`. */}

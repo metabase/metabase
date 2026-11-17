@@ -32,5 +32,5 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}
                    :model/ExplorationBlock g {:exploration_thread_id (:id t)}]
       (mt/with-current-user (:id owner)
-        (is (true? (mi/can-read?  :model/ExplorationBlock (:id g))))
-        (is (true? (mi/can-write? :model/ExplorationBlock (:id g))))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_read))))
+        (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_write))))))))

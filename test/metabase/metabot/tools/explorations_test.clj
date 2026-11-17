@@ -189,7 +189,7 @@
                                            :metric-name   "Churn"
                                            :dimension-ids ["plan-1"]
                                            :candidates    []}]}))))
-  (testing "anything else that fails in validation still ends the turn"
+  (testing "anything else that fails in validation is `:internal`"
     (is (= {:class :unrecoverable :code :internal}
            (:error (add-groups-rejected-with {:something "else"}))))))
 

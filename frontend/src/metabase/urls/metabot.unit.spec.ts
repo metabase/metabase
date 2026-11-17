@@ -1,12 +1,15 @@
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DatasetQuery } from "metabase-types/api";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { conversationChartUrl } from "./metabot";
 
 describe("conversationChartUrl", () => {
   it("builds an ad-hoc question url with a locked display from a conversation chart", () => {
-    const datasetQuery = createMockStructuredDatasetQuery();
+    const datasetQuery = Lib.toLegacyQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    );
     const url = conversationChartUrl({
       queries: [datasetQuery],
       visualization_settings: { chart_type: "bar" },

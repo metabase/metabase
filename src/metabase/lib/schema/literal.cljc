@@ -24,7 +24,7 @@
   :type/Boolean)
 
 (mr/def ::integer
-  [:or :int [:fn u.number/bigint?]])
+  [:or :int [:fn {:json-schema {:type "integer"}} u.number/bigint?]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
   [x]
@@ -156,7 +156,8 @@
 (mr/def ::value.value
   "The value slot of a `:value` clause: a single literal that is not a Clojure collection."
   [:fn
-   {:error/message "value must be a literal, not a Clojure collection"}
+   {:error/message "value must be a literal, not a Clojure collection"
+    :json-schema   {:anyOf [{:type "string"} {:type "number"} {:type "boolean"} {:type "null"}]}}
    (complement coll?)])
 
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { isNotNull } from "metabase/utils/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
