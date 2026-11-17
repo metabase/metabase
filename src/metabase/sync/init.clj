@@ -5,6 +5,4 @@
   (:require
    [metabase.sync.events.sync-database]
    [metabase.sync.settings]
-   [metabase.sync.task.scan-field-values]
-   [metabase.sync.task.sync-databases]
-   [metabase.sync.task.sync-table]))
+   [metabase.sync.task.sync-databases]))

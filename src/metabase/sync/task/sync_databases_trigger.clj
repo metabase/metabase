@@ -19,7 +19,6 @@
    (org.quartz
     CronTrigger
     JobKey
-    Trigger
     TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -84,19 +83,6 @@
   "Return an appropriate description string for a job"
   [task-info :- TaskInfo]
   (format "%s for all databases" (name (:key task-info))))
-
-(mu/defn explicit-trigger :- (ms/InstanceOfClass Trigger)
-  "A one-shot trigger that runs the `task-info` job for the Database with `database-id` as a user-requested run."
-  ^Trigger [database-id :- ms/PositiveInt
-            task-info   :- TaskInfo]
-  (triggers/build
-   (triggers/with-description (format "%s Database %d (explicit)" (name (:key task-info)) database-id))
-   (triggers/with-identity (triggers/key (format "metabase.task.%s.trigger.%d.explicit"
-                                                 (name (:key task-info))
-                                                 database-id)))
-   (triggers/using-job-data {"db-id" database-id, "explicit" true})
-   (triggers/for-job (job-key task-info))
-   (triggers/start-now)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            DELETING TASKS FOR A DB                                             |

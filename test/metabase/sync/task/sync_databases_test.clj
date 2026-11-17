@@ -7,17 +7,14 @@
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
-   [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
-   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2])
   (:import
    (metabase.sync.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues)
@@ -411,47 +408,3 @@
           ;; Old schedule should be randomized if it existed
           (is (not= (:metadata_sync_schedule before) (:metadata_sync_schedule after))
               "Sync schedule randomized"))))))
-
-(deftest explicit-jobs-ignore-disable-auto-sync-test
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (mt/with-temporary-setting-values [disable-auto-sync true]
-      (let [calls (atom [])]
-        (mt/with-dynamic-fn-redefs [sync-metadata/sync-db-metadata-explicit!   (fn [id] (swap! calls conj [:sync id]))
-                                    analyze/analyze-db-explicit!               (fn [id] (swap! calls conj [:analyze id]))
-                                    sync.field-values/update-field-values!     (fn [id] (swap! calls conj [:scan id]))
-                                    task.sync-databases/sync-and-analyze-database*! (fn [id] (swap! calls conj [:auto id]))]
-          (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id, "explicit" true}))
-          (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id, "explicit" true}))
-          (is (= [[:sync db-id] [:analyze db-id] [:scan db-id]]
-                 @calls)))))))
-
-(deftest explicit-jobs-skip-deleted-database-test
-  (let [calls (atom [])]
-    (mt/with-dynamic-fn-redefs [sync-metadata/sync-db-metadata-explicit! (fn [id] (swap! calls conj id))
-                                sync.field-values/update-field-values!   (fn [id] (swap! calls conj id))]
-      (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" Integer/MAX_VALUE, "explicit" true}))
-      (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" Integer/MAX_VALUE, "explicit" true}))
-      (is (= [] @calls)))))
-
-(deftest schedule-database-runs-with-scheduler-test
-  (let [synced  (promise)
-        scanned (promise)]
-    (with-redefs [task.sync-databases/sync-and-analyze-database-explicit! #(deliver synced %)
-                  task.sync-databases/update-field-values-explicit!       #(deliver scanned %)]
-      (with-scheduler-setup!
-        (mt/with-temp [:model/Database {db-id :id} {}]
-          (task.sync-databases/schedule-database-sync! db-id)
-          (task.sync-databases/schedule-database-field-values-scan! db-id)
-          (is (= db-id (deref synced 5000 :not-run)))
-          (is (= db-id (deref scanned 5000 :not-run))))))))
-
-(deftest schedule-database-runs-without-scheduler-test
-  (let [calls (atom [])]
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (mt/with-dynamic-fn-redefs [quick-task/submit-task!                                 (fn [task] (task))
-                                  task.sync-databases/sync-and-analyze-database-explicit! (fn [id] (swap! calls conj [:sync id]))
-                                  task.sync-databases/update-field-values-explicit!       (fn [id] (swap! calls conj [:scan id]))]
-        (task.sync-databases/schedule-database-sync! db-id)
-        (task.sync-databases/schedule-database-field-values-scan! db-id)
-        (is (= [[:sync db-id] [:scan db-id]]
-               @calls))))))

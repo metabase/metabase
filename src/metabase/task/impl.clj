@@ -34,7 +34,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobListener
-               JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey
+               JobPersistenceException ObjectAlreadyExistsException Scheduler SchedulerException Trigger TriggerKey
                TriggerListener)))
 
 (set! *warn-on-reflection* true)
@@ -254,23 +254,30 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
+(defn- running?
+  "Whether `scheduler` is started, so that it fires triggers."
+  [^Scheduler scheduler]
+  (and (.isStarted scheduler)
+       (not (.isInStandbyMode scheduler))
+       (not (.isShutdown scheduler))))
+
 (defn scheduler-running?
-  "Whether this node has a started scheduler, so that the triggers it stores get fired."
+  "Whether this node has a scheduler that is started."
   []
-  (boolean
-   (when-let [scheduler (scheduler)]
-     (and (.isStarted scheduler)
-          (not (.isInStandbyMode scheduler))
-          (not (.isShutdown scheduler))))))
+  (boolean (some-> (scheduler) running?)))
 
 (mu/defn schedule-once! :- [:maybe :boolean]
   "Schedule the one-shot `trigger` of `job`, replacing a trigger with its key that waits to fire or is firing now, so
   that at most one run waits per trigger key; returns nil, scheduling nothing, when no scheduler is running."
   [job     :- (ms/InstanceOfClass JobDetail)
    trigger :- (ms/InstanceOfClass Trigger)]
-  (when (scheduler-running?)
-    (.scheduleJob (scheduler) ^JobDetail job ^java.util.Set (hash-set trigger) true)
-    true))
+  (when-let [scheduler (scheduler)]
+    (when (running? scheduler)
+      (try
+        (.scheduleJob scheduler ^JobDetail job ^java.util.Set (hash-set trigger) true)
+        true
+        (catch SchedulerException e
+          (log/warnf "Could not schedule trigger %s: %s" (.getName (.getKey ^Trigger trigger)) (ex-message e)))))))
 
 (mu/defn delete-task!
   "Delete a task from the scheduler"

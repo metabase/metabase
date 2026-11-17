@@ -27,7 +27,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.core :as warehouses])
   (:import
    (org.quartz
@@ -44,11 +43,6 @@
   [job-context :- [:fn {:error/message "satisfies clojurewerkz.quartzite.conversion/JobDataMapConversion"}
                    #(satisfies? qc/JobDataMapConversion %)]]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
-
-(defn- explicit?
-  "Whether `job-context` is of a user-requested run, which the `disable-auto-sync` setting does not stop."
-  [job-context]
-  (true? (get (qc/from-job-data job-context) "explicit")))
 
 ;; The `:concurrent? false` option on the two jobs below puts the `DisallowConcurrentExecution` annotation on
 ;; the generated class, which constrains the job execution to only be one at a time. Other triggers wanting
@@ -106,29 +100,11 @@
             analyze-results (assoc :analyze-results analyze-results)
             refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
 
-(defn- sync-and-analyze-database-explicit!
-  "Sync and analyze the Database with `database-id`, if it exists, as a user-requested run."
-  [database-id]
-  (when (sync.db/database-exists? database-id)
-    (database-routing/with-anonymous-router-access
-      (sync-metadata/sync-db-metadata-explicit! database-id)
-      (analyze/analyze-db-explicit! database-id))))
-
-(defn- update-field-values-explicit!
-  "Update the FieldValues of the Database with `database-id`, if it exists, as a user-requested run."
-  [database-id]
-  (when (sync.db/database-exists? database-id)
-    (database-routing/with-anonymous-router-access
-      (sync.field-values/update-field-values! database-id))))
-
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (cond
-      (explicit? job-context)
-      (sync-and-analyze-database-explicit! database-id)
-
       (warehouses/disable-auto-sync)
       (log/debugf "Skipping scheduled sync for Database %d: disable-auto-sync is on." database-id)
 
@@ -158,14 +134,8 @@
   "The update field values job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (cond
-      (explicit? job-context)
-      (update-field-values-explicit! database-id)
-
-      (warehouses/disable-auto-sync)
+    (if (warehouses/disable-auto-sync)
       (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
-
-      :else
       (do
         (log/infof "Update Field values task triggered for Database %d." database-id)
         (when-let [database (or (sync.db/database database-id)
@@ -203,22 +173,6 @@
 
 (def ^:private sync-analyze-job (job sync-databases-trigger/sync-analyze-task-info SyncAndAnalyzeDatabase))
 (def ^:private field-values-job (job sync-databases-trigger/field-values-task-info UpdateFieldValues))
-
-(mu/defn schedule-database-sync!
-  "Queue one user-requested sync and analysis of the Database with `database-id`, unless one is already waiting."
-  [database-id :- ::lib.schema.id/database]
-  (or (task/schedule-once! sync-analyze-job
-                           (sync-databases-trigger/explicit-trigger database-id
-                                                                    sync-databases-trigger/sync-analyze-task-info))
-      (quick-task/submit-task! #(sync-and-analyze-database-explicit! database-id))))
-
-(mu/defn schedule-database-field-values-scan!
-  "Queue one user-requested FieldValues scan of the Database with `database-id`, unless one is already waiting."
-  [database-id :- ::lib.schema.id/database]
-  (or (task/schedule-once! field-values-job
-                           (sync-databases-trigger/explicit-trigger database-id
-                                                                    sync-databases-trigger/field-values-task-info))
-      (quick-task/submit-task! #(update-field-values-explicit! database-id))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              TASK INITIALIZATION                                               |

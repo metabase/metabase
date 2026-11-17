@@ -483,6 +483,7 @@
   (with-jdbc-scheduler!
     (let [standby? (not (task/scheduler-running?))]
       (try
+        (task/add-job! (blocking-job))
         (qs/start (task/scheduler))
         (test-schedule-once!)
         (finally
