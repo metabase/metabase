@@ -64,7 +64,9 @@
 
 (deftest ^:parallel section-markdown-test
   (let [note     "Versioned 2.0 and later."
-        rows     [{:row   {:feature :full-join :label "Full outer join" :doc "join.md"}
+        rows     [{:row   {:feature :inner-join :label "Inner join" :doc "join.md"}
+                   :cells [{:support :yes} {:support :yes} {:support :yes}]}
+                  {:row   {:feature :full-join :label "Full outer join" :doc "join.md"}
                    :cells [{:support :yes} {:support :no} {:support :no}]}
                   {:row   {:feature :percentile-aggregations :label "Percentile"}
                    :cells [{:support :yes} {:support :no} {:support :depends :note note}]}
@@ -74,6 +76,9 @@
         lines    (str/split-lines markdown)]
     (testing "the section opens with its heading"
       (is (= "## Aggregations" (first lines))))
+    (testing "a feature that every database supports is in the list above the table, not in the table"
+      (is (some #{"- [Inner join](join.md)"} lines))
+      (is (not-any? #(str/starts-with? % "| [Inner join]") lines)))
     (testing "a feature row links to its docs, and marks each database"
       (is (some #(re-find #"^\| \[Full outer join\]\(join\.md\) +\| ✅ +\| ❌ +\| ❌ +\|$" %) lines)))
     (testing "a version-dependent cell points to a numbered note below the table"
@@ -81,4 +86,9 @@
       (is (= "1. Versioned 2.0 and later." (last lines))))
     (testing "cells that share a note share its number, and the note prints once"
       (is (some #(re-find #"^\| DistinctIf +\| ❌ +\| ❌ +\| ✅ \(1\) +\|$" %) lines))
-      (is (= 1 (count (filter #(re-find #"^\d+\. " %) lines)))))))
+      (is (= 1 (count (filter #(re-find #"^\d+\. " %) lines))))))
+  (testing "a section where every database supports every feature has no table"
+    (is (= "## SQL\n\nMetabase supports these features on every database on this page:\n\n- Variables"
+           (#'driver-feature-dox/section-markdown "SQL" ["PostgreSQL" "MySQL"]
+                                                  [{:row   {:feature :native-parameters :label "Variables"}
+                                                    :cells [{:support :yes} {:support :yes}]}])))))

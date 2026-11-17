@@ -20,7 +20,8 @@
   :druid      {:exclude "no longer a driver: `:druid-jdbc` replaced it"}
   :h2         {:exclude "Metabase doesn't support H2 connections"}
   :motherduck {:exclude "not yet in the list of supported databases in `docs/databases/connecting.md`"}
-  ;; 7.0 until August 2027: see `docs/databases/connections/mongodb.md`
+  ;; `docs/databases/connections/mongodb.md`: Metabase supports the oldest version that MongoDB supports. That is 7.0
+  ;; until August 31, 2027: https://www.mongodb.com/legal/support-policy/lifecycles
   :mongo      {:oldest-version [7 0]}
   ;; sync stores the `:flavor`
   :mysql      {:columns [{:label "MariaDB" :dbms-version {:flavor "MariaDB"}}

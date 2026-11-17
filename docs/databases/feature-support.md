@@ -23,24 +23,30 @@ For databases that aren't on this page, check out [Community drivers](../develop
 
 ## Query builder
 
+Metabase supports these features on every database on this page:
+
+- [Saved questions and models as data sources](../questions/query-builder/editor.md#pick-data)
+- [Left outer join](../questions/query-builder/join.md)
+- [Inner join](../questions/query-builder/join.md)
+- [Custom expressions in columns and filters](../questions/query-builder/expressions.md)
+- [Custom expressions in summaries](../questions/query-builder/expressions.md#aggregations)
+- Standalone constants in custom expressions
+
 | Feature                                                                                                         | Amazon Athena | Amazon Redshift | BigQuery | ClickHouse | Databricks | Druid JDBC | MariaDB | MongoDB | MySQL | Oracle | PostgreSQL | Presto | Snowflake | Spark SQL | SQL Server | SQLite | Starburst (Trino) | Vertica |
 | --------------------------------------------------------------------------------------------------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
-| [Saved questions and models as data sources](../questions/query-builder/editor.md#pick-data)                    | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
-| [Left outer join](../questions/query-builder/join.md)                                                           | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [Right outer join](../questions/query-builder/join.md)                                                          | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ❌       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ❌      | ✅                 | ✅       |
-| [Inner join](../questions/query-builder/join.md)                                                                | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [Full outer join](../questions/query-builder/join.md)                                                           | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ❌       | ❌       | ❌     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ❌      | ✅                 | ✅       |
-| [Custom expressions in columns and filters](../questions/query-builder/expressions.md)                          | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
-| [Custom expressions in summaries](../questions/query-builder/expressions.md#aggregations)                       | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
-| Standalone constants in custom expressions                                                                      | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [Binning numbers and coordinates](../questions/query-builder/summarizing-and-grouping.md#grouping-your-metrics) | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ❌       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | Case-sensitive text filters                                                                                     | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ❌       | ✅       | ❌     | ✅      | ✅          | ✅      | ✅         | ✅         | ❌          | ❌      | ✅                 | ✅       |
 
 ## Aggregations
 
+Metabase supports these features on every database on this page:
+
+- [Count, Sum, Average, Min, and Max](../questions/query-builder/expressions-list.md#aggregations)
+
 | Feature                                                                                            | Amazon Athena | Amazon Redshift | BigQuery | ClickHouse | Databricks | Druid JDBC | MariaDB | MongoDB | MySQL | Oracle | PostgreSQL | Presto | Snowflake | Spark SQL | SQL Server | SQLite | Starburst (Trino) | Vertica |
 | -------------------------------------------------------------------------------------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
-| [Count, Sum, Average, Min, and Max](../questions/query-builder/expressions-list.md#aggregations)   | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [StandardDeviation and Variance](../questions/query-builder/expressions-list.md#standarddeviation) | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ❌      | ✅                 | ✅       |
 | [Percentile and Median](../questions/query-builder/expressions-list.md#percentile)                 | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ❌       | ❌       | ❌     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅ (1)      | ❌      | ✅                 | ❌       |
 | [DistinctIf](../questions/query-builder/expressions-list.md#distinctif)                            | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ❌       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
@@ -49,6 +55,12 @@ For databases that aren't on this page, check out [Community drivers](../develop
 1. SQL Server 16.0 and later.
 
 ## Custom expression functions
+
+Metabase supports these features on every database on this page:
+
+- [text](../questions/query-builder/expressions-list.md#text)
+- [datetime](../questions/query-builder/expressions-list.md#datetime)
+- [today](../questions/query-builder/expressions-list.md#today)
 
 | Feature                                                                                    | Amazon Athena | Amazon Redshift | BigQuery | ClickHouse | Databricks | Druid JDBC | MariaDB | MongoDB | MySQL | Oracle | PostgreSQL | Presto | Snowflake | Spark SQL | SQL Server | SQLite | Starburst (Trino) | Vertica |
 | ------------------------------------------------------------------------------------------ | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
@@ -59,18 +71,15 @@ For databases that aren't on this page, check out [Community drivers](../develop
 | collate                                                                                    | ❌             | ❌               | ❌        | ❌          | ❌          | ❌          | ❌       | ❌       | ❌     | ❌      | ❌          | ❌      | ✅         | ❌         | ❌          | ❌      | ❌                 | ❌       |
 | [integer](../questions/query-builder/expressions-list.md#integer)                          | ❌             | ✅               | ✅        | ✅          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ❌          | ❌      | ❌                 | ❌       |
 | [float](../questions/query-builder/expressions-list.md#float)                              | ❌             | ✅               | ✅        | ✅          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ❌          | ❌      | ❌                 | ❌       |
-| [text](../questions/query-builder/expressions-list.md#text)                                | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [date](../questions/query-builder/expressions-list.md#date)                                | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ❌      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
-| [datetime](../questions/query-builder/expressions-list.md#datetime)                        | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [datetimeDiff](../questions/query-builder/expressions/datetimediff.md)                     | ✅             | ✅               | ✅        | ✅          | ✅          | ❌          | ✅       | ✅       | ✅     | ✅      | ✅          | ❌      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [convertTimezone](../questions/query-builder/expressions/converttimezone.md)               | ❌             | ✅               | ✅        | ❌          | ❌          | ❌          | ✅       | ❌       | ✅     | ✅      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ✅                 | ✅       |
-| [today](../questions/query-builder/expressions-list.md#today)                              | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 
 ## SQL and native queries
 
-| Feature                                                                           | Amazon Athena | Amazon Redshift | BigQuery | ClickHouse | Databricks | Druid JDBC | MariaDB | MongoDB | MySQL | Oracle | PostgreSQL | Presto | Snowflake | Spark SQL | SQL Server | SQLite | Starburst (Trino) | Vertica |
-| --------------------------------------------------------------------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
-| [Field filters and basic variables](../questions/native-editor/sql-parameters.md) | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ✅       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
+Metabase supports these features on every database on this page:
+
+- [Field filters and basic variables](../questions/native-editor/sql-parameters.md)
 
 ## Data modeling
 

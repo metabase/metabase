@@ -79,6 +79,8 @@
 
 ;;;; Support
 
+;; older and newer than any version that a driver checks for, so a driver answers for them as it does for its oldest
+;; and newest real versions
 (def ^:private default-oldest-version [1 0])
 
 (def ^:private newest-version [999 0])
@@ -163,22 +165,30 @@
     label))
 
 (defn- section-markdown
-  "One section of the page: a heading, a table with a row per feature and a column per database, and the notes that
-  the table's `:depends` cells point to. `rows` are `{:row <curated row> :cells [<cell> ...]}`."
+  "One section of the page: a heading, a list of the features that every database supports, a table of the other
+  features with a column per database, and the notes that the table's `:depends` cells point to. `rows` are
+  `{:row <curated row> :cells [<cell> ...]}`."
   [title labels rows]
-  (let [;; numbered in the order they first appear, row by row; cells that share a note share its number
-        notes  (into [] (comp (mapcat :cells) (keep :note) (distinct)) rows)
-        number (zipmap notes (iterate inc 1))
-        mark   (fn [{s :support n :note}]
-                 (case s
-                   :yes     "✅"
-                   :no      "❌"
-                   :depends (str "✅ (" (number n) ")")))]
+  (let [everywhere?              (fn [{:keys [cells]}] (every? #(= :yes (:support %)) cells))
+        ;; a row of ✅ only says that the feature works everywhere, and a list says that in less space
+        [everywhere table-rows] ((juxt filter remove) everywhere? rows)
+        ;; numbered in the order they first appear, row by row; cells that share a note share its number
+        notes                   (into [] (comp (mapcat :cells) (keep :note) (distinct)) table-rows)
+        number                  (zipmap notes (iterate inc 1))
+        mark                    (fn [{s :support n :note}]
+                                  (case s
+                                    :yes     "✅"
+                                    :no      "❌"
+                                    :depends (str "✅ (" (number n) ")")))]
     (md/paragraphs
      [(md/heading 2 title)
-      (md/table (cons "Feature" labels)
-                (for [{:keys [row cells]} rows]
-                  (cons (feature-label row) (map mark cells))))
+      (when (seq everywhere)
+        (md/labeled-block "Metabase supports these features on every database on this page:"
+                          (md/bullets (map (comp feature-label :row) everywhere))))
+      (when (seq table-rows)
+        (md/table (cons "Feature" labels)
+                  (for [{:keys [row cells]} table-rows]
+                    (cons (feature-label row) (map mark cells)))))
       (when (seq notes)
         (str/join "\n" (map #(str (number %) ". " %) notes)))])))
 
