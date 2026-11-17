@@ -199,7 +199,7 @@
                          (every? #(own-keyword? branch %) (remove #{:type :description} (keys branch))))
                        branches))
       (let [description (str/join " " (keep :description branches))]
-        (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
+        (-> (apply merge (map #(apply dissoc % :type mu.json-schema/annotation-keys) branches))
             (assoc :type (into [] cat branch-types))
             (cond-> (not (str/blank? description)) (assoc :description description)))))))
 
@@ -208,7 +208,7 @@
   descriptions, or `schema` itself when there is no such union."
   [{:keys [anyOf description] :as schema}]
   (or (when (and anyOf
-                 (every? annotation-keys (keys (dissoc schema :anyOf)))
+                 (every? mu.json-schema/annotation-keys (keys (dissoc schema :anyOf)))
                  ((some-fn nil? string?) description))
         (when-let [union (union->type-array anyOf)]
           (let [descriptions (remove str/blank? [description (:description union)])]
