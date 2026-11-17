@@ -148,14 +148,16 @@ To copy results from a table, select the cells you want, then press **Cmd/Ctrl +
 
 To select cells:
 
-- Click a cell to select it.
-- Click and drag to select a range of cells.
-- Shift + click a cell to select all the cells between the selected cell and that cell.
-- Cmd/Ctrl + click a cell to add it to (or remove it from) your selection.
+- To select a single cell, click the cell.
+- To select a range of cells, click and drag.
+- To select all the cells between the selected cell and another cell, Shift + click the other cell.
+- To add a cell to (or remove it from) your selection, Cmd/Ctrl + click the cell.
 
 You can use the arrow keys to move the selection, and press **Esc** to clear it.
 
 Metabase copies the values as they're formatted in the table. To copy the raw, unformatted values instead, press **Cmd/Ctrl + Shift + C**.
+
+To copy all the results of a question in the query builder, click the **clipboard** icon at the bottom right of the question, next to the download button. Metabase copies the columns that are visible in the table. You'll only see the button if you can [download the results](../exporting-results.md).
 
 ## Detail views
 
