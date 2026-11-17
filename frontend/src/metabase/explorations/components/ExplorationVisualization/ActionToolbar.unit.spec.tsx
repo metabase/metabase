@@ -274,6 +274,21 @@ describe("ActionToolbar", () => {
       expect(screen.getByText("Add a comment…")).toBeInTheDocument();
     });
 
+    it("closes the comment editor opened with the c shortcut from the toolbar button", async () => {
+      setup({ timelines: [releases, incidents] });
+
+      fireEvent.keyDown(document.body, { key: "c" });
+      expect(screen.getByText("Add a comment…")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add comment" }),
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByText("Add a comment…")).not.toBeInTheDocument();
+      });
+    });
+
     it("submits a comment with the selected timeline in context", async () => {
       fetchMock.post(
         "path:/api/comment",
@@ -629,6 +644,22 @@ describe("ActionToolbar", () => {
         await screen.findByText('"Orders chart" hidden'),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    });
+
+    it("advances to the next page after hiding the page", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
+      const onNextPage = jest.fn();
+
+      setup({
+        page: createPage({ id: PAGE_ID, hidden: false }),
+        onNextPage,
+      });
+
+      fireEvent.keyDown(document.body, { key: "h" });
+
+      await waitFor(() => {
+        expect(onNextPage).toHaveBeenCalledTimes(1);
+      });
     });
 
     it("does not show an undo toast when unhiding", async () => {

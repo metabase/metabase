@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { setupUsersEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UserInput } from "metabase/metadata/components/UserInput";
 import { createMockUserListResult } from "metabase-types/api/mocks";
 
@@ -52,7 +52,7 @@ describe("UserInput", () => {
       await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
 
       expect(
-        screen.getByRole("option", { name: /Alice Anderson/ }),
+        await screen.findByRole("option", { name: /Alice Anderson/ }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("option", { name: /Bob Builder/ }),
@@ -67,7 +67,7 @@ describe("UserInput", () => {
 
       await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
       await userEvent.click(
-        screen.getByRole("option", { name: /Bob Builder/ }),
+        await screen.findByRole("option", { name: /Bob Builder/ }),
       );
 
       expect(handleUserIdChange).toHaveBeenCalledWith(2);
@@ -82,6 +82,23 @@ describe("UserInput", () => {
       await userEvent.click(screen.getByText("newuser@test.com"));
 
       expect(handleEmailChange).toHaveBeenCalledWith("newuser@test.com");
+    });
+
+    it("should only highlight the picked user when the user list loads after the value (GDGT-2860)", async () => {
+      setup({ userId: 2 });
+
+      const input = screen.getByRole("textbox", { name: "Owner" });
+      await waitFor(() => {
+        expect(input).toHaveValue("Bob Builder");
+      });
+      await userEvent.click(input);
+
+      expect(
+        await screen.findByRole("option", { name: /Unspecified/ }),
+      ).not.toHaveAttribute("data-combobox-selected");
+      expect(screen.getByRole("option", { selected: true })).toHaveTextContent(
+        "Bob Builder",
+      );
     });
 
     it("should call onUserIdChange with 'unknown' when selecting unknown option", async () => {

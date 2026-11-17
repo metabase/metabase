@@ -1,0 +1,144 @@
+(ns metabase-enterprise.advanced-config.file.workspace
+  "Loader for the `:workspace` section of `config.yml`, the form that the parent's
+  `GET /api/ee/workspace-manager/:id/config` emits.
+
+  On boot, translates the section into the `workspaces-enabled` setting and each
+  database's `database-workspace-schema` setting (see
+  [[metabase-enterprise.workspaces.settings]]). The same settings can be set directly,
+  in the `settings` section and per-database `settings`. `:input_schemas` is accepted
+  and ignored. `:name` is logged and stored nowhere.
+
+  Every boot re-reads `config.yml` and overwrites the prior values."
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [metabase-enterprise.advanced-config.db :as advanced-config.db]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
+   [metabase-enterprise.workspaces.core :as ws]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
+
+;;; ---------------------------------- Spec ----------------------------------
+;;;
+;;; Wire format: every workspace-database carries `:input_schemas` (vec of plain
+;;; schema-name strings) and `:output_namespace` (driver-opaque string —
+;;; schema name on Postgres-shaped drivers, database name on MySQL). The
+;;; warehouse catalog (SQL Server/BigQuery) is derived from the
+;;; canonical `Database.details` at boot, not duplicated on each row.
+
+(s/def ::non-blank-string
+  (s/and string? (complement str/blank?)))
+
+(s/def ::input_schemas
+  (s/coll-of ::non-blank-string))
+
+(s/def ::wkspc-output/db
+  (s/nilable string?))
+
+(s/def ::wkspc-output/schema
+  (s/nilable string?))
+
+(s/def ::output
+  (s/and (s/keys :opt-un [::wkspc-output/db
+                          ::wkspc-output/schema])
+         (fn [m] (or (some? (:db m)) (some? (:schema m))))))
+
+(s/def ::workspace-database-config
+  (s/keys :req-un [::input_schemas ::output]))
+
+(s/def ::databases
+  ;; map of database-name -> per-database workspace config. Keys may be keywords or
+  ;; strings depending on YAML parser flags; both are accepted.
+  (s/and (s/map-of (s/or :kw keyword? :str string?) ::workspace-database-config)
+         seq))
+
+(s/def ::name ::non-blank-string)
+
+(s/def ::config-file-spec
+  (s/keys :req-un [::name ::databases]))
+
+(defmethod advanced-config.file.i/section-spec :workspace
+  [_section-name]
+  (s/spec ::config-file-spec))
+
+;;; -------------------------------- Loader ---------------------------------
+
+(defn- ordered->plain
+  "snakeyaml's parsed maps are ordered/lazy; re-walk into plain Clojure maps."
+  [x]
+  (walk/postwalk
+   (fn [form]
+     (if (map? form)
+       (into {} form)
+       form))
+   x))
+
+(defn- resolve-db [db-name]
+  (or (advanced-config.db/database-by-name db-name)
+      (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
+                      {:database-name db-name}))))
+
+(defn- workspace-schema
+  "The schema the `workspace` section names for a database: `:output`'s `:schema`, else its `:db` (the parent puts
+  the namespace there on engines without schemas, such as MySQL)."
+  [{:keys [output]}]
+  (or (:schema output) (:db output)))
+
+(defn check-schemas-agree!
+  "Throw when, for one database, the `databases` section's `database-workspace-schema` and the `workspace` section name
+  different schemas. Each boot would write both in turn, and each write of a different schema deletes the database's
+  remap rows. `config` is the parsed `:config` map."
+  [config]
+  (let [section-schemas (into {}
+                              (map (fn [[db-name database]]
+                                     [(clojure.core/name db-name) (workspace-schema database)]))
+                              (:databases (ordered->plain (:workspace config))))]
+    (doseq [{db-name :name settings :settings} (:databases config)
+            :let [settings-schema (:database-workspace-schema settings)
+                  section-schema  (get section-schemas db-name)]
+            :when (and (string? settings-schema)
+                       (string? section-schema)
+                       (not= (str/trim settings-schema) (str/trim section-schema)))]
+      (throw (ex-info (format (str "Database %s has two workspace schemas in config.yml: %s in its settings, %s in"
+                                   " the workspace section.")
+                              (pr-str db-name) (pr-str settings-schema) (pr-str section-schema))
+                      {:database-name db-name})))))
+
+(defn apply-workspace-section!
+  "Boot-time materialization of the parsed `:workspace` section.
+
+   Shape (post-`ordered->plain`):
+
+     {:name      \"<workspace-name>\"
+      :databases {\"<db-name>\" {:input_schemas [<schema-name>, ...]
+                                  :output        {:db ?, :schema ?}}
+                  ...}}
+
+   Resolves each database name to a `:model/Database` (rows are populated by the
+   `:databases` section, which runs earlier — see
+   [[metabase-enterprise.advanced-config.file/initialize!]]) and makes the instance a
+   workspace. A database the section does not list loses its
+   `database-workspace-schema` and its remap rows. Each database's schema is `:output`'s
+   `:schema`, else its `:db` (the parent puts the namespace there on engines without
+   schemas, such as MySQL). On
+   engines with a catalog slot, an `:output` `:db` given with a `:schema` is ignored;
+   the catalog comes from `Database.details`."
+  [section-config]
+  (let [{:keys [name databases]} (ordered->plain section-config)
+        schemas (into {}
+                      (map (fn [[db-name-kw database]]
+                             [(:id (resolve-db (clojure.core/name db-name-kw)))
+                              (workspace-schema database)]))
+                      databases)]
+    (ws/set-instance-workspace! schemas)
+    (log/infof "Loaded workspace %s from config.yml with %d database(s)"
+               (pr-str name) (count schemas))
+    {:workspace-name name
+     :database-count (count schemas)}))
+
+(defmethod advanced-config.file.i/initialize-section! :workspace
+  [_section-name section-config]
+  (apply-workspace-section! section-config))

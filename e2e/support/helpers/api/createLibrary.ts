@@ -9,7 +9,6 @@ export type LibraryCollectionIds = {
   libraryCollectionId: CollectionId;
   dataCollectionId: CollectionId;
   metricsCollectionId: CollectionId;
-  dashboardsCollectionId: CollectionId;
 };
 
 export function createLibrary(): Cypress.Chainable<LibraryCollectionIds> {
@@ -35,7 +34,6 @@ export function createLibrary(): Cypress.Chainable<LibraryCollectionIds> {
             libraryCollectionId: library.id,
             dataCollectionId: childId("library-data"),
             metricsCollectionId: childId("library-metrics"),
-            dashboardsCollectionId: childId("library-dashboards"),
           };
         }),
     );

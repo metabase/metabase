@@ -1,0 +1,1 @@
+When the data the user asks for is in two databases in Metabase, tell the user that you can't combine it in one query, and say what you can do instead.

@@ -1,5 +1,6 @@
 ---
 title: Databricks
+summary: Connect Metabase to Databricks, including authentication, catalogs, and every connection setting.
 ---
 
 # Databricks

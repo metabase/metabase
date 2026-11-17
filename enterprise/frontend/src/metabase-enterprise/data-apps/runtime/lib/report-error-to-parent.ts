@@ -1,3 +1,4 @@
+import { getDataAppParentOrigin } from "../../broker/iframe-broker";
 import { DATA_APP_ERROR_MESSAGE_TYPE } from "../../constants";
 
 import type { ErrorDetail } from "./describe-error";
@@ -14,6 +15,6 @@ export function reportErrorToParent(notReady: boolean, detail?: ErrorDetail) {
       message: detail?.message,
       stack: detail?.stack,
     },
-    window.location.origin,
+    getDataAppParentOrigin(),
   );
 }

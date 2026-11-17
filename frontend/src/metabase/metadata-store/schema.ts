@@ -4,12 +4,12 @@ import { schema } from "normalizr";
 
 import { checkNotNull } from "metabase/utils/types";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   Card,
   Collection,
   Database,
+  DatabaseId,
   Field,
   ForeignKey,
   Measure,
@@ -33,7 +33,7 @@ export const SchemaSchema = new schema.Entity<Schema>("schemas");
 type TableEntitySchema = {
   id: SchemaId;
   name: SchemaName | null;
-  database: Pick<Database, "id" | "is_saved_questions">;
+  database: { id: DatabaseId };
 };
 
 // also accepts partial payloads (e.g. `{ id, fks }`) and already-processed tables
@@ -50,24 +50,14 @@ export const TableSchema = new schema.Entity(
   {
     // convert "schema" returned by API as a string value to an object that can be normalized
     processStrategy({ ...table }: TableEntityData) {
-      // Saved questions are represented as database tables,
-      // and collections they're saved to as schemas
-      // Virtual tables ID are strings like "card__45" (where 45 is a question ID)
-      const isVirtualSchema = typeof table.id === "string";
-
       if (typeof table.schema === "string" || table.schema === null) {
         // tables with a raw string `schema` always carry `db_id`
-        const databaseId = isVirtualSchema
-          ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-          : checkNotNull(table.db_id);
+        const databaseId = checkNotNull(table.db_id);
         table.schema_name = table.schema;
         table.schema = {
           id: generateSchemaId(databaseId, table.schema_name),
           name: table.schema_name,
-          database: {
-            id: databaseId,
-            is_saved_questions: isVirtualSchema,
-          },
+          database: { id: databaseId },
         };
       }
 

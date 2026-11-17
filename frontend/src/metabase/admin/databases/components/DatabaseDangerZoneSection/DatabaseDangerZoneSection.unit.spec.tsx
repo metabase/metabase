@@ -176,9 +176,7 @@ describe("DatabaseDangerZoneSection", () => {
         database.name,
       );
       await userEvent.click(
-        within(modal).getByRole("button", {
-          name: "Delete this DB connection",
-        }),
+        within(modal).getByRole("button", { name: "Delete" }),
       );
       await waitFor(() => {
         expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
@@ -195,7 +193,7 @@ describe("DatabaseDangerZoneSection", () => {
           dataset: 2,
           metric: 3,
           segment: 4,
-          transform: 0,
+          transform: 5,
         },
       });
       await userEvent.click(
@@ -203,7 +201,7 @@ describe("DatabaseDangerZoneSection", () => {
       );
       const modal = getRemoveDatabaseConfirmModal();
       const deleteButton = within(modal).getByRole("button", {
-        name: "Delete this DB connection",
+        name: "Delete this content and the DB connection",
       });
 
       expect(deleteButton).toBeDisabled();
@@ -214,6 +212,7 @@ describe("DatabaseDangerZoneSection", () => {
           "Delete 2 models",
           "Delete 3 metrics",
           "Delete 4 segments",
+          "Delete 5 transforms",
         ].map((label) => within(modal).findByLabelText(label)),
       );
       for (const checkbox of contentCheckboxes) {
@@ -223,7 +222,7 @@ describe("DatabaseDangerZoneSection", () => {
       }
       expect(
         within(modal).getByText(
-          "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.",
+          "This will delete every saved question, model, metric, segment, and transform you’ve made that uses this data, and can’t be undone!",
         ),
       ).toBeInTheDocument();
       expect(deleteButton).toBeDisabled();

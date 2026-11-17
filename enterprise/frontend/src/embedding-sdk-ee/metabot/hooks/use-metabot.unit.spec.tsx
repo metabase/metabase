@@ -20,20 +20,27 @@ import {
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import { useMetabot } from "./use-metabot";
 
-const makeCard = (id: string, sourceTable = 1): GeneratedCard => ({
+const makeCard = (id: string, sourceTable = ORDERS_ID): GeneratedCard => ({
   type: "card",
   id,
   title: "Chart",
   query: {
     id: `q-${id}`,
-    query: {
-      database: 1,
-      type: "query",
-      query: { "source-table": sourceTable },
-    },
+    query: Lib.toJsQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: sourceTable } }],
+      }),
+    ),
   },
   display: "table",
 });
@@ -59,7 +66,7 @@ const addAgentMessage = (
   );
 };
 
-const cardMessage = (id: string, sourceTable = 1) =>
+const cardMessage = (id: string, sourceTable = ORDERS_ID) =>
   // `addAgentMessage` types its payload with a non-distributive `Omit` that
   // collapses the message union to common keys, so the branch-specific `part`
   // field fails excess-property checks (see the fuller note on `addAgentMessage`
@@ -73,7 +80,7 @@ const cardMessage = (id: string, sourceTable = 1) =>
     },
   }) as any;
 
-const cardPath = (id: string, sourceTable = 1) =>
+const cardPath = (id: string, sourceTable = ORDERS_ID) =>
   Urls.generatedCard(makeCard(id, sourceTable));
 
 /**
@@ -372,8 +379,8 @@ describe("useMetabot", () => {
         );
         addAgentMessage(
           store,
-          cardMessage("card-1A", 1),
-          cardMessage("card-1B", 2),
+          cardMessage("card-1A", ORDERS_ID),
+          cardMessage("card-1B", PRODUCTS_ID),
         );
         store.dispatch(
           metabotActions.addUserMessage({
@@ -383,14 +390,14 @@ describe("useMetabot", () => {
             message: "second",
           }),
         );
-        addAgentMessage(store, cardMessage("card-2", 3));
+        addAgentMessage(store, cardMessage("card-2", PEOPLE_ID));
       });
 
       const messages = await readMessages();
       const charts = messages.filter((m) => m.type === "chart");
       expect(charts).toHaveLength(2);
-      expect(charts[0].questionPath).toBe(cardPath("card-1B", 2));
-      expect(charts[1].questionPath).toBe(cardPath("card-2", 3));
+      expect(charts[0].questionPath).toBe(cardPath("card-1B", PRODUCTS_ID));
+      expect(charts[1].questionPath).toBe(cardPath("card-2", PEOPLE_ID));
     });
   });
 
@@ -714,7 +721,7 @@ describe("useMetabot", () => {
             message: "first",
           }),
         );
-        addAgentMessage(store, cardMessage("card-abc", 1));
+        addAgentMessage(store, cardMessage("card-abc", ORDERS_ID));
       });
 
       await waitFor(() => {
@@ -733,7 +740,7 @@ describe("useMetabot", () => {
             message: "second",
           }),
         );
-        addAgentMessage(store, cardMessage("card-xyz", 2));
+        addAgentMessage(store, cardMessage("card-xyz", PRODUCTS_ID));
       });
 
       await waitFor(() => {

@@ -1,7 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type {
+  OmniPickerItem,
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
   type DataPickerValue,
@@ -16,13 +20,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type {
-  ConcreteTableId,
-  DatabaseId,
-  Table,
-  TableId,
-} from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
+import type { DatabaseId, Table, TableId } from "metabase-types/api";
 
 import S from "./TableSelector.module.css";
 
@@ -38,15 +36,15 @@ export function TableSelector({
   database: DatabaseId | undefined;
   table: Table | undefined;
   availableTables: Table[];
-  selectedTableIds: ConcreteTableId[];
+  selectedTableIds: TableId[];
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
   onRemove: () => void;
 }) {
   const [isOpened, { open, close }] = useDisclosure();
 
-  function handleChange(tableId: TableId | undefined) {
-    const table = availableTables.find((table) => table.id === tableId);
+  function handleChange(item: OmniPickerTableItem | OmniPickerQuestionItem) {
+    const table = availableTables.find((table) => table.id === item.id);
     if (table) {
       onChange(table);
     }
@@ -55,7 +53,7 @@ export function TableSelector({
   function shouldDisableItem(item: OmniPickerItem) {
     if (item.model === "table") {
       // Filter available tables to exclude already selected ones (except current selection)
-      return !isConcreteTableId(item.id) || selectedTableIds.includes(item.id);
+      return typeof item.id !== "number" || selectedTableIds.includes(item.id);
     }
     return false;
   }

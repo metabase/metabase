@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -33,8 +32,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -513,15 +514,9 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
-                                                                  :perms/view-data
-                                                                  (u/the-id db)
-                                                                  schema-name))
+          (= :unrestricted (perms/every-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/view-data (u/the-id db) schema-name))
           (contains? #{:query-builder :query-builder-and-native}
-                     (perms/full-schema-permission-for-user api/*current-user-id*
-                                                            :perms/create-queries
-                                                            (u/the-id db)
-                                                            schema-name))))
+                     (perms/every-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries (u/the-id db) schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -602,6 +597,9 @@
                          :file-extension extension
                          :mime-type      mime-type}))))))
 
+(defn- check-workspace-mode! []
+  (workspaces/check-not-in-workspace-mode! "CSV upload"))
+
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -632,6 +630,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
+  (check-workspace-mode!)
   (let [database (or (upload.db/database db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
@@ -803,12 +802,9 @@
         (upload.db/set-card-result-metadata! id metadata)))))
 
 (defn- translate-type-keywords [m]
-  (walk/postwalk
-   (fn [x]
-     (if (and (keyword? x) (= "metabase.upload" (namespace x)))
-       (keyword "metabase.upload.types" (name x))
-       x))
-   m))
+  (match/replace-all m
+    (kw :guard (and (keyword? kw) (= "metabase.upload" (namespace kw))))
+    (keyword "metabase.upload.types" (name kw))))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (driver.conn/with-write-connection
@@ -901,7 +897,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-query? table))
+        (not (mi/can-query? (t2/hydrate table :can_query)))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 
@@ -929,7 +925,7 @@
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (and (mi/can-query? table) (mi/can-write? table)))
+      (not (and (mi/can-query? (t2/hydrate table :can_query)) (mi/can-write? (t2/hydrate table :can_write))))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 
@@ -988,6 +984,7 @@
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
+  (check-workspace-mode!)
   (let [table    (api/check-404 (upload.db/table table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]
@@ -1003,7 +1000,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (upload.db/tables table-ids) :db)
+         (->> (t2/hydrate (upload.db/tables table-ids) :db :can_query)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

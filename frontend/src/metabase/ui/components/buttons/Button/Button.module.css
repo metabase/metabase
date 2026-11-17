@@ -159,10 +159,21 @@
   }
 }
 
+/* We don't animate loading: !important to override Mantine's inline fade and slide transition */
 .loader {
-  /* Mantine's loader transition adds +1px on the Y axis; keep the loader centered */
-  top: calc(50% - 1px);
   display: flex;
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) !important;
+  transition: none !important;
+}
+
+/* Mantine keeps the loader mounted while its exit transition would run */
+.root:not([data-loading]) > .loader {
+  display: none;
+}
+
+.root .inner {
+  transition: none;
 }
 
 .label {

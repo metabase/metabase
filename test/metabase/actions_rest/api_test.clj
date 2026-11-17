@@ -12,7 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -1139,6 +1139,32 @@
                                        (format "action/%s/execute"
                                                "AAAAAAAAAAAAAAAAAAAAA")
                                        {:parameters {:id 1 :name "European"}}))))))))
+
+(deftest execute-adhoc-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (let [action-count (t2/count :model/Action)
+          implicit     {:name "Rename" :type "implicit" :kind "row/update" :table_id (mt/id :categories)}
+          query        {:name          "Rename"
+                        :type          "query"
+                        :dataset_query (mt/native-query {:query         "UPDATE categories SET name = {{name}} WHERE id = 1"
+                                                         :template-tags {"name" {:id           "name"
+                                                                                 :name         "name"
+                                                                                 :display-name "Name"
+                                                                                 :type         "text"}}})
+                        :parameters    [{:id "name" :slug "name" :type "string/="
+                                         :target [:variable [:template-tag "name"]]}]}]
+      (testing "a superuser runs an ad-hoc implicit action"
+        (is (=? {:rows-updated some?}
+                (mt/user-http-request :crowberto :post 200 "action/execute"
+                                      {:action implicit :parameters {:id 1 :name "European"}}))))
+      (testing "a superuser runs an ad-hoc query action"
+        (is (=? {:rows-affected 1}
+                (mt/user-http-request :crowberto :post 200 "action/execute"
+                                      {:action query :parameters {:name "European"}}))))
+      (testing "nobody else does"
+        (mt/user-http-request :rasta :post 403 "action/execute" {:action implicit :parameters {:id 1 :name "European"}}))
+      (testing "nothing is saved"
+        (is (= action-count (t2/count :model/Action)))))))
 
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled

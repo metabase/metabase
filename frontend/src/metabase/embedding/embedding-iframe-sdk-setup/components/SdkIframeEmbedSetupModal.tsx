@@ -25,6 +25,7 @@ import {
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { useIsDataAppMissing } from "../hooks/use-is-data-app-missing";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
@@ -72,8 +73,10 @@ export const SdkIframeEmbedSetupContent = () => {
     settings,
   );
 
+  const isDataAppMissing = useIsDataAppMissing(settings);
   const isMissingResource =
-    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+    isDataAppMissing ||
+    (isQuestionOrDashboard && !isLoading && (!resource || resource.archived));
 
   const siteUrl = useSetting("site-url");
   const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
@@ -82,7 +85,11 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("get-code", () => (
       <Button
         variant="filled"
-        disabled={resource?.enable_embedding === false}
+        disabled={
+          !allowPreviewAndNavigation ||
+          isMissingResource ||
+          resource?.enable_embedding === false
+        }
         onClick={handleEmbedDone}
         leftSection={<Icon name="check_filled" />}
       >
@@ -92,7 +99,7 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("select-embed-options", () => (
       <Button
         variant="filled"
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingResource}
         onClick={handleNext}
       >
         {t`Get code`}
@@ -102,9 +109,9 @@ export const SdkIframeEmbedSetupContent = () => {
       <Button
         variant="filled"
         onClick={handleNext}
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingResource}
       >
-        {t`Next`}
+        {experience === "data-app" ? t`Get code` : t`Next`}
       </Button>
     ));
 

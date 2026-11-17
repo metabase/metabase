@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isEntityName } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -16,12 +15,11 @@ export function getSemanticTypeError(
     return undefined;
   }
 
-  const id = getRawTableFieldId(field);
+  const id = field.id;
 
   const entityNameFields =
-    table.fields?.filter(
-      (field) => isEntityName(field) && getRawTableFieldId(field) !== id,
-    ) ?? [];
+    table.fields?.filter((field) => isEntityName(field) && field.id !== id) ??
+    [];
 
   if (entityNameFields.length === 0) {
     return undefined;
@@ -36,7 +34,7 @@ export function getSemanticTypeError(
       {entityNameFields.map((field, index) => {
         const parentName = field.nfc_path?.[0] ?? "";
         const parentField = fieldsByName[parentName];
-        const href = getFieldHref(getRawTableFieldId(field));
+        const href = getFieldHref(field.id);
 
         return (
           <Fragment key={index}>

@@ -648,7 +648,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       );
 
       cy.log("open the dependencies tab of the data action");
-      cy.findByRole("link", { name: "Dependencies" }).click();
+      cy.findByRole("tab", { name: "Dependencies" }).click();
       H.DependencyGraph.graph().within(() => {
         cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
         cy.findByLabelText(TABLE_BASED_ACTION_NAME).should("be.visible");
@@ -747,11 +747,6 @@ function verifyCardDependentsNavigation({
     itemTitle,
     groupTitle: "1 SQL snippet",
     dependentItemTitle: names.snippet,
-  });
-  verifyPanelNavigation({
-    itemTitle,
-    groupTitle: "1 data action",
-    dependentItemTitle: names.action,
   });
 }
 
@@ -963,7 +958,6 @@ function getCardBasedDependentNames(namePrefix: string) {
     metric: `${namePrefix} metric`,
     transform: `${namePrefix} transform`,
     snippet: `${namePrefix} snippet`,
-    action: `${namePrefix} data action`,
   };
 }
 
@@ -1000,7 +994,6 @@ function createCardBasedDependents({
     name: names.snippet,
     content: `{{#${cardId}}}`,
   });
-  createCardBasedAction({ name: names.action, cardId });
 }
 
 function createMetricBasedCard({
@@ -1261,22 +1254,6 @@ function createSnippetBasedAction({
     name: SNIPPET_BASED_ACTION_NAME,
     query: `DELETE FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
     templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
-  });
-}
-
-function createCardBasedAction({
-  name,
-  cardId,
-}: {
-  name: string;
-  cardId: CardId;
-}) {
-  return createDataAction({
-    name,
-    query: `DELETE FROM ${TABLE_NAME} WHERE id IN (SELECT id FROM {{#${cardId}}})`,
-    templateTags: {
-      [`#${cardId}`]: { type: "card", "card-id": cardId },
-    },
   });
 }
 

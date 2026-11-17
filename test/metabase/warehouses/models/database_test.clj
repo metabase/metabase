@@ -11,14 +11,14 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -816,7 +816,7 @@
            (t2/update! :model/Database :id (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
 (deftest overlay-details-are-validated-the-way-they-are-resolved-test
-  ;; `:write_data_details` is merged onto `:details` by
+  ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
   ;; [[metabase.driver.connection/effective-details]] rather than used on their own, so that merge is what has to
   ;; satisfy the policy -- an overlay holding nothing but credentials repoints nothing.
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
@@ -828,7 +828,11 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"private or internal network address"
-             (t2/update! :model/Database :id (:id db) {:write_data_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+             (t2/update! :model/Database :id (:id db) {:write_data_details {:host "127.0.0.1" :user "hummingbird"}})))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/update! :model/Database :id (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
 (deftest disallowed-connection-parameters-are-refused-on-save-test
   ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which
@@ -901,18 +905,19 @@
              (t2/select-one-fn :engine :model/Database :id db-id))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
-  (testing "serdes/extract-one never exports :is_stub"
+  (testing "serialization never exports :is_stub"
     (mt/with-temp [:model/Database stub     {:engine :h2 :name "stub" :is_stub true}
                    :model/Database non-stub {:engine :h2 :name "non-stub"}]
-      (is (not (contains? (serdes/extract-one "Database" nil stub) :is_stub)))
-      (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub))))))
+      (doseq [exported (serialization/export-batch :model/Database [stub non-stub])]
+        (is (not (contains? exported :is_stub)))))))
 
 (deftest ^:parallel serdes-is-sample-not-trusted-test
-  (testing "serdes never trusts an archive's :is_sample (SEC-1175): the real Sample Database is excluded from export,
-            so an incoming is_sample is forged. It is dropped from :copy and imported as false."
-    (let [spec (serdes/make-spec "Database" nil)]
-      (is (not (contains? (set (:copy spec)) :is_sample)))
-      (is (false? ((get-in spec [:transform :is_sample :import]) true))))))
+  (testing "serialization never trusts archive's :is_sample (SEC-1175): real Sample Database is excluded from export,
+            so incoming is_sample is forged. It is not exported and imported as false."
+    (mt/with-temp [:model/Database db {:engine :h2 :name "sample-ish" :is_sample true}]
+      (let [exported (first (serialization/export-batch :model/Database [db]))]
+        (is (not (contains? exported :is_sample)))
+        (is (false? (:is_sample (first (serialization/import :model/Database [(assoc exported :is_sample true)])))))))))
 
 (deftest assert-sqlite-not-hosted-test
   (testing "serdes import refuses a SQLite Database on a hosted instance (SEC-1175); self-hosted and non-SQLite are fine"
@@ -944,23 +949,21 @@
              :tables
              (#(map :name %))))))
 
-;;; ---------------------------------------- visible-filter-clause tests ----------------------------------------
+;;; ------------------------------------- visible-databases-filter-clause tests -------------------------------------
 
 (defn- fetch-visible-db-ids
-  "Helper to fetch visible database IDs using visible-filter-clause.
-   Handles the :with/:clause return value format."
+  "Helper to fetch visible database IDs using `perms/visible-databases-filter-clause`."
   [db-ids user-info permission-mapping column-field]
-  (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
-    (t2/select-pks-set :model/Database
-                       {:where [:and
-                                clause
-                                [:in :id db-ids]]})))
+  (t2/select-pks-set :model/Database
+                     {:where [:and
+                              (perms/visible-databases-filter-clause column-field user-info permission-mapping)
+                              [:in :id db-ids]]}))
 
 (def ^:private default-permission-mapping
   {:perms/view-data :unrestricted
    :perms/create-queries :query-builder})
 
-(deftest visible-filter-clause-superuser-test
+(deftest visible-databases-filter-clause-superuser-test
   (testing "Superuser should see all databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -982,11 +985,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id db3-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? true}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? true :is-data-analyst? false}
                                      default-permission-mapping
                                      :id)))))))
 
-(deftest visible-filter-clause-non-superuser-test
+(deftest visible-databases-filter-clause-non-superuser-test
   (testing "Non-superuser should only see databases they have permissions for"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1008,11 +1011,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
                                      :id)))))))
 
-(deftest visible-filter-clause-qualified-column-test
+(deftest visible-databases-filter-clause-qualified-column-test
   (testing "Should work with qualified column names"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1034,11 +1037,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
                                      :metabase_database.id)))))))
 
-(deftest visible-filter-clause-column-expression-test
+(deftest visible-databases-filter-clause-column-expression-test
   (testing "Should work with column expressions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1060,11 +1063,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
                                      [:coalesce :id :metabase_database.id])))))))
 
-(deftest visible-filter-clause-view-data-only-test
+(deftest visible-databases-filter-clause-view-data-only-test
   (testing "Requiring only view-data permissions should include databases where user has view permissions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1086,12 +1089,12 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      {:perms/view-data :unrestricted
                                       :perms/create-queries :no}
                                      :id)))))))
 
-(deftest visible-filter-clause-blocked-level-test
+(deftest visible-databases-filter-clause-blocked-level-test
   (testing "Requiring blocked level permissions (most permissive) should include all databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1113,12 +1116,12 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id db3-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      {:perms/view-data :blocked
                                       :perms/create-queries :no}
                                      :id)))))))
 
-(deftest visible-filter-clause-no-permissions-test
+(deftest visible-databases-filter-clause-no-permissions-test
   (testing "User with no group memberships should see no databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1144,11 +1147,11 @@
                       :user_id (mt/user->id :rasta)
                       :group_id [:in [(:id pg1) (:id pg2)]]))
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                          {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                          {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                           default-permission-mapping
                                           :id)))))))
 
-(deftest visible-filter-clause-table-level-permissions-test
+(deftest visible-databases-filter-clause-table-level-permissions-test
   (testing "Database should be visible when user has access to at least one table"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
@@ -1168,7 +1171,7 @@
         (data-perms/set-table-permission! pg table2-id :perms/view-data :unrestricted)
         (data-perms/set-table-permission! pg table2-id :perms/create-queries :query-builder)
         (is (contains? (fetch-visible-db-ids [db-id]
-                                             {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                             {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                              default-permission-mapping
                                              :id)
                        db-id))))))
@@ -1185,7 +1188,7 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 (deftest database-can-read?-with-manage-database-permission-test
   (testing "User with manage-database permission can read database"
@@ -1198,7 +1201,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 (deftest database-can-read?-with-manage-table-metadata-on-any-table-test
   (testing "User with manage-table-metadata on any table can read database"
@@ -1211,7 +1214,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 ;;; ---------------------------------------- can-query? permission tests ----------------------------------------
 
@@ -1225,10 +1228,10 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? :model/Database db-id))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query)))))
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? :model/Database db-id)))))))
+        (is (true? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query))))))))
 
 (deftest database-can-query?-manage-database-does-not-grant-query-access-test
   (testing "manage-database alone does NOT grant query access"
@@ -1241,7 +1244,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? :model/Database db-id)))))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query))))))))
 
 (deftest router-database-id-is-immutable-test
   (testing "updating a database's router_database_id throws"

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { t } from "ttag";
 
 import {
   AccordionList,
@@ -12,19 +11,16 @@ import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId } from "metabase-types/api";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
-import { RawDataBackButton } from "../RawDataBackButton";
 import type { DataSelectorDatabase, DataSelectorSchema } from "../types";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: DataSelectorDatabase[];
-  hasBackButton: boolean;
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
   selectedDatabase?: DataSelectorDatabase;
   selectedSchema?: DataSelectorSchema;
-  onBack?: () => void;
   onChangeDatabase: (database: DataSelectorDatabase) => void;
   onChangeSchema: (schema?: DataSelectorSchema) => void;
   getDatabaseSchemas: (databaseId: DatabaseId) => DataSelectorSchema[];
@@ -47,8 +43,6 @@ export const DataSelectorDatabaseSchemaPicker = ({
   onChangeDatabase,
   hasNextStep,
   isLoading,
-  hasBackButton,
-  onBack,
   hasInitialFocus,
   getDatabaseSchemas,
 }: DataSelectorDatabaseSchemaPicker) => {
@@ -60,40 +54,25 @@ export const DataSelectorDatabaseSchemaPicker = ({
     const schemas = getDatabaseSchemas(database.id);
 
     return {
-      name: database.is_saved_questions ? t`Saved Questions` : database.name,
+      name: database.name,
       items:
-        !database.is_saved_questions && schemas.length > 1
+        schemas.length > 1
           ? schemas.map((schema) => ({
               schema,
               name: getSchemaDisplayName(schema.name) ?? "",
             }))
           : [],
-      className: database.is_saved_questions ? CS.bgLight : undefined,
-      icon: database.is_saved_questions ? "collection" : "database",
+      icon: "database",
       loading:
         selectedDatabase?.id === database.id &&
         schemas.length === 0 &&
         isLoading,
-      active: database.is_saved_questions || isSyncCompleted(database),
+      active: isSyncCompleted(database),
     };
   });
 
-  const handleChangeSection = (_section: any, sectionIndex: number) => {
-    const isNavigationSection = hasBackButton && sectionIndex === 0;
-
-    if (isNavigationSection) {
-      onBack?.();
-      return false;
-    }
-
-    // the "go back" button is also a section,
-    // so need to take its index in mind
-    const database = hasBackButton
-      ? databases[sectionIndex - 1]
-      : databases[sectionIndex];
-
-    onChangeDatabase(database);
-
+  const handleChangeSection = (_section: Section, sectionIndex: number) => {
+    onChangeDatabase(databases[sectionIndex]);
     return true;
   };
 
@@ -101,14 +80,6 @@ export const DataSelectorDatabaseSchemaPicker = ({
     icon && (
       <Icon className={cx("Icon", CS.textDefault)} name={icon} size={18} />
     );
-
-  if (hasBackButton) {
-    sections.unshift({
-      name: <RawDataBackButton />,
-      active: true,
-      type: "back",
-    });
-  }
 
   let openSection = selectedSchema
     ? databases.findIndex((db) => db.id === selectedSchema.database)

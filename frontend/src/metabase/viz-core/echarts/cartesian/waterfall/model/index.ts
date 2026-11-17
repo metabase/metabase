@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { RawSeries } from "metabase-types/api";
 
 import { getCartesianChartColumns } from "../../../../lib/graph/columns";

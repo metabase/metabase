@@ -2,6 +2,11 @@
   "Malli schemas for the data-apps module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.actions.schema :as actions.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -12,7 +17,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/ee/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host"})
+  #{"repo-status" "generate"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
@@ -42,11 +47,11 @@
   [:and
    {:error/message "must be lowercase letters, numbers, and dashes"}
    [:string {:max 100}]
-   [:re #"\A[a-z0-9]+(?:-[a-z0-9]+)*\z"]
+   [:re #"^[a-z0-9]+(?:-[a-z0-9]+)*(?![\s\S])"]
    [:fn {:error/message "must not be a reserved slug"} (complement reserved-slugs)]])
 
-(mr/def ::display-name
-  "A data app's display name."
+(mr/def ::name
+  "A data app's name, which people see."
   [:string (merge {:min 1} (decoders trim))])
 
 (mr/def ::description
@@ -74,7 +79,7 @@
   [:re
    (merge {:error/message "must be an origin like https://api.example.com or https://*.example.com"}
           (decoders origin))
-   #"\Ahttps?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?\z"])
+   #"^https?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?(?![\s\S])"])
 
 (mr/def ::allowed-hosts
   "The origins a data app's sandboxed bundle may fetch, `[]` when nil."
@@ -98,13 +103,24 @@
     [:id              ms/PositiveInt]
     [:bundle_hash     {:optional true} [:maybe :string]]]])
 
+(mr/def ::data-app-preview
+  "A data app's dev preview: the slug its manifest declares, whether or not the app exists on the instance."
+  [:map {:closed true}
+   [:slug :string]])
+
+(mr/def ::data-app-info
+  "What a data app's request is checked as: the app it names, or a dev preview of one, which has no ID."
+  [:multi {:dispatch #(if (contains? % :id) :app :preview)}
+   [:app     ::data-app]
+   [:preview ::data-app-preview]])
+
 (mr/def ::data-app.update
   "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the
   model computes, all optional."
   [:map {:closed true}
    [:entity_id       {:optional true} [:maybe :string]]
-   [:name            {:optional true} ::slug]
-   [:display_name    {:optional true} ::display-name]
+   [:slug            {:optional true} ::slug]
+   [:name            {:optional true} ::name]
    [:allowed_hosts   {:optional true} ::allowed-hosts]
    [:bundle_path     {:optional true} ::bundle-path]
    [:bundle          {:optional true} [:maybe ::bundle]]
@@ -115,11 +131,43 @@
    [:version         {:optional true} ::version]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
-(mr/def ::data-app.insert
-  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, and bundle path required."
+(mr/def ::data-app.create
+  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, name, and bundle path required."
   [:merge
    ::data-app.update
    [:map
-    [:name         ::slug]
-    [:display_name ::display-name]
-    [:bundle_path  ::bundle-path]]])
+    [:slug        ::slug]
+    [:name        ::name]
+    [:bundle_path ::bundle-path]]])
+
+(mr/def ::query-stage-spec
+  "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table
+  source, and no joins or custom expressions."
+  [:merge
+   (mut/select-keys ::lib.schema.test-spec/test-stage-spec [:fields :filters :aggregations :breakouts :order-bys :limit])
+   [:map {:closed true}
+    [:source [:ref ::lib.schema.test-spec/test-table-source-spec]]]])
+
+(mr/def ::query-spec
+  "A Lib test query spec of a data app's question: one stage."
+  [:map {:closed true}
+   [:stages [:tuple [:ref ::query-stage-spec]]]])
+
+(mr/def ::action-spec
+  "An action of a data app: an implicit action of `kind` on a table."
+  [:map {:closed true}
+   [:kind  ::actions.schema/implicit-action.kind]
+   [:table [:map {:closed true}
+            [:id ::lib.schema.id/table]]]])
+
+(mr/def ::external-data-app
+  "A DataApp as serialization writes it, with portable references in place of ids, its bundle path under the key of its
+  manifest, and its bundle as a resource file."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::data-app [:entity_id :slug :name :description :version :allowed_hosts]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:collection       {:optional true} [:maybe ::lib.schema.id/collection]]
+     [:path             {:optional true} ::bundle-path]
+     [:serdes/resources {:optional true} [:map-of :string :string]]]]])

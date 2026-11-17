@@ -6,11 +6,10 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { MetabotSuggestedTransform, Transform } from "metabase-types/api";
-import {
-  createMockNativeDatasetQuery,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockPythonTransformSource,
   createMockTransform,
@@ -20,6 +19,10 @@ import {
   AgentSuggestionMessage,
   type SuggestionMessage,
 } from "./MetabotAgentSuggestionMessage";
+
+const NATIVE_DATASET_QUERY = Lib.toJsQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+);
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -72,7 +75,7 @@ describe("AgentSuggestionMessage", () => {
             id: undefined,
             source: {
               type: "query",
-              query: createMockNativeDatasetQuery(),
+              query: NATIVE_DATASET_QUERY,
             },
           }),
         },
@@ -126,7 +129,7 @@ describe("AgentSuggestionMessage", () => {
             id: undefined,
             source: {
               type: "query",
-              query: createMockNativeDatasetQuery(),
+              query: NATIVE_DATASET_QUERY,
             },
           }),
         },

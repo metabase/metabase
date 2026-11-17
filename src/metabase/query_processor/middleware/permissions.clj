@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.api.common :refer [*current-user-id*]]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -15,7 +15,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -34,15 +33,10 @@
 (defn- throw-inactive-table-error
   [{db-id :id db-name :name} {table-id :id table-name :name schema :schema}]
   ;; We don't cache perms for inactive tables, so we need to manually bypass the cache here
-  (perms/disable-perms-cache
-    (let [show-table-name? (perms/user-has-permission-for-table? *current-user-id*
-                                                                 :perms/view-data
-                                                                 :unrestricted
-                                                                 db-id
-                                                                 table-id)]
-      (throw (Exception. (tru "Table {0} is inactive." (if show-table-name?
-                                                         (format "\"%s.%s.%s\"" db-name schema table-name)
-                                                         table-id)))))))
+  (let [show-table-name? (perms/user-has-permission-for-tables? (perms/user-info *current-user-id*) :perms/view-data :unrestricted {table-id db-id})]
+    (throw (Exception. (tru "Table {0} is inactive." (if show-table-name?
+                                                       (format "\"%s.%s.%s\"" db-name schema table-name)
+                                                       table-id))))))
 
 (defn- check-query-does-not-access-inactive-tables
   "Throws an exception if any of the tables referenced by this query are marked as inactive in the app DB.
@@ -68,7 +62,7 @@
   metabase-enterprise.audit-app.permissions
   [query]
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
-                  query)))
+                  {:type qp.error-type/disabled-feature, :query query})))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
@@ -82,8 +76,6 @@
                      *current-user-id*))
         (check-audit-db-permissions outer-query))
       (when *current-user-id*
-        (log/tracef "Checking query permissions. Current user permissions = %s"
-                    (pr-str (perms/permissions-for-user *current-user-id*)))
         (check-query-does-not-access-inactive-tables outer-query)
         (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
               source-card-ids (:card-ids required-perms)]
@@ -98,10 +90,10 @@
                 (query-perms/check-card-result-metadata-data-perms database-id *card-id*)
                 (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
                   (throw (query-perms/perms-exception required-perms)))
-                (doseq [card-id source-card-ids
-                        :when  (not= card-id *card-id*)]
-                  (query-perms/check-card-read-perms database-id card-id)
-                  (query-perms/check-card-result-metadata-data-perms database-id card-id)))
+                (let [other-card-ids (remove #{*card-id*} source-card-ids)]
+                  (query-perms/check-cards-read-perms database-id other-card-ids)
+                  (doseq [card-id other-card-ids]
+                    (query-perms/check-card-result-metadata-data-perms database-id card-id))))
 
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms
@@ -113,8 +105,8 @@
               ;; nested Cards: filter values from field-ref-only dashcard mappings have no caller-side read check on
               ;; the mapped Card, so this is the only check. The result_metadata check covers tables a Card's saved
               ;; columns name but its query footprint does not.
+              (query-perms/check-cards-read-perms database-id source-card-ids)
               (doseq [card-id source-card-ids]
-                (query-perms/check-card-read-perms database-id card-id)
                 (query-perms/check-card-result-metadata-data-perms database-id card-id))
               (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
                 (throw (query-perms/perms-exception required-perms))))
@@ -124,8 +116,7 @@
             (do
               ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
               ;; Recursively check permissions for any source Cards
-              (doseq [card-id source-card-ids]
-                (query-perms/check-card-read-perms database-id card-id))
+              (query-perms/check-cards-read-perms database-id source-card-ids)
               ;; Check that we have the data permissions to run this card
               (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
               ;; Check that all columns from source cards result_metadata are accessible
@@ -162,7 +153,6 @@
 (mu/defn check-query-action-permissions*
   "Throws unless the current user can run an action with the already preprocessed `query`."
   [{database-id :database, :as query} :- ::lib.schema/query]
-  (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (check-no-sandboxed-action-access database-id)
   (when *card-id*
     (query-perms/check-card-read-perms database-id *card-id*))
@@ -192,7 +182,7 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (and (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
+   (and (= (get (perms/every-table-in-database-permissions-for-user (perms/user-info *current-user-id*) :perms/create-queries [database-id]) database-id)
            :query-builder-and-native)
         ;; the compiled SQL of a sandboxed user's query exposes the sandbox definition
         (not (perms/sandboxed-user-for-db? database-id)))))

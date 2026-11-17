@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -81,13 +80,8 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (let [segments  (segments.db/unarchived-segments)
-        table-ids (into #{} (keep :table_id) segments)]
-    (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (segments.db/table-database-ids table-ids))
-                                    :table-ids table-ids})
-    (-> (filterv mi/can-read? segments)
-        (t2/hydrate :creator :definition_description))))
+  (-> (filterv mi/can-read? (t2/hydrate (segments.db/unarchived-segments) :can_read))
+      (t2/hydrate :creator :definition_description)))
 
 (defn write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
@@ -138,12 +132,8 @@
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]

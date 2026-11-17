@@ -4,7 +4,6 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -161,7 +160,7 @@
    ;; - `search.cy.spec.js`
    ;; - `models.cy.spec.js`
    ;; - `documents.cy.spec.ts`
-   ;; - `document-links.cy.spec.ts`
+   ;; - `rich-text-input.cy.spec.ts`
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot
@@ -514,7 +513,6 @@
    [:is-routed-user?       :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
-   [:current-user-perms [:set perms/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
