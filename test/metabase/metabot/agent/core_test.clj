@@ -1044,8 +1044,9 @@
 (defn- llm-span-usages
   "The `:ai/usage` of each `llm` span in `spans`, in the order of the iterations."
   [spans]
-  (map #(get-in % [:attributes :ai/usage])
-       (sort-by #(get-in % [:attributes :ai/iteration]) spans)))
+  (->> (map :attributes spans)
+       (sort-by :ai/iteration)
+       (map :ai/usage)))
 
 (deftest step-limit-reply-eval-usage-test
   (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"

@@ -684,6 +684,35 @@
                             (self/provider-error e)
                             {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
 
+(defn- usage-model
+  "The model that token usage is keyed by: `provider-and-model` without its `metabase/` routing prefix."
+  [provider-and-model]
+  (or (some-> provider-and-model llm.provider/strip-managed-prefix)
+      "unknown"))
+
+(defn- record-call-usage-xf
+  "Transducer over the parts of one LLM call that records the usage of that call on its eval span, as
+  `:ai/usage {model usage}`. It sums the `:usage` parts of the call. It is `identity` when no eval capture is active.
+
+  Some models have a rate that changes with the size of one request, so the evals price each call, not the sum of
+  the turn.
+
+  The record goes to the innermost open span, so reduce the call inside its `ait/with-llm-call`. Put this transducer
+  before [[accumulate-usage-xf]], which replaces the `:usage` of each part with the running total of the turn."
+  [provider-and-model]
+  (if-not (ait/capture-active?)
+    identity
+    (let [model (usage-model provider-and-model)]
+      (fn [rf]
+        (let [call-usage (volatile! {})]
+          (fn
+            ([] (rf))
+            ([result] (rf result))
+            ([result part]
+             (when (= :usage (:type part))
+               (ait/record! {:ai/usage {model (vswap! call-usage #(merge-with + % (:usage part)))}}))
+             (rf result part))))))))
+
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
   (keyed by provider-and-model) and replaces the part's `:usage` with the running total.
@@ -694,27 +723,16 @@
   The `metabase/` routing prefix is stripped so usage keys reflect the actual
   provider/model (e.g. `openrouter/anthropic/claude-haiku-4.5`) regardless of
   whether the request was routed through the AI proxy.
-  Non-usage parts pass through unchanged.
-
-  One reduction is the stream of one LLM call. The transducer also records the usage of that call only, as
-  `:ai/usage {model usage}`, on the eval span of the call. Some models have a rate that changes with the size of one
-  request, so the evals price each call, not the sum of the turn."
+  Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (let [model     (or (some-> provider-and-model llm.provider/strip-managed-prefix)
-                      "unknown")
-        add-usage (partial merge-with +)]
-    (fn [rf]
-      (let [call-usage (volatile! {})]
-        ((map (fn [{:keys [usage] :as part}]
-                (if (= (:type part) :usage)
-                  (do
-                    (ait/record! {:ai/usage {model (vswap! call-usage add-usage usage)}})
-                    (assoc part
-                           :model model
-                           :usage (-> (swap! usage-atom update model add-usage usage)
-                                      (get model))))
-                  part)))
-         rf)))))
+  (let [model (usage-model provider-and-model)]
+    (map (fn [part]
+           (if (= (:type part) :usage)
+             (assoc part
+                    :model model
+                    :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
+                               (get model)))
+             part)))))
 
 (defn- step-limit-reply-parts
   "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.
@@ -736,7 +754,8 @@
                                   {:role :user :content step-limit-instruction})]
             (u/prog1 (ait/with-llm-call {:ai/iteration iteration
                                          :ai/model     (:model profile)}
-                       (u/prog1 (into [] (comp (accumulate-usage-xf usage-atom (:model profile))
+                       (u/prog1 (into [] (comp (record-call-usage-xf (:model profile))
+                                               (accumulate-usage-xf usage-atom (:model profile))
                                                (u/tee-xf parts-atom))
                                       (call-llm memory profile tools system-msg iteration
                                                 (assoc tracking-opts :iteration iteration)
@@ -790,7 +809,8 @@
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
           input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
-          xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
+          xf                 (comp (record-call-usage-xf (:model profile))
+                                   (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
