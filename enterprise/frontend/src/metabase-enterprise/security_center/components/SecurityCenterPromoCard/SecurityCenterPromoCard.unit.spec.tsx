@@ -20,7 +20,6 @@ const DISMISSED_KEY = "security-center-promo-dismissed";
 
 interface SetupOpts {
   isAdmin?: boolean;
-  isProSelfHosted?: boolean;
   emailConfigured?: boolean;
   slackConfigured?: boolean;
   advisories?: Advisory[];
@@ -28,16 +27,14 @@ interface SetupOpts {
 
 function setup({
   isAdmin = true,
-  isProSelfHosted = true,
   emailConfigured = false,
   slackConfigured = false,
   advisories = [],
 }: SetupOpts = {}) {
-  const tokenFeatures = createMockTokenFeatures(
-    isProSelfHosted
-      ? { advanced_permissions: true, hosting: false }
-      : { hosting: false },
-  );
+  const tokenFeatures = createMockTokenFeatures({
+    advanced_permissions: true,
+    hosting: false,
+  });
 
   setupNotificationChannelsEndpoints({
     email: { configured: emailConfigured },
@@ -129,15 +126,6 @@ describe("SecurityCenterPromoCard", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/pulse/form_input"),
     ).toHaveLength(0);
-  });
-
-  it("does not render for non-pro-self-hosted plans", async () => {
-    setup({ isProSelfHosted: false });
-
-    await waitForRequests();
-    expect(
-      screen.queryByText(/Stay safe with security alerts/),
-    ).not.toBeInTheDocument();
   });
 
   it("does not render when there is an active advisory (red banner takes over)", async () => {

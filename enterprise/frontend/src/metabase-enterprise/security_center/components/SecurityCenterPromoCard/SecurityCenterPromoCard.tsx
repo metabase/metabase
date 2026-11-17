@@ -6,7 +6,6 @@ import { useGetChannelInfoQuery } from "metabase/api";
 import { getUserIsAdmin } from "metabase/current-user";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
-import { getPlan, useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
 
 import { useListSecurityAdvisoriesQuery } from "../../api";
@@ -29,8 +28,6 @@ function useDismissed() {
 
 export function SecurityCenterPromoCard() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const tokenFeatures = useSetting("token-features");
-  const plan = getPlan(tokenFeatures);
   const { data: channelInfo, isLoading: isChannelInfoLoading } =
     useGetChannelInfoQuery(isAdmin ? undefined : skipToken);
   const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
@@ -39,10 +36,6 @@ export function SecurityCenterPromoCard() {
 
   // The promo links to /admin/security-center, so only admins should see it.
   if (!isAdmin) {
-    return null;
-  }
-
-  if (plan !== "pro-self-hosted") {
     return null;
   }
 

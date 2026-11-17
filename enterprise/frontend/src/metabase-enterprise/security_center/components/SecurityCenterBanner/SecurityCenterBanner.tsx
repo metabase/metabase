@@ -3,7 +3,6 @@ import { jt, t } from "ttag";
 import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
 import { useLocation } from "metabase/router";
-import { getPlan, useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
 
 import { useListSecurityAdvisoriesQuery } from "../../api";
@@ -11,14 +10,8 @@ import { isAcknowledged, isAffected } from "../../utils";
 
 export function SecurityCenterBanner() {
   const location = useLocation();
-  const tokenFeatures = useSetting("token-features");
-  const plan = getPlan(tokenFeatures);
   const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
     useListSecurityAdvisoriesQuery();
-
-  if (plan !== "pro-self-hosted") {
-    return null;
-  }
 
   if (isAdvisoriesLoading) {
     return null;

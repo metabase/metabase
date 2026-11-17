@@ -1,19 +1,12 @@
 import { t } from "ttag";
 
 import { useGetChannelInfoQuery } from "metabase/api";
-import { getPlan, useSetting } from "metabase/settings";
 
 import { WarningBanner } from "../WarningBanner/WarningBanner";
 
 function useShouldShow(): boolean {
-  const tokenFeatures = useSetting("token-features");
-  const plan = getPlan(tokenFeatures);
   const { data: channelInfo, isLoading: isChannelInfoLoading } =
     useGetChannelInfoQuery();
-
-  if (plan !== "pro-self-hosted") {
-    return false;
-  }
 
   if (isChannelInfoLoading) {
     return false;

@@ -15,21 +15,15 @@ import { createAdvisory } from "metabase-types/api/mocks/security-center";
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
 
 interface SetupOpts {
-  isProSelfHosted?: boolean;
   advisories?: Advisory[];
   initialRoute?: string;
 }
 
-function setup({
-  isProSelfHosted = true,
-  advisories = [],
-  initialRoute = "/",
-}: SetupOpts = {}) {
-  const tokenFeatures = createMockTokenFeatures(
-    isProSelfHosted
-      ? { advanced_permissions: true, hosting: false }
-      : { hosting: false },
-  );
+function setup({ advisories = [], initialRoute = "/" }: SetupOpts = {}) {
+  const tokenFeatures = createMockTokenFeatures({
+    advanced_permissions: true,
+    hosting: false,
+  });
 
   fetchMock.get("path:/api/ee/security-center", {
     last_checked_at: null,
@@ -53,13 +47,6 @@ function setup({
 describe("SecurityCenterBanner", () => {
   it("does not render when there is no active advisory", async () => {
     setup();
-
-    await waitForRequestsToSettle();
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("does not render for non-pro-self-hosted plans", async () => {
-    setup({ isProSelfHosted: false });
 
     await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
