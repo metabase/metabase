@@ -280,6 +280,69 @@
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
+(mr/def ::test-suite.member.request
+  "A test in a suite, as a client names it: by its type and either its id or its entity id."
+  [:and
+   [:map {:closed true}
+    [:test_type      ::test-type]
+    [:test_id        {:optional true} ms/PositiveInt]
+    [:test_entity_id {:optional true} ::lib.schema.common/non-blank-string]]
+   [:fn {:error/message "must have exactly one of test_id and test_entity_id"}
+    (fn [member] (= 1 (count (select-keys member [:test_id :test_entity_id]))))]])
+
+(mr/def ::test-suite.create
+  "What a client sends to create a test suite. The members are in the order the suite runs them."
+  [:map {:closed true}
+   [:name        ::lib.schema.common/non-blank-string]
+   [:description {:optional true} [:maybe :string]]
+   [:members     [:sequential ::test-suite.member.request]]])
+
+(mr/def ::test-suite.update
+  "What a client sends to update a test suite. Omitted fields are left unchanged; `:members` replaces every member."
+  [:map {:closed true}
+   [:name        {:optional true} ::lib.schema.common/non-blank-string]
+   [:description {:optional true} [:maybe :string]]
+   [:members     {:optional true} [:sequential ::test-suite.member.request]]])
+
+(mr/def ::test-suite
+  "A saved test suite, without its members."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:entity_id   :string]
+   [:name        ::lib.schema.common/non-blank-string]
+   [:description [:maybe :string]]
+   [:creator_id  ::lib.schema.id/user]
+   [:created_at  ms/TemporalInstant]
+   [:updated_at  ms/TemporalInstant]])
+
+(mr/def ::test-suite.member
+  "A test in a suite, by type and entity id. A suite can name a test this instance lacks, or of a type this version does
+  not know: its `:test_type` is then any keyword."
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:suite_id       ms/PositiveInt]
+   [:test_type      :keyword]
+   [:test_entity_id :string]
+   [:position       :int]])
+
+(mr/def ::test-suite.member.response
+  "A test in a suite as the API returns it. `:status` says whether the test exists and the caller can read it; only a
+  `:readable` member has its `:test_id` and `:name`."
+  [:map {:closed true}
+   [:test_type      :keyword]
+   [:test_entity_id :string]
+   [:position       :int]
+   [:status         [:enum :readable :unreadable :missing]]
+   [:test_id        {:optional true} ms/PositiveInt]
+   [:name           {:optional true} :string]])
+
+(mr/def ::test-suite.response
+  "A test suite as the API returns it, with its members in order."
+  [:merge
+   ::test-suite
+   [:map {:closed true}
+    [:members [:sequential ::test-suite.member.response]]]])
+
 (mr/def ::status
   "The outcome of a test run, or of one of its expectations.
 

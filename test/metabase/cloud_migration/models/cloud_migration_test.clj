@@ -262,6 +262,8 @@
            :model/Sandbox
            :model/TableRemapping
            :model/Tenant
+           :model/TestSuite
+           :model/TestSuiteMember
            :model/TransformTest
            :model/Workspace
            :model/WorkspaceDatabase])))

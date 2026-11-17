@@ -175,6 +175,8 @@
       :model/TransformTest
       :model/CardTest
       :model/DataTestRun
+      :model/TestSuite
+      :model/TestSuiteMember
       :model/Workspace
       :model/WorkspaceDatabase
       :model/TableRemapping])))

@@ -436,6 +436,8 @@
     :model/TableUserSettings
     :model/TaskHistory
     :model/TaskRun
+    :model/TestSuite
+    :model/TestSuiteMember
     :model/Timeline
     :model/TimelineEvent
     :model/Transform

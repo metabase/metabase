@@ -36,6 +36,86 @@
   [model :- :keyword]
   (t2/select model))
 
+(mu/defn saved-tests-where :- [:sequential ::data-testing.schema/saved-test]
+  "The saved tests of `model` whose `column` is one of `values`."
+  [model  :- :keyword
+   column :- [:enum :id :entity_id]
+   values :- [:sequential [:or ms/PositiveInt :string]]]
+  (if (seq values)
+    (t2/select model column [:in values])
+    []))
+
+(mu/defn test-suites :- [:sequential ::data-testing.schema/test-suite]
+  "Every TestSuite, in name order."
+  []
+  (t2/select :model/TestSuite {:order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn test-suite :- [:maybe ::data-testing.schema/test-suite]
+  "The TestSuite with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/TestSuite :id id))
+
+(def ^:private SuiteMemberRows
+  [:sequential [:map {:closed true}
+                [:test_type      ::data-testing.schema/test-type]
+                [:test_entity_id :string]]])
+
+(mu/defn- replace-suite-members!
+  "Replace the members of the TestSuite `suite-id` with `members`, positioned in their order."
+  [suite-id :- ms/PositiveInt
+   members  :- SuiteMemberRows]
+  (t2/delete! :model/TestSuiteMember :suite_id suite-id)
+  (when (seq members)
+    (t2/insert! :model/TestSuiteMember (map-indexed (fn [i member] (assoc member :suite_id suite-id :position i))
+                                                    members))))
+
+(mu/defn insert-test-suite! :- ms/PositiveInt
+  "Insert the TestSuite `suite` with `members`, positioned in their order, and return its id."
+  [suite   :- [:map {:closed true}
+               [:name        :string]
+               [:description {:optional true} [:maybe :string]]
+               [:creator_id  ::lib.schema.id/user]]
+   members :- SuiteMemberRows]
+  (t2/with-transaction [_conn]
+    (let [id (t2/insert-returning-pk! :model/TestSuite suite)]
+      (replace-suite-members! id members)
+      id)))
+
+(mu/defn update-test-suite!
+  "Apply `updates` to the TestSuite with `id`, and replace its members with `members` unless `members` is nil. A change
+  of members alone also updates the suite, so that the suite's update time and update event cover it."
+  [id      :- ms/PositiveInt
+   updates :- [:map {:closed true}
+               [:name        {:optional true} :string]
+               [:description {:optional true} [:maybe :string]]]
+   members :- [:maybe SuiteMemberRows]]
+  (t2/with-transaction [_conn]
+    (when (some? members)
+      (replace-suite-members! id members))
+    (let [updates (cond-> updates
+                    (some? members) (assoc :updated_at :%now))]
+      (when (seq updates)
+        (t2/update! :model/TestSuite :id id updates)))))
+
+(mu/defn delete-test-suite!
+  "Delete the TestSuite with `id`, and its members."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/TestSuite :id id))
+
+(mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
+  "The members of the TestSuites with `suite-ids`, by suite and then position."
+  [suite-ids :- [:sequential ms/PositiveInt]]
+  (if (seq suite-ids)
+    (t2/select :model/TestSuiteMember {:where    [:in :suite_id suite-ids]
+                                       :order-by [[:suite_id :asc] [:position :asc]]})
+    []))
+
+(mu/defn delete-suite-members-of-test!
+  "Remove the `test-type` test with entity id `entity-id` from every TestSuite."
+  [test-type :- ::data-testing.schema/test-type
+   entity-id :- :string]
+  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id entity-id))
+
 (mu/defn transform-test :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]

@@ -369,6 +369,15 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+(events/derive! ::test-suite-event ::event)
+(events/derive! :event/test-suite-create ::test-suite-event)
+(events/derive! :event/test-suite-update ::test-suite-event)
+(events/derive! :event/test-suite-delete ::test-suite-event)
+
+(methodical/defmethod events/publish-event! ::test-suite-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (events/derive! ::glossary-event ::event)
 (events/derive! :event/glossary-create ::glossary-event)
 (events/derive! :event/glossary-update ::glossary-event)

@@ -145,6 +145,8 @@
     ;; Run history is intentionally not serialized.
     :model/DataTestRun
     ;; TODO we should remove these models from here once serialization is supported
+    :model/TestSuite
+    :model/TestSuiteMember
     :model/TransformRun
     :model/TransformRunCancelation
     :model/TransformDagRun

@@ -432,6 +432,12 @@
        :inputs       []
        :expectations []}))
 
+   :model/TestSuite
+   (fn [_]
+     (default-timestamped
+      {:creator_id (rasta-id)
+       :name       (str "Test Suite " (u/generate-nano-id))}))
+
    :model/DataTestRun
    (fn [_]
      {:test_type      :transform

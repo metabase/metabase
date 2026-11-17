@@ -4085,7 +4085,8 @@
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
           metabase-enterprise.data-testing.run-api
-          metabase-enterprise.data-testing.schema}
+          metabase-enterprise.data-testing.schema
+          metabase-enterprise.data-testing.suite-api}
    :uses #{api
            audit-app
            collections
