@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [select-keys every? empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -182,16 +181,7 @@
    respond :- ::driver/execute-reducible-query.respond-fn]
   (assert (empty? (:params (lib/query-stage query 0)))
           "Spark SQL does not support parameterized JDBC queries.")
-  (let [query (lib/update-query-stage query 0 assoc
-                                      ;; TODO (Cam 2026-11-16) verify whether `:remark` and `:max-rows` are actually
-                                      ;; doing anything important at all, there was a second implementation of this
-                                      ;; method in this namespace after this one that didn't add these which means we
-                                      ;; haven't been using them for a while.
-                                      :remark   (driver-api/query->remark :sparksql query)
-                                      ;; calculate the max rows limit using the original MBQL query we compiled the
-                                      ;; SQL from
-                                      :max-rows (lib/max-rows-limit (set/rename-keys query {:qp/original-stages :stages})))]
-    ((get-method driver/execute-reducible-query :hive-like) driver query context respond)))
+  ((get-method driver/execute-reducible-query :hive-like) driver query context respond))
 
 (defmethod sql.qp/format-honeysql :sparksql
   [driver honeysql-form]

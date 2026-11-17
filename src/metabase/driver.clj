@@ -10,6 +10,8 @@
    [[metabase.driver.sql-jdbc]] for more details."
   (:refer-clojure :exclude [mapv empty?])
   (:require
+   ;; loaded for the `ManyToManyChannel` class used in `::execute-reducible-query.context`
+   [clojure.core.async.impl.channels]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -29,7 +31,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? mapv]]
-   [potemkin :as p]))
+   [potemkin :as p])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
 
@@ -680,7 +684,7 @@
 (mr/def ::execute-reducible-query.context
   [:map
    {:closed true}
-   [:canceled-chan (lib.schema.common/instance-of-class clojure.core.async.impl.channels.ManyToManyChannel)]])
+   [:canceled-chan (lib.schema.common/instance-of-class ManyToManyChannel)]])
 
 (mr/def ::execute-reducible-query.respond-fn.results-metadata.cols
   [:sequential
