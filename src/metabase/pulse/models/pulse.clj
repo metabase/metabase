@@ -229,7 +229,7 @@
         cards         (alert-cards (filter is-alert? rows))
         _             (run! check-collection-key (vals cards))
         writable      (collection/content-writable-collection-ids (map :collection_id (vals cards))
-                                                                   {:root-namespace nil, :audit-rules? false})
+                                                                  {:root-namespace nil, :audit-rules? false})
         subscriptions (when-not api/*is-superuser?* (remove is-alert? rows))
         _             (run! check-collection-key subscriptions)
         readable      (collection-ids-permitting (map :collection_id subscriptions) :read)]
