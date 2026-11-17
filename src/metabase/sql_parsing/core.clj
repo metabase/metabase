@@ -652,7 +652,6 @@
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
-
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
 
 ;;;; Transpile sql
