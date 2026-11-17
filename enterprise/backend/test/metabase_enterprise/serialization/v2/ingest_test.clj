@@ -82,8 +82,8 @@
 
 (deftest shared-top-level-paths-test
   (is (not (contains? ingest/replaced-top-level-paths "custom_viz_plugins")))
-  (is (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml"))
-  (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml"))))
+  (is (true? (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml")))
+  (is (false? (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml"))))
 
 (deftest read-resources-test
   (let [app-entity    {:serdes/meta [{:model "DataApp" :id "x"}] :path "dist/index.js"}
