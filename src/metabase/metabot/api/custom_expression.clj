@@ -22,6 +22,9 @@
 
 (def ^:private required-permission :permission/metabot-nlq)
 
+(def ^:private summary-formula-modes
+  ["aggregation" "expression"])
+
 (def ^:private summary-formula-error-reasons
   "The `:reason` labels for the summary formula errors metric."
   #{"database-access"
@@ -81,7 +84,7 @@
 (mr/def ::request-schema
   ;; The rules on which inputs each mode needs are in [[check-inputs!]], so that their errors have a message.
   [:map {:closed true}
-   [:mode        [:enum "aggregation" "expression"]]
+   [:mode        (into [:enum] summary-formula-modes)]
    [:prompt      [:and ms/NonBlankString [:string {:max max-prompt-chars}]]]
    [:columns     [:sequential {:max max-seq-items}
                   [:map {:closed true}
@@ -264,17 +267,15 @@
 (defn- unavailable-error
   "Return an HTTP exception for an unavailable LLM call with `reason`."
   [reason]
-  (let [[status-code message] (case reason
-                                :metabot-disabled  [403 (tru "AI features are not enabled.")]
-                                :no-llm            [503 (tru "No AI provider is connected.")]
-                                :usage-limit       [429 (or (metabot.usage/check-usage-limits!)
-                                                            (tru "The AI usage limit has been reached."))]
-                                :permission-denied [403 (tru "You don''t have access to AI features.")]
-                                [503 (tru "AI features aren''t available right now.")])]
-    (ex-info message {:status-code   status-code
-                      ::error-reason (if (#{:metabot-disabled :no-llm :usage-limit :permission-denied} reason)
-                                       (name reason)
-                                       "unavailable")})))
+  (let [[status-code error-reason message]
+        (case reason
+          :metabot-disabled  [403 "metabot-disabled" (tru "AI features are not enabled.")]
+          :no-llm            [503 "no-llm" (tru "No AI provider is connected.")]
+          :usage-limit       [429 "usage-limit" (or (metabot.usage/check-usage-limits!)
+                                                    (tru "The AI usage limit has been reached."))]
+          :permission-denied [403 "permission-denied" (tru "You don''t have access to AI features.")]
+          [503 "unavailable" (tru "AI features aren''t available right now.")])]
+    (ex-info message {:status-code status-code ::error-reason error-reason})))
 
 (defn- provider-status->response-code
   "Map a provider's HTTP `status` to the response status."
