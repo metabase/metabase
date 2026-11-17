@@ -14,9 +14,15 @@ import {
   waitForLoaderToBeRemoved,
   waitForSidesheetToOpen,
 } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
-import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
+import type {
+  Dashboard,
+  Revision,
+  Settings,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockDashboard,
   createMockSettings,
@@ -30,12 +36,14 @@ import { DashboardInfoSidebar } from "../DashboardInfoSidebar";
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
+  revisions?: Revision[];
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
+  revisions = [],
   enterprisePlugins = [],
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
@@ -44,7 +52,7 @@ export async function setup({
   const currentUser = createMockUser();
   setupDashboardEndpoints(dashboard);
   setupUsersEndpoints([currentUser]);
-  setupRevisionsEndpoints([]);
+  setupRevisionsEndpoints(revisions);
   setupPerformanceEndpoints([]);
   setupAuditInfoEndpoint();
 
@@ -65,7 +73,7 @@ export async function setup({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <Route
       path="*"
       element={
@@ -76,6 +84,7 @@ export async function setup({
           closeSidebar={onClose}
         >
           <DashboardInfoSidebar />
+          <UndoListing />
         </MockDashboardContext>
       }
     />,
@@ -88,6 +97,7 @@ export async function setup({
     setDashboardAttribute,
     onClose,
     dashboard,
+    store,
   };
 }
 

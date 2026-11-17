@@ -40,7 +40,7 @@
 
 (defn- permission-for-type
   [permissions-set perm-type]
-  (if (perms/set-has-full-permissions? permissions-set (perms/application-perms-path perm-type))
+  (if (some (set permissions-set) ["/" "/application/" (perms/application-perms-path perm-type)])
     :yes
     :no))
 

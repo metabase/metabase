@@ -1594,6 +1594,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             },
           ],
           expressions: ["Net"],
+          filtersInAnyOrder: true,
           filters: [
             "Product → Title is Doohickey",
             "Reviews - Product → Reviewer is Doohickey",
@@ -1625,6 +1626,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             },
           ],
           expressions: ["5 * Count"],
+          filtersInAnyOrder: true,
           filters: [
             "5 * Count is equal to 1",
             "Reviews - Created At: Month → Rating is equal to 7021",
