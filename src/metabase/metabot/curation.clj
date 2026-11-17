@@ -187,8 +187,8 @@
   - `:verdicts`, a map of `[root id depth]` -> verdict, so a metric reachable through several references is judged
     once per depth ([[metric-ok?]]);
   - `:curation`, a map of `[model id]` -> curated, so each entity's curation is read once ([[curated-in-context]]);
-  - `:readable`, a map of `[model-kw id]` -> whether the current user may query or read it
-    ([[readable-in-context?]], filled for the batch by [[prefetch-readable!]]).
+  - `:readable`, a map of `[model-kw id]` -> whether the current user may query or read it, so each entity's
+    permissions are read once ([[load-readable!]]).
   [[usable-metric-ids]] shares one context across a batch."
   []
   {:seen  #{}
@@ -214,8 +214,8 @@
             archived (if (seq unloaded) (metabot.db/archived-card-ids unloaded) #{})
             loaded   (into (zipmap unloaded (repeat nil))
                            (map (fn [{:keys [id type dataset-query]}]
-                                  ;; only a live metric Card is judged by its definition; a reference to a Card of
-                                  ;; another type counts as missing, the way [[curated-metric?]] treats it
+                                  ;; only a live metric Card is judged by its definition; a Card of another type
+                                  ;; counts as missing
                                   [id (when (and (= type :metric) (not (contains? archived id)))
                                         (definition-query mp dataset-query))]))
                            (lib.metadata/bulk-metadata mp :metadata/card unloaded))
@@ -258,50 +258,32 @@
         (swap! state update :curation into (map (fn [pair] [pair (contains? curated pair)])) unread)))
     (into #{} (filter (:curation @state)) model+ids)))
 
-(defn- readable-in-context?
-  "Whether the current user may query the Table, or read the Card, with `id`, memoized within the judgement `ctx`.
-  A missing one is not readable."
-  [{:keys [state]} model id]
-  (let [k [model id]]
-    (if-some [verdict (get-in @state [:readable k])]
-      verdict
-      (u/prog1 (boolean (case model
-                          :model/Table (some-> (first (metabot.db/table-schema-rows [id]))
-                                               (t2/hydrate :can_query)
-                                               mi/can-query?)
-                          :model/Card  (some-> (first (metabot.db/card-source-rows [id]))
-                                               (t2/hydrate :can_read)
-                                               mi/can-read?)))
-        (swap! state assoc-in [:readable k] <>)))))
-
-(defn- prefetch-readable!
-  "Read into `ctx` (a [[metric-context]]) in two selects whether the current user may query the Tables `table-ids`
-  and read the Cards `card-ids`, so that [[definition-readable?]] reads none of them one by one. The rows carry the
-  columns the permission check needs, so judging them runs no select of its own. Only a cache: an id with no row —
-  a missing or trashed entity — is left out and read on demand, which fails it closed as before."
+(defn- load-readable!
+  "Load into the judgement `ctx`, a [[metric-context]], whether the current user may query the Tables `table-ids` and
+  read the Cards `card-ids`, for the ids the judgement has not read yet: per model, one narrowed select and one
+  permission hydration for each [[curation-batch-size]] ids. The narrowed rows carry the columns the hydrations
+  read. An id with no row, a missing entity, is loaded as not readable, so it fails closed."
   [{:keys [state]} table-ids card-ids]
-  (let [unread   (fn [model ids]
-                   (into [] (comp (distinct) (remove #(contains? (:readable @state) [model %]))) ids))
-        tables   (unread :model/Table table-ids)
-        cards    (unread :model/Card card-ids)
-        verdicts (fn [model readable? rows]
-                   (into {} (map (fn [row] [[model (:id row)] (boolean (readable? row))])) rows))]
-    (when (seq tables)
-      (swap! state update :readable merge
-             (verdicts :model/Table mi/can-query? (metabot.db/table-schema-rows tables))))
-    (when (seq cards)
-      (swap! state update :readable merge
-             (verdicts :model/Card mi/can-read? (metabot.db/card-source-rows cards))))))
+  (let [load! (fn [model ids readable? hydrated-rows]
+                (let [unread   (into [] (comp (distinct) (remove #(contains? (:readable @state) [model %]))) ids)
+                      readable (into #{}
+                                     (comp (mapcat hydrated-rows) (filter readable?) (map :id))
+                                     (partition-all curation-batch-size unread))]
+                  (swap! state update :readable into (map (fn [id] [[model id] (contains? readable id)])) unread)))]
+    (load! :model/Table table-ids mi/can-query? #(t2/hydrate (metabot.db/table-schema-rows %) :can_query))
+    (load! :model/Card card-ids mi/can-read? #(t2/hydrate (metabot.db/card-source-rows %) :can_read))))
 
 (defn- definition-readable?
   "Whether the current user may query every Table and read every Card the definition query `definition` names. An
   uncurated metric is judged by its definition only when they may: otherwise the verdict would tell them whether a
   Table they cannot see is curated, so the metric fails closed instead. `ctx` is the [[metric-context]] of the
-  judgement."
-  [definition ctx]
+  judgement: what it has loaded already ([[load-readable!]]) is not read again."
+  [definition {:keys [state] :as ctx}]
   (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])]
-    (and (every? #(readable-in-context? ctx :model/Table %) table)
-         (every? #(readable-in-context? ctx :model/Card %) card))))
+    (load-readable! ctx table card)
+    (let [readable (:readable @state)]
+      (and (every? #(get readable [:model/Table %]) table)
+           (every? #(get readable [:model/Card %]) card)))))
 
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when unusable), may be used: it's curated,
@@ -445,8 +427,8 @@
 
 (defn- prefetch-referenced-curation!
   "Read into `ctx` (a [[metric-context]]) in one lookup the curation of everything the definitions it holds name, and
-  in two selects whether the current user may read the Tables and Cards they read, so that judging the metrics one
-  by one reads none of it again. Only a cache: what this misses is read on demand."
+  in one [[load-readable!]] whether the current user may read the Tables and Cards they read, so that judging the
+  metrics one by one reads none of it again. Only a cache: what this misses is read on demand."
   [mp ctx]
   (let [definitions (context-definitions ctx)]
     (when-let [queries (seq (keep val definitions))]
@@ -455,7 +437,7 @@
         (curated-in-context ctx (concat (for [id (into (set table) (mapcat val) dependents)] ["table" id])
                                         (for [id (concat card metric (keys definitions))] ["card" id])))
         ;; `definition-readable?` asks about the Tables and Cards one definition names, which are a subset of these
-        (prefetch-readable! ctx table (concat card metric))))))
+        (load-readable! ctx table (concat card metric))))))
 
 (defn- usable-metric-ids-in-database
   "Of the uncurated Card ids `ids`, all of the Database `database-id`, those whose definition passes the rule, judged
@@ -482,9 +464,9 @@
   reads a Table or Card the user cannot ([[definition-readable?]]): judging it would tell them whether that Table is
   curated.
   Judges the batch in a number of app-DB queries that does not grow with the number of metrics: one metadata
-  provider per Database, and the definitions, curation, and readability each read once for the batch. The count
-  still grows with the number of distinct Tables and Cards the definitions read, because the metadata provider
-  fetches each Table and its Fields once."
+  provider per Database, the definitions read once per level of metric nesting, and the curation and readability
+  each read once for the batch. The count still grows with the number of distinct Tables and Cards the definitions
+  read, because the metadata provider fetches each Table and its Fields once."
   [ids]
   (let [ids       (into [] (distinct) ids)
         shared    (metric-context)

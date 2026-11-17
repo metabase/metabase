@@ -632,7 +632,37 @@
                 (testing "every metric is usable: each one reads a curated table only"
                   (is (= #{o1 o2 p1 p2} (curation/usable-metric-ids [o1 o2 p1 p2]))))
                 (testing "a second metric over each table costs nothing"
-                  (is (= (counted [o1 p1]) (counted [o1 o2 p1 p2]))))))))))))
+                  (is (= (counted [o1 p1]) (counted [o1 o2 p1 p2]))))
+                (testing "a second table costs only the metadata provider's fetches of the Table and of its Fields:
+                          the permissions on both tables are read together"
+                  (is (= (+ 2 (counted [o1])) (counted [o1 p1]))))))))))))
+
+(deftest usable-metric-ids-judge-each-metrics-sources-for-readability-test
+  (testing "BOT-2619: in a batch, an uncurated metric over a Card the user cannot read fails closed, and a metric over
+            what they can read keeps its verdict"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {hidden :id} {:name "hidden"}
+                     :model/Card {model :id} {:collection_id hidden :type :model :name "verified hidden model"
+                                              :dataset_query (orders-query)}
+                     :model/Card {over-model :id} {:type          :metric
+                                                   :name          "count over hidden model"
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type     :query
+                                                                   :query    {:source-table (str "card__" model)
+                                                                              :aggregation  [[:count]]}}}
+                     :model/Card {over-orders :id} {:type          :metric
+                                                    :name          "orders count"
+                                                    :dataset_query (count-metric-query (orders-query))}]
+        (verify-card! model)
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (testing "a user who cannot read the model"
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (= #{over-orders} (curation/usable-metric-ids [over-model over-orders])))
+              (is (= [false true] (mapv curation/curated-metric? [over-model over-orders])))))
+          (testing "a user who can read it may use both: the model is curated"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (= #{over-model over-orders} (curation/usable-metric-ids [over-model over-orders])))
+              (is (= [true true] (mapv curation/curated-metric? [over-model over-orders]))))))))))
 
 (defn- metric-on-metric-query
   "A legacy query over the Table `table-id` whose only aggregation is the metric `metric-id`."
