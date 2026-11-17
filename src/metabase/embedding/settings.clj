@@ -124,7 +124,7 @@
                    "set, Metabase copies its value at every startup to the `enable-embedding-sdk`, "
                    "`enable-embedding-interactive`, and `enable-embedding-static` settings. If the value is `true`, "
                    "this also turns on modular embedding, guest embeds, and static embeds, unless you turn modular "
-                   "embedding on or off in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of "
+                   "embedding off in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of "
                    "these variables, Metabase stops at startup with an error.")
   :setter     (make-embedding-toggle-setter :enable-embedding "embedding"))
 
