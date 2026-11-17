@@ -815,14 +815,20 @@
                 {:id 4, :model "dashboard", :collection_id analytics}
                 {:id 5, :model "card",      :collection_id plain}
                 {:id 6, :model "card",      :collection_id nil}]
-          kept (fn [context]
+          kept (fn [context docs]
                  (map :id (#'semantic.index/remove-hidden-analytics-cards {:context context} docs)))]
-      (testing "Broad search keeps cards in the analytics namespace"
-        (is (= [1 2 3 4 5 6] (kept :command-palette))))
-      (testing "Other contexts, and searches without one, drop them and keep everything else"
-        (doseq [context [:data-picker :embedding-setup nil]]
-          (testing context
-            (is (= [4 5 6] (kept context)))))))))
+      (mt/with-premium-features #{:audit-app}
+        (testing "Broad search keeps cards in the analytics namespace"
+          (is (= [1 2 3 4 5 6] (kept :command-palette docs))))
+        (testing "Other contexts, and searches without one, drop them and keep everything else"
+          (doseq [context [:data-picker :embedding-setup nil]]
+            (testing context
+              (is (= [4 5 6] (kept context docs))))))
+        (testing "Cards outside the analytics namespace pass when no doc is in it"
+          (is (= [5 6] (kept :data-picker (drop 4 docs))))))
+      (mt/with-premium-features #{}
+        (testing "Without the audit app, broad search drops them too"
+          (is (= [4 5 6] (kept :command-palette docs))))))))
 
 (deftest filter-read-permitted-document-scoped-cards-test
   (mt/with-premium-features #{:semantic-search}

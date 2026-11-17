@@ -94,7 +94,7 @@
    collection-ids       :- [:sequential ::lib.schema.id/collection]]
   (if (empty? collection-ids)
     #{}
-    (t2/select-pks-set :model/Collection :namespace collection-namespace :id [:in collection-ids])))
+    (set (t2/select-pks-set :model/Collection :namespace collection-namespace :id [:in collection-ids]))))
 
 (mu/defn collection-sync-columns
   "The id, type, namespace and `is_remote_synced` of the Collections with `collection-ids`, which tell whether remote
