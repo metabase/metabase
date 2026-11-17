@@ -150,13 +150,21 @@
   ;; `:example` is the OpenAPI spelling, which Malli emits for `:json-schema/example`
   #{:$comment :default :deprecated :description :example :examples :readOnly :title :writeOnly})
 
+(def ^:private keyword-types
+  "JSON Schema assertion keywords that apply only to values of one type, mapped to that type."
+  (merge (zipmap [:additionalProperties :dependentRequired :dependentSchemas :maxProperties :minProperties
+                  :patternProperties :properties :propertyNames :required]
+                 (repeat "object"))
+         (zipmap [:contains :items :maxContains :maxItems :minContains :minItems :prefixItems :uniqueItems]
+                 (repeat "array"))
+         (zipmap [:contentEncoding :contentMediaType :contentSchema :format :maxLength :minLength :pattern]
+                 (repeat "string"))
+         (zipmap [:exclusiveMaximum :exclusiveMinimum :maximum :minimum :multipleOf]
+                 (repeat "number"))))
+
 (def ^:private null-neutral-keys
   "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
-  (into annotation-keys
-        #{:additionalProperties :contains :contentEncoding :contentMediaType :contentSchema :dependentRequired
-          :dependentSchemas :exclusiveMaximum :exclusiveMinimum :format :items :maxContains :maxItems :maxLength
-          :maxProperties :maximum :minContains :minItems :minLength :minProperties :minimum :multipleOf :pattern
-          :patternProperties :prefixItems :properties :propertyNames :required :uniqueItems}))
+  (into annotation-keys (keys keyword-types)))
 
 (def ^:private type-array-keys
   "JSON Schema keywords a schema can carry and still take `null` into its `:type`: [[null-neutral-keys]], the `:type`
@@ -170,17 +178,25 @@
     (string? type)     [type]
     (sequential? type) (vec type)))
 
+(defn- value-type
+  "The type of the values a JSON Schema `type` describes, for telling which types overlap and which keywords apply."
+  [type]
+  ;; every integer is a number
+  (if (= "integer" type) "number" type))
+
 (defn- union->type-array
   "A JSON Schema with a type array that accepts what the `anyOf` `branches` accept, or nil when no type array can.
-  Each branch must name its own types, disjoint from the others', and carry only keywords that apply to those types,
-  no two branches the same one."
+  Each branch must name its own types, no two branches' overlapping, and assert only [[keyword-types]] keywords that
+  apply to those types."
   [branches]
   (let [branch-types (map types branches)
-        assertions   (mapcat #(remove (conj annotation-keys :type) (keys %)) branches)]
+        own-keyword? (fn [branch k]
+                       (contains? (set (map value-type (types branch))) (keyword-types k)))]
     (when (and (every? seq branch-types)
-               (apply distinct? (apply concat branch-types))
-               (every? #(every? (conj null-neutral-keys :type) (keys %)) branches)
-               (or (empty? assertions) (apply distinct? assertions)))
+               (apply distinct? (map value-type (apply concat branch-types)))
+               (every? (fn [branch]
+                         (every? #(own-keyword? branch %) (remove (conj annotation-keys :type) (keys branch))))
+                       branches))
       (let [description (str/join " " (keep :description branches))]
         (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
             (assoc :type (into [] cat branch-types))
