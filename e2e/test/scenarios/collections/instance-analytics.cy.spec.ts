@@ -62,7 +62,9 @@ describe("scenarios > Metabase Analytics Collection (AuditV2)", () => {
 
       cy.log("Analytics content is reachable from the navigation sidebar");
       H.openNavigationSidebar();
-      cy.findByRole("link", { name: /Usage analytics/i }).click();
+      H.navigationSidebar()
+        .findByRole("link", { name: /Usage analytics/i })
+        .click();
       H.getPinnedSection()
         .findByRole("link", { name: /Metabase metrics/i })
         .click();
