@@ -2281,7 +2281,7 @@
 (defn searchable-namespace-clause
   "HoneySQL clause matching rows whose `namespace-column` holds one of the [[default-allowed-namespaces]].
   Search specs use it to index the Collections in these namespaces and the content inside them.
-  Query-time permissions narrow this further: `analytics` content stays hidden unless the audit app is enabled."
+  The appdb and in-place engines also hide `analytics` content at query time unless the audit app is enabled."
   [namespace-column]
   (into [:or]
         (for [collection-namespace default-allowed-namespaces]
