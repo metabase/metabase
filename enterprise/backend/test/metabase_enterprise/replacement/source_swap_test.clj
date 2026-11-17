@@ -180,7 +180,7 @@
             (replacement.source-swap/swap-source! [:transform transform-id]
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)]))
-          (is (some #{[:event/update-transform transform-id]} @topics)))))))
+          (is (some #{[:event/transform-update transform-id]} @topics)))))))
 
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 

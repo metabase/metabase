@@ -85,6 +85,18 @@
                  (throw (Exception. "boom")))))
   (is (empty? @received)))
 
+(deftest joined-batch-rollback-test
+  (testing "a joined write that throws and rolls back with a savepoint of its caller leaves no event behind"
+    (let [creator (mt/user->id :rasta)]
+      (events/with-batched-events
+        (t2/insert! :model/EventsTestTimeline {:name "kept" :icon "cake" :creator_id creator})
+        (is (thrown? Exception
+                     (t2/with-transaction [_conn nil {:nested-transaction-rule :savepoint}]
+                       (events/with-batched-events
+                         (t2/insert! :model/EventsTestTimeline {:name "dropped" :icon "cake" :creator_id creator})
+                         (throw (Exception. "boom")))))))
+      (is (= ["kept"] (map (comp :name :object :event) @received))))))
+
 (deftest owned-consumer-test
   (let [calls (atom [])]
     (events/register-owned-consumer! ::owned

@@ -516,4 +516,4 @@
                                                         :target {:database (mt/id) :type "table" :name "out"}}]
       (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id]))
-      (is (= [[:event/update-transform transform-id]] @topics)))))
+      (is (= [[:event/transform-update transform-id]] @topics)))))

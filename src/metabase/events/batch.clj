@@ -256,7 +256,8 @@
 
 (defn- run-batch
   "Run `thunk` in a batch, joining the batch there already is, in its transaction when `join-transaction?` and in a
-  nested one that rolls back alone otherwise."
+  nested one that rolls back alone otherwise. A joined `thunk` that throws leaves no events behind in the batch, for
+  the rows it wrote may be rolled back with a savepoint of its caller."
   [join-transaction? thunk]
   (let [run (fn []
               (let [batch (atom {:events [] :pending [] :captures {}})]
@@ -264,7 +265,16 @@
                   (u/prog1 (thunk)
                     (finish! batch)))))]
     (cond
-      *batch*           (thunk)
+      *batch*           (let [batch   *batch*
+                              mark    (count (:events @batch))
+                              pending (count (:pending @batch))]
+                          (try
+                            (thunk)
+                            (catch Throwable e
+                              (swap! batch #(-> %
+                                                (update :events subvec 0 (min mark (count (:events %))))
+                                                (update :pending subvec 0 (min pending (count (:pending %))))))
+                              (throw e))))
       join-transaction? (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
                           (run))
       :else             (t2.conn/with-transaction [_conn]

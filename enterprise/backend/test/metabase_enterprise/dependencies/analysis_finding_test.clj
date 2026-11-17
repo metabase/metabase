@@ -481,7 +481,8 @@
                                                              :target {:schema "public" :name "sample" :type :table}}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
-           (is (nil? (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id nil}})))))))))
+           (is (=? {:object {:transform-id transform-id}}
+                   (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id nil}})))))))))
 
 (deftest ^:synchronized transform-run-without-table-analyzes-nothing-test
   (deps.test/run-with-dependencies-setup!

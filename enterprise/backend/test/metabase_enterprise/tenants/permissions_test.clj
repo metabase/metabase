@@ -95,9 +95,10 @@
                        :model/User {external-user-id :id} {:tenant_id tenant-id}
                        :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
                                                                       :is_tenant_group true}]
-          (is (nil? (perms/add-users-to-groups! [{:user external-user-id
-                                                  :group tenant-group-id
-                                                  :is-group-manager? false}]))))))))
+          (perms/add-users-to-groups! [{:user external-user-id
+                                        :group tenant-group-id
+                                        :is-group-manager? false}])
+          (is (t2/exists? :model/PermissionsGroupMembership :user_id external-user-id :group_id tenant-group-id)))))))
 
 (deftest tenant-users-cannot-be-members-of-normal-group-test
   (testing "External user cannot be member of normal group at all"

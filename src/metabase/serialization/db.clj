@@ -1,6 +1,7 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
+   [metabase.events.core :as events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -214,7 +215,8 @@
   "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open."
   [thunk]
   (t2/with-transaction [_]
-    (thunk)))
+    (events/with-batched-events
+      (thunk))))
 
 (defn do-in-repeatable-read-transaction
   "Calls `thunk` in a REPEATABLE READ transaction of the app DB, or in the transaction already open, whose isolation

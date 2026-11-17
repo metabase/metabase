@@ -477,9 +477,10 @@
   (mt/with-premium-features #{:transforms-testing}
     (testing "An update through the API records the user who made it, not the test's creator"
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (let [{card-test-id :id} (card-test! {:card_id    card-id
-                                              :creator_id (mt/user->id :rasta)
-                                              :name       "Original"})]
+        (let [{card-test-id :id} (mt/with-current-user (mt/user->id :rasta)
+                                   (card-test! {:card_id    card-id
+                                                :creator_id (mt/user->id :rasta)
+                                                :name       "Original"}))]
           (testing "premise: the creation revision names the creator"
             (is (=? [{:is_creation true :user_id (mt/user->id :rasta)}]
                     (revisions/revisions :model/CardTest card-test-id))))
