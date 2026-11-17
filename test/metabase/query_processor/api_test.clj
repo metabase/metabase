@@ -745,6 +745,22 @@
                               {:default "b"}]}}))
                      :query json/decode first (get-in ["$project" "E"])))))))))
 
+(deftest ignores-referenced-entities-test
+  (testing "POST /api/dataset ignores the `referenced_entities` that older clients send for dynamic goals"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (let [mp      (mt/metadata-provider)
+            mbql-5  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                        (lib/aggregate (lib/count)))
+            sources [{:type "card" :id goal-id :columns ["count"]}]]
+        (doseq [[query-type query] {"legacy" (mt/mbql-query checkins {:aggregation [[:count]]})
+                                    "MBQL 5" mbql-5}]
+          (testing query-type
+            (let [result (mt/user-http-request :crowberto :post 202 "dataset"
+                                               (assoc query :referenced_entities sources))]
+              (is (= "completed" (:status result)))
+              (is (= 1 (count (mt/rows result))))
+              (is (not (contains? (:data result) :referenced_entities))))))))))
+
 ;; historical test: don't do this going forward
 (deftest report-timezone-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks

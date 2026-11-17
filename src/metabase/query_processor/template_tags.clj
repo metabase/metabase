@@ -1,7 +1,6 @@
 (ns metabase.query-processor.template-tags
-  "Which template tags become parameters, and whether a card's query reads any. Kept apart from
-  [[metabase.query-processor.card]] so the referenced-entity runner, which that namespace requires, can use them too,
-  and out of the Card model so the QP can use them without depending on it."
+  "Which template tags become parameters, and whether a card's query reads any. Out of the Card model so the QP can use
+  them without depending on it."
   (:require
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]

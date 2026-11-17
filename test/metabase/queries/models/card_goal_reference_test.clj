@@ -320,9 +320,7 @@
                                                                      :public_uuid   (str (random-uuid))}]
            (mt/user-http-request :rasta :put 403 (format "card/%d" card-id)
                                  {:visualization_settings (gauge-viz (card-goal goal-id))})
-           (let [response (client/client :get 202 (str "public/card/" uuid "/query"))]
-             (is (= "completed" (:status response)))
-             (is (nil? (get-in response [:data :referenced_entities]))))))))))
+           (is (= {} (client/client :get 202 (str "public/card/" uuid "/goal-values"))))))))))
 
 (deftest shared-dashboard-goal-reference-placement-test
   (do-with-unreadable-card!
