@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
@@ -8,7 +9,12 @@ import { AggregationPicker } from "metabase/querying/common/components/Aggregati
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
-import { ClauseStep } from "../ClauseStep";
+import { ClauseStep, useInlineClauseEditor } from "../ClauseStep";
+import { ExpressionPill } from "../ExpressionStep/ExpressionPill";
+import {
+  InlineExpressionEditor,
+  useInlineExpressionEditorChunk,
+} from "../InlineExpressionEditor";
 
 export function AggregateStep({
   query,
@@ -16,9 +22,15 @@ export function AggregateStep({
   color,
   isLastOpened,
   readOnly,
+  reportTimezone,
   updateQuery,
-}: NotebookStepProps) {
+  editorSlot,
+}: NotebookStepProps & {
+  /** Where the inline expression editor goes, in place of below the cell. */
+  editorSlot?: HTMLElement | null;
+}) {
   const { question, stageIndex } = step;
+  useInlineExpressionEditorChunk();
   const isMetric = question.type() === "metric";
   const tc = useTranslateContent();
   const { locale } = useLocale();
@@ -26,6 +38,75 @@ export function AggregateStep({
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
+
+  // An edit keeps the name of a named aggregation, unless the AI gives a new
+  // one.
+  const replaceAggregation = useCallback(
+    (
+      query: Lib.Query,
+      stageIndex: number,
+      existing: Lib.AggregationClause,
+      clause: Lib.ExpressionClause,
+    ) => {
+      const info = Lib.displayInfo(query, stageIndex, existing);
+      const named = info.isNamed
+        ? Lib.withExpressionName(clause, info.displayName)
+        : clause;
+      return Lib.replaceClause(query, stageIndex, existing, named);
+    },
+    [],
+  );
+  const inline = useInlineClauseEditor({
+    query,
+    stageIndex,
+    getClauses: Lib.aggregations,
+    addClause: Lib.aggregate,
+    replaceClause: replaceAggregation,
+    updateQuery,
+  });
+  const handleCommit = (clause: Lib.ExpressionClause, name?: string) =>
+    inline.commit(name != null ? Lib.withExpressionName(clause, name) : clause);
+
+  const availableColumns = useMemo(
+    () => Lib.aggregableColumns(query, stageIndex, inline.editedIndex),
+    [query, stageIndex, inline.editedIndex],
+  );
+  const availableMetrics = useMemo(
+    () => Lib.availableMetrics(query, stageIndex),
+    [query, stageIndex],
+  );
+
+  const isCustomAggregation = (aggregation: Lib.AggregationClause) => {
+    if (Lib.displayInfo(query, stageIndex, aggregation).isNamed) {
+      return true;
+    }
+    const parts: unknown = Lib.expressionParts(query, stageIndex, aggregation);
+    if (Lib.isMetricMetadata(parts) || Lib.isMeasureMetadata(parts)) {
+      return false;
+    }
+    const operators = Lib.selectedAggregationOperators(
+      Lib.availableAggregationOperators(query, stageIndex),
+      aggregation,
+    );
+    return !operators.some(
+      (operator) => Lib.displayInfo(query, stageIndex, operator).selected,
+    );
+  };
+
+  const handleRename = (aggregation: Lib.AggregationClause, name: string) =>
+    updateQuery(
+      Lib.replaceClause(
+        query,
+        stageIndex,
+        aggregation,
+        Lib.withExpressionName(aggregation, name),
+      ),
+    );
+
+  const editedInfo =
+    inline.editedClause != null
+      ? Lib.displayInfo(query, stageIndex, inline.editedClause)
+      : undefined;
 
   const hasAddButton = !readOnly && (!isMetric || aggregations.length === 0);
   const hasRemoveButton = !readOnly && !isMetric;
@@ -43,7 +124,11 @@ export function AggregateStep({
     updateQuery(nextQuery);
   };
 
-  const handleRemoveAggregation = (clause: Lib.AggregationClause) => {
+  const handleRemoveAggregation = (
+    clause: Lib.AggregationClause,
+    index: number,
+  ) => {
+    inline.handleRemoved(index);
     const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
   };
@@ -66,6 +151,37 @@ export function AggregateStep({
       hasAddButton={hasAddButton}
       hasRemoveButton={hasRemoveButton}
       renderName={renderAggregationName}
+      renderInlineItem={(aggregation, index) =>
+        isCustomAggregation(aggregation) || inline.editedIndex === index ? (
+          <ExpressionPill
+            hasStepSelectedColor
+            name={renderAggregationName(aggregation)}
+            color={color}
+            isActive={inline.editedIndex === index}
+            readOnly={readOnly}
+            hasRemoveButton={hasRemoveButton}
+            onOpen={() => inline.open({ kind: "clause", index })}
+            onRename={(name) => handleRename(aggregation, name)}
+            onRemove={() => handleRemoveAggregation(aggregation, index)}
+          />
+        ) : null
+      }
+      extraItems={
+        inline.isDraftOpen && (
+          <ExpressionPill
+            hasStepSelectedColor
+            name={t`New summary`}
+            color={color}
+            isActive
+            readOnly={readOnly}
+            canRename={false}
+            hasUnsavedChanges
+            onOpen={noop}
+            onRename={noop}
+            onRemove={inline.close}
+          />
+        )
+      }
       renderPopover={({ item: aggregation, index, onClose }) => (
         <AggregationPopover
           query={query}
@@ -74,13 +190,46 @@ export function AggregateStep({
           clauseIndex={index}
           onQueryChange={updateQuery}
           onClose={onClose}
+          onOpenExpressionEditor={(clause) => {
+            onClose();
+            inline.open(
+              index != null ? { kind: "clause", index } : { kind: "draft" },
+              clause,
+            );
+          }}
           readOnly={readOnly}
         />
       )}
-      onReorder={handleReorderAggregation}
+      onReorder={(source, target) => {
+        inline.close();
+        handleReorderAggregation(source, target);
+      }}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
-    />
+    >
+      {inline.openEditor != null &&
+        renderInSlot(
+          <InlineExpressionEditor
+            key={inline.openEditor.session}
+            query={query}
+            stageIndex={stageIndex}
+            expressionIndex={inline.editedIndex}
+            expressionMode="aggregation"
+            availableColumns={availableColumns}
+            availableMetrics={availableMetrics}
+            reportTimezone={reportTimezone}
+            readOnly={readOnly}
+            clause={inline.editedClause}
+            name={editedInfo?.isNamed ? editedInfo.displayName : undefined}
+            hasDefaultName={!editedInfo?.isNamed}
+            initialExpressionClause={inline.openEditor.initialExpressionClause}
+            onCommit={handleCommit}
+            onDone={inline.close}
+            onDiscard={inline.close}
+          />,
+          editorSlot,
+        )}
+    </ClauseStep>
   );
 }
 
@@ -91,6 +240,7 @@ interface AggregationPopoverProps {
   clauseIndex?: number;
   onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
+  onOpenExpressionEditor: (clause: Lib.DefinedClauseName | null) => void;
   readOnly?: boolean;
 }
 
@@ -101,6 +251,7 @@ function AggregationPopover({
   clauseIndex,
   onQueryChange,
   onClose,
+  onOpenExpressionEditor,
   readOnly,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
@@ -122,7 +273,15 @@ function AggregationPopover({
       allowCustomExpressions
       onQueryChange={onQueryChange}
       onClose={onClose}
+      onOpenExpressionEditor={onOpenExpressionEditor}
       readOnly={readOnly}
     />
   );
 }
+
+const noop = () => {};
+
+const renderInSlot = (
+  node: JSX.Element,
+  slot: HTMLElement | null | undefined,
+) => (slot != null ? createPortal(node, slot) : node);

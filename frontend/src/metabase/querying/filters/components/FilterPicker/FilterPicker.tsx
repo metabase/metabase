@@ -37,6 +37,11 @@ export type FilterPickerProps = {
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
   onBack?: () => void;
+  /**
+   * Opens the inline expression editor of the notebook, in place
+   * of the expression editor in the popover.
+   */
+  onOpenExpressionEditor?: (clause: Lib.DefinedClauseName | null) => void;
   readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
@@ -55,6 +60,7 @@ export function FilterPicker({
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
+  onOpenExpressionEditor,
   readOnly,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
@@ -107,6 +113,10 @@ export function FilterPicker({
   }, []);
 
   const handleExpressionSelect = (clause?: Lib.DefinedClauseName) => {
+    if (onOpenExpressionEditor != null) {
+      onOpenExpressionEditor(clause ?? null);
+      return;
+    }
     setInitialExpressionClause(clause ?? null);
     startTransition(() => {
       openExpressionEditor();

@@ -47,6 +47,15 @@ export type ClauseStepProps<T> = {
   hasRemoveButton?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
+  /**
+   * An item that opens the inline expression editor instead of a popover, or
+   * null for an item with a popover.
+   */
+  renderInlineItem?: (item: T, index: number) => JSX.Element | null;
+  /** Items after the clauses, like the pill of a draft. */
+  extraItems?: ReactNode;
+  /** Content below the cell, like the inline expression editor. */
+  children?: ReactNode;
   onRemove: (item: T, index: number) => void;
   onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
@@ -63,6 +72,9 @@ export const ClauseStep = <T,>({
   hasRemoveButton = !readOnly,
   renderName,
   renderPopover,
+  renderInlineItem,
+  extraItems,
+  children,
   onRemove,
   onReorder,
   ...props
@@ -104,28 +116,44 @@ export const ClauseStep = <T,>({
     />
   );
 
+  const renderClause = (item: T, index: number) => {
+    const inlineItem = renderInlineItem?.(item, index);
+    if (inlineItem != null) {
+      return (
+        <ClauseStepDndItem key={index} index={index} readOnly={readOnly}>
+          {inlineItem}
+        </ClauseStepDndItem>
+      );
+    }
+    return (
+      <ClausePopover
+        key={index}
+        disabled={readOnly}
+        renderItem={(onOpen, hasPopover) =>
+          renderItem({ item, index, onOpen, hasPopover })
+        }
+        renderPopover={(onClose) => renderPopover({ item, index, onClose })}
+      />
+    );
+  };
+
   return (
-    <NotebookCell color={color} data-testid={props["data-testid"]}>
-      <ClauseStepDndContext items={items} onReorder={onReorder}>
-        {items.map((item, index) => (
+    <>
+      <NotebookCell color={color} data-testid={props["data-testid"]}>
+        <ClauseStepDndContext items={items} onReorder={onReorder}>
+          {items.map(renderClause)}
+        </ClauseStepDndContext>
+        {extraItems}
+        {hasAddButton && (
           <ClausePopover
-            key={index}
-            disabled={readOnly}
-            renderItem={(onOpen, hasPopover) =>
-              renderItem({ item, index, onOpen, hasPopover })
-            }
-            renderPopover={(onClose) => renderPopover({ item, index, onClose })}
+            isInitiallyOpen={isLastOpened}
+            renderItem={(onOpen) => renderNewItem({ onOpen })}
+            renderPopover={(onClose) => renderPopover({ onClose })}
           />
-        ))}
-      </ClauseStepDndContext>
-      {hasAddButton && (
-        <ClausePopover
-          isInitiallyOpen={isLastOpened}
-          renderItem={(onOpen) => renderNewItem({ onOpen })}
-          renderPopover={(onClose) => renderPopover({ onClose })}
-        />
-      )}
-    </NotebookCell>
+        )}
+      </NotebookCell>
+      {children}
+    </>
   );
 };
 
@@ -194,6 +222,7 @@ export const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(
       {...attributes}
       {...listeners}
       style={{
+        maxWidth: "100%",
         transition,
         transform: CSS.Translate.toString(transform),
       }}

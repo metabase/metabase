@@ -19,6 +19,7 @@ import {
   useInlineExpressionEditorChunk,
 } from "../InlineExpressionEditor";
 import { NotebookCell, NotebookCellAdd } from "../NotebookCell";
+import { useCustomColumnRequest } from "../NotebookStepList/CustomColumnRequest";
 
 import { ExpressionPill } from "./ExpressionPill";
 
@@ -101,6 +102,21 @@ export const ExpressionStep = ({
       addDraft();
     }
   }, [isLastOpened, isEditorLoaded, readOnly, addDraft]);
+
+  const { requestedStepId, clearRequest } = useCustomColumnRequest();
+  useEffect(() => {
+    if (requestedStepId === step.id && isEditorLoaded && !readOnly) {
+      clearRequest();
+      addDraft();
+    }
+  }, [
+    requestedStepId,
+    step.id,
+    isEditorLoaded,
+    readOnly,
+    clearRequest,
+    addDraft,
+  ]);
 
   const getExpressionName = useCallback(
     (expression: Lib.ExpressionClause) =>

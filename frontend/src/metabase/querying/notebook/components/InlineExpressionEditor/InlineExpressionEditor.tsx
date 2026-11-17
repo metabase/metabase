@@ -56,6 +56,8 @@ export type InlineExpressionEditorProps = {
     options?: { forceName?: boolean },
   ) => void;
   initialSource?: string;
+  /** A function to start with, from the list of the picker. */
+  initialExpressionClause?: Lib.DefinedClauseName | null;
   onSourceChange?: (source: string, isValid: boolean) => void;
 
   onDone: () => void;
@@ -74,6 +76,31 @@ function useIsAiAvailable() {
   const isConfigured = Boolean(useSetting("llm-metabot-configured?"));
   const [isHidden] = usePrototypeSetting(EXPRESSION_HIDE_AI_SETTING);
   return isConfigured && !isHidden;
+}
+
+function getPreviewLabel(expressionMode: Lib.ExpressionMode) {
+  switch (expressionMode) {
+    case "filter":
+      return t`Preview filter`;
+    case "aggregation":
+      return t`Preview summary`;
+    default:
+      return t`Preview column`;
+  }
+}
+
+function getResultName(
+  expressionMode: Lib.ExpressionMode,
+  name: string | undefined,
+) {
+  switch (expressionMode) {
+    case "filter":
+      return t`Matches`;
+    case "aggregation":
+      return name;
+    default:
+      return name ?? t`New column`;
+  }
 }
 
 const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
@@ -105,6 +132,7 @@ export function InlineExpressionEditor({
   hasDefaultName,
   onCommit,
   initialSource,
+  initialExpressionClause,
   onSourceChange,
   onDone,
   onDiscard,
@@ -346,6 +374,7 @@ export function InlineExpressionEditor({
         clause={clause}
         initialClause={clause}
         initialSource={initialSource}
+        initialExpressionClause={initialExpressionClause}
         onChange={handleChange}
         onEdit={handleEdit}
         onProposalChange={handleProposalChange}
@@ -389,7 +418,7 @@ export function InlineExpressionEditor({
                 label={
                   isPreviewShown
                     ? t`Hide preview (${PREVIEW_SHORTCUT})`
-                    : t`Preview column (${PREVIEW_SHORTCUT})`
+                    : `${getPreviewLabel(expressionMode)} (${PREVIEW_SHORTCUT})`
                 }
                 isPressed={isPreviewShown}
                 disabled={isEmpty && !isPreviewShown}
@@ -432,9 +461,10 @@ export function InlineExpressionEditor({
         <ExpressionPreview
           query={query}
           stageIndex={stageIndex}
+          expressionMode={expressionMode}
           expressionIndex={expressionIndex}
           clause={previewRun.clause}
-          name={previewRun.name ?? name ?? t`New column`}
+          name={getResultName(expressionMode, previewRun.name ?? name)}
           refreshKey={previewRefreshKey}
           isOutdated={isPreviewOutdated}
         />

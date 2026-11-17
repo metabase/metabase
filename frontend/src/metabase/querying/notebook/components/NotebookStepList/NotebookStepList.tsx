@@ -9,6 +9,11 @@ import type Question from "metabase-lib/v1/Question";
 import type { NotebookStep as INotebookStep, OpenSteps } from "../../types";
 import { NotebookStep } from "../NotebookStep";
 
+import {
+  CustomColumnRequestContext,
+  getExpressionStepId,
+} from "./CustomColumnRequest";
+
 interface NotebookStepListProps {
   className?: string;
   question: Question;
@@ -58,6 +63,22 @@ export function NotebookStepList({
     setLastOpenedStep(id);
   }, []);
 
+  // The step opens without becoming the last opened one, which would make it
+  // add a second new column.
+  const [requestedStepId, setRequestedStepId] = useState<string | null>(null);
+  const customColumnRequest = useMemo(
+    () => ({
+      requestedStepId,
+      requestCustomColumn: (stageIndex: number) => {
+        const id = getExpressionStepId(stageIndex);
+        setOpenSteps((openSteps) => ({ ...openSteps, [id]: true }));
+        setRequestedStepId(id);
+      },
+      clearRequest: () => setRequestedStepId(null),
+    }),
+    [requestedStepId],
+  );
+
   const handleStepClose = useCallback(
     (id: INotebookStep["id"]) => {
       if (openSteps[id]) {
@@ -87,7 +108,7 @@ export function NotebookStepList({
   }
 
   return (
-    <>
+    <CustomColumnRequestContext.Provider value={customColumnRequest}>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
@@ -108,6 +129,6 @@ export function NotebookStepList({
           />
         );
       })}
-    </>
+    </CustomColumnRequestContext.Provider>
   );
 }

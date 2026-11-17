@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { formatValue } from "metabase/value-formatting";
 import { getComputedSettingsForSeries } from "metabase/viz-core";
@@ -13,6 +13,8 @@ type PreviewTableProps = {
   rows: RowValues[];
   /** True when the first column is the primary key. */
   hasKey: boolean;
+  /** Renders the values of the result column in place of the format of the column. */
+  renderResult?: (value: RowValues[number]) => ReactNode;
 };
 
 /**
@@ -24,6 +26,7 @@ export function PreviewTable({
   cols,
   rows,
   hasKey,
+  renderResult,
 }: PreviewTableProps) {
   const settings = useMemo(
     () => getComputedSettingsForSeries(rawSeries),
@@ -74,7 +77,11 @@ export function PreviewTable({
             <tr key={rowIndex}>
               {row.map((value, index) => (
                 <td key={index} className={cellClassName(index)}>
-                  <div className={S.value}>{columns[index].format(value)}</div>
+                  <div className={S.value}>
+                    {renderResult != null && index === resultIndex
+                      ? renderResult(value)
+                      : columns[index].format(value)}
+                  </div>
                 </td>
               ))}
             </tr>

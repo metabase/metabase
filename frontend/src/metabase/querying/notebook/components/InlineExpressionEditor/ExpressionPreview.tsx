@@ -5,9 +5,11 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
-import { Loader, Text } from "metabase/ui";
+import { formatExpressionParts } from "metabase/querying/expressions";
+import { Flex, Icon, Loader, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { AGGREGATION_FUNCTIONS, EXPRESSION_FUNCTIONS } from "metabase-lib";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./ExpressionPreview.module.css";
@@ -20,10 +22,12 @@ const SHOWN_ROW_COUNT = 6;
 type ExpressionPreviewProps = {
   query: Lib.Query;
   stageIndex: number;
+  expressionMode: Lib.ExpressionMode;
   /** The index of the edited custom column, or undefined for a new one. */
   expressionIndex?: number;
   clause: Lib.ExpressionClause;
-  name: string;
+  /** The name of the result column. An aggregation without a name keeps its own. */
+  name?: string;
   /** A new value runs the expression again and picks new rows. */
   refreshKey: number;
   /** True when the text in the editor is not the expression in the preview. */
@@ -32,11 +36,14 @@ type ExpressionPreviewProps = {
 
 /**
  * Sample rows with the result of the expression, and only the columns that the
- * expression uses. It runs only on request.
+ * expression uses. A filter shows rows that it keeps and rows that it removes.
+ * An aggregation shows its result for the groups of the breakouts. It runs
+ * only on request.
  */
 export function ExpressionPreview({
   query,
   stageIndex,
+  expressionMode,
   expressionIndex,
   clause,
   name,
@@ -46,23 +53,106 @@ export function ExpressionPreview({
   // The query is built only for a run. Each valid edit saves the expression,
   // which changes `query`, and a new build of the same query has new ids, so
   // it would run again.
-  const latestRef = useRef({ query, stageIndex, expressionIndex, name });
-  latestRef.current = { query, stageIndex, expressionIndex, name };
+  const latestRef = useRef({
+    query,
+    stageIndex,
+    expressionMode,
+    expressionIndex,
+    name,
+  });
+  latestRef.current = {
+    query,
+    stageIndex,
+    expressionMode,
+    expressionIndex,
+    name,
+  };
+  // The aggregations inside an aggregation expression, as their source text.
+  // A preview shows each of them as a column of its own.
+  const [aggregationParts, setAggregationParts] = useState<AggregationPart[]>();
+  useEffect(() => {
+    if (expressionMode !== "aggregation") {
+      return;
+    }
+    let isCancelled = false;
+    const { query, stageIndex } = latestRef.current;
+    getAggregationParts(query, stageIndex, clause).then((parts) => {
+      if (!isCancelled) {
+        setAggregationParts(parts);
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [expressionMode, clause]);
+
   const preview = useMemo(() => {
-    const { query, stageIndex, expressionIndex, name } = latestRef.current;
-    const preview = getPreviewQuery(
-      query,
-      stageIndex,
-      expressionIndex,
-      clause,
-      name,
-    );
+    const { query, stageIndex, expressionMode, expressionIndex, name } =
+      latestRef.current;
+    if (expressionMode === "aggregation" && aggregationParts == null) {
+      return null;
+    }
+    const preview =
+      expressionMode === "aggregation"
+        ? getAggregationPreviewQuery(
+            query,
+            stageIndex,
+            clause,
+            name,
+            aggregationParts ?? [],
+          )
+        : getPreviewQuery(
+            query,
+            stageIndex,
+            expressionMode === "filter" ? undefined : expressionIndex,
+            clause,
+            name ?? "",
+          );
     return preview && { ...preview, name };
     // `name` is in the dependencies only to run again with a new name.
-  }, [clause, name]);
-  const { data, error, isFetching, refetch } = useGetAdhocQueryQuery(
-    preview ? Lib.toJsQuery(preview.query) : skipToken,
+  }, [clause, name, aggregationParts]);
+  const queries = useMemo(
+    () =>
+      preview == null
+        ? []
+        : expressionMode === "filter"
+          ? splitByFilter(preview.query, stageIndex, preview.name ?? "")
+          : [preview.query],
+    // The mode and the stage do not change while the editor is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [preview],
   );
+  const first = useGetAdhocQueryQuery(
+    queries[0] != null ? Lib.toJsQuery(queries[0]) : skipToken,
+  );
+  const second = useGetAdhocQueryQuery(
+    queries[1] != null ? Lib.toJsQuery(queries[1]) : skipToken,
+  );
+  const isFetching = first.isFetching || second.isFetching;
+  const error = first.error ?? second.error;
+  const refetch = () => {
+    first.refetch();
+    if (queries[1] != null) {
+      second.refetch();
+    }
+  };
+  const data = useMemo(() => {
+    if (first.data == null || (queries[1] != null && second.data == null)) {
+      return undefined;
+    }
+    if (second.data == null || queries[1] == null) {
+      return first.data;
+    }
+    const error = first.data.error ?? second.data.error;
+    return {
+      ...first.data,
+      error,
+      data: first.data.data && {
+        ...first.data.data,
+        rows: [...first.data.data.rows, ...(second.data.data?.rows ?? [])],
+      },
+    };
+  }, [first.data, second.data, queries]);
   const [seed, setSeed] = useState(0);
 
   const clauseRef = useRef(clause);
@@ -88,7 +178,7 @@ export function ExpressionPreview({
         ? getSample(
             data.data.cols,
             data.data.rows,
-            preview.name,
+            preview.name ?? null,
             preview.usedNames,
             preview.primaryKeyName,
           )
@@ -149,6 +239,9 @@ export function ExpressionPreview({
               cols={sample.cols}
               rows={sample.rows}
               hasKey={sample.hasKey}
+              renderResult={
+                expressionMode === "filter" ? renderFilterResult : undefined
+              }
             />
           )
         )}
@@ -257,6 +350,117 @@ function getPreviewQuery(
   };
 }
 
+type AggregationPart = { parts: Lib.ExpressionParts; label: string };
+
+const AGGREGATION_OPERATORS = new Set<string>(
+  Object.keys(AGGREGATION_FUNCTIONS).filter(
+    (name) => !(name in EXPRESSION_FUNCTIONS),
+  ),
+);
+
+/**
+ * The aggregations that the expression combines, like the two counts of
+ * `CountIf(…) / Count()`. It is empty when the expression is one aggregation.
+ */
+async function getAggregationParts(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.ExpressionClause,
+): Promise<AggregationPart[]> {
+  const root = Lib.expressionParts(query, stageIndex, clause);
+  const found: Lib.ExpressionParts[] = [];
+  const visit = (node: Lib.ExpressionParts | Lib.ExpressionArg) => {
+    if (!Lib.isExpressionParts(node)) {
+      return;
+    }
+    if (AGGREGATION_OPERATORS.has(node.operator)) {
+      found.push(node);
+    } else {
+      node.args.forEach(visit);
+    }
+  };
+  visit(root);
+  if (found.length === 0 || found[0] === root) {
+    return [];
+  }
+  const labels = await Promise.all(
+    found.map((parts) =>
+      formatExpressionParts(parts, { query, stageIndex, printWidth: Infinity }),
+    ),
+  );
+  // The same aggregation twice shows once.
+  const unique = new Map<string, Lib.ExpressionParts>();
+  found.forEach((parts, index) => {
+    const label = labels[index].trim();
+    if (!unique.has(label)) {
+      unique.set(label, parts);
+    }
+  });
+  return [...unique].map(([label, parts]) => ({ label, parts }));
+}
+
+/**
+ * The query up to the breakouts with the aggregation as its only aggregation,
+ * after the aggregations that it combines. The groups of the breakouts come
+ * first.
+ */
+function getAggregationPreviewQuery(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.ExpressionClause,
+  name: string | undefined,
+  aggregationParts: AggregationPart[],
+) {
+  const base = Lib.previewQuery(query, stageIndex, "breakout", null);
+  if (base == null) {
+    return null;
+  }
+  const withParts = aggregationParts.reduce(
+    (query, { parts, label }) =>
+      Lib.aggregate(
+        query,
+        stageIndex,
+        Lib.withExpressionName(Lib.expressionClause(parts), label),
+      ),
+    base,
+  );
+  const aggregation =
+    name != null ? Lib.withExpressionName(clause, name) : clause;
+  return {
+    query: Lib.limit(
+      Lib.aggregate(withParts, stageIndex, aggregation),
+      stageIndex,
+      QUERY_ROW_COUNT,
+    ),
+    usedNames: null,
+    primaryKeyName: null,
+  };
+}
+
+/**
+ * The rows that the filter keeps, and the rows that it removes, as two
+ * queries. A rare match would not show in one sample of the table.
+ */
+function splitByFilter(query: Lib.Query, stageIndex: number, name: string) {
+  const column = Lib.filterableColumns(query, stageIndex).find(
+    (column) =>
+      Lib.displayInfo(query, stageIndex, column).displayName === name &&
+      Lib.isBoolean(column),
+  );
+  if (column == null) {
+    return [query];
+  }
+  const half = Math.ceil(QUERY_ROW_COUNT / 2);
+  const kept = Lib.expressionClause("=", [column, true]);
+  const removed = Lib.expressionClause("or", [
+    Lib.expressionClause("=", [column, false]),
+    Lib.expressionClause("is-null", [column]),
+  ]);
+  return [kept, removed].map((filter) =>
+    Lib.limit(Lib.filter(query, stageIndex, filter), stageIndex, half),
+  );
+}
+
 function getUsedColumns(
   query: Lib.Query,
   stageIndex: number,
@@ -282,8 +486,9 @@ function getUsedColumns(
 function getSample(
   cols: DatasetColumn[],
   rows: RowValues[],
-  name: string,
-  usedNames: Set<string>,
+  name: string | null,
+  /** Null shows all the columns. */
+  usedNames: Set<string> | null,
   primaryKeyName: string | null,
 ) {
   const foundIndex = cols.findIndex((col) => col.display_name === name);
@@ -301,7 +506,7 @@ function getSample(
         (index) =>
           index !== resultIndex &&
           index !== keyIndex &&
-          usedNames.has(cols[index].display_name),
+          (usedNames == null || usedNames.has(cols[index].display_name)),
       ),
     resultIndex,
   ];
@@ -364,6 +569,16 @@ function pickSpread(rows: RowValues[], resultIndex: number) {
       ],
   );
   return [...new Set([...picked, ...shuffle(empty).slice(0, 1)])];
+}
+
+function renderFilterResult(value: RowValue) {
+  const isMatch = value === true;
+  return (
+    <Flex align="center" gap="xs">
+      <Icon name={isMatch ? "check" : "close"} size={12} c="text-disabled" />
+      {isMatch ? t`Matches` : t`Excluded`}
+    </Flex>
+  );
 }
 
 function isNumberOrNull(value: RowValue) {

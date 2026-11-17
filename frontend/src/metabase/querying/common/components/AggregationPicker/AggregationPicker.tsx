@@ -47,6 +47,11 @@ export interface AggregationPickerProps {
   allowCustomExpressions?: boolean;
   allowMetrics?: boolean;
   onClose?: () => void;
+  /**
+   * Opens the inline expression editor of the notebook, in place
+   * of the expression editor in the popover.
+   */
+  onOpenExpressionEditor?: (clause: Lib.DefinedClauseName | null) => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
   readOnly?: boolean;
@@ -97,6 +102,7 @@ export function AggregationPicker({
   onClose,
   onQueryChange,
   onBack,
+  onOpenExpressionEditor,
   readOnly,
 }: AggregationPickerProps) {
   const tc = useTranslateContent();
@@ -267,6 +273,10 @@ export function AggregationPicker({
 
   const handleExpressionSelect = useCallback(
     (clause?: Lib.DefinedClauseName) => {
+      if (onOpenExpressionEditor != null) {
+        onOpenExpressionEditor(clause ?? null);
+        return;
+      }
       if (clause) {
         setInitialExpressionClause(clause);
       }
@@ -274,7 +284,7 @@ export function AggregationPicker({
         openExpressionEditor();
       });
     },
-    [openExpressionEditor],
+    [openExpressionEditor, onOpenExpressionEditor],
   );
 
   const handleResetOperator = useCallback(() => {
@@ -348,12 +358,16 @@ export function AggregationPicker({
   const handleSectionChange = useCallback(
     (section: Section) => {
       if (section.key === "custom-expression") {
+        if (onOpenExpressionEditor != null) {
+          onOpenExpressionEditor(null);
+          return;
+        }
         startTransition(() => {
           openExpressionEditor();
         });
       }
     },
-    [openExpressionEditor],
+    [openExpressionEditor, onOpenExpressionEditor],
   );
 
   const handleClauseChange = useCallback(

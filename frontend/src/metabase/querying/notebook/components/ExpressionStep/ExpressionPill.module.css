@@ -9,8 +9,28 @@
   pointer-events: none;
 }
 
+/* A long name ends with an ellipsis, so that the pill fits in its cell. */
+.pill {
+  max-width: 100%;
+
+  > * {
+    min-width: 0;
+  }
+}
+
+/* Repeated to outweigh the selected and hover colors of NotebookCellItem. */
+.stepSelected.stepSelected.stepSelected.stepSelected > [class*="selected"] {
+  background-color: color-mix(
+    in srgb,
+    var(--notebook-cell-item-container-color),
+    var(--mb-color-text-primary) 35%
+  );
+}
+
 .name {
   position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: pre;
 }
 

@@ -5,10 +5,14 @@ import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
+import { Box, Button, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
+import { useCustomColumnRequest } from "../NotebookStepList/CustomColumnRequest";
+
+import S from "./BreakoutStep.module.css";
 
 export function BreakoutStep({
   query,
@@ -131,6 +135,7 @@ export const BreakoutPopover = ({
   onUpdateBreakoutColumn,
   onClose,
 }: BreakoutPopoverProps) => {
+  const { requestCustomColumn } = useCustomColumnRequest();
   const columnGroups = useMemo(() => {
     const columns = Lib.breakoutableColumns(query, stageIndex);
     const filteredColumns = columns.reduce(
@@ -152,26 +157,44 @@ export const BreakoutPopover = ({
   }, [query, stageIndex, breakout, breakoutIndex]);
 
   return (
-    <QueryColumnPicker
-      className={className}
-      query={query}
-      stageIndex={stageIndex}
-      columnGroups={columnGroups}
-      hasBinning
-      hasTemporalBucketing
-      withInfoIcons
-      color="core-summarize"
-      checkIsColumnSelected={(item) => checkColumnSelected(item, breakoutIndex)}
-      onSelect={(column: Lib.ColumnMetadata) => {
-        const isUpdate = breakout != null;
-        if (isUpdate) {
-          onUpdateBreakoutColumn(breakout, column);
-        } else {
-          onAddBreakout(column);
+    <>
+      <QueryColumnPicker
+        className={className}
+        query={query}
+        stageIndex={stageIndex}
+        columnGroups={columnGroups}
+        hasBinning
+        hasTemporalBucketing
+        withInfoIcons
+        color="core-summarize"
+        checkIsColumnSelected={(item) =>
+          checkColumnSelected(item, breakoutIndex)
         }
-      }}
-      onClose={onClose}
-    />
+        onSelect={(column: Lib.ColumnMetadata) => {
+          const isUpdate = breakout != null;
+          if (isUpdate) {
+            onUpdateBreakoutColumn(breakout, column);
+          } else {
+            onAddBreakout(column);
+          }
+        }}
+        onClose={onClose}
+      />
+      <Box className={S.hint} p="md">
+        <Text c="text-secondary" fz="sm" mb="sm">
+          {t`Need to group by something that isn't a column? Create a custom column, and it shows up in this list.`}
+        </Text>
+        <Button
+          size="sm"
+          variant="default"
+          leftSection={<Icon name="add" size={12} />}
+          onClick={() => {
+            onClose();
+            requestCustomColumn(stageIndex);
+          }}
+        >{t`Create custom column`}</Button>
+      </Box>
+    </>
   );
 };
 
