@@ -809,6 +809,63 @@ describe("replaceWellWithField", () => {
       getDimensionLabels(clearWell(query, STAGE_INDEX, "columns")),
     ).toEqual([]);
   });
+
+  describe("with groupings in Rows", () => {
+    const ROW_KEYS = ["CATEGORY"];
+    const query = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    });
+    const sections = getFieldSections(query, STAGE_INDEX);
+
+    it("swaps only the Columns groupings for the column", () => {
+      const next = replaceWellWithField(
+        query,
+        STAGE_INDEX,
+        "columns",
+        findField(sections, "Vendor"),
+        ROW_KEYS,
+      );
+
+      expect(getDimensionLabels(next)).toEqual([
+        "Product → Category",
+        "Product → Vendor",
+      ]);
+    });
+
+    it("leaves the query alone when the column is in Rows and can't be grouped again", () => {
+      const next = replaceWellWithField(
+        query,
+        STAGE_INDEX,
+        "columns",
+        findField(sections, "Category"),
+        ROW_KEYS,
+      );
+
+      expect(next).toBe(query);
+    });
+
+    it("clears the groupings of one well", () => {
+      expect(
+        getDimensionLabels(clearWell(query, STAGE_INDEX, "columns", ROW_KEYS)),
+      ).toEqual(["Product → Category"]);
+      expect(
+        getDimensionLabels(clearWell(query, STAGE_INDEX, "rows", ROW_KEYS)),
+      ).toEqual(["Created At: Month"]);
+    });
+  });
 });
 
 describe("drag and drop", () => {

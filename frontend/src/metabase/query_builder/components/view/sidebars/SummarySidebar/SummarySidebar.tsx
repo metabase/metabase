@@ -153,7 +153,7 @@ export function SummarySidebar({
   const handleFieldSelect = (field: SummaryField) => {
     const wellId = getFieldWellId(field);
     handleWellAdd(
-      replaceWellWithField(query, stageIndex, wellId, field),
+      replaceWellWithField(query, stageIndex, wellId, field, rowKeys),
       wellId,
     );
   };

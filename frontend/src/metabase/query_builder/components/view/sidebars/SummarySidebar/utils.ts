@@ -580,33 +580,46 @@ export function addField(
   }
 }
 
+function getWellClauses(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+  rowKeys: string[],
+): (Lib.AggregationClause | Lib.BreakoutClause)[] {
+  if (wellId === "values") {
+    return Lib.aggregations(query, stageIndex);
+  }
+  const { breakoutNames } = getResultColumnNames(query, stageIndex);
+  return Lib.breakouts(query, stageIndex).filter(
+    (_clause, index) =>
+      rowKeys.includes(breakoutNames[index]) === (wellId === "rows"),
+  );
+}
+
+/** `rowKeys` are the keys of the groupings in Rows. Without them, Columns holds every grouping. */
 export function clearWell(
   query: Lib.Query,
   stageIndex: number,
   wellId: SummaryWellId,
+  rowKeys: string[] = [],
 ): Lib.Query {
-  const clauses =
-    wellId === "values"
-      ? Lib.aggregations(query, stageIndex)
-      : Lib.breakouts(query, stageIndex);
-  return clauses.reduce(
+  return getWellClauses(query, stageIndex, wellId, rowKeys).reduce(
     (query, clause) => Lib.removeClause(query, stageIndex, clause),
     query,
   );
 }
 
+/** Returns `query` itself when the field can't be added, so the well keeps its content. */
 export function replaceWellWithField(
   query: Lib.Query,
   stageIndex: number,
   wellId: SummaryWellId,
   field: SummaryField,
+  rowKeys: string[] = [],
 ): Lib.Query {
-  return addField(
-    clearWell(query, stageIndex, wellId),
-    stageIndex,
-    wellId,
-    field,
-  );
+  const clearedQuery = clearWell(query, stageIndex, wellId, rowKeys);
+  const nextQuery = addField(clearedQuery, stageIndex, wellId, field);
+  return nextQuery !== clearedQuery ? nextQuery : query;
 }
 
 export function getDragItem(data: unknown): SummaryDragItem | null {
