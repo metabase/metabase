@@ -283,7 +283,7 @@
   (when-let [{expectation-name :name} (and writes? (first (filter (comp compares-output :type) expectations)))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/no-output
-            (tru "Expectation {0} compares the output of the query under test, which modifies existing tables and has no output. Read the tables it modifies in an `empty` expectation."
+            (tru "Expectation {0} compares the output of the query under test, which modifies existing tables and has no output. Use an `empty` expectation whose SQL reads the tables the query under test modifies."
                  (pr-str expectation-name))
             {:expectation expectation-name})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
