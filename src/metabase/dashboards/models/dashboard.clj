@@ -81,12 +81,12 @@
   "The widths a Dashboard takes."
   #{"fixed" "full"})
 
-(defn- check-collections
-  "Throws unless the Collections of `dashboards` can hold Dashboards, each Collection checked once."
-  [dashboards]
-  (doseq [collection-id (into #{} (keep :collection_id) dashboards)]
-    (collection/check-allowed-content :model/Dashboard collection-id)
-    (collection/check-collection-namespace :model/Dashboard collection-id)))
+(defn- check-collection
+  "Throws unless the Collection of `dashboard`, if any, can hold Dashboards."
+  [{:keys [collection_id]}]
+  (when collection_id
+    (collection/check-allowed-content :model/Dashboard collection_id)
+    (collection/check-collection-namespace :model/Dashboard collection_id)))
 
 (defn- check-name
   "Throws a 400 unless `dashboard` has a name."
@@ -106,20 +106,9 @@
   (when-not (boolean? auto_apply_filters)
     (throw (ex-info (tru "A Dashboard''s auto_apply_filters is true or false.") {:status-code 400}))))
 
-(defn- move-dashboard-questions!
-  "Moves the dashboard questions of `dashboards` into the Collections their Dashboards move to, one statement for each
-  Collection."
-  [dashboards]
-  (doseq [[collection-id moved] (group-by :collection_id dashboards)]
-    (dashboards.db/move-dashboard-questions! (mapv u/the-id moved) collection-id)))
-
-(mi/define-before-insert :model/Dashboard
-  [dashboards]
-  (check-collections dashboards)
-  dashboards)
-
 (t2/define-before-insert :model/Dashboard
   [dashboard]
+  (check-collection dashboard)
   (let [defaults  {:parameters []}
         dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
                       maybe-populate-initially-published-at)]
@@ -136,24 +125,21 @@
   (u/prog1 dashboard
     (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
-(mi/define-before-update :model/Dashboard
-  [dashboards]
-  (let [moved (filter #(contains? (t2/changes %) :collection_id) dashboards)]
-    (check-collections moved)
-    (move-dashboard-questions! moved)
-    dashboards))
-
 (t2/define-before-update :model/Dashboard
   [dashboard]
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
+    (when (contains? changes :collection_id)
+      (check-collection dashboard))
     (when (contains? changes :name)
       (check-name dashboard))
     (when (contains? changes :width)
       (check-width dashboard))
     (when (contains? changes :auto_apply_filters)
       (check-auto-apply-filters dashboard))
+    (when (contains? changes :collection_id)
+      (dashboards.db/move-dashboard-questions! (:id dashboard) (:collection_id dashboard)))
     (u/prog1 (-> dashboard
                  maybe-populate-initially-published-at
                  public-sharing/add-public-uuid-prefix-if-changed)

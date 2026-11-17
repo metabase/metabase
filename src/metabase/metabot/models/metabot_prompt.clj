@@ -21,35 +21,23 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- card-types
-  "The type of the Card of each of `prompts`, by Card id, loaded together."
-  [prompts]
-  (if-let [card-ids (not-empty (into #{} (keep :card_id) prompts))]
-    (metabot.db/card-types-by-id (vec card-ids))
-    {}))
-
 (defn- card-model
-  "The `:model` of `prompt`: the type of its Card, per `card-id->type`."
-  [{:keys [card_id]} card-id->type]
-  (or (card-id->type card_id)
+  "The `:model` of `prompt`: the type of its Card."
+  [{:keys [card_id]}]
+  (or (some-> card_id metabot.db/card-type-row :type)
       (throw (ex-info (tru "A suggested prompt needs an existing Card.") {:status-code 400}))))
 
-(mi/define-before-insert :model/MetabotPrompt
-  [prompts]
-  (let [card-id->type (card-types prompts)]
-    (for [prompt prompts]
-      (assoc prompt :model (card-model prompt card-id->type)))))
+(t2/define-before-insert :model/MetabotPrompt
+  [prompt]
+  (assoc prompt :model (card-model prompt)))
 
-(mi/define-before-update :model/MetabotPrompt
-  [prompts]
-  (let [card-id->type (card-types (filter #(contains? (t2/changes %) :card_id) prompts))]
-    (for [prompt prompts
-          :let   [changes (t2/changes prompt)]]
-      (do
-        (when (and (contains? changes :model) (not (contains? changes :card_id)))
-          (throw (ex-info (tru "A suggested prompt''s model is the type of its Card.") {:status-code 400})))
-        (cond-> prompt
-          (contains? changes :card_id) (assoc :model (card-model prompt card-id->type)))))))
+(t2/define-before-update :model/MetabotPrompt
+  [prompt]
+  (let [changes (t2/changes prompt)]
+    (when (and (contains? changes :model) (not (contains? changes :card_id)))
+      (throw (ex-info (tru "A suggested prompt''s model is the type of its Card.") {:status-code 400})))
+    (cond-> prompt
+      (contains? changes :card_id) (assoc :model (card-model prompt)))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

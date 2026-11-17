@@ -268,10 +268,10 @@
                                                                        :remove-pc-ids #{(:id pulse-channel)}))))
   pulse-channel)
 
-(mi/define-before-update :model/PulseChannel
-  [pulse-channels]
-  (run! check-channel-update pulse-channels)
-  (mapv update-send-pulse-triggers pulse-channels))
+(t2/define-before-update :model/PulseChannel
+  [pulse-channel]
+  (check-channel-update pulse-channel)
+  (update-send-pulse-triggers pulse-channel))
 
 ;;; ----------------------------------------------------- Hydration -----------------------------------------------------
 

@@ -51,6 +51,11 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Timeline :id id))
 
+(mu/defn timeline-icon
+  "The icon of the Timeline with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one-fn :icon :model/Timeline :id id))
+
 (mu/defn timelines-by-id
   "A map of id to Timeline for the Timelines with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

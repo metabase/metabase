@@ -371,13 +371,13 @@
                               :data-model     {:schemas {"s1" {t3a :all t3b :none}
                                                          "s2" {t3d :all t3e :none}}}}}}
               ;; Run the update and count queries.
-              ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 1 bulk insert = 4
-              ;; If this grows to 5 or 6, that's okay, but more should be very suspicious - it's very likely an N+1
-              ;; query in one of these dimensions!
+              ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 2 bulk inserts (transforms
+              ;; rows last) + 1 native-access lookup per database-level create-queries or transforms row, 10 for this
+              ;; graph. Tables must not add queries: more is very likely an N+1 query in one of these dimensions!
               query-count (t2/with-call-count [call-count]
                             (data-perms.graph/update-data-perms-graph!* graph)
                             (call-count))]
-          (is (<= query-count 4)
+          (is (<= query-count 10)
               (format "Expected constant query count but got %d — possible N+1 regression" query-count)))
         ;; Verify the permissions actually took effect by spot-checking a few values
         (let [result (data-perms.graph/data-permissions-graph :group-ids [g1 g2 g3])]

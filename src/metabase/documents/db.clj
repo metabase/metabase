@@ -117,13 +117,6 @@
    changes     :- (mut/select-keys ::queries.schema/card.update [:collection_id :archived :archived_directly])]
   (t2/update! :model/Card :document_id document-id changes))
 
-(mu/defn update-cards-collection!
-  "Move the Cards of the Documents with `document-ids` to the Collection with `collection-id`, returning the number
-  updated."
-  [document-ids :- [:sequential ms/PositiveInt]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Card :document_id [:in document-ids] {:collection_id collection-id}))
-
 (mu/defn unarchived-collection-exists?
   "Whether an unarchived Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]

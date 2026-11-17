@@ -272,19 +272,16 @@
          (not= object (permissions.path/application-perms-path :subscription)))
     (tru "Cannot grant application permission to a tenant group.")))
 
-(mi/define-before-insert :model/Permissions
-  [rows]
-  (let [restricted (filter (comp tenant-group-grant-error :object) rows)
-        tenant?    (if (seq restricted)
-                     (permissions.db/group-tenant-flags (into #{} (map :group_id) restricted))
-                     {})]
-    (doseq [{:keys [group_id object]} restricted]
-      (when (tenant? group_id)
-        (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))
-  rows)
+(defn- check-tenant-group-grant
+  "Throws a 400 when `permission` grants a tenant group what tenant groups cannot hold."
+  [{:keys [group_id object]}]
+  (when-let [error (tenant-group-grant-error object)]
+    (when (get (permissions.db/group-tenant-flags #{group_id}) group_id)
+      (throw (ex-info error {:status-code 400 :group-id group_id :object object})))))
 
 (t2/define-before-insert :model/Permissions
   [permissions]
+  (check-tenant-group-grant permissions)
   (u/prog1 (maybe-break-out-permission-data permissions)
     (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))

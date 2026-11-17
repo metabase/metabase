@@ -62,7 +62,9 @@
                                                     (contains? existing-table-ids (:table_id p)))))
                                    original-perms)]
           (t2/delete! :model/DataPermissions {:where select-condition})
-          (t2/insert! :model/DataPermissions still-valid-perms))))))
+          (doseq [rows (vals (into (sorted-map)
+                                   (group-by #(= :perms/transforms (:perm_type %)) still-valid-perms)))]
+            (t2/insert! :model/DataPermissions rows)))))))
 
 (defmacro with-restored-data-perms!
   "Runs `body`, and restores all permissions to their original state afterwards."

@@ -1,7 +1,6 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -37,30 +36,18 @@
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "valid name"}]
       (is (= 1 (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "also valid "}))))))
 
-(deftest insert-resolves-snippet-references-in-one-lookup-test
-  (testing "The snippets one statement inserts resolve their references together"
+(deftest insert-resolves-snippet-references-test
+  (testing "Inserted snippets resolve their references to stored snippets"
     (mt/with-temp [:model/NativeQuerySnippet {first-id :id}  {:name "referenced first"}
                    :model/NativeQuerySnippet {second-id :id} {:name "referenced second"}]
-      (let [lookups (fn [n]
-                      (mt/with-model-cleanup [:model/NativeQuerySnippet]
-                        (t2/with-call-count [call-count]
-                          (t2/insert! :model/NativeQuerySnippet
-                                      (for [i (range n)]
-                                        {:name       (format "referring %d" i)
-                                         :content    "{{snippet: referenced first}} {{snippet: referenced second}}"
-                                         :creator_id (mt/user->id :rasta)}))
-                          (call-count))))]
-        (testing "MySQL reads each inserted row back, which is the only per-row statement"
-          (is (= (if (= :mysql (mdb/db-type)) 4 0)
-                 (- (lookups 6) (lookups 2)))))
-        (mt/with-model-cleanup [:model/NativeQuerySnippet]
-          (t2/insert! :model/NativeQuerySnippet
-                      [{:name "referring a", :content "{{snippet: referenced first}}", :creator_id (mt/user->id :rasta)}
-                       {:name "referring b", :content "{{snippet: referenced second}}", :creator_id (mt/user->id :rasta)}])
-          (is (= first-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring a")
-                                  ["snippet: referenced first" :snippet-id])))
-          (is (= second-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring b")
-                                   ["snippet: referenced second" :snippet-id]))))))))
+      (mt/with-model-cleanup [:model/NativeQuerySnippet]
+        (t2/insert! :model/NativeQuerySnippet
+                    [{:name "referring a", :content "{{snippet: referenced first}}", :creator_id (mt/user->id :rasta)}
+                     {:name "referring b", :content "{{snippet: referenced second}}", :creator_id (mt/user->id :rasta)}])
+        (is (= first-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring a")
+                                ["snippet: referenced first" :snippet-id])))
+        (is (= second-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring b")
+                                 ["snippet: referenced second" :snippet-id])))))))
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"

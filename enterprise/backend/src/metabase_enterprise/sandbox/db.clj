@@ -166,11 +166,6 @@
                       (when schema-only?
                         [:= :schema schema])]}))
 
-(mu/defn table-id->database-id :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
-  "The Database id of each of the Tables with `table-ids`, by Table id."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
-
 (mu/defn database-of-table
   "The Database of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
@@ -199,11 +194,6 @@
   "The result metadata of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :result_metadata :model/Card :id card-id))
-
-(mu/defn card-id->result-metadata :- [:map-of ::lib.schema.id/card [:maybe [:sequential [:map-of :keyword :any]]]]
-  "The result metadata of each of the Cards with `card-ids`, by Card id."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :result_metadata :model/Card :id [:in card-ids]))
 
 (mu/defn sandboxing-cards
   "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."

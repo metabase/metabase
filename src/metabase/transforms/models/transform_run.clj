@@ -39,18 +39,14 @@
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
 
-(mi/define-before-insert :model/TransformRun
-  [runs]
-  (let [transform-ids (into #{} (keep :transform_id) runs)
-        transforms    (when (seq transform-ids) (transforms.db/transform-snapshots-by-id transform-ids))]
-    (mapv (fn [{:keys [transform_id] :as run}]
-            (if-let [transform (get transforms transform_id)]
-              (assoc run
-                     :transform_name      (:name transform)
-                     :transform_entity_id (:entity_id transform)
-                     :metered_as          (premium-features/transform-metered-as (:source_type transform)))
-              run))
-          runs)))
+(t2/define-before-insert :model/TransformRun
+  [{:keys [transform_id] :as run}]
+  (if-let [transform (some-> transform_id transforms.db/transform-snapshot)]
+    (assoc run
+           :transform_name      (:name transform)
+           :transform_entity_id (:entity_id transform)
+           :metered_as          (premium-features/transform-metered-as (:source_type transform)))
+    run))
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
 (methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]

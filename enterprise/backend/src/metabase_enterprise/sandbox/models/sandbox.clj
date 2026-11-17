@@ -121,57 +121,42 @@
     (throw (ex-info (tru "Invalid attribute remappings: each user attribute name must map to a field name, a field id, or a parameter target.")
                     {:status-code 400}))))
 
-(defn- card-id->result-metadata
-  "The saved result metadata of the Cards of `sandboxes`, by Card id, loaded together."
-  [sandboxes]
-  (if-let [card-ids (not-empty (into #{} (keep :card_id) sandboxes))]
-    (sandbox.db/card-id->result-metadata card-ids)
-    {}))
-
 (defn- check-card-columns
-  "Throws a 400 unless the saved result columns of the Card of `sandbox`, from `card-id->metadata`, match the columns
-  of its Table."
-  [{:keys [card_id table_id]} card-id->metadata]
-  (when-let [result-metadata (not-empty (get card-id->metadata card_id))]
+  "Throws a 400 unless the saved result columns of the Card of `sandbox` match the columns of its Table."
+  [{:keys [card_id table_id]}]
+  (when-let [result-metadata (some-> card_id sandbox.db/card-result-metadata not-empty)]
     (check-columns-match-table table_id result-metadata)))
 
 (defn- remove-native-access!
-  "Downgrades the native query access of the group of each of `sandboxes` to the query builder on the Database of its
-  Table, where the group has native access to that Table."
-  [sandboxes]
-  (let [table-id->db-id (sandbox.db/table-id->database-id (into #{} (map :table_id) sandboxes))]
-    (doseq [[group-id group-sandboxes] (group-by :group_id sandboxes)
-            :let  [tables (select-keys table-id->db-id (map :table_id group-sandboxes))]
-            db-id (distinct (for [[table-id value] (perms/table-permissions-for-groups #{group-id} :perms/create-queries tables)
-                                  :when (= value :query-builder-and-native)]
-                              (get tables table-id)))]
-      (perms/set-database-permission! group-id db-id :perms/create-queries :query-builder))))
+  "Downgrades the native query access of the group of `sandbox` to the query builder on the Database of its Table, where
+  the group has native access to that Table."
+  [{:keys [table_id group_id]}]
+  (let [db-id (database/table-id->database-id table_id)]
+    (when (= :query-builder-and-native
+             (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
+      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
 
-(mi/define-before-insert :model/Sandbox
-  [sandboxes]
-  (let [card-id->metadata (card-id->result-metadata sandboxes)]
-    (doseq [sandbox sandboxes]
-      (check-attribute-remappings sandbox)
-      (check-card-columns sandbox card-id->metadata))
-    (remove-native-access! sandboxes)
-    sandboxes))
+(t2/define-before-insert :model/Sandbox
+  [sandbox]
+  (check-attribute-remappings sandbox)
+  (check-card-columns sandbox)
+  (remove-native-access! sandbox)
+  sandbox)
 
-(mi/define-before-update :model/Sandbox
-  [sandboxes]
-  (let [card-id->metadata (card-id->result-metadata (filter (comp seq t2/changes) sandboxes))]
-    (doseq [sandbox sandboxes
-            :let    [changes (t2/changes sandbox)]]
-      (when (contains? changes :table_id)
-        (throw (ex-info (tru "You cannot change the table ID of a sandbox once it has been created.")
-                        {:id (:id sandbox), :status-code 400})))
-      (when (contains? changes :group_id)
-        (throw (ex-info (tru "You cannot change the group ID of a sandbox once it has been created.")
-                        {:id (:id sandbox), :status-code 400})))
-      (when (contains? changes :attribute_remappings)
-        (check-attribute-remappings sandbox))
-      (when (seq changes)
-        (check-card-columns sandbox card-id->metadata)))
-    sandboxes))
+(t2/define-before-update :model/Sandbox
+  [sandbox]
+  (let [changes (t2/changes sandbox)]
+    (when (contains? changes :table_id)
+      (throw (ex-info (tru "You cannot change the table ID of a sandbox once it has been created.")
+                      {:id (:id sandbox), :status-code 400})))
+    (when (contains? changes :group_id)
+      (throw (ex-info (tru "You cannot change the group ID of a sandbox once it has been created.")
+                      {:id (:id sandbox), :status-code 400})))
+    (when (contains? changes :attribute_remappings)
+      (check-attribute-remappings sandbox))
+    (when (seq changes)
+      (check-card-columns sandbox))
+    sandbox))
 
 ;;; --------------------------------------------- Sandbox dependency set ---------------------------------------------
 

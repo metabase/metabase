@@ -82,24 +82,16 @@
   (params/assert-valid-parameter-mappings
    {:parameter_mappings (some->> parameter_mappings (lib/normalize ::parameters.schema/parameter-mappings))}))
 
-(defn- check-tabs
-  "Throws a 400 unless the tab of each of `dashcards` belongs to the Dashboard of the dashcard, the tabs loaded
-  together."
-  [dashcards]
-  (when-let [tab-ids (seq (into #{} (keep :dashboard_tab_id) dashcards))]
-    (let [tab-id->dashboard-id (dashboards.db/tab-dashboard-ids (vec tab-ids))]
-      (doseq [{:keys [dashboard_id dashboard_tab_id]} dashcards
-              :when dashboard_tab_id]
-        (when-not (= dashboard_id (get tab-id->dashboard-id dashboard_tab_id))
-          (throw (ex-info (tru "A DashboardCard''s tab must belong to its Dashboard.") {:status-code 400})))))))
-
-(mi/define-before-insert :model/DashboardCard
-  [dashcards]
-  (check-tabs dashcards)
-  dashcards)
+(defn- check-tab
+  "Throws a 400 unless the tab of `dashcard`, if any, belongs to the Dashboard of the dashcard."
+  [{:keys [dashboard_id dashboard_tab_id]}]
+  (when (and dashboard_tab_id
+             (not= dashboard_id (:dashboard_id (dashboards.db/dashboard-tab dashboard_tab_id))))
+    (throw (ex-info (tru "A DashboardCard''s tab must belong to its Dashboard.") {:status-code 400}))))
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (check-tab dashcard)
   (check-layout dashcard)
   (check-parameter-mappings dashcard)
   (-> (merge {:parameter_mappings     []
@@ -108,16 +100,13 @@
              dashcard)
       validate-dashcard-on-write))
 
-(mi/define-before-update :model/DashboardCard
-  [dashcards]
-  (check-tabs (filter #(contains? (t2/changes %) :dashboard_tab_id) dashcards))
-  dashcards)
-
 (t2/define-before-update :model/DashboardCard
   [dashcard]
   (let [changes (t2/changes dashcard)]
     (when (contains? changes :dashboard_id)
       (throw (ex-info (tru "A DashboardCard cannot move to another Dashboard.") {:status-code 400})))
+    (when (contains? changes :dashboard_tab_id)
+      (check-tab dashcard))
     (when (some #(contains? changes %) [:size_x :size_y :row :col])
       (check-layout dashcard))
     (when (contains? changes :parameter_mappings)

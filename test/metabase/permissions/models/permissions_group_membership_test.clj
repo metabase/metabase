@@ -120,7 +120,8 @@
 (deftest deleting-every-admin-membership-at-once-is-refused-test
   (mt/with-temp [:model/User _ {:is_superuser true}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"last member of the 'Admin' group"
-                          (t2/delete! :model/PermissionsGroupMembership :group_id (admin-group-id))))
+                          (t2/with-transaction [_conn]
+                            (t2/delete! :model/PermissionsGroupMembership :group_id (admin-group-id)))))
     (is (t2/exists? :model/PermissionsGroupMembership :group_id (admin-group-id) :user_id (mt/user->id :crowberto)))))
 
 (deftest admin-cannot-be-group-manager-test

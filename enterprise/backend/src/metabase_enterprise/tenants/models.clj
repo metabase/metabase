@@ -81,53 +81,26 @@
   (when (some #(str/starts-with? (name %) "@") (keys attributes))
     (throw (ex-info (tru "attribute keys must not start with `@`") {:status-code 400}))))
 
-(defn- check-new-names-and-slugs
-  "Throws a 400 when one of `tenants`, rows an INSERT writes, has the name or slug of an existing Tenant, the existing
-  ones loaded together."
-  [tenants]
-  (let [names (into #{} (keep :name) tenants)
-        slugs (into #{} (keep :slug) tenants)
-        taken (tenants.db/tenants-with-names-or-slugs names slugs)]
-    (when (some (fn [{tenant-name :name slug :slug}]
-                  (some #(or (= tenant-name (:name %)) (= slug (:slug %))) taken))
-                tenants)
-      (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))))
-
-(mi/define-before-insert :model/Tenant
-  [tenants]
-  (doseq [{tenant-name :name :keys [slug attributes]} tenants]
-    (check-name tenant-name)
-    (check-slug slug)
-    (check-attributes attributes))
-  (check-new-names-and-slugs tenants)
-  tenants)
+(defn- check-new-name-and-slug
+  "Throws a 400 when `tenant`, a row an INSERT writes, has the name or slug of an existing Tenant."
+  [{tenant-name :name :keys [slug]}]
+  (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
+    (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
 
 (t2/define-before-insert :model/Tenant
-  [tenant]
+  [{tenant-name :name :keys [slug attributes] :as tenant}]
+  (check-name tenant-name)
+  (check-slug slug)
+  (check-attributes attributes)
+  (check-new-name-and-slug tenant)
   (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
                                                              :name      (format "Tenant Collection: %s" (:name tenant))
                                                              :namespace :tenant-specific})]
     (assoc tenant :tenant_collection_id tenant-collection-id)))
 
-(defn- check-new-names
-  "Throws a 400 when one of `tenants`, rows an UPDATE writes, is renamed to the name of another Tenant, the other
-  names loaded together."
-  [tenants]
-  (let [renamed (filter #(contains? (t2/changes %) :name) tenants)]
-    (when (and (seq renamed)
-               (seq (tenants.db/other-tenant-names (into #{} (keep :name) renamed)
-                                                   (into #{} (map :id) renamed))))
-      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
-
-(defn- tenant-ids-changing-active-to
-  "The ids of those of `tenants`, rows an UPDATE writes, whose `:is_active` changes to `active?`."
-  [tenants active?]
-  (into #{} (comp (filter #(= active? (:is_active (t2/changes %)))) (map :id)) tenants))
-
-(mi/define-before-update :model/Tenant
-  [tenants]
-  (doseq [tenant tenants
-          :let   [changes (t2/changes tenant)]]
+(t2/define-before-update :model/Tenant
+  [{:keys [id] :as tenant}]
+  (let [changes (t2/changes tenant)]
     (when (contains? changes :slug)
       (throw (ex-info (tru "You cannot change the slug of a tenant.") {:status-code 400})))
     (when (contains? changes :tenant_collection_id)
@@ -135,13 +108,14 @@
     (when (contains? changes :name)
       (check-name (:name changes)))
     (when (contains? changes :attributes)
-      (check-attributes (:attributes changes))))
-  (check-new-names tenants)
-  (when-let [deactivated (not-empty (tenant-ids-changing-active-to tenants false))]
-    (tenants.db/deactivate-tenant-users! deactivated))
-  (when-let [reactivated (not-empty (tenant-ids-changing-active-to tenants true))]
-    (tenants.db/reactivate-tenant-users! reactivated))
-  tenants)
+      (check-attributes (:attributes changes)))
+    (when (and (contains? changes :name) (tenants.db/other-tenant-named? (:name changes) id))
+      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
+    (when (false? (:is_active changes))
+      (tenants.db/deactivate-tenant-users! id))
+    (when (true? (:is_active changes))
+      (tenants.db/reactivate-tenant-users! id))
+    tenant))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

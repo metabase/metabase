@@ -77,21 +77,13 @@
   (boolean (some #(contains? explicit %) [:visibility_type :data_layer :collection_id])))
 
 (defn- completed-settings
-  "`settings` merged with `explicit`, its two-column pairs completed from `table`, its Table, with its flags set."
-  [settings explicit table]
+  "`settings` merged with `explicit`, its two-column pairs completed from its Table, with its flags set."
+  [settings explicit]
   (let [completed (cond-> explicit
-                    (pair-columns-written? explicit) (complete-pairs table))]
+                    (pair-columns-written? explicit)
+                    (complete-pairs (warehouse-schema.db/table (:table_id settings))))]
     (-> (merge settings completed)
         (with-set-flags completed explicit))))
-
-(defn- tables-by-id
-  "The Tables of those of `rows` of settings that write a column `complete-pairs` reads their Table for, by Table id,
-  loaded together; `explicit` gives the columns a row writes."
-  [rows explicit]
-  (let [table-ids (into [] (comp (filter (comp pair-columns-written? explicit)) (keep :table_id) (distinct)) rows)]
-    (if (seq table-ids)
-      (into {} (map (juxt :id identity)) (warehouse-schema.db/tables-by-ids table-ids))
-      {})))
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
@@ -101,20 +93,17 @@
     (warehouse-schema.db/delete-table-user-settings! [(:table_id settings)]))
   settings)
 
-(mi/define-before-insert :model/TableUserSettings
-  [rows]
-  (let [table-id->table (tables-by-id rows identity)]
-    (for [settings rows]
-      (completed-settings settings settings (table-id->table (:table_id settings))))))
+(t2/define-before-insert :model/TableUserSettings
+  [settings]
+  (completed-settings settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
   [settings]
   (delete-when-empty! settings))
 
-(mi/define-before-update :model/TableUserSettings
-  [rows]
-  (let [table-id->table (tables-by-id rows t2/changes)]
-    (mapv #(completed-settings % (t2/changes %) (table-id->table (:table_id %))) rows)))
+(t2/define-before-update :model/TableUserSettings
+  [settings]
+  (completed-settings settings (t2/changes settings)))
 
 (t2/define-after-update :model/TableUserSettings
   [settings]

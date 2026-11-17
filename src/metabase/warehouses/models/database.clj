@@ -459,22 +459,16 @@
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (defn- check-router-not-destination
-  "Throws a 400 when `database` is a destination whose router is among `destination-ids`, since a destination cannot
-  route on to another one."
-  [destination-ids database]
-  (when (contains? destination-ids (:router_database_id database))
+  "Throws a 400 when the router of `database` is itself a destination, since a destination cannot route on to another
+  one."
+  [{:keys [router_database_id]}]
+  (when (and router_database_id (warehouses.db/router-database-id router_database_id))
     (throw (ex-info (tru "A destination database cannot be the router of another destination database.")
                     {:status-code 400}))))
 
-(mi/define-before-insert :model/Database
-  [databases]
-  (let [router-ids      (into [] (comp (keep :router_database_id) (distinct)) databases)
-        destination-ids (if (seq router-ids) (set (keys (warehouses.db/router-database-ids router-ids))) #{})]
-    (run! #(check-router-not-destination destination-ids %) databases)
-    databases))
-
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
+  (check-router-not-destination database)
   (validate-connection-details! engine database details-keys)
   (check-destination-overlays database database)
   (check-settings-driver-features database (changed-settings (:settings database) nil))

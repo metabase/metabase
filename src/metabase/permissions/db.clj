@@ -242,22 +242,19 @@
              {:where [:and [:= :db_id database-id] [:= :table_id nil]
                       [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
-(mu/defn database-level-value-pairs :- [:set [:tuple ms/PositiveInt ::lib.schema.id/database]]
-  "The `[group-id database-id]` pairs, among the groups with `group-ids` and the Databases with `database-ids`, that have
-  a database-level `perm-type` DataPermissions row of value `perm-value`."
-  [group-ids    :- [:set ms/PositiveInt]
-   database-ids :- [:set ::lib.schema.id/database]
-   perm-type    :- :string
-   perm-value   :- :string]
-  (into #{}
-        (map (juxt :group_id :db_id))
-        (t2/select [:model/DataPermissions :group_id :db_id]
-                   {:where [:and
-                            [:in :group_id group-ids]
-                            [:in :db_id database-ids]
-                            [:= :table_id nil]
-                            [:= :perm_type [:auto/param perm-type]]
-                            [:= :perm_value [:auto/param perm-value]]]})))
+(mu/defn database-level-value? :- :boolean
+  "Whether the group with `group-id` has a database-level `perm-type` DataPermissions row of value `perm-value` on the
+  Database with `database-id`."
+  [group-id    :- ms/PositiveInt
+   database-id :- ::lib.schema.id/database
+   perm-type   :- :string
+   perm-value  :- :string]
+  (t2/exists? :model/DataPermissions {:where [:and
+                                              [:= :group_id [:auto/param group-id]]
+                                              [:= :db_id [:auto/param database-id]]
+                                              [:= :table_id nil]
+                                              [:= :perm_type [:auto/param perm-type]]
+                                              [:= :perm_value [:auto/param perm-value]]]}))
 
 (mu/defn distinct-table-level-permission-values
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
@@ -630,7 +627,7 @@
   (t2/insert! :model/PermissionsGroupMembership memberships))
 
 (mu/defn other-active-member-count
-  "The number of active Users other than those with `user-ids` in the PermissionsGroup with `group-id`."
+  "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
    user-ids :- [:set {:min 1} ::lib.schema.id/user]]
   (t2/count :model/PermissionsGroupMembership
@@ -638,6 +635,7 @@
              :where [:and
                      [:= :group_id group-id]
                      [:= :user.is_active true]
+                     [:= :user.is_superuser true]
                      [:not-in :user.id user-ids]]}))
 
 (mu/defn managed-group-ids :- [:maybe [:set ms/PositiveInt]]
@@ -1157,12 +1155,6 @@
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
   (t2/update! :model/User :id user-id changes))
-
-(mu/defn update-users!
-  "Apply `changes` to the Users with `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]
-   changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User :id [:in user-ids] changes))
 
 (mu/defn deactivate-active-tenant-users!
   "Deactivate every active tenant User, marking them as deactivated with their tenant."

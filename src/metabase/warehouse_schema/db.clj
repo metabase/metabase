@@ -156,13 +156,6 @@
                      :where  [:in :f.id (vec field-ids)]}))
     {}))
 
-(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
-  "The ::warehouses.schema/database ID of each ::warehouse-schema.schema/table in `table-ids`, by Table id."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select-pk->fn :db_id :model/Table :id [:in table-ids])
-    {}))
-
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the ::warehouse-schema.schema/table with `table-id` whose NFC path matches the
   SQL LIKE `nfc-path-pattern`, returning the number updated."
@@ -604,12 +597,10 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn database-engines :- [:map-of ::lib.schema.id/database :keyword]
-  "The engine of each ::warehouses.schema/database in `database-ids`, by Database id."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (if (seq database-ids)
-    (t2/select-pk->fn :engine :model/Database :id [:in database-ids])
-    {}))
+(mu/defn database-engine
+  "The engine of the ::warehouses.schema/database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :engine :model/Database :id database-id))
 
 (mu/defn database-name
   "The name of the ::warehouses.schema/database with `database-id`."

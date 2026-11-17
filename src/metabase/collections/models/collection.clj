@@ -163,10 +163,18 @@
   [collection]
   (= (:type collection) library-dashboards-collection-type))
 
+(defn- set-remote-synced-by-depth!
+  "Set `:is_remote_synced` to `remote-synced?` on `collections`, a parent in a statement before its children, since the
+  update hook of each checks the flag of its stored parent."
+  [collections remote-synced?]
+  (t2/with-transaction [_conn]
+    (doseq [[_depth level] (sort-by key (group-by #(count (filter #{\/} (:location %))) collections))]
+      (collections.db/set-collections-remote-synced! (mapv :id level) remote-synced?))))
+
 (defn clear-remote-synced-collection!
   "Marks any remote-synced-collection as non-remote-synced"
   []
-  (collections.db/clear-remote-synced-flags!))
+  (set-remote-synced-by-depth! (collections.db/remote-synced-collection-locations) false))
 
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
@@ -1322,7 +1330,10 @@
 (defn set-remote-synced!
   "Marks `collection` and its descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
   [collection remote-synced?]
-  (collections.db/set-subtree-remote-synced-flags! (:id collection) (children-location collection) remote-synced?))
+  (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (:id collection)
+                                                                         (children-location collection)
+                                                                         remote-synced?)
+                               remote-synced?))
 
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
@@ -1663,18 +1674,12 @@
       (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
 
 (defn- location-ancestors
-  "The Collections the locations of `rows` pass through, by id, loaded with one query; a row among them stands for
-  its stored version."
-  [rows]
-  (let [ids    (into #{} (comp (keep :location) (mapcat location-path->ids)) rows)
-        stored (if (seq ids)
-                 (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced] (vec ids))
-                 {})]
-    (reduce (fn [ancestors row]
-              (cond-> ancestors
-                (contains? ancestors (:id row)) (assoc (:id row) row)))
-            stored
-            rows)))
+  "The Collections the location of `row` passes through, by id."
+  [{:keys [location]}]
+  (let [ids (some-> location location-path->ids)]
+    (if (seq ids)
+      (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced] ids)
+      {})))
 
 (defn- check-ancestors-exist
   "Throws a 404 unless every Collection in the location of `row` is among `ancestors`."
@@ -1772,15 +1777,17 @@
     (check-placement row parent)
     (assoc row :slug (slugify collection-name))))
 
-(mi/define-before-insert :model/Collection
-  [rows]
-  (let [rows (mapv remote-synced-type->flag rows)
-        located (filterv #(contains? % :location) rows)]
-    (run! check-valid-location located)
-    (let [ancestors (location-ancestors located)]
-      (run! #(check-ancestors-exist % ancestors) located)
-      (check-single-library (filter #(= library-collection-type (:type %)) rows))
-      (mapv #(before-insert-row % ancestors) rows))))
+(t2/define-before-insert :model/Collection
+  [row]
+  (let [row       (remote-synced-type->flag row)
+        located?  (contains? row :location)
+        _         (when located? (check-valid-location row))
+        ancestors (when located? (location-ancestors row))]
+    (when located?
+      (check-ancestors-exist row ancestors))
+    (when (= library-collection-type (:type row))
+      (check-single-library [row]))
+    (before-insert-row row ancestors)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2048,18 +2055,19 @@
     (= (:type row) "remote-synced") (-> (assoc :is_remote_synced true)
                                         (assoc :type (:type (t2/original row))))))
 
-(mi/define-before-update :model/Collection
-  [rows]
-  (let [rows     (mapv remote-synced-type->flag-on-update rows)
-        moved    (filterv #(contains? (t2/changes %) :location) rows)
-        in-need  (filterv #(some (partial contains? (t2/changes %)) [:location :is_remote_synced :type]) rows)]
-    (run! check-valid-location moved)
-    (let [ancestors (location-ancestors in-need)]
-      (run! #(check-ancestors-exist % ancestors) moved)
-      (check-single-library (filter #(and (contains? (t2/changes %) :type)
-                                          (= library-collection-type (:type %)))
-                                    rows))
-      (mapv #(before-update-row % ancestors) rows))))
+(t2/define-before-update :model/Collection
+  [row]
+  (let [row       (remote-synced-type->flag-on-update row)
+        changes   (t2/changes row)
+        moved?    (contains? changes :location)
+        _         (when moved? (check-valid-location row))
+        ancestors (when (some #(contains? changes %) [:location :is_remote_synced :type])
+                    (location-ancestors row))]
+    (when moved?
+      (check-ancestors-exist row ancestors))
+    (when (and (contains? changes :type) (= library-collection-type (:type row)))
+      (check-single-library [row]))
+    (before-update-row row ancestors)))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 

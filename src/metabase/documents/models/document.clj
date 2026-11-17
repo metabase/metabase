@@ -81,34 +81,29 @@
   (collection/check-collection-namespace :model/Document collection-id)
   (collection/check-allowed-content :model/Document collection-id))
 
-(mi/define-before-insert :model/Document
-  [documents]
-  (run! check-collection (distinct (map :collection_id documents)))
-  (mapv (fn [document]
-          (check-name (:name document))
-          (check-content (:content_type document) (:document document))
-          (public-sharing/add-public-uuid-prefix document))
-        documents))
+(t2/define-before-insert :model/Document
+  [document]
+  (check-collection (:collection_id document))
+  (check-name (:name document))
+  (check-content (:content_type document) (:document document))
+  (public-sharing/add-public-uuid-prefix document))
 
-(mi/define-before-update :model/Document
-  [documents]
-  (let [moved (filter #(contains? (t2/changes %) :collection_id) documents)]
-    (run! check-collection (distinct (map :collection_id moved)))
-    (let [documents (mapv (fn [document]
-                            (let [changes (t2/changes document)]
-                              (when (contains? changes :name)
-                                (check-name (:name document)))
-                              (when (some #(contains? changes %) [:document :content_type])
-                                (check-content (:content_type document) (:document document)))
-                              (when (and (contains? changes :public_uuid_prefix)
-                                         (not (contains? changes :public_uuid)))
-                                (throw (ex-info (tru "The public UUID prefix of a Document is derived from its public UUID.")
-                                                {:status-code 400})))
-                              (public-sharing/add-public-uuid-prefix-if-changed document)))
-                          documents)]
-      (doseq [[collection-id moved] (group-by :collection_id moved)]
-        (documents.db/update-cards-collection! (map :id moved) collection-id))
-      documents)))
+(t2/define-before-update :model/Document
+  [{:keys [id] :as document}]
+  (let [changes (t2/changes document)]
+    (when (contains? changes :collection_id)
+      (check-collection (:collection_id document)))
+    (when (contains? changes :name)
+      (check-name (:name document)))
+    (when (some #(contains? changes %) [:document :content_type])
+      (check-content (:content_type document) (:document document)))
+    (when (and (contains? changes :public_uuid_prefix)
+               (not (contains? changes :public_uuid)))
+      (throw (ex-info (tru "The public UUID prefix of a Document is derived from its public UUID.")
+                      {:status-code 400})))
+    (when (contains? changes :collection_id)
+      (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))
+    (public-sharing/add-public-uuid-prefix-if-changed document)))
 
 (t2/define-after-update :model/Document
   [{:keys [id archived archived_directly] :as instance}]

@@ -70,12 +70,12 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(defn- check-collections
-  "Throws unless the Collections of `transforms` can hold Transforms, each Collection checked once."
-  [transforms]
-  (doseq [collection-id (into #{} (keep :collection_id) transforms)]
-    (collection/check-collection-namespace :model/Transform collection-id)
-    (collection/check-allowed-content :model/Transform collection-id)))
+(defn- check-collection
+  "Throws unless the Collection of `transform`, if any, can hold Transforms."
+  [{:keys [collection_id]}]
+  (when collection_id
+    (collection/check-collection-namespace :model/Transform collection_id)
+    (collection/check-allowed-content :model/Transform collection_id)))
 
 (defn- check-shape
   "Throws a 400 with `message` unless `value`, normalized, satisfies `schema`."
@@ -99,19 +99,11 @@
      :source_database_id (transforms-base.i/source-db-id transform)
      :target_db_id       (transforms-base.i/target-db-id transform)}))
 
-(defn- target-databases
-  "A map of ID to Database for the target Databases of `transforms`, loaded together."
-  [transforms]
-  (let [database-ids (into #{} (keep :target_db_id) transforms)]
-    (if (seq database-ids)
-      (u/index-by :id (transforms.db/databases database-ids))
-      {})))
-
 (defn- check-target-database
-  "Throws a 400 unless the target Database of `transform`, found in `databases`, can hold the tables of a transform."
-  [{:keys [target_db_id]} databases]
+  "Throws a 400 unless the target Database of `transform` can hold the tables of a transform."
+  [{:keys [target_db_id]}]
   (when target_db_id
-    (let [database (get databases target_db_id)]
+    (let [database (transforms.db/database target_db_id)]
       (api/check-400 database (deferred-tru "The target database cannot be found."))
       (api/check-400 (not (:is_sample database)) (deferred-tru "Cannot run transforms on the sample database."))
       (api/check-400 (not (:is_audit database)) (deferred-tru "Cannot run transforms on audit databases."))
@@ -120,34 +112,31 @@
 
 (defn check-incremental-table-tag
   "Throws a 400 when `transform` writes an incremental table from a native query that has no table variable for the
-  incremental range filter, a variable of the table of its checkpoint Field when it has one."
+  incremental range filter, a variable of the table of its checkpoint Field when there is one."
   [{:keys [source target]}]
   (let [transform {:source source :target target}]
     (when (and (transforms-base.u/incremental-target? transform)
                (transforms-base.u/native-query-transform? transform))
-      (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
-            table-id (when field-id (get (transforms.db/field-table-ids #{field-id}) field-id))]
-        (when-not (transforms-base.u/table-template-tag-name (:query source) table-id)
+      (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
+        (when-not (transforms-base.u/table-template-tag-name (:query source)
+                                                             (some-> field-id transforms.db/field :table_id))
           (throw (ex-info (tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.")
                           {:status-code 400})))))))
 
-(defn- check-and-derive-definitions
-  "`transforms`, whose source or target is being written, with the columns computed from them, after checking that the
-  source and the target have their shape and that the target Database can hold them. The Databases are loaded once
-  for all of `transforms`."
-  [transforms]
-  (run! check-source-and-target transforms)
-  (let [transforms (mapv #(merge % (derived-columns %)) transforms)
-        databases  (target-databases transforms)]
-    (run! #(check-target-database % databases) transforms)
-    transforms))
+(defn- check-and-derive-definition
+  "`transform`, whose source or target is being written, with the columns computed from them, after checking that the
+  source and the target have their shape and that the target Database can hold them."
+  [transform]
+  (check-source-and-target transform)
+  (let [transform (merge transform (derived-columns transform))]
+    (check-target-database transform)
+    transform))
 
-(mi/define-before-insert :model/Transform
-  [transforms]
-  (check-collections transforms)
-  (mapv (fn [transform]
-          (assoc-in transform [:target :database] (:target_db_id transform)))
-        (check-and-derive-definitions transforms)))
+(t2/define-before-insert :model/Transform
+  [transform]
+  (check-collection transform)
+  (let [transform (check-and-derive-definition transform)]
+    (assoc-in transform [:target :database] (:target_db_id transform))))
 
 (defn- definition-changed?
   "Whether the pending changes of `transform` change its source or its target."
@@ -172,11 +161,11 @@
     target_table_id))
 
 (defn- resolve-merge-key-field-ids
-  "`transform` with the `:field-id` of the columns of its merge unique key filled from `table-id->name->field-id`, once
-  its target table exists and any are still by-name only."
-  [transform table-id->name->field-id]
+  "`transform` with the `:field-id` of the columns of its merge unique key filled from the active Fields of its target
+  table, once that table exists and any are still by-name only."
+  [transform]
   (if-let [table-id (unresolved-merge-key-table-id transform)]
-    (let [name->id (get table-id->name->field-id table-id {})]
+    (let [name->id (transforms.db/active-field-ids-by-name table-id)]
       (update-in transform [:target :target-incremental-strategy :unique-key]
                  (fn [unique-key]
                    (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
@@ -190,13 +179,11 @@
         new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
     (and old-field-id (not= old-field-id new-field-id))))
 
-(defn- before-update-row
-  "`transform` with the columns its pending changes make stale recomputed, after checking the changes. `definitions` has
-  the transforms whose source or target changes, by ID, with their computed columns; `table-id->name->field-id` is for
-  [[resolve-merge-key-field-ids]]."
-  [transform definitions table-id->name->field-id]
+(t2/define-before-update :model/Transform
+  [transform]
   (let [changes    (t2/changes transform)
-        definition (get definitions (:id transform))]
+        _          (when (contains? changes :collection_id) (check-collection transform))
+        definition (when (definition-changed? transform) (check-and-derive-definition transform))]
     (when (and (or (contains? changes :source_type) (contains? changes :source_database_id))
                (not (contains? changes :source)))
       (throw (ex-info (tru "source_type and source_database_id are derived from the source and cannot be set.")
@@ -218,18 +205,7 @@
       (assoc :last_checkpoint_value nil)
 
       true
-      (resolve-merge-key-field-ids table-id->name->field-id))))
-
-(mi/define-before-update :model/Transform
-  [transforms]
-  (check-collections (filter #(contains? (t2/changes %) :collection_id) transforms))
-  (let [definitions   (into {}
-                            (map (juxt :id identity))
-                            (check-and-derive-definitions (filterv definition-changed? transforms)))
-        table-ids     (into #{} (keep unresolved-merge-key-table-id) transforms)
-        key-field-ids (when (seq table-ids)
-                        (transforms.db/active-field-ids-by-table-id-and-name table-ids))]
-    (mapv #(before-update-row % definitions key-field-ids) transforms)))
+      resolve-merge-key-field-ids)))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]

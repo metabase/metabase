@@ -89,24 +89,21 @@
 
 (defn- new-pulse
   "`pulse`, a row an INSERT writes, without its nil columns, with the defaults of a Pulse, and filed in the Collection
-  of its Dashboard when it is a dashboard subscription, per `dashboard->collection-id`."
-  [{:keys [dashboard_id] :as pulse} dashboard->collection-id]
+  of its Dashboard when it is a dashboard subscription."
+  [{:keys [dashboard_id] :as pulse}]
   (merge {:parameters []}
          (into {} (filter (comp some? val)) pulse)
          {:collection_id (if dashboard_id
-                           (get dashboard->collection-id dashboard_id)
+                           (pulse.db/dashboard-collection-id dashboard_id)
                            (:collection_id pulse))}))
 
-(mi/define-before-insert :model/Pulse
-  [pulses]
-  (let [dashboard->collection-id (pulse.db/dashboard-collection-ids (into #{} (keep :dashboard_id) pulses))]
-    (mapv (fn [pulse]
-            (u/prog1 (new-pulse pulse dashboard->collection-id)
-              (check-parameters <>)
-              (check-dashboard-subscription <>)
-              (collection/check-allowed-content :model/Pulse (:collection_id <>))
-              (collection/check-collection-namespace :model/Pulse (:collection_id <>))))
-          pulses)))
+(t2/define-before-insert :model/Pulse
+  [pulse]
+  (u/prog1 (new-pulse pulse)
+    (check-parameters <>)
+    (check-dashboard-subscription <>)
+    (collection/check-allowed-content :model/Pulse (:collection_id <>))
+    (collection/check-collection-namespace :model/Pulse (:collection_id <>))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*

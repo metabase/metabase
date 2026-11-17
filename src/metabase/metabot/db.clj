@@ -752,11 +752,6 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :id :type] :id card-id))
 
-(mu/defn card-types-by-id :- [:map-of ::lib.schema.id/card :keyword]
-  "The type of each of the Cards with `card-ids`, by Card id."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn :type :model/Card :id [:in card-ids]))
-
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
   the current user, ignoring analytics content. If the Metabot has `:use_verified_content` enabled, restricts to

@@ -27,18 +27,16 @@
     (throw (ex-info (tru "A router needs a user attribute to route on.") {:status-code 400}))))
 
 (defn- check-not-destination
-  "Throws a 400 when the Database with `database-id` is among `destination-ids`, since a destination cannot be a router."
-  [destination-ids database-id]
-  (when (contains? destination-ids database-id)
+  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
+  [database-id]
+  (when (seq (database-routing.db/destination-database-ids [database-id]))
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
-(mi/define-before-insert :model/DatabaseRouter
-  [routers]
-  (let [destination-ids (database-routing.db/destination-database-ids (into [] (keep :database_id) routers))]
-    (doseq [{:keys [database_id user_attribute]} routers]
-      (check-user-attribute user_attribute)
-      (check-not-destination destination-ids database_id))
-    routers))
+(t2/define-before-insert :model/DatabaseRouter
+  [{:keys [database_id user_attribute] :as router}]
+  (check-user-attribute user_attribute)
+  (check-not-destination database_id)
+  router)
 
 (t2/define-before-update :model/DatabaseRouter
   [router]

@@ -32,17 +32,13 @@
   {:status    mi/transform-keyword
    :direction mi/transform-keyword})
 
-(mi/define-before-insert :model/TransformDagRun
-  [runs]
-  (let [transform-ids (into #{} (keep :source_transform_id) runs)
-        transforms    (when (seq transform-ids) (transforms.db/transform-snapshots-by-id transform-ids))]
-    (mapv (fn [{:keys [source_transform_id] :as run}]
-            (if-let [transform (get transforms source_transform_id)]
-              (assoc run
-                     :source_transform_name      (:name transform)
-                     :source_transform_entity_id (:entity_id transform))
-              run))
-          runs)))
+(t2/define-before-insert :model/TransformDagRun
+  [{:keys [source_transform_id] :as run}]
+  (if-let [transform (some-> source_transform_id transforms.db/transform-snapshot)]
+    (assoc run
+           :source_transform_name      (:name transform)
+           :source_transform_entity_id (:entity_id transform))
+    run))
 
 (mu/defn start-dag-run! :- ::transforms.schema/transform-dag-run
   "Start a DAG-reprocess run seeded from `source-transform-id`, traversing `direction`

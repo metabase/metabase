@@ -43,44 +43,31 @@
   (and (= :perms/transforms (keyword perm_type))
        (= :yes (keyword perm_value))))
 
-(defn- create-queries-without-native?
-  "Whether `row` is a create-queries row that leaves its group without native query access on the whole Database."
+(defn- database-create-queries-without-native?
+  "Whether `row` is a database-level create-queries row that leaves its group without native query access on the whole
+  Database."
   [row]
-  (and (= :perms/create-queries (keyword (:perm_type row)))
+  (and (nil? (:table_id row))
+       (= :perms/create-queries (keyword (:perm_type row)))
        (not (database-native? row))))
 
-(defn- stored-pairs
-  "The `[group-id db-id]` pairs of `rows` that have a stored database-level `perm-type` row of `perm-value`."
-  [rows perm-type perm-value]
-  (if (seq rows)
-    (permissions.db/database-level-value-pairs (into #{} (map :group_id) rows)
-                                               (into #{} (map :db_id) rows)
-                                               perm-type
-                                               perm-value)
-    #{}))
-
 (defn- check-transforms-need-native
-  "Throws a 400 when `rows`, the rows of one insert, leave a group with the transforms permission on a Database where it
-  has no database-level native query access, counting the stored rows and the rows of the insert."
-  [rows]
-  (let [pair            (juxt :group_id :db_id)
-        native-inserted (into #{} (comp (filter database-native?) (map pair)) rows)
-        granted         (remove (comp native-inserted pair) (filter transforms-granted? rows))
-        restricted      (filter create-queries-without-native? rows)
-        native-stored   (stored-pairs granted "perms/create-queries" "query-builder-and-native")
-        granted-stored  (stored-pairs restricted "perms/transforms" "yes")]
-    (when (or (some (comp not native-stored pair) granted)
-              (some (comp granted-stored pair) restricted))
-      (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
-                      {:status-code 400})))))
-
-(mi/define-before-insert :model/DataPermissions
-  [rows]
-  (check-transforms-need-native rows)
-  rows)
+  "Throws a 400 when `row` would leave its group with the transforms permission on a Database where it has no stored
+  database-level native query access; table-level create-queries rows are left to the writers, which revoke the
+  transforms permission with them, so a bulk write does not read once per Table."
+  [{:keys [group_id db_id] :as row}]
+  (when (and (transforms-granted? row)
+             (not (permissions.db/database-level-value? group_id db_id "perms/create-queries" "query-builder-and-native")))
+    (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
+                    {:status-code 400})))
+  (when (and (database-create-queries-without-native? row)
+             (permissions.db/database-level-value? group_id db_id "perms/transforms" "yes"))
+    (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
+                    {:status-code 400}))))
 
 (t2/define-before-insert :model/DataPermissions
   [permission]
+  (check-transforms-need-native permission)
   (data-perms/assert-valid-permission permission)
   (data-perms/assert-no-destination-db-permissions! [permission])
   permission)

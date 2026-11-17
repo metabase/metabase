@@ -28,15 +28,11 @@
   {:status mi/transform-keyword
    :run_method mi/transform-keyword})
 
-(mi/define-before-insert :model/TransformJobRun
-  [runs]
-  (let [job-ids (into #{} (keep :job_id) runs)
-        jobs    (when (seq job-ids) (transforms.db/job-snapshots-by-id job-ids))]
-    (mapv (fn [{:keys [job_id] :as run}]
-            (if-let [job (get jobs job_id)]
-              (assoc run :job_name (some-> (:name job) str) :job_entity_id (:entity_id job))
-              run))
-          runs)))
+(t2/define-before-insert :model/TransformJobRun
+  [{:keys [job_id] :as run}]
+  (if-let [job (some-> job_id transforms.db/job-snapshot)]
+    (assoc run :job_name (some-> (:name job) str) :job_entity_id (:entity_id job))
+    run))
 
 (mu/defn latest-runs :- [:maybe [:vector ::transforms.schema/transform-job-run]]
   "Return the latest runs for `job-ids`."

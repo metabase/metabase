@@ -42,45 +42,33 @@
     (when (and (= :external dimension-type) (nil? human_readable_field_id))
       (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400})))))
 
-(defn- field-databases
-  "The Database id of the Field of each of `dimensions` and of the Field its values come from, by Field id, loaded
-  together."
-  [dimensions]
-  (if (some :human_readable_field_id dimensions)
-    (warehouse-schema.db/field-database-ids
-     (into #{} (comp (mapcat (juxt :field_id :human_readable_field_id)) (remove nil?)) dimensions))
-    {}))
-
 (defn- check-human-readable-field
-  "Throws a 400 unless the `:human_readable_field_id` of `dimension` is a Field of the Database of its Field, per
-  `field-id->database-id`."
-  [{:keys [field_id human_readable_field_id]} field-id->database-id]
-  (let [target-database-id (field-id->database-id human_readable_field_id)]
+  "Throws a 400 unless the `:human_readable_field_id` of `dimension` is a Field of the Database of its Field."
+  [{:keys [field_id human_readable_field_id]}]
+  (let [field-id->database-id (warehouse-schema.db/field-database-ids
+                               (into #{} (remove nil?) [field_id human_readable_field_id]))
+        target-database-id    (field-id->database-id human_readable_field_id)]
     (api/checkp target-database-id :human_readable_field_id (tru "Invalid target field"))
     (api/checkp (= target-database-id (field-id->database-id field_id))
                 :human_readable_field_id (tru "Target field must belong to the same database"))))
 
-(mi/define-before-insert :model/Dimension
-  [dimensions]
-  (let [field-id->database-id (field-databases dimensions)]
-    (doseq [dimension dimensions]
-      (check-type dimension)
-      (when (:human_readable_field_id dimension)
-        (check-human-readable-field dimension field-id->database-id)))
-    dimensions))
+(t2/define-before-insert :model/Dimension
+  [dimension]
+  (check-type dimension)
+  (when (:human_readable_field_id dimension)
+    (check-human-readable-field dimension))
+  dimension)
 
-(mi/define-before-update :model/Dimension
-  [dimensions]
-  (let [field-id->database-id (field-databases (filter #(:human_readable_field_id (t2/changes %)) dimensions))]
-    (doseq [dimension dimensions
-            :let      [changes (t2/changes dimension)]]
-      (when (contains? changes :field_id)
-        (throw (ex-info (tru "You cannot move a Dimension to another Field.") {:status-code 400})))
-      (when (some #(contains? changes %) [:type :human_readable_field_id])
-        (check-type dimension))
-      (when (:human_readable_field_id changes)
-        (check-human-readable-field dimension field-id->database-id)))
-    dimensions))
+(t2/define-before-update :model/Dimension
+  [dimension]
+  (let [changes (t2/changes dimension)]
+    (when (contains? changes :field_id)
+      (throw (ex-info (tru "You cannot move a Dimension to another Field.") {:status-code 400})))
+    (when (some #(contains? changes %) [:type :human_readable_field_id])
+      (check-type dimension))
+    (when (:human_readable_field_id changes)
+      (check-human-readable-field dimension))
+    dimension))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

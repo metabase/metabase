@@ -39,12 +39,12 @@ An endpoint parses the request, calls the permission check, and calls the write.
 
 ### Hooks that read other rows
 
-A hook that needs another row, such as a Field's Table, must not select it per row. Write it with
-`mi/define-before-insert`, `mi/define-before-update` or `mi/define-before-delete`: these take ALL the rows one
-statement writes and return the rows to write, so the hook loads what it needs in a fixed number of queries and then
-checks or derives per row. In the update hook every row has the statement's changes applied and answers
-`t2/changes` and `t2/original`. They run in the statement's transaction, before the row-by-row hooks. Use
-`t2/define-before-...` only for a hook that reads nothing but its own row.
+Hooks are stock `t2/define-before-insert`, `t2/define-before-update` and `t2/define-before-delete`, one per model
+and operation: a second definition replaces the first. A hook may read another row, such as a Field's Table. Keep
+such reads to rows that actually change the relevant column. A hook sees the stored rows, not the other rows of its
+own statement, so a writer whose rows depend on each other writes them in separate statements. `before-update` runs
+before Toucan opens its transaction: a write function whose update hook writes other rows wraps the update in
+`t2/with-transaction`.
 
 ### Derived columns
 

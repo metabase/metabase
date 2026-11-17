@@ -61,19 +61,19 @@
   [tenant-id :- ms/PositiveInt]
   (t2/exists? :model/Tenant :id tenant-id :is_active true))
 
-(mu/defn tenants-with-names-or-slugs :- [:sequential [:map {:closed true}
-                                                      [:name :string]
-                                                      [:slug :string]]]
-  "The name and slug of the Tenants named one of `names` or with one of `slugs`."
-  [names :- [:set :string]
-   slugs :- [:set :string]]
-  (t2/select [:model/Tenant :name :slug] {:where [:or [:in :name (vec names)] [:in :slug (vec slugs)]]}))
+(mu/defn tenant-name-or-slug-exists?
+  "Whether a Tenant named `tenant-name` or with `slug` exists."
+  [tenant-name :- :string
+   slug        :- :string]
+  (t2/exists? :model/Tenant {:where [:or
+                                     [:= :slug slug]
+                                     [:= :name tenant-name]]}))
 
-(mu/defn other-tenant-names :- [:maybe [:set :string]]
-  "The names among `names` that Tenants other than those with `tenant-ids` have."
-  [names      :- [:set :string]
-   tenant-ids :- [:set ms/PositiveInt]]
-  (t2/select-fn-set :name :model/Tenant :name [:in (vec names)] :id [:not-in (vec tenant-ids)]))
+(mu/defn other-tenant-named?
+  "Whether a Tenant other than `tenant-id` is named `tenant-name`."
+  [tenant-name :- :string
+   tenant-id   :- ms/PositiveInt]
+  (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
 
 (mu/defn insert-tenant!
   "Insert `tenant` and return the new instance."
@@ -98,16 +98,15 @@
              :group-by [:tenant_id]}))
 
 (mu/defn deactivate-tenant-users!
-  "Deactivate the active Users of the Tenants with `tenant-ids`, marking them as deactivated with their Tenant,
-  returning the number updated."
-  [tenant-ids :- [:set ms/PositiveInt]]
-  (t2/update! :model/User :is_active true :tenant_id [:in tenant-ids] {:is_active false :deactivated_with_tenant true}))
+  "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
+  number updated."
+  [tenant-id :- ms/PositiveInt]
+  (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
 
 (mu/defn reactivate-tenant-users!
-  "Reactivate the Users of the Tenants with `tenant-ids` that were deactivated with their Tenant, returning the number
-  updated."
-  [tenant-ids :- [:set ms/PositiveInt]]
-  (t2/update! :model/User :is_active false :tenant_id [:in tenant-ids] :deactivated_with_tenant true
+  "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
+  [tenant-id :- ms/PositiveInt]
+  (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
               {:is_active true :deactivated_with_tenant nil}))
 
 (mu/defn user-tenant-id

@@ -42,28 +42,22 @@
     tag
     (merge tag (translate-name tag))))
 
-(defn- check-names-free
-  "Throws a 400 when the `:name` of one of `tags` belongs to another TransformTag; `named?` says whether a tag writes its
-  name."
-  [tags named?]
-  (let [named      (filter named? tags)
-        name->id   (transforms.db/tag-ids-by-name (into #{} (keep (comp not-empty str :name)) named))]
-    (doseq [{tag-name :name, :keys [id]} named
-            :let [taken-by (name->id (str tag-name))]]
+(defn- check-name-free
+  "Throws a 400 when the `:name` of `tag` belongs to another TransformTag."
+  [{tag-name :name, :keys [id]}]
+  (when-let [tag-name (not-empty (str tag-name))]
+    (let [taken-by (transforms.db/tag-id-by-name tag-name)]
       (when (and taken-by (not= taken-by id))
         (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400}))))))
 
-(mi/define-before-insert :model/TransformTag
-  [tags]
-  (check-names-free tags (constantly true))
-  tags)
-
-(mi/define-before-update :model/TransformTag
-  [tags]
-  (check-names-free tags #(contains? (t2/changes %) :name))
-  tags)
+(t2/define-before-insert :model/TransformTag
+  [tag]
+  (check-name-free tag)
+  tag)
 
 (t2/define-before-update :model/TransformTag [tag]
+  (when (contains? (t2/changes tag) :name)
+    (check-name-free tag))
   (if (or (nil? (:built_in_type tag))
           (empty? (dissoc (t2/changes tag) :updated_at)))
     tag

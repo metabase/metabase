@@ -1625,23 +1625,22 @@
 
 (deftest transforms-row-needs-native-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                 :model/Database         {db-id :id}    {}
-                 :model/Table            {table-id :id} {:db_id db-id :schema "PUBLIC"}]
+                 :model/Database         {db-id :id}    {}]
     (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
-    (let [row (fn [perm-type value & {:as table}]
-                (merge {:group_id group-id :db_id db-id :perm_type perm-type :perm_value value} table))]
+    (let [row (fn [perm-type value]
+                {:group_id group-id :db_id db-id :perm_type perm-type :perm_value value})]
       (testing "transforms without native create-queries is refused"
         (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)])))
         (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
         (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)]))))
-      (testing "transforms with native create-queries in same insert is accepted"
+      (testing "transforms after native create-queries is accepted"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
-        (is (nil? (insert-error [(row :perms/transforms :yes)
-                                 (row :perms/create-queries :query-builder-and-native)]))))
-      (testing "table-level create-queries next to stored transforms is refused"
+        (is (nil? (insert-error [(row :perms/create-queries :query-builder-and-native)])))
+        (is (nil? (insert-error [(row :perms/transforms :yes)]))))
+      (testing "database-level create-queries without native next to stored transforms is refused"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/create-queries)
         (is (=? {:status-code 400}
-                (insert-error [(row :perms/create-queries :query-builder :table_id table-id :schema_name "PUBLIC")])))))))
+                (insert-error [(row :perms/create-queries :query-builder)])))))))
 
 (deftest table-level-create-queries-revokes-transforms-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}

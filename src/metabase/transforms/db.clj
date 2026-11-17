@@ -72,10 +72,10 @@
   []
   (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
 
-(mu/defn transform-snapshots-by-id
-  "A map of ID to the name, entity ID, and source type of the Transforms with `transform-ids`."
-  [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select-pk->fn identity [:model/Transform :id :name :entity_id :source_type] :id [:in transform-ids]))
+(mu/defn transform-snapshot
+  "The name, entity ID, and source type of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id))
 
 (mu/defn transform-summaries-by-id
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
@@ -120,12 +120,10 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
-(mu/defn tag-ids-by-name :- [:map-of :string ms/PositiveInt]
-  "The id of the TransformTag named each of `tag-names` that has one, by name."
-  [tag-names :- [:set :string]]
-  (if (seq tag-names)
-    (t2/select-fn->pk :name :model/TransformTag :name [:in tag-names])
-    {}))
+(mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
+  "The id of the TransformTag named `tag-name`, or nil."
+  [tag-name :- :string]
+  (t2/select-one-pk :model/TransformTag :name tag-name))
 
 (mu/defn tag-name-exists?
   "Whether a TransformTag named `tag-name` exists."
@@ -214,10 +212,10 @@
   []
   (t2/select-pks-set :model/TransformJob :active false))
 
-(mu/defn job-snapshots-by-id
-  "A map of ID to the name, entity ID, and built-in type of the TransformJobs with `job-ids`."
-  [job-ids :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn identity [:model/TransformJob :id :name :entity_id :built_in_type] :id [:in job-ids]))
+(mu/defn job-snapshot
+  "The name, entity ID, and built-in type of the TransformJob with `job-id`."
+  [job-id :- ms/PositiveInt]
+  (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id))
 
 (mu/defn job-names-by-id
   "A map of ID to name for the TransformJobs with `job-ids`."
@@ -907,18 +905,10 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn field-table-ids
-  "A map of ID to Table ID for the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-pk->fn :table_id [:model/Field :id :table_id] :id [:in field-ids]))
-
-(mu/defn active-field-ids-by-table-id-and-name
-  "A map of Table ID to a map of name to ID for the active Fields of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (reduce (fn [acc {:keys [id name table_id]}]
-            (assoc-in acc [table_id name] id))
-          {}
-          (t2/select [:model/Field :id :name :table_id] :table_id [:in table-ids] :active true)))
+(mu/defn active-field-ids-by-name
+  "A map of name to ID for the active Fields of the Table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true))
 
 (mu/defn active-users
   "The active Users with `user-ids`."

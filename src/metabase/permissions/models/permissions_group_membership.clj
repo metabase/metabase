@@ -92,7 +92,9 @@
                     {:status-code 402}))))
 
 (defn- check-admins-remain
-  "Throws a 400 when no active member of the Admin group is left besides the Users with `user-ids`."
+  "Throws a 400 when no active superuser member of the Admin group is left besides the Users with `user-ids`; the
+  delete hook unsets the superuser flag of each membership it removes, so a statement removing several sees the flags
+  its earlier rows unset."
   [user-ids]
   (when (zero? (permissions.db/other-active-member-count (u/the-id (perms-group/admin)) (set user-ids)))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
@@ -104,53 +106,47 @@
   [user-id]
   (check-admins-remain #{user-id}))
 
-(defn- user-id->member
-  "The tenant id and superuser flag of the User of each of `memberships`, by User id, loaded together."
-  [memberships]
-  (if (seq memberships)
-    (u/index-by :id (permissions.db/member-flags (into #{} (map :user_id) memberships)))
-    {}))
+(defn- member
+  "The tenant id and superuser flag of the User of `membership`."
+  [{:keys [user_id]}]
+  (first (permissions.db/member-flags #{user_id})))
 
 (defn- check-group-manager-member
-  "Throws a 400 when `membership` makes a tenant user or an admin a group manager, per `user-id->member`."
-  [{:keys [user_id is_group_manager]} user-id->member]
+  "Throws a 400 when `membership` makes `member`, its User, a tenant user or an admin a group manager."
+  [{:keys [user_id is_group_manager]} member]
   (when is_group_manager
-    (when (:tenant_id (user-id->member user_id))
+    (when (:tenant_id member)
       (throw (ex-info (tru "Tenant users cannot be made group managers")
                       {:user-id user_id :status-code 400})))
-    (when (:is_superuser (user-id->member user_id))
+    (when (:is_superuser member)
       (throw (ex-info (tru "Admin cannot be a group manager.")
                       {:user-id user_id :status-code 400})))))
 
 (defn- check-tenancy-matches
-  "Throws a 400 when a membership among `memberships` puts a tenant user in a non-tenant group or a non-tenant user in a
-  tenant group, the groups' tenant flags loaded together."
-  [memberships user-id->member]
-  (let [group-id->tenant? (update-vals (permissions.db/group-tenant-flags (into #{} (map :group_id) memberships))
-                                       boolean)
-        user-id->tenant?  (update-vals user-id->member (comp some? :tenant_id))
-        mismatches        (for [{:keys [user_id group_id]} memberships
-                                :when (not= (group-id->tenant? group_id) (user-id->tenant? user_id))]
-                            {:user-id          user_id
-                             :group-id         group_id
-                             :user-is-tenant?  (user-id->tenant? user_id)
-                             :group-is-tenant? (group-id->tenant? group_id)})]
-    (when (seq mismatches)
+  "Throws a 400 when `membership` puts `member`, its User, a tenant user in a non-tenant group or a non-tenant user in a
+  tenant group."
+  [{:keys [user_id group_id]} member]
+  (let [group-id->tenant? (permissions.db/group-tenant-flags #{group_id})
+        group-tenant?     (when (contains? group-id->tenant? group_id)
+                            (boolean (group-id->tenant? group_id)))
+        user-tenant?      (some? (:tenant_id member))]
+    (when (not= group-tenant? user-tenant?)
       (throw (ex-info (tru "Cannot add non-tenant user to tenant-group or vice versa")
-                      {:bad-user-group-pairs mismatches
+                      {:bad-user-group-pairs [{:user-id          user_id
+                                               :group-id         group_id
+                                               :user-is-tenant?  user-tenant?
+                                               :group-is-tenant? group-tenant?}]
                        :status-code          400})))))
 
-(mi/define-before-insert :model/PermissionsGroupMembership
-  [memberships]
-  (doseq [{:keys [group_id]} memberships]
-    (check-not-all-users-group group_id)
-    (check-not-all-external-users-group group_id)
-    (check-can-add-to-data-analyst-group group_id))
-  (let [user-id->member (user-id->member memberships)]
-    (doseq [membership memberships]
-      (check-group-manager-member membership user-id->member))
-    (check-tenancy-matches memberships user-id->member))
-  memberships)
+(t2/define-before-insert :model/PermissionsGroupMembership
+  [{:keys [group_id] :as membership}]
+  (check-not-all-users-group group_id)
+  (check-not-all-external-users-group group_id)
+  (check-can-add-to-data-analyst-group group_id)
+  (let [member (member membership)]
+    (check-group-manager-member membership member)
+    (check-tenancy-matches membership member))
+  membership)
 
 (t2/define-after-insert :model/PermissionsGroupMembership
   [{:keys [user_id group_id], :as membership}]
@@ -160,34 +156,27 @@
     (permissions.db/update-user! user_id {:is_data_analyst true}))
   membership)
 
-(mi/define-before-update :model/PermissionsGroupMembership
-  [memberships]
-  (let [user-id->member (user-id->member (filter #(:is_group_manager (t2/changes %)) memberships))]
-    (doseq [membership memberships
-            :let       [changes (t2/changes membership)]]
-      (when (contains? changes :user_id)
-        (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
-      (when (contains? changes :group_id)
-        (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
-      (when (:is_group_manager changes)
-        (check-group-manager-member membership user-id->member)))
-    memberships))
+(t2/define-before-update :model/PermissionsGroupMembership
+  [membership]
+  (let [changes (t2/changes membership)]
+    (when (contains? changes :user_id)
+      (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
+    (when (contains? changes :group_id)
+      (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
+    (when (:is_group_manager changes)
+      (check-group-manager-member membership (member membership)))
+    membership))
 
-(mi/define-before-delete :model/PermissionsGroupMembership
-  [memberships]
-  (doseq [{:keys [group_id]} memberships]
-    (check-not-all-users-group group_id)
-    (check-not-all-external-users-group group_id))
-  (let [user-ids-in (fn [group] (into [] (comp (filter #(= (:id group) (:group_id %))) (map :user_id) (distinct))
-                                      memberships))
-        admin-ids   (user-ids-in (perms-group/admin))
-        analyst-ids (user-ids-in (perms-group/data-analyst))]
-    (when (seq admin-ids)
-      (check-admins-remain admin-ids)
-      (when *update-user-when-added-to-admin-group?*
-        (permissions.db/update-users! admin-ids {:is_superuser false})))
-    (when (seq analyst-ids)
-      (permissions.db/update-users! analyst-ids {:is_data_analyst false}))))
+(t2/define-before-delete :model/PermissionsGroupMembership
+  [{:keys [group_id user_id]}]
+  (check-not-all-users-group group_id)
+  (check-not-all-external-users-group group_id)
+  (when (= group_id (:id (perms-group/admin)))
+    (check-admins-remain #{user_id})
+    (when *update-user-when-added-to-admin-group?*
+      (permissions.db/update-user! user_id {:is_superuser false})))
+  (when (= group_id (:id (perms-group/data-analyst)))
+    (permissions.db/update-user! user_id {:is_data_analyst false})))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -275,7 +264,8 @@
     (let [user-id (u/the-id user-id-or-user)
           group-ids (map u/the-id group-ids-or-groups)
           memberships (permissions.db/memberships-for-user-in-groups user-id group-ids)]
-      (permissions.db/delete-memberships-for-user-in-groups! user-id group-ids)
+      (t2/with-transaction [_conn]
+        (permissions.db/delete-memberships-for-user-in-groups! user-id group-ids))
       (doseq [membership memberships]
         (events/publish-event! :event/group-membership-delete {:object membership
                                                                :user-id api/*current-user-id*})))))
@@ -289,7 +279,8 @@
   "Removes all users from a group."
   [group-id]
   (let [memberships (permissions.db/memberships-for-group group-id)]
-    (permissions.db/delete-memberships-for-group! group-id)
+    (t2/with-transaction [_conn]
+      (permissions.db/delete-memberships-for-group! group-id))
     (doseq [membership memberships]
       (events/publish-event! :event/group-membership-delete {:object membership
                                                              :user-id api/*current-user-id*}))))
@@ -298,7 +289,8 @@
   "Removes a user from all groups."
   [user-id]
   (let [memberships (permissions.db/memberships-for-user user-id)]
-    (permissions.db/delete-memberships-for-user! user-id)
+    (t2/with-transaction [_conn]
+      (permissions.db/delete-memberships-for-user! user-id))
     (doseq [membership memberships]
       (events/publish-event! :event/group-membership-delete {:object membership
                                                              :user-id api/*current-user-id*}))))

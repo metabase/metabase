@@ -143,11 +143,11 @@
   (t2/update! :model/Card :dashboard_id dashboard-id :archived true :archived_directly false {:archived false}))
 
 (mu/defn move-dashboard-questions!
-  "Move the Cards internal to the Dashboards with `dashboard-ids` to the Collection with `collection-id`, returning
+  "Move the Cards internal to the Dashboard with `dashboard-id` to the Collection with `collection-id`, returning
   the number updated."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
+  [dashboard-id  :- ::lib.schema.id/dashboard
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Card :dashboard_id [:in [:auto/param dashboard-ids]] {:collection_id collection-id}))
+  (t2/update! :model/Card :dashboard_id dashboard-id {:collection_id collection-id}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -465,11 +465,6 @@
   "The DashboardTab with `tab-id`, or nil."
   [tab-id :- ms/PositiveInt]
   (t2/select-one :model/DashboardTab :id tab-id))
-
-(mu/defn tab-dashboard-ids :- [:map-of ms/PositiveInt ms/PositiveInt]
-  "A map of DashboardTab id to the id of its Dashboard, for the DashboardTabs with `tab-ids`."
-  [tab-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in [:auto/param tab-ids]]))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."

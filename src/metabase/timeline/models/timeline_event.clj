@@ -71,23 +71,12 @@
   (when (and (contains? columns :timestamp) (nil? (:timestamp columns)))
     (throw (ex-info (tru "A Timeline event must have a timestamp.") {:status-code 400}))))
 
-(defn- default-icons
-  "A map of Timeline id to icon for the Timelines of those of `rows` that have no icon."
-  [rows]
-  (let [ids (into [] (comp (remove :icon) (keep :timeline_id) (distinct)) rows)]
-    (if (seq ids)
-      (update-vals (timeline.db/timelines-by-id ids) :icon)
-      {})))
-
-(mi/define-before-insert :model/TimelineEvent
-  [rows]
-  (let [icons (default-icons rows)]
-    (mapv (fn [row]
-            (let [row (cond-> row
-                        (nil? (:icon row)) (assoc :icon (get icons (:timeline_id row) default-icon)))]
-              (check-columns (assoc row :name (:name row) :timezone (:timezone row) :timestamp (:timestamp row)))
-              row))
-          rows)))
+(t2/define-before-insert :model/TimelineEvent
+  [row]
+  (let [row (cond-> row
+              (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon)))]
+    (check-columns (assoc row :name (:name row) :timezone (:timezone row) :timestamp (:timestamp row)))
+    row))
 
 (t2/define-before-update :model/TimelineEvent
   [event]

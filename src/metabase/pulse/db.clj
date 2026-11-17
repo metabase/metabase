@@ -53,13 +53,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :collection_id :model/Dashboard, :id dashboard-id))
 
-(mu/defn dashboard-collection-ids
-  "A map of Dashboard id to Collection id for the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (if (seq dashboard-ids)
-    (t2/select-pk->fn :collection_id :model/Dashboard :id [:in dashboard-ids])
-    {}))
-
 (mu/defn dashcard-ids-by-card
   "A map of Card id to DashboardCard id for the DashboardCards of the Dashboard with `dashboard-id` showing one of
   `card-ids`."

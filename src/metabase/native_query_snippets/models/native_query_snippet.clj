@@ -70,12 +70,12 @@
   (when-not (valid-name? snippet-name)
     (throw (ex-info (str name-error) {:status-code 400, :errors {:name (str name-error)}}))))
 
-(defn- check-collections
-  "Throws unless the Collections of `snippets` can hold snippets, each Collection checked once."
-  [snippets]
-  (doseq [collection-id (into #{} (keep :collection_id) snippets)]
-    (collection/check-allowed-content :model/NativeQuerySnippet collection-id)
-    (collection/check-collection-namespace :model/NativeQuerySnippet collection-id)))
+(defn- check-collection
+  "Throws unless the Collection of `snippet`, if any, can hold snippets."
+  [{:keys [collection_id]}]
+  (when collection_id
+    (collection/check-allowed-content :model/NativeQuerySnippet collection_id)
+    (collection/check-collection-namespace :model/NativeQuerySnippet collection_id)))
 
 (defn- snippet-tag?
   "Whether `tag` is a reference to a snippet."
@@ -83,13 +83,12 @@
   (= (:type tag) :snippet))
 
 (defn- referenced-snippet-ids
-  "The ids of the snippets the contents of `snippets` refer to as `{{snippet: <name>}}`, by name, loaded together."
-  [snippets]
+  "The ids of the snippets the content of `snippet` refers to as `{{snippet: <name>}}`, by name."
+  [snippet]
   (let [names (into #{}
-                    (comp (mapcat (comp lib/recognize-template-tags :content))
-                          (filter snippet-tag?)
+                    (comp (filter snippet-tag?)
                           (map :snippet-name))
-                    snippets)]
+                    (lib/recognize-template-tags (:content snippet)))]
     (if (seq names)
       (native-query-snippets.db/snippet-ids-by-names (vec names))
       {})))
@@ -118,14 +117,11 @@
                               (snippet-tag? tag)
                               (set-snippet-id))))))
 
-(mi/define-before-insert :model/NativeQuerySnippet
-  [snippets]
-  (check-collections snippets)
-  (let [name->id (referenced-snippet-ids snippets)]
-    (mapv (fn [snippet]
-            (check-name snippet)
-            (assoc snippet :template_tags (snippet-template-tags snippet name->id)))
-          snippets)))
+(t2/define-before-insert :model/NativeQuerySnippet
+  [snippet]
+  (check-collection snippet)
+  (check-name snippet)
+  (assoc snippet :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
@@ -137,20 +133,18 @@
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
-(mi/define-before-update :model/NativeQuerySnippet
-  [snippets]
-  (check-collections (filter #(contains? (t2/changes %) :collection_id) snippets))
-  (let [name->id (referenced-snippet-ids (filter :content snippets))]
-    (mapv (fn [snippet]
-            (let [changes (t2/changes snippet)]
-              (pre-update-check-sandbox-constraints-for-snippet snippet changes)
-              (when (contains? changes :creator_id)
-                (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
-              (when (contains? changes :name)
-                (check-name snippet))
-              (cond-> snippet
-                (:content snippet) (assoc :template_tags (snippet-template-tags snippet name->id)))))
-          snippets)))
+(t2/define-before-update :model/NativeQuerySnippet
+  [snippet]
+  (let [changes (t2/changes snippet)]
+    (when (contains? changes :collection_id)
+      (check-collection snippet))
+    (pre-update-check-sandbox-constraints-for-snippet snippet changes)
+    (when (contains? changes :creator_id)
+      (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
+    (when (contains? changes :name)
+      (check-name snippet))
+    (cond-> snippet
+      (:content snippet) (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
 
 (t2/define-after-update :model/NativeQuerySnippet
   [snippet]

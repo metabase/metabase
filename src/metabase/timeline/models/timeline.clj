@@ -33,10 +33,10 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-collections
-  "Throws unless the Collections with `collection-ids`, nil ids ignored, can hold a Timeline."
-  [collection-ids]
-  (doseq [collection-id (distinct (remove nil? collection-ids))]
+(defn- check-collection
+  "Throws unless the Collection with `collection-id`, if any, can hold a Timeline."
+  [collection-id]
+  (when collection-id
     (collection/check-allowed-content :model/Timeline collection-id)
     (collection/check-collection-namespace :model/Timeline collection-id)))
 
@@ -48,20 +48,19 @@
   (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
     (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
 
-(mi/define-before-insert :model/Timeline
-  [rows]
-  (check-collections (map :collection_id rows))
-  (mapv (fn [row]
-          (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
-            (check-columns (assoc row :name (:name row)))
-            row))
-        rows))
+(t2/define-before-insert :model/Timeline
+  [row]
+  (check-collection (:collection_id row))
+  (let [row (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon))]
+    (check-columns (assoc row :name (:name row)))
+    row))
 
-(mi/define-before-update :model/Timeline
-  [rows]
-  (check-collections (map (comp :collection_id t2/changes) rows))
-  (run! (comp check-columns t2/changes) rows)
-  rows)
+(t2/define-before-update :model/Timeline
+  [row]
+  (let [changes (t2/changes row)]
+    (check-collection (:collection_id changes))
+    (check-columns changes)
+    row))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

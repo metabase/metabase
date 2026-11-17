@@ -211,22 +211,19 @@
     (and (false? (:active original)) (true? (:active changes)))
     {:deactivated_at nil, :archived_at nil}))
 
-(mi/define-before-insert :model/Table
-  [tables]
-  (let [database-id->engine (warehouse-schema.db/database-engines
-                             (into #{} (comp (remove :field_order) (keep :db_id)) tables))]
-    (for [table tables]
-      (do
-        (check-publication table)
-        (collection/check-allowed-content :table (:collection_id table))
-        (merge table
-               (apply dissoc
-                      {:display_name   (humanization/name->human-readable-name (:name table))
-                       :field_order    (or (:field_order table)
-                                           (driver/default-field-order (database-id->engine (:db_id table))))
-                       :data_layer     :internal
-                       :data_authority :unconfigured}
-                      (keys table)))))))
+(t2/define-before-insert :model/Table
+  [table]
+  (check-publication table)
+  (collection/check-allowed-content :table (:collection_id table))
+  (merge table
+         (apply dissoc
+                {:display_name   (humanization/name->human-readable-name (:name table))
+                 :field_order    (or (:field_order table)
+                                     (driver/default-field-order
+                                      (some-> (:db_id table) warehouse-schema.db/database-engine)))
+                 :data_layer     :internal
+                 :data_authority :unconfigured}
+                (keys table))))
 
 (t2/define-before-update :model/Table
   [table]

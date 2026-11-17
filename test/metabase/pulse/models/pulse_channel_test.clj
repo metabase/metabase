@@ -512,12 +512,12 @@
 (deftest invalid-update-leaves-triggers-alone-test
   (with-send-pulse-setup!
     (mt/with-temp [:model/Pulse        {pulse-id :id}  {}
-                   :model/PulseChannel {daily-id :id}  (merge {:pulse_id pulse-id :channel_type :email} daily-at-6pm)
+                   :model/PulseChannel _               (merge {:pulse_id pulse-id :channel_type :email} daily-at-6pm)
                    :model/PulseChannel {weekly-id :id} {:pulse_id pulse-id, :channel_type :slack
                                                         :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]
       (let [triggers (send-pulse-triggers pulse-id)]
-        (testing "one UPDATE of both channels that makes the weekly one invalid"
-          (is (= 400 (status-code #(t2/update! :model/PulseChannel :id [:in [daily-id weekly-id]]
+        (testing "an UPDATE that makes the weekly channel invalid"
+          (is (= 400 (status-code #(t2/update! :model/PulseChannel :id weekly-id
                                                {:schedule_type :monthly, :schedule_frame :mid}))))
-          (testing "moves no trigger, not even the one of the channel the change would leave valid"
+          (testing "moves no trigger"
             (is (= triggers (send-pulse-triggers pulse-id)))))))))

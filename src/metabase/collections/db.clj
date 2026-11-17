@@ -278,24 +278,28 @@
              {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
               :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
-(mu/defn set-subtree-remote-synced-flags!
-  "Set `:is_remote_synced` to `remote-synced?` on the ::collections.schema/collection with `collection-id` and on the
-  Collections whose location starts with `children-location`, returning the number updated."
+(mu/defn subtree-locations-to-flag :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
+  "The `:id` and `:location` of the ::collections.schema/collection with `collection-id` and of the Collections whose
+  location starts with `children-location`, among those whose `:is_remote_synced` is not `remote-synced?`."
   [collection-id     :- ::lib.schema.id/collection
    children-location :- :string
    remote-synced?    :- :boolean]
-  (let [ids (t2/select-pks-vec :model/Collection
-                               {:where [:and
-                                        [:not= :is_remote_synced remote-synced?]
-                                        [:or [:= :id collection-id] [:like :location (str children-location "%")]]]})]
-    (if (seq ids)
-      (t2/update! :model/Collection :id [:in ids] {:is_remote_synced remote-synced?})
-      0)))
+  (t2/select [:model/Collection :id :location]
+             {:where [:and
+                      [:not= :is_remote_synced remote-synced?]
+                      [:or [:= :id collection-id] [:like :location (str children-location "%")]]]}))
 
-(mu/defn clear-remote-synced-flags!
-  "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
+(mu/defn remote-synced-collection-locations :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
+  "The `:id` and `:location` of every remote-synced ::collections.schema/collection."
   []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+  (t2/select [:model/Collection :id :location] :is_remote_synced true))
+
+(mu/defn set-collections-remote-synced!
+  "Set `:is_remote_synced` to `remote-synced?` on the ::collections.schema/collection rows with `collection-ids`,
+  returning the number updated."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]
+   remote-synced? :- :boolean]
+  (t2/update! :model/Collection :id [:in collection-ids] {:is_remote_synced remote-synced?}))
 
 (mu/defn archive-descendant-collections!
   "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location
