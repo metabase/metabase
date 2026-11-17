@@ -41,7 +41,6 @@
    [toucan2.execute :as t2.execute])
   (:import
    (java.util Locale)
-   (javax.sql DataSource)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -951,15 +950,17 @@
          (map #(update % :is_nullable (fn [x] (= :yes x))))
          (map (juxt :table_name :column_name :is_nullable)))))
 
+(defn- db-type*
+  "Like [[metabase.app-db.connection/db-type]] but distinguishes between mysql and mariadb."
+  []
+  (if (mdb.connection/mariadb?)
+    :mariadb
+    (mdb.connection/db-type)))
+
 (defn- alter-table-column-type-sql
-  [db-type table column ttype nullable?]
-  (let [ttype (name ttype)
-        db-type (if (and (= db-type :mysql)
-                         (with-open [conn (.getConnection (mdb.connection/data-source))]
-                           (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-                  :mariadb
-                  db-type)]
-    (case db-type
+  [table column ttype nullable?]
+  (let [ttype (name ttype)]
+    (case (db-type*)
       :postgres
       (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
               table column ttype column ttype column (if nullable? "DROP NOT NULL" "SET NOT NULL"))
@@ -999,28 +1000,13 @@
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
         (t2/query ["DROP VIEW IF EXISTS v_users;"]))
-      (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
+      (t2/query [(alter-table-column-type-sql (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
 
 (define-reversible-migration UnifyTimeColumnsType
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
-
-(defn- mariadb?
-  [ds]
-  (with-open [conn (.getConnection ^DataSource ds)]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-
-(defn- db-type*
-  "Like [[metabase.connection/db-type]] but distinguishes between mysql and mariadb."
-  []
-  (let [db-type (mdb.connection/db-type)]
-    (if (= db-type :mysql)
-      (if (mariadb? (mdb.connection/data-source))
-        :mariadb
-        :mysql)
-      db-type)))
 
 (define-reversible-migration CardRevisionAddType
   (case (db-type*)

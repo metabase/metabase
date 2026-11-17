@@ -193,11 +193,11 @@
    stage, descending into each join's own `:stages` as well.
 
    The stage's `:native` is the **source of truth** for native-origin SQL.
-   `[[metabase.query-processor.execute/run]]` calls `[[lib/->legacy-MBQL]]` immediately
-   before driver dispatch; that conversion rebuilds the legacy top-level `:native` from
-   `(get-in query [:stages -1 :native])`. So patching legacy `:native` directly is futile
-   -- it gets overwritten. Patch the stage and `lib/->legacy-MBQL` propagates the rewrite
-   to the legacy form naturally."
+   `[[metabase.query-processor.execute/run]]` hands a native-only query to the driver
+   immediately before driver dispatch: as it is for drivers that support
+   `:mbql-5-native-query-execution`, or converted with `[[lib/->legacy-MBQL]]` otherwise,
+   which rebuilds the legacy top-level `:native` from `(get-in query [:stages -1 :native])`.
+   Either way, patching the stage is what reaches the driver."
   [driver stages remappings]
   (mapv (fn [stage]
           (cond-> stage
@@ -228,25 +228,36 @@
 
    ## SQL carrier hierarchy (read this before changing what gets patched)
 
-   Native SQL has three carriers in the query map and only one is the source of truth:
+   Native SQL has two carriers in the query map at this point. `qp.execute/run` builds
+   the query the driver executes from them, so both have to be patched:
 
-     - `(get-in query [:stages -1 :native])` — **source of truth**. Set by preprocess
-       (`substitute-native-parameters*`); read by `compile*` and by `lib/->legacy-MBQL`.
+     - `(get-in query [:stages -1 :native])` — **source of truth for native-origin
+       queries**. Set by preprocess (`substitute-native-parameters*`); read by `compile*`.
+       `qp.execute/run` hands a native-only query to the driver as it is.
      - `(:qp/compiled query :query)` — compile-time snapshot taken from the stage by
        `compile*`. Not re-derived at execute time. Read by
-       `add-native-form-to-result-metadata` to produce the user-facing `:native_form`,
-       and by the `(not (:native query)) (assoc :native (:qp/compiled query))` branch
-       in `qp.execute/run` for MBQL-origin queries (where the stage isn't native).
-     - `(:native query :query)` — legacy top-level. **Always re-derived** by
-       `lib/->legacy-MBQL` in `qp.execute/run` from `(get-in query [:stages -1 :native])`.
-       JDBC reads from this carrier. Patching it directly is futile: the rebuild from
-       the stage clobbers any patch.
+       `add-native-form-to-result-metadata` to produce the user-facing `:native_form`.
+       **Source of truth for MBQL-origin queries** (where the stage isn't native):
+       `qp.execute/run` replaces `:stages` with a single native stage built from it and
+       keeps the MBQL stages in `:qp/original-stages`.
 
-   Phase 2 patches **stage `:native` and `:qp/compiled`**, in that order. The stage patch
-   is the security boundary (flows through `lib/->legacy-MBQL` to legacy `:native` to
-   JDBC). The `:qp/compiled` patch keeps the user-visible `:native_form` consistent with
-   what hits the warehouse and covers the MBQL-origin path through `qp.execute/run`'s
-   rename branch.
+   Which shape the driver then receives depends on the `:mbql-5-native-query-execution`
+   driver feature, which every JDBC driver supports:
+
+     - supported: the MBQL 5 query, with the SQL in `[:stages 0 :native]`.
+     - not supported: `qp.execute/run` converts with `lib/->legacy-MBQL`, which
+       re-derives the legacy top-level `(:native query :query)` from the stage for
+       native-origin queries, and assocs `:qp/compiled` as `:native` for MBQL-origin
+       ones.
+
+   Either way the SQL that reaches the warehouse comes from one of the two carriers
+   above. Anything `qp.execute/run` derives from them is rebuilt after this middleware
+   runs, so there is nothing else to patch here.
+
+   Phase 2 patches **stage `:native` and `:qp/compiled`**, in that order. Together they
+   are the security boundary: the stage patch covers native-origin queries, and the
+   `:qp/compiled` patch covers MBQL-origin queries and keeps the user-visible
+   `:native_form` consistent with what hits the warehouse.
 
    Runs unconditionally for queries against remapped databases — MBQL-origin and native-origin
    alike. This is the only place native SQL is rewritten.
@@ -294,16 +305,17 @@
                 rewrite #(rewrite-compiled-map driver % remappings)
                 query   (cond-> query
                           ;; Stage `:native` is the source of truth for native-origin
-                          ;; SQL. `lib/->legacy-MBQL` (in `qp.execute/run`) rebuilds the
-                          ;; legacy top-level `:native` from `[:stages -1 :native]`, so
-                          ;; this is the patch that actually reaches the warehouse.
+                          ;; SQL. `qp.execute/run` hands the native stage to the driver
+                          ;; (as is, or converted to legacy `:native`), so this is the
+                          ;; patch that actually reaches the warehouse.
                           (:lib/type query)
                           (update :stages #(rewrite-stages driver % remappings))
 
                           ;; `:qp/compiled` is a compile-time snapshot, not re-derived
                           ;; at execute time. Read by `add-native-form-to-result-metadata`
-                          ;; for the user-facing `:native_form`, and by the rename branch
-                          ;; in `qp.execute/run` when the stage isn't native (MBQL-origin).
+                          ;; for the user-facing `:native_form`, and by `qp.execute/run`
+                          ;; to build what the driver executes when the stage isn't
+                          ;; native (MBQL-origin).
                           (:qp/compiled query)
                           (update :qp/compiled rewrite)
 

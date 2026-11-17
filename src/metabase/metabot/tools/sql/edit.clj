@@ -245,9 +245,9 @@
                  query-id
                  (reduce (partial apply-sql-edit {:query-id query-id :current-sql current-sql})
                          current-sql (map-indexed vector edits)))
-        dialect (metabot.tools.sql.validation/query->dialect query)
         {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-sql dialect new-sql)]
+        (metabot.tools.sql.validation/validate-database-sql
+         (:database query) new-sql (metabot.tools.sql.common/stored-template-tags query))]
     (merge {:validation-result validation-result}
            (when valid?
              (let [updated-query (metabot.tools.sql.common/update-query-sql query transpiled-sql)]
