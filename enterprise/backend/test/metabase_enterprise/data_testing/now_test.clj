@@ -200,7 +200,7 @@
               (let [output (driver/temp-table-name driver)
                     sql    ^String (:query compiled)
                     stmt   (volatile! nil)
-                    ps     #(let [^PreparedStatement s @stmt] s)
+                    ps     #(deref stmt)
                     steps  [["create the inputs" #(#'data-testing.runner/create-inputs! driver conn input->table labels)]
                             ["describe the query" #(with-open [s (.prepareStatement conn sql)]
                                                      (.getParameterCount (.getParameterMetaData s)))]
@@ -208,15 +208,15 @@
                                                                                        ResultSet/TYPE_FORWARD_ONLY
                                                                                        ResultSet/CONCUR_READ_ONLY
                                                                                        ResultSet/CLOSE_CURSORS_AT_COMMIT))]
-                            ["set the fetch direction" #(.setFetchDirection (ps) ResultSet/FETCH_FORWARD)]
-                            ["set the fetch size" #(.setFetchSize (ps) (int (driver.settings/sql-jdbc-fetch-size)))]
-                            ["set the query timeout" #(.setQueryTimeout (ps) (int (/ driver.settings/*query-timeout-ms* 1000)))]
-                            ["count the parameters" #(.getParameterCount (.getParameterMetaData (ps)))]
+                            ["set the fetch direction" #(.setFetchDirection ^PreparedStatement (ps) ResultSet/FETCH_FORWARD)]
+                            ["set the fetch size" #(.setFetchSize ^PreparedStatement (ps) (int (driver.settings/sql-jdbc-fetch-size)))]
+                            ["set the query timeout" #(.setQueryTimeout ^PreparedStatement (ps) (int (/ driver.settings/*query-timeout-ms* 1000)))]
+                            ["count the parameters" #(.getParameterCount (.getParameterMetaData ^PreparedStatement (ps)))]
                             ["set the parameters" #(doseq [[i param] (map-indexed vector (:params compiled))]
-                                                     (sql-jdbc.execute/set-parameter driver (ps) (inc i) param))]
-                            ["cap the rows" #(do (.setFetchSize (ps) 0) (.setMaxRows (ps) 1))]
-                            ["execute" #(with-open [rs (.executeQuery (ps))] (.next rs))]
-                            ["close the statement" #(.close (ps))]
+                                                     (sql-jdbc.execute/set-parameter driver ^PreparedStatement (ps) (inc i) param))]
+                            ["cap the rows" #(do (.setFetchSize ^PreparedStatement (ps) 0) (.setMaxRows ^PreparedStatement (ps) 1))]
+                            ["execute" #(with-open [rs (.executeQuery ^PreparedStatement (ps))] (.next rs))]
+                            ["close the statement" #(.close ^PreparedStatement (ps))]
                             ["create the output" #(data-testing.executor/create-temp-table! driver conn output compiled)]]
                     select-1 #(try
                                 (with-open [s  (.createStatement conn)
@@ -225,16 +225,28 @@
                                   nil)
                                 (catch Throwable e (ex-message e)))]
                 (try
-                  (or (some (fn [[step thunk]]
-                              (let [error   (try (thunk) nil (catch Throwable e (ex-message e)))
-                                    aborted (select-1)]
-                                (when (or error aborted)
-                                  (str "at \"" step "\": " (or error "no error")
-                                       (when aborted (str "; then SELECT 1 fails: " aborted))))))
-                            steps)
-                      "none")
+                  (str
+                   "session "
+                   (try
+                     (with-open [s  (.createStatement conn)
+                                 rs (.executeQuery s (str "SELECT current_setting('timezone'), current_setting('search_path'),"
+                                                          " current_user"))]
+                       (.next rs)
+                       (pr-str [(.getString rs 1) (.getString rs 2) (.getString rs 3)]))
+                     (catch Throwable e (str "unreadable: " (ex-message e))))
+                   ", rolled back: "
+                   (try (.rollback conn) "yes" (catch Throwable e (ex-message e)))
+                   "; "
+                   (or (some (fn [[step thunk]]
+                               (let [error   (try (thunk) nil (catch Throwable e (ex-message e)))
+                                     aborted (select-1)]
+                                 (when (or error aborted)
+                                   (str "at \"" step "\": " (or error "no error")
+                                        (when aborted (str "; then SELECT 1 fails: " aborted))))))
+                             steps)
+                       "none"))
                   (finally
-                    (some-> ^PreparedStatement @stmt .close))))))))
+                    (when-let [^PreparedStatement s @stmt] (.close s)))))))))
     (catch Throwable e
       (str "The probe failed: " (ex-message e)))))
 
@@ -258,7 +270,9 @@
         (when (= ::data-testing.errors/query-failed result)
           (swap! refusals conj (first-warehouse-error!
                                 :transform transform
-                                (data-testing.runner/test-definition (t2/select-one :model/TransformTest :id test-id)))))
+                                (data-testing.runner/test-definition (t2/select-one :model/TransformTest :id test-id))))
+          (swap! refusals conj (str "The same test of a card, run next: "
+                                    (run-card-test! source-query test-fields inputs [(expectation-of "unused")]))))
         result))))
 
 (deftest transform-reads-the-pinned-clock-test
