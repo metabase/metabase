@@ -796,6 +796,16 @@
       (thunk))
     @published))
 
+(defn- action-event-users-during!
+  "The set of `:user-id`s of the action events `thunk` publishes."
+  [thunk]
+  (let [users (atom #{})]
+    (with-redefs [events/publish-event! (fn [topic {:keys [user-id]}]
+                                          (when (#{:event/action-create :event/action-update :event/action-delete} topic)
+                                            (swap! users conj user-id)))]
+      (thunk))
+    @users))
+
 (defn- do-with-model-actions!
   "Runs `f` with `{:model-id :implicit :query :archived}`: a model with an implicit action, a query action, and an
   already-archived query action."
@@ -843,9 +853,10 @@
   (testing "update-card! announces the unarchived actions that move with a model to another collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (do-with-model-actions!
-       (fn [{:keys [model-id implicit query]}]
+       (fn [{:keys [model-id implicit query archived]}]
          (is (= #{[:event/action-update implicit false]
-                  [:event/action-update query false]}
+                  [:event/action-update query false]
+                  [:event/action-update archived true]}
                 (action-events-during! #(update-model! model-id {:collection_id coll-id})))))))))
 
 (deftest question-move-publishes-action-events-test
@@ -883,20 +894,20 @@
           (t2/update! :model/Card :id model-id {:collection_id nil})
           (is (nil? (action-collection))))))))
 
-(deftest model-changes-outside-update-card-publish-no-action-events-test
-  (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
+(deftest model-changes-outside-update-card-publish-no-user-action-events-test
+  (testing "GHY-4722: a serdes load writes models with t2 directly, and the action events it makes name no user, so nothing records them"
     (testing "a model becoming a question"
       (do-with-model-actions!
        (fn [{:keys [model-id]}]
-         (is (= #{} (action-events-during! #(t2/update! :model/Card :id model-id {:type :question})))))))
+         (is (= #{nil} (action-event-users-during! #(t2/update! :model/Card :id model-id {:type :question})))))))
     (testing "a model query that no longer supports implicit actions"
       (do-with-model-actions!
        (fn [{:keys [model-id]}]
-         (is (= #{} (action-events-during! #(t2/update! :model/Card :id model-id {:dataset_query (filtered-venues-query)})))))))
+         (is (= #{nil} (action-event-users-during! #(t2/update! :model/Card :id model-id {:dataset_query (filtered-venues-query)})))))))
     (testing "a deleted model"
       (do-with-model-actions!
        (fn [{:keys [model-id]}]
-         (is (= #{} (action-events-during! #(t2/delete! :model/Card :id model-id)))))))))
+         (is (= #{nil} (action-event-users-during! #(t2/delete! :model/Card :id model-id)))))))))
 
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"
