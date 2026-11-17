@@ -70,11 +70,16 @@
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset basic-field-comments
         (mt/with-temp-copy-of-db
-          (let [field-id (mt/id "basic_field_comments" "with_comment")]
+          (let [field-id (mt/id "basic_field_comments" "with_comment")
+                table    (t2/select-one :model/Table :id (mt/id "basic_field_comments"))]
             (t2/update! :model/Field :id field-id {:description nil})
-            (sync/sync-table! (t2/select-one :model/Table :id (mt/id "basic_field_comments")))
+            (sync/sync-table! table)
             (is (= "comment"
-                   (t2/select-one-fn :description :model/Field :id field-id)))))))))
+                   (t2/select-one-fn :description :model/Field :id field-id)))
+            (testing "a description the user cleared stays cleared"
+              (field-user-settings/upsert-field-user-settings! {:id field-id} {:description nil})
+              (sync/sync-table! table)
+              (is (nil? (t2/select-one-fn :description :model/Field :id field-id))))))))))
 
 (defn- basic-table [table-name comment]
   (tx/map->DatabaseDefinition {:database-name     (str table-name "_db")
