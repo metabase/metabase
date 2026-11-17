@@ -7,6 +7,8 @@ import { formatList } from "../format-list";
 
 import {
   type WhyTarget,
+  getSameInEveryGroupSentence,
+  getSameValueInEveryGroup,
   getSourceGroupName,
   getWhyValueLabel,
 } from "./WhySidesheet";
@@ -18,6 +20,9 @@ import { getPreviewOption } from "./preview-options";
  */
 export function CreateQueriesContent({ targets }: { targets: WhyTarget[] }) {
   const groups = getGroupRows(targets);
+  const sameValue = getSameValueInEveryGroup(
+    groups.map((group) => group.value),
+  );
   return (
     <>
       <SidesheetCard title={t`Result`}>
@@ -73,7 +78,7 @@ export function CreateQueriesContent({ targets }: { targets: WhyTarget[] }) {
               >
                 <Flex align="center" gap="sm" miw={0}>
                   <Text truncate>{group.name}</Text>
-                  {group.applies && groups.length > 1 && (
+                  {group.applies && sameValue == null && (
                     <Badge variant="light" style={{ flexShrink: 0 }}>
                       {t`Applies`}
                     </Badge>
@@ -87,9 +92,15 @@ export function CreateQueriesContent({ targets }: { targets: WhyTarget[] }) {
               </Flex>
             ))}
           </Stack>
-          {groups.length > 1 && (
-            <Text>{t`The most permissive group applies.`}</Text>
-          )}
+          <Text>
+            {sameValue != null
+              ? getSameInEveryGroupSentence(
+                  targets[0].who,
+                  targets[0].column,
+                  sameValue,
+                )
+              : t`The most permissive group applies.`}
+          </Text>
         </SidesheetCard>
       )}
     </>

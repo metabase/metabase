@@ -27,8 +27,10 @@ export type WhyTarget = {
 export function WhyContent({ target }: { target: WhyTarget }) {
   const { column, cell, security } = target;
   const hasSecurity = column === "view_data" && security != null;
-  const isBlocked = column === "view_data" && cell.value === "blocked";
   const option = getPreviewOption(column, cell.value);
+  const sameValue = getSameValueInEveryGroup(
+    cell.groups.map((group) => group.value),
+  );
 
   return (
     <>
@@ -43,9 +45,6 @@ export function WhyContent({ target }: { target: WhyTarget }) {
           <Text>{getResultSentence(target)}</Text>
         </Flex>
         {cell.note && <Text>{cell.note}</Text>}
-        {isBlocked && (
-          <Text>{t`Blocked in every group ${target.who} is in. To let ${target.who} see this table, give one of those groups access.`}</Text>
-        )}
       </SidesheetCard>
 
       {hasSecurity && (
@@ -81,20 +80,21 @@ export function WhyContent({ target }: { target: WhyTarget }) {
               >
                 <Flex align="center" gap="sm" miw={0}>
                   <Text truncate>{group.name}</Text>
-                  {group.group_id === cell.group_id &&
-                    cell.groups.length > 1 && (
-                      <Badge variant="light" style={{ flexShrink: 0 }}>
-                        {t`Applies`}
-                      </Badge>
-                    )}
+                  {group.group_id === cell.group_id && sameValue == null && (
+                    <Badge variant="light" style={{ flexShrink: 0 }}>
+                      {t`Applies`}
+                    </Badge>
+                  )}
                 </Flex>
                 <PreviewValue column={column} value={group.value} />
               </Flex>
             ))}
           </Stack>
-          {cell.groups.length > 1 && (
-            <Text>{t`The most permissive group applies.`}</Text>
-          )}
+          <Text>
+            {sameValue != null
+              ? getSameInEveryGroupSentence(target.who, column, sameValue)
+              : t`The most permissive group applies.`}
+          </Text>
         </SidesheetCard>
       )}
     </>
@@ -141,6 +141,28 @@ function getSecuritySentence(who: string, security: PreviewSecurity) {
   return security.filters.length > 0
     ? t`${who} sees only the ${table} rows that match the user attributes below.`
     : t`${who} sees only the ${table} rows and columns that the saved question below returns.`;
+}
+
+/** The value every group gives, or null when two differ, so the most permissive one applies. */
+export function getSameValueInEveryGroup(
+  values: (string | null)[],
+): string | null {
+  const [first] = values;
+  return values.every((value) => value === first) ? (first ?? null) : null;
+}
+
+/** Under the groups when none differs, so none applies over another: "Every group Sandy Sales is in sets View data to Can view." */
+export function getSameInEveryGroupSentence(
+  who: string,
+  column: PreviewColumn,
+  value: string,
+) {
+  if (column === "view_data" && value === "blocked") {
+    return t`Blocked in every group ${who} is in. To let ${who} see this table, give one of those groups access.`;
+  }
+  const permission = getPreviewColumnName(column);
+  const label = getWhyValueLabel(column, value);
+  return t`Every group ${who} is in sets ${permission} to ${label}.`;
 }
 
 /** A value's name in the "why" sheets, as the permission grids show it. */

@@ -33,12 +33,20 @@ const SANDBOXED_ORDERS: WhyTarget = {
 };
 
 describe("WhyContent", () => {
-  it("names the person and the table a block applies to", () => {
+  it("says a block is in every group, with how to lift it, and marks no group as the one that applies", () => {
     renderWithProviders(
       <WhyContent
         target={{
           ...SANDBOXED_ORDERS,
-          cell: { ...SANDBOXED_ORDERS.cell, value: "blocked" },
+          cell: {
+            value: "blocked",
+            group_id: 1,
+            groups: [
+              { group_id: 1, name: "All internal users", value: "blocked" },
+              { group_id: 3, name: "Sales", value: "blocked" },
+            ],
+            note: null,
+          },
           security: null,
         }}
       />,
@@ -48,6 +56,66 @@ describe("WhyContent", () => {
       screen.getByText(
         "Blocked in every group Sandy Sales is in. To let Sandy Sales see this table, give one of those groups access.",
       ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Applies")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("The most permissive group applies."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says every group gives Can view when none differs, without Applies", () => {
+    renderWithProviders(
+      <WhyContent
+        target={{
+          ...SANDBOXED_ORDERS,
+          cell: {
+            value: "unrestricted",
+            group_id: 1,
+            groups: [
+              {
+                group_id: 1,
+                name: "All internal users",
+                value: "unrestricted",
+              },
+              { group_id: 3, name: "Sales", value: "unrestricted" },
+            ],
+            note: null,
+          },
+          security: null,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Every group Sandy Sales is in sets View data to Can view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Applies")).not.toBeInTheDocument();
+  });
+
+  it("marks the group that applies when the groups differ", () => {
+    renderWithProviders(
+      <WhyContent
+        target={{
+          ...SANDBOXED_ORDERS,
+          cell: {
+            value: "unrestricted",
+            group_id: 3,
+            groups: [
+              { group_id: 1, name: "All internal users", value: "blocked" },
+              { group_id: 3, name: "Sales", value: "unrestricted" },
+            ],
+            note: null,
+          },
+          security: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Applies")).toBeInTheDocument();
+    expect(
+      screen.getByText("The most permissive group applies."),
     ).toBeInTheDocument();
   });
 });
