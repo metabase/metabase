@@ -171,31 +171,45 @@
         (ws/clear-instance-workspace!)
         (t2/delete! :model/TableRemapping :database_id (mt/id) :to_schema "ws_action_test")))))
 
+(defn- schema-qualified-action
+  "The default query action, with its SQL naming the categories table with its schema: the workspace remapping rewrites
+  only a name written with its schema."
+  []
+  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
+    {:dataset_query {:database (mt/id)
+                     :type     :native
+                     :native   {:query         (format "UPDATE %s.%s\nSET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\nWHERE id = {{id}}"
+                                                       schema name)
+                                :template-tags {"id"   {:name "id" :display-name "ID" :type :number :required true}
+                                                "name" {:name "name" :display-name "Name" :type :text :required false}}}}}))
+
 (deftest ^:synchronized action-tests-run-on-a-workspace-instance-test
   (testing "On a workspace instance, which refuses to run an action, an action test runs on the same terms as anywhere else"
     (mt/with-premium-features #{:transforms-testing}
-      (do-with-action!
-       nil
-       (fn [action-id]
-         (do-in-workspace-mode!
-          (fn []
-            (testing "premise: the instance is in workspace mode, so running the action itself is refused"
-              (is (ws/workspace-mode?))
-              (is (= "Actions is not supported on a workspace instance."
-                     (mt/user-http-request :crowberto :post 400 (str "action/" action-id "/execute")
-                                           {:parameters parameters}))))
-            (let [created (mt/user-http-request :crowberto :post 200 "ee/action-test" (body action-id))]
-              (try
-                (testing "saving the test is not refused"
-                  (is (pos-int? (:id created))))
-                (testing "the run passes: the action's SQL ran on the temp table, not on the real table or its workspace copy"
-                  (is (=? {:status "passed" :expectations [{:status "passed"}]}
-                          (mt/user-http-request :crowberto :post 200 (str "ee/action-test/" (:id created) "/run")))))
-                (testing "the real table is not written"
-                  (is (= [] (data-testing.test-util/renamed-categories "Wood Shop"))))
-                (finally
-                  (t2/delete! :model/DataTestRun :test_type "action" :test_id (:id created))
-                  (t2/delete! :model/ActionTest :id (:id created))))))))))))
+      (mt/test-driver :postgres
+        (do-with-action!
+         nil
+         (schema-qualified-action)
+         (fn [action-id]
+           (do-in-workspace-mode!
+            (fn []
+              (testing "premise: the instance is in workspace mode, so running the action itself is refused"
+                (is (ws/workspace-mode?))
+                (is (= "Actions is not supported on a workspace instance."
+                       (mt/user-http-request :crowberto :post 400 (str "action/" action-id "/execute")
+                                             {:parameters parameters}))))
+              (let [created (mt/user-http-request :crowberto :post 200 "ee/action-test" (body action-id))]
+                (try
+                  (testing "saving the test is not refused"
+                    (is (pos-int? (:id created))))
+                  (testing "the run passes: the action's SQL ran on the temp table, not on the real table or its workspace copy"
+                    (is (=? {:status "passed" :expectations [{:status "passed"}]}
+                            (mt/user-http-request :crowberto :post 200 (str "ee/action-test/" (:id created) "/run")))))
+                  (testing "the real table is not written"
+                    (is (= [] (data-testing.test-util/renamed-categories "Wood Shop"))))
+                  (finally
+                    (t2/delete! :model/DataTestRun :test_type "action" :test_id (:id created))
+                    (t2/delete! :model/ActionTest :id (:id created)))))))))))))
 
 (deftest permissions-test
   (mt/with-premium-features #{:transforms-testing}
