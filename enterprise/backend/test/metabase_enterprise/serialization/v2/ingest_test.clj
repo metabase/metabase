@@ -122,7 +122,7 @@
 (deftest ingest-one-reads-resources-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (let [plugin-dir (io/file dump-dir "custom_viz_plugins" "thumbs")
-          icon       "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>Daumen hoch – 👍</title></svg>"]
+          icon       "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>Thumbs up – 👍</title></svg>"]
       (.mkdirs plugin-dir)
       (spit (io/file plugin-dir "custom_viz_plugin.yaml")
             (yaml/generate-string {:entity_id "tHuMbSpLuGiN00000001x"

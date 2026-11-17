@@ -33,7 +33,7 @@
   [identifier]
   {"metabase-plugin.json" (.getBytes ^String (json/encode (manifest identifier)) "UTF-8")
    "dist/index.js"        (.getBytes "{}" "UTF-8")
-   "dist/assets/icon.svg" (.getBytes "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>Daumen hoch – 👍</title></svg>" "UTF-8")})
+   "dist/assets/icon.svg" (.getBytes "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>Thumbs up – 👍</title></svg>" "UTF-8")})
 
 (defn- insert-plugin! [identifier ^bytes bundle & {:as extra}]
   (t2/insert-returning-instance! :model/CustomVizPlugin
