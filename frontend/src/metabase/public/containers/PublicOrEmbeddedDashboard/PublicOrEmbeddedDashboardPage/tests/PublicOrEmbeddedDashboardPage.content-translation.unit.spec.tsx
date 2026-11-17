@@ -495,8 +495,8 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
     expect(within(tableBody).getByText("Gerät")).toBeInTheDocument();
     expect(within(tableBody).getAllByText("wahr")).toHaveLength(2);
     expect(within(tableBody).getAllByText("falsch")).toHaveLength(1);
-    expect(within(tableBody).queryByText(/true/i)).not.toBeInTheDocument();
-    expect(within(tableBody).queryByText(/false/i)).not.toBeInTheDocument();
+    expect(within(tableBody).queryAllByText(/true/i)).toHaveLength(0);
+    expect(within(tableBody).queryAllByText(/false/i)).toHaveLength(0);
   });
 
   it("translates renamed column titles and measure names of pivot tables (metabase#63296)", async () => {
@@ -767,10 +767,8 @@ describe("PublicOrEmbeddedDashboardPage > content translation", () => {
       expect(within(filteredBody).getAllByText("Steuerelement")).toHaveLength(
         2,
       );
-      expect(
-        within(filteredBody).queryByText("Dingsbums"),
-      ).not.toBeInTheDocument();
-      expect(within(filteredBody).queryByText("Gerät")).not.toBeInTheDocument();
+      expect(within(filteredBody).queryAllByText("Dingsbums")).toHaveLength(0);
+      expect(within(filteredBody).queryAllByText("Gerät")).toHaveLength(0);
     });
 
     it("translates the options and the selected values of a search filter, and filters by the untranslated values", async () => {
