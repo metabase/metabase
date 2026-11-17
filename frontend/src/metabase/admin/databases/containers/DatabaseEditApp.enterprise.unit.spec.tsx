@@ -259,9 +259,11 @@ describe("DatabaseEditApp > writable connection (EE)", () => {
 
     reload();
     const section = await getWritableSection();
-    expect(
-      await within(section).findByTestId("database-connection-health-info"),
-    ).toHaveTextContent("Connected");
+    await waitFor(() =>
+      expect(
+        within(section).getByTestId("database-connection-health-info"),
+      ).toHaveTextContent("Connected"),
+    );
     expect(
       within(section).getByRole("link", { name: "Edit connection details" }),
     ).toBeInTheDocument();
@@ -319,11 +321,12 @@ describe("DatabaseEditApp > writable connection (EE)", () => {
     expect(
       await within(await getWritableSection()).findByText(WRITE_HEALTH_ERROR),
     ).toBeInTheDocument();
-    expect(
-      await within(await getMainSection()).findByTestId(
-        "database-connection-health-info",
-      ),
-    ).toHaveTextContent("Connected");
+    const mainSection = await getMainSection();
+    await waitFor(() =>
+      expect(
+        within(mainSection).getByTestId("database-connection-health-info"),
+      ).toHaveTextContent("Connected"),
+    );
   });
 
   it("removes a writable connection", async () => {
