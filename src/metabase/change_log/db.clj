@@ -2,7 +2,6 @@
   "Application database queries for the change-log module."
   (:require
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
@@ -56,8 +55,7 @@
 (mu/defn matching-pks
   "The primary keys of the rows of `model` that match `conditions`."
   [model      :- :keyword
-   conditions :- [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
-                  [:sequential :any]]]
+   conditions :- [:sequential [:maybe [:fn {:description "what `t2/select` takes after the model"} some?]]]]
   (apply t2/select-pks-vec model conditions))
 
 (mu/defn rows-where
@@ -73,8 +71,8 @@
   and `resolved-query`."
   [model             :- :keyword
    select-query-type :- :keyword
-   parsed-args       :- [:schema {::mr/deliberately-open true, :description "the write's Toucan parsed args"} :map]
-   resolved-query    :- [:schema {::mr/deliberately-open true, :description "the write's Toucan resolved query"} :any]
+   parsed-args       :- [:map {:closed false, :description "the write's Toucan parsed args"}]
+   resolved-query    :- [:maybe [:fn {:description "the write's Toucan resolved query"} some?]]
    columns           :- [:sequential :keyword]]
   (t2.pipeline/transduce-query (t2.pipeline/default-rf select-query-type)
                                select-query-type

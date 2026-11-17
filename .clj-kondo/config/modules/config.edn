@@ -2071,7 +2071,6 @@
    :uses #{api
            app-db
            audit-app
-           change-log
            collections
            events
            lib.metadata

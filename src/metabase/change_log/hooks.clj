@@ -15,7 +15,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -66,8 +65,7 @@
   their own call."
   [model  :- :keyword
    action :- [:enum :insert :update :delete]
-   & conditions :- [:* [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
-                        :any]]]
+   & conditions :- [:* [:maybe [:fn {:description "what `t2/select` takes after the model"} some?]]]]
   (when (premium-features/enable-change-log?)
     (if (isa? (t2/resolve-model model) :hook/change-log)
       (log! [[(table model) (change-log.db/matching-pks model (vec conditions)) (name action)]])

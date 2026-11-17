@@ -492,7 +492,8 @@
                      :model/Card              card    {:database_id (:id db)}
                      :model/Database          other   {}
                      :model/Table             other-t {:db_id (:id other)}
-                     :model/Field             fk      {:table_id (:id other-t), :fk_target_field_id (:id f)}]
+                     :model/Field             fk      {:table_id (:id other-t)}]
+        (t2/update! :metabase_field :id (:id fk) {:fk_target_field_id (:id f)})
         (testing "a delete logs the rows ON DELETE CASCADE deletes, at any depth, and those ON DELETE SET NULL updates"
           (let [logged (set (logged-by #(t2/delete! :model/Database :id (:id db))))]
             (is (contains? logged ["metabase_database" (:id db) "delete"]))
