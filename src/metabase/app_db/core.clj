@@ -111,7 +111,8 @@
   This is the public, no-argument hook for tools that need to confirm appdb connectivity without
   modifying the schema."
   []
-  (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source)))
+  (mdb.connection/record-mariadb!
+   (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source))))
 
 (defn setup-db-without-migrations!
   "Like [[setup-db!]] but never runs migrations or mutates the schema. Idempotent: no-ops if the

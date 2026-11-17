@@ -52,7 +52,7 @@
                              ;; important that we do not allow anyone to access the DB.
                              ^ReentrantReadWriteLock lock
                              ;; Whether the DB is MariaDB, which `db-type` reports as `:mysql`. It is `false` for other
-                             ;; types, and empty for `:mysql` until [[mariadb?]] reads it from a connection.
+                             ;; types, and `nil` for `:mysql` until [[mariadb?]] reads it from a connection.
                              ^clojure.lang.Atom    mariadb?]
   javax.sql.DataSource
   (getConnection [_]
@@ -156,10 +156,13 @@
   ^javax.sql.DataSource []
   (.data-source (current-application-db)))
 
-(defn- read-mariadb!
-  "Read whether `app-db` is MariaDB from a connection, once, and store it in its cell."
-  [^ApplicationDB app-db]
-  (let [cell (.mariadb? app-db)]
+(defn mariadb?
+  "Whether the application DB is MariaDB, which [[db-type]] reports as `:mysql`.
+  On a `:mysql` application DB, the first successful call opens a connection to read the product name.
+  A failed read throws, and the next call tries again."
+  []
+  (let [app-db (current-application-db)
+        cell   (.mariadb? ^ApplicationDB app-db)]
     ;; Concurrent first callers share one read rather than each taking a connection.
     (locking cell
       (if-some [answer @cell]
@@ -168,19 +171,8 @@
         (reset! cell (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
                        (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))))))
 
-(defn mariadb?
-  "Whether the application DB is MariaDB, which [[db-type]] reports as `:mysql`.
-  On a `:mysql` application DB, the first successful call opens a connection to read the product name.
-  A failed read throws, and the next call tries again."
-  []
-  (let [app-db (current-application-db)]
-    (if-some [answer @(.mariadb? app-db)]
-      answer
-      (read-mariadb! app-db))))
-
 (defn record-mariadb!
-  "Record whether the application DB is MariaDB, for a caller that has already read the product name, so
-  [[mariadb?]] need not connect.
+  "Record whether the application DB is MariaDB, so [[mariadb?]] need not connect.
   A no-op when the answer is already known, which it always is for types other than `:mysql`."
   [mariadb?]
   (compare-and-set! (.mariadb? (current-application-db)) nil (boolean mariadb?))

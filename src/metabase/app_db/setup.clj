@@ -196,10 +196,10 @@
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (let [metadata (.getMetaData conn)
+    (let [metadata   (.getMetaData conn)
           db-version (db-version metadata)
-          db-type (or (when (= "MariaDB" (.getDatabaseProductName metadata)) :mariadb)
-                      db-type)]
+          mariadb?   (= "MariaDB" (.getDatabaseProductName metadata))
+          db-type    (if mariadb? :mariadb db-type)]
       (if (supported-app-db-version? db-type db-version)
         (log/infof "Successfully verified %s %s application database connection. %s"
                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
@@ -217,7 +217,7 @@
                                                            (:patch required-version))))
                                             "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
                         {})))
-      (= db-type :mariadb))))
+      mariadb?)))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
