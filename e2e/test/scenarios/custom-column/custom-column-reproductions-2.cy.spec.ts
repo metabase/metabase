@@ -66,6 +66,7 @@ describe("issue 55687", () => {
 
   it("should run is-empty and not-empty on stringly-typed expressions (metabase#55687)", () => {
     const title = ["field", PRODUCTS.TITLE, null];
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createQuestion(
       {
@@ -87,6 +88,19 @@ describe("issue 55687", () => {
       { visitQuestion: true },
     );
 
+    cy.wait("@cardQuery").then(({ response }) => {
+      expect(response?.body.error).to.be.undefined;
+      expect(response?.body.data.rows[0].slice(-8)).to.deep.equal([
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+      ]);
+    });
     cy.findByTestId("query-visualization-root")
       .findByText("There was a problem with your question")
       .should("not.exist");

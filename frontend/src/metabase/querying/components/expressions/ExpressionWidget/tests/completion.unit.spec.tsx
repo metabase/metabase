@@ -278,6 +278,7 @@ describe("ExpressionWidget > completion", () => {
       "case([ID] = 1, [Price] * 1.21, [Price] [Price])",
     );
   });
+
   it("should apply a completion on a new line inside case (metabase#31964)", async () => {
     await setup({ query: createOrdersQuery() });
 
@@ -479,7 +480,11 @@ describe("ExpressionWidget > type validation", () => {
 
     await userEvent.click(doneButton);
     expect(onChangeClause).toHaveBeenCalledTimes(1);
-    expect(onChangeClause).toHaveBeenCalledWith("Foo", expect.anything());
+    const [name, clause] = onChangeClause.mock.calls[0];
+    expect(name).toBe("Foo");
+    expect(Lib.expressionParts(createOrdersQuery(), -1, clause)).toMatchObject({
+      operator: "avg",
+    });
   });
 
   it("should validate a constant, an unsupported function and a bad date expression (metabase#41381, metabase#33439, metabase#33441)", async () => {
