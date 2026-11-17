@@ -72836,7 +72836,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "action-test", "segment-test" ],
+            "enum" : [ "dashboard", "transform-test", "segment", "measure", "segment-test", "transform", "document", "card-test", "card", "action-test" ],
             "type" : "string"
           }
         } ],
@@ -72867,7 +72867,7 @@
                 "additionalProperties" : false,
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "action-test", "segment-test" ],
+                    "enum" : [ "dashboard", "transform-test", "segment", "measure", "segment-test", "transform", "document", "card-test", "card", "action-test" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -72911,7 +72911,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "action-test", "segment-test" ],
+            "enum" : [ "dashboard", "transform-test", "segment", "measure", "segment-test", "transform", "document", "card-test", "card", "action-test" ],
             "type" : "string"
           }
         }, {
