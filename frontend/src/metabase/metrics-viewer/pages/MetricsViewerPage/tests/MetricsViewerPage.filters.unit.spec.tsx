@@ -33,10 +33,6 @@ const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const ORDERS_STATE = metricsState([{ type: "metric", id: ORDERS_METRIC.id }]);
 
-afterEach(async () => {
-  await cleanupPage();
-});
-
 beforeEach(() => {
   trackSimpleEvent.mockClear();
 });
@@ -92,6 +88,12 @@ async function navigate(
 }
 
 describe("MetricsViewerPage > filters", () => {
+  // Inside the describe, so it runs before the global cleanup that fails a
+  // test on state updates outside act.
+  afterEach(async () => {
+    await cleanupPage();
+  });
+
   it("adds, edits, and removes categorical metric and dimension filters with a series breakout, and steps through them with browser history (UXW-4849)", async () => {
     const page = setup({ state: ORDERS_STATE });
     await findPills(1);

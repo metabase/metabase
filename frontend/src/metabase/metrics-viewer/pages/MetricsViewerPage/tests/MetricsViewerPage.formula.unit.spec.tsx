@@ -35,10 +35,6 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
   default: jest.requireActual("./setup").MockVisualization,
 }));
 
-afterEach(async () => {
-  await cleanupPage();
-});
-
 function getIndicatorCount(pill: HTMLElement) {
   return within(pill).getByTestId("color-indicator-container").children.length;
 }
@@ -107,6 +103,12 @@ async function addOrdersPlusMeasureExpression() {
 }
 
 describe("MetricsViewerPage > formula", () => {
+  // Inside the describe, so it runs before the global cleanup that fails a
+  // test on state updates outside act.
+  afterEach(async () => {
+    await cleanupPage();
+  });
+
   it("shows a No results state for a metric whose query returns no rows", async () => {
     const emptyMetric: Metric = {
       ...ORDERS_METRIC,

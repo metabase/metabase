@@ -44,10 +44,6 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
-afterEach(async () => {
-  await cleanupPage();
-});
-
 const ORDERS_STATE = metricsState([{ type: "metric", id: ORDERS_METRIC.id }]);
 
 const ORDERS_AND_PRODUCTS_STATE = metricsState([
@@ -90,6 +86,12 @@ async function waitForProjection(dimensionIds: string[]) {
 }
 
 describe("MetricsViewerPage > dimension picker sidebar", () => {
+  // Inside the describe, so it runs before the global cleanup that fails a
+  // test on state updates outside act.
+  afterEach(async () => {
+    await cleanupPage();
+  });
+
   beforeEach(() => {
     trackSimpleEvent.mockClear();
   });
@@ -649,6 +651,12 @@ function getSlotDimensionId(
 }
 
 describe("MetricsViewerPage > shared dimension matching", () => {
+  // Inside the describe, so it runs before the global cleanup that fails a
+  // test on state updates outside act.
+  afterEach(async () => {
+    await cleanupPage();
+  });
+
   it("shows every dimension shared by repeated metric slots", async () => {
     setupWithMetrics([PLAIN_PRODUCTS, PLAIN_PRODUCTS]);
     await waitForMetrics(2);
