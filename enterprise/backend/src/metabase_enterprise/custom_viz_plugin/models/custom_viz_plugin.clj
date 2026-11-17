@@ -64,13 +64,23 @@
   ([_instance]   (some? api/*current-user-id*))
   ([_model _pk]  (some? api/*current-user-id*)))
 
+;; A bundled plugin on a read-only instance comes from the repository, so it can only change there. Dev-only plugins
+;; are never synced (see the remote-sync spec below) and stay writable.
 (defmethod mi/can-write? :model/CustomVizPlugin
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+  ([plugin]     (mi/can-write? :model/CustomVizPlugin (:id plugin)))
+  ([_model pk]  (and api/*is-superuser?*
+                     (remote-sync/can-write? :model/CustomVizPlugin pk))))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
-  [_model _instance]
-  api/*is-superuser?*)
+  [_model _plugin]
+  (and api/*is-superuser?*
+       (not (remote-sync/read-only?))))
+
+(defmethod mi/can-update? :model/CustomVizPlugin
+  [plugin changes]
+  (and api/*is-superuser?*
+       (or (not (remote-sync/synced-changes? :model/CustomVizPlugin plugin changes))
+           (remote-sync/can-write? :model/CustomVizPlugin (:id plugin)))))
 
 (methodical/defmethod mi/to-json :model/CustomVizPlugin
   "Never include the raw bundle bytes in JSON."

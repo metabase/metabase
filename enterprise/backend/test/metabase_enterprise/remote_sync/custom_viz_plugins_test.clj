@@ -188,6 +188,14 @@
         (upload! 403 (dissoc (plugin-files "ops" "ops();") "dist/index.js")))
       (replace-bundle! 403 id (plugin-files "thumbs" "v2();"))
       (delete-plugin! 403 id)
-      (testing "`enabled` and dev-only plugins stay this instance's"
+      (testing "dev-only plugins can't be registered"
+        (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
+          (mt/user-http-request :crowberto :post 403 "ee/custom-viz-plugin/dev"
+                                {:identifier "dev-only" :dev_bundle_url "http://localhost:5173"})))
+      (testing "`enabled` and existing dev-only plugins stay this instance's"
         (is (false? (:enabled (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id) {:enabled false}))))
-        (delete-plugin! 204 (:id (register-dev-plugin! "dev-only")))))))
+        (delete-plugin! 204 (t2/insert-returning-pk! :model/CustomVizPlugin
+                                                     {:identifier     "dev-only"
+                                                      :display_name   "dev-only"
+                                                      :status         :active
+                                                      :dev_bundle_url "http://localhost:5173"}))))))

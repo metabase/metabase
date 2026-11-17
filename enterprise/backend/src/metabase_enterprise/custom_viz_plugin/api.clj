@@ -13,7 +13,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.server.streaming-response :as sr]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
@@ -103,17 +102,6 @@
   [plugin]
   (nil? (:bundle_hash plugin)))
 
-(defn- check-editable!
-  "Throws a 403 when `plugin` is read-only under remote sync: a bundled plugin on a read-only instance comes from
-  the repository, so it can only change there. Dev-only plugins are never synced and stay editable."
-  [plugin]
-  (api/check-403 (remote-sync/can-write? :model/CustomVizPlugin (:id plugin))))
-
-(defn- check-creatable!
-  "Throws a 403 on a read-only instance: an uploaded plugin would be synced content the repository doesn't hold."
-  []
-  (api/check-403 (not (remote-sync/read-only?))))
-
 (defn- plugin-warnings
   "Warnings for a plugin. Dev-only plugins get no version warnings, nor do error plugins: they have no manifest to
    derive them from."
@@ -170,8 +158,8 @@
   [_route-params
    _query-params
    {:keys [file]} :- BundleUploadParts]
-  (api/check-superuser)
-  (check-creatable!)
+  ;; checked before the upload is read
+  (api/create-check :model/CustomVizPlugin {})
   (let [tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
@@ -194,7 +182,7 @@
    {:keys [identifier dev_bundle_url]} :- [:map {:closed true}
                                            [:identifier     {:optional true} [:maybe ms/NonBlankString]]
                                            [:dev_bundle_url ms/NonBlankString]]]
-  (api/check-superuser)
+  (api/create-check :model/CustomVizPlugin {})
   (check-dev-mode-enabled!)
   (let [manifest     (cache/fetch-dev-manifest dev_bundle_url)
         identifier   (or identifier
@@ -249,7 +237,6 @@
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
-    (check-editable! plugin)
     (custom-viz-plugin.db/delete-plugin! id)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})
@@ -261,8 +248,9 @@
    _query-params
    body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
-        updates  (select-keys body [:enabled])]
+  (let [existing (api/check-404 (custom-viz-plugin.db/non-blob-plugin id))
+        updates  (select-keys body [:enabled])
+        _        (api/update-check existing updates)]
     (when (seq updates)
       (custom-viz-plugin.db/update-plugin! id updates))
     (let [result (custom-viz-plugin.db/non-blob-plugin id)]
@@ -281,7 +269,6 @@
    _query-params
    {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
-        _        (check-editable! existing)
         _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
                                 (format (str "This plugin's identifier (\"%s\") contains \":\", which is no longer allowed. "
                                              "Delete the plugin and upload the bundle under a name without \":\".")
@@ -374,7 +361,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
-  (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+  (api/update-check (api/check-404 (custom-viz-plugin.db/non-blob-plugin id)) {:dev_bundle_url dev_bundle_url})
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
