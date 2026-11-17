@@ -49,20 +49,22 @@
   [:fn {:error/message "an atom"} #(instance? clojure.lang.IAtom %)])
 
 (def ^:private Columns
-  "The columns a write of a model has to change, or `:any`."
-  [:maybe [:or [:= :any] [:set :keyword]]])
+  "The columns a write of a model has to change."
+  [:maybe [:set :keyword]])
 
 (def ^:private Node
   "An entity as `[entity-type entity-id]`, the ID nil when unknown."
   [:maybe [:tuple ::deps.dependency-types/dependency-types [:maybe ms/PositiveInt]]])
 
 (mu/defn- changed? :- :boolean
-  "Whether the `event`, an update, changes any of `columns`, or any column at all when `columns` is `:any`."
+  "Whether the `event`, an update, changes any of `columns`."
   [event   :- [:map]
    columns :- Columns]
-  (if (= :any columns)
-    (boolean (seq (u.events/changed-keys event)))
-    (u.events/changed-any? event columns)))
+  (u.events/changed-any? event columns))
+
+(def ^:private dimension-columns
+  "The columns of a Dimension whose update changes the remap it describes."
+  #{:field_id :human_readable_field_id :type})
 
 (def ^:private dependency-columns
   "For each model, the columns whose update has the dependency job compute the entity's dependencies again."
@@ -253,7 +255,9 @@
       (mark-data-apps! [(:collection_id previous-object) (:collection_id object)]))
     (or dependency? analysis? output? part? data-apps?
         (case model
-          :model/Dimension   (do (run! #(mark-dimension! batched %) (distinct [previous-object object])) true)
+          :model/Dimension   (boolean (when (changed? event dimension-columns)
+                                        (run! #(mark-dimension! batched %) (distinct [previous-object object]))
+                                        true))
           :model/FieldValues (mark-field-values! batched previous-object object)
           false))))
 
