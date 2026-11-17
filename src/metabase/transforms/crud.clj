@@ -68,6 +68,8 @@
     ;; wherever the database has schemas
     [db-id (get-in transform [:target :schema]) (get-in transform [:target :name])]))
 
+;; this check is case-sensitive, so it lets `Orders` and `orders` through even though some warehouses treat them as
+;; the same table. drivers don't tell us which warehouses ignore case, so we can't do better here.
 (defn- check-target-unclaimed!
   "Refuse a target that another transform already writes to, since one run would silently overwrite the other's table.
 
