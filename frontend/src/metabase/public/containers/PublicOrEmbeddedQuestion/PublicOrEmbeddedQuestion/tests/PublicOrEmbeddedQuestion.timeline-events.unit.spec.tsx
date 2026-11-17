@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import {
+  setupEmbedPreviewQuestionEndpoints,
   setupEmbedQuestionEndpoints,
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
@@ -14,7 +15,9 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
+import { PLUGIN_API } from "metabase/api/client";
 import * as embeddingConfig from "metabase/embedding/config";
+import { setupEmbedPreviewRewrite } from "metabase/embedding/lib/override-requests-for-embeds";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
@@ -99,6 +102,10 @@ const getTimelineRequests = () =>
     .map((call) => call.url)
     .filter((url) => TIMELINE_API_PATH.test(new URL(url).pathname));
 
+// the preview case installs the production rewrite; teardown puts the default back
+const DEFAULT_REWRITE_EMBED_PREVIEW_URL =
+  PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl;
+
 describe("PublicOrEmbeddedQuestion > timeline events", () => {
   beforeEach(() => {
     mockGetBoundingClientRect({ width: 800, height: 400 });
@@ -109,6 +116,8 @@ describe("PublicOrEmbeddedQuestion > timeline events", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl =
+      DEFAULT_REWRITE_EMBED_PREVIEW_URL;
   });
 
   it.each([
@@ -116,6 +125,7 @@ describe("PublicOrEmbeddedQuestion > timeline events", () => {
       surface: "a public question",
       route: "public/question/:uuid",
       path: `public/question/${UUID}`,
+      queryPath: `/api/public/card/${UUID}/query`,
       setupSurface: () => {
         jest.spyOn(embeddingConfig, "isPublicEmbedding").mockReturnValue(true);
         setupPublicQuestionEndpoints(UUID, PUBLIC_CARD);
@@ -126,14 +136,29 @@ describe("PublicOrEmbeddedQuestion > timeline events", () => {
       surface: "a static embedded question",
       route: "embed/question/:token",
       path: `embed/question/${TOKEN}`,
+      queryPath: `/api/embed/card/${TOKEN}/query`,
       setupSurface: () => {
         jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true);
         setupEmbedQuestionEndpoints(TOKEN, EMBED_CARD, DATASET);
       },
     },
+    {
+      // the static embedding modal's preview: Metabase iframed in itself, with the
+      // production rewrite sending `/api/embed` requests to `/api/preview_embed`
+      surface: "a question embed preview",
+      route: "embed/question/:token",
+      path: `embed/question/${TOKEN}`,
+      queryPath: `/api/preview_embed/card/${TOKEN}/query`,
+      setupSurface: () => {
+        jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true);
+        jest.spyOn(embeddingConfig, "isEmbedPreview").mockReturnValue(true);
+        setupEmbedPreviewRewrite();
+        setupEmbedPreviewQuestionEndpoints(TOKEN, EMBED_CARD, DATASET);
+      },
+    },
   ])(
     "does not show or request the events on $surface",
-    async ({ route, path, setupSurface }) => {
+    async ({ route, path, queryPath, setupSurface }) => {
       setupSurface();
 
       renderWithProviders(
@@ -159,6 +184,7 @@ describe("PublicOrEmbeddedQuestion > timeline events", () => {
       ).not.toBeInTheDocument();
       expect(queryIcon("calendar")).not.toBeInTheDocument();
       expect(getTimelineRequests()).toEqual([]);
+      expect(fetchMock.callHistory.called(`path:${queryPath}`)).toBe(true);
     },
   );
 

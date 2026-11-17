@@ -54,6 +54,8 @@ export type SetupOpts = {
   accessType?: "embed" | "public";
   /** Shows the "Powered by Metabase" footer. The mock settings hide it by default. */
   hasEmbedBranding?: boolean;
+  /** Also serves the static embed endpoints under `/api/preview_embed`, as the embed preview requests them. */
+  embedPreview?: boolean;
 };
 
 export async function setup(
@@ -68,6 +70,7 @@ export async function setup(
     extraDashcards = [],
     accessType = "embed",
     hasEmbedBranding,
+    embedPreview = false,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   const settings = mockSettings({
@@ -128,6 +131,11 @@ export async function setup(
     );
   }
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
+  if (embedPreview) {
+    setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards, {
+      basePath: "/api/preview_embed",
+    });
+  }
   setupPublicDashboardEndpoint(MOCK_UUID, dashboard);
   dashcards.forEach(({ id, card_id }) => {
     fetchMock.get(

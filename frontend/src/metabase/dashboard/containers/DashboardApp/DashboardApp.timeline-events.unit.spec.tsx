@@ -45,6 +45,7 @@ import type {
   DashboardCard,
   DashboardTab,
   Parameter,
+  ParameterTarget,
   QuestionDashboardCard,
   Timeline,
   TimelineEvent,
@@ -256,7 +257,7 @@ interface SetupOpts {
   timelines?: Timeline[];
   extraCards?: Card[];
   rowsByCardId?: Record<CardId, Rows>;
-  filteredRows?: Rows;
+  filter?: { parameter: unknown; rows: Rows };
   initialQuery?: string;
 }
 
@@ -267,7 +268,7 @@ function setup({
   timelines = [createReleases()],
   extraCards = [],
   rowsByCardId = {},
-  filteredRows,
+  filter,
   initialQuery = "",
 }: SetupOpts) {
   const cards = _.uniq(
@@ -342,9 +343,15 @@ function setup({
     },
     { name: "save-dashboard" },
   );
-  fetchMock.get("path:/api/timeline", () => storedTimelines, {
-    name: "list-timelines",
-  });
+  // like the backend, a timeline carries its events only when the request asks for them
+  fetchMock.get(
+    "path:/api/timeline",
+    (call) =>
+      new URL(call.url).searchParams.get("include") === "events"
+        ? storedTimelines
+        : storedTimelines.map(({ events: _events, ...timeline }) => timeline),
+    { name: "list-timelines" },
+  );
   fetchMock.post(
     "path:/api/timeline-event",
     (call) => {
@@ -363,14 +370,17 @@ function setup({
     DASHCARD_QUERY_URL,
     (call) => {
       const [, , cardId] = call.url.match(DASHCARD_QUERY_URL) ?? [];
-      const body: { parameters?: { value?: unknown }[] } = JSON.parse(
+      const body: { parameters?: unknown[] } = JSON.parse(
         String(call.options.body ?? "{}"),
       );
+      // only the complete parameter (id, type, value and mapped target) filters the rows
       const isFiltered =
-        filteredRows != null &&
-        (body.parameters ?? []).some((parameter) => parameter.value != null);
+        filter != null &&
+        (body.parameters ?? []).some((parameter) =>
+          _.isEqual(parameter, filter.parameter),
+        );
       return createMonthlyDataset(
-        isFiltered ? filteredRows : getRows(Number(cardId)),
+        isFiltered ? filter.rows : getRows(Number(cardId)),
       );
     },
     { name: "dashcard-query" },
@@ -731,46 +741,78 @@ describe("DashboardApp > timeline events", () => {
       slug: "date",
       type: "date/range",
     });
+    const target: ParameterTarget = [
+      "dimension",
+      ["field", 1, { "base-type": "type/DateTime" }],
+    ];
     setup({
       parameters: [parameter],
       dashcards: [
         createPlacement(card, {
           id: 1,
           parameter_mappings: [
-            {
-              parameter_id: parameter.id,
-              card_id: card.id,
-              target: [
-                "dimension",
-                ["field", 1, { "base-type": "type/DateTime" }],
-              ],
-            },
+            { parameter_id: parameter.id, card_id: card.id, target },
           ],
         }),
       ],
       timelines: [createReleases([RC1, STABLE_RELEASE])],
-      filteredRows: OCTOBER_TO_NOVEMBER_ROWS,
-      initialQuery: "?date=2027-10-01~2027-11-30",
+      filter: {
+        parameter: {
+          id: "date",
+          type: "date/range",
+          value: "2027-10-01~2027-11-30",
+          target,
+        },
+        rows: OCTOBER_TO_NOVEMBER_ROWS,
+      },
     });
     await waitForDashboardToLoad();
 
-    await userEvent.click(await findEventChip(card.name, "RC1"));
+    expect(await findEventChip(card.name, "RC1")).toBeInTheDocument();
+    expect(getEventChip(card.name, "Stable release")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(
+        screen.getByTestId("dashboard-parameters-widget-container"),
+      ).getByText("Date"),
+    );
+    const popover = await screen.findByRole("dialog");
+    const startDate = within(popover).getByLabelText("Start date");
+    await userEvent.clear(startDate);
+    await userEvent.type(startDate, "10/01/2027");
+    const endDate = within(popover).getByLabelText("End date");
+    await userEvent.clear(endDate);
+    await userEvent.type(endDate, "11/30/2027");
+    await userEvent.click(
+      within(popover).getByRole("button", { name: "Add filter" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        queryEventChip(card.name, "Stable release"),
+      ).not.toBeInTheDocument(),
+    );
     const filteredQuery = fetchMock.callHistory.lastCall("dashcard-query");
-    expect(
-      JSON.parse(String(filteredQuery?.options.body)).parameters,
-    ).toMatchObject([{ id: "date", value: "2027-10-01~2027-11-30" }]);
+    expect(JSON.parse(String(filteredQuery?.options.body)).parameters).toEqual([
+      {
+        id: "date",
+        type: "date/range",
+        value: "2027-10-01~2027-11-30",
+        target,
+      },
+    ]);
+    await userEvent.click(getEventChip(card.name, "RC1"));
     const sidebar = await findEventsSidebar();
     expect(await within(sidebar).findByText("RC1")).toBeInTheDocument();
     expect(
       within(sidebar).queryByText("Stable release"),
     ).not.toBeInTheDocument();
-    expect(queryEventChip(card.name, "Stable release")).not.toBeInTheDocument();
     await userEvent.click(within(sidebar).getByLabelText("Close"));
 
     await userEvent.click(
       within(
         screen.getByTestId("dashboard-parameters-widget-container"),
-      ).getAllByRole("button", { name: "Clear" })[0],
+      ).getByRole("button", { name: "Clear" }),
     );
 
     expect(

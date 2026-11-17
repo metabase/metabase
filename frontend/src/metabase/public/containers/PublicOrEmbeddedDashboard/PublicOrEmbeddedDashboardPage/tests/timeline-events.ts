@@ -80,7 +80,7 @@ export function setupTimeSeriesChart() {
   mockGetBoundingClientRect({ width: 800, height: 400 });
   fetchMock.get(
     new RegExp(
-      `/api/(public|embed)/dashboard/[^/]+/dashcard/${TIME_SERIES_DASHCARD_ID}/card/${TIME_SERIES_CARD_ID}(\\?|$)`,
+      `/api/(public|embed|preview_embed)/dashboard/[^/]+/dashcard/${TIME_SERIES_DASHCARD_ID}/card/${TIME_SERIES_CARD_ID}(\\?|$)`,
     ),
     createMockDataset({
       data: createMockDatasetData({

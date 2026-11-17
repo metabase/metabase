@@ -13,13 +13,15 @@ export function setupEmbedDashboardEndpoints(
   uuidOrToken: EntityToken,
   dashboard: Dashboard,
   dashcards?: DashboardCard[],
+  // the static embedding modal's preview serves the same endpoints under `/api/preview_embed`
+  { basePath = "/api/embed" }: { basePath?: string } = {},
 ) {
-  fetchMock.get(`path:/api/embed/dashboard/${uuidOrToken}`, dashboard);
+  fetchMock.get(`path:${basePath}/dashboard/${uuidOrToken}`, dashboard);
 
   if (dashcards) {
     dashcards.forEach(({ id, card_id }) => {
       fetchMock.get(
-        `path:/api/embed/dashboard/${uuidOrToken}/dashcard/${id}/card/${card_id}`,
+        `path:${basePath}/dashboard/${uuidOrToken}/dashcard/${id}/card/${card_id}`,
         createMockDataset(),
       );
     });
@@ -33,6 +35,15 @@ export function setupEmbedQuestionEndpoints(
 ) {
   fetchMock.get(`path:/api/embed/card/${token}`, card);
   fetchMock.get(`path:/api/embed/card/${token}/query`, dataset);
+}
+
+export function setupEmbedPreviewQuestionEndpoints(
+  token: EntityToken,
+  card: Card,
+  dataset: EmbedDataset,
+) {
+  fetchMock.get(`path:/api/preview_embed/card/${token}`, card);
+  fetchMock.get(`path:/api/preview_embed/card/${token}/query`, dataset);
 }
 
 export function setupPublicDashboardEndpoint(
