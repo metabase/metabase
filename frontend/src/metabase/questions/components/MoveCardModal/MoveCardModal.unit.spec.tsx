@@ -266,7 +266,10 @@ describe("MoveCardModal", () => {
 
   describe("moving a dashboard question to another dashboard", () => {
     it("warns that the question will be removed from its current dashboard and moves it on confirm", async () => {
-      setup({ card: createDashboardQuestion(BLUE_DASHBOARD) });
+      const { onClose } = setup({
+        card: createDashboardQuestion(BLUE_DASHBOARD),
+        dashboardResponseDelay: 250,
+      });
 
       await chooseDestination(PURPLE_DASHBOARD.name);
 
@@ -293,6 +296,12 @@ describe("MoveCardModal", () => {
           deleteOldDashcards: "true",
         },
       ]);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(screen.getByTestId("move-card-toast")).toHaveTextContent(
+          "Question moved to Purple Dashboard",
+        ),
+      );
     });
   });
 

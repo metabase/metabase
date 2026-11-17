@@ -90,7 +90,11 @@ function renderGrid(dashboard: Dashboard) {
   );
 }
 
-function setup(dashcards: DashboardCard[]) {
+interface SetupOpts {
+  dashcards: DashboardCard[];
+}
+
+function setup({ dashcards }: SetupOpts) {
   const dashboard = createMockDashboard({ id: DASHBOARD_ID, dashcards });
 
   const storeInitialState = createMockState({
@@ -127,7 +131,7 @@ describe("DashboardGrid", () => {
 
   describe("remove action for dashboard questions", () => {
     it("shows the trash action for the only dashcard of a dashboard question", async () => {
-      setup([createDashcard(1, dashboardQuestion)]);
+      setup({ dashcards: [createDashcard(1, dashboardQuestion)] });
 
       const [panel] = getActionsPanels();
       expect(within(panel).getByLabelText("trash icon")).toBeInTheDocument();
@@ -138,7 +142,7 @@ describe("DashboardGrid", () => {
     });
 
     it("removes the only dashcard of a dashboard question when its trash action is clicked", async () => {
-      setup([createDashcard(1, dashboardQuestion)]);
+      setup({ dashcards: [createDashcard(1, dashboardQuestion)] });
 
       await userEvent.click(
         within(getActionsPanels()[0]).getByLabelText("trash icon"),
@@ -152,10 +156,12 @@ describe("DashboardGrid", () => {
     });
 
     it("shows the close action on every dashcard when a dashboard question is on the dashboard twice", async () => {
-      setup([
-        createDashcard(1, dashboardQuestion, 0),
-        createDashcard(2, dashboardQuestion, 4),
-      ]);
+      setup({
+        dashcards: [
+          createDashcard(1, dashboardQuestion, 0),
+          createDashcard(2, dashboardQuestion, 4),
+        ],
+      });
 
       const panels = getActionsPanels();
       expect(panels).toHaveLength(2);
@@ -169,10 +175,12 @@ describe("DashboardGrid", () => {
     });
 
     it("shows the trash action again once the other dashcard of a dashboard question is removed", async () => {
-      setup([
-        createDashcard(1, dashboardQuestion, 0),
-        createDashcard(2, dashboardQuestion, 4),
-      ]);
+      setup({
+        dashcards: [
+          createDashcard(1, dashboardQuestion, 0),
+          createDashcard(2, dashboardQuestion, 4),
+        ],
+      });
 
       expect(queryIcon("trash")).not.toBeInTheDocument();
 
@@ -189,7 +197,7 @@ describe("DashboardGrid", () => {
     });
 
     it("shows the close action for the only dashcard of a collection question", () => {
-      setup([createDashcard(1, collectionQuestion)]);
+      setup({ dashcards: [createDashcard(1, collectionQuestion)] });
 
       const [panel] = getActionsPanels();
       expect(within(panel).getByLabelText("close icon")).toBeInTheDocument();
