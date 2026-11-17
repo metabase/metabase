@@ -167,6 +167,13 @@ export function dataStudioPublishedTableSegment(
   return `${dataStudioTableSegments(tableId)}/${segmentId}`;
 }
 
+export function dataStudioPublishedTableSystemSegment(
+  tableId: TableId,
+  role: string,
+) {
+  return `${dataStudioTableSegments(tableId)}/system/${role}`;
+}
+
 export function dataStudioPublishedTableSegmentRevisions(
   tableId: TableId,
   segmentId: SegmentId,
@@ -195,6 +202,16 @@ export function dataStudioDataModelSegment({
   segmentId,
 }: DataModelSegmentParams) {
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/${segmentId}`;
+}
+
+/** PROTOTYPE: a table's built-in segment, by role (e.g. `exclude_deleted`) */
+export function dataStudioDataModelSystemSegment({
+  databaseId,
+  schemaName,
+  tableId,
+  role,
+}: Omit<DataModelSegmentParams, "segmentId"> & { role: string }) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/system/${role}`;
 }
 
 export function dataStudioDataModelSegmentRevisions(

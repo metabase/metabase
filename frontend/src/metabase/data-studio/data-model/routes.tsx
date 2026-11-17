@@ -35,6 +35,13 @@ const segmentDetailPage = () =>
     Component: DataModelSegmentDetailPage,
   }));
 
+const systemSegmentPage = () =>
+  import(
+    /* webpackChunkName: "data-model" */ "metabase/data-studio/segments/pages/DataModelSystemSegmentPage"
+  ).then(({ DataModelSystemSegmentPage }) => ({
+    Component: DataModelSystemSegmentPage,
+  }));
+
 const segmentRevisionHistoryPage = () =>
   import(
     /* webpackChunkName: "data-model" */ "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage"
@@ -94,6 +101,10 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
       >
         <Route index lazy={newSegmentPage} />
       </Route>
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/segments/system/:role"
+        lazy={systemSegmentPage}
+      />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId"
         lazy={segmentDetailPage}

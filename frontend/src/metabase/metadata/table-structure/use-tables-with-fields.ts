@@ -6,8 +6,8 @@ import { databaseApi, skipToken, useGetDatabaseQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
-// One request shape for every hook here, so they share one cache entry per
-// database
+// The same request as the Data Studio database and schema drawers, so they
+// share one cache entry per database
 const getDatabaseRequest = (id: DatabaseId) => ({
   id,
   include: "tables.fields" as const,

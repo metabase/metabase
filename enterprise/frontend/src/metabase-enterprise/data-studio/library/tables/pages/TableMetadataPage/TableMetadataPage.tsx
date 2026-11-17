@@ -7,6 +7,10 @@ import {
   SettingsCard,
   SettingsSection,
 } from "metabase/data-studio/common/components/SettingsSection";
+import {
+  TableDefaultSegment,
+  TableRequiredFilter,
+} from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
 import { useParams } from "metabase/router";
 import { Box, Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -51,6 +55,12 @@ export function TableMetadataPage() {
             </SettingsCard>
           </SettingsSection>
           <TableStructureSections table={table} />
+          <SettingsSection title={t`Default segments and required filter`}>
+            <SettingsCard>
+              <TableDefaultSegment table={table} readOnly={readOnly} />
+              <TableRequiredFilter table={table} readOnly={readOnly} />
+            </SettingsCard>
+          </SettingsSection>
         </Stack>
       </Box>
     </PageContainer>

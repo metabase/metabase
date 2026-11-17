@@ -1,0 +1,1 @@
+export { SchemaDetailsPanel } from "./SchemaDetailsPanel";
