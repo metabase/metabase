@@ -114,6 +114,14 @@ describe("AccountSecurityPanel", () => {
     expect(
       screen.queryByRole("button", { name: "Disable" }),
     ).not.toBeInTheDocument();
+    // In a browser an open dialog blocks the setup button, so it must close
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", {
+          name: "Disable two-factor authentication",
+        }),
+      ).not.toBeInTheDocument();
+    });
 
     await userEvent.click(setupButton);
     const setupModal = await screen.findByRole("dialog", {
