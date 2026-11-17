@@ -22,7 +22,7 @@
 (doto :model/AuthIdentity
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
 (defn- parse-credentials-timestamps-out
@@ -89,6 +89,14 @@
                   (contains? (t2/changes auth-identity) :credentials))
              (update :credentials hash-password-credentials))
     (provider/validate (provider/provider-string->keyword provider) <>)))
+
+(mi/define-batched-hydration-method add-has-used-password
+  :has_used_password
+  "Adds `has_used_password`, whether each of `users` has a password that has been used to log in and has not expired."
+  [users]
+  (let [user-ids (auth-identity.db/user-ids-with-used-password (set (map u/the-id users)))]
+    (for [user users]
+      (assoc user :has_used_password (contains? user-ids (u/the-id user))))))
 
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the

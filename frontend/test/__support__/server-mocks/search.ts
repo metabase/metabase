@@ -7,6 +7,11 @@ import type { CollectionItem, SearchResult } from "metabase-types/api";
 export function setupSearchEndpoints(
   items: (CollectionItem | SearchResult)[],
   delay?: number,
+  {
+    nativeQueryContents,
+  }: {
+    nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
+  } = {},
 ) {
   const name = "search";
   fetchMock.removeRoute(name);
@@ -19,10 +24,15 @@ export function setupSearchEndpoints(
       const offset = Number(url.searchParams.get("offset"));
       const table_db_id = url.searchParams.get("table_db_id") || null;
       const queryText = url.searchParams.get("q")?.toLowerCase();
+      const searchNativeQuery =
+        url.searchParams.get("search_native_query") === "true";
 
       let matchedItems = items.filter(
-        ({ name }) =>
-          !queryText || name.toLowerCase().includes(queryText.toLowerCase()),
+        ({ id, name }) =>
+          !queryText ||
+          name.toLowerCase().includes(queryText) ||
+          (searchNativeQuery &&
+            nativeQueryContents?.get(id)?.toLowerCase().includes(queryText)),
       );
 
       const availableModels = [
@@ -64,7 +74,7 @@ export function setupEmbeddingDataPickerDecisionEndpoints(
     name: "entity-count",
     url: "path:/api/search",
     query: {
-      models: ["dataset", "table"],
+      models: ["dataset", "table", "metric"],
       limit: 0,
     },
     response: {

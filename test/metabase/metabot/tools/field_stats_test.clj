@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.field-stats-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,6 +9,9 @@
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.test-util :as tools.tu]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -204,3 +208,74 @@
                                   (fn [columns] (remove #(= 10 (:fk-field-id %)) columns))]
         (is (= [visible]
                (#'metabot.tools.field-stats/usable-columns [hidden visible])))))))
+
+(def ^:private reference-prefix
+  "The start of the Reference line in a drill-in."
+  "Reference (copy as is if it starts with [\"field\"; else put it in a field clause): ")
+
+(defn- field-metadata-xml
+  "Render the drill-in for `request` as the LLM sees it, or the error message when the drill-in fails."
+  [request]
+  (try
+    (llm-shape/field-metadata->xml (:structured-output (metabot.tools.field-stats/field-values request)))
+    (catch clojure.lang.ExceptionInfo e
+      (ex-message e))))
+
+(deftest metric-dimension-drill-in-joined-copy-test
+  (testing "a metric drill-in on a renamed joined copy returns that copy, referenced by its output name"
+    (mt/with-temp [:model/Card {card-id :id}   {:type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/card mp card-id))
+                                                                     (lib/aggregate (lib/count))))}]
+      (mt/as-admin
+        (let [xml (field-metadata-xml {:entity-type "metric", :entity-id metric-id, :field-id "NAME_2", :limit 5})]
+          (is (str/includes? xml (str reference-prefix "\"NAME_2\"")))
+          (is (not (str/includes? xml "\"NAME_2\"]"))))))))
+
+(deftest field-metadata-requested-numeric-string-id-renders-portable-fk-test
+  (testing "a drill-in requested by a numeric string id renders the portable FK, never the requested id"
+    (mt/as-admin
+      (let [xml (field-metadata-xml {:entity-type "table", :entity-id (mt/id :venues)
+                                     :field-id (str (mt/id :venues :name)), :limit 5})]
+        (is (str/includes? xml (str reference-prefix
+                                    "[\"test-data (h2)\",\"PUBLIC\",\"VENUES\",\"NAME\"]")))
+        (is (not (str/includes? xml (str reference-prefix "\"" (mt/id :venues :name) "\""))))))))
+
+(deftest metric-field-stats-multi-stage-over-model-test
+  (testing "a drill-in on a multi-stage metric over a model accepts the base table's fields, not the model's columns"
+    (mt/with-temp [:model/Card {model-id :id}  {:type :model :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/card mp model-id))
+                                                                     lib/append-stage
+                                                                     (lib/aggregate (lib/count))))}]
+      (mt/as-admin
+        (testing "a model-only column is an unknown field"
+          (is (re-find #"Field Doubled Total was not found in metric"
+                       (field-metadata-xml {:entity-type "metric", :entity-id metric-id
+                                            :field-id "Doubled Total", :limit 5}))))
+        (testing "a base table field returns its statistics"
+          (is (=? {:structured-output {:field_id    (mt/id :orders :total)
+                                       :portable_fk ["test-data (h2)" "PUBLIC" "ORDERS" "TOTAL"]}}
+                  (metabot.tools.field-stats/field-values
+                   {:entity-type "metric", :entity-id metric-id, :field-id (mt/id :orders :total), :limit 5}))))))))
+
+(deftest model-drill-in-on-numeric-alias-of-another-field-test
+  (testing "a model column aliased as the ID of another field returns its own statistics, not that field's"
+    (mt/as-admin
+      (let [name-id (mt/id :venues :name)
+            alias   (str name-id)
+            native  (lib/native-query (mt/metadata-provider)
+                                      (format "SELECT CATEGORY_ID AS \"%s\", NAME FROM VENUES" alias))
+            columns (mapv #(assoc % :id (if (= alias (:name %)) (mt/id :venues :category_id) name-id))
+                          (get-in (qp/process-query native) [:data :cols]))
+            drill   #(:structured-output (metabot.tools.field-stats/field-values
+                                          {:entity-type "model", :entity-id %1, :field-id %2, :limit 5}))]
+        (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query native :result_metadata columns}]
+          (testing "the emitted alias finds the aliased column"
+            (is (=? {:reference_name alias
+                     :value_metadata {:statistics {:distinct-count 28}}}
+                    (drill model-id alias))))
+          (testing "the integer field ID still finds the field"
+            (is (=? {:portable_fk ["test-data (h2)" "PUBLIC" "VENUES" "NAME"]} (drill model-id name-id)))))))))

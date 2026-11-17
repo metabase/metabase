@@ -5,7 +5,6 @@
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as vs]
    [metabase.source-swap.core :as source-swap]))
 
 (set! *warn-on-reflection* true)
@@ -51,9 +50,7 @@
                         (let [columns (lib/returned-columns query')]
                           (lib/with-aggregation-list (lib/aggregations query')
                             (some-> viz-settings
-                                    vs/db->norm
-                                    (replacement.walk/walk-viz-settings-refs #(ref->column-name % columns))
-                                    vs/norm->db)))
+                                    (replacement.walk/walk-viz-settings-refs #(ref->column-name % columns)))))
                         viz-settings)
         parameters    (:parameters card)
         parameters'   (if (seq parameters)
@@ -119,9 +116,7 @@
                                                                              #(upgrade-parameter-target %1 %2 card-id->card))
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
-                                    vs/db->norm
-                                    (replacement.walk/walk-viz-settings-click-behaviors #(upgrade-parameter-target %1 %2 card-id->card))
-                                    vs/norm->db)
+                                    (replacement.walk/walk-viz-settings-click-behaviors #(upgrade-parameter-target %1 %2 card-id->card)))
         changes (cond-> {}
                   (not= parameter-mappings parameter-mappings')
                   (assoc :parameter_mappings parameter-mappings')
@@ -139,7 +134,7 @@
                             (mapcat (fn [dashcard]
                                       (concat
                                        (replacement.walk/parameter-mapping-card-ids (:parameter_mappings dashcard))
-                                       (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
+                                       (replacement.walk/viz-settings-click-behavior-card-ids (:visualization_settings dashcard)))))
                             dashcards)
         card-id->card (if (seq all-card-ids)
                         (replacement.db/cards-by-id all-card-ids)

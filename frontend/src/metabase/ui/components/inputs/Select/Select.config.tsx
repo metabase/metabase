@@ -23,6 +23,8 @@ export const selectOverrides = {
       },
       comboboxProps: {
         withinPortal: true,
+        // a closed list that stays in the page keeps a stale highlight; a Select
+        // passing its own comboboxProps replaces this object, so it must set this again
         keepMounted: false,
       },
     },

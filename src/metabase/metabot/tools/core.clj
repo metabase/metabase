@@ -124,7 +124,11 @@
    [:metabot/title-fn       {:optional true} [:maybe fn?]]
    ;; Set by a tool that saves something. A failure it did not declare may have come after the save,
    ;; so `metabase.metabot.tools.runtime/invoke` ends the turn instead of letting the model try again.
-   [:metabot/writes?        {:optional true} [:maybe :boolean]]])
+   [:metabot/writes?        {:optional true} [:maybe :boolean]]
+   ;; Set by a tool whose call changes state that other calls read, such as a stored query. In one model response,
+   ;; `metabase.metabot.self.core/tool-executor-xf` starts its call once the calls before it have finished, and the
+   ;; calls after it once it has finished.
+   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.

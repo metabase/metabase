@@ -1,5 +1,6 @@
 ---
 title: SAML with Keycloak
+summary: Step-by-step setup for SAML single sign-on between Keycloak and Metabase, including group mapping.
 redirect_from:
   - /docs/latest/enterprise-guide/saml-keycloak
 ---

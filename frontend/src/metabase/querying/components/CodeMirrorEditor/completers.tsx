@@ -11,7 +11,12 @@ import {
 } from "metabase/api";
 import { useSetting } from "metabase/settings";
 import { isNotNull } from "metabase/utils/types";
-import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  DatabaseId,
+  DatasetColumn,
+} from "metabase-types/api";
 
 import { source } from "./language";
 import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";
@@ -224,7 +229,7 @@ export function useReferencedCardCompletion({
   const [getCard] = useLazyGetCardQuery();
 
   const getCardColumns = useCallback(async (): Promise<
-    { card: Card; field: Field }[]
+    { card: Card; field: DatasetColumn }[]
   > => {
     const shouldCache = true;
     const data = await Promise.all(

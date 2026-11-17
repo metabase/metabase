@@ -8,7 +8,7 @@ import {
 } from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { type Table, isConcreteTableId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { Separator } from "./Separator";
 
@@ -63,11 +63,7 @@ export const TableNav = ({ rowName, table, className, ...props }: Props) => {
       <Separator />
 
       <Breadcrumb
-        to={
-          isConcreteTableId(table.id)
-            ? Urls.table({ id: table.id, name: table.display_name })
-            : Urls.tableRowsQuery(table.db_id, table.id)
-        }
+        to={Urls.table({ id: table.id, name: table.display_name })}
         showTooltip
       >
         {table.display_name}

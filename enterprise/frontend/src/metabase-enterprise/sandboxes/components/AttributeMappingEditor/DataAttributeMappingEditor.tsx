@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { QuestionParameterTargetWidget } from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
+import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import type {
   DataAttributeMap,
   GroupTableAccessPolicyDraft,
@@ -23,7 +24,6 @@ import {
   addEntry,
   buildEntries,
   buildMapping,
-  getRawDataQuestionForTable,
   removeEntry,
   renderUserAttributesForSelect,
   replaceEntryKey,
@@ -213,6 +213,7 @@ const ColumnPicker = ({
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;
   shouldUseSavedQuestion: boolean;
 }) => {
+  const tableCard = useTableCard(policyTable);
   const filterByTableColumn =
     !shouldUseSavedQuestion && policy.table_id != null;
   const filterBySavedQuestion =
@@ -226,11 +227,7 @@ const ColumnPicker = ({
         <QuestionParameterTargetWidget
           target={target}
           onChange={onChange}
-          questionObject={
-            filterByTableColumn && policyTable
-              ? getRawDataQuestionForTable(policyTable)
-              : null
-          }
+          questionObject={filterByTableColumn ? tableCard : null}
           questionId={filterBySavedQuestion ? policy.card_id : undefined}
           placeholder={
             filterByTableColumn ? t`Pick a column` : t`Pick a parameter`

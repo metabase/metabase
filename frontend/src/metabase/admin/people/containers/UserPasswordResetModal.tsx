@@ -24,10 +24,7 @@ import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
-import {
-  getIsUserSsoSourceEnabled,
-  getUserTemporaryPassword,
-} from "../selectors";
+import { getIsSsoOnlyUser, getUserTemporaryPassword } from "../selectors";
 
 interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
@@ -150,7 +147,7 @@ const UserPasswordResetModalInner = ({
       size="lg"
     >
       <Stack gap="lg">
-        <Text>{t`Are you sure you want to do this?`}</Text>
+        <Text c="text-secondary">{t`Are you sure you want to do this?`}</Text>
         <Checkbox
           label={t`Log them out and block their current password`}
           checked={isForced}
@@ -219,16 +216,16 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
   const temporaryPassword = useSelector((state) =>
     getUserTemporaryPassword(state, { userId }),
   );
-  const isUserSsoSourceEnabled = useSelector(
-    (state) => user != null && getIsUserSsoSourceEnabled(state, user),
+  const isSsoOnlyUser = useSelector(
+    (state) => user != null && getIsSsoOnlyUser(state, user),
   );
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      {user && isUserSsoSourceEnabled && (
+      {user && isSsoOnlyUser && (
         <SsoUserPasswordResetModal user={user} onClose={props.onClose} />
       )}
-      {user && !isUserSsoSourceEnabled && (
+      {user && !isSsoOnlyUser && (
         <UserPasswordResetModalInner
           {...props}
           clearTemporaryPassword={() =>

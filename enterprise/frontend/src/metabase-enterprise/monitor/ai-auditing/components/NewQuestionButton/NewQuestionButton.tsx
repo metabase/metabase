@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { Button, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
@@ -18,17 +19,20 @@ export function NewQuestionButton({
   scopeQuery,
 }: NewQuestionButtonProps) {
   const { provider, table } = useAuditTable(viewName);
+  const buildQuestion = useQuestionFromOptsBuilder();
 
   const url = useMemo(() => {
     if (provider == null || table == null) {
       return null;
     }
     const query = Lib.queryFromTableOrCardMetadata(provider, table);
-    return Urls.newQuestion({
-      dataset_query: Lib.toJsQuery(scopeQuery ? scopeQuery(query) : query),
-      mode: "notebook",
-    });
-  }, [provider, scopeQuery, table]);
+    return Urls.newQuestion(
+      buildQuestion({
+        dataset_query: Lib.toJsQuery(scopeQuery ? scopeQuery(query) : query),
+      }),
+      { mode: "notebook" },
+    );
+  }, [buildQuestion, provider, scopeQuery, table]);
 
   if (url == null) {
     return null;

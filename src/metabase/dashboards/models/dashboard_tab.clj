@@ -1,11 +1,13 @@
 (ns metabase.dashboards.models.dashboard-tab
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,8 +19,6 @@
 
 (doto :model/DashboardTab
   (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
@@ -44,21 +44,45 @@
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id [])))))
 
-(defmethod mi/perms-objects-set :model/DashboardTab
-  [dashtab read-or-write]
-  (let [dashboard (or (:dashboard dashtab)
-                      (dashboards.db/dashboard (:dashboard_id dashtab)))]
-    (mi/perms-objects-set dashboard read-or-write)))
+(defn- dashboard-collection-ids
+  "The id of the Collection, nil for the root, of the Dashboard of each of `tabs`, by Dashboard id, the Dashboards
+  loaded together."
+  [tabs]
+  (run! #(when % (api/check-500 (contains? % :dashboard_id) "No :dashboard_id is set for a DashboardTab.")) tabs)
+  (let [ids (into [] (comp (remove nil?) (keep :dashboard_id) (distinct)) tabs)]
+    (if (seq ids)
+      (into {} (map (juxt :id :collection_id)) (dashboards.db/dashboard-collection-rows ids))
+      {})))
+
+(methodical/defmethod t2/batched-hydrate [:model/DashboardTab :can_read]
+  "Whether the current user reads each of `tabs`: the content of the Collection of its Dashboard, answered together."
+  [_model _k tabs]
+  (let [collection-ids (dashboard-collection-ids tabs)
+        readable       (collection/content-readable-collection-ids (vals collection-ids)
+                                                                   {:root-namespace nil, :audit-rules? false})]
+    (for [tab tabs]
+      (when tab
+        (vary-meta tab assoc :can_read (and (contains? collection-ids (:dashboard_id tab))
+                                            (contains? readable (get collection-ids (:dashboard_id tab)))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/DashboardTab :can_write]
+  "Whether the current user writes each of `tabs`: the content of the Collection of its Dashboard, answered together."
+  [_model _k tabs]
+  (let [collection-ids (dashboard-collection-ids tabs)
+        writable       (collection/content-writable-collection-ids (vals collection-ids)
+                                                                   {:root-namespace nil, :audit-rules? false})]
+    (for [tab tabs]
+      (when tab
+        (assoc tab :can_write (and (contains? collection-ids (:dashboard_id tab))
+                                   (contains? writable (get collection-ids (:dashboard_id tab)))))))))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes/generate-path "DashboardTab" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
-   (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
-  {:copy      [:entity_id :name :position]
-   :skip      []
-   :transform {:dashboard_id (serdes/parent-ref)}})
+(defmethod serialization/spec :model/DashboardTab [_]
+  {:schema    ::dashboards.schema/external-dashboard-tab
+   :copy      [:entity_id :name :position]
+   :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
+   :transform {:dashboard_id serialization/import-only-transform}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
@@ -122,3 +146,7 @@
      :created-tab-ids (vals old->new-tab-id)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
+
+(defmethod remote-sync/spec :model/DashboardTab
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})

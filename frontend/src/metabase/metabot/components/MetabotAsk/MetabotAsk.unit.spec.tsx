@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { assocIn } from "icepick";
 
 import {
   createMockMetabotGeneratedCardPart,
@@ -11,7 +10,10 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import { getMetabotVisible } from "metabase/metabot/state";
+import {
+  type MetabotConversationState,
+  getMetabotVisible,
+} from "metabase/metabot/state";
 import {
   createMockDatabase,
   createMockMetabotConversation,
@@ -29,6 +31,7 @@ import {
   mockAgentEndpoint,
   setup,
   testConversationId,
+  updateTestConversation,
   whoIsYourFavoriteResponse,
 } from "../../tests/utils";
 
@@ -49,11 +52,11 @@ const ASK_CONVERSATION_ID = testConversationId("ask");
 const setupMetabotAsk = (options?: Omit<SetupOpts, "ui">) =>
   setup({ ...options, ui: <MetabotAsk /> });
 
-const askConversation = (field: string, value: unknown) =>
-  assocIn(
+const askConversation = (overrides: Partial<MetabotConversationState>) =>
+  updateTestConversation(
     createTestMetabotState(),
-    ["conversations", ASK_CONVERSATION_ID, field],
-    value,
+    ASK_CONVERSATION_ID,
+    overrides,
   );
 
 describe("MetabotAsk", () => {
@@ -128,6 +131,7 @@ describe("MetabotAsk", () => {
   it("renders a streamed chart inline without leaving the conversation", async () => {
     const TABLE_ID = 2;
     const conversationRoute = `/metabot/conversation/${ASK_CONVERSATION_ID}`;
+    const cardPart = createMockMetabotGeneratedCardPart({ tableId: TABLE_ID });
     setupCardDataset();
     setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
     setupTableEndpoints(createMockTable({ id: TABLE_ID }));
@@ -136,7 +140,7 @@ describe("MetabotAsk", () => {
       initialRoute: conversationRoute,
     });
     mockAgentEndpoint({
-      events: [createMockMetabotGeneratedCardPart({ tableId: TABLE_ID }).part],
+      events: [cardPart.part],
     });
 
     await enterChatMessage("Show me all orders");
@@ -209,9 +213,9 @@ describe("MetabotAsk", () => {
 
   it("shows the conversation history control in the chat header", async () => {
     setupMetabotAsk({
-      metabotInitialState: askConversation("messages", [
-        createMockMetabotTextMessage("user", "Earlier question"),
-      ]),
+      metabotInitialState: askConversation({
+        messages: [createMockMetabotTextMessage("user", "Earlier question")],
+      }),
     });
 
     expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
@@ -231,7 +235,7 @@ describe("MetabotAsk", () => {
 
   it("does not show the conversation history control for a non-internal/nlq profile", async () => {
     setupMetabotAsk({
-      metabotInitialState: askConversation("profileOverride", "sql"),
+      metabotInitialState: askConversation({ profileOverride: "sql" }),
     });
 
     expect(await screen.findByText(greetingTitle)).toBeInTheDocument();

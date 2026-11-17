@@ -72,6 +72,50 @@
      :breakout (into #{} (mapcat lib/all-field-ids) (lib/breakouts source-query 0))
      :filters  (into #{} (mapcat lib/all-field-ids) (lib/filters source-query 0))}))
 
+(deftest ^:parallel orient-via-path-test
+  (let [a->b {:lhs {:table 1 :field 10} :rhs {:table 2 :field 20}}
+        b->c {:lhs {:table 2 :field 21} :rhs {:table 3 :field 30}}]
+    (testing "already-oriented path (first-LHS matches source) is unchanged"
+      (is (= [a->b b->c] (#'chain-filter/orient-via-path 1 [a->b b->c]))))
+    (testing "reverse-oriented path (last-RHS matches source) is reversed and flipped"
+      (is (= [{:lhs {:table 3 :field 30} :rhs {:table 2 :field 21}}
+              {:lhs {:table 2 :field 20} :rhs {:table 1 :field 10}}]
+             (#'chain-filter/orient-via-path 3 [a->b b->c]))))
+    (testing "empty path yields nil (same sentinel as 'can't orient')"
+      (is (nil? (#'chain-filter/orient-via-path 1 []))))
+    (testing "neither terminal matches source: nil, so the caller falls back to graph search"
+      (is (nil? (#'chain-filter/orient-via-path 99 [a->b b->c]))))))
+
+(deftest ^:parallel pinned-path-to-unneeded-table-test
+  (testing "A pinned path adds no join when it does not end at a Table the query must reach"
+    (mt/dataset test-data
+      (mt/$ids
+        (let [via-path [{:lhs {:table $$orders, :field %orders.user_id}
+                         :rhs {:table $$people, :field %people.id}}]
+              query    (#'chain-filter/chain-filter-mbql-query
+                        %people.name
+                        [(assoc (shorthand->constraint %people.source "Twitter") :via-path via-path)]
+                        {:via-path via-path})]
+          (is (empty? (lib/joins query 0)))
+          (is (= (chain-filter people.name {people.source "Twitter"})
+                 (chain-filter/chain-filter %people.name
+                                            [(assoc (shorthand->constraint %people.source "Twitter")
+                                                    :via-path via-path)]
+                                            :via-path via-path))))))))
+
+(deftest ^:parallel pinned-path-to-constraint-table-test
+  (testing "A pinned path is kept when it ends at the Table of a constraint"
+    (mt/dataset test-data
+      (mt/$ids
+        (let [via-path [{:lhs {:table $$orders, :field %orders.user_id}
+                         :rhs {:table $$people, :field %people.id}}]
+              query    (#'chain-filter/chain-filter-mbql-query
+                        %people.name
+                        [(shorthand->constraint %orders.total [:> 150])]
+                        {:via-path via-path})]
+          (is (= [$$orders]
+                 (map #(:id (lib/joined-thing query %)) (lib/joins query 0)))))))))
+
 (deftest ^:parallel special-form-filter-clause-test
   (testing "Can handle multi-arg string filters when chaining (#57287)"
     (let [mp (mt/metadata-provider)]
@@ -370,7 +414,7 @@
     (binding [chain-filter/*enable-reverse-joins* false]
       (mt/$ids nil
         (is (= [{:lhs {:table $$venues, :field %venues.category_id}, :rhs {:table $$categories, :field %categories.id}}]
-               (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$venues #{%categories.name %users.id})))))))
+               (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$venues #{%categories.name %users.id} #{})))))))
 
 (deftest ^:parallel find-all-joins-test-2
   (mt/dataset airports
@@ -381,7 +425,8 @@
                    :rhs {:table $$municipality, :field %municipality.id}}
                   {:lhs {:table $$municipality, :field %municipality.region_id}
                    :rhs {:table $$region, :field %region.id}}]
-                 (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$airport #{%region.name %municipality.name %region.id}))))))))
+                 (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$airport
+                                                #{%region.name %municipality.name %region.id} #{}))))))))
 
 (deftest ^:parallel multi-hop-test
   (mt/dataset airports

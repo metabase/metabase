@@ -1,6 +1,6 @@
 ---
 title: Remote sync
-description: Version control your Library and transforms in Git, and publish them from a development Metabase to a read-only production Metabase.
+description: Version control your Library, transforms, and other collections in Git, and publish them from a development Metabase to a read-only production Metabase.
 redirect_from:
   - /docs/latest/installation-and-operation/remote-sync
 ---
@@ -9,22 +9,21 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Remote sync" %}
 
-Remote sync stores your [Library](./library.md) and [transforms](../transforms/transforms-overview.md) in a Git repository. You develop the Library in a development Metabase, push it to Git, review it in a pull request, and a read-only production Metabase pulls in the merged result.
+Remote sync stores your [Library](./library.md), [transforms](../transforms/transforms-overview.md), and the other collections you choose in a Git repository. You develop this content in a development Metabase, push it to Git, review it in a pull request, and a read-only production Metabase pulls in the merged result.
 
 Remote sync syncs:
 
-- The Library: published tables with their segments and measures, metrics, dashboards, documents, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
+- The Library: published tables with their segments and measures, metrics, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
 - Transforms: their tags, tests, folders, and Python libraries.
+- [Other collections](#syncing-other-collections) you choose: their questions, models, dashboards, documents, timelines, and events.
 
 Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
-
-> **Metabase 65 and later syncs the Library and transforms.** Earlier versions let you pick which top-level collections to sync. Starting in Metabase 65, Remote sync syncs the Library and transforms, and there is no list of collections to choose from. If you already synced other collections before upgrading, your setup keeps working. See [Syncing other collections](#syncing-other-collections).
 
 ## How Remote sync works
 
 Here's a basic Remote sync workflow:
 
-1. In your development Metabase (Read-write mode), publish a table, create a metric, or build a dashboard in the Library.
+1. In your development Metabase (Read-write mode), publish a table or create a metric in the Library, or build a dashboard in a synced collection.
 2. From the development Metabase, push the change to a Git branch.
 3. Open a pull request for review.
 4. Merge the pull request to your main branch.
@@ -42,12 +41,12 @@ Your repository can't change users, groups, or permissions, because those [don't
 
 ### Remote sync has two modes for different roles
 
-- **Read-write mode for your development Metabase**: Create and edit Library content and transforms. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabases can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, edit transforms, or create, edit, or delete [data apps](../../data-apps/build.md#ship-the-app-to-production-with-remote-sync). You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
+- **Read-write mode for your development Metabase**: Create and edit Library content, transforms, and the content of other synced collections. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabases can connect in Read-write mode, each working on [different branches](#branch-management).
+- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit content in the Library or other synced collections, create segments or measures on published tables, or edit transforms. You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
 
 ### Content is stored as YAML files
 
-Remote sync stores your content as [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) in your Git repository. Each published table, metric, dashboard, document, and transform becomes a YAML file that can be reviewed in pull requests and versioned like code.
+Remote sync stores your content as [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) in your Git repository. Each published table, metric, transform, and item in a synced collection becomes a YAML file that can be reviewed in pull requests and versioned like code.
 
 ### Remote sync excludes table metadata
 
@@ -90,20 +89,20 @@ Create a personal access token with read and write repository access. Copy the t
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read and write** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** and **write_repository** scopes. Tokens have an expiration date (your admin may set a maximum lifetime).
 - **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Give it a name and, under **Scopes**, select:
+
   - **Repositories**: **Read** and **Write**
   - **Pull requests**: **Read** and **Write**
 
   Click **Create** and copy the token immediately, you can't view the token again after closing the dialog.
 
   The created token must have these scopes (visible in the **View access token** dialog after creation):
+
   - `repository`
   - `repository:write`
   - `pullrequest`
   - `pullrequest:write`
 
 ### 3. Connect your development Metabase to your repository
-
-![Development settings](./images/read-write-settings.png)
 
 You can put any Metabase into Read-write mode. We also offer [Development instances](../../installation-and-operation/development-instance.md) that you can use for Remote sync or any other kind of development.
 
@@ -112,20 +111,29 @@ In the Metabase that you use for development:
 1. Go to **Admin** > **Settings** > **Remote sync**. You can also click **Set up remote sync** at the bottom of the Data Studio sidebar.
 
 2. Enter your repository URL:
+
    - For example, `https://github.com/your-org/your-repo` or `https://bitbucket.org/your-workspace/your-repo` (note the `https`). The repository must already exist and be initialized with at least one commit.
 
 3. Select **Read-write mode**.
 
 4. Add your access token:
+
    - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-token-for-your-development-metabase). Metabase encrypts your token before storing it.
 
 5. Test the connection:
+
    - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
    - Metabase also checks the connection when you save your settings.
 
-6. Save your settings.
+6. Choose what to sync:
 
-When you save, Metabase creates the Library if it doesn’t exist yet and turns on syncing for the Library and transforms. There are no collections to choose.
+   - Under **Collections to sync**, Metabase turns on the Library and **Transforms** for you.
+   - To version questions, models, dashboards, and documents, turn on **Sync** for the collections that hold them. See [Syncing other collections](#syncing-other-collections).
+   - If you started from the Data Studio sidebar, you won't see this section. You can choose your collections in **Admin** later.
+
+7. Save your settings.
+
+When you save, Metabase creates the Library if it doesn’t exist yet.
 
 ### 4. Push your changes to your repository
 
@@ -148,32 +156,35 @@ Create a personal access token with read-only repository access. Copy the token 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
 - **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Under **Scopes**, select:
+
   - **Repositories**: **Read**
   - **Pull requests**: **Read**
 
   Leave Write and all other scope groups unchecked. Click **Create** and copy the token immediately.
 
   The created token must have these scopes (visible in the **View access token** dialog after creation):
+
   - `repository`
   - `pullrequest`
 
 ### 6. Connect your production Metabase to your repository
-
-![Production settings](./images/read-only-settings.png)
 
 In your production Metabase:
 
 1. Go to **Admin** > **Settings** > **Remote sync**.
 
 2. Enter your repository URL:
+
    - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo` (note the `https`).
 
 3. Select **Read-only mode**.
 
 4. Add your access token:
+
    - Paste the read-only personal access token you created for this production Metabase.
 
 5. Test the connection:
+
    - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
    - Metabase also checks the connection when you save your settings.
 
@@ -248,26 +259,26 @@ file:///Users/you/local-repo
 
 ## An example dev-to-production workflow
 
-Let's say your team wants to publish a new table and build a dashboard with it. Here's a workflow that ensures all production content goes through a review process.
+Let's say your team wants to publish a new table and create a metric from it. Here's a workflow that ensures all production content goes through a review process.
 
 ### Step 1: Create a new branch
 
-In your development Metabase, go to **Admin** > **Settings** > **Remote sync** and [create a new branch](#creating-a-branch) for your work, like `feature/megafauna-dashboard`.
+In your development Metabase, go to **Admin** > **Settings** > **Remote sync** and [create a new branch](#creating-a-branch) for your work, like `feature/megafauna-metric`.
 
 ### Step 2: Create content in your development Metabase
 
-In Data Studio, publish the `Megafauna` table to the Library and add a measure to it. Create a dashboard called "Megafauna Analytics" in the Library and add some questions to it.
+In Data Studio, publish the `Megafauna` table to the Library and add a measure to it. Create a metric called "Megafauna count" in the Library.
 
 ### Step 3: Push to your development branch
 
-[Push your changes](#committing-and-pushing-your-changes) to `feature/megafauna-dashboard` with a commit message like "Add a Megafauna table and dashboard".
+[Push your changes](#committing-and-pushing-your-changes) to `feature/megafauna-metric` with a commit message like "Add a Megafauna table and metric".
 
 ### Step 4: Create a pull request
 
 In your Git repository:
 
-1. Create a pull request from your branch, `feature/megafauna-dashboard`, to the main branch `main`.
-2. Review the changes to the YAML files representing your published table, measure, dashboard, and questions.
+1. Create a pull request from your branch, `feature/megafauna-metric`, to the main branch `main`.
+2. Review the changes to the YAML files representing your published table, measure, and metric.
 3. Someone who knows what they're doing approves and merges the PR.
 
 ### Step 5: Production automatically updates
@@ -275,7 +286,7 @@ In your Git repository:
 On your production Metabase:
 
 1. Within five minutes, Auto-sync detects the new commits on `main` (you can also manually pull the changes).
-2. The published table and the "Megafauna Analytics" dashboard appear in the Library with all their questions.
+2. The published table and the "Megafauna count" metric appear in the Library.
 3. The content is read-only (people can view and use it, but can't edit it).
 
 ## How the Library works in Read-write mode
@@ -284,7 +295,7 @@ On your production Metabase:
 
 When the Library has unsynced changes, a yellow dot appears next to the Library section that changed (for example, **Semantic layer**). At the top of the Data Studio sidebar, click the branch name to push or pull changes.
 
-In the main Metabase sidebar, the Library sections (Data, Metrics, and Dashboards) show a sync icon to indicate that they are versioned.
+In the main Metabase sidebar, the Library sections (Data and Metrics) show a sync icon to indicate that they are versioned.
 
 ### Moving and deleting Library content
 
@@ -294,13 +305,7 @@ Content in other Metabases that depended on this item may break, because the dep
 
 ### Library content must be self-contained
 
-Everything a Library dashboard or question needs must be in the Library. This includes:
-
-- Questions that reference other questions
-- Dashboards with questions
-- Click behaviors linking to other items
-- Filters that pick values from other questions
-- @ mentions of other items in documents
+Everything an item in the Library needs must be synced too. For example, Metabase won't let you move a metric to a synced Library if the metric is built on a saved question or model. The Library can't hold questions or models, so build the metric on a table instead.
 
 ## What Metabase syncs
 
@@ -311,14 +316,13 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - The Library's collection structure
 - Published tables with their segments and measures
 - Metrics
-- Dashboards and their cards
-- Documents
-- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's bundle and the Metabase items the app needs to run, not the app's source code. Keep the source code in your own repository so you can edit the app.
+- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's manifest, bundle, and collection, but ignores the app's source code. You (or your agent) commit all of these to the same repository, including the source code, so that you can edit the app over time.
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary
-- Timelines and events
 - Transforms, including tags, tests, folders, and Python libraries
+
+If you [sync other collections](#syncing-other-collections), Metabase also syncs the questions, models, dashboards, documents, timelines, and events in those collections.
 
 **What doesn't sync:**
 
@@ -327,7 +331,7 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Database connections (see [Synced content that uses a database your Metabase doesn't have](#synced-content-that-uses-a-database-your-metabase-doesnt-have))
 - Transform jobs
 - Built-in transform tags and the default `common.py`
-- Collections outside the Library, including personal collections (see [Syncing other collections](#syncing-other-collections))
+- Personal collections, and any other collections you don't [choose to sync](#syncing-other-collections)
 - Table metadata (table names, column types, descriptions, visibility settings, etc.)
 - A data app's live or draft status, and its group access
 
@@ -427,26 +431,28 @@ By default, Metabase pulls changes from the branch you specify every five minute
 
 ## Syncing other collections
 
-Remote sync is built around the Library. Syncing other collections (also called custom collections) is off by default. To sync a collection outside the Library, including [shared tenant collections](../../embedding/tenants.md#collection-types), set the environment variable `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` and restart Metabase. There's no toggle for this setting in the UI.
+The Library can't hold questions, models, dashboards, or documents. To version them, sync the collections that hold them.
 
-With custom collections turned on, **Admin** > **Settings** > **Remote sync** lists the Library, Transforms, and the top-level collections under Our Analytics so you can choose which to sync.
+In your development Metabase:
 
-With custom collections turned off:
+1. Go to **Admin** > **Settings** > **Remote sync**.
+2. Under **Collections to sync**, turn on **Sync** for each collection you want to version. The list has the Library, Transforms, and the top-level collections in Our analytics. If you use tenants, it also has your [shared tenant collections](../../embedding/tenants.md#collection-types).
+3. Click **Save changes**.
+4. [Push your changes](#committing-and-pushing-your-changes).
 
-- Metabase refuses to mark a collection outside the Library as synced.
-- A pull or a serialization import that contains a synced collection outside the Library fails. To pull a branch that contains custom collections, you need to set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true`.
+Your production Metabase gets these collections when it pulls, and they're read-only there. You can't change which collections sync on a Metabase in Read-only mode.
 
-### If you synced other collections before Metabase 65
-
-Your setup keeps working. On the first startup after you upgrade, if your Metabase already syncs a collection outside the Library, Metabase turns on custom collections for you. Metabase Cloud sets the environment variable for you.
-
-You can't turn custom collections off while any collection outside the Library is synced. Metabase refuses to start with `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=false` while a custom collection is synced. To turn custom collections off, first stop syncing those collections.
-
-If you can, move the content you want to version into the Library instead. Remote sync is built around the Library, and syncing other collections is a legacy path.
+If a collection uses items from a collection that isn't synced, Metabase shows you what's missing when you save. You can sync those collections from there. See [Items in synced collections must be self-contained](#items-in-synced-collections-must-be-self-contained).
 
 ### Items in synced collections must be self-contained
 
-The same rule that applies to the Library applies to any synced collection. Everything a dashboard or question needs must be inside one of the synced collections. See [Library content must be self-contained](#library-content-must-be-self-contained) for the list of dependencies.
+The same rule that applies to the [Library](#library-content-must-be-self-contained) applies to any synced collection. Everything a dashboard or question needs must be inside one of the synced collections. This includes:
+
+- Questions that reference other questions
+- Dashboards with questions
+- Click behaviors linking to other items
+- Filters that pick values from other questions
+- @ mentions of other items in documents
 
 ### Moving and deleting content in synced collections
 
@@ -500,9 +506,12 @@ To disable Remote sync:
 
 ## Migrating existing content to Remote sync
 
-If you already have content in your Metabase, you can adopt Remote sync gradually. Content that lives outside the Library remains unaffected. You can keep working with it normally while you move content into the Library over time.
- 
-Make sure you move any dependencies (like models referenced by questions) into the Library, since [Library content must be self-contained](#library-content-must-be-self-contained).
+If you already have content in your Metabase, you can adopt Remote sync gradually. Where the content goes depends on what it is:
+
+- **Tables and metrics**: Publish the tables and move the metrics into the Library. These metrics can't depend on saved questions or models, since [Library content must be self-contained](#library-content-must-be-self-contained).
+- **Questions, models, dashboards, and documents**: The Library can't hold these. To version them, [sync their collections](#syncing-other-collections). Everything they need must be in a synced collection too. See [Items in synced collections must be self-contained](#items-in-synced-collections-must-be-self-contained).
+
+Content you don't sync stays as it is, and you can keep working with it normally.
 
 ### If you already have a repo with serialized Metabase data
 
@@ -512,7 +521,7 @@ If you want to switch fully to Remote sync, we recommend starting with a new rep
 
 1. Check out a new branch in your Metabase in Read-write mode.
 2. Import your data to your Metabase with the serialization command as you normally would.
-3. Move the content you want to sync into the Library.
+3. Publish the tables and move the metrics you want to sync into the Library, and [sync the collections](#syncing-other-collections) that hold your other content.
 4. Push up your changes to the new repo.
 
 Remote sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../metadata/metadata-editing.md), you should stick with serialization.

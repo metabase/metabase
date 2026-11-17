@@ -83,12 +83,18 @@
 ;;; Query Management
 
 (defn set-query
-  "Store a query in state by its query-id.
+  "Store a query in state by its query-id, and redraw every chart that holds a copy of the query under that id.
+  The SQL edit tools store an edited query under its old id, and a chart saved later must show the edited query.
   Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
-  (-> memory
-      (record [:queries query-id] query)
-      (record-client-id query-id)))
+  (reduce (fn [memory [chart-id chart]]
+            (cond-> memory
+              (and (= query-id (:query_id chart)) (seq (:queries chart)))
+              (record [:charts chart-id] (assoc chart :queries [query]))))
+          (-> memory
+              (record [:queries query-id] query)
+              (record-client-id query-id))
+          (get-in memory [:state :charts])))
 
 (defn find-query
   "Retrieve a query by its query-id. Throws if not found."

@@ -122,6 +122,27 @@ describe("CreateDashboardModal", () => {
     ).toBeDisabled();
   });
 
+  it("shows the backend error for a blank name and does not close (metabase#63176)", async () => {
+    const { onClose } = setup({ mockCreateDashboardResponse: false });
+    fetchMock.post("path:/api/dashboard", {
+      status: 400,
+      body: { errors: { name: "value must be a non-blank string." } },
+    });
+
+    const nameInput = screen.getByPlaceholderText(/name of your dashboard/i);
+    await userEvent.type(nameInput, " ");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
+
+    expect(
+      await screen.findByText("value must be a non-blank string."),
+    ).toBeInTheDocument();
+    expect(nameInput).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Failed" })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));

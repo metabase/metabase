@@ -1,5 +1,3 @@
-import { merge } from "icepick";
-
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import {
   type OnBeforeRequestHandlerConfig,
@@ -8,6 +6,7 @@ import {
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { refetchSiteSettings } from "metabase/settings";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { isJWT } from "metabase/utils/jwt";
 
 import { getOrRefreshGuestSession } from "./auth";
@@ -31,7 +30,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
           // `data` for the legacy whole-bag callers). Refresh whichever channel
           // carries it before the URL `:tag` substitution reads it.
           if (newToken && "entityIdentifier" in config.data) {
-            return merge(config, {
+            return deepMerge(config, {
               data: {
                 entityIdentifier: newToken,
               },
@@ -39,7 +38,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
           }
 
           if (newToken && config.body && "token" in config.body) {
-            return merge(config, {
+            return deepMerge(config, {
               body: {
                 token: newToken,
               },
@@ -47,7 +46,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
           }
 
           if (newToken && "token" in config.data) {
-            return merge(config, {
+            return deepMerge(config, {
               data: {
                 token: newToken,
               },
@@ -63,7 +62,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
               .find((segment) => isJWT(segment));
 
             if (jwtInUrl) {
-              return merge(config, {
+              return deepMerge(config, {
                 url: config.url.replace(jwtInUrl, ":entityIdentifier"),
                 data: { entityIdentifier: newToken },
               });

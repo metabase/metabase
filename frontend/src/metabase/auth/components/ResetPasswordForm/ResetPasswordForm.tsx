@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import { type JSX, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";

@@ -5,9 +5,9 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import {
+  PLUGIN_DATA_TESTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
-  PLUGIN_TRANSFORMS_TESTING,
 } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import type { Transform, TransformId } from "metabase-types/api";
@@ -42,7 +42,7 @@ function getTabs(id: TransformId): PillTab[] {
     },
   ];
 
-  if (PLUGIN_TRANSFORMS_TESTING.isEnabled) {
+  if (PLUGIN_DATA_TESTING.isEnabled) {
     const testListUrl = Urls.transformTestList(id);
     tabs.push({
       label: t`Tests`,

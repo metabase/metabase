@@ -1,17 +1,5 @@
 .card {
   overflow: hidden;
-
-  .row {
-    cursor: default;
-
-    &:hover,
-    &:focus,
-    &.rowActive,
-    &.rowActive:hover {
-      /* No row selected effect */
-      background-color: transparent;
-    }
-  }
 }
 
 .headerCell:not(:first-child) {

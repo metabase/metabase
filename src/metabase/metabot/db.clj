@@ -8,12 +8,15 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -428,6 +431,11 @@
    database-id :- ::lib.schema.id/database]
   (t2/select-one columns :id database-id))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
@@ -465,6 +473,17 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
+(mu/defn active-visible-tables-named
+  "The ID, schema, and name of the active, unhidden Tables in the Database with `database-id` whose name is one of
+  `table-names`."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :id :schema :name]
+             :db_id database-id
+             :name [:in table-names]
+             :active true
+             :visibility_type nil))
+
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
   [columns :- [:sequential :keyword]
@@ -491,7 +510,7 @@
   user whose access comes through that path."
   [table-id]
   (when-let [table (t2/select-one :model/Table :id table-id :active true)]
-    (when (mi/can-read? table)
+    (when (mi/can-read? (t2/hydrate table :can_read))
       (:db_id table))))
 
 (mu/defn tables-by-id
@@ -531,18 +550,13 @@
              :visibility_type nil))
 
 (defn- current-user-visible-table-clause
-  "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
-  current user for querying."
+  "Honey SQL `{:where …}` restricting Tables to those visible to the current user for querying."
   []
-  (let [{table-where-clause :clause table-cte :with}
-        (mi/visible-filter-clause :model/Table
-                                  :id
-                                  {:user-id       api/*current-user-id*
-                                   :is-superuser? api/*is-superuser?*}
-                                  {:perms/view-data      :unrestricted
-                                   :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
+  {:where (perms/visible-tables-filter-clause :id
+                                              (api/current-user-info)
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder-and-native}
+                                              {:active-only? false, :include-published-via-collection? false})})
 
 (mu/defn visible-table-summaries-for-current-user
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -715,6 +729,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn dashboard-questions
+  "The Cards among `card-ids` that are saved inside a dashboard, which is their `:dashboard_id`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids] :dashboard_id [:not= nil]))
+
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
@@ -768,7 +787,7 @@
                                              [:in :report_card.type ["metric" "model"]]
                                              [:= :report_card.archived false]
                                              (when api/*current-user-id*
-                                               (collection.model/visible-collection-filter-clause :report_card.collection_id))]}]
+                                               (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:root-namespace nil}))]}]
     (cond-> base-query
       verified?
       (update :left-join (fnil into []) [[:moderation_review :mr] [:and
@@ -826,15 +845,41 @@
             (t2/select [(t2/table-name :model/Card) :id :dataset_query] :id [:in card-ids])))))
 
 (mu/defn card-source-rows
-  "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
-  ;; `can-read?` needs `:collection_id` and `:document_id`, including nil values, to check access.
+  "Return the source cards in `card-ids`, with their name and entity ID and the columns needed by `can-read?`."
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
+  (t2/select (into [:model/Card :name :entity_id] queries/card-read-check-columns) :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
+
+(mu/defn cards-with-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn cards-with-entity-ids
+  "The Cards with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (if (seq entity-ids)
+    (t2/select :model/Card :entity_id [:in entity-ids])
+    []))
+
+(mu/defn tables-with-ids
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/Table :id [:in table-ids])
+    []))
+
+(mu/defn cards-for-read-check
+  "The unarchived Cards with `card-ids`, with only the columns `mi/can-read?` needs to check a Card without another
+  query."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select (into [:model/Card] queries/card-read-check-columns) :id [:in card-ids] :archived false))
 
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
@@ -882,8 +927,24 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
-                                                       :metabot_chart_id        chart-id}))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/Card :update :id card-id)
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
+                                                         :metabot_chart_id        chart-id})))
+
+(mu/defn conversation-dashboard-questions
+  "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
+  `conversation-id`, oldest first."
+  [conversation-id :- :string
+   chart-id        :- :string
+   dashboard-id    :- ::lib.schema.id/dashboard]
+  (t2/select :model/Card
+             :metabot_conversation_id conversation-id
+             :metabot_chart_id        chart-id
+             :dashboard_id            dashboard-id
+             :archived                false
+             {:order-by [[:id :asc]]}))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -891,6 +952,15 @@
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id collection-id))
+
+(mu/defn collection-with-ancestors
+  "The Collection with `collection-id`, hydrated with the ancestors the current user can read, root first, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (some-> (t2/select-one [:model/Collection
+                          :id :name :location :namespace :personal_owner_id :type :archived :archived_directly
+                          :authority_level]
+                         :id [:auto/param collection-id])
+          (t2/hydrate :effective_ancestors)))
 
 (mu/defn collection-name
   "The name of the Collection with `collection-id`."
@@ -916,7 +986,8 @@
   "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
   Restricted to top-level Collections unless `include-nested?`."
   [include-nested? :- :boolean]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              {:where    (cond-> [:and
                                  [:= :archived false]
                                  [:= :namespace nil]
@@ -927,7 +998,8 @@
 (mu/defn unarchived-collections-at-location
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
   [location :- :string]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              :location location
              :archived false
              {:order-by [[:%lower.name :asc]]}))
@@ -945,9 +1017,12 @@
   (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, parameters, creator ID, creation time and archived flag of the Dashboard
+  with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at
+                  :archived]
+                 :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -970,10 +1045,11 @@
   (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn dashcards
-  "The ID, Card, action, tab, and settings of the DashboardCards of the Dashboard with `dashboard-id`, in grid
-  order."
+  "The ID, Card, action, tab, position, size, filter mappings, and settings of the DashboardCards of the Dashboard
+  with `dashboard-id`, in grid order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :visualization_settings]
+  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :row :col :size_x :size_y
+              :parameter_mappings :visualization_settings]
              :dashboard_id dashboard-id
              {:order-by [[:row :asc] [:col :asc]]}))
 

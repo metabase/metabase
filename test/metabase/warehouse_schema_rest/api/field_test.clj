@@ -6,7 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1006,9 +1006,8 @@
                             and json unfolding is alread enabled for the DB"
                     (set-json-unfolding-for-field! false)
                     (set-json-unfolding-for-db! true)
-                    (set-json-unfolding-for-field! true)
-                    ;; Wait for the sync to finish
-                    (Thread/sleep 500)
+                    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
+                      (set-json-unfolding-for-field! true))
                     (is (seq (nested-fields))))
                   (testing "nested fields are added when json unfolding is enabled for the DB"
                     (set-json-unfolding-for-db! true)

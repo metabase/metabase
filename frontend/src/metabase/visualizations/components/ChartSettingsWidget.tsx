@@ -9,6 +9,8 @@ import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";
+import { ChartSettingSegmentedControl } from "./settings/ChartSettingSegmentedControl";
+import { getChartSettingLabelId } from "./settings/get-chart-setting-label-id";
 
 export type ChartSettingsWidgetVariant = "default" | "form-field";
 
@@ -49,6 +51,9 @@ const ChartSettingsWidget = ({
   ...extraWidgetProps
 }: Props) => {
   const isFormField = variant === "form-field";
+  // A `for` can only target a single form control; radio groups reference
+  // the label through `aria-labelledby` instead.
+  const isRadioGroup = Widget === ChartSettingSegmentedControl;
   return (
     <Box
       hidden={hidden}
@@ -68,7 +73,8 @@ const ChartSettingsWidget = ({
             fw="bold"
             fz={isFormField ? "0.75rem" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
-            htmlFor={extraWidgetProps.id}
+            id={getChartSettingLabelId(extraWidgetProps.id)}
+            htmlFor={isRadioGroup ? undefined : extraWidgetProps.id}
           >
             {title}
           </Text>

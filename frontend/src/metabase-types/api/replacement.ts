@@ -1,10 +1,10 @@
 import type { CardId } from "./card";
 import type { CollectionId } from "./collection";
 import type { Field } from "./field";
-import type { ConcreteTableId } from "./table";
+import type { TableId } from "./table";
 import type { TransformId, TransformTagId, TransformTarget } from "./transform";
 
-export type SourceReplacementEntityId = ConcreteTableId | CardId | TransformId;
+export type SourceReplacementEntityId = TableId | CardId | TransformId;
 
 export const SOURCE_REPLACEMENT_ENTITY_TYPES = [
   "card",

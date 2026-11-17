@@ -9,6 +9,8 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Visualization } from "metabase/visualizations/types/visualization";
 import { registerVisualization, visualizations } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomVizDisplayType,
@@ -24,7 +26,6 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 
@@ -65,15 +66,17 @@ function createUnsavedCustomVizCard(display: CustomVizDisplayType) {
   return createMockUnsavedCard({
     display,
     displayIsLocked: true,
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-    },
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      }),
+    ),
   });
 }
 

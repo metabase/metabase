@@ -25,7 +25,7 @@ export function DataAppQuestionDependenciesPage() {
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.dataStudioDataAppQuestionDependencies(
-            app.name,
+            app.slug,
             card.id,
           ),
           defaultEntry: { id: card.id, type: "card" },

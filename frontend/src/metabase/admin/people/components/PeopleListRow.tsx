@@ -27,7 +27,7 @@ import type {
 } from "metabase-types/api";
 
 import { userToColor } from "../colors";
-import { getIsUserSsoSourceEnabled } from "../selectors";
+import { getIsSsoOnlyUser } from "../selectors";
 
 import { MembershipSelect } from "./MembershipSelect";
 import { ReactivateUserButton } from "./ReactivateUserButton";
@@ -72,10 +72,8 @@ export const PeopleListRow = ({
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
-  const isUserSsoSourceEnabled = useSelector((state) =>
-    getIsUserSsoSourceEnabled(state, user),
-  );
-  const canResetPassword = isPasswordLoginEnabled && !isUserSsoSourceEnabled;
+  const isSsoOnlyUser = useSelector((state) => getIsSsoOnlyUser(state, user));
+  const canResetPassword = isPasswordLoginEnabled && !isSsoOnlyUser;
 
   return (
     <tr key={user.id}>

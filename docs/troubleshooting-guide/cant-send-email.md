@@ -1,5 +1,6 @@
 ---
 title: Metabase isn't sending email
+summary: Work out why Metabase email notifications aren't arriving, from SMTP settings to delivery problems.
 ---
 
 # Metabase isn't sending email

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { cardApi, dashboardApi, parametersApi } from "metabase/api";
 import type {
   CardParameterValuesRequest,

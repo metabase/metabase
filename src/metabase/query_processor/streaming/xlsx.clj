@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
@@ -47,69 +46,87 @@
 
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
-  #{::mb.viz/number-style
-    ::mb.viz/number-separators
-    ::mb.viz/currency
-    ::mb.viz/currency-style
-    ::mb.viz/currency-in-header
-    ::mb.viz/decimals
-    ::mb.viz/scale
-    ::mb.viz/prefix
-    ::mb.viz/suffix})
+  #{:number_style
+    :number_separators
+    :currency
+    :currency_style
+    :currency_position
+    :currency_in_header
+    :decimals
+    :scale
+    :prefix
+    :suffix})
 
 (def ^:private datetime-setting-keys
   "If any of these settings are present, we should format the column as a date and/or time."
-  #{::mb.viz/date-style
-    ::mb.viz/date-separator
-    ::mb.viz/date-abbreviate
-    ::mb.viz/time-enabled
-    ::mb.viz/time-style})
+  #{:date_style
+    :date_separator
+    :date_abbreviate
+    :time_enabled
+    :time_style})
 
 (defn- currency-format-string
-  "Adds a currency to the base format string as either a suffix (for pluralized names) or
-  prefix (for symbols or codes)."
-  [base-string format-settings]
-  (let [currency-code (::mb.viz/currency format-settings "USD")
+  "Adds the currency label at the configured position. Currency names always follow the amount."
+  [base-string {currency-style :currency_style, currency-position :currency_position, :as format-settings}]
+  (let [currency-code (:currency format-settings "USD")
         currency-identifier (streaming.common/currency-identifier format-settings)]
-    (condp = (::mb.viz/currency-style format-settings "symbol")
-      "symbol"
-      (if (currency/supports-symbol? currency-code)
-        (str "[$" currency-identifier "]" base-string)
-        (str "[$" currency-identifier "] " base-string))
+    (cond
+      (= currency-style "name")
+      (str base-string "\" " currency-identifier "\"")
 
-      "narrowSymbol"
-      (if (currency/supports-symbol? currency-code)
-        (str "[$" currency-identifier "]" base-string)
-        (str "[$" currency-identifier "] " base-string))
+      (= currency-position "after")
+      (str base-string "\"\u00a0\"[$" currency-identifier "]")
 
-      "code"
-      (str "[$" currency-identifier "] " base-string)
-
-      "name"
-      (str base-string "\" " currency-identifier "\""))))
+      :else
+      (str "[$" currency-identifier "]"
+           (when (or (= currency-style "code") (not (currency/supports-symbol? currency-code))) " ")
+           base-string))))
 
 (defn- unformatted-number?
   "Use default formatting for decimal number types that have no other format settings defined
-  aside from prefix, suffix or scale."
+  aside from prefix, suffix, scale or currency label position."
   [format-settings]
   (and
    ;; This is a decimal or currency number (not a percentage or scientific notation)
-   (or (= (::mb.viz/number-style format-settings) "decimal")
-       (= (::mb.viz/number-style format-settings) "currency")
-       (not (::mb.viz/number-style format-settings)))
+   (or (= (:number_style format-settings) "decimal")
+       (= (:number_style format-settings) "currency")
+       (not (:number_style format-settings)))
    ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
-                     ::mb.viz/number-style
-                     ::mb.viz/number-separators
-                     ::mb.viz/scale
-                     ::mb.viz/prefix
-                     ::mb.viz/suffix)))))
+                     :number_style
+                     :number_separators
+                     :currency_position
+                     :duration_unit
+                     :duration_style
+                     :duration_precision
+                     :scale
+                     :prefix
+                     :suffix)))))
+
+(def ^:private duration-format-strings
+  "Format strings for duration columns by style and precision."
+  {"digital" {"minute"      "[h]:mm"
+              "second"      "[h]:mm:ss"
+              "millisecond" "[h]:mm:ss.000"}
+   "narrow"  {"minute"      "[h]\"h \"m\"m\""
+              "second"      "[h]\"h \"m\"m \"s\"s\""
+              "millisecond" "[h]\"h \"m\"m \"s.000\"s\""}})
+
+(defn- duration-format-string
+  "Returns the format string for a duration column, whose cells hold the duration in days."
+  [{duration-style :duration_style, duration-precision :duration_precision}]
+  (let [by-precision (get duration-format-strings duration-style (duration-format-strings "digital"))]
+    (get by-precision duration-precision (by-precision "second"))))
 
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.
   The first value in the returned list should be used for integers, or numbers that round to integers.
   The second number should be used for all other values."
-  [{::mb.viz/keys [prefix suffix number-style number-separators currency-in-header decimals] :as format-settings}]
+  [{number-style       :number_style
+    number-separators  :number_separators
+    currency-in-header :currency_in_header
+    :keys              [prefix suffix decimals]
+    :as                format-settings}]
   (let [format-strings
         (let [base-string     (if (= number-separators ".")
                                 ;; Omit thousands separator if omitted in the format settings. Otherwise ignore
@@ -131,6 +148,9 @@
             "decimal"
             base-strings
 
+            "duration"
+            (repeat 2 (duration-format-string format-settings))
+
             (if (and (= number-style "currency")
                      (false? currency-in-header))
               (map #(currency-format-string % format-settings) base-strings)
@@ -145,7 +165,7 @@
 
 (defn- abbreviate-date-names
   [format-settings format-string]
-  (if (::mb.viz/date-abbreviate format-settings false)
+  (if (:date_abbreviate format-settings false)
     (-> format-string
         (str/replace "mmmm" "mmm")
         (str/replace "dddd" "ddd"))
@@ -153,12 +173,12 @@
 
 (defn- replace-date-separators
   [format-settings format-string]
-  (let [separator (::mb.viz/date-separator format-settings "/")]
+  (let [separator (:date_separator format-settings "/")]
     (str/replace format-string "/" separator)))
 
 (defn- time-format
   [format-settings]
-  (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
+  (let [base-time-format (condp = (:time_enabled format-settings "minutes")
                            "minutes"
                            "h:mm"
 
@@ -168,12 +188,12 @@
                            "milliseconds"
                            "h:mm:ss.000"
 
-                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
+                           ;; {:time_enabled nil} indicates that time is explicitly disabled, rather than
                            ;; defaulting to "minutes"
                            nil
                            nil)]
     (when base-time-format
-      (condp = (::mb.viz/time-style format-settings "h:mm A")
+      (condp = (:time_style format-settings "h:mm A")
         "HH:mm"
         (str "h" base-time-format)
 
@@ -212,7 +232,7 @@
 
 (defn- date-format
   [format-settings unit]
-  (let [base-style (u/lower-case-en (::mb.viz/date-style format-settings "mmmm d, yyyy"))
+  (let [base-style (u/lower-case-en (:date_style format-settings "mmmm d, yyyy"))
         unit-style (case unit
                      :month (month-style base-style)
                      :year "yyyy"
@@ -291,7 +311,7 @@
           ;; column's settings would perturb the number-formatting heuristics that inspect the setting keys.
           settings       (cond-> base-settings
                            (and inline-currency? (streaming.common/currency-settings? base-settings))
-                           (assoc ::mb.viz/currency-in-header false))
+                           (assoc :currency_in_header false))
           format-strings (format-settings->format-strings settings col format-rows?)]
       (when (seq format-strings)
         (mapv
@@ -302,7 +322,7 @@
   "Default strings to use for datetime and number fields if custom format settings are not set."
   []
   {:datetime (datetime-format-string (streaming.common/merge-global-settings {} :type/Temporal))
-   :date     (datetime-format-string (streaming.common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+   :date     (datetime-format-string (streaming.common/merge-global-settings {:time_enabled nil} :type/Temporal))
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
@@ -474,6 +494,34 @@
         new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
     (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
 
+(defn- duration-cell-value
+  "Returns a duration as a number of days, or as text when it is negative, which Excel cannot show as a time."
+  [value {duration-unit      :duration_unit
+          duration-style     :duration_style
+          duration-precision :duration_precision
+          number-separators  :number_separators
+          :keys              [prefix suffix]}]
+  (let [days               (formatter/duration-days value duration-unit duration-precision)
+        [decimal grouping] (or number-separators ".,")]
+    (if (neg? days)
+      (str prefix
+           (formatter/format-duration value {:unit      duration-unit
+                                             :style     duration-style
+                                             :precision duration-precision
+                                             :decimal   decimal
+                                             :grouping  grouping})
+           suffix)
+      days)))
+
+(defn- cell-value
+  "Returns the value to write to a cell: numbers are scaled, and durations in formatted cells are converted for Excel."
+  [value {scale :scale, number-style :number_style, :as settings} styles]
+  (cond
+    (not (number? value))                    value
+    (and styles (= number-style "duration")) (duration-cell-value (* value (or scale 1)) settings)
+    scale                                    (* value scale)
+    :else                                    value))
+
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -504,9 +552,7 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
-                              (* value (::mb.viz/scale settings))
-                              value)
+               scaled-val   (cell-value value settings styles)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
                parsed-value (or
@@ -536,9 +582,7 @@
                styles (.next sty-it)
                settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
-               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
-                              (* value (::mb.viz/scale settings))
-                              value)
+               scaled-val   (cell-value value settings styles)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
                ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
                parsed-value (or
@@ -563,9 +607,7 @@
                  :col   {}})
               ^Cell cell   (.createCell excel-row ^Integer col-idx)
               settings     (streaming.common/viz-settings-for-col col viz-settings)
-              scaled-val   (if (and (number? value) (::mb.viz/scale settings))
-                             (* value (::mb.viz/scale settings))
-                             value)
+              scaled-val   (cell-value value settings styles)
               parsed-value (or (maybe-parse-temporal-value value col)
                                (maybe-parse-coordinate-value value col)
                                scaled-val)]

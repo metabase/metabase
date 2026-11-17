@@ -8,8 +8,11 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
+   [metabase.embedding.settings :as embedding]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
+   [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -25,8 +28,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- base-href []
-  (let [path (some-> (system/site-url) io/as-url .getPath)]
-    (str path "/")))
+  (str (system/site-path) "/"))
 
 (defn- escape-script [s]
   ;; Escapes text to be included in an inline <script> tag, in particular the string '</script'
@@ -145,7 +147,7 @@
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
 (def ^:private data-app-shell
-  "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
+  "Shared data app iframe HTML entrypoint, before feature gating."
   (partial entrypoint "data-app" :embeddable))
 
 (defn- login-redirect
@@ -160,14 +162,40 @@
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
 (defn data-app
-  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
+  "`/embed/apps/:name` and `/embed/embedded-apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
-   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
-   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
-   users may see."
+   data-app entrypoint rather than in the top-level route table. Internal views require a signed-in user on the
+   main host.
+
+   On the isolated origin ([[metabase.server.settings/isolated-origin]]) no request has a session, so the document
+   is served to everyone; a request that resolves to a user is refused, because a session must never reach the
+   isolated origin."
   [request respond raise]
-  (cond
-    (not (premium-features/enable-data-apps?)) (respond nil)
-    (nil? (:metabase-user-id request))         (respond (login-redirect request))
-    :else                                      (data-app-shell request respond raise)))
+  (let [isolated? (mw.isolated-origin/isolated-origin-request? request)
+        user-id   (:metabase-user-id request)]
+    (cond
+      (not (premium-features/enable-data-apps?))
+      (respond nil)
+
+      (and isolated? user-id)
+      (do
+        (log/error (str "Refusing to serve a data app: a Metabase session reached the isolated origin "
+                        "(MB_ISOLATED_ORIGIN). The session cookie must be host-only; check that no cookie Domain or "
+                        "reverse proxy makes it visible there."))
+        ;; A session cookie left from when this host served Metabase is host-only here, so this deletes it and the next
+        ;; load works. One the main host leaks with a `Domain` stays, and keeps the app refused.
+        (respond (request/clear-session-cookie
+                  {:status 403
+                   :body   (str "Data apps are misconfigured: a Metabase session reached the isolated origin. "
+                                "Reload the page. If this message comes back, ask your Metabase administrator.")})))
+
+      (and (request/embedded-data-app? request)
+           (not (embedding/enable-embedding-modular)))
+      (respond {:status 403 :body "Modular embedding is disabled."})
+
+      (or isolated? user-id (request/embedded-data-app? request))
+      (data-app-shell request respond raise)
+
+      :else
+      (respond (login-redirect request)))))
