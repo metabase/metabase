@@ -70,8 +70,9 @@
                 (storage/store! (seq (into [] (extract/extract {}))) (storage.files/file-writer dump-dir))
                 [(t2/select-one-fn :entity_id :model/Action :id action-id)
                  (t2/select-one-fn :entity_id :model/ActionTest :action_id action-id)]))]
+        (testing "premise: the action's file is in its collection's directory"
+          (is (.isFile (io/file dump-dir "collections" "main" "orders" "refund.yaml"))))
         (testing "the test's file is in the directory named like its action's file"
-          (is (.isFile (io/file dump-dir "collections" "main" "orders" "refund.yaml")))
           (is (=? {:entity_id    test-eid
                    :action_id    action-eid
                    :creator_id   "creator@example.com"

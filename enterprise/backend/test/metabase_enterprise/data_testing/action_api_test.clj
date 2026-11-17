@@ -334,7 +334,7 @@
                                                                                                        :creator_id (mt/user->id :crowberto)))]
                              (mt/with-temp [:model/DataTestRun {run-id :id} {:test_type :action :test_id test-id}]
                                (t2/delete! :model/Action :id action-id)
-                               (testing "the action's tests are deleted with it"
+                               (testing "premise: the action's tests are deleted with it"
                                  (is (not (t2/exists? :model/ActionTest :id test-id))))
                                (testing "through the test's own delete hook, which keeps no run naming the deleted test"
                                  (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id))))))))))
