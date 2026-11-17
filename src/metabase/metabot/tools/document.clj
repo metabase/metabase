@@ -266,7 +266,7 @@
      :args        model-chart-schema})
   (handle [_ {:keys [name description query viz_settings]} ctx]
     (let [chart-type (get viz_settings :chart_type)
-          {query-id :query-id dataset-query :query}
+          {query-id :query-id dataset-query :query repairs :repairs}
           (:structured-output (tools/call construct-tools/construct-notebook-query-tool
                                           {:query         query
                                            :title         name
@@ -282,7 +282,9 @@
                            :chart_type    chart-type
                            :query_id      query-id
                            :query         dataset-query
-                           :result-type   :chart-draft}})))
+                           :result-type   :chart-draft
+                           ;; For the `agent_used_tool` event of this call, as in `construct_notebook_query`.
+                           :repairs       repairs}})))
 
 (def document-construct-model-chart-tool
   "The `document_construct_model_chart` tool."

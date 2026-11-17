@@ -410,6 +410,29 @@
                      :stages [{:source-card (:id model)}]}
                     (:dataset_query structured)))))))))
 
+(deftest document-construct-model-chart-repairs-test
+  (testing "the chart draft keeps the repair passes of its query, so the `agent_used_tool` event reports them"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card model {:type          :model
+                                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (let [repairs (fn [stage]
+                          (let [query  {:lib/type "mbql/query"
+                                        :stages   [(merge {:lib/type    "mbql.stage/mbql"
+                                                           :source-card (:entity_id model)
+                                                           :aggregation [["count" {}]]
+                                                           :breakout    [["field" {:temporal-unit "month"} "CREATED_AT"]]}
+                                                          stage)]}
+                                result (invoke-document-tool "document_construct_model_chart"
+                                                             (assoc model-chart-args :query query))]
+                            (is (nil? (:error result)))
+                            (get-in result [:structured-output :repairs])))]
+            (is (= ["rewrite-operator-name-aliases"]
+                   (repairs {:filters [["gte" {} ["field" {} "TOTAL"] 10]]})))
+            (is (= []
+                   (repairs {}))
+                "no reported pass changed the query")))))))
+
 (deftest document-construct-model-chart-metric-as-source-card-test
   (testing "a metric in `source-card` is a failed call that names the source to use, not a chart"
     (let [mp (mt/metadata-provider)]
