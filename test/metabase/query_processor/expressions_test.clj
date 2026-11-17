@@ -1452,19 +1452,22 @@
           (let [products-created (m/find-first #(= (mt/id :products :created_at) (:id %))
                                                (lib/visible-columns oq))
                 _        (assert (some? products-created))
-                query    (as-> oq q
+                filtered (as-> oq q
                            (lib/expression q "MiscDate" (lib/case [[(lib/> discount 0) created-at]]
                                                           products-created))
                            (lib/filter q (lib.options/update-options
                                           (lib/time-interval (lib/expression-ref q "MiscDate") -30 :year)
-                                          assoc :include-current true))
-                           (lib/with-fields q [id (lib/expression-ref q "MiscDate")])
-                           (lib/limit q 5))
-                results  (qp/process-query query)]
+                                          assoc :include-current true)))
+                query    (-> filtered
+                             (lib/with-fields [id (lib/expression-ref filtered "MiscDate")])
+                             (lib/limit 5))
+                results  (qp/process-query query)
+                count-of (fn [query] (->> (lib/aggregate query (lib/count)) qp/process-query (mt/formatted-rows [int]) ffirst))]
             (is (= ["ID" "MiscDate"]
                    (map :display_name (mt/cols results))))
             (is (= 5 (count (mt/rows results))))
-            (is (every? some? (map second (mt/rows results))))))))))
+            (testing "every order falls in the range, through the case() default when it has no discount"
+              (is (= (count-of oq) (count-of filtered))))))))))
 
 (deftest ^:parallel sum-of-expression-with-implicit-join-distinct-test
   (testing "#14080 sum([expr]) + distinct(fk->) + temporal breakout compiles and runs"
