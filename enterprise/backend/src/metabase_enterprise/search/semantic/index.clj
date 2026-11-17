@@ -19,6 +19,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -1004,10 +1005,11 @@
     result))
 
 (defn- remove-hidden-analytics-cards
-  "Drops the `docs` that are cards in the audit app's `analytics` namespace, unless the context of `search-context`
-  returns them. The appdb and in-place engines apply the same rule in their query."
+  "Drops the `docs` that are cards in the audit app's `analytics` namespace, unless the audit app is enabled and the
+  context of `search-context` returns them. The appdb and in-place engines apply the same rule in their query."
   [search-context docs]
-  (if (search.config/analytics-cards-allowed? (:context search-context))
+  (if (and (premium-features/enable-audit-app?)
+           (search.config/analytics-cards-allowed? (:context search-context)))
     docs
     (let [card-model?   (set search.config/card-models)
           card-doc?     #(card-model? (:model %))
@@ -1337,8 +1339,15 @@
       :else
       ;; Check access control before structural filters so a not-permitted row is reported as such even when a
       ;; query filter would also drop it (matches the appdb engine, where the permission layers come first).
-      (if (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
+      (cond
+        (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
         {:type :filtered :details {:excluded-by :permissions}}
+
+        ;; Reported under the key the appdb engine gives the same rule, which it applies in its collection clause.
+        (empty? (remove-hidden-analytics-cards search-context [(:legacy_input (decode-legacy-input row))]))
+        {:type :filtered :details {:excluded-by :collection-permissions}}
+
+        :else
         (if-let [excluded-by (some (fn [[k clause]] (when-not (row-present? db table model id clause) k))
                                    (filter-conditions search-context))]
           {:type :filtered :details {:excluded-by excluded-by}}
