@@ -29,9 +29,12 @@
       (log/errorf "Failed to invalidate content-diagnostics findings %s: %s" log-ctx (ex-message e)))))
 
 (events/derive! ::event :metabase/event)
-(doseq [model [:card :dashboard :document :transform :collection]
-        op    [:update :delete]]
-  (events/derive! (keyword "event" (str (name model) "-" (name op))) ::event))
+(doseq [topic [:event/card-update       :event/card-delete
+               :event/dashboard-update  :event/dashboard-delete
+               :event/document-update   :event/document-delete
+               :event/transform-update  :event/transform-delete
+               :event/collection-update :event/collection-delete]]
+  (events/derive! topic ::event))
 
 (methodical/defmethod events/publish-event! ::event
   [topic {:keys [object changes]}]

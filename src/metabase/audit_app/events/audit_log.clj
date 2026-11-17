@@ -533,10 +533,14 @@
   [{:keys [model object previous-object user-id] :as event}]
   (let [row (or object previous-object)]
     (case model
-      (:model/Card :model/Dashboard)
+      :model/Card
       (when (u.events/changed? event :public_uuid)
-        [(keyword "event" (str (if (= :model/Card model) "card" "dashboard")
-                               "-public-link-" (if (some? (:public_uuid object)) "created" "deleted")))
+        [(if (some? (:public_uuid object)) :event/card-public-link-created :event/card-public-link-deleted)
+         {:user-id user-id :model model :model-id (:id row)}])
+
+      :model/Dashboard
+      (when (u.events/changed? event :public_uuid)
+        [(if (some? (:public_uuid object)) :event/dashboard-public-link-created :event/dashboard-public-link-deleted)
          {:user-id user-id :model model :model-id (:id row)}])
 
       :model/User
