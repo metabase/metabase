@@ -69,7 +69,10 @@
     [db-id (get-in transform [:target :schema]) (get-in transform [:target :name])]))
 
 (defn- check-target-unclaimed!
-  "Refuse a target that another transform already writes to, since one run would silently overwrite the other's table."
+  "Refuse a target that another transform already writes to, since one run would silently overwrite the other's table.
+
+  Unlike [[transforms-base.u/target-table-exists?]], which asks the warehouse, this compares the targets stored on
+  other transforms, so it also catches a transform that hasn't run yet and thus hasn't created its table."
   [transform]
   (when-let [[db-id schema table-name] (target-key transform)]
     (when-let [other (m/find-first #(and (not= (:id %) (:id transform))
