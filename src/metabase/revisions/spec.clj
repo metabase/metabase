@@ -7,7 +7,8 @@
   - `:skip`, the columns that no snapshot records and no revert restores, so that a change of only these makes no
     Revision.
 
-  Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists. All
+  Together they list every column of the table but `:id`, `:created_at`, `:updated_at` and `:worktree_id`, which no spec
+  lists. All
   the other keys are optional:
 
   - `:parent {:model parent-model :key column}`: a row of this model belongs to the Revision of the row of
@@ -50,8 +51,9 @@
       (spec model))))
 
 (def implicit-columns
-  "The columns that no spec lists: the key, which never changes, and the timestamps that every write sets."
-  #{:id :created_at :updated_at})
+  "The columns that no spec lists: the key, which never changes, the timestamps that every write sets, and the worktree
+  that a write puts a row in."
+  #{:id :created_at :updated_at :worktree_id})
 
 (defn revisioned?
   "Whether `model` has Revisions."

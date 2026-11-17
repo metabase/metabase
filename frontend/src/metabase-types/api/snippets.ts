@@ -1,6 +1,7 @@
 import type { Collection, RegularCollectionId } from "./collection";
 import type { TemplateTags } from "./dataset";
 import type { BaseEntityId } from "./entity-id";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { UserId, UserInfo } from "./user";
 
 export type NativeQuerySnippetId = number;
@@ -21,6 +22,7 @@ export interface NativeQuerySnippet {
   creator?: UserInfo;
   collection?: Collection;
   can_write?: boolean;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export type ListSnippetsParams = {

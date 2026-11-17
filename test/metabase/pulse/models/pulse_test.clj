@@ -56,7 +56,8 @@
    :archived            false
    :archived_directly   false
    :parameters          []
-   :disable_links       false})
+   :disable_links       false
+   :worktree_id         nil})
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"

@@ -1,22 +1,22 @@
-import type { GlossaryItem } from "metabase-types/api";
+import { createMockGlossaryItem } from "metabase-types/api/mocks";
 
 import { getNextSort, getVisibleItems, isDuplicateTerm } from "./utils";
 
-const ARR: GlossaryItem = {
+const ARR = createMockGlossaryItem({
   id: 1,
   term: "ARR",
   definition: "Annual recurring revenue",
-};
-const CHURN: GlossaryItem = {
+});
+const CHURN = createMockGlossaryItem({
   id: 2,
   term: "Churn",
   definition: "Customers who cancel",
-};
-const MRR: GlossaryItem = {
+});
+const MRR = createMockGlossaryItem({
   id: 3,
   term: "MRR",
   definition: "Monthly recurring revenue",
-};
+});
 const GLOSSARY = [CHURN, MRR, ARR];
 
 describe("getVisibleItems", () => {
@@ -32,9 +32,21 @@ describe("getVisibleItems", () => {
 
   it("orders numbers inside terms by value, not digit by digit", () => {
     const tiers = [
-      { id: 4, term: "Tier 10", definition: "Largest accounts" },
-      { id: 5, term: "Tier 2", definition: "Mid-size accounts" },
-      { id: 6, term: "Tier 1", definition: "Smallest accounts" },
+      createMockGlossaryItem({
+        id: 4,
+        term: "Tier 10",
+        definition: "Largest accounts",
+      }),
+      createMockGlossaryItem({
+        id: 5,
+        term: "Tier 2",
+        definition: "Mid-size accounts",
+      }),
+      createMockGlossaryItem({
+        id: 6,
+        term: "Tier 1",
+        definition: "Smallest accounts",
+      }),
     ];
 
     expect(

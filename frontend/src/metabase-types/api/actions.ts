@@ -5,6 +5,7 @@ import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { DatasetQuery } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
@@ -97,6 +98,7 @@ export interface WritebackActionBase {
   entity_id: BaseEntityId;
   model?: Card;
   collection?: Collection | null;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export type PublicWritebackAction = Pick<

@@ -193,7 +193,8 @@
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
    [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
-   [:run_trigger           {:optional true} [:maybe ::run-trigger]]])
+   [:run_trigger           {:optional true} [:maybe ::run-trigger]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform.definition
   "What a Transform computes and where it writes, as a client writes it."
@@ -226,7 +227,8 @@
    [:user_id                    {:optional true} [:maybe ::lib.schema.id/user]]
    [:last_heartbeat             {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id                {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform-job
   "A TransformJob as selected from the app DB: every column of `:transform_job`."
@@ -288,7 +290,8 @@
    [:job_id    {:optional true} [:maybe ms/PositiveInt]]
    [:tag_id    {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id {:optional true} [:maybe :string]]
-   [:position  {:optional true} [:maybe :int]]])
+   [:position  {:optional true} [:maybe :int]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform-run
   "A TransformRun as selected from the app DB: every column of `:transform_run`."
@@ -316,7 +319,8 @@
    [:metered_as                 {:optional true} [:maybe :string]]
    [:last_heartbeat             {:optional true} [:maybe ms/TemporalInstant]]
    [:job_run_id                 {:optional true} [:maybe ms/PositiveInt]]
-   [:dag_run_id                 {:optional true} [:maybe ms/PositiveInt]]])
+   [:dag_run_id                 {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id                {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform-run-cancelation
   "A TransformRunCancelation as selected from the app DB: every column of `:transform_run_cancelation`."
@@ -344,7 +348,8 @@
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
+   [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."
@@ -359,7 +364,8 @@
    [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]
    [:tag_id       {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id    {:optional true} [:maybe :string]]
-   [:position     {:optional true} [:maybe :int]]])
+   [:position     {:optional true} [:maybe :int]]
+   [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::coordinated-run-model
   "A model that tracks a coordinated run."

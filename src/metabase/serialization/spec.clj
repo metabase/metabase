@@ -5,7 +5,7 @@
 
   - `:schema`, the schema of an exported entity; dev and test check every export against it.
   - `:copy`, the columns exported and imported as they are.
-  - `:skip`, the columns that are not serialized (`:id`, `:created_at` and `:updated_at` never are).
+  - `:skip`, the columns that are not serialized (`:id`, `:created_at`, `:updated_at` and `:worktree_id` never are).
   - `:transform`, a map from a column to its transform, `{:export f :import g}`, where `f` and `g` are fns of the
     store, the batch (rows on export, entities on import), the column's values in that batch, and the import options
     (empty on export), returning the transformed values in the same order. An `:as` key exports the column under

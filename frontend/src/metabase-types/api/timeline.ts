@@ -4,6 +4,7 @@ import type {
   CollectionId,
   RegularCollectionId,
 } from "./collection";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { UserInfo } from "./user";
 
 export type TimelineId = number;
@@ -30,6 +31,7 @@ export interface Timeline extends TimelineData {
   id: TimelineId;
   collection?: Collection;
   events?: TimelineEvent[];
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export interface TimelineData {
@@ -47,6 +49,7 @@ export interface TimelineEvent extends TimelineEventData {
   timeline_id: TimelineId;
   creator?: UserInfo;
   created_at: string;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export interface TimelineEventData {

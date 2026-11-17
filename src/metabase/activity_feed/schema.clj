@@ -19,4 +19,5 @@
    [:model     {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id  {:optional true} [:maybe :int]]
    [:timestamp {:optional true} [:maybe ms/TemporalInstant]]
-   [:context   {:optional true} [:maybe [:or :keyword :string]]]])
+   [:context   {:optional true} [:maybe [:or :keyword :string]]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])

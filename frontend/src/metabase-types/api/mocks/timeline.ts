@@ -11,6 +11,7 @@ export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
   ...createMockTimelineData(opts),
   id: 1,
   collection_id: 1,
+  worktree_id: null,
   ...opts,
 });
 
@@ -34,6 +35,7 @@ export const createMockTimelineEvent = (
   timeline_id: 1,
   creator: createMockUserInfo(),
   created_at: "2021-12-01",
+  worktree_id: null,
   ...opts,
 });
 

@@ -172,7 +172,8 @@
    [:owner                 {:optional true} [:maybe [:ref :metabase.transforms.schema/transform.owner]]]
    [:can_read              {:optional true} :boolean]
    [:can_write             {:optional true} :boolean]
-   [:can_execute           {:optional true} :boolean]])
+   [:can_execute           {:optional true} :boolean]
+   [:worktree_id           {:optional true} [:maybe pos-int?]]])
 
 ;;; ----------------------------------------- Source Range Params -----------------------------------------------
 
@@ -208,7 +209,8 @@
    [:can_read              {:optional true} :boolean]
    [:can_write             {:optional true} :boolean]
    [:can_execute           {:optional true} :boolean]
-   [:deleted {:optional true} :boolean]])
+   [:deleted {:optional true} :boolean]
+   [:worktree_id           {:optional true} [:maybe pos-int?]]])
 
 (defn- run-schema
   "A run as the transforms module stores or hydrates it, with its timestamps as `timestamp` schemas."

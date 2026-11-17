@@ -120,7 +120,7 @@
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."
-  [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position])]]
+  [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position :worktree_id])]]
   (t2/insert-returning-pks! :model/DashboardTab rows))
 
 (mu/defn collection

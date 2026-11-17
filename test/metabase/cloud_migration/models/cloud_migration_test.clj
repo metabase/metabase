@@ -235,6 +235,7 @@
           :model/PulseChannelRecipient
           :model/QueryAction
           :model/RecentViews
+          :model/RemoteSyncWorktree
           :model/Revision
           :model/Secret
           :model/Segment
@@ -319,7 +320,8 @@
                  :table_id
                  :type
                  :view_count
-                 :visualization_settings}
+                 :visualization_settings
+                 :worktree_id}
    :model/FieldValues #{:created_at
                         :field_id
                         :has_more_values

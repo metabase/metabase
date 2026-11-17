@@ -50,6 +50,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   width: "fixed",
   creator_id: 1,
   moderation_reviews: [],
+  worktree_id: null,
   ...opts,
 });
 
@@ -63,6 +64,7 @@ export const createMockDashboardTab = (
   entity_id: MOCK_DASHBOARD_TAB_ENTITY_ID,
   created_at: "2020-01-01T12:30:30.000000",
   updated_at: "2020-01-01T12:30:30.000000",
+  worktree_id: null,
   ...opts,
 });
 
@@ -86,6 +88,7 @@ export const createMockDashboardCard = (
   updated_at: "2020-01-01T12:30:30.000000",
   inline_parameters: null,
   parameter_mappings: [],
+  worktree_id: null,
   ...opts,
 });
 
@@ -187,6 +190,7 @@ export const createMockVirtualDashCard = (
       ...opts?.visualization_settings,
       virtual_card: card,
     },
+    worktree_id: null,
   };
 };
 

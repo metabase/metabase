@@ -1,4 +1,5 @@
 import type { DatasetQuery } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 
@@ -21,6 +22,7 @@ export interface Segment {
   creator_id: number;
   creator?: UserInfo;
   updated_at: string;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export interface CreateSegmentRequest {

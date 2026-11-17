@@ -207,6 +207,7 @@ export const createMockRemoteSyncTask = (
   status: "running",
   progress: 0,
   started_at: "2026-01-01T00:00:00Z",
+  worktree_id: null,
   ...opts,
 });
 

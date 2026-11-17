@@ -23,7 +23,8 @@
    [:created_at :any]
    [:updated_at :any]
    [:built_in_type {:optional true} [:maybe :string]]
-   [:can_run {:optional true} :boolean]])
+   [:can_run {:optional true} :boolean]
+   [:worktree_id {:optional true} [:maybe pos-int?]]])
 
 (api.macros/defendpoint :post "/" :- TransformTagResponse
   "Create a new transform tag."

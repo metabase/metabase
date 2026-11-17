@@ -1,6 +1,7 @@
 import type { FieldValue } from "./field";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./metric";
 import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 
@@ -23,6 +24,7 @@ export interface Measure {
   result_column_name?: string;
   dimensions?: MetricDimension[];
   dimension_mappings?: DimensionMapping[];
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export interface CreateMeasureRequest {

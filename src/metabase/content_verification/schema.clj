@@ -29,4 +29,5 @@
    [:moderated_item_id   {:optional true} [:maybe ms/PositiveInt]]
    [:moderated_item_type {:optional true} ::moderation-review.item-type]
    [:moderator_id        {:optional true} [:maybe ms/PositiveInt]]
-   [:most_recent         {:optional true} [:maybe :boolean]]])
+   [:most_recent         {:optional true} [:maybe :boolean]]
+   [:worktree_id         {:optional true} [:maybe ms/PositiveInt]]])

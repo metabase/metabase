@@ -183,6 +183,7 @@ const getCollection = createSelector(
         can_delete: false,
         namespace: null,
         children: collections,
+        worktree_id: null,
       };
     }
 

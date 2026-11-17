@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
@@ -562,6 +563,9 @@
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
+   "remote_sync_worktree" (cond-> #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card"
+                                    "report_dashboard" "segment" "transform"}
+                            config/ee-available? (conj "data_app"))
    "report_card"        #{"action" "model_index_value"}
    "report_dashboard"   #{"action" "model_index_value" "report_card"}})
 

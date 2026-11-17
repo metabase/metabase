@@ -1,5 +1,6 @@
 import type { RowValue } from "./dataset";
 import type { DimensionReference } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { Table, TableId } from "./table";
 
 export type FieldId = number;
@@ -183,4 +184,5 @@ export type FieldUserSettings = {
   display_name: string | null;
   description: string | null;
   field?: Field;
+  worktree_id: RemoteSyncWorktreeId | null;
 };

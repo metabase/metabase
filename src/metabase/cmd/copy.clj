@@ -58,6 +58,7 @@
    [:model/Channel
     :model/ChannelTemplate
     :model/Database
+    :model/RemoteSyncWorktree
     :model/User
     :model/Setting
     :model/EmbeddingTheme

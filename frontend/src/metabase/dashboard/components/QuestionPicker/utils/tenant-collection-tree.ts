@@ -32,6 +32,7 @@ export const createSyntheticTopLevel = (): ExpandedCollection => ({
   path: [],
   parent: null,
   children: [],
+  worktree_id: null,
 });
 
 export function mergeCollectionNamespaceChildren({

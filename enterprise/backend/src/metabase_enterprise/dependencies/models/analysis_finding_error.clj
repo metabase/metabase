@@ -27,7 +27,8 @@
    [:error_type            ::lib.schema.validate/validate-error-type]
    [:error_detail          {:optional true} [:maybe :string]]
    [:source_entity_type    {:optional true} [:maybe ::lib.schema.validate/source-entity-type]]
-   [:source_entity_id      {:optional true} [:maybe ms/PositiveInt]]])
+   [:source_entity_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])
 
 (t2/deftransforms :model/AnalysisFindingError
   {:analyzed_entity_type mi/transform-keyword

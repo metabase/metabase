@@ -411,6 +411,7 @@
     :model/QueryTable
     :model/RecentViews
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
     :model/ReplacementRun
     :model/ResultMetadataStatus
     :model/Revision

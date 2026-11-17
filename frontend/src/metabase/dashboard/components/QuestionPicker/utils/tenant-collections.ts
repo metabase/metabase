@@ -81,6 +81,7 @@ function addSyntheticCollectionToRoot({
     path: [COLLECTIONS_TOP_LEVEL_ID],
     parent: topLevel,
     children: [],
+    worktree_id: null,
   };
 
   const children = mergeCollectionNamespaceChildren({

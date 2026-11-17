@@ -4,6 +4,7 @@ import type { RowValue } from "./dataset";
 import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { SchemaName, Table, TableId } from "./table";
@@ -71,6 +72,7 @@ export type Transform = {
   last_run?: TransformRun | null;
   creator?: UserInfo;
   requestable_indexes?: RequestableIndexes | null;
+  worktree_id: RemoteSyncWorktreeId | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
@@ -256,6 +258,7 @@ export type TransformTag = {
   created_at: string;
   updated_at: string;
   can_run: boolean;
+  worktree_id: RemoteSyncWorktreeId | null;
 };
 
 export type TransformJob = {

@@ -1,3 +1,4 @@
+import { createMockStoreDashboard } from "__support__/state";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
 import type { DashboardState } from "metabase/redux/store";
@@ -25,7 +26,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
   ...INITIAL_DASHBOARD_STATE,
   dashboardId: 1,
   dashboards: {
-    1: {
+    1: createMockStoreDashboard({
       id: 1,
       entity_id: createMockEntityId(),
       created_at: "2024-01-01T00:00:00Z",
@@ -59,7 +60,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       initially_published_at: null,
       width: "fixed",
       moderation_reviews: [],
-    },
+    }),
   },
   dashcards: {
     1: createMockDashboardCard({

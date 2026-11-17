@@ -9,6 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { SortDirection } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -91,6 +92,7 @@ export interface Collection {
   // Assigned on FE
   originalName?: string;
   path?: CollectionId[] | null;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export const COLLECTION_ITEM_MODELS = [

@@ -129,7 +129,8 @@
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:description     {:optional true} ::description]
    [:version         {:optional true} ::version]
-   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app.create
   "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, name, and bundle path required."

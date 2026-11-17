@@ -50,6 +50,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   can_manage_db: true,
   dashboard_id: null,
   dashboard_count: null,
+  worktree_id: null,
   ...opts,
 });
 

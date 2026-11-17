@@ -41,5 +41,6 @@ export function buildDraftCard(card: {
     archived: false,
     ...card,
     description: card.description ?? null,
+    worktree_id: null,
   };
 }

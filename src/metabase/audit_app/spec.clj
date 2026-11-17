@@ -10,7 +10,8 @@
   - `:skip`, the columns whose change alone records nothing: usage stats that reads update, and what Metabase works
     out for its own use.
 
-  Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists. All
+  Together they list every column of the table but `:id`, `:created_at`, `:updated_at` and `:worktree_id`, which no spec
+  lists. All
   the other keys are optional:
 
   - `:details`, a fn of a row and the lifecycle event returning the details to store beside the tracked columns, which
@@ -79,8 +80,9 @@
       (spec model))))
 
 (def implicit-columns
-  "The columns that no spec lists: the key, which never changes, and the timestamps that every write sets."
-  #{:id :created_at :updated_at})
+  "The columns that no spec lists: the key, which never changes, the timestamps that every write sets, and the worktree
+  that a write puts a row in."
+  #{:id :created_at :updated_at :worktree_id})
 
 (defn audited-models
   "The audited models that have loaded."

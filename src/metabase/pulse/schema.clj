@@ -55,7 +55,8 @@
    [:dashboard_id        {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.parameter]]]
    [:entity_id           {:optional true} [:maybe :string]]
-   [:disable_links       {:optional true} [:maybe :boolean]]])
+   [:disable_links       {:optional true} [:maybe :boolean]]
+   [:worktree_id         {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::pulse-card.position
   ms/IntGreaterThanOrEqualToZero)
@@ -78,7 +79,8 @@
    [:dashboard_card_id {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id         {:optional true} [:maybe :string]]
    [:format_rows       {:optional true} [:maybe :boolean]]
-   [:pivot_results     {:optional true} [:maybe :boolean]]])
+   [:pivot_results     {:optional true} [:maybe :boolean]]
+   [:worktree_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private subject-max-length
   "Inboxes truncate long before this; it bounds what a client can store."

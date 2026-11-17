@@ -60,6 +60,7 @@ export const glossaryApi = Api.injectEndpoints({
                 id: tempId,
                 term: arg.term,
                 definition: arg.definition,
+                worktree_id: null,
               });
             },
           ),

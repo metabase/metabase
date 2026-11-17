@@ -16,6 +16,7 @@ export const createMockDocument = (opts?: Partial<Document>): Document => ({
   can_delete: true,
   can_restore: true,
   can_write: true,
+  worktree_id: null,
   ...opts,
 });
 

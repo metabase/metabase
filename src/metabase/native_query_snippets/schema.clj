@@ -33,7 +33,8 @@
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
-   [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
+   [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."
