@@ -1,0 +1,27 @@
+## Widen auth_identity.provider so per-IdP custom OIDC provider names (`oidc-<key>`, with an admin-chosen key) fit
+## without truncation.
+
+databaseChangeLog:
+  - changeSet:
+      id: ygz4wp
+      author: Ethan McCue
+      comment: Widen auth_identity.provider to fit per-IdP custom OIDC provider names
+      changes:
+        - modifyDataType:
+            tableName: auth_identity
+            columnName: provider
+            newDataType: varchar(255)
+      # narrowing back could truncate or fail on rows written after the widening; varchar(255) is harmless on an
+      # older release
+      rollback: []
+
+  - changeSet:
+      id: m7tqe2
+      author: Ethan McCue
+      comment: Preserve NOT NULL on auth_identity.provider after widening
+      changes:
+        - addNotNullConstraint:
+            tableName: auth_identity
+            columnName: provider
+            columnDataType: varchar(255)
+      rollback: []

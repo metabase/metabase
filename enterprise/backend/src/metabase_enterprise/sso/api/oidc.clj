@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.sso.providers.oidc :as oidc.provider]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -120,6 +121,8 @@
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [provider-key (:key body)]
     (api/check-400 (u/valid-slug? provider-key) "Provider key must be a URL-safe slug (lowercase letters, numbers, hyphens, must start with letter or number)")
+    (api/check-400 (<= (count provider-key) oidc.provider/max-provider-key-length)
+                   (format "Provider key must be at most %d characters" oidc.provider/max-provider-key-length))
     (api/check-400 (nil? (sso-settings/get-oidc-provider provider-key)) (format "An OIDC provider with key '%s' already exists" provider-key))
     (let [providers    (sso-settings/oidc-providers)
           new-provider (merge {:enabled false

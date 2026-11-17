@@ -58,7 +58,11 @@
                    (mt/user-http-request :crowberto :post 400 "ee/sso/oidc" test-provider))))
           (testing "rejects invalid key"
             (is (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
-                                      (assoc test-provider :key "INVALID SLUG!")))))))))
+                                      (assoc test-provider :key "INVALID SLUG!"))))
+          (testing "rejects a key whose AuthIdentity provider name would not fit auth_identity.provider"
+            (is (= "Provider key must be at most 250 characters"
+                   (mt/user-http-request :crowberto :post 400 "ee/sso/oidc"
+                                         (assoc test-provider :key (apply str (repeat 251 "a"))))))))))))
 
 (deftest trusted-email-domains-validation-test
   (mt/with-additional-premium-features #{:sso-oidc}

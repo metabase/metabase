@@ -563,13 +563,14 @@
           (is (not-any? #(re-find #"jane@example.com" (:message %)) (log-messages))
               "Log messages should not contain user's email address"))))))
 
-(deftest ^:parallel identity-provider-name-fits-column-test
-  (testing "short keys keep the readable oidc-<key> name"
-    (is (= "oidc-okta" (oidc.provider/identity-provider-name "okta"))))
-  (testing "long keys are truncated with a hash of the whole key, so they fit auth_identity.provider (varchar 50)"
-    (let [k1 (apply str (repeat 60 "a"))
-          k2 (str (apply str (repeat 59 "a")) "b")]
-      (is (= 50 (count (oidc.provider/identity-provider-name k1))))
-      (is (str/starts-with? (oidc.provider/identity-provider-name k1) "oidc-"))
-      (is (= (oidc.provider/identity-provider-name k1) (oidc.provider/identity-provider-name k1)))
-      (is (not= (oidc.provider/identity-provider-name k1) (oidc.provider/identity-provider-name k2))))))
+(deftest ^:parallel identity-provider-name-test
+  (is (= "oidc-okta" (oidc.provider/identity-provider-name "okta"))))
+
+(deftest identity-provider-name-fits-column-test
+  (testing "the longest accepted key's provider name round-trips through auth_identity.provider (varchar 255)"
+    (let [provider-key (apply str (repeat oidc.provider/max-provider-key-length "a"))
+          pname        (oidc.provider/identity-provider-name provider-key)]
+      (is (= 255 (count pname)))
+      (mt/with-temp [:model/User user {}
+                     :model/AuthIdentity {id :id} {:user_id (:id user) :provider pname :provider_id "sub"}]
+        (is (= pname (t2/select-one-fn :provider :model/AuthIdentity :id id)))))))

@@ -4465,3 +4465,29 @@
         (is (t2/exists? :transform :id python-id))
         (t2/delete! :metabase_database :id db-id)
         (is (not (t2/exists? :transform :id transform-id)))))))
+
+(deftest widen-auth-identity-provider-test
+  (testing "ygz4wp/m7tqe2 widen auth_identity.provider to varchar(255) and keep it NOT NULL"
+    (impl/test-migrations ["ygz4wp" "m7tqe2"] [migrate!]
+      (let [user-id  (t2/insert-returning-pk! :core_user {:first_name    "Auth"
+                                                          :last_name     "Identity"
+                                                          :email         "widen-provider@test.com"
+                                                          :entity_id     (u/generate-nano-id)
+                                                          :date_joined   :%now
+                                                          :password      "password"
+                                                          :password_salt "salt"})
+            provider (str "oidc-" (apply str (repeat 250 "a")))
+            insert!  (fn [row]
+                       (t2/insert-returning-pk! :auth_identity (merge {:user_id    user-id
+                                                                       :created_at :%now
+                                                                       :updated_at :%now}
+                                                                      row)))
+            existing (insert! {:provider "custom-oidc" :provider_id "sub-1"})]
+        (migrate!)
+        (testing "existing rows are kept"
+          (is (= "custom-oidc" (t2/select-one-fn :provider :auth_identity :id existing))))
+        (testing "a 255-character provider name fits"
+          (let [id (insert! {:provider provider :provider_id "sub-2"})]
+            (is (= provider (t2/select-one-fn :provider :auth_identity :id id)))))
+        (testing "provider is still NOT NULL"
+          (is (thrown? Exception (insert! {:provider nil :provider_id "sub-3"}))))))))

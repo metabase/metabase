@@ -2,8 +2,6 @@
   "Generic OIDC authentication provider backed by the `oidc-providers` setting.
    Derives from the base OIDC provider and adds per-provider configuration and claim extraction."
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -21,14 +19,14 @@
 
 ;;; -------------------------------------------------- Configuration --------------------------------------------------
 
+(def max-provider-key-length
+  "The longest custom OIDC provider key whose [[identity-provider-name]] fits `auth_identity.provider` (varchar 255)."
+  (- 255 (count "oidc-")))
+
 (defn identity-provider-name
-  "The AuthIdentity provider name for the custom OIDC provider with `provider-key`: `oidc-<key>`, or, when that would
-  not fit `auth_identity.provider` (varchar 50), the key truncated and suffixed with a hash of the whole key."
+  "The AuthIdentity provider name for the custom OIDC provider with `provider-key`."
   [provider-key]
-  (let [full (str "oidc-" provider-key)]
-    (if (<= (count full) 50)
-      full
-      (str (subs full 0 37) "-" (subs (codecs/bytes->hex (buddy-hash/sha256 ^String provider-key)) 0 12)))))
+  (str "oidc-" provider-key))
 
 (defn- build-oidc-config
   "Build OIDC configuration map from provider settings."
