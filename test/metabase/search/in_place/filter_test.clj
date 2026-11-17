@@ -237,6 +237,15 @@
             base-search-query "card"
             (merge default-search-ctx {:created-at "2016-04-18~2016-04-23"}))))))
 
+(def ^:private newest-revision
+  "The filter that keeps the newest Revision of a row."
+  [:not [:exists {:select [1]
+                  :from   [[:revision :newer]]
+                  :where  [:and
+                           [:= :newer.model :revision.model]
+                           [:= :newer.model_id :revision.model_id]
+                           [:> :newer.id :revision.id]]}]])
+
 (deftest ^:parallel last-edited-at-filter-test
   (testing "last edited at filter"
     (is (= {:select [:*]
@@ -244,7 +253,7 @@
             :join   [:revision [:= :revision.model_id :card.id]]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
+                     newest-revision
                      [:= :revision.model "Card"]
                      [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
                      [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
@@ -257,7 +266,7 @@
               :join   [:revision [:= :revision.model_id :card.id]]
               :where  [:and
                        [:= :card.archived false]
-                       [:= :revision.most_recent true]
+                       newest-revision
                        [:= :revision.model "Card"]
                        [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
                        [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
@@ -295,7 +304,7 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
+                     newest-revision
                      [:= :revision.model "Card"]
                      [:= :revision.user_id 1]]
             :join   [:revision [:= :revision.model_id :card.id]]}
@@ -310,7 +319,7 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
+                     newest-revision
                      [:= :revision.model "Card"]
                      [:in :revision.user_id #{1 2}]]
             :join   [:revision [:= :revision.model_id :card.id]]}

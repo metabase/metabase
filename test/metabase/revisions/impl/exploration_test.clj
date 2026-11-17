@@ -57,6 +57,7 @@
    (fn [expl-id]
      (mt/with-current-user (mt/user->id :rasta)
        (t2/update! :model/Exploration :id expl-id {:name "renamed"}))
+     (revision/settle-revisions! [["Exploration" expl-id]])
      (let [revs (t2/select :model/Revision :model "Exploration" :model_id expl-id
                            {:order-by [[:id :asc]]})]
        (is (= 2 (count revs)))

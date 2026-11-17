@@ -293,6 +293,12 @@
         ;; `:scores` is just used for debugging and would be a pain to match against.
         (dissoc :scores))))
 
+(defn- push-revision-and-reindex!
+  "Record a Revision of an entity as a write of it by a user does, with the reindex of its document the write makes."
+  [{:keys [entity id] :as info}]
+  (revision/push-revision! info)
+  (search/update! (t2/instance entity {:id id}) true))
+
 (defn- make-search-request [user-kwd params]
   (apply mt/user-http-request user-kwd :get 200 "search" params))
 
@@ -1336,7 +1342,7 @@
                                     [:model/Dashboard rasta-dash-id rasta-user-id] [:model/Card rasta-metric-id rasta-user-id]
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
                                     [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Card lucky-metric-id lucky-user-id]]]
-          (revision/push-revision!
+          (push-revision-and-reindex!
            {:entity       model
             :id           id
             :user-id      user-id
@@ -1489,7 +1495,7 @@
                                           :type       :query}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Card metric-id]]]
-        (revision/push-revision!
+        (push-revision-and-reindex!
          {:entity       model
           :id           id
           :user-id      (mt/user->id :rasta)
@@ -1515,7 +1521,7 @@
       (testing "works with the last_edited_by filter too"
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                             [:model/Dashboard dash-id] [:model/Card metric-id]]]
-          (revision/push-revision!
+          (push-revision-and-reindex!
            {:entity       model
             :id           id
             :user-id      (mt/user->id :rasta)
@@ -1616,13 +1622,13 @@
                                     :name       search-term}
        :model/Card {card-id-2 :id} {:creator_id user-id-2
                                     :name       search-term}]
-      (revision/push-revision!
+      (push-revision-and-reindex!
        {:entity       :model/Card
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
         :object       {:id card-id-1 :type :question}})
-      (revision/push-revision!
+      (push-revision-and-reindex!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2

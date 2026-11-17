@@ -103,6 +103,7 @@
     (doseq [i (range (inc revision/max-revisions))]
       (t2/update! :model/Card :id (:id card) {:name (format "New name %d" i)})
       (create-card-revision! (:id card) false :rasta))
+    (revision/settle-revisions! [["Card" id]])
     (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
             "renamed this Card from \"New name 13\" to \"New name 14\"."
             "renamed this Card from \"New name 12\" to \"New name 13\"."

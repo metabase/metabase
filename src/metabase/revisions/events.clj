@@ -41,22 +41,31 @@
     (when-not (:reverting? context)
       [:model/Dashboard (:dashboard_id (or object previous-object))])))
 
+(defn- changes-entity?
+  "Whether `event`, one of the writes of the entity `[model id]`, changes what its Revision records: a write of one of
+  its parts, its creation, or an update of its row that its serialization sees."
+  [[model id] {:keys [operation object previous-object] :as event}]
+  (or (not= model (:model event))
+      (not= :update operation)
+      (revision/row-changed? model id previous-object object)))
+
 (defn- push!
-  "Write the Revision of the entity `[model id]` as it is now, for the `events` of its writes."
-  [[model id] events _all-events]
+  "Write the Revision of the entity `[model id]` as it is now, for the `events` of its writes, when they change it."
+  [[model id :as entity] events _all-events]
   (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
         user-id    (some :user-id events)
         creator-id (when (and user-id own (creator-recorded model)) (:creator_id (:object own)))]
     (when-let [user-id (or creator-id user-id)]
       (try
-        (when-let [object (or (some #(when (= model (:model %)) (:object %)) events)
-                              (revisions.db/entity model id))]
-          (revision/push-revision! {:entity       model
-                                    :id           id
-                                    :object       object
-                                    :user-id      user-id
-                                    :is-creation? (boolean own)
-                                    :message      (some #(get-in % [:context :revision-message]) events)}))
+        (when (some #(changes-entity? entity %) events)
+          (when-let [object (or (some #(when (= model (:model %)) (:object %)) events)
+                                (revisions.db/entity model id))]
+            (revision/record-revision! {:entity       model
+                                        :id           id
+                                        :object       object
+                                        :user-id      user-id
+                                        :is-creation? (boolean own)
+                                        :message      (some #(get-in % [:context :revision-message]) events)})))
         (catch Throwable e
           (log/warnf "Failed to record a revision of %s %s: %s" model id (ex-message e)))))))
 

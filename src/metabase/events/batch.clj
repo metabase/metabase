@@ -82,12 +82,19 @@
 
 (mu/defn register-owned-consumer!
   "Have `handle`, a function of an owner key, the vector of the events of that owner and the vector of all the events of
-  the batch, called once per owner per batch, where `owner` is a function of an event giving its owner key, nil when the consumer ignores the event."
-  [consumer-key :- :keyword
-   owner        :- ifn?
-   handle       :- ifn?]
-  (swap! owned-consumers assoc consumer-key {:owner owner :handle handle})
-  nil)
+  the batch, called once per owner per batch, where `owner` is a function of an event giving its owner key, nil when
+  the consumer ignores the event; with `{:last? true}` it is called after the other consumers, so that it sees the
+  rows they write."
+  ([consumer-key :- :keyword
+    owner        :- ifn?
+    handle       :- ifn?]
+   (register-owned-consumer! consumer-key owner handle {}))
+  ([consumer-key :- :keyword
+    owner        :- ifn?
+    handle       :- ifn?
+    {:keys [last?]} :- [:map {:closed true} [:last? {:optional true} :boolean]]]
+   (swap! owned-consumers assoc consumer-key {:owner owner :handle handle :last? (boolean last?)})
+   nil))
 
 (mu/defn register-capture!
   "Have `capture`, a function of the vector of the delete events of the rows of one model that one DELETE statement
@@ -219,7 +226,7 @@
   (let [events (attach-captures (compact events) captures)]
     (doseq [event events]
       (@publisher (lifecycle-topic (:model event) (:operation event)) (payload event)))
-    (doseq [{:keys [owner handle]} (vals @owned-consumers)
+    (doseq [{:keys [owner handle]} (sort-by :last? (vals @owned-consumers))
             :let [by-owner (group-by owner events)]
             [owner-key owned] by-owner
             :when (some? owner-key)]

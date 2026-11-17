@@ -2554,6 +2554,8 @@
            metabase.revisions.init
            metabase.revisions.models.revision}
    :uses #{api
+           app-db
+           batch-processing
            dashboards
            events
            explorations.schema
@@ -2659,6 +2661,8 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
                     :model/DataApp
                     :model/Database
                     :model/Document

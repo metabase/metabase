@@ -81,7 +81,12 @@
                                       :fields       #{:user_id :timestamp},
                                       :where        [:and
                                                      [:= :updated.model_id :this.id]
-                                                     [:= :updated.most_recent true]
+                                                     [:not [:exists {:select [1]
+                                                                     :from   [[:revision :newer]]
+                                                                     :where  [:and
+                                                                              [:= :newer.model :updated.model]
+                                                                              [:= :newer.model_id :updated.model_id]
+                                                                              [:> :newer.id :updated.id]]}]]
                                                      [:= :updated.model "Card"]]}},
                  :ModerationReview #{{:search-model "card",
                                       :fields       #{:status},
@@ -207,7 +212,7 @@
     :model/Table            #{:id}
     ;; multi-clause joins collect every :updated-qualified column in the where
     :model/ModerationReview #{:moderated_item_id :moderated_item_type :most_recent}
-    :model/Revision         #{:model :model_id :most_recent}
+    :model/Revision         #{:id :model :model_id}
     ;; a model that feeds no search-model hooks has nothing to capture
     :model/User             nil))
 

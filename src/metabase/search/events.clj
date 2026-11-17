@@ -59,10 +59,18 @@
     (when (seq steps)
       (apply search/after-commit! "delete" steps))))
 
+(defn- edited-dashboard-id
+  "The id of the Dashboard whose last edit by a user the dashcard or tab `event` is, which records a Revision of the
+  Dashboard but writes no row that feeds its document."
+  [{:keys [model user-id object previous-object]}]
+  (when (and user-id (#{:model/DashboardCard :model/DashboardTab} model))
+    (:dashboard_id (or object previous-object))))
+
 (defn- handle!
   [_owner events _all]
   (when-not search.ingestion/*disable-updates*
-    (let [events     (filter #(feeds-index? (:model %) (:operation %)) events)
+    (let [edited     (into #{} (keep edited-dashboard-id) events)
+          events     (filter #(feeds-index? (:model %) (:operation %)) events)
           by-op      (group-by :operation events)
           created    (map #(t2/instance (:model %) (:object %)) (:create by-op))
           updated    (map updated-instance (:update by-op))
@@ -71,11 +79,14 @@
         (search/bulk-update! created))
       (when (seq updated)
         (search/update-changed! updated))
+      (when (seq edited)
+        (search/bulk-update! (map #(t2/instance :model/Dashboard {:id %}) edited)))
       (when (seq deleted)
         (handle-deleted! deleted)))))
 
 (events/register-capture! :search capture-dependents)
 (events/register-owned-consumer! :search
-                                 (fn [{:keys [model operation]}]
-                                   (when (feeds-index? model operation) :search))
-                                 handle!)
+                                 (fn [{:keys [model operation] :as event}]
+                                   (when (or (feeds-index? model operation) (edited-dashboard-id event)) :search))
+                                 handle!
+                                 {:last? true})

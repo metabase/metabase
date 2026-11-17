@@ -370,7 +370,12 @@
        :from [[:document :document]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :document.id]
-                                   [:= :r.most_recent true]
+                                   [:not [:exists ^:allow-subquery {:select [1]
+                                                                    :from   [[:revision :newer]]
+                                                                    :where  [:and
+                                                                             [:= :newer.model :r.model]
+                                                                             [:= :newer.model_id :r.model_id]
+                                                                             [:> :newer.id :r.id]]}]]
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
@@ -420,7 +425,12 @@
                                  :from   [[:revision :r]]
                                  :where  [:and
                                           [:= :r.model (h2x/literal "Exploration")]
-                                          [:= :r.most_recent true]]}
+                                          [:not [:exists ^:allow-subquery {:select [1]
+                                                                           :from   [[:revision :newer]]
+                                                                           :where  [:and
+                                                                                    [:= :newer.model :r.model]
+                                                                                    [:= :newer.model_id :r.model_id]
+                                                                                    [:> :newer.id :r.id]]}]]]}
                                 ^:allow-subquery
                                 {:select [[:d.exploration_id :exploration_id]
                                           [:r.timestamp      :timestamp]
@@ -429,7 +439,12 @@
                                  :join   [[:document :d] [:= :d.id :r.model_id]]
                                  :where  [:and
                                           [:= :r.model (h2x/literal "Document")]
-                                          [:= :r.most_recent true]
+                                          [:not [:exists ^:allow-subquery {:select [1]
+                                                                           :from   [[:revision :newer]]
+                                                                           :where  [:and
+                                                                                    [:= :newer.model :r.model]
+                                                                                    [:= :newer.model_id :r.model_id]
+                                                                                    [:> :newer.id :r.id]]}]]
                                           [:not= :d.exploration_id nil]]}]}
              :all_edits]]})
 
@@ -589,7 +604,12 @@
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
-                                   [:= :r.most_recent true]
+                                   [:not [:exists ^:allow-subquery {:select [1]
+                                                                    :from   [[:revision :newer]]
+                                                                    :where  [:and
+                                                                             [:= :newer.model :r.model]
+                                                                             [:= :newer.model_id :r.model_id]
+                                                                             [:> :newer.id :r.id]]}]]
                                    [:= :r.model (h2x/literal "Card")]]
                    [:moderation_review :mr] [:and
                                              [:= :mr.moderated_item_id :c.id]
@@ -708,7 +728,12 @@
                                              [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
                    [:revision :r] [:and
                                    [:= :r.model_id :d.id]
-                                   [:= :r.most_recent true]
+                                   [:not [:exists ^:allow-subquery {:select [1]
+                                                                    :from   [[:revision :newer]]
+                                                                    :where  [:and
+                                                                             [:= :newer.model :r.model]
+                                                                             [:= :newer.model_id :r.model_id]
+                                                                             [:> :newer.id :r.id]]}]]
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and

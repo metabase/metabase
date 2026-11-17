@@ -178,6 +178,7 @@
       (mt/with-temp [:model/Card {card-id :id}]
         (doseq [i (range 3)]
           (push-fake-revision! card-id :name (format "%d Tips Created by Day" i) :message "yay!"))
+        (revision/settle-revisions! [["FakedCard" card-id]])
         (is (=? [{:model       "FakedCard"
                   :model_id    card-id
                   :most_recent true}
@@ -249,8 +250,22 @@
         ;; e.g. if max-revisions is 15 then insert 16 revisions
         (dorun (doseq [i (range (inc revision/max-revisions))]
                  (push-fake-revision! card-id, :name (format "Tips Created by Day %d" i))))
+        (revision/settle-revisions! [["FakedCard" card-id]])
         (is (= revision/max-revisions
                (count (revision/revisions ::FakedCard card-id))))))))
+
+(deftest settle-revisions-in-one-flush-test
+  (testing "the writes of one row settled together leave one flagged Revision, the newest, and at most max-revisions"
+    (mt/test-helpers-set-global-values!
+      (mt/with-model-cleanup [:model/Revision]
+        (mt/with-temp [:model/Card {card-id :id}]
+          (doseq [i (range (+ 5 revision/max-revisions))]
+            (push-fake-revision! card-id :name (format "Settled %d" i)))
+          (revision/flush-settling!)
+          (let [revisions (t2/select [:model/Revision :id :most_recent] :model "FakedCard" :model_id card-id)]
+            (is (= revision/max-revisions (count revisions)))
+            (is (= [(apply max (map :id revisions))]
+                   (keep #(when (:most_recent %) (:id %)) revisions)))))))))
 
 (deftest do-not-record-if-object-is-not-changed-test
   (mt/with-model-cleanup [:model/Revision]
@@ -424,15 +439,17 @@
         ;; then both threads commit their transactions.
         (let [p1 (promise)
               p2 (promise)]
-          (future (t2/with-transaction [_conn]
-                    (push-fake-revision! card-id :name "Name1")
-                    (deref p1 100 ::timeout)
-                    (deliver p2 ::done)))
-          (t2/with-transaction [_conn]
-            (push-fake-revision! card-id :name "Name2")
-            (deliver p1 ::done))
+          (let [other (future (t2/with-transaction [_conn]
+                                (push-fake-revision! card-id :name "Name1")
+                                (deref p1 100 ::timeout)
+                                (deliver p2 ::done)))]
+            (t2/with-transaction [_conn]
+              (push-fake-revision! card-id :name "Name2")
+              (deliver p1 ::done))
+            (deref other 1000 ::timeout))
           ;; sanity check: nothing timed out, both transactions finished
           (is (= ::done (deref p1 100 ::timeout) (deref p2 100 ::timeout)))
+          (revision/flush-settling!)
           ;; we only have one `most_recent: true`
           (is (= 1 (t2/count :model/Revision
                              :model_id card-id :model "FakedCard"

@@ -2010,7 +2010,12 @@
                                                 [:= :r.model_id :this.id]
                                                 ;; Interesting for inversion, another condition on whether to update.
                                                 ;; For now, let's just swallow the extra update (2x amplification)
-                                                [:= :r.most_recent true]
+                                                [:not [:exists ^:allow-subquery {:select [1]
+                                                                                 :from   [[:revision :newer]]
+                                                                                 :where  [:and
+                                                                                          [:= :newer.model :r.model]
+                                                                                          [:= :newer.model_id :r.model_id]
+                                                                                          [:> :newer.id :r.id]]}]]
                                                 [:= :r.model "Card"]]]
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "card"]

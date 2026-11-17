@@ -142,41 +142,70 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
 
-(mu/defn lock-revisions!
-  "Lock the Revisions of the `model-name` row with `model-id` for update."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/query {:select [:id]
-             :from [:revision]
-             :where [:and
-                     [:= :model model-name]
-                     [:= :model_id model-id]]
-             :for :update}))
+(def ^:private Entity
+  "A revisioned row, as its `[model-name model-id]`."
+  [:tuple :string ms/PositiveInt])
 
-(mu/defn revision-ids-newest-first
-  "The ids of the Revisions of the `model-name` row with `model-id`, newest first."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (mapv :id (t2/query {:select   [:id]
-                       :from     [:revision]
-                       :where    [:and
-                                  [:= :model model-name]
-                                  [:= :model_id model-id]]
-                       :order-by [[:timestamp :desc]
-                                  [:id :desc]]})))
+(defn- entities-clause
+  "The where-clause matching the Revisions of `entities` under the table alias `alias`."
+  [alias entities]
+  (let [column #(keyword (str (name alias) "." (name %)))]
+    (into [:or]
+          (for [[model-name model-id] entities]
+            [:and [:= (column :model) model-name] [:= (column :model_id) model-id]]))))
 
-(mu/defn delete-revisions!
-  "Delete the Revisions with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Revision :id [:in ids]))
+(defn- newer-revision-exists
+  "The where-clause true when a Revision of the same row is newer than the Revision under the alias `alias`."
+  [alias]
+  (let [column #(keyword (str (name alias) "." (name %)))]
+    [:exists ^:allow-subquery {:select [1]
+                               :from   [[:revision :newer]]
+                               :where  [:and
+                                        [:= :newer.model (column :model)]
+                                        [:= :newer.model_id (column :model_id)]
+                                        [:> :newer.id (column :id)]]}]))
 
-(mu/defn unmark-most-recent-revisions!
-  "Clear `most_recent` on the Revisions of the `model-name` row with `model-id`, returning the number updated."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
+(mu/defn unmark-superseded-revisions!
+  "Clear `most_recent` on the Revisions of `entities` that a newer Revision of the same row supersedes, returning the
+  number updated."
+  [entities :- [:sequential Entity]]
   (t2/update! :model/Revision
-              {:model model-name :model_id model-id :most_recent true}
+              :id [:in ^:allow-subquery
+                   {:select [:superseded.id]
+                    :from   [[^:allow-subquery {:select [:r.id]
+                                                :from   [[:revision :r]]
+                                                :where  [:and
+                                                         [:= :r.most_recent true]
+                                                         (entities-clause :r entities)
+                                                         (newer-revision-exists :r)]}
+                              :superseded]]}]
               {:most_recent false}))
+
+(mu/defn delete-revisions-beyond!
+  "Delete the Revisions of `entities` that `kept` newer Revisions of the same row follow, returning the number
+  deleted."
+  [entities :- [:sequential Entity]
+   kept     :- ms/PositiveInt]
+  (t2/delete! :model/Revision
+              :id [:in ^:allow-subquery
+                   {:select [:old.id]
+                    :from   [[^:allow-subquery {:select [:r.id]
+                                                :from   [[:revision :r]]
+                                                :where  [:and
+                                                         (entities-clause :r entities)
+                                                         [:<= kept ^:allow-subquery
+                                                          {:select [:%count.*]
+                                                           :from   [[:revision :newer]]
+                                                           :where  [:and
+                                                                    [:= :newer.model :r.model]
+                                                                    [:= :newer.model_id :r.model_id]
+                                                                    [:> :newer.id :r.id]]}]]}
+                              :old]]}]))
+
+(defn- newest-revision-clause
+  "The where-clause true when the Revision under `alias` is the newest of its row, read without the `most_recent` flag."
+  [alias]
+  [:not (newer-revision-exists alias)])
 
 (mu/defn revisions
   "The Revisions of the `model-name` row with `model-id`, newest first."
@@ -291,9 +320,9 @@
     :from      [[:revision :r]]
     :left-join [[:core_user :u] [:= :u.id :r.user_id]]
     :where     [:and
-                [:= :r.most_recent true]
                 [:= :r.model db-model]
-                [:in :r.model_id ids]]}))
+                [:in :r.model_id ids]
+                (newest-revision-clause :r)]}))
 
 (mu/defn latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
@@ -304,9 +333,9 @@
                          :r.model :r.model_id :r.timestamp]
              :from      [[:revision :r]]
              :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-             :where     [:and [:= :r.most_recent true]
+             :where     [:and (newest-revision-clause :r)
                          (into [:or]
                                (keep (fn [[model-name ids]]
                                        (when (seq ids)
-                                         [:and [:= :model model-name] [:in :model_id ids]])))
+                                         [:and [:= :r.model model-name] [:in :r.model_id ids]])))
                                [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))

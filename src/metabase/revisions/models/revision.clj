@@ -2,6 +2,8 @@
   (:require
    [clojure.data :as data]
    [malli.core :as mc]
+   [metabase.app-db.core :as mdb]
+   [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.explorations.schema]
@@ -15,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -132,29 +135,41 @@
 
 (doto :model/Revision
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :search/indexed))
-
-(defmethod events/spec :model/Revision
-  [_model]
-  {:create :event/revision-create
-   :update :event/revision-update
-   :delete :event/revision-delete})
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
 
-(defn- delete-old-revisions!
-  "Delete the Revisions of `model` with `id` beyond its `kept` newest."
-  [model id kept]
-  (when-let [old-revisions (seq (drop kept (revisions.db/revision-ids-newest-first (name model) id)))]
-    (revisions.db/delete-revisions! old-revisions)))
+(mu/defn settle-revisions!
+  "Clear `most_recent` on the superseded Revisions of `entities`, `[model-name model-id]` pairs, and delete their
+  Revisions beyond [[max-revisions]]."
+  [entities :- [:sequential [:tuple :string pos-int?]]]
+  (when (seq entities)
+    (revisions.db/unmark-superseded-revisions! entities)
+    (revisions.db/delete-revisions-beyond! entities max-revisions)))
+
+(defn- settle-revisions!*
+  "Settle the Revisions of the rows of `items`, `{:model :model_id}` maps, once per row."
+  [items]
+  (let [entities (into [] (comp (map (juxt :model :model_id)) (distinct)) items)]
+    (try
+      (settle-revisions! entities)
+      (catch Exception e
+        (log/errorf "Failed to settle the revisions of %d rows: %s" (count entities) (ex-message e))))))
+
+(defonce ^:private settle-queue
+  (delay (grouper/start! #'settle-revisions!*
+                         :capacity 500
+                         :interval 5000)))
+
+(defn flush-settling!
+  "Block until the bookkeeping of every Revision inserted before this call has run."
+  []
+  (grouper/flush! @settle-queue))
 
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
-  (revisions.db/lock-revisions! model model_id)
-  (revisions.db/unmark-most-recent-revisions! model model_id)
-  (delete-old-revisions! model model_id (dec max-revisions))
+  (mdb/do-after-commit #(grouper/submit! @settle-queue {:model model :model_id model_id}))
   (assoc revision
          :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
@@ -267,38 +282,51 @@
                              [:is-creation? {:optional true} [:maybe :boolean]]
                              [:message      {:optional true} [:maybe :string]]]])))
 
+(defn- for-comparison
+  "The serialized object `m` of `entity` without what alone is no change to record: a Card's `:card_schema`, a
+  technical marker that `revert-to-revision! :model/Card` reads back from the stored object."
+  [entity m]
+  (cond-> m
+    (= entity :model/Card) (dissoc :card_schema)))
+
+(defn- insert-revision!
+  [{:keys [id entity user-id is-creation? message]} serialized-object]
+  (revisions.db/insert-revision! {:model        (name entity)
+                                  :model_id     id
+                                  :user_id      user-id
+                                  :object       serialized-object
+                                  :is_creation  (boolean is-creation?)
+                                  :is_reversion false
+                                  :message      message}))
+
+(defn row-changed?
+  "Whether the update of the row of `entity` with `id` from `before` to `after` changes what its Revision records,
+  comparing the row alone, without the parts of an aggregate such as a Dashboard's dashcards."
+  [entity id before after]
+  (let [serialize #(for-comparison entity (serialize-instance entity id (assoc % :dashcards [] :tabs [])))]
+    (not= (serialize before) (serialize after))))
+
+(mu/defn record-revision!
+  "Record a new Revision of `entity` with `id`, whose caller knows that it changed. Returns `object`."
+  [{:keys [id entity object] :as info} :- PushRevisionInput]
+  (insert-revision! info (serialize-instance entity id (dissoc object :message)))
+  object)
+
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
-  [{:keys [id entity user-id object
-           is-creation? message]
-    :or   {is-creation? false}}     :- PushRevisionInput]
-  (let [entity-name (name entity)
-        serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object (revisions.db/latest-revision-object entity-name id)
-        ;; For Card entities, ensure :card_schema is excluded from comparison. It is a
-        ;; technical/internal marker, so on its own it should not trigger a new revision. It has to come off
-        ;; BOTH sides: `serialize-instance :model/Card` keeps it, so dropping it only from the last revision
-        ;; made every Card compare as changed and recorded a revision on every push.
-        ;; It stays in the object we store, because `revert-to-revision! :model/Card` reads it back.
-        for-comparison (fn [m]
-                         (cond-> m
-                           (= entity :model/Card) (dissoc :card_schema)))]
+  [{:keys [id entity object] :as info} :- PushRevisionInput]
+  (let [serialized-object (serialize-instance entity id (dissoc object :message))
+        last-object       (revisions.db/latest-revision-object (name entity) id)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
     ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/encode (for-comparison serialized-object))
-                 (json/encode (for-comparison last-object)))
-      (revisions.db/insert-revision! {:model        entity-name
-                                      :model_id     id
-                                      :user_id      user-id
-                                      :object       serialized-object
-                                      :is_creation  is-creation?
-                                      :is_reversion false
-                                      :message      message})
+    (when-not (= (json/encode (for-comparison entity serialized-object))
+                 (json/encode (for-comparison entity last-object)))
+      (insert-revision! info serialized-object)
       object)))
 
 (mu/defn revert!

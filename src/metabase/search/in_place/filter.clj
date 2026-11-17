@@ -307,7 +307,12 @@
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
+          (sql.helpers/where [:not [:exists ^:allow-subquery {:select [1]
+                                                              :from   [[:revision :newer]]
+                                                              :where  [:and
+                                                                       [:= :newer.model :revision.model]
+                                                                       [:= :newer.model_id :revision.model_id]
+                                                                       [:> :newer.id :revision.id]]}]]
                              [:= :revision.model (search-model/search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
@@ -322,7 +327,12 @@
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
+          (sql.helpers/where [:not [:exists ^:allow-subquery {:select [1]
+                                                              :from   [[:revision :newer]]
+                                                              :where  [:and
+                                                                       [:= :newer.model :revision.model]
+                                                                       [:= :newer.model_id :revision.model_id]
+                                                                       [:> :newer.id :revision.id]]}]]
                              [:= :revision.model (search-model/search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp

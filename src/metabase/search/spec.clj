@@ -323,6 +323,9 @@
     (sequential? expr)
     (into (empty expr) (map #(replace-qualification % from to) expr))
 
+    (map? expr)
+    (update-vals expr #(replace-qualification % from to))
+
     :else
     expr))
 

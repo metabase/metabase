@@ -268,7 +268,12 @@
       (replace-select :last_edited_at :r.timestamp)
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                              [:= :r.most_recent true]
+                              [:not [:exists ^:allow-subquery {:select [1]
+                                                               :from   [[:revision :newer]]
+                                                               :where  [:and
+                                                                        [:= :newer.model :r.model]
+                                                                        [:= :newer.model_id :r.model_id]
+                                                                        [:> :newer.id :r.id]]}]]
                               [:= :r.model (search-model/search-model->revision-model model)]])))
 
 (mu/defn- with-moderated-status :- :map
