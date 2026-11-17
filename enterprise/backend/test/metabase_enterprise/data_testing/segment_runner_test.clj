@@ -163,7 +163,7 @@
                                   :rows    (mapv (fn [[pk c]] (assoc (zipmap column-names (repeat nil)) product-pk pk category c))
                                                  [[1 "Gizmo"] [2 "Widget"]])})
           one-order            [{:type :empty :name "one Gizmo order"
-                                 :sql  "SELECT 1 FROM (SELECT COUNT(*) AS c FROM {{output}}) t WHERE c <> 1"}]
+                                 :sql  "SELECT c FROM (SELECT COUNT(*) AS c FROM {{output}}) t WHERE c <> 1"}]
           every-product-column (mapv :name (lib/returned-columns
                                             (lib/query mp (lib.metadata/table mp (mt/id :products)))))]
       (testing "premise: the products table has columns the filter does not read"
