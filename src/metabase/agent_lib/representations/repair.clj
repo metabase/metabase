@@ -3503,39 +3503,73 @@
 ;;; Top-level entry point
 ;;; ============================================================
 
-(defn- normalize-shape*
-  "Pure-shape passes that don't require a metadata provider."
-  [parsed]
-  (-> parsed
-      ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
-      ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
-      normalise-list-value-comparisons*
-      ensure-clause-options*
-      unwrap-boolean-wrappers*
-      unwrap-nested-field-clauses*
-      dequote-field-targets*
-      rewrite-operator-name-aliases*
-      rewrite-temporal-bucket-aliases*
-      drop-unsupported-day-of-week-mode*
-      rewrite-direction-aliases*
-      rewrite-lib-type-aliases*
-      merge-trailing-options*
-      merge-string-filter-trailing-options*
-      wrap-now-literals*
-      rewrite-temporal-extract*
-      swap-between-bounds*
-      normalise-case-clauses*
-      normalise-fields-shape*
-      normalise-aggregation-clauses*
-      split-top-level-and-filters*
-      normalize-expressions-shape*
-      ensure-lib-types*))
-
 (defn- stamp-top-level-database*
   "Idempotent wrapper around [[infer-top-level-database*]] that takes `[query mp]` in the
   arg order matching the other mp-taking passes below."
   [query mp]
   (infer-top-level-database* query mp))
+
+(defn- pass-name
+  "The reported name of the pass in `pass-var`: the name of its function without the `*` at the end."
+  [pass-var]
+  (str/replace (name (symbol pass-var)) #"\*$" ""))
+
+(def ^:private passes
+  "The passes of [[repair]] in the order they run, each as `[name f]` where `f` takes `[query mp content-store]`.
+
+  One entry for each pass, so that [[repair]] can tell which of them changed the query."
+  (letfn [(pass [pass-var f] [(pass-name pass-var) f])
+          (shape [pass-var] (pass pass-var (fn [query _mp _content-store] (pass-var query))))
+          (with-mp [pass-var] (pass pass-var (fn [query mp _content-store] (pass-var query mp))))
+          (with-store [pass-var] (pass pass-var pass-var))]
+    [;; Pure-shape passes that don't require a metadata provider.
+     ;;
+     ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
+     ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
+     (shape #'normalise-list-value-comparisons*)
+     (shape #'ensure-clause-options*)
+     (shape #'unwrap-boolean-wrappers*)
+     (shape #'unwrap-nested-field-clauses*)
+     (shape #'dequote-field-targets*)
+     (shape #'rewrite-operator-name-aliases*)
+     (shape #'rewrite-temporal-bucket-aliases*)
+     (shape #'drop-unsupported-day-of-week-mode*)
+     (shape #'rewrite-direction-aliases*)
+     (shape #'rewrite-lib-type-aliases*)
+     (shape #'merge-trailing-options*)
+     (shape #'merge-string-filter-trailing-options*)
+     (shape #'wrap-now-literals*)
+     (shape #'rewrite-temporal-extract*)
+     (shape #'swap-between-bounds*)
+     (shape #'normalise-case-clauses*)
+     (shape #'normalise-fields-shape*)
+     (shape #'normalise-aggregation-clauses*)
+     (shape #'split-top-level-and-filters*)
+     (shape #'normalize-expressions-shape*)
+     (shape #'ensure-lib-types*)
+     (with-mp #'stamp-top-level-database*)
+     ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
+     (shape #'repair-day-and-default-comparisons*)
+     (shape #'rewrite-order-by-inline-aggs*)
+     (shape #'resolve-aggregation-ref-indexes*)
+     (shape #'split-post-agg-filters*)
+     (shape #'hoist-temporal-buckets*)
+     (with-store #'resolve-source-field-join-alias*)
+     (with-store #'resolve-implicit-joins*)
+     (with-store #'infer-field-types*)]))
+
+(def ^:private structural-passes
+  "Names of the passes that change a query that follows the prompt contract. [[repairs]] never reports them: such a
+  pass says nothing about what the model got wrong.
+
+  - `stamp-top-level-database`: the contract has no top-level `database`.
+  - `infer-field-types`: the contract tells the model not to write `base-type` on a reference by column name.
+  - `normalize-expressions-shape`: the contract prefers the map form of `expressions`.
+  - `ensure-lib-types`: the contract's join has no `lib/type`."
+  #{"stamp-top-level-database"
+    "infer-field-types"
+    "normalize-expressions-shape"
+    "ensure-lib-types"})
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
@@ -3636,19 +3670,27 @@
   ([mp parsed]
    (repair mp parsed serialization.protocol.mp/unchecked-app-db-content-store))
   ([mp parsed content-store]
-   (-> parsed
-       normalize-shape*
-       (stamp-top-level-database* mp)
-       ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
-       repair-day-and-default-comparisons*
-       rewrite-order-by-inline-aggs*
-       resolve-aggregation-ref-indexes*
-       split-post-agg-filters*
-       hoist-temporal-buckets*
-       (resolve-source-field-join-alias* mp content-store)
-       (resolve-implicit-joins* mp content-store)
-       (infer-field-types* mp content-store)
-       friendly-errors*)))
+   (let [[repaired fired] (reduce (fn [[query fired] [pass-name pass]]
+                                    (let [query' (pass query mp content-store)]
+                                      [query' (cond-> fired
+                                                ;; A structural pass is not compared: it is never reported.
+                                                (and (not (contains? structural-passes pass-name))
+                                                     (not= query query'))
+                                                (conj pass-name))]))
+                                  [parsed (sorted-set)]
+                                  passes)
+         repaired         (friendly-errors* repaired)]
+     (cond-> repaired
+       (instance? clojure.lang.IObj repaired) (vary-meta assoc ::repairs (vec fired))))))
+
+(defn repairs
+  "The names of the passes that changed the query `repaired`, a return value of [[repair]]: a sorted vector of
+  strings, `[]` when no reported pass changed it. A name is the name of the pass function without the `*`. The
+  passes in [[structural-passes]] are never in it. Nil when `repaired` did not come from [[repair]].
+
+  The names are reported in the `agent_used_tool` event, so a rename of a pass changes the reported value."
+  [repaired]
+  (::repairs (meta repaired)))
 
 ;;; ============================================================
 ;;; Post-resolve gate -- expressions the FE expression editor rejects

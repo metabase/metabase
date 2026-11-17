@@ -4721,3 +4721,52 @@
                  (first (binning-error! (with-lhs joined (binned (text-users-ref 101))))))))
         (testing "a binned numeric column of the join passes"
           (is (nil? (binning-error! (with-lhs joined (binned (lib/with-join-alias (text-users-ref 201) alias)))))))))))
+
+;;; ============================================================
+;;; `repairs` - the passes that changed the query
+;;; ============================================================
+
+(defn- orders-query
+  "A query on ORDERS that follows the prompt contract, with `filter-clause` as its one filter."
+  [filter-clause]
+  {"lib/type" "mbql/query"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "filters"      [filter-clause]}]})
+
+(deftest ^:parallel repairs-test
+  (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]
+    (testing "a pass that changed the query is named, without the `*` of its function"
+      (is (= ["rewrite-operator-name-aliases"]
+             (repair/repairs (repair/repair trivial-mp (orders-query ["gte" {} field 10]))))))
+    (testing "the names are sorted, and each pass is named once"
+      (is (= ["ensure-clause-options" "rewrite-operator-name-aliases" "swap-between-bounds"]
+             (repair/repairs (repair/repair trivial-mp (orders-query ["or" {}
+                                                                      ["gte" {} field 10]
+                                                                      ["lte" {} field 20]
+                                                                      ["between" field 20 10]]))))))
+    (testing "a query that follows the prompt contract has no repairs"
+      (is (= []
+             (repair/repairs (repair/repair trivial-mp (orders-query [">=" {} field 10]))))))
+    (testing "a structural pass is not reported, though it changed the query"
+      (let [query    (orders-query [">=" {} field 10])
+            repaired (repair/repair trivial-mp query)]
+        (is (not (contains? query "database")))
+        (is (= "Sample" (get repaired "database")))
+        (is (= [] (repair/repairs repaired)))))
+    (testing "a second run on a repaired query has no repairs"
+      (let [repaired (repair/repair trivial-mp (orders-query ["gte" {} field 10]))]
+        (is (= [] (repair/repairs (repair/repair trivial-mp repaired))))))
+    (testing "a value that did not come from `repair` has none"
+      (is (nil? (repair/repairs (orders-query [">=" {} field 10])))))
+    (testing "the recording does not change the returned query or its stage indexes"
+      (let [repaired (repair/repair trivial-mp (orders-query ["gte" {} field 10]))]
+        (is (= (assoc (orders-query [">=" {} field 10]) "database" "Sample")
+               repaired))
+        (is (some? (:metabase.agent-lib.representations/original-stage-indexes (meta repaired))))))))
+
+(deftest ^:parallel repairs-names-are-known-passes-test
+  (testing "each structural pass is a pass of the pipeline, so a rename cannot leave a dead name in the set"
+    (let [pass-names (set (map first @#'repair/passes))]
+      (is (= 30 (count pass-names)))
+      (is (every? pass-names @#'repair/structural-passes)))))
