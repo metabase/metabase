@@ -87,7 +87,11 @@
            (update-vals (u.compress/untgz-files (u.compress/tgz-bytes files)) seq)))
     (testing "entry order does not affect archive bytes"
       (is (= (seq (u.compress/tgz-bytes files))
-             (seq (u.compress/tgz-bytes (into (sorted-map-by #(compare %2 %1)) files)))))))
+             (seq (u.compress/tgz-bytes (into (sorted-map-by #(compare %2 %1)) files))))))
+    (testing "entries carry no OS user or group"
+      (with-open [tar (u.compress/tar-input-stream (u.compress/tgz-bytes files))]
+        (doseq [^TarArchiveEntry e (u.compress/entries tar)]
+          (is (= ["" "" 0 0] [(.getUserName e) (.getGroupName e) (.getLongUserId e) (.getLongGroupId e)]))))))
   (doseq [path ["../escape" "/absolute" "foo/../bar" "" "a//b"]]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
                           (u.compress/tgz-bytes {path (.getBytes "{}" "UTF-8")})))))

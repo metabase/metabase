@@ -72,7 +72,11 @@
               :let [entry (doto (TarArchiveEntry. path)
                             (.setSize (alength content))
                             (.setModTime 0)
-                            (.setMode 0644))]]
+                            (.setMode 0644)
+                            ;; fixed owner so the bytes don't depend on which user runs the server
+                            (.setUserName "")
+                            (.setGroupName "")
+                            (.setIds 0 0))]]
         (check-entry-name! path)
         (.putArchiveEntry tar entry)
         (.write tar content)
