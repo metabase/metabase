@@ -1,53 +1,38 @@
-;; The hand-curated half of `docs/databases/feature-support.md`; see [[metabase.cmd.driver-feature-dox]]. Its test fails
-;; until every driver feature and every driver module is classified here.
-;;
-;; `:drivers` are the table columns, in page order.
-;;   - `:dbms-version` is merged into both fake databases, to make a variant: MariaDB is `:mysql` with another flavor.
-;;   - `:newest` and `:oldest` are merged into one fake database each, for drivers that store their version differently.
-;;   - `:notes` explain a `:depends` cell, keyed by feature. Name the database: notes print below the table.
-;;
-;; `:sections` are the tables, in page order. A row's `:feature` is a keyword, or a vector of keywords that the page
-;; treats as one feature. `:doc` paths are relative to `docs/databases/`.
-{:drivers
- [{:driver :athena             :label "Athena"}
-  {:driver :bigquery-cloud-sdk :label "BigQuery"}
-  {:driver :clickhouse         :label "ClickHouse"
-   ;; only the newest is ClickHouse Cloud, so a feature that only new self-hosted versions support reads as ❌
-   :newest {:semantic-version {:major 999 :minor 0} :cloud true}
-   :oldest {:semantic-version {:major 1 :minor 0}   :cloud false}
-   :notes  {:uploads                  "ClickHouse Cloud and self-hosted single-node deployments."
-            :connection-impersonation "ClickHouse 24.4 and later."}}
-  {:driver :databricks         :label "Databricks"}
-  {:driver :druid-jdbc         :label "Druid"}
-  {:driver :mongo              :label "MongoDB"
-   :notes  {:expressions                 "MongoDB 4.2 and later."
-            :now                         "MongoDB 4.2 and later."
-            :date-arithmetics            "MongoDB 5.0 and later."
-            :datetime-diff               "MongoDB 5.0 and later."
-            :window-functions/cumulative "MongoDB 5.0 and later."}}
-  {:driver :mysql              :label "MariaDB"
-   :dbms-version {:flavor "MariaDB"}}
-  {:driver :mysql              :label "MySQL"
-   :dbms-version {:flavor "MySQL"}}
-  {:driver :oracle             :label "Oracle"}
-  {:driver :postgres           :label "PostgreSQL"}
-  {:driver :presto-jdbc        :label "Presto"}
-  {:driver :redshift           :label "Redshift"}
-  {:driver :snowflake          :label "Snowflake"}
-  {:driver :sparksql           :label "SparkSQL"}
-  {:driver :sqlserver          :label "SQL Server"
-   :notes  {:percentile-aggregations "SQL Server 2022 (version 16) and later."}}
-  {:driver :sqlite             :label "SQLite"}
-  {:driver :starburst          :label "Starburst"}
-  {:driver :vertica            :label "Vertica"}]
+;; The hand-curated part of `docs/databases/feature-support.md`: only what the source code can't supply. The drivers
+;; supply the columns, their names, and the cells. See [[metabase.cmd.driver-feature-dox]].
+{;; Facts about drivers, keyed by driver. Each official driver (`driver.u/official-drivers`) is a column, unless it
+ ;; has an `:exclude`.
+ ;;   - `:exclude`: why the driver isn't a column.
+ ;;   - `:columns`: one column per entry, for a driver that serves more than one database.
+ ;;   - `:dbms-version`: what sync stores in `:dbms-version` besides the version.
+ ;;   - `:editions`: the deployments to ask about, when the driver answers differently for them. Notes name them by
+ ;;     `:label`.
+ ;;   - `:oldest-version`: the oldest version that Metabase supports, when the driver checks for an older one. Without
+ ;;     it, notes give versions that no one runs.
+ ;;   - `:version-shape :map`: the driver keeps the version as `{:major :minor}`, not `[major minor]`.
+ :drivers
+ {:clickhouse {:version-shape :map
+               :editions      [{:label "ClickHouse Cloud" :dbms-version {:cloud true}}
+                               {:label        "self-managed single-node deployments"
+                                :dbms-version {:cloud false :single-node true}}
+                               {:label        "self-managed clusters"
+                                :dbms-version {:cloud false :single-node false}}]}
+  :druid      {:exclude "no longer a driver: `:druid-jdbc` replaced it"}
+  :h2         {:exclude "Metabase doesn't support H2 connections"}
+  :motherduck {:exclude "not yet in the list of supported databases in `docs/databases/connecting.md`"}
+  ;; 7.0 until August 2027: see `docs/databases/connections/mongodb.md`
+  :mongo      {:oldest-version [7 0]}
+  ;; sync stores the `:flavor`
+  :mysql      {:columns [{:label "MariaDB" :dbms-version {:flavor "MariaDB"}}
+                         {:label "MySQL" :dbms-version {:flavor "MySQL"}}]}}
 
- ;; Driver modules that aren't columns, each with its reason.
- :excluded-drivers
- #{;; abstract: the parent of `:databricks` and `:sparksql`, which are columns
-   :hive-like
-   ;; not yet in the list of officially supported databases in `docs/databases/connecting.md`
-   :motherduck}
-
+ ;; The tables, in page order. A row's `:feature` is a keyword, or a vector of keywords that the page shows as one
+ ;; feature. `:doc` paths are relative to `docs/databases/`.
+ ;;
+ ;; Give a feature a row only when the product reads its flag to offer or block the feature. Some flags only select
+ ;; the drivers that the tests run on, for example `:now`, `:date-arithmetics`, `:temporal-extract`,
+ ;; `:native-parameter-card-reference`, `:parameters/table-reference`, and `:native-temporal-units`. For these, a ❌
+ ;; means only that the tests skip the driver.
  :sections
  [{:title    "Query builder"
    :features [{:feature :nested-queries
@@ -58,11 +43,15 @@
               {:feature :inner-join :label "Inner join"       :doc "../questions/query-builder/join.md"}
               {:feature :full-join  :label "Full outer join"  :doc "../questions/query-builder/join.md"}
               {:feature :expressions
-               :label   "Custom columns"
-               :doc     "../questions/query-builder/editor.md#custom-columns"}
+               :label   "Custom expressions in columns and filters"
+               :doc     "../questions/query-builder/expressions.md"}
               {:feature :expression-aggregations
                :label   "Custom expressions in summaries"
-               :doc     "../questions/query-builder/expressions.md"}
+               :doc     "../questions/query-builder/expressions.md#aggregations"}
+              ;; no `:doc` until the custom expression docs cover them. Where the driver doesn't support them, the
+              ;; expression editor says "Standalone constants are not supported."
+              {:feature :expression-literals
+               :label   "Standalone constants in custom expressions"}
               {:feature :binning
                :label   "Binning numbers and coordinates"
                :doc     "../questions/query-builder/summarizing-and-grouping.md#grouping-your-metrics"}
@@ -82,9 +71,8 @@
               {:feature :distinct-where
                :label   "DistinctIf"
                :doc     "../questions/query-builder/expressions-list.md#distinctif"}
-              {:feature :window-functions/cumulative
-               :label   "CumulativeCount and CumulativeSum"
-               :doc     "../questions/query-builder/expressions-list.md#cumulativecount"}
+              ;; no row for `:window-functions/cumulative`: without it, Metabase calculates cumulative sums itself, so
+              ;; CumulativeCount and CumulativeSum work on every database
               {:feature :window-functions/offset
                :label   "Offset"
                :doc     "../questions/query-builder/expressions/offset.md"}]}
@@ -121,38 +109,21 @@
               {:feature :expressions/datetime
                :label   "datetime"
                :doc     "../questions/query-builder/expressions-list.md#datetime"}
-              {:feature :temporal-extract
-               :label   "year, month, day, and other date parts"
-               :doc     "../questions/query-builder/expressions-list.md#date-functions"}
-              {:feature :date-arithmetics
-               :label   "datetimeAdd and datetimeSubtract"
-               :doc     "../questions/query-builder/expressions/datetimeadd.md"}
               {:feature :datetime-diff
                :label   "datetimeDiff"
                :doc     "../questions/query-builder/expressions/datetimediff.md"}
               {:feature :convert-timezone
                :label   "convertTimezone"
                :doc     "../questions/query-builder/expressions/converttimezone.md"}
-              {:feature :now
-               :label   "now"
-               :doc     "../questions/query-builder/expressions/now.md"}
               {:feature :expressions/today
                :label   "today"
                :doc     "../questions/query-builder/expressions-list.md#today"}]}
 
   {:title    "SQL and native queries"
-   :features [{:feature :native-parameters
-               :label   "SQL variables"
-               :doc     "../questions/native-editor/sql-parameters.md"}
-              {:feature :native-parameter-card-reference
-               :label   "Saved question references"
-               :doc     "../questions/native-editor/referencing-saved-questions-in-queries.md"}
-              {:feature :parameters/table-reference
-               :label   "Table variables"
-               :doc     "../questions/native-editor/table-variables.md"}
-              {:feature :native-temporal-units
-               :label   "Time grouping parameters"
-               :doc     "../questions/native-editor/time-grouping-parameters.md"}]}
+   :features [;; native queries, not only SQL: MongoDB supports these
+              {:feature :native-parameters
+               :label   "Field filters and basic variables"
+               :doc     "../questions/native-editor/sql-parameters.md"}]}
 
   {:title    "Data modeling"
    :features [{:feature :persist-models
@@ -168,7 +139,10 @@
                :doc     "../data-modeling/transforms/query.md"}
               {:feature :transforms/python
                :label   "Python transforms"
-               :doc     "../data-modeling/transforms/python.md"}]}
+               :doc     "../data-modeling/transforms/python.md"}
+              {:feature :transforms/testing
+               :label   "Transform tests"
+               :doc     "../data-modeling/transforms/tests.md"}]}
 
   {:title    "Writing data"
    :features [{:feature :uploads
@@ -195,53 +169,4 @@
   {:title    "Database settings"
    :features [{:feature :set-timezone
                :label   "Report timezone"
-               :doc     "../configuring-metabase/localization.md#set-default-instance-report-timezone"}]}]
-
- ;; Driver plumbing that doesn't change what a person can do, or that the page would only confuse them with.
- :internal
- #{:actions/custom
-   :atomic-renames
-   :connection-impersonation-requires-role
-   :connection/multiple-databases
-   :create-or-replace-table
-   :database-replication
-   :dependencies/native
-   :describe-default-expr
-   :describe-fields
-   :describe-indexes
-   :describe-is-generated
-   :describe-is-nullable
-   :expression-literals
-   :fingerprint
-   :identifiers-with-spaces
-   :index-info
-   :index/fetch
-   :index/inline-create
-   :index/standalone-create
-   :jdbc/set-query-timeout
-   :jdbc/statements
-   :metadata/key-constraints
-   :metadata/table-existence-check
-   :metadata/table-writable-check
-   :multi-level-schema
-   :native-pivot-tables
-   :native-requires-specified-collection
-   :parameterized-sql
-   :persist-models-enabled
-   :rename
-   :schemas
-   :stage-ctes
-   :stage-ctes/nested
-   :table-privileges
-   :temporal/requires-default-unit
-   :test/cannot-destroy-db
-   :test/create-table-without-data
-   :test/creates-db-on-connect
-   :test/dynamic-dataset-loading
-   :test/jvm-timezone-setting
-   :test/use-fake-sync
-   :test/uuids-in-create-table-statements
-   :transforms/testing
-   :upload-with-auto-pk
-   :uuid-type
-   :workspace}}
+               :doc     "../configuring-metabase/localization.md#set-default-instance-report-timezone"}]}]}

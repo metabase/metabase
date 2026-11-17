@@ -1,107 +1,66 @@
 (ns metabase.cmd.driver-feature-dox-test
   (:require
-   [clojure.edn :as edn]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.cmd.driver-feature-dox :as driver-feature-dox]
-   [metabase.driver :as driver]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defn- config []
-  (#'driver-feature-dox/curated-config))
+(def ^:private postgres {:driver :postgres :label "PostgreSQL"})
 
-(defn- row-features
-  "Every driver feature the page's rows name, with the vector rows flattened."
-  [{:keys [sections]}]
-  (for [{:keys [feature]} (mapcat :features sections)
-        k                 (if (vector? feature) feature [feature])]
-    k))
+(def ^:private mariadb {:driver :mysql :label "MariaDB" :dbms-version {:flavor "MariaDB"}})
 
-(defn- column
-  "The `:drivers` entry labeled `label`."
-  [label]
-  (some #(when (= label (:label %)) %) (:drivers (config))))
+(def ^:private mysql {:driver :mysql :label "MySQL" :dbms-version {:flavor "MySQL"}})
 
-(deftest ^:parallel every-feature-is-classified-test
-  (let [{:keys [internal] :as cfg} (config)
-        classified (concat (row-features cfg) internal)]
-    ;; a new feature can't silently go missing, and a typo can't render a column of ❌: namespaced features skip the
-    ;; dispatch check in `driver/database-supports?`, so an unknown one would quietly answer false
-    (testing "the curated file classifies every driver feature, and names no other"
-      (is (= (set driver/features) (set classified))
-          (str "Add each new feature to a section of src/metabase/cmd/resources/driver-features.edn, or to its"
-               " :internal set if the page shouldn't show it. Remove each feature that no longer exists.")))
-    (testing "no feature is classified twice"
-      (is (= [] (for [[k n] (frequencies classified) :when (> n 1)] k))))))
+(defn- cell [column feature]
+  (#'driver-feature-dox/cell column feature))
 
-(defn- driver-modules
-  "The driver of each module in `modules/drivers/deps.edn`, read as data so that the test doesn't need the driver
-  modules on the classpath. A module is named for its driver: `metabase/bigquery-cloud-sdk` is `:bigquery-cloud-sdk`."
-  []
-  (into #{}
-        (map (comp keyword name))
-        (keys (:deps (edn/read-string (slurp "modules/drivers/deps.edn"))))))
-
-(deftest ^:parallel every-driver-module-is-classified-test
-  (let [{:keys [drivers excluded-drivers]} (config)
-        modules (driver-modules)
-        columns (set (map :driver drivers))]
-    ;; a driver that ships can't silently go missing from the page
-    (testing "every driver module is a column, or is excluded"
-      (is (= #{} (set/difference modules columns excluded-drivers))
-          (str "Add each new driver module to :drivers in src/metabase/cmd/resources/driver-features.edn, or to its"
-               " :excluded-drivers set, with the reason, if the page shouldn't show it.")))
-    (testing "every excluded driver is a module that isn't a column"
-      (is (= #{} (set/difference excluded-drivers modules)))
-      (is (= #{} (set/intersection excluded-drivers columns))))))
-
-(deftest ^:parallel every-note-is-for-a-row-test
-  (let [cfg (config)]
-    (testing "every note is keyed by a feature row on the page"
-      (let [row-keys (set (map :feature (mapcat :features (:sections cfg))))]
-        (is (= #{} (into #{}
-                         (comp (mapcat (comp keys :notes))
-                               (remove row-keys))
-                         (:drivers cfg))))))))
+(deftest ^:parallel config-problems-test
+  (let [problems #(#'driver-feature-dox/config-problems %)]
+    (testing "the curated file has no mistakes"
+      (is (empty? (problems (#'driver-feature-dox/curated-config)))))
+    (testing "a feature that doesn't exist, and a driver that isn't official"
+      (is (= ["Not a driver feature: :no-such-feature" "Not an official driver: :no-such-driver"]
+             (problems {:drivers  {:no-such-driver {:exclude "a reason"}}
+                        :sections [{:features [{:feature [:left-join :no-such-feature]}]}]}))))))
 
 (deftest ^:parallel fake-database-test
   (testing "the fake databases are valid database metadata, which `mu/defmethod`s like SQL Server's validate"
-    (doseq [{:keys [label] :as col} (:drivers (config))
-            age                     [:newest :oldest]]
-      (testing (str label " " age)
-        (is (mr/validate ::lib.schema.metadata/database (#'driver-feature-dox/fake-database col age)))))))
+    (doseq [[driver cfg] (:drivers (#'driver-feature-dox/curated-config))
+            :when        (not (:exclude cfg))
+            column       (:columns cfg [{}])
+            edition      (:editions cfg [{}])
+            :let         [database (#'driver-feature-dox/fake-database (merge cfg column {:driver driver}) edition [1 0])]]
+      (testing (pr-str driver (:dbms-version database))
+        (is (mr/validate ::lib.schema.metadata/database database)))))
+  (testing "the version has the shape that the driver keeps"
+    (is (= {:flavor "MySQL" :semantic-version [8 0]}
+           (:dbms-version (#'driver-feature-dox/fake-database mysql {} [8 0]))))
+    (is (= {:cloud true :semantic-version {:major 24 :minor 4}}
+           (:dbms-version (#'driver-feature-dox/fake-database {:driver :clickhouse :version-shape :map}
+                                                              {:dbms-version {:cloud true}}
+                                                              [24 4]))))))
 
-(deftest ^:parallel support-test
-  (testing "a feature that every version supports"
-    (is (= :yes (#'driver-feature-dox/support (column "PostgreSQL") :left-join))))
-  (testing "a feature that no version supports"
-    (is (= :no (#'driver-feature-dox/support (column "MySQL") :full-join))))
+(deftest ^:parallel cell-test
+  (testing "every version supports the feature, or none does"
+    (is (= {:support :yes} (cell postgres :left-join)))
+    (is (= {:support :no} (cell mysql :full-join))))
   (testing "MariaDB uses the MySQL driver, but can answer differently"
-    (is (= :yes (#'driver-feature-dox/support (column "MySQL") :regex/lookaheads-and-lookbehinds)))
-    (is (= :no (#'driver-feature-dox/support (column "MariaDB") :regex/lookaheads-and-lookbehinds))))
+    (is (= {:support :yes} (cell mysql :regex/lookaheads-and-lookbehinds)))
+    (is (= {:support :no} (cell mariadb :regex/lookaheads-and-lookbehinds))))
   (testing "a vector row is supported when any of its features is"
-    (is (= :yes (#'driver-feature-dox/support (column "PostgreSQL") [:nested-fields :nested-field-columns]))))
-  (testing "a feature that only newer versions support"
-    ;; MySQL runs stage CTEs from 8.0 on
-    (is (= :depends (#'driver-feature-dox/support (column "MySQL") :stage-ctes)))))
-
-(deftest ^:parallel section-rows-test
-  (let [cells (fn [columns]
-                (-> (#'driver-feature-dox/section-rows {:features [{:feature :stage-ctes}]} columns)
-                    first
-                    :cells))]
-    (testing "only a `:depends` cell carries a note, the column's own when it has one"
-      (is (= [{:support :depends :note "MySQL 8.0 and later."}
-              {:support :yes :note nil}]
-             (cells [(assoc (column "MySQL") :notes {:stage-ctes "MySQL 8.0 and later."})
-                     (column "MariaDB")]))))
-    (testing "a `:depends` cell without a curated note gets a general one"
-      (is (= [{:support :depends :note "On MySQL, depends on the database version."}]
-             (cells [(dissoc (column "MySQL") :notes)]))))))
+    (is (= {:support :yes} (cell postgres [:nested-fields :nested-field-columns]))))
+  (testing "the note gives the version where support starts, from the driver's own check"
+    (is (= {:support :depends :note "MySQL 8.0 and later."} (cell mysql :stage-ctes))))
+  (testing "an oldest version above that check makes the note unnecessary"
+    (is (= {:support :yes} (cell (assoc mysql :oldest-version [8 0]) :stage-ctes))))
+  (testing "the note names the editions that support the feature"
+    (is (= {:support :depends :note "MySQL."}
+           (cell {:driver :mysql :label "MySQL or MariaDB" :editions [{:label "MariaDB" :dbms-version {:flavor "MariaDB"}}
+                                                                      {:label "MySQL" :dbms-version {:flavor "MySQL"}}]}
+                 :regex/lookaheads-and-lookbehinds)))))
 
 (deftest ^:parallel section-markdown-test
   (let [note     "Versioned 2.0 and later."
