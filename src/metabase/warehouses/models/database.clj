@@ -444,6 +444,19 @@
   "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
   1000)
 
+(defn- move-cards-to-their-source-database!
+  "Move each Card of the Database with `database-id` whose source Card belongs to another Database to that Database,
+  along with the Cards built on it."
+  [database-id]
+  ;; A Card built on a moved Card is only found by the next pass, so a chain moves one link per pass, sources first.
+  (loop []
+    (when-let [cards (seq (warehouses.db/cards-sourced-from-another-database database-id))]
+      (doseq [{card-id :id, source-database-id :source_database_id} cards]
+        (warehouses.db/set-card-database! card-id
+                                          source-database-id
+                                          (assoc (warehouses.db/card-query card-id) :database source-database-id)))
+      (recur))))
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -456,6 +469,9 @@
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
   (warehouses.db/delete-transforms-for-database! id)
+  ;; A Card built on a Card of another Database belongs to that one. Only a stale `database_id`, which the cascade
+  ;; below follows, still ties it to this one (#79891).
+  (move-cards-to-their-source-database! id)
   ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
   ;; their search documents are enumerated first.
   ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model

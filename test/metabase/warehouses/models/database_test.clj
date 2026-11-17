@@ -130,6 +130,40 @@
       (t2/delete! :model/Database :id db-id)
       (is (not (t2/exists? :model/Action :id action-id))))))
 
+(defn- native-card [database-id]
+  {:dataset_query {:lib/type :mbql/query
+                   :database database-id
+                   :stages   [{:lib/type :mbql.stage/native
+                               :native   "SELECT 1"}]}})
+
+(defn- card-on-source [database-id source-card-id]
+  {:dataset_query {:lib/type :mbql/query
+                   :database database-id
+                   :stages   [{:lib/type    :mbql.stage/mbql
+                               :source-card source-card-id}]}})
+
+(deftest delete-database-moves-cards-sourced-from-another-database-test
+  (testing "deleting a Database moves its Cards whose source Card belongs to another Database there (#79891)"
+    (mt/with-temp [:model/Database {old-db-id :id}    {:engine :h2}
+                   :model/Database {new-db-id :id}    {:engine :h2}
+                   :model/Card     {source-id :id}    (native-card new-db-id)
+                   :model/Card     {question-id :id}  (card-on-source new-db-id source-id)
+                   :model/Card     {old-query-id :id} (card-on-source old-db-id source-id)
+                   :model/Card     {nested-id :id}    (card-on-source old-db-id old-query-id)
+                   :model/Card     {own-id :id}       (native-card old-db-id)]
+      (let [stale-ids [question-id old-query-id nested-id]]
+        ;; the `database_id` a Card keeps when its source moves without it
+        (t2/query {:update :report_card
+                   :set    {:database_id old-db-id}
+                   :where  [:in :id stale-ids]})
+        (t2/delete! :model/Database :id old-db-id)
+        (doseq [card-id stale-ids]
+          (is (=? {:database_id   new-db-id
+                   :dataset_query {:database new-db-id}}
+                  (t2/select-one :model/Card :id card-id))))
+        (testing "the Cards that belong to the deleted Database are deleted"
+          (is (not (t2/exists? :model/Card :id own-id))))))))
+
 (deftest health-check-candidates-test
   (testing "startup health checks pick one representative database per engine: the lowest id, skipping
             audit/sample/destination databases"

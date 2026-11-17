@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -136,6 +137,32 @@
         (t2/query {:select [:id]
                    :from   [(t2/table-name :model/Card)]
                    :where  [:in :id card-ids]})))
+
+(mu/defn cards-sourced-from-another-database :- [:sequential [:map
+                                                              [:id                 ::lib.schema.id/card]
+                                                              [:source_database_id ::lib.schema.id/database]]]
+  "The `:id`s of the Cards of the Database with `database-id` whose source Card belongs to another Database, each with
+  the id of that Database as `:source_database_id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/query {:select [:card.id [:source.database_id :source_database_id]]
+             :from   [[(t2/table-name :model/Card) :card]]
+             :join   [[(t2/table-name :model/Card) :source] [:= :source.id :card.source_card_id]]
+             :where  [:and
+                      [:= :card.database_id database-id]
+                      [:not= :source.database_id database-id]]}))
+
+(mu/defn card-query :- ::lib.schema/query
+  "The `:dataset_query` of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :dataset_query :model/Card :id card-id))
+
+(mu/defn set-card-database! :- :int
+  "Set the Database of the Card with `card-id` to `database-id`, and its `:dataset_query` to `query`, returning the
+  number updated."
+  [card-id     :- ::lib.schema.id/card
+   database-id :- ::lib.schema.id/database
+   query       :- ::lib.schema/query]
+  (t2/update! :model/Card :id card-id {:database_id database-id, :dataset_query query}))
 
 (mu/defn delete-transforms-for-database! :- :int
   "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number
