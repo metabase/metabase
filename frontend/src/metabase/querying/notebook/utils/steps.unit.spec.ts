@@ -11,6 +11,7 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -324,5 +325,84 @@ describe("aggregated query without breakout", () => {
         .find((step) => step.type === "summarize")
         ?.actions.map((action) => action.type),
     ).toEqual(["join", "expression"]);
+  });
+});
+
+describe("query with a custom column based on a joined column", () => {
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", fieldId: ORDERS.PRODUCT_ID },
+                right: { type: "column", fieldId: PRODUCTS.ID },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "Rounded price",
+            value: {
+              type: "operator",
+              operator: "ceil",
+              args: [
+                {
+                  type: "column",
+                  fieldId: PRODUCTS.PRICE,
+                  joinAlias: "Products",
+                },
+              ],
+            },
+          },
+          {
+            name: "Rounded total",
+            value: {
+              type: "operator",
+              operator: "ceil",
+              args: [{ type: "column", fieldId: ORDERS.TOTAL }],
+            },
+          },
+        ],
+        limit: 5,
+      },
+    ],
+  });
+  const steps = getQuestionStepsForMBQLQuery(Lib.toJsQuery(query));
+
+  it("should drop the custom column when the join is removed (metabase#14775)", () => {
+    expect(steps.map((step) => step.type)).toEqual([
+      "data",
+      "join",
+      "expression",
+      "limit",
+    ]);
+    const joinStep = checkNotNull(steps.find((step) => step.type === "join"));
+    const newQuery = checkNotNull(joinStep.revert?.(joinStep.query, 0));
+
+    expect(Lib.joins(newQuery, 0)).toHaveLength(0);
+    expect(
+      Lib.expressions(newQuery, 0).map(
+        (expression) => Lib.displayInfo(newQuery, 0, expression).displayName,
+      ),
+    ).toEqual(["Rounded total"]);
+    expect(
+      Lib.returnedColumns(newQuery, 0).map(
+        (column) => Lib.displayInfo(newQuery, 0, column).displayName,
+      ),
+    ).not.toContain("Rounded price");
+
+    const newSteps = getQuestionStepsForMBQLQuery(Lib.toJsQuery(newQuery));
+    expect(newSteps.map((step) => step.type)).toEqual([
+      "data",
+      "expression",
+      "limit",
+    ]);
   });
 });
