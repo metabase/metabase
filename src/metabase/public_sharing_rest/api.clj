@@ -11,6 +11,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -150,28 +151,13 @@
   [x]
   x)
 
-(defn- scrub-referenced-entity-errors
-  "A failed referenced query carries the raw driver message, which can name tables and columns. Public and
-  embedded viewers get the same generic text the `:failed` method gives the main query."
-  [referenced-entities]
-  (reduce-kv (fn [acc entity-type by-id]
-               (assoc acc entity-type
-                      (update-vals by-id (fn [result]
-                                           (cond-> result
-                                             (:error result)
-                                             (assoc :error (tru "An error occurred while running the query.")))))))
-             {}
-             referenced-entities))
-
 (defmethod transform-qp-result :completed
   [results]
-  (-> (u/select-nested-keys
-       results
-       ;; :referenced_entities carries dynamic-goal values for public/embedded cards.
-       [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone :referenced_entities]
-        [:json_query :parameters]
-        :status])
-      (m/update-existing-in [:data :referenced_entities] scrub-referenced-entity-errors)))
+  (u/select-nested-keys
+   results
+   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone]
+    [:json_query :parameters]
+    :status]))
 
 (defn error-response
   "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
@@ -255,8 +241,7 @@
                           [:dashcard       {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
                           [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
                           [:ignore-cache   {:optional true} [:maybe :boolean]]
-                          [:card-transform {:optional true} [:maybe ifn?]]
-                          [:signed-parameter-ids {:optional true} [:maybe [:set ::lib.schema.parameter/id]]]]]]
+                          [:card-transform {:optional true} [:maybe ifn?]]]]]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
@@ -270,12 +255,21 @@
               :make-run   process-query-for-card-with-id-run-fn
               options)))
 
+;;; Chart context resolvers: one per public chart identity shape. A chart route and its `/goal-values` route resolve
+;;; through the same fn with the same arguments, so a check added to a resolver guards both.
+
+(defn- resolve-public-card
+  "`{:card card}` for the public Card with `uuid`. 400 when public sharing is disabled, 404 when no unarchived Card
+  has the uuid."
+  [uuid]
+  (public-sharing.validation/check-public-sharing-enabled)
+  {:card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))})
+
 (defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
+  (let [{:keys [card]} (resolve-public-card uuid)]
     (apply process-query-for-card-with-id card export-format parameters options)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
@@ -418,6 +412,26 @@
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
+(defn- card-on-dashcard?
+  "Whether `card-id` is the main card of `dashcard` or one of its series cards."
+  [dashcard card-id]
+  (or (= (:card_id dashcard) card-id)
+      (boolean (some #(= card-id (:id %)) (:series (t2/hydrate dashcard :series))))))
+
+(defn- resolve-public-dashcard
+  "`{:dashboard :dashcard :card}` for Card `card-id` on DashboardCard `dashcard-id` of the public Dashboard with
+  `uuid`. 400 when public sharing is disabled; 404 when the Card or Dashboard is missing or archived, the
+  DashboardCard is missing, or they don't belong together."
+  [uuid dashcard-id card-id]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
+        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+    ;; [[qp.dashboard/process-query-for-dashcard]] checks this again for the chart routes
+    (api/check-404 (and (= (:dashboard_id dashcard) (:id dashboard))
+                        (card-on-dashcard? dashcard card-id)))
+    {:dashboard dashboard, :dashcard dashcard, :card card}))
+
 (defn process-query-for-dashcard
   "Return the results of running a query for pre-loaded Card `card` on pre-loaded DashboardCard `dashcard` belonging to
   pre-loaded Dashboard `dashboard`.
@@ -479,10 +493,7 @@
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
-        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+  (let [{:keys [dashboard dashcard card]} (resolve-public-dashcard uuid dashcard-id card-id)]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -506,10 +517,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
-        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+  (let [{:keys [dashboard dashcard card]} (resolve-public-dashcard uuid dashcard-id card-id)]
     (u/prog1 (process-query-for-dashcard
               :dashboard     dashboard
               :card          card
@@ -755,10 +763,7 @@
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
-        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+  (let [{:keys [dashboard dashcard card]} (resolve-public-dashcard uuid dashcard-id card-id)]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -931,6 +936,13 @@
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 
+(defn- resolve-public-document-card
+  "`{:card card}` for Card `card-id` embedded in the public Document with `uuid`. 400 when public sharing is disabled,
+  404 when the Document or Card is missing or archived, or the Card isn't embedded in the Document."
+  [uuid card-id]
+  (public-sharing.validation/check-public-sharing-enabled)
+  {:card (validate-card-in-public-document uuid card-id)})
+
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
   :- ::query-result-response
   "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
@@ -940,8 +952,7 @@
                               [:card-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true} [:maybe ::parameters.schema/api.parameter-values]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (validate-card-in-public-document uuid card-id)]
+  (let [{:keys [card]} (resolve-public-document-card uuid card-id)]
     ;; Run the query as admin since public documents are available to everyone anyway
     (u/prog1 (process-query-for-card-with-id
               card
@@ -964,8 +975,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (validate-card-in-public-document uuid card-id)]
+  (let [{:keys [card]} (resolve-public-document-card uuid card-id)]
     (process-query-for-card-with-id
      card
      export-format
@@ -975,6 +985,52 @@
                   :js-int-to-string?     false
                   :format-rows?          format_rows
                   :pivot?                pivot_results})))
+
+;;; ----------------------------------------------- Dynamic goal values ------------------------------------------------
+
+(mr/def ::goal-values-response
+  "Response schema for a public or embed `/goal-values` endpoint."
+  (qp.streaming/response-schema ::dynamic-goals/goal-values))
+
+(defn- chart-goal-values-response
+  "Streams the values of the goals the chart a resolver returned draws, from its saved settings only. They run with
+  superuser perms and no current user, like the chart's own query."
+  [{:keys [card dashcard dashboard]}]
+  (let [chart-context (m/assoc-some {:card                 card
+                                     :signed-parameter-ids #{}}
+                                    :dashcard     dashcard
+                                    :dashboard-id (:id dashboard))]
+    (dynamic-goals/goal-values-response
+     #(request/as-admin
+        (binding [api/*current-user-id* nil]
+          (dynamic-goals/chart-context-goal-values chart-context))))))
+
+(api.macros/defendpoint :get "/card/:uuid/goal-values"
+  :- ::goal-values-response
+  "Fetch the values of the dynamic goals of a publicly-accessible Card. Does not require auth credentials. Public
+  sharing must be enabled."
+  [{:keys [uuid]} :- [:map {:closed true}
+                      [:uuid ms/UUIDString]]]
+  (chart-goal-values-response (resolve-public-card uuid)))
+
+(api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/goal-values"
+  :- ::goal-values-response
+  "Fetch the values of the dynamic goals of a Card in a publicly-accessible Dashboard. Does not require auth
+  credentials. Public sharing must be enabled."
+  [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
+                                          [:uuid        ms/UUIDString]
+                                          [:dashcard-id ms/PositiveInt]
+                                          [:card-id     ms/PositiveInt]]]
+  (chart-goal-values-response (resolve-public-dashcard uuid dashcard-id card-id)))
+
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id/goal-values"
+  :- ::goal-values-response
+  "Fetch the values of the dynamic goals of a Card embedded in a public Document. Does not require auth credentials.
+  Public sharing must be enabled."
+  [{:keys [uuid card-id]} :- [:map {:closed true}
+                              [:uuid    ms/UUIDString]
+                              [:card-id ms/PositiveInt]]]
+  (chart-goal-values-response (resolve-public-document-card uuid card-id)))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
