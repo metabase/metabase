@@ -3,12 +3,11 @@
   (card/dashboard/document) or deleted, or a collection subtree is archived, its active findings are invalidated so it
   drops out of the served set immediately instead of lingering until the next scan."
   (:require
-   [clojure.string :as str]
-   [metabase-enterprise.content-diagnostics.db :as content-diagnostics.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -37,18 +36,18 @@
   (events/derive! topic ::event))
 
 (methodical/defmethod events/publish-event! ::event
-  [topic {:keys [object changes]}]
+  [_topic {:keys [object previous-object] :as event}]
   (when (premium-features/has-feature? :content-diagnostics)
-    (let [model     (t2/model object)
-          deleted?  (str/ends-with? (name topic) "-delete")
-          archived? (true? (:archived changes))]
+    (let [row       (or object previous-object)
+          model     (t2/model row)
+          deleted?  (nil? object)
+          archived? (and (true? (:archived object)) (u.events/changed? event :archived))]
       (cond
         (and (= :model/Collection model) archived?)
-        (invalidate! {:collection-id (:id object)}
-                     #(let [archived (content-diagnostics.db/collection (:id object))]
-                        (finding/invalidate-for-collection-subtree!
-                         (conj (collection/descendant-ids archived) (:id object)))))
+        (invalidate! {:collection-id (:id row)}
+                     #(finding/invalidate-for-collection-subtree!
+                       (conj (collection/descendant-ids row) (:id row))))
 
         (and (entity-types model) (or deleted? archived?))
-        (invalidate! {:entity-type (entity-types model) :entity-id (:id object)}
-                     #(finding/invalidate-for-entity! (entity-types model) (:id object)))))))
+        (invalidate! {:entity-type (entity-types model) :entity-id (:id row)}
+                     #(finding/invalidate-for-entity! (entity-types model) (:id row)))))))
