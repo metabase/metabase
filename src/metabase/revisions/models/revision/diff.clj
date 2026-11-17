@@ -46,6 +46,12 @@
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")))
 
+(def data-test-subject-models
+  "The model of the subject of a data test, by the key that holds the subject's id."
+  {:transform_id :model/Transform
+   :card_id      :model/Card
+   :segment_id   :model/Segment})
+
 (defn- match-2 [k v1 v2 identifier names]
   (match/match-one [k v1 v2]
     [:archived _ after]
@@ -113,6 +119,20 @@
     [:source _ _]
     (deferred-tru "changed the source")
 
+    ;; Data test specific
+    [:inputs _ _]
+    (deferred-tru "changed the inputs")
+
+    [:expectations _ _]
+    (deferred-tru "changed the expectations")
+
+    [(subject-key :guard data-test-subject-models) _ _]
+    (let [model (data-test-subject-models subject-key)]
+      (deferred-tru "moved {0} from {1} to {2}"
+                    identifier
+                    (or (get-in names [:subject-names model v1]) (str "#" v1))
+                    (or (get-in names [:subject-names model v2]) (str "#" v2))))
+
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]
@@ -145,7 +165,8 @@
     "Exploration"   (deferred-tru "Exploration")
     "Transform"     (deferred-tru "Transform")
     "TransformTest" (deferred-tru "Transform test")
-    "CardTest"      (deferred-tru "Card test")))
+    "CardTest"      (deferred-tru "Card test")
+    "SegmentTest"   (deferred-tru "Segment test")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`, naming Collections and Dashboards from `names`.
