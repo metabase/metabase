@@ -6,9 +6,9 @@ allowed-tools: Read, Write, Edit, Grep, Bash, Glob
 
 # Documentation writing skill
 
-@./../_shared/metabase-style-guide.md
+@./../\_shared/metabase-style-guide.md
 
-Read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else, unless its text already appears above. That guide is the standard. This skill is only the workflow around it.
+Read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else.
 
 ## Scope
 
@@ -16,13 +16,14 @@ This skill covers clarity, style, and formatting. Accuracy is a separate check, 
 
 ## Writing a new page
 
-- **Give the page `title` and `summary` front matter.** Read one or two neighboring pages in the same directory for anything else they carry.
+- **Give the page `title` and `summary` front matter.**
 - **Format the page when you're done.** Run `bunx prettier --write` on it.
 
 ## Editing an existing doc
 
 - **Scope changes to the sections you were asked to change.** Fix anything in them that breaks the guide. That's as far as the guide's "while I'm on this page, I might as well tidy up" goes for you. Mention problems elsewhere on the page instead of fixing them.
 - **Check the formatting before you edit.** Run `bunx prettier --check` on the file. If it passes, run `bunx prettier --write` on it when you're done. If it doesn't, leave the formatting alone, or prettier rewrites lines you didn't touch.
+
 - **If you rewrite a heading, fix the links to it.** Product code links to docs anchors too, and nothing checks those links. Before changing `## Cache configuration`, search for the anchor it generates, without the `#`:
 
   ```sh

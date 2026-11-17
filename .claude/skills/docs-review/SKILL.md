@@ -6,13 +6,13 @@ allowed-tools: Read, Grep, Bash, Glob
 
 # Documentation review skill
 
-@./../_shared/metabase-style-guide.md
+@./../\_shared/metabase-style-guide.md
 
 ## The standard
 
-Read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else, unless its text already appears above. That guide is the standard.
+If you haven't already, read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else.
 
-Read the diff once for intent before flagging anything — half of what looks wrong is a deliberate choice. Don't invent rules beyond the guide, and never enforce one without its exception: flagging an exception is worse than missing a violation.
+Read the diff once for intent before flagging anything.
 
 ## Scope
 
@@ -20,21 +20,44 @@ This review covers clarity, style, and formatting. Accuracy is a separate check,
 
 ## Tiers
 
-Clarity comes before style. One clarity finding outranks any number of style findings.
+Broken things come first, then clarity, then style. One finding outranks any number of findings in a lower tier.
 
-**Tier 1 — Clarity.** Action buried under explanation; a heading naming a topic instead of a point; commands out of the order they're run; a paragraph doing two jobs or none; a concept in bullets that should be prose; pronouns taking over right after a new term; a full-page screenshot where a scoped one would do; a feature described without saying where it stops.
+**Tier 0: Existential** Ask whether the page/section/sentence should exist at all. Be ruthless with cutting. A page or section nobody will read costs maintenance and clutters the content people actually need. If the info really is germane to people solving problems (in Metabase or with Metabase): look for opportunities to consolidate the info with another relevant section, trim the section, or wince and cut it completely if you don't think readers will care about it.
 
-Plus one only a diff makes visible: **did this change push the reader's answer further down the page, or put a preamble in front of it?** Burial this diff introduced is yours. Burial that was already there is a nit on untouched lines; if it's bad enough to mention, mention it once as a move ("hoist the permission levels above the click path"), not a rewrite.
+**Tier 1 — Broken.** Only in a diff.
 
-**Tier 2 — Style.** Tone, word choice, and formatting. Real, but never the headline. Group findings from the same section into one issue.
+- A moved or renamed page with no `redirect_from` entry for its old path, like `/docs/latest/old-section/old-page`. The old page's own `redirect_from` entries carry over too.
+- A changed heading whose old anchor is still linked. Search for the anchor, without the `#`:
+
+  ```sh
+  grep -rn "cache-configuration" docs/ frontend/src enterprise/frontend/src src enterprise/backend/src
+  ```
+
+- A new page with no `title` or `summary` front matter.
+
+**Tier 2 — Clarity.**
+
+- Action buried under explanation.
+- A heading naming a topic instead of a point.
+- Commands out of the order they're run.
+- A paragraph doing two jobs or none.
+- A concept in bullets that should be prose.
+- Pronouns that impair clarity.
+- Full-page screenshot where a scoped one would do.
+
+**Tier 3 — Style.**
+
+- Tone
+- Word choice
+- Formatting
 
 ## What NOT to post
 
-Only post findings — congratulation is noise that hides them. Also skip lateral rewrites, nits on untouched lines, and formatting the guide doesn't ask for. If a doc is clean, say so in one line and post nothing else.
+Only post findings. If a doc is clean, say so in one line and post nothing else.
 
 ## Output
 
-Cut anything that won't materially help the reader, then number what's left from 1, leading with the tier.
+Cut anything that won't materially help the reader, then number remaining issues from 1, organized by tier.
 
 ```markdown
 ## Issues
@@ -46,12 +69,8 @@ Cut anything that won't materially help the reader, then number what's left from
 The command comes after two sentences of explanation. Lead with the command, then explain.
 
 **Issue 3 (Style)** — Lines 15–22
-"cannot" → "can't"; "users" → "people"; `bash` → `sh`.
+"cannot" → "can't"; "users" → "people";
 
 **Not checked** — Line 30
 The page says caching is on by default, but the steps start by turning it on.
 ```
-
-### Posting to a GitHub PR
-
-Only with `mcp__github__*` tools; otherwise report in the conversation. If there's nothing to post, don't open a review; say so in the conversation. Otherwise, create a pending review, read line numbers from the diff, add every comment **in one response with parallel calls**, then submit with event `COMMENT` and no body. Start each with `**Issue N (Tier)**` or `**Not checked**`; don't also print to the conversation.

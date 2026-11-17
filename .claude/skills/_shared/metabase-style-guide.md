@@ -2,34 +2,30 @@
 
 Write like people normally talk with each other. Read it out loud: if it sounds formal, rewrite it.
 
-Clear comes before on-style. One buried instruction outweighs any number of "users" that should be "people."
+Priorize clarity before style.
 
-## Who reads this
+## The readers you need to serve
 
 - **Prospects**, working out whether Metabase solves their problem.
 - **Customers**, already running Metabase and learning how a piece of it works.
 - **Developers** building Metabase, who also read `docs/developers-guide/`.
+- **Agents** answering questions for people, or building things with Metabase.
 
 ## Key points
 
-- Our readers are smart and impatient; most of them don't want to spend time reading docs.
-- Don't explain what they already know.
-- Don't explain things they don't need to know.
-- Don't assume their context, like the season or where they live.
-- Hard things are hard. Explain more where the topic is difficult, and still cut what you can.
+- Our readers are smart and impatient.
+- Don't explain what readers already know.
+- Don't explain things readers don't need to know.
+- Tailor length to complexity, elaborating only when a topic requires it (but still cut what you can).
+- Cut more than you think you should. Writers will review your PRs; don't give them extra work.
+
+## Document types
+
+When asked to edit a doc, think Diátaxis: identifiy the type of doc you're working in (Tutorial, How-to guide, Explanation, Reference) and tailor your edits in that vein.
 
 ## Structure and clarity
 
 **Lead with the important thing.** Action first, then how, then why.
-
-**Commands go in fenced blocks, in the order they're run.** Explanation comes after, never wrapped around the command.
-
-**Say what Metabase can't do**, plainly, and own it when the product is at fault. A feature described without its limits isn't finished. Put each limit where it applies, not in a separate limitations section.
-
-**Frame use cases, not software.** Readers arrive from search, trying to solve a problem, and may not know Metabase's terms yet. Name what they're trying to do, not the feature that does it. Mirror the UI's framing where it helps, and break from it where a use case is easier to find.
-
-- "Embed a view-only dashboard": good.
-- "Embedded dashboards with guest authentication": readers don't know what guest authentication is until they've used it.
 
 **Use headings to highlight key points.** Readers should be able to read the headings and get a good idea of what you're saying. Take the following example:
 
@@ -41,27 +37,29 @@ Better:
 
 > Use headings to highlight key points
 
-Sentence case, no end punctuation, except (sparingly) bangs, and question marks on troubleshooting pages. No bold or italics, no skipped levels. No link unless the whole heading is a link.
+Sentence case, no end punctuation, except (sparingly) bangs, and question marks on troubleshooting pages. No bold or italics, no skipped levels.
 
 _Exception:_ troubleshooting pages, where the heading is the reader's symptom. "No access to Metabase login page" is what they'd have typed into search.
 
 Task headings are imperative: "Create a dashboard," not "Creating a dashboard." A heading that's a UI label matches the label's case.
 
-**Each section stands alone.** Readers arrive from search, mid-page. Put the condition in the heading with its consequence: "If you're using H2, stop Metabase before importing," not a list of conditions above a consequence.
+**Commands go in fenced blocks, in the order they're run.** Explanation comes after, never wrapped around the command.
 
-**Ask whether the page/section/sentence should exist at all.** A page or section nobody will read costs maintenance and hides the ones people do read. Cut the section or fold it into where they'll look.
+**Frame use cases, not software.** Readers arrive from search, trying to solve a problem, and may not know Metabase's terminology yet. Headings and framing should emphasize what readers are trying to do, not how Metabase talks about the items involved. Only then follow with the feature that does it. Mirror the UI's framing where it helps, and break from it where a use case is easier to find.
+
+- "Embed a view-only dashboard": good.
+- "Embedded dashboards with guest authentication": not as good. Readers don't know what guest authentication is until they've used it (but keep in mind, they may see guest authentication in the product, and look it up).
+
+**Each section stands alone.** Readers arrive from search, mid-page. Put the condition in the heading with its consequence: "If you're using H2, stop Metabase before importing," not a list of conditions above a consequence.
 
 **One job per paragraph.** Cut what doesn't help the reader. When in doubt, cut.
 
-**Cut the filler that writes itself.** These add length and nothing else:
+**Cut filler** These add length and nothing else:
 
 - An opening paragraph that restates the H1, or "In this section, we'll…"
 - A closing summary, or a "Next steps" list that doesn't link somewhere real
 - "Note that," "It's worth noting," "Keep in mind"
 - Hedges on deterministic behavior: Metabase "caches results," it doesn't "typically" or "may" cache them
-- Defining the term the reader just searched for
-
-_Exception to the hedges rule:_ behavior that depends on a setting or a plan. Say what it depends on instead of hedging.
 
 **Images are minimal and scoped** to the UI element you're pointing at. A screenshot goes stale faster than the prose around it. Leave the image out if people can follow without it. For query results, use a Markdown table.
 
@@ -69,7 +67,7 @@ _Exception to the hedges rule:_ behavior that depends on a setting or a plan. Sa
 
 **Explain in prose, not bullets.** Bullets are for parallel items: options, requirements. Steps go in numbered lists, not bullets or a click path in a paragraph. _Exception:_ reference material readers scan.
 
-**Answer the questions you had when learning.** Instead of the question ("Does Metabase support pivot tables?"), write the answer: "Metabase supports pivot tables."
+**Answer the questions you had when learning.** And instead of presenting the question ("Does Metabase support pivot tables?"), write the answer outright: "Metabase supports pivot tables."
 
 **Repeat new terms** before falling back to pronouns or stand-ins like "the former" and "the latter." Avoid pronouns when they could introduce ambiguity.
 
@@ -91,7 +89,7 @@ _Exception to the hedges rule:_ behavior that depends on a setting or a plan. Sa
 
 ## Word choice
 
-Prefer words people know from spreadsheet apps, like summarize and filter, to database terms.
+Prefer words people know from spreadsheet apps, like summarize and filter, to database terms. Though use the correct term where possible. Jargon can be okay if it clarifies, rather than confuses.
 
 | Write                                                   | Not                                  | Exception                                                                                               |
 | ------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
