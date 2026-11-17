@@ -50,7 +50,10 @@
                              ;; The main purpose of this is to power [[metabase.testing-api.api]] which allows you to
                              ;; reset the application DB with data from a SQL dump -- during the restore process it is
                              ;; important that we do not allow anyone to access the DB.
-                             ^ReentrantReadWriteLock lock]
+                             ^ReentrantReadWriteLock lock
+                             ;; Whether the DB is MariaDB, which `db-type` reports as `:mysql`. It is `false` for other
+                             ;; types, and `nil` for `:mysql` until [[mariadb?]] reads it from a connection.
+                             ^clojure.lang.Atom    mariadb?]
   javax.sql.DataSource
   (getConnection [_]
     (try
@@ -100,7 +103,8 @@
     :status      (atom initial-db-status)
     ;; for memoization purposes. See [[unique-identifier]] for more information.
     :id          (swap! application-db-counter inc)
-    :lock        (ReentrantReadWriteLock.)}))
+    :lock        (ReentrantReadWriteLock.)
+    :mariadb?    (atom (if (= db-type :mysql) nil false))}))
 
 ;; A plain def, not a defonce, so reloading the protocol or the handle type leaves a handle that still works. The root,
 ;; which owns the connection pool, is installed only the first time.
@@ -151,6 +155,28 @@
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
   (.data-source (current-application-db)))
+
+(defn mariadb?
+  "Whether the application DB is MariaDB, which [[db-type]] reports as `:mysql`.
+  On a `:mysql` application DB, the first successful call opens a connection to read the product name.
+  A failed read throws, and the next call tries again."
+  []
+  (let [app-db (current-application-db)
+        cell   (.mariadb? ^ApplicationDB app-db)]
+    ;; Concurrent first callers share one read rather than each taking a connection.
+    (locking cell
+      (if-some [answer @cell]
+        answer
+        ;; Connects through `app-db` itself, so the read uses its pool and respects its lock.
+        (reset! cell (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
+                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))))))
+
+(defn record-mariadb!
+  "Record whether the application DB is MariaDB, so [[mariadb?]] need not connect.
+  A no-op when the answer is already known, which it always is for types other than `:mysql`."
+  [answer]
+  (compare-and-set! (.mariadb? (current-application-db)) nil (boolean answer))
+  nil)
 
 (defn quartz-data-source
   "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the [[current-application-db]]'s
