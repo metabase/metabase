@@ -1,1 +1,1 @@
-export * from "./ColumnFormulaBar";
+export * from "./use-column-formula-bar";

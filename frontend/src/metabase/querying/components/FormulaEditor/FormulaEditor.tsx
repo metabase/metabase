@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { ActionIcon, Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Ellipsified, Flex, Icon, Tooltip } from "metabase/ui";
 
 import S from "./FormulaEditor.module.css";
 import type { FormulaEditorProps } from "./types";
@@ -31,7 +31,7 @@ export function FormulaEditor(props: FormulaEditorProps) {
 
   return (
     <Box
-      className={cx(S.formulaBar, S.formulaBarActive, {
+      className={cx(S.formulaBar, {
         [S.formulaBarInvalid]: errorMessage,
       })}
       data-testid="formula-editor"
@@ -54,18 +54,19 @@ export function FormulaEditor(props: FormulaEditorProps) {
       />
       {completionTooltipPortal}
       {errorMessage && (
-        <Tooltip label={errorMessage} multiline maw={360}>
-          <Flex
-            className={S.formulaBarError}
-            data-testid="formula-error"
-            role="alert"
+        <Flex
+          className={S.formulaBarError}
+          data-testid="formula-error"
+          role="alert"
+        >
+          <Icon name="warning" size={14} aria-hidden />
+          <Ellipsified
+            className={S.formulaBarErrorText}
+            tooltipProps={{ multiline: true, maw: 360 }}
           >
-            <Icon name="warning" size={14} aria-hidden />
-            <Text className={S.formulaBarErrorText} truncate>
-              {errorMessage}
-            </Text>
-          </Flex>
-        </Tooltip>
+            {errorMessage}
+          </Ellipsified>
+        </Flex>
       )}
       <Flex className={S.formulaBarActions}>
         <Tooltip label={t`Cancel (Esc)`}>

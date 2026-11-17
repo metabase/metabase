@@ -23,14 +23,14 @@ export function updateSummaryFormula({
   nextQuery,
   stageIndex,
   generatedExpressions,
-  createdFormula,
+  isFormulaCreated,
 }: Options) {
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions);
   let formulas = owned;
 
-  if (createdFormula) {
+  if (isFormulaCreated) {
     const existingNames = Lib.expressions(query, index).map(
       (clause) => Lib.displayInfo(query, index, clause).displayName,
     );

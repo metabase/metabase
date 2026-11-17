@@ -7,6 +7,7 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
+import { match } from "ts-pattern";
 
 import { getMBQLName } from "metabase/querying/expressions";
 
@@ -61,8 +62,10 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
 
   syntaxTree(view.state).iterate({
     enter: (node) => {
-      const add = (mark: Decoration) =>
+      const add = (mark: Decoration): false => {
         decorations.add(node.from, node.to, mark);
+        return false;
+      };
       // a token that behaves as one unit: arrows skip it, backspace deletes it. Not while the
       // caret is inside it, as it is while typing one, so it can still be edited a character at a time
       const addAtomic = () => {
@@ -73,8 +76,9 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
         }
       };
 
-      switch (node.name) {
-        case "Field": {
+      return match(node.name)
+        .returnType<false | undefined>()
+        .with("Field", () => {
           const text = doc.sliceString(node.from, node.to);
           const columnKey = text
             .replace(/^\[|\]$/g, "")
@@ -89,8 +93,8 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
             addAtomic();
           }
           return false;
-        }
-        case "Identifier":
+        })
+        .with("Identifier", () => {
           if (node.node.parent?.name === "CallExpression") {
             add(functionMark);
           }
@@ -99,24 +103,14 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
             addAtomic();
           }
           return false;
-        case "Number":
-        case "String":
-        case "True":
-        case "False":
-          add(literalMark);
-          return false;
-        case "And":
-        case "Or":
-        case "Not":
-          add(operatorMark);
-          return false;
-        default:
-          if (COMPARISON_AND_ARITHMETIC_OPERATORS.has(node.name)) {
-            add(operatorMark);
-            return false;
-          }
-          return undefined;
-      }
+        })
+        .with("Number", "String", "True", "False", () => add(literalMark))
+        .with("And", "Or", "Not", () => add(operatorMark))
+        .when(
+          (name) => COMPARISON_AND_ARITHMETIC_OPERATORS.has(name),
+          () => add(operatorMark),
+        )
+        .otherwise(() => undefined);
     },
   });
 

@@ -47,11 +47,10 @@ export function useFormulaEditor(props: FormulaEditorProps) {
   });
   const hasFormula = source.trim().length > 0;
   const formulaName = getDefaultFormulaName(source);
-  const liveName = hasFormula ? formulaName : "";
   const nameChangeRef = useLatest(onNameChange);
   useEffect(() => {
-    nameChangeRef.current?.(liveName);
-  }, [liveName, nameChangeRef]);
+    nameChangeRef.current?.(formulaName);
+  }, [formulaName, nameChangeRef]);
 
   const getExpression = (): NamedExpression | null => {
     if (!hasFormula) {

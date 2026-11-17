@@ -5,7 +5,7 @@ import type { IconName } from "metabase-types/api";
 export type SummaryWellId = "values" | "columns";
 
 export type SummaryQueryChangeOptions = {
-  createdFormula?: boolean;
+  isFormulaCreated?: boolean;
 };
 
 export type SummaryField =

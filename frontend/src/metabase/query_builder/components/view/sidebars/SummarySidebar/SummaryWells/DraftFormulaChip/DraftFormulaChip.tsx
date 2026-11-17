@@ -1,6 +1,13 @@
 import { t } from "ttag";
 
-import { ActionIcon, Box, Icon, UnstyledButton } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Ellipsified,
+  FixedSizeIcon,
+  Icon,
+  UnstyledButton,
+} from "metabase/ui";
 
 import S from "./DraftFormulaChip.module.css";
 
@@ -16,14 +23,14 @@ export function DraftFormulaChip({
   onCancel,
 }: DraftFormulaChipProps) {
   return (
-    <Box className={S.root} data-testid="summary-well-placeholder">
+    <Box className={S.root} data-testid="summary-well-draft-formula">
       <UnstyledButton
         className={S.button}
         aria-label={t`Edit the new formula in the formula bar`}
         onClick={onFocus}
       >
-        <Icon name="function" size={12} />
-        <span className={S.label}>{name || t`New formula`}</span>
+        <FixedSizeIcon name="function" size={12} />
+        <Ellipsified fw="inherit">{name || t`New formula`}</Ellipsified>
       </UnstyledButton>
       <ActionIcon
         className={S.remove}

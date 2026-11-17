@@ -270,7 +270,7 @@ describe("summary formula handoff", () => {
       await userEvent.click(screen.getByRole("button", { name: "Add" }));
       await expectClosed();
       expect(
-        screen.queryByTestId("summary-well-placeholder"),
+        screen.queryByTestId("summary-well-draft-formula"),
       ).not.toBeInTheDocument();
       expect(
         screen.getByRole("button", {
@@ -297,12 +297,12 @@ describe("summary formula handoff", () => {
     fireEvent.change(input, { target: { value: "=" } });
     const editor = await screen.findByRole("textbox", { name: "Formula" });
     const chip = within(screen.getByTestId("summary-well-values")).getByTestId(
-      "summary-well-placeholder",
+      "summary-well-draft-formula",
     );
     expect(chip).toHaveTextContent("New formula");
     expect(
       within(screen.getByTestId("summary-well-columns")).queryByTestId(
-        "summary-well-placeholder",
+        "summary-well-draft-formula",
       ),
     ).not.toBeInTheDocument();
 
@@ -331,7 +331,7 @@ describe("summary formula handoff", () => {
     );
     await expectClosed();
     expect(
-      screen.queryByTestId("summary-well-placeholder"),
+      screen.queryByTestId("summary-well-draft-formula"),
     ).not.toBeInTheDocument();
     expect(input).toHaveFocus();
     expect(onQueryChange).not.toHaveBeenCalled();

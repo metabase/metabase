@@ -22,12 +22,6 @@
   font-weight: inherit;
 }
 
-.label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .remove {
   overflow: visible;
 

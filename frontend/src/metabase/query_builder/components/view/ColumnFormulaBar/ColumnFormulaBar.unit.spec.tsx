@@ -34,7 +34,7 @@ import {
 
 import { FormulaBarSlotProvider, FormulaBarSlotTarget } from "../FormulaBar";
 
-import { useColumnFormulaBar } from "./ColumnFormulaBar";
+import { useColumnFormulaBar } from "./use-column-formula-bar";
 
 jest.unmock("@uiw/react-codemirror");
 
