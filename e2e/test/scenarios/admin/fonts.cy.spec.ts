@@ -57,7 +57,18 @@ describe("scenarios > admin > fonts", () => {
   });
 
   it("downloads only the latin chunk for a page with no other script", () => {
-    cy.visit("/");
+    // A canvas measurement downloads a chunk just as rendered text does, and
+    // leaves nothing in the page to find it by.
+    const measuredOnCanvas: string[] = [];
+    cy.visit("/", {
+      onBeforeLoad: (win) => {
+        const measureText = win.CanvasRenderingContext2D.prototype.measureText;
+        win.CanvasRenderingContext2D.prototype.measureText = function (text) {
+          measuredOnCanvas.push(text);
+          return measureText.call(this, text);
+        };
+      },
+    });
     H.main().should("be.visible");
 
     cy.window().then((win) =>
@@ -75,9 +86,9 @@ describe("scenarios > admin > fonts", () => {
         expect(latinChunk, "the page drew text in a bundled face").to.exist;
         expect(
           scriptChunks.map((face) => `${face.family} ${face.weight}`),
-          `script chunks downloaded, for these characters on the page: ${charactersOutside(
+          `script chunks downloaded, for these characters in the page or measured on a canvas: ${charactersOutside(
             latinChunk?.unicodeRange ?? "",
-            win.document.body.innerText,
+            win.document.body.innerText + measuredOnCanvas.join(""),
           ).join(" ")}`,
         ).to.deep.equal([]);
       }),
