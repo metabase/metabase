@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.change-log.numbering :as change-log.numbering]
+   [metabase.global-system.system :as system]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -76,23 +78,27 @@
         (deliver commit-slow true)
         (t2/delete! :change_log :table_name "test_table")))))
 
+(deftest number-while-awake-test
+  (t2/with-transaction [_conn nil {:rollback-only true}]
+    (let [a (entry!)]
+      (testing "asleep, it numbers nothing"
+        (#'change-log.numbering/number-while-awake! (atom 0))
+        (is (nil? (position a))))
+      (testing "awake, it numbers the entries"
+        (#'change-log.numbering/number-while-awake! (atom Long/MAX_VALUE))
+        (is (some? (position a)))))))
+
 (deftest stay-awake-test
-  (with-redefs [change-log.numbering/awake-ms    200
-                change-log.numbering/interval-ms 20]
-    (let [poll      #(u/poll {:thunk %, :done? some?, :timeout-ms 10000, :interval-ms 20})
-          numbered? (fn [id] (poll #(position id)))
-          asleep?   (fn [] (poll #(when (nil? @@#'change-log.numbering/awake-until) true)))]
-      (try
-        (testing "the numbering wakes, and numbers an entry that commits while it is awake"
-          (change-log.numbering/stay-awake!)
-          (is (some? (numbered? (entry!)))))
-        (testing "it goes to sleep when the time is up"
-          (is (true? (asleep?))))
-        (testing "it wakes again"
-          (let [a (entry!)]
-            (is (nil? (position a)))
-            (change-log.numbering/stay-awake!)
-            (is (some? (numbered? a)))))
-        (finally
-          (asleep?)
-          (t2/delete! :change_log :table_name "test_table"))))))
+  (with-redefs [change-log.numbering/interval-ms 20]
+    (try
+      (testing "the numbering starts, and numbers an entry that commits while it is awake"
+        (change-log.numbering/stay-awake!)
+        (let [a (entry!)]
+          (is (some? (u/poll {:thunk #(position a), :done? some?, :timeout-ms 10000, :interval-ms 20})))))
+      (testing "if the numbering cannot start, it does not throw"
+        (system/stop! @#'change-log.numbering/numbering-component)
+        (mt/with-dynamic-fn-redefs [change-log.numbering/start-numbering #(throw (ex-info "cannot start" {}))]
+          (is (nil? (change-log.numbering/stay-awake!)))))
+      (finally
+        (system/stop! @#'change-log.numbering/numbering-component)
+        (t2/delete! :change_log :table_name "test_table")))))

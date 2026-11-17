@@ -1,15 +1,19 @@
 (ns metabase.change-log.numbering
   "Gives `change_log` entries their monotonically increasing `position`.
 
-  Each node numbers on a thread of its own. A logged write wakes it with [[stay-awake!]], and it numbers every 5
-  seconds until a minute passes with no logged write. A node that logs nothing runs no query.
+  Each node numbers on a thread of its own. The first logged write starts it, and the global system stops it. A logged
+  write keeps it awake with [[stay-awake!]]: it numbers every 5 seconds until a minute passes with no logged write. A
+  node that logs nothing runs no query.
 
   The write is still in its transaction when it wakes the numbering, and the minute gives it time to commit. An entry
   that commits later than that gets its position after the next logged write, on any node."
   (:require
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.change-log.db :as change-log.db]
-   [metabase.util.log :as log]))
+   [metabase.global-system.system :as system]
+   [metabase.util.log :as log])
+  (:import
+   (java.util.concurrent Executors ScheduledExecutorService ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,30 +41,43 @@
           (doseq [statement-ids (partition-all (statement-size) ids)]
             (change-log.db/set-positions! statement-ids start (first ids))))))))
 
-(defonce ^{:private true
-           :doc     "When the numbering goes to sleep, in milliseconds since the epoch. Nil while it is asleep."}
-  awake-until
-  (atom nil))
+;; The numbering of this node: `{:executor ..., :awake-until ...}`. `:awake-until` is an atom that holds when the
+;; numbering goes to sleep, in milliseconds since the epoch.
+(def ^:private numbering-component
+  (system/mutable-component-handle ::numbering (constantly nil)))
 
-(defn- number-while-awake! []
-  (loop []
-    (try
-      (number-entries!)
-      (catch Throwable e
-        (log/warn e "Could not number the change log entries.")))
-    (let [until @awake-until]
-      ;; We go to sleep when the time is up, unless a write moved the time while we looked.
-      (when-not (and (<= until (System/currentTimeMillis))
-                     (compare-and-set! awake-until until nil))
-        (Thread/sleep (long interval-ms))
-        (recur)))))
+(defn- number-while-awake!
+  "What the executor runs every 5 seconds. It numbers the entries, unless the numbering is asleep."
+  [awake-until]
+  (try
+    (when (< (System/currentTimeMillis) @awake-until)
+      (number-entries!))
+    (catch Throwable e
+      (log/warn e "Could not number the change log entries."))))
+
+(defn- start-numbering []
+  (let [awake-until (atom 0)]
+    {:awake-until awake-until
+     :executor    (doto (Executors/newSingleThreadScheduledExecutor
+                         (reify ThreadFactory
+                           (newThread [_ r]
+                             (doto (Thread. r "change-log-numbering")
+                               (.setDaemon true)))))
+                    (.scheduleWithFixedDelay ^Runnable #(number-while-awake! awake-until)
+                                             (long interval-ms) (long interval-ms) TimeUnit/MILLISECONDS))}))
+
+(defn- stop-numbering [{:keys [^ScheduledExecutorService executor]}]
+  (.shutdownNow executor)
+  (when-not (.awaitTermination executor 5 TimeUnit/SECONDS)
+    (log/warn "The change log numbering did not stop within 5s.")))
 
 (defn stay-awake!
-  "Keeps the numbering awake for the next minute, and wakes it if it is asleep."
+  "Keeps the numbering awake for the next minute, and starts it on the first call. It cannot start once the global
+  system has halted. Then the write goes ahead, and its entry gets a position after the next logged write."
   []
-  (let [[before] (reset-vals! awake-until (+ (System/currentTimeMillis) awake-ms))]
-    (when-not before
-      ;; A new thread, so that it numbers outside the transaction of the write that wakes it.
-      (doto (Thread. ^Runnable number-while-awake! "change-log-numbering")
-        (.setDaemon true)
-        (.start)))))
+  (try
+    (let [{:keys [awake-until]} (system/ensure-started! numbering-component start-numbering stop-numbering)]
+      (reset! awake-until (+ (System/currentTimeMillis) awake-ms)))
+    (catch Exception e
+      (log/debug e "Could not wake the change log numbering.")))
+  nil)

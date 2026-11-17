@@ -545,6 +545,7 @@
    :api  #{metabase.change-log.core
            metabase.change-log.init}
    :uses #{app-db
+           global-system
            premium-features
            task
            util
