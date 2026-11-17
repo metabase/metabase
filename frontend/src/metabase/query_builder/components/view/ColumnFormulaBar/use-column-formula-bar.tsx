@@ -1,4 +1,5 @@
 import type { EditorView } from "@codemirror/view";
+import { useDisclosure } from "@mantine/hooks";
 import {
   type ReactNode,
   useCallback,
@@ -51,7 +52,7 @@ export function useColumnFormulaBar({
     close: releaseOwnership,
   } = useFormulaBarOwnership();
   const [editorKey, setEditorKey] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, { open: openEditor, close: closeEditor }] = useDisclosure();
   const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false);
   const viewRef = useRef<EditorView | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -66,12 +67,12 @@ export function useColumnFormulaBar({
         : null;
     setEditorKey((key) => key + 1);
     claimOwnership();
-    setIsOpen(true);
-  }, [isOpen, isOwner, claimOwnership]);
+    openEditor();
+  }, [isOpen, isOwner, claimOwnership, openEditor]);
   const close = () => {
     setShouldRestoreFocus(true);
     releaseOwnership();
-    setIsOpen(false);
+    closeEditor();
     viewRef.current = null;
   };
 
@@ -86,11 +87,11 @@ export function useColumnFormulaBar({
 
   useEffect(() => {
     if (!isEnabled || !isOwner) {
-      setIsOpen(false);
+      closeEditor();
       viewRef.current = null;
       releaseOwnership();
     }
-  }, [isEnabled, isOwner, releaseOwnership]);
+  }, [isEnabled, isOwner, releaseOwnership, closeEditor]);
 
   useEffect(() => {
     if (!isOpen && shouldRestoreFocus) {

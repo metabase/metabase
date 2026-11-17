@@ -132,7 +132,7 @@
 }
 
 .tokenLiteral {
-  color: var(--mb-color-accent2);
+  color: var(--mb-color-text-primary);
 }
 
 .tokenOperator {
@@ -146,9 +146,10 @@
 
   padding: 0.0625rem 0.25rem;
   border-radius: var(--mantine-radius-xxs);
-  color: var(--token-color);
+  color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background_surface-secondary);
   box-shadow: inset 0 0 0 1px var(--token-color);
+  box-decoration-break: clone;
 }
 
 .tokenColumn0 {

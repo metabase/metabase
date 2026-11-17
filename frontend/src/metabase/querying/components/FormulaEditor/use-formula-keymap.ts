@@ -18,6 +18,9 @@ export function useFormulaKeymap(handlers: Handlers) {
     const isCompleting = (view: EditorView) =>
       completionStatus(view.state) === "active";
     return [
+      EditorView.clipboardInputFilter.of((text) =>
+        text.replace(/\r\n?|\n/g, " "),
+      ),
       EditorState.transactionFilter.of((transaction) =>
         transaction.newDoc.lines > 1 ? [] : transaction,
       ),

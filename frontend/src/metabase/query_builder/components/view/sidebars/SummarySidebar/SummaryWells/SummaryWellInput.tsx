@@ -76,20 +76,6 @@ export function SummaryWellInput({
 
   const comboboxRef = useLatest(combobox);
   useEffect(() => {
-    const input = inputRef.current;
-    if (
-      formulaInput &&
-      !formulaInput.isPending() &&
-      searchText.startsWith("=") &&
-      input &&
-      input === document.activeElement
-    ) {
-      comboboxRef.current.closeDropdown();
-      formulaInput.start(searchText.slice(1), input, () => setSearchText(""));
-    }
-  }, [formulaInput, searchText, comboboxRef]);
-
-  useEffect(() => {
     if (searchText.length > 0) {
       comboboxRef.current.selectFirstOption();
     }
@@ -132,6 +118,19 @@ export function SummaryWellInput({
       combobox.closeDropdown();
     }
   };
+
+  const handleSearchChangeRef = useLatest(handleSearchChange);
+  const isFormulaEnabled = formulaInput !== undefined;
+  useEffect(() => {
+    const input = inputRef.current;
+    if (
+      isFormulaEnabled &&
+      input?.value.startsWith("=") &&
+      input === document.activeElement
+    ) {
+      handleSearchChangeRef.current(input.value);
+    }
+  }, [isFormulaEnabled, handleSearchChangeRef]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (

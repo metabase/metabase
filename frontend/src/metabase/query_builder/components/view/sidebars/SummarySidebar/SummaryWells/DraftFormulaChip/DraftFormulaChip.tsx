@@ -1,3 +1,4 @@
+import { type Ref, useImperativeHandle, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,17 +12,24 @@ import {
 
 import S from "./DraftFormulaChip.module.css";
 
+export type DraftFormulaChipHandle = {
+  setName: (name: string) => void;
+};
+
 export type DraftFormulaChipProps = {
-  name: string;
+  handleRef: Ref<DraftFormulaChipHandle>;
   onFocus: () => void;
   onCancel: () => void;
 };
 
 export function DraftFormulaChip({
-  name,
+  handleRef,
   onFocus,
   onCancel,
 }: DraftFormulaChipProps) {
+  const [name, setName] = useState("");
+  useImperativeHandle(handleRef, () => ({ setName }), []);
+
   return (
     <Box className={S.root} data-testid="summary-well-draft-formula">
       <UnstyledButton

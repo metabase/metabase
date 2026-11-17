@@ -16,6 +16,7 @@ import {
   useFormulaBarOwnership,
   useFormulaBarSlot,
 } from "../../../FormulaBar";
+import type { DraftFormulaChipHandle } from "../SummaryWells/DraftFormulaChip";
 import type { SummaryWellId } from "../types";
 
 import type {
@@ -33,7 +34,7 @@ export function useSummaryFormulaBar({
   const slot = useFormulaBarSlot();
   const ownership = useFormulaBarOwnership();
   const [draft, setDraft] = useState<SummaryFormulaDraft | null>(null);
-  const [draftName, setDraftName] = useState("");
+  const draftChipRef = useRef<DraftFormulaChipHandle>(null);
   const viewRef = useRef<EditorView | null>(null);
   const nextKey = useRef(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -104,7 +105,6 @@ export function useSummaryFormulaBar({
         pendingInput.current = { wellId, source, onReady };
         inputRef.current = input;
         nextKey.current += 1;
-        setDraftName("");
         setDraft({ key: nextKey.current, wellId, source });
         ownership.open();
       },
@@ -133,7 +133,7 @@ export function useSummaryFormulaBar({
             initialSource={draft.source}
             submitLabel={t`Add`}
             onEditorCreate={handleEditorCreate}
-            onNameChange={setDraftName}
+            onNameChange={(name) => draftChipRef.current?.setName(name)}
             onSubmit={handleSubmit}
             onCancel={close}
           />
@@ -148,7 +148,8 @@ export function useSummaryFormulaBar({
       ownership.isActive && draft
         ? {
             wellId: draft.wellId,
-            name: draftName,
+            draftKey: draft.key,
+            handleRef: draftChipRef,
             onFocus: () => viewRef.current?.focus(),
             onCancel: close,
           }

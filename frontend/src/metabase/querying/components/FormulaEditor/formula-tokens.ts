@@ -99,7 +99,7 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
             add(functionMark);
           }
           // a function's name, even once its parentheses are deleted
-          if (getMBQLName(doc.sliceString(node.from, node.to)) != null) {
+          if (getMBQLName(doc.sliceString(node.from, node.to)) !== undefined) {
             addAtomic();
           }
           return false;

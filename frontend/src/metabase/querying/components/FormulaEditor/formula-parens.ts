@@ -10,7 +10,7 @@ function getClosingParen(state: EditorState, pos: number) {
     return null;
   }
   const match = matchBrackets(state, pos, 1, { brackets: "()" });
-  return match?.matched && match.end != null ? match.end : null;
+  return match?.matched && match.end !== undefined ? match.end : null;
 }
 
 function deleteParenPair(direction: "backward" | "forward"): StateCommand {

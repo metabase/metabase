@@ -116,6 +116,14 @@ describe("FormulaEditor", () => {
     expect(view.state.doc.toString()).toBe("1 + 2");
   });
 
+  it("pastes a multiline formula as one line and commits it", async () => {
+    const { view, onSubmit } = await setup();
+    await userEvent.paste("coalesce(\r\n[Total],\r0\n)");
+    expect(view.state.doc.toString()).toBe("coalesce( [Total], 0 )");
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
   describe("completion", () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(async () => {

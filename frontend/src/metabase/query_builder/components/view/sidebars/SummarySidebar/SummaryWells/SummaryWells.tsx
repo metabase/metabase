@@ -25,6 +25,7 @@ import {
   DraftFormulaChip,
   type DraftFormulaChipProps,
 } from "./DraftFormulaChip";
+import { FormulaLabel } from "./FormulaLabel";
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
@@ -35,7 +36,9 @@ type SummaryWellsProps = {
   stageIndex: number;
   sections: SummaryFieldSection[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
-  draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
+  draftFormula?:
+    | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
+    | null;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
@@ -114,7 +117,7 @@ export function SummaryWells({
             />
           ))}
           {draftFormula?.wellId === "values" && (
-            <DraftFormulaChip {...draftFormula} />
+            <DraftFormulaChip key={draftFormula.draftKey} {...draftFormula} />
           )}
         </SummaryWellInput>
       </SummaryWell>
@@ -136,34 +139,49 @@ export function SummaryWells({
             }
           }}
         >
-          {dimensionItems.map((item) => (
-            <WellChip
-              key={item.key}
-              drag={{ kind: "dimension", item }}
-              onRemove={() => handleRemove(item.clause)}
-            >
-              {item.bucketOptions.length > 0 ? (
-                <DimensionBucketMenu
-                  item={item}
-                  onSelect={(option) => {
-                    const nextQuery = changeDimensionBucket(
-                      query,
-                      stageIndex,
-                      item,
-                      option,
-                    );
-                    if (nextQuery !== query) {
-                      onChange(nextQuery);
-                    }
-                  }}
-                />
-              ) : (
-                <Ellipsified fw="inherit">{item.label}</Ellipsified>
-              )}
-            </WellChip>
-          ))}
+          {dimensionItems.map((item) => {
+            const label = item.expression ? (
+              <FormulaLabel
+                query={query}
+                stageIndex={stageIndex}
+                clause={item.expression}
+                label={item.label}
+              />
+            ) : (
+              <Ellipsified fw="inherit">{item.label}</Ellipsified>
+            );
+
+            return (
+              <WellChip
+                key={item.key}
+                drag={{ kind: "dimension", item }}
+                onRemove={() => handleRemove(item.clause)}
+              >
+                {item.bucketOptions.length > 0 ? (
+                  <DimensionBucketMenu
+                    item={item}
+                    onSelect={(option) => {
+                      const nextQuery = changeDimensionBucket(
+                        query,
+                        stageIndex,
+                        item,
+                        option,
+                      );
+                      if (nextQuery !== query) {
+                        onChange(nextQuery);
+                      }
+                    }}
+                  >
+                    {label}
+                  </DimensionBucketMenu>
+                ) : (
+                  label
+                )}
+              </WellChip>
+            );
+          })}
           {draftFormula?.wellId === "columns" && (
-            <DraftFormulaChip {...draftFormula} />
+            <DraftFormulaChip key={draftFormula.draftKey} {...draftFormula} />
           )}
         </SummaryWellInput>
       </SummaryWell>
