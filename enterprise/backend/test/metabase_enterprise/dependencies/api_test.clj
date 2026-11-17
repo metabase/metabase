@@ -235,13 +235,9 @@
                                       :type :metric)
                                user)
             (mt/with-temp [:model/Segment {:as segment} {:name "Segment on products"
-                                                         :table_id products-id
                                                          :definition (-> (lib/query mp products)
-                                                                         (lib/filter (lib/> price 50))
-                                                                         lib/->legacy-MBQL
-                                                                         :query)}
+                                                                         (lib/filter (lib/> price 50)))}
                            :model/Measure {:as measure} {:name "Measure on products"
-                                                         :table_id products-id
                                                          :definition (-> (lib/query mp products)
                                                                          (lib/aggregate (lib/sum price)))}
                            :model/Transform _ {:name   "Transform on products"
@@ -876,23 +872,19 @@
   (testing "GET /api/ee/dependencies/graph with segment as root node"
     (mt/with-test-user :crowberto
       (mt/with-premium-features #{:dependencies}
-        (let [products-id (mt/id :products)
-              price-field-id (mt/id :products :price)]
-          (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
-                                                                      :table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}]
-            (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
-            (deps.test/synchronously-run-dependency-job!)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                 :id segment-id
-                                                 :type "segment")
-                  node-types (set (map :type (:nodes response)))]
-              (testing "returns segment and table nodes"
-                (is (contains? node-types "segment"))
-                (is (contains? node-types "table")))
-              (testing "segment node has correct data"
-                (let [segment-node (first (filter #(= (:type %) "segment") (:nodes response)))]
-                  (is (= segment-id (:id segment-node))))))))))))
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"}]
+          (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
+          (deps.test/synchronously-run-dependency-job!)
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                               :id segment-id
+                                               :type "segment")
+                node-types (set (map :type (:nodes response)))]
+            (testing "returns segment and table nodes"
+              (is (contains? node-types "segment"))
+              (is (contains? node-types "table")))
+            (testing "segment node has correct data"
+              (let [segment-node (first (filter #(= (:type %) "segment") (:nodes response)))]
+                (is (= segment-id (:id segment-node)))))))))))
 
 (deftest graph-segment-dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents with segment"
@@ -901,8 +893,9 @@
         (let [products-id (mt/id :products)
               price-field-id (mt/id :products :price)]
           (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
-                                                                      :table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                                                                      :definition (let [mp (mt/metadata-provider)]
+                                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                                        (lib/filter (lib/> (lib.metadata/field mp price-field-id) 50))))}
                          :model/User user {:email "test@test.com"}]
             (mt/with-test-user :crowberto
               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)}))
@@ -1007,7 +1000,6 @@
               products (lib.metadata/table mp products-id)
               price (lib.metadata/field mp (mt/id :products :price))]
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
-                                                                      :table_id products-id
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}]
             (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
@@ -1033,14 +1025,12 @@
               price (lib.metadata/field mp (mt/id :products :price))
               rating (lib.metadata/field mp (mt/id :products :rating))]
           (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
-                                                                          :table_id products-id
                                                                           :definition (-> (lib/query mp products)
                                                                                           (lib/aggregate (lib/sum price)))}]
             (events/publish-event! :event/measure-create {:object measure-a :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (let [mp' (mt/metadata-provider)]
               (mt/with-temp [:model/Measure {measure-b-id :id :as measure-b} {:name "Measure B"
-                                                                              :table_id products-id
                                                                               :definition (-> (lib/query mp' products)
                                                                                               (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
                                                                                                                     (lib/sum rating))))}]
@@ -1071,7 +1061,6 @@
               products (lib.metadata/table mp products-id)
               price (lib.metadata/field mp (mt/id :products :price))]
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
-                                                                      :table_id products-id
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}
                          :model/User user {:email "test@test.com"}]
@@ -1499,22 +1488,16 @@
 (deftest ^:synchronized unreferenced-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
     (mt/with-premium-features #{:dependencies}
-      (let [products-id (mt/id :products)
-            price-field-id (mt/id :products :price)]
-        (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"
-                                                                                      :table_id products-id
-                                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
-                       :model/Segment {archived-segment-id :id :as archived-segment} {:name "Archived Unreferenced Segment - archivedtest"
-                                                                                      :table_id products-id
-                                                                                      :definition {:filter [:> [:field price-field-id nil] 100]}
-                                                                                      :archived true}]
-          (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
-          (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
-          (deps.test/synchronously-run-dependency-job!)
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
-                segment-ids (set (map :id (:data response)))]
-            (is (contains? segment-ids unreffed-segment-id))
-            (is (not (contains? segment-ids archived-segment-id)))))))))
+      (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"}
+                     :model/Segment {archived-segment-id :id :as archived-segment} {:name     "Archived Unreferenced Segment - archivedtest"
+                                                                                    :archived true}]
+        (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
+        (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
+        (deps.test/synchronously-run-dependency-job!)
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
+              segment-ids (set (map :id (:data response)))]
+          (is (contains? segment-ids unreffed-segment-id))
+          (is (not (contains? segment-ids archived-segment-id))))))))
 
 (deftest ^:synchronized unreferenced-archived-table-test
   (testing "GET /api/ee/dependencies/graph/unreferenced includes inactive and hidden tables"
@@ -1585,10 +1568,8 @@
             measure-definition (-> (lib/query mp products)
                                    (lib/aggregate (lib/sum price)))]
         (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
-                                                                                      :table_id products-id
                                                                                       :definition measure-definition}
                        :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
-                                                                                      :table_id products-id
                                                                                       :definition measure-definition
                                                                                       :archived true}]
           (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
@@ -1726,10 +1707,14 @@
                                                   :collection_id collection4-id}
                      :model/Document           _ {:name          "Document with Collection 5 sorttest"
                                                   :collection_id collection5-id}
-                     :model/Segment            _ {:name     "Segment with Table 1 sorttest"
-                                                  :table_id table1-id}
-                     :model/Measure            _ {:name     "Measure with Table 2 sorttest"
-                                                  :table_id table2-id}]
+                     :model/Segment            _ {:name       "Segment with Table 1 sorttest"
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table1-id))
+                                                                    (lib/filter (lib/= 1 1))))}
+                     :model/Measure            _ {:name       "Measure with Table 2 sorttest"
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table2-id))
+                                                                    (lib/aggregate (lib/count))))}]
         (deps.test/synchronously-run-dependency-job!)
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200

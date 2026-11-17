@@ -340,7 +340,6 @@
 (deftest measure-sync-dimensions-basic-test
   (testing "sync-dimensions! computes and persists dimensions from visible columns"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (metrics/sync-dimensions! :metadata/measure (:id measure))
@@ -358,7 +357,6 @@
 (deftest measure-sync-dimensions-persists-on-first-read-test
   (testing "sync-dimensions! persists dimensions and mappings to database on first call"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       ;; Initially, dimensions should be nil in the database
@@ -376,7 +374,6 @@
 (deftest measure-sync-dimensions-preserves-user-modifications-test
   (testing "sync-dimensions! preserves user modifications like display-name"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       ;; First sync to get dimensions
@@ -400,7 +397,6 @@
   (testing "measures fully re-sync on every load: columns missing from storage are re-added, and the
             UUIDs of dimensions that still existed are preserved (measures have no curation)"
     (mt/with-temp [:model/Measure measure {:name       "Test Measure"
-                                           :table_id   (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (metrics/sync-dimensions! :metadata/measure (:id measure))

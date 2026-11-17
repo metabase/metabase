@@ -344,7 +344,6 @@
       (testing "GHY-4137: create with a single-aggregation MBQL 5 definition succeeds"
         (is (=? {:id        pos-int?
                  :entity_id string?
-                 :table_id  (mt/id :venues)
                  :name      "definitions-test measure A"
                  :archived  false}
                 created))
@@ -392,9 +391,7 @@
                                                                       :aggregation [["count"]]}}})))))
       (testing "the update path enforces the same rule"
         (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test mbql4 update"
-                                                        :table_id   (mt/id :venues)
-                                                        :creator_id (mt/user->id :crowberto)
-                                                        :definition {}}]
+                                                        :creator_id (mt/user->id :crowberto)}]
           (is (re-find shape-sentence
                        (tool-error (call-tool! :crowberto v2.tu/all-scopes "measure_write"
                                                {:method "update" :id measure-id :revision_message "x"
@@ -771,11 +768,14 @@
 (deftest existence-oracle-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {table-id :id} {:db_id db-id}
-                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Segment {segment-id :id} {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                    (lib/filter (lib/= 1 1))))}
                  :model/Measure {measure-id :id} {:name       "definitions-test oracle measure"
-                                                  :table_id   table-id
                                                   :creator_id (mt/user->id :crowberto)
-                                                  :definition {}}]
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                    (lib/aggregate (lib/count))))}]
     (perms/set-database-permission! (perms/all-users-group) db-id :perms/view-data :blocked)
     (let [norm (fn [msg] (str/replace msg #"\d+" "N"))]
       (testing "GHY-4137: an unreadable id and a nonexistent id must be indistinguishable — no existence oracle"

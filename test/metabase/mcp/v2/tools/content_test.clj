@@ -111,14 +111,13 @@
             (is (= "metric" (:type row))))))
       (testing "measure"
         (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                                :table_id   (mt/id :venues)
                                                 :creator_id (mt/user->id :rasta)
                                                 :definition (measure-definition (lib/count))}]
           (let [row (content-one {:items [{:type "measure" :id id}]})]
             (is (nil? (:error row)))
             (is (= "M1" (:name row))))))
       (testing "segment"
-        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues) :definition {}}]
+        (mt/with-temp [:model/Segment {id :id} {:name "S1"}]
           (let [row (content-one {:items [{:type "segment" :id id}]})]
             (is (nil? (:error row)))
             (is (= "S1" (:name row))))))
@@ -531,7 +530,7 @@
             so this pins that get_content still applies it."
     (mt/with-temp [:model/Collection   {locked-id :id} {}
                    :model/Card         {card-id :id}   {:name "Sub Card"}
-                   :model/Dashboard    {dash-id :id}   {}
+                   :model/Dashboard    {dash-id :id}   {:collection_id locked-id}
                    :model/Pulse        {pulse-id :id}  {:name          "Private Weekly"
                                                         :dashboard_id  dash-id
                                                         :collection_id locked-id
@@ -1058,7 +1057,6 @@
             nil, so a broken exporter looks exactly like a type that has nothing to export."
     (testing "measure — the aggregation clause"
       (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                              :table_id   (mt/id :venues)
                                               :creator_id (mt/user->id :rasta)
                                               :definition (measure-definition (lib/count))}]
         (mt/with-test-user :crowberto
@@ -1069,8 +1067,9 @@
                 "and carries the stored aggregation")))))
     (testing "segment — the filter clauses"
       (mt/with-temp [:model/Segment {id :id} {:name       "S1"
-                                              :table_id   (mt/id :venues)
-                                              :definition {:filter [:= [:field-id (mt/id :venues :price)] 2]}}]
+                                              :definition (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 2))))}]
         (mt/with-test-user :crowberto
           (let [row (content-one {:items [{:type "segment" :id id}] :include ["definition"]})]
             (is (nil? (:error row)))
@@ -1271,7 +1270,6 @@
               (is (= rest mcp)))))))
     (testing "a measure"
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "M1"
-                                                      :table_id   (mt/id :venues)
                                                       :creator_id (mt/user->id :crowberto)
                                                       :definition (measure-definition (lib/count))}]
         ;; Seed first so the generated dimension ids are persisted and both reads reconcile against
