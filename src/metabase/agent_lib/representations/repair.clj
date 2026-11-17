@@ -3514,50 +3514,6 @@
   [pass-var]
   (str/replace (name (symbol pass-var)) #"\*$" ""))
 
-(def ^:private passes
-  "The passes of [[repair]] in the order they run, each as `[name f]` where `f` takes `[query mp content-store]`.
-
-  One entry for each pass, so that [[repair]] can tell which of them changed the query."
-  (letfn [(pass [pass-var f] [(pass-name pass-var) f])
-          (shape [pass-var] (pass pass-var (fn [query _mp _content-store] (pass-var query))))
-          (with-mp [pass-var] (pass pass-var (fn [query mp _content-store] (pass-var query mp))))
-          (with-store [pass-var] (pass pass-var pass-var))]
-    [;; Pure-shape passes that don't require a metadata provider.
-     ;;
-     ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
-     ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
-     (shape #'normalise-list-value-comparisons*)
-     (shape #'ensure-clause-options*)
-     (shape #'unwrap-boolean-wrappers*)
-     (shape #'unwrap-nested-field-clauses*)
-     (shape #'dequote-field-targets*)
-     (shape #'rewrite-operator-name-aliases*)
-     (shape #'rewrite-temporal-bucket-aliases*)
-     (shape #'drop-unsupported-day-of-week-mode*)
-     (shape #'rewrite-direction-aliases*)
-     (shape #'rewrite-lib-type-aliases*)
-     (shape #'merge-trailing-options*)
-     (shape #'merge-string-filter-trailing-options*)
-     (shape #'wrap-now-literals*)
-     (shape #'rewrite-temporal-extract*)
-     (shape #'swap-between-bounds*)
-     (shape #'normalise-case-clauses*)
-     (shape #'normalise-fields-shape*)
-     (shape #'normalise-aggregation-clauses*)
-     (shape #'split-top-level-and-filters*)
-     (shape #'normalize-expressions-shape*)
-     (shape #'ensure-lib-types*)
-     (with-mp #'stamp-top-level-database*)
-     ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
-     (shape #'repair-day-and-default-comparisons*)
-     (shape #'rewrite-order-by-inline-aggs*)
-     (shape #'resolve-aggregation-ref-indexes*)
-     (shape #'split-post-agg-filters*)
-     (shape #'hoist-temporal-buckets*)
-     (with-store #'resolve-source-field-join-alias*)
-     (with-store #'resolve-implicit-joins*)
-     (with-store #'infer-field-types*)]))
-
 (def ^:private structural-passes
   "Names of the passes that change a query that follows the prompt contract. [[repairs]] never reports them: such a
   pass says nothing about what the model got wrong.
@@ -3570,6 +3526,46 @@
     "infer-field-types"
     "normalize-expressions-shape"
     "ensure-lib-types"})
+
+(defn- run-pass
+  "Run the pass in `pass-var` on `query` with `args`. Returns the new query, and `fired` with the name of the pass
+  added when the pass changed the query."
+  [[query fired] pass-var & args]
+  (let [query' (apply pass-var query args)
+        pass   (pass-name pass-var)]
+    [query' (cond-> fired
+              ;; A structural pass is not compared: it is never reported.
+              (and (not (contains? structural-passes pass))
+                   (not= query query'))
+              (conj pass))]))
+
+(defn- normalize-shape*
+  "Pure-shape passes that don't require a metadata provider. Takes and returns the `[query fired]` of [[run-pass]]."
+  [state]
+  (-> state
+      ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
+      ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
+      (run-pass #'normalise-list-value-comparisons*)
+      (run-pass #'ensure-clause-options*)
+      (run-pass #'unwrap-boolean-wrappers*)
+      (run-pass #'unwrap-nested-field-clauses*)
+      (run-pass #'dequote-field-targets*)
+      (run-pass #'rewrite-operator-name-aliases*)
+      (run-pass #'rewrite-temporal-bucket-aliases*)
+      (run-pass #'drop-unsupported-day-of-week-mode*)
+      (run-pass #'rewrite-direction-aliases*)
+      (run-pass #'rewrite-lib-type-aliases*)
+      (run-pass #'merge-trailing-options*)
+      (run-pass #'merge-string-filter-trailing-options*)
+      (run-pass #'wrap-now-literals*)
+      (run-pass #'rewrite-temporal-extract*)
+      (run-pass #'swap-between-bounds*)
+      (run-pass #'normalise-case-clauses*)
+      (run-pass #'normalise-fields-shape*)
+      (run-pass #'normalise-aggregation-clauses*)
+      (run-pass #'split-top-level-and-filters*)
+      (run-pass #'normalize-expressions-shape*)
+      (run-pass #'ensure-lib-types*)))
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
@@ -3670,15 +3666,18 @@
   ([mp parsed]
    (repair mp parsed serialization.protocol.mp/unchecked-app-db-content-store))
   ([mp parsed content-store]
-   (let [[repaired fired] (reduce (fn [[query fired] [pass-name pass]]
-                                    (let [query' (pass query mp content-store)]
-                                      [query' (cond-> fired
-                                                ;; A structural pass is not compared: it is never reported.
-                                                (and (not (contains? structural-passes pass-name))
-                                                     (not= query query'))
-                                                (conj pass-name))]))
-                                  [parsed (sorted-set)]
-                                  passes)
+   (let [[repaired fired] (-> [parsed (sorted-set)]
+                              normalize-shape*
+                              (run-pass #'stamp-top-level-database* mp)
+                              ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
+                              (run-pass #'repair-day-and-default-comparisons*)
+                              (run-pass #'rewrite-order-by-inline-aggs*)
+                              (run-pass #'resolve-aggregation-ref-indexes*)
+                              (run-pass #'split-post-agg-filters*)
+                              (run-pass #'hoist-temporal-buckets*)
+                              (run-pass #'resolve-source-field-join-alias* mp content-store)
+                              (run-pass #'resolve-implicit-joins* mp content-store)
+                              (run-pass #'infer-field-types* mp content-store))
          repaired         (friendly-errors* repaired)]
      (cond-> repaired
        (instance? clojure.lang.IObj repaired) (vary-meta assoc ::repairs (vec fired))))))

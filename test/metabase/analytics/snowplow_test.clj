@@ -201,8 +201,8 @@
           turn  {"finish_reason" "stop" "steps" 2}]
       (with-fake-snowplow-collector
         (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" tool) nil)))
-        (testing "a tool event names the repair passes that changed the query, or none"
-          (doseq [repairs [[] ["rewrite-operator-name-aliases" "swap-between-bounds"]]]
+        (testing "a tool event names the repair passes that changed the query, or none; nil is accepted"
+          (doseq [repairs [[] ["rewrite-operator-name-aliases" "swap-between-bounds"] nil]]
             (is (true? (snowplow/track-event! :snowplow/ai_service_event
                                               (event "agent_used_tool" {"tool_name" "construct_notebook_query"
                                                                         "step"      1

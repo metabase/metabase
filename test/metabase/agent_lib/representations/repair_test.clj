@@ -4765,8 +4765,8 @@
                repaired))
         (is (some? (:metabase.agent-lib.representations/original-stage-indexes (meta repaired))))))))
 
-(deftest ^:parallel repairs-names-are-known-passes-test
-  (testing "each structural pass is a pass of the pipeline, so a rename cannot leave a dead name in the set"
-    (let [pass-names (set (map first @#'repair/passes))]
-      (is (= 30 (count pass-names)))
-      (is (every? pass-names @#'repair/structural-passes)))))
+(deftest ^:parallel structural-passes-are-pass-functions-test
+  (testing "each structural pass names a pass function, so a rename cannot leave a dead name in the set"
+    (doseq [pass-name @#'repair/structural-passes]
+      (is (some? (ns-resolve 'metabase.agent-lib.representations.repair (symbol (str pass-name "*"))))
+          pass-name))))
