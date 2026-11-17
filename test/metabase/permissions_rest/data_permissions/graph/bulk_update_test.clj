@@ -123,8 +123,13 @@
           result  (#'data-perms.graph/add-implications {} 1 1 :perms/create-queries entries)]
       (is (= {10 {:perm_value :unrestricted :schema_name "PUBLIC"}}
              (get result [1 1 :perms/view-data])))
-      (is (nil? (get result [1 1 :perms/transforms]))
-          "No transforms implication at table level")))
+      (is (= {nil {:perm_value :no :schema_name nil}}
+             (get result [1 1 :perms/transforms]))
+          "Table-level create-queries revokes transforms on the whole database")))
+  (testing "Table-level create-queries all native keeps transforms"
+    (let [result (#'data-perms.graph/add-implications {} 1 1 :perms/create-queries
+                                                      {10 {:perm_value :query-builder-and-native :schema_name "PUBLIC"}})]
+      (is (nil? (get result [1 1 :perms/transforms])))))
   (testing "Table-level view-data :blocked implies create-queries :no and download :no for those tables"
     (let [entries {10 {:perm_value :blocked :schema_name "PUBLIC"}
                    11 {:perm_value :unrestricted :schema_name "PUBLIC"}}
@@ -132,7 +137,9 @@
       (is (= {10 {:perm_value :no :schema_name "PUBLIC"}}
              (get result [1 1 :perms/create-queries])))
       (is (= {10 {:perm_value :no :schema_name "PUBLIC"}}
-             (get result [1 1 :perms/download-results]))))))
+             (get result [1 1 :perms/download-results])))
+      (is (= {nil {:perm_value :no :schema_name nil}}
+             (get result [1 1 :perms/transforms]))))))
 
 (deftest add-implications-override-behavior-test
   (testing "Implications override existing entries (later perm-type side effects take precedence)"

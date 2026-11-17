@@ -241,6 +241,23 @@
              {:where [:and [:= :db_id database-id] [:= :table_id nil]
                       [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
+(mu/defn database-level-value-pairs :- [:set [:tuple ms/PositiveInt ::lib.schema.id/database]]
+  "The `[group-id database-id]` pairs, among the groups with `group-ids` and the Databases with `database-ids`, that have
+  a database-level `perm-type` DataPermissions row of value `perm-value`."
+  [group-ids    :- [:set ms/PositiveInt]
+   database-ids :- [:set ::lib.schema.id/database]
+   perm-type    :- :string
+   perm-value   :- :string]
+  (into #{}
+        (map (juxt :group_id :db_id))
+        (t2/select [:model/DataPermissions :group_id :db_id]
+                   {:where [:and
+                            [:in :group_id group-ids]
+                            [:in :db_id database-ids]
+                            [:= :table_id nil]
+                            [:= :perm_type [:auto/param perm-type]]
+                            [:= :perm_value [:auto/param perm-value]]]})))
+
 (mu/defn distinct-table-level-permission-values
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
   `perm-types` for `group-ids` on the Database with `database-id`."

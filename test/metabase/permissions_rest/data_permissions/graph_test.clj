@@ -98,14 +98,16 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data :unrestricted}}}
+             :perms/view-data :unrestricted
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" :no}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}}
+            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
@@ -113,14 +115,16 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data :unrestricted}}}
+             :perms/view-data :unrestricted
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" {table-id-1 :no}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
+            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}
+             :perms/transforms :no}}})))))
 
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
@@ -704,7 +708,7 @@
                       graph-steps)}))))
 
 (def ^:private writer-rows
-  "The rows [[data-permission-writer-snapshots!]] returns, as the writers produced them before they shared their rules."
+  "The rows [[data-permission-writer-snapshots!]] returns."
   {:set   [[[:perms/create-queries nil nil :query-builder-and-native]
             [:perms/view-data nil nil :unrestricted]]
            [[:perms/create-queries nil nil :query-builder-and-native]
@@ -713,12 +717,12 @@
            [[:perms/create-queries "t1" "s1" :query-builder]
             [:perms/create-queries "t2" "s1" :query-builder]
             [:perms/create-queries "t3" "s2" :query-builder]
-            [:perms/transforms nil nil :yes]
+            [:perms/transforms nil nil :no]
             [:perms/view-data nil nil :unrestricted]]
            [[:perms/create-queries "t1" "s1" :query-builder]
             [:perms/create-queries "t2" "s1" :query-builder]
             [:perms/create-queries "t3" "s2" :no]
-            [:perms/transforms nil nil :yes]
+            [:perms/transforms nil nil :no]
             [:perms/view-data nil nil :unrestricted]]
            [[:perms/create-queries nil nil :query-builder]
             [:perms/transforms nil nil :no]
@@ -805,18 +809,18 @@
            [[:perms/create-queries "t1" "s1" :query-builder]
             [:perms/create-queries "t2" "s1" :query-builder]
             [:perms/create-queries "t3" "s2" :query-builder]
-            [:perms/transforms nil nil :yes]
+            [:perms/transforms nil nil :no]
             [:perms/view-data nil nil :unrestricted]]
            [[:perms/create-queries "t1" "s1" :query-builder]
             [:perms/create-queries "t2" "s1" :query-builder]
             [:perms/create-queries "t3" "s2" :no]
-            [:perms/transforms nil nil :yes]
+            [:perms/transforms nil nil :no]
             [:perms/view-data nil nil :unrestricted]]
            [[:perms/create-queries "t1" "s1" :no]
             [:perms/create-queries "t2" "s1" :query-builder]
             [:perms/create-queries "t3" "s2" :no]
             [:perms/download-results "t1" "s1" :no]
-            [:perms/transforms nil nil :yes]
+            [:perms/transforms nil nil :no]
             [:perms/view-data "t1" "s1" :blocked]
             [:perms/view-data "t2" "s1" :unrestricted]
             [:perms/view-data "t3" "s2" :unrestricted]]
@@ -824,7 +828,7 @@
             [:perms/create-queries "t2" "s1" :query-builder]
             [:perms/create-queries "t3" "s2" :no]
             [:perms/download-results "t1" "s1" :no]
-            [:perms/transforms nil nil :yes]
+            [:perms/transforms nil nil :no]
             [:perms/view-data "t1" "s1" :unrestricted]
             [:perms/view-data "t2" "s1" :unrestricted]
             [:perms/view-data "t3" "s2" :unrestricted]]

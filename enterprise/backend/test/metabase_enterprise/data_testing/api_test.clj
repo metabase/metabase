@@ -291,9 +291,8 @@
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
                 (refused-writes :lucky)))
-            (testing "saving or deleting tests needs native access to source database"
-              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
-                                                                            :perms/create-queries :query-builder}
+            (testing "saving or deleting tests needs native access to source database, which transforms permission needs"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/create-queries :query-builder}
                 (refused-writes :lucky)))
             (testing "with both, data analysts can change tests"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes

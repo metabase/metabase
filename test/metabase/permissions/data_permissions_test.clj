@@ -1478,6 +1478,7 @@
                   (set-permissions! group-1 db-2 table-2 g1')
                   (set-permissions! group-2 db-2 table-2 g2')
                   (data-perms/set-database-permission! group-1 db-1 :perms/manage-database :yes)
+                  (data-perms/set-database-permission! group-2 db-2 :perms/create-queries :query-builder-and-native)
                   (data-perms/set-database-permission! group-2 db-2 :perms/transforms :yes)
                   (is (= (one-by-one)
                          (answers db-ids)))
@@ -1554,6 +1555,7 @@
                   (set-permissions! group-1 db-2 table-3 g1')
                   (set-permissions! group-2 db-2 table-3 g2')
                   (data-perms/set-database-permission! group-1 db-1 :perms/manage-database :yes)
+                  (data-perms/set-database-permission! group-2 db-2 :perms/create-queries :query-builder-and-native)
                   (data-perms/set-database-permission! group-2 db-2 :perms/transforms :yes)
                   (binding [api/*current-user-id* user-id
                             api/*is-superuser?*   false]
@@ -1611,3 +1613,43 @@
             @f1 @f2
             (is (not (and (perm-exists? :table_id nil)
                           (perm-exists? :table_id [:not= nil]))))))))))
+
+(defn- insert-error
+  "The ex-data of the error inserting the DataPermissions `rows`, or nil when the insert succeeds."
+  [rows]
+  (try
+    (t2/insert! :model/DataPermissions rows)
+    nil
+    (catch ExceptionInfo e
+      (ex-data e))))
+
+(deftest transforms-row-needs-native-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/Database         {db-id :id}    {}
+                 :model/Table            {table-id :id} {:db_id db-id :schema "PUBLIC"}]
+    (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
+    (let [row (fn [perm-type value & {:as table}]
+                (merge {:group_id group-id :db_id db-id :perm_type perm-type :perm_value value} table))]
+      (testing "transforms without native create-queries is refused"
+        (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)])))
+        (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
+        (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)]))))
+      (testing "transforms with native create-queries in same insert is accepted"
+        (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
+        (is (nil? (insert-error [(row :perms/transforms :yes)
+                                 (row :perms/create-queries :query-builder-and-native)]))))
+      (testing "table-level create-queries next to stored transforms is refused"
+        (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/create-queries)
+        (is (=? {:status-code 400}
+                (insert-error [(row :perms/create-queries :query-builder :table_id table-id :schema_name "PUBLIC")])))))))
+
+(deftest table-level-create-queries-revokes-transforms-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/Database         {db-id :id}    {}
+                 :model/Table            {table-id :id} {:db_id db-id :schema "PUBLIC"}]
+    (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder-and-native)
+    (data-perms/set-database-permission! group-id db-id :perms/transforms :yes)
+    (data-perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
+    (is (= #{:no}
+           (t2/select-fn-set :perm_value :model/DataPermissions
+                             :group_id group-id :db_id db-id :perm_type :perms/transforms)))))

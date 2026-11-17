@@ -395,14 +395,23 @@
 
 (defn- add-implications:table-level
   [desired group-id db-id perm-type table-entries]
-  (reduce (fn [desired {:keys [applies? implied-type implied-value]}]
-            (update desired [group-id db-id implied-type]
-                    #(merge %
-                            (into {}
-                                  (keep (fn [[tid {:keys [perm_value schema_name]}]]
-                                          (when (applies? perm_value)
-                                            [tid {:perm_value implied-value :schema_name schema_name}])))
-                                  table-entries))))
+  (reduce (fn [desired {:keys [applies? implied-type implied-value database-wide?]}]
+            (cond
+              (not database-wide?)
+              (update desired [group-id db-id implied-type]
+                      #(merge %
+                              (into {}
+                                    (keep (fn [[tid {:keys [perm_value schema_name]}]]
+                                            (when (applies? perm_value)
+                                              [tid {:perm_value implied-value :schema_name schema_name}])))
+                                    table-entries)))
+
+              (some (comp applies? :perm_value) (vals table-entries))
+              (update desired [group-id db-id implied-type]
+                      #(merge % {nil {:perm_value implied-value :schema_name nil}}))
+
+              :else
+              desired))
           desired
           (perms/permission-implications perm-type true)))
 

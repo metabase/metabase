@@ -642,24 +642,28 @@
   (apply merge-with (fn [a b] (distinct (concat a b))) changes))
 
 (def ^:private implication-rules
-  "The rules both permission writers apply: a group whose `:perm-type` value satisfies `:applies?` on a Database or
-  Table also gets `:implied-value` of `:implied-type` there, on the Database only when `:database-only?`."
-  [{:perm-type :perms/create-queries :applies? #(not= % :no)
+  "The rules both permission writers apply: a group whose `:perm-type` value satisfies `:applies?` also gets
+  `:implied-value` of `:implied-type`, for changes on a whole Database or on single Tables as `:levels` says. A
+  `:database-wide?` rule implies a Database permission, which a Table-level change sets on the whole Database when any of
+  its Table values satisfies `:applies?`; the other rules apply to the same Database or Table."
+  [{:perm-type :perms/create-queries :applies? #(not= % :no) :levels #{:database :table}
     :implied-type :perms/view-data :implied-value :unrestricted}
-   {:perm-type :perms/view-data :applies? #(= % :blocked)
+   {:perm-type :perms/view-data :applies? #(= % :blocked) :levels #{:database :table}
     :implied-type :perms/create-queries :implied-value :no}
-   {:perm-type :perms/view-data :applies? #(= % :blocked)
+   {:perm-type :perms/view-data :applies? #(= % :blocked) :levels #{:database :table}
     :implied-type :perms/download-results :implied-value :no}
-   {:perm-type :perms/view-data :applies? #(not= % :unrestricted)
-    :implied-type :perms/transforms :implied-value :no :database-only? true}
-   {:perm-type :perms/create-queries :applies? #(not= % :query-builder-and-native)
-    :implied-type :perms/transforms :implied-value :no :database-only? true}])
+   {:perm-type :perms/view-data :applies? #(not= % :unrestricted) :levels #{:database}
+    :implied-type :perms/transforms :implied-value :no :database-wide? true}
+   {:perm-type :perms/view-data :applies? #(= % :blocked) :levels #{:table}
+    :implied-type :perms/transforms :implied-value :no :database-wide? true}
+   {:perm-type :perms/create-queries :applies? #(not= % :query-builder-and-native) :levels #{:database :table}
+    :implied-type :perms/transforms :implied-value :no :database-wide? true}])
 
 (defn permission-implications
   "The [[implication-rules]] for a value of `perm-type` set on a whole Database, or on single Tables when `table-level?`."
   [perm-type table-level?]
   (filterv #(and (= perm-type (:perm-type %))
-                 (not (and table-level? (:database-only? %))))
+                 (contains? (:levels %) (if table-level? :table :database)))
            implication-rules))
 
 (defn table-level-value
@@ -705,12 +709,14 @@
 (defn batch-insert-permissions!
   "In certain cases, when updating the permissions for many tables at once, we need to batch the insertions to avoid
   hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
-  has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
+  has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions. The
+  transforms rows go last, so the create-queries rows the DataPermissions insert hook checks them against are in already."
   [new-perms]
   ;; The before-insert hook already runs this per row, so this call is dormant. Un-comment it if perms
   ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).
   #_(assert-no-destination-db-permissions! new-perms)
-  (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
+  (doseq [batched-new-perms (partition-all permission-batch-size
+                                           (sort-by #(= :perms/transforms (keyword (:perm_type %))) new-perms))]
     (permissions.db/insert-data-permissions! batched-new-perms)))
 
 (defn batch-delete-permissions!
@@ -762,10 +768,11 @@
    (with-cluster-lock {:db-id     (u/the-id db-or-id)
                        :perm-type (u/qualified-name perm-type)}
      (let [{:keys [to-insert to-delete]} (build-database-permission perms group-or-id db-or-id perm-type value)]
-       (when (seq to-delete)
-         (batch-delete-permissions! (map :id to-delete)))
-       (when (seq to-insert)
-         (batch-insert-permissions! to-insert))))))
+       (t2/with-transaction [_conn]
+         (when (seq to-delete)
+           (batch-delete-permissions! (map :id to-delete)))
+         (when (seq to-insert)
+           (batch-insert-permissions! to-insert)))))))
 
 (defenterprise new-group-view-data-permission-levels
   "Returns a map of {db-id → permission-level} for multiple databases. On OSS, all are `:unrestricted`."
@@ -799,12 +806,16 @@
 
 (defn- build-recursive-table-calls
   "Builds recursive calls for related permissions based on permission type and table permissions."
-  [group-or-id perm-type table-perms]
-  (for [{:keys [applies? implied-type implied-value]} (permission-implications perm-type true)]
-    (build-table-permissions group-or-id implied-type
-                             (into {}
-                                   (keep (fn [[table value]] (when (applies? value) [table implied-value])))
-                                   table-perms))))
+  [group-or-id db-id perm-type table-perms]
+  (for [{:keys [applies? implied-type implied-value database-wide?]} (permission-implications perm-type true)
+        :when (or (not database-wide?) (some applies? (vals table-perms)))]
+    (if database-wide?
+      (build-database-permission (index-database-permissions [(u/the-id group-or-id)] [db-id])
+                                 group-or-id db-id implied-type implied-value)
+      (build-table-permissions group-or-id implied-type
+                               (into {}
+                                     (keep (fn [[table value]] (when (applies? value) [table implied-value])))
+                                     table-perms)))))
 
 (defn- handle-existing-db-permission
   "Handles the case where there's an existing database-level permission."
@@ -894,7 +905,7 @@
                                         table-ids
                                         values
                                         new-perms))
-             (build-recursive-table-calls group-or-id perm-type table-perms)))))
+             (build-recursive-table-calls group-or-id db-id perm-type table-perms)))))
 
 (mu/defn- set-table-permissions-internal!
   "For internal use only - assumes that the cluster lock has already been obtained and sets table permissions."
@@ -902,10 +913,11 @@
    perm-type   :- ::permissions.schema/data-permission-type
    table-perms :- [:map-of TheIdable :keyword]]
   (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
-    (when (seq to-delete)
-      (batch-delete-permissions! (map :id to-delete)))
-    (when (seq to-insert)
-      (batch-insert-permissions! to-insert))))
+    (t2/with-transaction [_conn]
+      (when (seq to-delete)
+        (batch-delete-permissions! (map :id to-delete)))
+      (when (seq to-insert)
+        (batch-insert-permissions! to-insert)))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified group and table,

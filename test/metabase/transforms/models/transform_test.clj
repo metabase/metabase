@@ -93,8 +93,7 @@
 
 (mt/when-ee-evailable
  (deftest native-transform-requires-query-builder-and-native-test
-   (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
-             group was misconfigured with transforms permission but only query-builder access (no native)."
+   (testing "Writing a native-query transform requires \"Query builder and native\" on the source database."
      (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
@@ -115,15 +114,14 @@
                ;; the (mis)configured transforms group.
                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
-               (testing "transforms granted, but create-queries only query-builder (no native) — preexisting misconfiguration"
+               (testing "transforms cannot be granted while create-queries is only query-builder (no native)"
                  (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
-                 (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transforms permission requires"
+                                       (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)))
                  (mt/with-current-user (mt/user->id :rasta)
-                   (testing "native transform cannot be written"
-                     (is (not (mi/can-write? (t2/hydrate native :can_write)))))
-                   (testing "non-native (MBQL) transform is unaffected"
-                     (is (mi/can-write? (t2/hydrate mbql :can_write))))))
+                   (is (not (mi/can-write? (t2/hydrate native :can_write))))
+                   (is (not (mi/can-write? (t2/hydrate mbql :can_write))))))
                (testing "with query-builder-and-native, native transform can be written"
                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)

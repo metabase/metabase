@@ -173,10 +173,11 @@
 
 (defn do-with-db-perms-for-group!
   "Implementation of `with-db-perms-for-group!`. Sets several data permissions for the given database to the given
-  values for the given permission group for the duration of the test."
+  values for the given permission group for the duration of the test, the transforms permission last since it needs
+  native query access set first."
   [group-or-id db-id perm-type->value thunk]
   (with-restored-data-perms-for-group! (u/the-id group-or-id)
-    (doseq [[perm-type value] perm-type->value]
+    (doseq [[perm-type value] (sort-by (comp #{:perms/transforms} key) perm-type->value)]
       (data-perms/set-database-permission! group-or-id db-id perm-type value))
     (thunk)))
 
