@@ -1,6 +1,6 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
-   [metabase.events.core]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -131,7 +131,7 @@
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
-      (t2/with-transaction [_]
+      (events/with-batched-events
         (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
           (when-let [missing (not-empty (remove existing table-ids))]
             (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))

@@ -633,7 +633,7 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (t2/with-transaction [_tx]
+    (events/with-batched-events
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
       (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
         (collection/move-collection! child new-children-location))

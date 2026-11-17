@@ -716,16 +716,17 @@
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
       ;; get duplicates
-      (t2/with-transaction [_conn]
-        ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
-        ;; are gone and update the position in the new collection
-        (when-let [cards-with-position (seq (filter :collection_position cards))]
-          (update-collection-positions! new-collection-id-or-nil cards-with-position))
-        ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already,
-        ;; through the model, so that each card's checks run and its hooks move what moves with it
-        (doseq [card  cards
-                :when (not (:collection_position card))]
-          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil})))
+      (events/with-batched-events
+        (t2/with-transaction [_conn]
+          ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
+          ;; are gone and update the position in the new collection
+          (when-let [cards-with-position (seq (filter :collection_position cards))]
+            (update-collection-positions! new-collection-id-or-nil cards-with-position))
+          ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already,
+          ;; through the model, so that each card's checks run and its hooks move what moves with it
+          (doseq [card  cards
+                  :when (not (:collection_position card))]
+            (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))))
       nil))
 
   (when new-collection-id-or-nil

@@ -313,17 +313,18 @@
      store
      {:retries 3}
      (fn []
-       (into []
-             (mapcat (fn [{:keys [model keys strip]}]
-                       (eduction (comp (partition-all serialization.util/batch-size)
-                                       (mapcat (fn [batch]
-                                                 (load-batch! model
-                                                              store
-                                                              (mapv #(cond-> %
-                                                                       strip (-> (as-> e (apply dissoc e strip))
-                                                                                 (assoc :serdes/stripped strip)))
-                                                                    (read-batch (vec batch)))
-                                                              opts
-                                                              continue-on-error))))
-                                 keys)))
-             order)))))
+       (events/with-batched-events
+         (into []
+               (mapcat (fn [{:keys [model keys strip]}]
+                         (eduction (comp (partition-all serialization.util/batch-size)
+                                         (mapcat (fn [batch]
+                                                   (load-batch! model
+                                                                store
+                                                                (mapv #(cond-> %
+                                                                         strip (-> (as-> e (apply dissoc e strip))
+                                                                                   (assoc :serdes/stripped strip)))
+                                                                      (read-batch (vec batch)))
+                                                                opts
+                                                                continue-on-error))))
+                                   keys)))
+               order))))))
