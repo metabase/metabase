@@ -79,7 +79,6 @@ export const DataModel = {
     getPreviewButton: getFieldPreviewButton,
     getFieldValuesButton: getFieldValuesButton,
     getCoercionToggle: getFieldCoercionToggle,
-    getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
     getSemanticTypeCurrencyInput: getFieldSemanticTypeCurrencyInput,
     getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
@@ -526,10 +525,6 @@ function getRawFieldName() {
 
 function getFieldCoercionToggle() {
   return getFieldSection().findByLabelText("Cast to a specific data type");
-}
-
-function getFieldCoercionInput() {
-  return getFieldSection().findByPlaceholderText("Select data type");
 }
 
 function getFieldSemanticTypeInput() {
