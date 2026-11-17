@@ -20,6 +20,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -40,7 +41,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.template-tags :as qp.template-tags]
+   [metabase.query-processor.card :as qp.card]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -54,6 +55,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.util.performance :as perf]
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -1001,6 +1003,28 @@
                           existing-dashcards
                           new-dashcards)))
 
+(defn- reads-parameter-tag?
+  [query]
+  (boolean (perf/some qp.card/parameter-template-tag? (lib/all-template-tags query))))
+
+(defn card-reads-parameters?
+  "Whether running `card`'s saved query needs parameter values: `card` has parameters, or its query or that of any card
+  it reads, at any depth, has a template tag that becomes one."
+  [{:keys [parameters dataset_query]}]
+  (boolean
+   (or (seq parameters)
+       (when (seq dataset_query)
+         (let [query (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
+                                dataset_query)]
+           (or (reads-parameter-tag? query)
+               ;; source cards, `{{#123}}` tags and metrics; the walk keeps a visited set, so a cycle ends
+               (perf/some (fn [card-id]
+                            (some-> (lib.metadata/card query card-id)
+                                    :dataset-query
+                                    perf/not-empty
+                                    reads-parameter-tag?))
+                          (lib/all-source-card-ids-recursive query))))))))
+
 (def ^:private goal-reference-models
   {"card" :model/Card, "measure" :model/Measure})
 
@@ -1020,7 +1044,7 @@
     ;; a goal runs its source with no parameter values, so it'd get each one's default or none
     (when (= "card" entity-type)
       (api/check-400
-       (not (qp.template-tags/reads-parameters? entity))
+       (not (card-reads-parameters? entity))
        (tru "This question uses variables, directly or through a question it''s built on, so it can''t be a goal.")))))
 
 (defn check-new-goal-references!

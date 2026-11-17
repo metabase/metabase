@@ -7,7 +7,7 @@
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.template-tags :as qp.template-tags]
+   [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]))
 
@@ -51,7 +51,7 @@
   source for parameters, and these sources have none."
   [f]
   (let [runs (atom 0)]
-    (mt/with-dynamic-fn-redefs [qp.template-tags/reads-parameters? (fn [_]
+    (mt/with-dynamic-fn-redefs [queries/card-reads-parameters? (fn [_]
                                                                      (swap! runs inc)
                                                                      false)]
       (f runs))))

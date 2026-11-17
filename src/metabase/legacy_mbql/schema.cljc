@@ -2402,8 +2402,6 @@
     [:qp/compiled-inline {:optional true} :metabase.lib.schema/compiled-native-query]
     [:async?                               {:optional true} :boolean]
     [:was-pivot                            {:optional true} [:maybe :boolean]]
-    ;; ignored; older clients sent dynamic goal sources here in the body of `POST /api/dataset`
-    [:referenced-entities                  {:optional true} :any]
     [:pivot-rows                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-cols                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-measures                       {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
