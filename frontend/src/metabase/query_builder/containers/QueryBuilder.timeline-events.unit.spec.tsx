@@ -924,9 +924,9 @@ const getHighlightedPointXs = () =>
 const getSidebar = () => screen.getByTestId("sidebar-content");
 
 const openEventsPanel = async () => {
-  await userEvent.click(
-    within(screen.getByTestId("view-footer")).getByLabelText("calendar icon"),
-  );
+  // an ad-hoc question shows its footer once its query has answered
+  const footer = await screen.findByTestId("view-footer");
+  await userEvent.click(await within(footer).findByLabelText("calendar icon"));
   return screen.findByTestId("sidebar-content");
 };
 
