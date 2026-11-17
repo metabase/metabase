@@ -18,6 +18,7 @@ import {
 
 import type {
   SummaryDimensionItem,
+  SummaryDimensionWellId,
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
@@ -901,9 +902,12 @@ describe("drag and drop", () => {
     }
     return { kind: "value", item };
   };
-  const dimensionDrag = (): SummaryDragItem => ({
+  const dimensionDrag = (
+    wellId: SummaryDimensionWellId = "columns",
+  ): SummaryDragItem => ({
     kind: "dimension",
     item: getDimensionItems(query, STAGE_INDEX)[0],
+    wellId,
   });
 
   it("lets a column field drop on either well, a metric or measure only on Summarize by", () => {
@@ -988,6 +992,50 @@ describe("drag and drop", () => {
       "Revenue",
       "Distinct values of Created At",
     ]);
+  });
+
+  it("lets Rows take what Group by takes", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Quantity"), "rows"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Order count"), "rows"),
+    ).toBe(false);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, valueDrag("Sum of Total"), "rows"),
+    ).toBe(true);
+    expect(canDropOnWell(query, STAGE_INDEX, valueDrag("Count"), "rows")).toBe(
+      false,
+    );
+
+    const grouped = dropOnWell(
+      query,
+      STAGE_INDEX,
+      fieldDrag("Quantity"),
+      "rows",
+    );
+    expect(getDimensionLabels(grouped)).toEqual([
+      "Created At: Month",
+      "Quantity: Auto binned",
+    ]);
+  });
+
+  it("lets a grouping chip move to the other grouping well without a change of the query", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, dimensionDrag("columns"), "rows"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, dimensionDrag("rows"), "columns"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, dimensionDrag("rows"), "rows"),
+    ).toBe(false);
+    expect(
+      dropOnWell(query, STAGE_INDEX, dimensionDrag("columns"), "rows"),
+    ).toBe(query);
+    expect(
+      dropOnWell(query, STAGE_INDEX, dimensionDrag("rows"), "columns"),
+    ).toBe(query);
   });
 
   it("keeps a chip on its own well and keeps non-column values out of Group by", () => {

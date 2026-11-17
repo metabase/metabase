@@ -25,6 +25,7 @@ import {
   DraftFormulaChip,
   type DraftFormulaChipProps,
 } from "./DraftFormulaChip";
+import { PivotDropZone } from "./PivotDropZone";
 import { PivotToggle } from "./PivotToggle";
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
@@ -91,7 +92,11 @@ export function SummaryWells({
       canDropOnWell(query, stageIndex, draggedItem, wellId)
         ? "accepts"
         : "rejects";
-    return { values: getDropState("values"), columns: getDropState("columns") };
+    return {
+      values: getDropState("values"),
+      columns: getDropState("columns"),
+      rows: getDropState("rows"),
+    };
   }, [query, stageIndex, draggedItem]);
 
   return (
@@ -158,6 +163,7 @@ export function SummaryWells({
               key={item.key}
               query={query}
               stageIndex={stageIndex}
+              wellId="columns"
               item={item}
               isEditing={isEditing(item.expression)}
               formulaInput={formulaInputs?.columns}
@@ -170,8 +176,12 @@ export function SummaryWells({
           )}
         </SummaryWellInput>
       </SummaryWell>
-      {isPivotMode && (
-        <SummaryWell wellId="rows" title={t`Rows`} dropState={null}>
+      {isPivotMode ? (
+        <SummaryWell
+          wellId="rows"
+          title={t`Rows`}
+          dropState={dropStates?.rows ?? null}
+        >
           <SummaryWellInput
             wellId="rows"
             sections={dimensionSections}
@@ -189,6 +199,7 @@ export function SummaryWells({
                 key={item.key}
                 query={query}
                 stageIndex={stageIndex}
+                wellId="rows"
                 item={item}
                 isEditing={false}
                 onChange={onChange}
@@ -197,6 +208,8 @@ export function SummaryWells({
             ))}
           </SummaryWellInput>
         </SummaryWell>
+      ) : (
+        <PivotDropZone canDrop={dropStates?.rows === "accepts"} />
       )}
     </Box>
   );

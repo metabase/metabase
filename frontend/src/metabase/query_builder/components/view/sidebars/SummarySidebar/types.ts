@@ -4,6 +4,8 @@ import type { IconName } from "metabase-types/api";
 /** `values` is Summarize by, `columns` is Group by, `rows` is the Rows well of pivot mode. */
 export type SummaryWellId = "values" | "columns" | "rows";
 
+export type SummaryDimensionWellId = Exclude<SummaryWellId, "values">;
+
 export type SummaryQueryChangeOptions = {
   isFormulaCreated?: boolean;
   renamedFormula?: { name: string; nextName: string };
@@ -72,4 +74,8 @@ export type SummaryDimensionItem = {
 export type SummaryDragItem =
   | { kind: "field"; field: SummaryField; label: string }
   | { kind: "value"; item: SummaryValueItem }
-  | { kind: "dimension"; item: SummaryDimensionItem };
+  | {
+      kind: "dimension";
+      item: SummaryDimensionItem;
+      wellId: SummaryDimensionWellId;
+    };

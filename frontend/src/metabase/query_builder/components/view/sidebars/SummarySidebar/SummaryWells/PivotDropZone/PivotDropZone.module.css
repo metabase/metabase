@@ -1,0 +1,20 @@
+.zone {
+  flex: 1 0 6rem;
+}
+
+.target {
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-md);
+  border: 2px dashed var(--mb-color-core-summarize);
+  border-radius: var(--mantine-radius-lg);
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_surface-success);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.isOver {
+  opacity: 1;
+}
