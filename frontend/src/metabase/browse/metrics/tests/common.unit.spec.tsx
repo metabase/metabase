@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { mockTextOverflow, screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -92,6 +92,10 @@ describe("BrowseMetrics (OSS)", () => {
       ),
     ).toBeInTheDocument();
     expect(await screen.findByText("Create metric")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Create metric" })).toHaveAttribute(
+      "href",
+      "/metric/new",
+    );
   });
 
   it("displays a new metric header button when no metrics are found", async () => {
@@ -101,6 +105,9 @@ describe("BrowseMetrics (OSS)", () => {
     expect(
       await within(header).findByLabelText("Create a new metric"),
     ).toBeInTheDocument();
+    expect(
+      within(header).getByRole("link", { name: "Create a new metric" }),
+    ).toHaveAttribute("href", "/metric/new");
   });
 
   it("should not show the Create metric button in an empty state if the user does not have data access", async () => {
@@ -216,12 +223,7 @@ describe("BrowseMetrics (OSS)", () => {
   });
 
   it("lists every metric and shows a markdown description in a tooltip when it is truncated", async () => {
-    jest
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockReturnValue(new DOMRect(0, 0, 1, 1));
-    jest
-      .spyOn(Range.prototype, "getBoundingClientRect")
-      .mockReturnValue(new DOMRect(0, 0, 2, 1));
+    mockTextOverflow();
     const longName =
       "A very long metric name that should be truncated by the metrics table because it does not fit within the name column";
     const metricNames = [
