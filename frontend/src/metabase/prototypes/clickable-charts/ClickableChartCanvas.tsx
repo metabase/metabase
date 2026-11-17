@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Group, Loader, Paper, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Loader, Paper, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
   CardDisplayType,
@@ -71,7 +71,6 @@ function LoadedCanvas({ direction, ordersQuery }: LoadedCanvasProps) {
     if (nextDisplay !== display) {
       setSettings({});
     }
-    setActiveExample(undefined);
   };
 
   const handleLoadExample = (example: Example) => {
@@ -89,10 +88,21 @@ function LoadedCanvas({ direction, ordersQuery }: LoadedCanvasProps) {
           <Button
             key={example.label}
             size="compact-sm"
-            variant={example === activeExample ? "filled" : "default"}
+            variant="subtle"
+            c="brand"
             onClick={() => handleLoadExample(example)}
           >
-            {example.label}
+            <Box
+              component="span"
+              style={{
+                textDecoration:
+                  example === activeExample ? "underline" : "none",
+                textDecorationThickness: 2,
+                textUnderlineOffset: 3,
+              }}
+            >
+              {example.label}
+            </Box>
           </Button>
         ))}
       </Group>
