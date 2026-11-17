@@ -138,12 +138,20 @@
     (try
       ;; passes for anything under an anonymous route's `as-admin`: there saving the goal is the gate
       (let [source (api/read-check model id)]
-        ;; it runs with no parameter values, so each would get its default or none at all
-        (if (queries/card-reads-parameters? source)
+        (cond
+          (viz.dynamic-goals/model-source? source-type source)
+          (do
+            (log/warnf "Goal source %s %s is a model, so it can't be a goal" source-type id)
+            (failed nil (tru "Goal source {0} {1} is a model, so it can''t be a goal." source-type id)))
+
+          ;; it runs with no parameter values, so each would get its default or none at all
+          (queries/card-reads-parameters? source)
           (do
             (log/warnf "Goal source %s %s reads parameters, so it can't run on its own" source-type id)
             (failed "has-parameters"
                     (tru "Goal source {0} {1} uses variables, so it can''t run on its own." source-type id)))
+
+          :else
           (let [query          (source-query (runnable-query source query-key) source-type id opts)
                 ;; measures have no cache config. Computed on the final query: its hash keys the average run time
                 cache-strategy (when card?

@@ -1052,18 +1052,17 @@
                                     reads-parameter-tag?))
                           (lib/all-source-card-ids-recursive query))))))))
 
-(def ^:private goal-reference-models
-  {"card" :model/Card, "measure" :model/Measure})
-
 (defn- resolvable-goal-references
   [viz-settings]
   ;; goals of any other type are dropped at run time too, so they reach nothing
-  (into #{} (filter (comp goal-reference-models first)) (dynamic-goals/goal-references viz-settings)))
+  (into #{} (filter (comp dynamic-goals/goal-entity-types first)) (dynamic-goals/goal-references viz-settings)))
 
 (defn- check-goal-reference!
   [[entity-type id]]
   (api/check-400 (pos-int? id) (tru "A goal must reference an entity by its integer ID."))
-  (let [entity (api/read-check (goal-reference-models entity-type) id)]
+  (let [entity (api/read-check (dynamic-goals/goal-entity-models entity-type) id)]
+    (api/check-400 (not (dynamic-goals/model-source? entity-type entity))
+                   (tru "A model can''t be a goal."))
     ;; a measure's value is its table's data, while reading a Table only takes metadata access
     (when (= "measure" entity-type)
       (api/check (query-perms/can-query-table? (get-in entity [:definition :database]) (:table_id entity))

@@ -404,3 +404,16 @@
         (is (= :no-error (status-of #(t2/update! :model/Card :id card-id
                                                  {:visualization_settings (assoc (gauge-viz (card-goal source-id))
                                                                                  :card.title "renamed")}))))))))
+
+(deftest model-goal-reference-test
+  (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (count-query)}
+                 :model/Card {card-id :id} {:dataset_query (count-query)}]
+    (mt/with-test-user :crowberto
+      (testing "a goal reading a model is refused even for an admin"
+        (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal model-id))})))
+        (is (= 400 (status-of #(t2/update! :model/Card :id card-id
+                                           {:visualization_settings (gauge-viz (card-goal model-id))}))))))
+    (testing "the API says why"
+      (is (= "A model can't be a goal."
+             (mt/user-http-request :crowberto :put 400 (format "card/%d" card-id)
+                                   {:visualization_settings (gauge-viz (card-goal model-id))}))))))
