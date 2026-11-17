@@ -5,6 +5,7 @@ import type {
   ParameterWithTarget,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -60,7 +61,7 @@ function getSavedCardUiParameters(
     const fields = _.uniq(
       card.param_fields?.[parameter.id] ?? [],
       (field) => field.id,
-    );
+    ).map(getParameterFieldInfo);
     if (fields.length > 0) {
       return {
         ...parameter,

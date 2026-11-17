@@ -101,7 +101,6 @@
       "display": "line",
       "archived_directly": false,
       "entity_id": "test_symlog_decimals",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.x_axis.scale": "log",
         "graph.y_axis.scale": "log",

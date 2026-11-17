@@ -1,5 +1,6 @@
 ---
 title: "Segments"
+summary: Create and retire segments, saved filters for the query builder, from the Admin panel's Table Metadata page. Prefer Data Studio for managing segments.
 ---
 
 # Segments

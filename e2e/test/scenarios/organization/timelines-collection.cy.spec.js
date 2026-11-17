@@ -697,7 +697,11 @@ describe("scenarios > collections > timelines", () => {
 });
 
 const openMenu = (name) => {
-  return cy.findByText(name).parent().parent().icon("ellipsis").click();
+  return cy
+    .findByText(name)
+    .closest(":has(.Icon-ellipsis)")
+    .icon("ellipsis")
+    .click();
 };
 
 const setFormattingSettings = (settings) => {

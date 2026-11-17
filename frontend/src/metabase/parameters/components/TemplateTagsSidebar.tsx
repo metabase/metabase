@@ -2,8 +2,8 @@ import { useRef } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { TemplateTagsSidebarProps } from "metabase/querying/editor/types";
-import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
+import { setTemplateTag, setTemplateTagConfig } from "metabase/querying/native";
+import type * as Lib from "metabase-lib";
 
 import { TagEditorSidebar } from "./TagEditor/TagEditorSidebar";
 
@@ -30,8 +30,6 @@ export function TemplateTagsSidebar({
   const latestQueryRef = useRef(query);
   latestQueryRef.current = query;
 
-  const nativeQuery = checkNotNull(question.legacyNativeQuery());
-
   const commitQuery = (newQuery: Lib.Query) => {
     latestQueryRef.current = newQuery;
     onChangeQuery(newQuery);
@@ -40,20 +38,12 @@ export function TemplateTagsSidebar({
   return (
     <TagEditorSidebar
       question={question}
-      query={nativeQuery}
       onClose={onClose}
       sampleDatabaseId={
         canUseSampleDatabase === false ? undefined : sampleDatabaseId
       }
       setTemplateTag={(tag) => {
-        const currentQuery = latestQueryRef.current;
-        const templateTags = Lib.templateTags(currentQuery);
-        commitQuery(
-          Lib.withTemplateTags(currentQuery, {
-            ...templateTags,
-            [tag.name]: tag,
-          }),
-        );
+        commitQuery(setTemplateTag(latestQueryRef.current, tag));
       }}
       setParameterValue={(tagId, value) => {
         setParameterValues({
@@ -62,19 +52,10 @@ export function TemplateTagsSidebar({
         });
       }}
       setTemplateTagConfig={(tag, config) => {
-        const latestNativeQuery = checkNotNull(
-          question.setQuery(latestQueryRef.current).legacyNativeQuery(),
-        );
-        commitQuery(
-          latestNativeQuery
-            .setTemplateTagConfig(tag, config)
-            .question()
-            .query(),
-        );
+        const latestQuestion = question.setQuery(latestQueryRef.current);
+        commitQuery(setTemplateTagConfig(latestQuestion, tag, config).query());
       }}
-      setDatasetQuery={(newQuery) => {
-        commitQuery(question.setDatasetQuery(newQuery).query());
-      }}
+      setQuery={commitQuery}
       getEmbeddedParameterVisibility={VISIBILITY_ALWAYS_ENABLED}
       parametersAreUserVisible={parametersAreUserVisible}
     />

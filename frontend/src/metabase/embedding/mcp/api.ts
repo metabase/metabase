@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /* eslint-disable metabase/no-literal-metabase-strings */
 
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";

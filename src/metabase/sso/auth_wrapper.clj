@@ -26,6 +26,9 @@
    ;; Slack Connect routes always available (OSS)
    (handlers/route-map-handler {"/auth" {"/sso" {"/slack-connect" slack-connect.api/routes}}})
    ;; Other SSO routes require EE
+   ;; This could be a zero-arity `defenterprise` that returns the EE routes, with `ee-missing-routes` as its OSS body,
+   ;; which would take this namespace off the OSS-to-EE allowlist in `metabase.core.modules-test`. The EE body would
+   ;; have to return the var `#'routes`, not its value, or REPL reloads of the EE routes stop reaching this handler.
    (if (and config/ee-available? (not *compile-files*))
      (requiring-resolve 'metabase-enterprise.sso.api.routes/routes)
      ee-missing-routes)))

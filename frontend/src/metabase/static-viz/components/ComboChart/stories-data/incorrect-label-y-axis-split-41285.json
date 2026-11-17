@@ -70,7 +70,6 @@
       "parameter_mappings": [],
       "display": "line",
       "entity_id": "-_XgVaPuz7MY8jlG0wSEC",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["started_at"],
         "graph.show_values": true,

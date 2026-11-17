@@ -101,3 +101,28 @@ describe("mapDatabaseValues - redshift", () => {
     expect(fieldsMap.get("details.advanced-options")).toBeUndefined();
   });
 });
+
+describe("mapDatabaseValues - motherduck", () => {
+  it("should map the database and token, and drop DuckDB client params", () => {
+    const fieldsMap = mapConnectionString(
+      "jdbc:duckdb:md:my_db?motherduck_token=secret&saas_mode=true",
+      "motherduck",
+    );
+
+    expect(Object.fromEntries(fieldsMap)).toEqual({
+      "details.dbname": "my_db",
+      name: "my_db",
+      "details.password": "secret",
+    });
+  });
+
+  it("should leave the database empty when the string names none", () => {
+    const fieldsMap = mapConnectionString(
+      "md:?motherduck_token=secret",
+      "motherduck",
+    );
+
+    expect(fieldsMap.get("details.dbname")).toBeUndefined();
+    expect(fieldsMap.get("details.password")).toBe("secret");
+  });
+});

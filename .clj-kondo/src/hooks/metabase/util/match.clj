@@ -151,6 +151,7 @@
       {:node new-node})))
 
 (def match-many match-one)
+(def match-all match-one)
 (def replace match-one)
 (def replace-all match-one)
 

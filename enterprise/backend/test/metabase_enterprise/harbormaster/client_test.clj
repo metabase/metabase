@@ -23,7 +23,7 @@
      (if (= k setting-kw) value (grv k pred parse-fn)))))
 
 (deftest ->config-blank-api-key-test
-  (let [grv setting/get-raw-value]
+  (let [grv (mt/original-fn #'setting/get-raw-value)]
     ;; mt/with-temporary-setting-values is not used here because we want to test the behavior of the function when the
     ;; api-key is blank or nil, and mt/with-temporary-setting-values will not allow us to set the api-key to blank
     ;; or nil.

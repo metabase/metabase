@@ -786,19 +786,19 @@
 ;;; yes, this is intentionally different from the version in `:metabase.lib.schema.metadata/column.has-field-values`.
 ;;; The FE isn't supposed to need to worry about the distinction between `:auto-list` and `:list` for filter purposes.
 ;;; See [[infer-has-field-values]] for more info.
-(mr/def ::field-values-search-info.has-field-values
+(mr/def ::field-search-info.has-field-values
   [:enum :list :search :none])
 
-(mr/def ::field-values-search-info
+(mr/def ::field-search-info
   [:map
    [:field-id         [:maybe [:ref ::lib.schema.id/field]]]
    [:search-field-id  [:maybe [:ref ::lib.schema.id/field]]]
    [:search-field     [:maybe [:ref ::lib.schema.metadata/column]]]
-   [:has-field-values [:ref ::field-values-search-info.has-field-values]]])
+   [:has-field-values [:ref ::field-search-info.has-field-values]]])
 
-(mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
+(mu/defn infer-has-field-values :- ::field-search-info.has-field-values
   "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
-  filter search widgets, either when returned by the the REST API or in Lib with [[field-values-search-info]].
+  filter search widgets, either when returned by the the REST API or in Lib with [[field-search-info]].
 
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
@@ -829,7 +829,7 @@
     (when (lib.types.isa/searchable? col)
       col)))
 
-(mu/defn field-values-search-info :- ::field-values-search-info
+(mu/defn field-search-info :- ::field-search-info
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
   widget in the QB filter modals."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -844,3 +844,54 @@
        :has-field-values (if (int? column-field-id)
                            (infer-has-field-values column)
                            :none)})))
+
+(mr/def ::parameter-field-info
+  [:map
+   [:id                         [:ref ::lib.schema.id/field]]
+   [:display-name               :string]
+   [:search-field-display-name  [:maybe :string]]
+   [:string?                    :boolean]
+   [:boolean?                   :boolean]
+   [:date?                      :boolean]
+   [:numeric?                   :boolean]
+   [:settings                   [:maybe :map]]
+   [:has-field-values           [:ref ::field-search-info.has-field-values]]
+   [:has-remapped-values?       :boolean]])
+
+(mu/defn- name-field :- [:maybe ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (some->> (:name-field column) u/the-id (lib.metadata/field metadata-providerable)))
+
+(mu/defn- external-remapped-field :- [:maybe ::lib.schema.metadata/column]
+  "The Field that labels the values of `column`: its external remap Field, or the `:type/Name` Field of the column or its
+  FK target."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (if-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+    (lib.metadata/field metadata-providerable remap-field-id)
+    (name-field metadata-providerable
+                (or (some->> (:fk-target-field-id column) (lib.metadata/field metadata-providerable))
+                    column))))
+
+(mu/defn parameter-field-info :- [:maybe ::parameter-field-info]
+  "What a parameter widget needs to know about the Field of `column`: its name, the name of the Field its values are
+  searched by, its type, its formatting settings, its FieldValues, and whether its values have human-readable labels.
+  `nil` for a column without a Field."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when (int? (:id column))
+    (let [remapped-field (external-remapped-field metadata-providerable column)
+          search-column  (cond
+                           (and remapped-field (lib.types.isa/searchable? remapped-field)) remapped-field
+                           (lib.types.isa/searchable? column)                              column)]
+      {:id                        (:id column)
+       :display-name              (:display-name column)
+       :search-field-display-name (:display-name search-column)
+       :string?                   (lib.types.isa/string-or-string-like? column)
+       :boolean?                  (lib.types.isa/boolean? column)
+       :date?                     (lib.types.isa/temporal? column)
+       :numeric?                  (lib.types.isa/numeric? column)
+       :settings                  (:settings column)
+       :has-field-values          (infer-has-field-values column)
+       :has-remapped-values?      (boolean (or (:lib/internal-remap column) remapped-field))})))

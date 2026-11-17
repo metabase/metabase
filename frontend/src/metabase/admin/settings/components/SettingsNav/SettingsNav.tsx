@@ -51,7 +51,7 @@ export function SettingsNav() {
       </SettingsNavItem>
       <SettingsNavItem path="domains" label={t`Domains`} icon="globe" />
       {PLUGIN_REMOTE_SYNC.isEnabled ? (
-        <PLUGIN_REMOTE_SYNC.LibraryNav />
+        <PLUGIN_REMOTE_SYNC.SettingsNavItem />
       ) : !isPro ? (
         <SettingsNavItem
           path="remote-sync"

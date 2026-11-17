@@ -8,7 +8,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
@@ -27,7 +26,9 @@
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,7 +73,7 @@
 
 (defn- smart-link-readable?
   "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to; user rows are pre-filtered by
+  a [[mi/can-read?]] implementation to defer to, read off `:can_read` hydrated on the row; user rows are pre-filtered by
   [[visible-user-rows]], and a sandboxed or impersonated caller resolves nobody but themselves."
   [model row]
   (if (= "user" model)
@@ -115,11 +116,13 @@
                         ids      (distinct (map #(get-in % [:attrs "entityId"]) model-links))
                         rows     (when db-model
                                    (try
-                                     (filterv #(and (not (v2.resolve/hidden? db-model %))
-                                                    (smart-link-readable? model %))
+                                     (filterv #(smart-link-readable? model %)
                                               (if (= "user" model)
-                                                (visible-user-rows ids)
-                                                (mcp.db/select-by-ids db-model ids)))
+                                                (remove #(v2.resolve/hidden? db-model %) (visible-user-rows ids))
+                                                (t2/hydrate (into []
+                                                                  (remove #(v2.resolve/hidden? db-model %))
+                                                                  (mcp.db/select-by-ids db-model ids))
+                                                            :can_read)))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
@@ -160,23 +163,20 @@
       ast
       (let [rows   (smart-link-rows links)
             stored (some-> previous-ast stored-smart-link-attrs)]
-        (walk/postwalk
-         (fn [node]
-           (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:strs [entityId model]} (:attrs node)
-                   k                        [model entityId]]
-               (if-let [row (get rows k)]
-                 (update node :attrs assoc
-                         "label" (smart-link-label row)
-                         "href" (smart-link-href model row))
-                 (if-let [prior (get stored k)]
-                   (update node :attrs assoc "label" (get prior "label") "href" (get prior "href"))
-                   (do
-                     (when (prose-mirror/smart-link-model->db-model model)
-                       (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
-                     node))))
-             node))
-         ast)))))
+        (match/replace-all ast
+          {:type "smartLink"}
+          (let [{:strs [entityId model]} (:attrs &match)
+                k                        [model entityId]]
+            (if-let [row (get rows k)]
+              (update &match :attrs assoc
+                      "label" (smart-link-label row)
+                      "href" (smart-link-href model row))
+              (if-let [prior (get stored k)]
+                (update &match :attrs assoc "label" (get prior "label") "href" (get prior "href"))
+                (do
+                  (when (prose-mirror/smart-link-model->db-model model)
+                    (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
+                  &match)))))))))
 
 (defn- ast-id-set
   [ast]
@@ -216,7 +216,7 @@
   (let [ids (distinct (prose-mirror/card-ids {:document     ast
                                               :content_type prose-mirror/prose-mirror-content-type}))]
     (when (seq ids)
-      (let [cards (into {} (map (juxt :id identity)) (mcp.db/select-by-ids :model/Card ids))]
+      (let [cards (into {} (map (juxt :id identity)) (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read))]
         (doseq [id ids]
           (let [card (get cards id)]
             (when-not (and card

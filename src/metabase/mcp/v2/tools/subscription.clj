@@ -279,15 +279,16 @@
    card ref, and because `dashboard_card_id` is what the email channel matches per-card attachment
    flags against for visualizer dashcards."
   [dashboard]
-  (let [cards (for [{dashcard-id :id :keys [card]} (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0))
-                                                            (:dashcards dashboard))
-                    :when (int? (:id card))]
-                (-> (api/read-check card)
-                    (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id dashcard-id
-                           :dashboard_id      (:id dashboard)
-                           :include_csv       false
-                           :include_xls       false)))]
+  (let [dashcards (into []
+                        (filter #(int? (:id (:card %))))
+                        (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0)) (:dashcards dashboard)))
+        cards     (for [[{dashcard-id :id} card] (map vector dashcards (t2/hydrate (mapv :card dashcards) :can_read))]
+                    (-> (api/read-check card)
+                        (select-keys [:id :name :collection_id :description :display :parameter_mappings])
+                        (assoc :dashboard_card_id dashcard-id
+                               :dashboard_id      (:id dashboard)
+                               :include_csv       false
+                               :include_xls       false)))]
     (when (empty? cards)
       (common/throw-teaching-error
        (message/msg [(str "This dashboard has no cards to send — a subscription needs at "
@@ -300,21 +301,14 @@
                       (t2/hydrate [:dashcards :card]))
         cards     (subscription-cards dashboard)
         channel   (build-channel nil (or channel "email") true args)
-        ;; `collection_id` is deliberately nil rather than the dashboard's: the Pulse model derives
-        ;; it from `dashboard_id`, and naming it here would make the create-check demand *write*
-        ;; access to the dashboard's collection — anyone who can view a dashboard can subscribe to
-        ;; it. Both collection keys must still be present, since the position reconciler requires
-        ;; them.
         pulse     (pulse.api/create-pulse-with-perm-checks!
                    cards
                    [channel]
-                   {:name                (:name dashboard)
-                    :creator_id          api/*current-user-id*
-                    :dashboard_id        (:id dashboard)
-                    :collection_id       nil
-                    :collection_position nil
-                    :skip_if_empty       (boolean skip_if_empty)
-                    :parameters          (resolve-parameters parameters (:parameters dashboard))})]
+                   {:name          (:name dashboard)
+                    :creator_id    api/*current-user-id*
+                    :dashboard_id  (:id dashboard)
+                    :skip_if_empty (boolean skip_if_empty)
+                    :parameters    (resolve-parameters parameters (:parameters dashboard))})]
     (:id pulse)))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------

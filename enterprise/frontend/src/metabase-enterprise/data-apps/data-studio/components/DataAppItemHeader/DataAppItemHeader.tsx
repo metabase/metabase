@@ -40,7 +40,7 @@ export function DataAppItemHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.dataStudioDataApps()}>{t`Data apps`}</Link>
-          <Link to={Urls.dataStudioDataApp(app.name)}>{app.display_name}</Link>
+          <Link to={Urls.dataStudioDataApp(app.slug)}>{app.name}</Link>
           <Link to={sectionUrl}>{sectionName}</Link>
           {name}
         </DataStudioBreadcrumbs>

@@ -13,7 +13,7 @@ export const nativeQuestionDetails = {
         name: "city",
         "display-name": "City",
         type: "dimension",
-        dimension: ["field", PEOPLE.CITY, null],
+        "field-id": PEOPLE.CITY,
         "widget-type": "string/=",
       },
       state: {
@@ -21,7 +21,7 @@ export const nativeQuestionDetails = {
         name: "state",
         "display-name": "State",
         type: "dimension",
-        dimension: ["field", PEOPLE.STATE, null],
+        "field-id": PEOPLE.STATE,
         "widget-type": "string/=",
       },
     },

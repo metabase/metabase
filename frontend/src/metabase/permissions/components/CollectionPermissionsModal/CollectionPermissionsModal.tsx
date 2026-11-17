@@ -9,7 +9,6 @@ import {
 } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -151,33 +150,7 @@ const CollectionPermissionsModalBody = ({
   );
 
   return (
-    <ModalContent
-      title={modalTitle}
-      onClose={onClose}
-      className={CS.overflowHidden}
-      footer={[
-        ...(isFolderNamespace(namespace)
-          ? []
-          : [
-              <Link
-                key="all-permissions"
-                className={CS.link}
-                to="/admin/permissions/collections"
-              >
-                {t`See all collection permissions`}
-              </Link>,
-            ]),
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button
-          key="save"
-          variant="filled"
-          disabled={!isDirty}
-          onClick={handleSave}
-        >
-          {t`Save`}
-        </Button>,
-      ]}
-    >
+    <Modal opened size="lg" title={modalTitle} onClose={onClose}>
       <div className={S.PermissionTableContainer}>
         {permissionEditor && (
           <PermissionsTable
@@ -186,7 +159,18 @@ const CollectionPermissionsModalBody = ({
           />
         )}
       </div>
-    </ModalContent>
+      <Modal.Footer>
+        {!isFolderNamespace(namespace) && (
+          <Link className={CS.link} to="/admin/permissions/collections">
+            {t`See all collection permissions`}
+          </Link>
+        )}
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+          {t`Save`}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 
@@ -206,18 +190,10 @@ export function CollectionPermissionsModal({
   onClose,
 }: CollectionPermissionsModalProps) {
   return (
-    <Modal
-      opened
+    <ConnectedCollectionPermissionsModalBody
+      params={params}
+      namespace={namespace}
       onClose={onClose}
-      withCloseButton={false}
-      padding={0}
-      size="lg"
-    >
-      <ConnectedCollectionPermissionsModalBody
-        params={params}
-        namespace={namespace}
-        onClose={onClose}
-      />
-    </Modal>
+    />
   );
 }

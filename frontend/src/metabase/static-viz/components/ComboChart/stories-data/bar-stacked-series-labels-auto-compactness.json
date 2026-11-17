@@ -130,7 +130,6 @@
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "Yc4KXdmZkAXIOFRjoZAnG",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_values": true,
         "graph.series_order_dimension": null,

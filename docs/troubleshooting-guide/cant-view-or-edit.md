@@ -1,5 +1,6 @@
 ---
 title: Can't view or edit
+summary: Figure out why you can't see or change a question, dashboard, or dashboard card.
 ---
 
 # Can't view or edit

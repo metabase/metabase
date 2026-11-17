@@ -1,5 +1,6 @@
 ---
 title: Google Sign-In
+summary: Let people log in to Metabase with their Google account, and create accounts automatically on first sign-in.
 redirect_from:
   - /docs/latest/administration-guide/10-single-sign-on
   - /docs/latest/people-and-groups/google-and-ldap

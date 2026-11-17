@@ -19,7 +19,6 @@ const {
   LICENSE_TEXT,
   WEBPACK_BUNDLE,
 } = require("./frontend/build/shared/constants");
-const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
@@ -71,8 +70,6 @@ const TEST_CUSTOM_DOMAINS =
   process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
     .map((domain) => domain.trim())
     .filter(Boolean) ?? [];
-
-const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
 const SWC_LOADER = {
   loader: "builtin:swc-loader",
@@ -217,12 +214,6 @@ const config = {
     rules: [
       SIDE_EFFECT_FREE_RULE,
       {
-        // swc breaks styles for the whole app if we process this file
-        test: /css\/core\/fonts\.styled\.ts$/,
-        exclude: /node_modules|cljs/,
-        use: [BABEL_LOADER],
-      },
-      {
         // Embedding onboarding flow requires sharing snippets from
         // docs, so we treat TypeScript files inside docs/ as raw text
         test: /\.tsx?$/,
@@ -231,17 +222,18 @@ const config = {
       },
       {
         test: /\.(tsx?|jsx?)$/,
-        exclude: [
-          /node_modules/,
-          /cljs/,
-          /css\/core\/fonts\.styled\.ts/,
-          SDK_DOCS_SNIPPETS_PATH,
-        ],
+        exclude: [/node_modules/, /cljs/, SDK_DOCS_SNIPPETS_PATH],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
       {
         test: /\.svg$/,
+        // The SVG font faces are matched by the font rule below, which emits
+        // them untouched. Running svgo here too would rewrite them first, and
+        // the content hash the SDK build references is taken from the bytes a
+        // loader leaves behind, so the two builds would name the same face
+        // differently and the SDK would point at a file nothing emitted.
+        exclude: /[\\/]frontend[\\/]fonts[\\/]/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
         // No `[query]`: a `?url` import must emit the same name as the SDK
@@ -256,6 +248,22 @@ const config = {
         // No `[query]`: a `?url` import must emit the same name as the SDK
         // build references.
         generator: { filename: "[hash][ext]" },
+      },
+      {
+        test: /\.(woff2?|ttf|otf|eot|svg)$/,
+        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        type: "asset/resource",
+        generator: {
+          // Keep the family directory: the backend derives the whitelabel font
+          // list from these directory names.
+          /** @param {{ filename: string }} pathData */
+          filename: (pathData) => {
+            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
+            const segments = pathData.filename.split("/");
+            const family = segments[segments.length - 2];
+            return `fonts/${family}/[name].[contenthash:8][ext]`;
+          },
+        },
       },
       {
         test: /\.css$/,

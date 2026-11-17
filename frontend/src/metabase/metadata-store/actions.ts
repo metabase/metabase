@@ -3,8 +3,6 @@ import { type Schema, normalize } from "normalizr";
 import type {
   Database,
   Field,
-  FieldId,
-  FieldValue,
   ForeignKey,
   Table,
   TableId,
@@ -51,10 +49,3 @@ export const fieldFetched = (field: Field) =>
  */
 export const tableForeignKeysFetched = (id: TableId, fks: ForeignKey[]) =>
   updateMetadata({ id, fks }, TableSchema);
-
-/**
- * A field's remappings accumulate on the client. No endpoint returns them, and
- * one component's fetch labels values for another.
- */
-export const fieldRemappingsUpdated = (id: FieldId, remappings: FieldValue[]) =>
-  updateMetadata({ id, remappings }, FieldSchema);

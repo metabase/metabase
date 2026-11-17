@@ -1,5 +1,6 @@
 ---
 title: General settings
+summary: Instance-wide settings like your site name, site URL, homepage, and usage tracking.
 redirect_from:
   - /docs/latest/administration-guide/08-configuration-settings
 ---
