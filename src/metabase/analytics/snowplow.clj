@@ -222,7 +222,8 @@
       ["tool_name"   {:optional true} [:maybe :string]]
       ["step"        {:optional true} :int]
       ["error_class" {:optional true} :string]
-      ["error_code"  {:optional true} :string]]
+      ["error_code"  {:optional true} :string]
+      ["repairs"     {:optional true} [:sequential :string]]]
      ;; agent_turn_finished
      [:map {:closed true}
       ["finish_reason" {:optional true} :string]

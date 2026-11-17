@@ -5,7 +5,10 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DatabaseFeature } from "metabase-types/api";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
@@ -181,6 +184,55 @@ describe("ExpressionWidget", () => {
     });
   });
 
+  describe("reopening a committed literal expression", () => {
+    const literalQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          expressions: [
+            { name: "Number", value: { type: "literal", value: 10 } },
+            { name: "TrueColumn", value: { type: "literal", value: true } },
+            { name: "FalseColumn", value: { type: "literal", value: false } },
+          ],
+        },
+      ],
+    });
+
+    it.each([
+      "True",
+      "False",
+      "0",
+      "10",
+      '"abc"',
+      '"2024-01-01"',
+      '"2024-01-01T10:20:00"',
+      '"10:20"',
+      "[Number]",
+      "[Number] + [Number]",
+    ])("should show the custom column formula %s again", async (formula) => {
+      await expectFormulaRoundTrip({
+        query: literalQuery,
+        expressionMode: "expression",
+        formula,
+      });
+    });
+
+    it.each([
+      "False",
+      "True",
+      "[TrueColumn]",
+      "[FalseColumn]",
+      "[TrueColumn] OR [FalseColumn]",
+      "[TrueColumn] = [FalseColumn]",
+    ])("should show the filter formula %s again", async (formula) => {
+      await expectFormulaRoundTrip({
+        query: literalQuery,
+        expressionMode: "filter",
+        formula,
+      });
+    });
+  });
+
   describe("functions the query's database supports", () => {
     const expression = "Percentile([Total], 0.5)";
 
@@ -262,4 +314,76 @@ async function setup(
     onChangeClause,
     onClose,
   };
+}
+
+type RoundTripOpts = {
+  query: Lib.Query;
+  expressionMode: Lib.ExpressionMode;
+  formula: string;
+};
+
+async function renderEditableWidget({
+  query,
+  expressionMode,
+  clause,
+  onChangeClause,
+}: {
+  query: Lib.Query;
+  expressionMode: Lib.ExpressionMode;
+  clause?: Lib.ExpressionClause;
+  onChangeClause: (name: string, clause: Lib.ExpressionClause) => void;
+}) {
+  const stageIndex = -1;
+  const view = renderWithProviders(
+    <ExpressionWidget
+      clause={clause}
+      name={undefined}
+      query={query}
+      stageIndex={stageIndex}
+      expressionMode={expressionMode}
+      availableColumns={Lib.expressionableColumns(query, stageIndex)}
+      reportTimezone="UTC"
+      onChangeClause={onChangeClause}
+      onClose={jest.fn()}
+    />,
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("custom-expression-query-editor")).toHaveProperty(
+      "readOnly",
+      false,
+    ),
+  );
+  return view;
+}
+
+async function expectFormulaRoundTrip({
+  query,
+  expressionMode,
+  formula,
+}: RoundTripOpts) {
+  setupDatabaseEndpoints(createSampleDatabase());
+
+  const onChangeClause = jest.fn<void, [string, Lib.ExpressionClause]>();
+  const { unmount } = await renderEditableWidget({
+    query,
+    expressionMode,
+    onChangeClause,
+  });
+  screen.getByTestId("custom-expression-query-editor").focus();
+  await userEvent.paste(formula);
+  await userEvent.tab();
+  const doneButton = screen.getByRole("button", { name: "Done" });
+  await waitFor(() => expect(doneButton).toBeEnabled());
+  await userEvent.click(doneButton);
+  await waitFor(() => expect(onChangeClause).toHaveBeenCalledTimes(1));
+  const [, committedClause] = onChangeClause.mock.calls[0];
+  unmount();
+
+  await renderEditableWidget({
+    query,
+    expressionMode,
+    clause: committedClause,
+    onChangeClause: jest.fn(),
+  });
+  expect(await screen.findByDisplayValue(formula)).toBeInTheDocument();
 }
