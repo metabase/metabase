@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
@@ -173,7 +174,10 @@
   "Move the Cards with `card-ids` to the Collection with `collection-id` without running model hooks."
   [card-ids :- [:set ::lib.schema.id/card]
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! (t2/table-name :model/Card) {:id [:in card-ids]} {:collection_id collection-id}))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/Card :update :id [:in card-ids])
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/update! (t2/table-name :model/Card) {:id [:in card-ids]} {:collection_id collection-id})))
 
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."

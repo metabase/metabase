@@ -2,6 +2,7 @@
   "Application database queries for the upload module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
@@ -60,21 +61,25 @@
   [table-id           :- ::lib.schema.id/table
    name->display-name :- [:map-of :string :string]]
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
-        name->display-name (apply dissoc name->display-name user-edited)]
+        name->display-name (apply dissoc name->display-name user-edited)
+        where              [:and
+                            [:= :table_id table-id]
+                            [:in [:lower :name] (keys name->display-name)]]]
     (when (seq name->display-name)
-      ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of PostgreSQL:
-      ;; SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND must be type boolean).
-      (t2/query {:update (t2/table-name :model/Field)
-                 :set    {:display_name (into [:case]
-                                              (mapcat identity)
-                                              (for [[n display-name] name->display-name]
-                                                [[:= [:lower :name] n]
-                                                 [:case
-                                                  [:= :display_name (humanization/name->human-readable-name n)] display-name
-                                                  :else                                                       :display_name]]))}
-                 :where  [:and
-                          [:= :table_id table-id]
-                          [:in [:lower :name] (keys name->display-name)]]}))))
+      (t2/with-transaction [_conn]
+        (change-log/log-rows! :model/Field :update {:where where})
+        ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of PostgreSQL:
+        ;; SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND must be type boolean).
+        #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged above
+        (t2/query {:update (t2/table-name :model/Field)
+                   :set    {:display_name (into [:case]
+                                                (mapcat identity)
+                                                (for [[n display-name] name->display-name]
+                                                  [[:= [:lower :name] n]
+                                                   [:case
+                                                    [:= :display_name (humanization/name->human-readable-name n)] display-name
+                                                    :else                                                       :display_name]]))}
+                   :where  where})))))
 
 (mu/defn mark-table-upload!
   "Flag the Table with `table-id` as an authoritative, writable upload table."

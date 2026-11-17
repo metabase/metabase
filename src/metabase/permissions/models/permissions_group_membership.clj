@@ -15,6 +15,8 @@
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
 (derive :model/PermissionsGroupMembership :metabase/model)
+(derive :model/PermissionsGroupMembership :hook/change-log)
+(derive :model/PermissionsGroupMembership :hook/change-log-before-update-noop)
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
