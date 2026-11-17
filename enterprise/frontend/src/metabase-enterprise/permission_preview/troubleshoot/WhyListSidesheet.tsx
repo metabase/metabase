@@ -43,6 +43,7 @@ import type { OpenedItem } from "./item-path";
 import { getPreviewColumnName, getPreviewOption } from "./preview-options";
 import {
   type AllCollectionsWhyPage,
+  type BlockedCard,
   type CollectionWhyPage,
   type ItemType,
   type ItemWhyPage,
@@ -353,6 +354,15 @@ function ItemCard({
       ) : (
         <Verdict verdict={page.verdict} />
       )}
+      {page.blockedCards.length > 0 && (
+        <SidesheetCardSection title={t`Cards that can't load`}>
+          <Stack gap={0}>
+            {page.blockedCards.map((card, index) => (
+              <BlockedCardRow key={index} card={card} onOpen={onOpen} />
+            ))}
+          </Stack>
+        </SidesheetCardSection>
+      )}
       {page.collection != null && (
         <ItemCollectionSection
           heading={copy.open}
@@ -400,6 +410,47 @@ function ItemCard({
         </Stack>
       </Disclosure>
     </SidesheetCard>
+  );
+}
+
+/** A dashboard card that can't load: its name, the blocked tables that stop it, and a status that opens the first. */
+function BlockedCardRow({
+  card,
+  onOpen,
+}: {
+  card: BlockedCard;
+  onOpen: (target: WhyTarget) => void;
+}) {
+  const [table] = card.tables;
+  const tableNames = card.tables.map((target) => target.title).join(", ");
+  return (
+    <Flex align="center" gap="sm" py="sm" wrap="nowrap">
+      <Stack gap={0} flex={1} miw={0}>
+        <Tooltip label={card.name}>
+          <Text truncate="end">{card.name}</Text>
+        </Tooltip>
+        {table != null && (
+          <Text size="sm" c="text-secondary" truncate="end">
+            {ngettext(
+              msgid`${tableNames} table blocked`,
+              `${tableNames} tables blocked`,
+              card.tables.length,
+            )}
+          </Text>
+        )}
+      </Stack>
+      <UnstyledButton
+        className={S.status}
+        disabled={table == null}
+        onClick={() => table != null && onOpen(table)}
+      >
+        <Flex align="center" gap="xs">
+          <Icon name="close" c="feedback-negative" />
+          <Text>{t`Can't load`}</Text>
+          {table != null && <Icon name="chevronright" c="text-secondary" />}
+        </Flex>
+      </UnstyledButton>
+    </Flex>
   );
 }
 

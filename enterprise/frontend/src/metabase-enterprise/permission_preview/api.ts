@@ -256,6 +256,8 @@ export type PermissionDebugResponse = {
     /** A dashboard's cards, and how many of them have a blocked table. */
     "card-count"?: number;
     "blocked-card-count"?: number;
+    /** Each such card, with the names of its blocked tables. */
+    "blocked-cards"?: { id: number; name: string; tables: string[] }[];
   };
 };
 

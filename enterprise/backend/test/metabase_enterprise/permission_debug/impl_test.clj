@@ -423,13 +423,18 @@
           (is (= {:decision "limited"
                   :data     {:card-count         2
                              :blocked-card-count 1
-                             :blocked-tables     {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}}}
+                             :blocked-tables     {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}
+                             :blocked-cards      [{:id     (:id checkins-card)
+                                                   :name   (:name checkins-card)
+                                                   :tables ["CHECKINS"]}]}}
                  (select-keys (check) [:decision :data]))))
         (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
         (testing "every card reads a blocked table"
           (let [result (check)]
             (is (= "denied" (:decision result)))
-            (is (= 2 (get-in result [:data :blocked-card-count])))))))))
+            (is (= 2 (get-in result [:data :blocked-card-count])))
+            (is (= #{[(:id checkins-card) ["CHECKINS"]] [(:id venues-card) ["VENUES"]]}
+                   (set (map (juxt :id :tables) (get-in result [:data :blocked-cards])))))))))))
 
 (deftest debug-permissions-collection-read-test
   (mt/with-temp [:model/Collection collection {}]

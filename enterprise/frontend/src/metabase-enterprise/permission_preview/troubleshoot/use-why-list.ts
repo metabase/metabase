@@ -41,6 +41,8 @@ export type ItemWhyPage = {
   itemType: ItemType;
   name: string;
   verdict: WhyVerdict;
+  /** A dashboard's cards that can't load, each with the blocked tables that stop it. */
+  blockedCards: BlockedCard[];
   /** One View data row per table under row security. */
   filtered: WhyTarget[];
   /** The item's collection, which decides whether it opens. */
@@ -51,6 +53,12 @@ export type ItemWhyPage = {
   explore: WhyTarget[];
   /** The collection, then each table's View data and Create queries. */
   permissions: WhyTarget[];
+};
+
+export type BlockedCard = {
+  name: string;
+  /** Its blocked tables, as View data rows of the item's tables. */
+  tables: WhyTarget[];
 };
 
 /** A collection: whether the person can open it, and from which group; on Our analytics, also the collections in it. */
@@ -435,6 +443,15 @@ function getItemPage(
       filtered.length > 0,
       collectionTarget,
     ),
+    blockedCards: (queryCheck.data["blocked-cards"] ?? []).map((card) => ({
+      name: card.name,
+      tables: tablesInOrder
+        .filter(
+          ({ table, view }) =>
+            card.tables.includes(table.name) && isBlocking(view),
+        )
+        .map(({ view }) => view),
+    })),
     filtered,
     collection: collectionTarget,
     tables: tablesInOrder.map(({ view }) => view),

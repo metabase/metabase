@@ -241,6 +241,40 @@ describe("WhyListSidesheet", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("leads a partly blocked dashboard with the card that can't load and its blocked table, which its status opens", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+      dashboardQuery: {
+        decision: "limited",
+        data: {
+          "card-count": 2,
+          "blocked-card-count": 1,
+          "blocked-cards": [
+            { id: 7, name: "Reviews by rating", tables: ["REVIEWS"] },
+          ],
+        },
+      },
+    });
+
+    const cardsHeading = await screen.findByText("Cards that can't load");
+    expect(
+      cardsHeading.compareDocumentPosition(
+        screen.getByText("Data in this dashboard"),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByText("Reviews by rating")).toBeInTheDocument();
+    expect(screen.getByText("Reviews table blocked")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Can't load/ }));
+
+    expect(
+      screen.getByText(
+        "Blocked in every group Sandy Sales is in. To let Sandy Sales see this table, give one of those groups access.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("starts open only the rows that limit: row security open, blocked shown, full access folded", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },

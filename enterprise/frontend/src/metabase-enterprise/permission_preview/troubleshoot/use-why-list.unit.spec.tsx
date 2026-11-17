@@ -239,6 +239,34 @@ describe("useWhyList", () => {
       );
     });
 
+    it("names a dashboard's cards that can't load, each with its blocked tables", async () => {
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        orders: { view_data: "blocked" },
+        query: {
+          decision: "limited",
+          data: {
+            "card-count": 2,
+            "blocked-card-count": 1,
+            "blocked-cards": [
+              { id: 7, name: "Orders by state", tables: ["ORDERS"] },
+            ],
+          },
+        },
+      });
+
+      await waitFor(() =>
+        expect(result.current?.page).toMatchObject({
+          blockedCards: [
+            {
+              name: "Orders by state",
+              tables: [{ title: "Orders", column: "view_data" }],
+            },
+          ],
+        }),
+      );
+    });
+
     it("says none of a dashboard's cards load when every card is blocked", async () => {
       const { result } = setup({
         path: "/dashboard/1-orders-by-state",

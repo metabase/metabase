@@ -50,7 +50,13 @@
                                                [:download-no-tables       {:optional true} [:map-of :string [:set :string]]]
                                                ;; a dashboard's cards, and how many of them have a blocked table
                                                [:card-count               {:optional true} nat-int?]
-                                               [:blocked-card-count       {:optional true} nat-int?]]]
+                                               [:blocked-card-count       {:optional true} nat-int?]
+                                               ;; each such card, with the names of its blocked tables
+                                               [:blocked-cards            {:optional true}
+                                                [:sequential [:map {:closed true}
+                                                              [:id     pos-int?]
+                                                              [:name   :string]
+                                                              [:tables [:sequential :string]]]]]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
@@ -270,12 +276,19 @@
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :dashboard/read))
    (let [card-ids         (permission-debug.db/dashboard-card-ids model-id)
-         blocked-by-card  (for [card-id card-ids]
-                            (check-table-permissions user-id (permission-debug.db/card card-id)
+         cards            (map permission-debug.db/card card-ids)
+         blocked-by-card  (for [card cards]
+                            (check-table-permissions user-id card
                                                      {:perms/view-data :blocked}
                                                      {:perms/view-data :legacy-no-self-service}))
          blocked-by-group (apply merge-with set/union {} blocked-by-card)
-         blocked-count    (count (filter seq blocked-by-card))]
+         blocked-count    (count (filter seq blocked-by-card))
+         blocked-cards    (for [[card blocked] (map vector cards blocked-by-card)
+                                :when (seq blocked)]
+                            {:id     (:id card)
+                             :name   (:name card)
+                             ;; keyed by [db-name schema table-name]
+                             :tables (vec (sort (distinct (map last (keys blocked)))))})]
      {:decision    (cond
                      (zero? blocked-count)               "allow"
                      (= blocked-count (count card-ids)) "denied"
@@ -288,7 +301,8 @@
                       (tru "User has permission to query every card on this dashboard"))]
       :data        (cond-> {:card-count         (count card-ids)
                             :blocked-card-count blocked-count}
-                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)))
+                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)
+                                                         :blocked-cards  (vec blocked-cards)))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :collection/read :- DebuggerSchema
