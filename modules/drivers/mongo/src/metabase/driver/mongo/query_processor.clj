@@ -63,8 +63,9 @@
 
 (mr/def ::bson-value
   "A value inside a Mongo aggregation pipeline, whose shape (BSON literals, arrays, and documents keyed by strings or keywords) the Mongo query language owns."
-  [:schema {:description "a Mongo aggregation pipeline value, shaped by the Mongo query language"}
-   :any])
+  [:or
+   :metabase.util.malli/value
+   [:fn {:error/message "a BSON object"} #(or (instance? org.bson.types.ObjectId %) (instance? java.util.regex.Pattern %))]])
 
 (mr/def ::bson-document
   "A document inside a Mongo aggregation pipeline, whose string or keyword keys the Mongo query language owns."

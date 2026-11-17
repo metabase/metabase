@@ -79,11 +79,11 @@
 
 (mr/def ::node
   "A graph node key, whose shape each `Graph` implementation owns (an entity ID, an `[entity-type entity-id]` pair, ...)."
-  [:schema {:description "any hashable graph node key"} :any])
+  [:or :int :string :uuid :map [:sequential [:or :int :string :keyword :uuid]]])
 
 (mr/def ::child-map
   "A `{parent #{child}}` map keyed by the node values its `Graph` implementation owns."
-  [:map-of {:description "keyed by arbitrary graph node values"} ::node [:set ::node]])
+  [:map-of ::node [:set ::node]])
 
 (mr/def ::stop
   [:= ::stop])

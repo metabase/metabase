@@ -66,7 +66,7 @@
 
 (mr/def ::dataset-value
   "One cell value in a test dataset row, whose type is whatever the driver's test extension knows how to insert."
-  [:schema {:description "a test dataset cell value"} :any])
+  [:maybe [:fn {:error/message "an object a driver can insert"} some?]])
 
 (mr/def ::native-ddl-value
   [:or

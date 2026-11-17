@@ -94,7 +94,7 @@
 (mr/def ::tool-io
   "A tool call's `:input`/`:rawInput`/`:output`: an arbitrary JSON value whose shape the calling tool (or the LLM
   provider) owns, not us."
-  [:schema {:description "arbitrary tool call arguments or result"} :any])
+  :metabase.util.malli/value)
 
 (mr/def ::structured-output
   "The `persisted-structured-output-keys` subset of a tool's `:structured-output`/

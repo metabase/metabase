@@ -4,12 +4,10 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
@@ -217,14 +215,6 @@
    [:map {:closed false, :description description}]
    (deferred-tru "Value must be a map.")))
 
-(mr/def ::database-details
-  (open-map "database connection details"))
-
-(def DatabaseDetails
-  "Connection details for a Database. The keys are the driver's `connection-properties`, so they differ per driver and
-  are not knowable here."
-  ::database-details)
-
 (defn- open-json
   "A JSON value whose objects are deliberately open maps: a scalar, a sequence of such values, or an open map."
   [registry-key description]
@@ -291,14 +281,6 @@
   "The attributes of a tenant, whose keys are defined by the admin."
   (open-map "tenant attributes"))
 
-(mr/def ::database-settings
-  (open-map "database settings"))
-
-(def DatabaseSettings
-  "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
-  schema. Not for any other bag of settings."
-  ::database-settings)
-
 (def UserSettings
   "A User's `:settings`: user-local settings, whose keys are owned by the settings registry rather than by this
   schema. Not for any other bag of settings."
@@ -319,41 +301,6 @@
      [true  [:map-of {:decode/normalize {:enter #(stringify-keys % recursive?)}} :string value-schema]]
      [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
     (deferred-tru "Value must be a map."))))
-
-(mr/def ::json-value
-  "A JSON value: an object keyed by strings, a sequence of JSON values, or a scalar."
-  [:multi {:dispatch #(cond (map? %) :object (sequential? %) :array :else :scalar)}
-   [:object [:map-of :string [:ref ::json-value]]]
-   [:array  [:sequential [:ref ::json-value]]]
-   [:scalar [:fn {:error/message "a scalar", :json-schema {}} (complement coll?)]]])
-
-(def OpaqueJSONObject
-  "A JSON object this code stores, echoes back or forwards as it arrived, and never reads by key: a
-  [[string-keyed-map]] of JSON values, stringified all the way down. Under no circumstances may its keys be keywords:
-  a map this code builds and reads by keyword is not opaque and gets a schema of its own."
-  (string-keyed-map [:ref ::json-value] true))
-
-(defn string-keyed-object
-  "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an
-  [[OpaqueJSONObject]] whose `entries` declare, with string keys, the keys this code reads and their types.
-
-    (string-keyed-object [\"id\" :int] [\"label\" {:optional true} [:maybe :string]])
-
-  Every key of the object is a string, the declared ones included, so the map never mixes keyword and string keys and
-  code reads the declared keys the same way it would any other: `(get attrs \"id\")`. Decoding stringifies the keys of
-  the object itself first of all -- a request on its way in, or a keywordized JSON column read back from the
-  application database -- so the declared entries, their defaults included, are found under their string keys; the
-  values of the undeclared keys are stringified all the way down, the declared ones only as their schemas say. Prefer a
-  fully typed map when the keys are known: this is for objects another party owns, like an editor's node attributes."
-  [& entries]
-  (doseq [[k] entries]
-    (assert (string? k) (str "string-keyed-object keys must be strings, got: " (pr-str k))))
-  (into [:map
-         {:decode/string    {:enter stringify-keys}
-          :decode/json      {:enter stringify-keys}
-          :decode/normalize {:enter stringify-keys}}
-         [::mc/default OpaqueJSONObject]]
-        entries))
 
 (def Email
   "Schema for a valid email string."

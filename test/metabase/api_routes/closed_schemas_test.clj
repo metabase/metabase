@@ -1,19 +1,25 @@
-(ns metabase.api-routes.request-schemas-test
+(ns metabase.api-routes.closed-schemas-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.api-routes.core]
    [metabase.api.macros :as api.macros]
-   [metabase.api.macros.defendpoint.request-schemas :as request-schemas]
+   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.config.core :as config]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private pinned-open-maps
   "The registry key of every `{:closed false}` map a request can reach."
-  #{:metabase.analytics.api.metaplow-proxy/track-envelope
+  #{:metabase-enterprise.action-v2.api/api-action-expression
+    :metabase.agent-api.schema/query-object
+    :metabase.analytics.api.metaplow-proxy/track-envelope
     :metabase.analytics.api.metaplow-proxy/track-payload
+    :metabase.channel.schema/bug-report.object
+    :metabase.comments.schema/prose-mirror-node.attrs
+    :metabase.documents.prose-mirror/node.attrs
+    :metabase.embedding.schema/embedding-theme.settings
     :metabase.lib.schema.common/open-json.object
     :metabase.lib.schema.visualization/click-behavior
     :metabase.lib.schema.visualization/click-behavior.parameter-mapping.entry
@@ -28,9 +34,17 @@
     :metabase.lib.schema.visualization/table.column
     :metabase.lib.schema.visualization/table.column-formatting-rule
     :metabase.lib.schema.visualization/visualization-settings
+    :metabase.metabot.schema/references
+    :metabase.metabot.schema/row-value.object
+    :metabase.search.schema/weights.overrides
+    :metabase.settings.schema/setting-value.object
+    :metabase.testing-api.api/echo.body
+    :metabase.testing-api.api/query-spec
+    :metabase.user-key-value.schema/value.object
     :metabase.users.schema/user.settings
-    :metabase.util.malli.schema/database-details
-    :metabase.util.malli.schema/database-settings})
+    :metabase.warehouse-schema-rest.api.table/csv-upload.parts
+    :metabase.warehouses.schema/database.connection-details
+    :metabase.warehouses.schema/database.local-settings})
 
 (defn- endpoint-request-schemas []
   (for [nmspace            (all-ns)
@@ -46,7 +60,7 @@
   []
   (into #{}
         (for [{:keys [endpoint schema]} (endpoint-request-schemas)
-              {:keys [kind trail]}      (request-schemas/findings schema)
+              {:keys [kind trail]}      (closed-schemas/findings schema)
               :when                     (= kind :open-map)
               :let                      [registry-key (peek trail)]]
           (if (and (qualified-keyword? registry-key) (not= registry-key ::mc/default))

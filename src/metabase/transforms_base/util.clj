@@ -41,6 +41,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
@@ -73,7 +74,7 @@
   "A driver's connection spec: an opaque JDBC spec or data source."
   [:or
    [:map {:closed true} [:datasource (ms/InstanceOfClass DataSource)]]
-   ms/DatabaseDetails])
+   ::warehouses.schema/database.connection-details])
 
 (mr/def ::checkpoint-value
   "A parsed checkpoint value: a number or a temporal."

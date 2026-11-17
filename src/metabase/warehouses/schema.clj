@@ -5,6 +5,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.cron]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -13,13 +15,23 @@
   returns as the raw ciphertext string."
   :string)
 
+(mr/def ::database.connection-details
+  (mu/with-api-error-message
+   [:map {:closed false, :description "database connection details, keyed by the driver's connection properties"}]
+   (deferred-tru "Value must be a map.")))
+
+(mr/def ::database.local-settings
+  (mu/with-api-error-message
+   [:map {:closed false, :description "database-local settings, keyed by the settings registry"}]
+   (deferred-tru "Value must be a map.")))
+
 (mr/def ::database.details
   "The `:details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
+  [:or ::database.connection-details ::database.undecryptable-column])
 
 (mr/def ::database.settings
   "The `:settings` column of a Database, decoded."
-  [:or ms/DatabaseSettings ::database.undecryptable-column])
+  [:or ::database.local-settings ::database.undecryptable-column])
 
 (mr/def ::database.dbms-version
   "The `:dbms_version` column of a Database, decoded."
@@ -34,11 +46,11 @@
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
+  [:or ::database.connection-details ::database.undecryptable-column])
 
 (mr/def ::database.admin-details
   "The `:admin_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
+  [:or ::database.connection-details ::database.undecryptable-column])
 
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."

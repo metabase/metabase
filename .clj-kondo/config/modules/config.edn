@@ -3244,6 +3244,7 @@
            sync
            transforms.indexes
            util
+           warehouses
            workspaces}}
 
   transforms.feature-gating
@@ -4902,6 +4903,7 @@
            settings
            sql-tools
            util
+           warehouses
            warehouses.secrets
            workspaces}
    :model-exports #{:model/Workspace}

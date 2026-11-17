@@ -1,12 +1,13 @@
-(ns metabase.api.macros.defendpoint.request-schemas-test
+(ns metabase.api.macros.defendpoint.closed-schemas-test
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.api.macros :as api.macros]
-   [metabase.api.macros.defendpoint.request-schemas :as request-schemas]
+   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,7 @@
    [:extra    {:optional true} ::open]])
 
 (defn- kinds [schema]
-  (mapv :kind (request-schemas/findings schema)))
+  (mapv :kind (closed-schemas/findings schema)))
 
 (deftest ^:parallel stripped-schemas-pass-test
   (are [schema] (empty? (kinds schema))
@@ -43,8 +44,6 @@
     [:map-of :string :int]
     [:map-of [:enum :a :b] :int]
     (ms/string-keyed-map :string)
-    ms/OpaqueJSONObject
-    (ms/string-keyed-object ["id" :int])
     [:enum :type/Text :type/Integer]
     [:fn string?]))
 
@@ -56,7 +55,7 @@
     [:sequential ::open]
     ::nested
     [:or :int ::open]
-    ms/DatabaseDetails
+    :metabase.warehouses.schema/database.connection-details
     [:multi {:dispatch :type} [:a [:map {:closed false} [:type [:= :a]]]]]))
 
 (deftest ^:parallel keyword-keyed-map-of-is-found-test
@@ -134,7 +133,7 @@
 
 (deftest ^:parallel every-finding-carries-its-trail-test
   (is (= [{:kind :open-map, :trail [::nested :inner ::open]}]
-         (map #(select-keys % [:kind :trail]) (request-schemas/findings ::nested)))))
+         (map #(select-keys % [:kind :trail]) (closed-schemas/findings ::nested)))))
 
 (deftest ^:parallel recursive-schemas-terminate-test
   (is (= [:open-map] (kinds ::recursive)))
@@ -142,20 +141,20 @@
     (is (= [:open-map] (kinds ::recursive)))))
 
 (deftest check-throws-on-unstripped-schemas-test
-  (is (nil? (request-schemas/check! :body [:map [:a :int]])))
+  (is (nil? (closed-schemas/check! :body [:map [:a :int]])))
   (testing "an open map is allowed"
-    (is (nil? (request-schemas/check! :body [:map [:bag [:map {:closed false}]]]))))
+    (is (nil? (closed-schemas/check! :body [:map [:bag [:map {:closed false}]]]))))
   (testing "response schemas are not checked: only a request is stripped"
-    (is (nil? (request-schemas/check! :response [:map [:a :any]]))))
+    (is (nil? (closed-schemas/check! :response [:map [:a :any]]))))
   (are [schema] (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"The body schema of this endpoint reaches schemas the API does not strip"
-                                  (request-schemas/check! :body schema))
+                                  (closed-schemas/check! :body schema))
     [:map [:bag :any]]
     [:map [:bag [:map-of :keyword :int]]]))
 
 (deftest ^:parallel registered-open-map-keeps-its-error-message-test
   (is (= {:details "nullable Value must be a map."}
          (try
-           (api.macros/decode-and-validate-params :body [:map [:details [:maybe ms/DatabaseDetails]]] {:details "x"})
+           (api.macros/decode-and-validate-params :body [:map [:details [:maybe :metabase.warehouses.schema/database.connection-details]]] {:details "x"})
            (catch clojure.lang.ExceptionInfo e
              (:errors (ex-data e)))))))

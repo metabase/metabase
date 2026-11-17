@@ -54,7 +54,7 @@
 
 (def ^:private UncheckedEntityId
   "A dependency entity ID as a caller gives it, which [[ensure-entity-id]] checks."
-  [:schema {:description "an unchecked dependency entity id"} :any])
+  :metabase.util.malli/value)
 
 (def ^:private DependenciesByType
   "The dependencies of an entity as `{entity-type #{entity-id}}`, with the IDs not yet checked."

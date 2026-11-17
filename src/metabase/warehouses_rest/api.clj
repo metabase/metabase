@@ -637,7 +637,7 @@
    :- [:map {:closed true}
        [:name              ms/NonBlankString]
        [:engine            DBEngine]
-       [:details           ms/DatabaseDetails]
+       [:details           ::warehouses.schema/database.connection-details]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
@@ -748,7 +748,7 @@
    {{:keys [engine details id]} :details} :- [:map {:closed true}
                                               [:details [:map {:closed true}
                                                          [:engine  DBEngine]
-                                                         [:details ms/DatabaseDetails]
+                                                         [:details ::warehouses.schema/database.connection-details]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
   (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
@@ -842,9 +842,9 @@
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngine]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ms/DatabaseDetails]]
-       [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
-       [:admin_details      {:optional true} [:maybe ms/DatabaseDetails]]
+       [:details            {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+       [:write_data_details {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+       [:admin_details      {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -854,7 +854,7 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/DatabaseSettings]]
+       [:settings           {:optional true} [:maybe ::warehouses.schema/database.local-settings]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")

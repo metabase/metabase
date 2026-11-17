@@ -48,7 +48,7 @@
 
 (mr/def ::mbql-node
   "Any node reached while walking an MBQL form, which may or may not be an MBQL clause."
-  [:schema {:description "an MBQL form node"} :any])
+  :metabase.util.malli/value)
 
 (mu/defn mbql-clause-tag :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "The tag of `form` when it is an MBQL entity reference clause, else nil."

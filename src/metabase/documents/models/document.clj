@@ -242,9 +242,9 @@
     (map? document)
     (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
                                (and (= type prose-mirror/card-embed-type)
-                                    (contains? card-id-map (get attrs "id"))))
+                                    (contains? card-id-map (:id attrs))))
                              (fn update-card-id [embed]
-                               (update-in embed [:attrs "id"] card-id-map)))))
+                               (update-in embed [:attrs :id] card-id-map)))))
 
 (mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
   "Creates cards for a document from the cards map.
@@ -289,8 +289,8 @@
   - map of old-card-id -> cloned-card-id"
   [{:keys [id collection_id] :as document} :- ::documents.schema/document]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos-int? (get (:attrs %) "id")))
-                                                       (get (:attrs %) "id")))
+                                                                (pos-int? (:id (:attrs %))))
+                                                       (:id (:attrs %))))
         to-clone (when (seq card-ids)
                    (documents.db/cards-not-in-document card-ids id))]
     (with-content-gate-cache
@@ -334,10 +334,10 @@
           {:document document :content_type content-type}
           (fn [{:keys [type attrs]}]
             (when (and (= prose-mirror/card-embed-type type)
-                       (contains? draft-card-id-map (get attrs "id"))
-                       (get attrs "stored_result_id"))
-              [(get draft-card-id-map (get attrs "id"))
-               (get attrs "stored_result_id")])))
+                       (contains? draft-card-id-map (:id attrs))
+                       (:stored_result_id attrs))
+              [(get draft-card-id-map (:id attrs))
+               (:stored_result_id attrs)])))
          distinct
          vec)))
 
@@ -523,9 +523,8 @@
 (defn- document->search-text
   "Extract the plain searchable text from a document's prose-mirror body for the search index.
 
-  Receives the raw `:document` value as it comes off the ingestion query (a JSON string). Blindly
-  keywordizing that JSON would leave every node's `:attrs` keyword-keyed too, so it is normalized --
-  stringifying attrs -- before `ast->text` reads them. Returns nil if it can't be parsed, so a
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string), which it parses and
+  normalizes before `ast->text` reads it. Returns nil if it can't be parsed, so a
   malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
   [document]
   (when document
@@ -614,7 +613,7 @@
   verbatim would, on import, either dangle or silently resolve to an unrelated instance's
   snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
   which travels and renders the same query."
-  ["stored_result_id"])
+  [:stored_result_id])
 
 (defn- serdes-rewritable-node?
   "The AST nodes whose ids serdes rewrites between database ids and entity ids.
@@ -643,8 +642,8 @@
 (defn- walk-export-node
   "`node`, a cardEmbed or smartLink, with its database id replaced by the path of the entity it names, which `visit`
   resolves, or unchanged when that entity no longer exists."
-  [visit {{:strs [model] :or {model "card"}} :attrs type :type :as node}]
-  (let [id-key       (if (= prose-mirror/smart-link-type type) "entityId" "id")
+  [visit {{:keys [model] :or {model "card"}} :attrs type :type :as node}]
+  (let [id-key       (if (= prose-mirror/smart-link-type type) :entityId :id)
         id           (prose-mirror/node-entity-id node)
         node         (cond-> node
                        (= prose-mirror/card-embed-type type)
@@ -667,7 +666,7 @@
   "`node`, a cardEmbed or smartLink, with the path it names replaced by the id `visit` resolves it to, or unchanged
   when that entity is missing."
   [visit {:keys [attrs type] :as node}]
-  (let [id-key                        (if (= prose-mirror/smart-link-type type) "entityId" "id")
+  (let [id-key                        (if (= prose-mirror/smart-link-type type) :entityId :id)
         path                          (get attrs id-key)
         {:keys [model] entity-id :id} (when (sequential? path) (last path))
         id                            (cond
@@ -720,11 +719,11 @@
                                    (fn document-deps [{:keys [type attrs]}]
                                      (cond
                                        (and (= prose-mirror/smart-link-type type)
-                                            (contains? model->serdes-model (get attrs "model")))
-                                       (get attrs "entityId")
+                                            (contains? model->serdes-model (:model attrs)))
+                                       (:entityId attrs)
 
                                        (= prose-mirror/card-embed-type type)
-                                       (get attrs "id")
+                                       (:id attrs)
 
                                        :else
                                        nil))))))
@@ -760,7 +759,7 @@
     (concat
      (for [card-id (prose-mirror/card-ids document)]
        ["Card" card-id])
-     (for [{{model "model"} :attrs :as node}
+     (for [{{:keys [model]} :attrs :as node}
            (prose-mirror/collect-ast document #(when (= prose-mirror/smart-link-type (:type %)) %))
            :let  [link-id (prose-mirror/node-entity-id node)]
            :when (and link-id (contains? model->serdes-model model))]

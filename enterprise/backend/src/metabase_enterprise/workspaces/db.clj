@@ -7,6 +7,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mr/def ::status
@@ -17,14 +18,14 @@
    [:workspace_id     ms/PositiveInt]
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential :string]]
-   [:database_details ms/DatabaseDetails]
+   [:database_details ::warehouses.schema/database.connection-details]
    [:output_namespace :string]
    [:status           {:optional true} ::status]])
 
 (mr/def ::workspace-database.update
   [:map {:closed true}
    [:output_namespace {:optional true} :string]
-   [:database_details {:optional true} ms/DatabaseDetails]
+   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
    [:status           {:optional true} ::status]])
 
 (mr/def ::table-spec

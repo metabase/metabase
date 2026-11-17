@@ -77,7 +77,7 @@
 
 (mr/def ::expectation
   "A `=?` expectation: partial maps, predicates, and regexes matched against a real drill or query."
-  [:schema {:description "a =? expectation pattern"} :any])
+  [:or :metabase.util.malli/value fn? [:fn {:error/message "a regex"} #?(:clj #(instance? java.util.regex.Pattern %) :cljs regexp?)]])
 
 (def ^:private DrillArgs
   [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal ::lib.schema.metadata/column]]])

@@ -130,7 +130,7 @@
      [:native {:optional true} [:or
                                 :string
                                 [:schema {:description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
-                                 [:ref ::common/open-json]]]]
+                                 [:or [:ref ::common/open-json] ::common/java-collection]]]]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
@@ -666,7 +666,7 @@
   [:or
    ::native-query-document-value
    [:schema {:description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
-    [:ref ::common/open-json]]])
+    [:or [:ref ::common/open-json] ::common/java-collection]]])
 
 (mr/def ::compiled-native-query
   "A native query compiled from this query by [[metabase.query-processor.compile]], ready to hand to the driver.

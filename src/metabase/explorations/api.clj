@@ -1051,13 +1051,13 @@
             chart-href      (explorations.blocks/page-url id page-id)
             ;; Snapshot onto host_data so the Summary embed can render pills without a live lookup.
             explore-filters (page-explore-filters page-id)
-            extra-attrs {"stored_result_id" stored-result-id
-                         "chart_href"       chart-href
+            extra-attrs {:stored_result_id stored-result-id
+                         :chart_href       chart-href
                          ;; Comment stream key (page id). Distinct from `_id`,
                          ;; which must stay unique per node for duplicate embeds.
-                         "child_target_id"  (str page-id)
-                         "host_data"        (cond-> {:query_ids exploration_query_ids}
-                                              explore-filters (assoc :explore_filters explore-filters))}]
+                         :child_target_id  (str page-id)
+                         :host_data        (cond-> {:query_ids exploration_query_ids}
+                                             explore-filters (assoc :explore_filters explore-filters))}]
         (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))

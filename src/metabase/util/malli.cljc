@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.fn :as mu.fn]
+       ([metabase.util.malli.closed-schemas]
+        [metabase.util.malli.fn :as mu.fn]
         [metabase.util.malli.defn :as mu.defn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
@@ -55,6 +56,23 @@
    [:maxItems    {:optional true} :int]
    [:items       {:optional true} [:ref ::json-schema-doc]]
    [:properties  {:optional true} [:map-of :string [:ref ::json-schema-doc]]]])
+
+(mr/def ::value
+  "A value of a basic type: nil, a scalar, a map, or a collection of such values."
+  [:or
+   :nil
+   :boolean
+   :string
+   :keyword
+   :symbol
+   number?
+   :uuid
+   inst?
+   #?(:clj  [:fn {:error/message "a temporal value", :json-schema {:type "string", :format "date-time"}} #(instance? java.time.temporal.Temporal %)]
+      :cljs [:fn {:error/message "a temporal value", :json-schema {:type "string", :format "date-time"}} (constantly false)])
+   :map
+   [:sequential [:ref ::value]]
+   [:set [:ref ::value]]])
 
 (def ^:private SchemaProperties
   "The malli schema properties [[with]] is actually asked to attach."

@@ -124,7 +124,7 @@
 
 (mr/def ::clause-tag-candidate
   "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
-  [:schema {:description "a value that may be an MBQL clause"} :any])
+  :metabase.util.malli/value)
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
@@ -175,6 +175,14 @@
    number?
    [:sequential [:maybe [:ref ::open-json]]]
    ::open-json.object])
+
+(mr/def ::java-collection
+  "A Java collection or map that is not a Clojure one, such as the documents a driver builds for its native query."
+  [:fn
+   {:error/message "a Java collection", :json-schema {}}
+   #?(:clj  #(and (not (coll? %))
+                  (or (instance? java.util.Collection %) (instance? java.util.Map %)))
+      :cljs (constantly false))])
 
 (mr/def ::database-details
   "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
