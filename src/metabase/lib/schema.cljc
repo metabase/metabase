@@ -717,11 +717,6 @@
   `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query
   results."}
     [:maybe :boolean]]
-   [:referenced-entities
-    {:optional true
-     :description
-     "Ignored. Older clients sent dynamic goal sources here in the body of `POST /api/dataset`, which drops the key."}
-    :any]
    [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]

@@ -112,8 +112,7 @@
   (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (run-streaming-query
    (-> query
-       ;; older clients still send dynamic goal sources as `referenced_entities`; they're ignored now
-       (dissoc :cache-strategy :referenced-entities)
+       (dissoc :cache-strategy)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)))
 

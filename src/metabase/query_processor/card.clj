@@ -30,7 +30,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -150,6 +149,18 @@
   here."
   false)
 
+;;; These live here rather than in [[metabase.queries.models.card]] so the QP can use them without
+;;; depending on the Card model.
+(mu/defn parameter-template-tag? :- :boolean
+  "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
+  like snippets, card references, and tables."
+  [{tag-type :type, widget-type :widget-type} :- [:maybe ::lib.schema.template-tag/template-tag]]
+  (boolean
+   (and tag-type
+        (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+            (= tag-type :temporal-unit)
+            (and (= tag-type :dimension) widget-type (not= widget-type :none))))))
+
 ;;; TODO -- move this to Lib so the logic can be shared between the backend and frontend (?)
 ;;;
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
@@ -162,7 +173,7 @@
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card :- [:maybe ::queries.schema/card]]
   (for [{tag-type :type, widget-type :widget-type, :as tag} (some-> card :dataset_query not-empty lib/all-template-tags)
-        :when                         (qp.template-tags/parameter-template-tag? tag)]
+        :when                         (parameter-template-tag? tag)]
     {:id       (:id tag)
      :type     (or widget-type (case tag-type
                                  :temporal-unit :temporal-unit

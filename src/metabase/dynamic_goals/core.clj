@@ -17,11 +17,11 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util.i18n :refer [tru]]
@@ -153,7 +153,7 @@
       ;; passes for anything under an anonymous route's `as-admin`: there saving the goal is the gate
       (let [source (api/read-check model id)]
         ;; it runs with no parameter values, so each would get its default or none at all
-        (if (qp.template-tags/reads-parameters? source)
+        (if (queries/card-reads-parameters? source)
           (do
             (log/warnf "Goal source %s %s reads parameters, so it can't run on its own" source-type id)
             (failed "has-parameters"
