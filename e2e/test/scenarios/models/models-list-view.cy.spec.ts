@@ -35,6 +35,17 @@ describe("scenarios > models list view", () => {
     cy.findByTestId("sidebar-right").findByText("List").click();
     cy.findByTestId("list-view").should("be.visible");
 
+    cy.log("The list layout editor is laid out and visible");
+    cy.findByRole("button", { name: "Customize the List layout" }).click();
+    cy.findByTestId("list-view-left-columns")
+      .should("be.visible")
+      .findByText("ID")
+      .should("be.visible");
+    cy.findByTestId("list-view-right-columns")
+      .findByText("USER_ID")
+      .should("be.visible");
+    cy.findByTestId("list-view-preview").findByText("14").should("be.visible");
+
     cy.findByTestId("dataset-edit-bar").button("Save changes").click();
     cy.wait("@dataset");
     cy.findByTestId("dataset-edit-bar").should("not.exist");

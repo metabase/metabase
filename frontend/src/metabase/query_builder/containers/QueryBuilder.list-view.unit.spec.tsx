@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -157,18 +157,30 @@ const openQuestionActions = async () => {
   await userEvent.click(screen.getByLabelText("Move, trash, and more…"));
 };
 
-const openMetadataEditor = async () => {
+/**
+ * Waits for the requests in flight and for the query run to end. A run that
+ * ends after a change in the editor puts back the card it started with, so the
+ * tests change the model only once the editor has its results, as a user does.
+ */
+const waitForQueryToSettle = async (store: QueryBuilderStore) => {
+  await act(() => fetchMock.callHistory.flush(true));
+  await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
+};
+
+const openMetadataEditor = async (store: QueryBuilderStore) => {
   await openQuestionActions();
   await userEvent.click(
     await screen.findByRole("menuitem", { name: /Edit metadata/ }),
   );
   await screen.findByTestId("dataset-edit-bar");
+  await waitForQueryToSettle(store);
 };
 
-const clickEditorTab = async (name: string) => {
+const clickEditorTab = async (store: QueryBuilderStore, name: string) => {
   await userEvent.click(
     within(screen.getByTestId("dataset-edit-bar")).getByText(name),
   );
+  await waitForQueryToSettle(store);
 };
 
 const getQueryRunCount = () =>
@@ -187,9 +199,9 @@ const saveModelChanges = async (store: QueryBuilderStore) => {
   await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
 };
 
-const openListViewSettings = async () => {
-  await openMetadataEditor();
-  await clickEditorTab("Settings");
+const openListViewSettings = async (store: QueryBuilderStore) => {
+  await openMetadataEditor(store);
+  await clickEditorTab(store, "Settings");
   const sidebar = screen.getByTestId("sidebar-right");
   expect(within(sidebar).getByText("Model Settings")).toBeInTheDocument();
   await userEvent.click(within(sidebar).getByText("List"));
@@ -217,11 +229,11 @@ describe("QueryBuilder > models list view", () => {
   it("sets list as the default view of a model and saves it", async () => {
     const { store } = await setupModel();
 
-    await openListViewSettings();
+    await openListViewSettings(store);
     expect(screen.getByTestId("list-view")).toBeInTheDocument();
 
-    await clickEditorTab("Columns");
-    await clickEditorTab("Settings");
+    await clickEditorTab(store, "Columns");
+    await clickEditorTab(store, "Settings");
     expect(await screen.findByTestId("list-view")).toBeInTheDocument();
     expect(
       within(screen.getByTestId("sidebar-right")).getByLabelText("List"),
@@ -290,7 +302,7 @@ describe("QueryBuilder > models list view", () => {
 
   it("customizes the list columns and icon, and saves them", async () => {
     const { store } = await setupModel();
-    await openListViewSettings();
+    await openListViewSettings(store);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Customize the List layout" }),
@@ -435,19 +447,20 @@ describe("QueryBuilder > models list view", () => {
       within(listView).getAllByTestId("mini-bar-container").length,
     ).toBeGreaterThan(0);
 
-    await openMetadataEditor();
-    await clickEditorTab("Columns");
+    await openMetadataEditor(store);
+    await clickEditorTab(store, "Columns");
     await userEvent.click(await screen.findByText("SUBTOTAL"));
     await userEvent.click(
       within(screen.getByTestId("sidebar-right")).getByRole("tab", {
         name: "Formatting",
       }),
     );
-    await userEvent.click(
-      within(screen.getByTestId("sidebar-right")).getByLabelText(
-        "Show a mini bar chart",
-      ),
-    );
+    const miniBarToggle = within(
+      screen.getByTestId("sidebar-right"),
+    ).getByLabelText("Show a mini bar chart");
+    expect(miniBarToggle).toBeChecked();
+    await userEvent.click(miniBarToggle);
+    expect(miniBarToggle).not.toBeChecked();
 
     await saveModelChanges(store);
 
