@@ -9,11 +9,15 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { columnFinder } from "metabase-lib/test-helpers";
 import {
+  ORDERS,
+  PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   createSampleDatabase,
@@ -26,6 +30,7 @@ import {
   createQueryWithBooleanFilter,
   createQueryWithCoordinateFilter,
   createQueryWithDefaultFilter,
+  createQueryWithExpressions,
   createQueryWithExcludeDateFilter,
   createQueryWithNumberFilter,
   createQueryWithRelativeDateFilter,
@@ -44,6 +49,11 @@ import {
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
 // Unjustified type cast. FIXME
 const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
+
+function findOrdersIdColumn(query: Lib.Query) {
+  const columns = Lib.filterableColumns(query, 0);
+  return columnFinder(query, columns)("ORDERS", "ID");
+}
 
 function createQueryWithMultipleValuesFilter() {
   const query = createQuery();
@@ -449,6 +459,148 @@ describe("FilterPicker", () => {
     });
   });
 
+  describe("custom columns", () => {
+    it("should remove a value from a filter that the in function created", async () => {
+      const query = createQuery();
+      const column = findOrdersIdColumn(query);
+      const { getNextFilter } = setup(
+        createFilteredQuery(
+          query,
+          Lib.numberFilterClause({ operator: "=", column, values: [1, 2, 3] }),
+        ),
+      );
+
+      const value = await screen.findByText("3");
+      // Mantine hides the pill's remove button from the accessibility tree
+      await userEvent.click(
+        within(checkNotNull(value.parentElement)).getByRole("button", {
+          hidden: true,
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Update filter" }),
+      );
+
+      const filter = getNextFilter();
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "ID is 2 selections",
+      );
+      expect(Lib.numberFilterParts(query, 0, filter)).toMatchObject({
+        operator: "=",
+        values: [1, 2],
+      });
+    });
+
+    it("should filter a boolean custom column that uses the in function", async () => {
+      const query = createQueryWithExpressions([
+        {
+          name: "InColumn",
+          value: {
+            type: "operator",
+            operator: "in",
+            args: [
+              { type: "literal", value: "Gadget" },
+              {
+                type: "column",
+                fieldId: PRODUCTS.VENDOR,
+                sourceFieldId: ORDERS.PRODUCT_ID,
+              },
+              {
+                type: "column",
+                fieldId: PRODUCTS.CATEGORY,
+                sourceFieldId: ORDERS.PRODUCT_ID,
+              },
+            ],
+          },
+        },
+      ]);
+      const { getNextFilter } = setup({ query });
+
+      await userEvent.click(screen.getByText("InColumn"));
+      await userEvent.click(await screen.findByText("Add filter"));
+
+      expect(Lib.displayInfo(query, 0, getNextFilter()).displayName).toBe(
+        "InColumn is true",
+      );
+    });
+
+    it("should add a fixed date range filter to a custom column", async () => {
+      const query = createQueryWithExpressions([
+        {
+          name: "CustomDate",
+          value: { type: "column", fieldId: ORDERS.CREATED_AT },
+        },
+      ]);
+      const { getNextFilter } = setup({ query });
+
+      await userEvent.click(screen.getByText("CustomDate"));
+      await userEvent.click(await screen.findByText("Fixed date range…"));
+      await userEvent.clear(screen.getByLabelText("Start date"));
+      await userEvent.type(screen.getByLabelText("Start date"), "12/10/2027");
+      await userEvent.clear(screen.getByLabelText("End date"));
+      await userEvent.type(screen.getByLabelText("End date"), "01/05/2028");
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      const filter = getNextFilter();
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "CustomDate is Dec 10, 2027 – Jan 5, 2028",
+      );
+      expect(Lib.specificDateFilterParts(query, 0, filter)).toMatchObject({
+        operator: "between",
+        values: [new Date(2027, 11, 10), new Date(2028, 0, 5)],
+      });
+    });
+
+    it("should add a relative date filter to a case custom column (metabase#16273)", async () => {
+      const query = createQueryWithExpressions([
+        {
+          name: "MiscDate",
+          value: {
+            type: "operator",
+            operator: "case",
+            args: [
+              {
+                type: "operator",
+                operator: ">",
+                args: [
+                  { type: "column", fieldId: ORDERS.DISCOUNT },
+                  { type: "literal", value: 0 },
+                ],
+              },
+              { type: "column", fieldId: ORDERS.CREATED_AT },
+              {
+                type: "column",
+                fieldId: PRODUCTS.CREATED_AT,
+                sourceFieldId: ORDERS.PRODUCT_ID,
+              },
+            ],
+          },
+        },
+      ]);
+      const { getNextFilter } = setup({ query });
+
+      await userEvent.click(screen.getByText("MiscDate"));
+      await userEvent.click(await screen.findByText("Relative date range…"));
+      await userEvent.click(screen.getByText("Previous"));
+      await userEvent.click(screen.getByDisplayValue("days"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("years"),
+      );
+      await userEvent.click(screen.getByLabelText("Include this year"));
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      const filter = getNextFilter();
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "MiscDate is in the previous 30 years or this year",
+      );
+      expect(Lib.relativeDateFilterParts(query, 0, filter)).toMatchObject({
+        value: -30,
+        unit: "year",
+        options: { includeCurrent: true },
+      });
+    });
+  });
+
   describe("custom expression", () => {
     // The editor wraps long expressions over lines, so compare without whitespace.
     async function expectEditorSource(source: string) {
@@ -683,6 +835,49 @@ describe("FilterPicker", () => {
         unit: "day",
         options: { includeCurrent: true },
       });
+    });
+
+    it.each([
+      ["in([[ID], 1, 2, 3)", "=", "ID is 3 selections"],
+      ["notIn([[ID], 1, 2, 3)", "!=", "ID is not 3 selections"],
+    ])(
+      "should create a filter with the %s custom expression",
+      async (text, operator, displayName) => {
+        const { query, getNextFilter, getNextFilterColumnName } = setup();
+
+        await userEvent.click(screen.getByText(/Custom expression/i));
+        await editExpressionAndSubmit(text);
+
+        const filter = getNextFilter();
+        expect(Lib.displayInfo(query, 0, filter).displayName).toBe(displayName);
+        expect(Lib.numberFilterParts(query, 0, filter)).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [1, 2, 3],
+        });
+        expect(getNextFilterColumnName()).toBe("ID");
+      },
+    );
+
+    it("should replace an in filter with a notIn custom expression", async () => {
+      const query = createQuery();
+      const column = findOrdersIdColumn(query);
+      const { getNextFilter } = setup(
+        createFilteredQuery(
+          query,
+          Lib.numberFilterClause({ operator: "=", column, values: [1, 2] }),
+        ),
+      );
+
+      await userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByText(/Custom expression/i));
+      await editExpressionAndSubmit(
+        "{selectall}{backspace}notIn([[ID], 1, 2, 3)",
+      );
+
+      expect(Lib.displayInfo(query, 0, getNextFilter()).displayName).toBe(
+        "ID is not 3 selections",
+      );
     });
 
     it("should update a filter with a numeric custom expression", async () => {

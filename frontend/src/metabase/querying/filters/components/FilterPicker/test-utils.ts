@@ -12,6 +12,7 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { TestNamedExpressionSpec } from "metabase-types/api";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -143,6 +144,14 @@ const provider = selectMetadataProvider(storeInitialState, database.id);
 
 export function createQuery() {
   return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
+}
+
+export function createQueryWithExpressions(
+  expressions: readonly TestNamedExpressionSpec[],
+) {
+  return Lib.createTestQuery(provider, {
+    stages: [{ source: { type: "table", id: ORDERS_ID }, expressions }],
+  });
 }
 
 export function createFilteredQuery(
