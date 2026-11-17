@@ -163,22 +163,58 @@
   itself, and an `:enum`, which `null` joins."
   (conj null-neutral-keys :type :enum))
 
+(defn- types
+  "The types the `:type` of JSON Schema `schema` names, as a vector, or nil when it has none."
+  [{:keys [type]}]
+  (cond
+    (string? type)     [type]
+    (sequential? type) (vec type)))
+
+(defn- union->type-array
+  "A JSON Schema with a type array that accepts what the `anyOf` `branches` accept, or nil when no type array can.
+  Each branch must name its own types, disjoint from the others', and carry only keywords that apply to those types,
+  no two branches the same one."
+  [branches]
+  (let [branch-types (map types branches)
+        assertions   (mapcat #(remove (conj annotation-keys :type) (keys %)) branches)]
+    (when (and (every? seq branch-types)
+               (apply distinct? (apply concat branch-types))
+               (every? #(every? (conj null-neutral-keys :type) (keys %)) branches)
+               (or (empty? assertions) (apply distinct? assertions)))
+      (let [description (str/join " " (keep :description branches))]
+        (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
+            (assoc :type (into [] cat branch-types))
+            (cond-> (not (str/blank? description)) (assoc :description description)))))))
+
+(defn- flatten-union
+  "The JSON Schema `schema` with an `anyOf` beside only annotations replaced by its [[union->type-array]], joining the
+  descriptions, or `schema` itself when there is no such union."
+  [{:keys [anyOf description] :as schema}]
+  (or (when (and anyOf (every? annotation-keys (keys (dissoc schema :anyOf))))
+        (when-let [union (union->type-array anyOf)]
+          (let [descriptions (remove str/blank? [description (:description union)])]
+            (cond-> (merge (dissoc schema :anyOf :description) (dissoc union :description))
+              (seq descriptions) (assoc :description (str/join " " descriptions))))))
+      schema))
+
 (defn- nullable
   "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
-  Where `schema` has one non-null `:type` and otherwise only [[type-array-keys]], returns it with `null` added to that
-  type and to any `:enum`.
+  Where `schema`, or its [[flatten-union]], has a `:type` and otherwise only [[type-array-keys]], returns it with
+  `null` added to that type and to any `:enum`.
   Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
   [schema]
-  (let [{:keys [type description]} schema]
+  ;; A coercing client tries `anyOf` branches in order and coerces into the first one it can, so an explicit `null`
+  ;; becomes `0`, `false` or `""` there; a type array keeps it `null`.
+  (let [flat       (flatten-union schema)
+        type-names (types flat)]
     ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
-    (if (and (string? type)
-             (not= "null" type)
-             (every? type-array-keys (keys schema)))
-      (cond-> (assoc schema :type [type "null"])
+    (if (and (seq type-names)
+             (every? type-array-keys (keys flat)))
+      (cond-> (assoc flat :type (vec (distinct (conj type-names "null"))))
         ;; an enum rejects a `null` it does not list
-        (:enum schema) (update :enum #(vec (distinct (conj (vec %) nil)))))
+        (:enum flat) (update :enum #(vec (distinct (conj (vec %) nil)))))
       (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
-        description (assoc :description description)))))
+        (:description schema) (assoc :description (:description schema))))))
 
 (defn- one-of-replacement
   "What replaces the `oneOf` `branches`.

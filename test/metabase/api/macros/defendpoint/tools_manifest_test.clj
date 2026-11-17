@@ -104,9 +104,7 @@
                                             :properties           {:x {:type "string"}}
                                             :required             [:x]
                                             :additionalProperties false}
-                                   :either {:anyOf       [{:anyOf [{:type "string"} {:type "integer"}]}
-                                                          {:type "null"}]
-                                            :description "A string or an id."}
+                                   :either {:type ["string" "integer" "null"], :description "A string or an id."}
                                    :value  {:anyOf [{} {:type "null"}]}}
             :required             [:flag :limit :sample :mode :pick :filter :either :value]
             :additionalProperties false}
@@ -164,15 +162,40 @@
     ;; a keyword that may reject `null` keeps the branches apart
     (is (= {:anyOf [{:type "string", :not {:type "null"}} {:type "null"}]}
            (published {:oneOf [{:type "string", :not {:type "null"}} {:type "null"}]})))
-    ;; a `null` type has no type array to join
-    (is (= {:anyOf [{:type "null"} {:type "null"}]}
+    ;; a `null` type, or a type array that already has `null`, names `null` once
+    (is (= {:type ["null"]}
            (published {:oneOf [{:type "null"} {:type "null"}]})))
+    (is (= {:type ["boolean" "null"]}
+           (published {:oneOf [{:type ["boolean" "null"]} {:type "null"}]})))
     ;; an enum that already lists `null` lists it once
     (is (= {:type ["string" "null"], :enum ["a" nil]}
            (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
     ;; an empty `oneOf` accepts nothing, and JSON Schema has no empty `anyOf`
     (is (= {:not {}}
            (published {:oneOf []})))))
+
+(deftest ^:parallel nullable-union-test
+  (testing "a nullable union of distinct types becomes one type array, where a coercing client keeps `null`"
+    ;; the shape of the write tools' optional ids: a numeric id or an entity_id
+    (is (= {:type        ["integer" "string" "null"]
+            :minimum     1
+            :minLength   21
+            :description "Numeric id. Entity id."}
+           (published {:oneOf [{:anyOf [{:type "integer", :minimum 1, :description "Numeric id."}
+                                        {:type "string", :minLength 21, :description "Entity id."}]}
+                               {:type "null"}]}))))
+  (testing "a union a type array cannot say stays an `anyOf`"
+    ;; two branches of one type
+    (is (= {:anyOf [{:anyOf [{:type "string", :minLength 21} {:type "string", :maxLength 4}]} {:type "null"}]}
+           (published {:oneOf [{:anyOf [{:type "string", :minLength 21} {:type "string", :maxLength 4}]}
+                               {:type "null"}]})))
+    ;; an enum, which would apply to every type in the array
+    (is (= {:anyOf [{:anyOf [{:type "integer"} {:type "string", :enum ["root"]}]} {:type "null"}]}
+           (published {:oneOf [{:anyOf [{:type "integer"} {:type "string", :enum ["root"]}]} {:type "null"}]})))
+    ;; two branches with the same assertion keyword
+    (is (= {:anyOf [{:anyOf [{:type "integer", :minimum 1} {:type "number", :minimum 0}]} {:type "null"}]}
+           (published {:oneOf [{:anyOf [{:type "integer", :minimum 1} {:type "number", :minimum 0}]}
+                               {:type "null"}]})))))
 
 (deftest ^:parallel one-of-siblings-test
   (testing "keywords beside a rewritten `oneOf` accept what they accepted beside the `oneOf`"
