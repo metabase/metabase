@@ -21,7 +21,7 @@ const BUTTON_STYLE =
 const NOTIFICATION_CONTEXT = {
   application_name: "Metabase",
   application_color: "#509EE3",
-  application_logo_url: "http://static.metabase.com/email_logo.png",
+  application_logo_url: "https://static.metabase.com/email_logo.png",
   site_url: "http://localhost:3000",
 };
 
@@ -37,7 +37,7 @@ const CARD_PLACEHOLDER = (name) =>
 window.COMMON_CONTEXT = {
   applicationName: "Metabase",
   applicationColor: "#509EE3",
-  applicationLogoUrl: "http://static.metabase.com/email_logo.png",
+  applicationLogoUrl: "https://static.metabase.com/email_logo.png",
   buttonStyle: BUTTON_STYLE,
   colorTextLight: "#B8BBC3",
   colorTextMedium: "#949AAB",
