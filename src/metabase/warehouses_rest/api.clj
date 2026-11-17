@@ -22,6 +22,7 @@
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
+   [metabase.sync.hooks :as sync.hooks]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
    [metabase.upload.core :as upload]
@@ -669,6 +670,7 @@
                                 (when (some? auto_run_queries)
                                   {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
+        (sync.hooks/after-database-saved nil <>)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
                                  :database     (u/qualified-name engine)
@@ -972,6 +974,7 @@
                                                          :user-id          api/*current-user-id*
                                                          :previous-object  existing-database
                                                          :details-changed? details-changed?})
+          (sync.hooks/after-database-saved existing-database db)
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules

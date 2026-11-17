@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.hooks]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -35,6 +36,7 @@
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
+   [metabase.workspaces.hooks]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -74,6 +76,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/dependencies)
+  (derive :hook/driver)
+  (derive :hook/workspaces)
   (derive :hook/change-log)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would

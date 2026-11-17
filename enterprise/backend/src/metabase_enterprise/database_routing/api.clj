@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
+   [metabase.sync.hooks :as sync.hooks]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
@@ -70,6 +71,7 @@
                         :creator_id         api/*current-user-id*})
                      destinations))
         (doseq [database <>]
+          (sync.hooks/after-database-saved nil database)
           (events/publish-event! :event/database-create {:object database
                                                          :user-id api/*current-user-id*
                                                          :details {:slug name

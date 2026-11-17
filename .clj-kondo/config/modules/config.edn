@@ -997,6 +997,7 @@
            metabase.driver.common
            metabase.driver.connection
            metabase.driver.ddl.interface
+           metabase.driver.hooks
            metabase.driver.impl
            metabase.driver.init
            metabase.driver.mysql
@@ -1007,8 +1008,6 @@
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
-           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. Ideally this would
-           ;; become part of the driver api rather than callers reaching directly into the normalize module.
            metabase.driver.sql.normalize
            metabase.driver.sql.query-processor
            metabase.driver.sql.util
@@ -1026,6 +1025,7 @@
            lib.be
            lib.metadata
            lib.schema
+           models
            premium-features
            query-processor
            query-processor.driver-api
@@ -2999,6 +2999,7 @@
    :api  #{metabase.sync.api
            metabase.sync.core
            metabase.sync.field-values
+           metabase.sync.hooks
            metabase.sync.init
            metabase.sync.schedules
            metabase.sync.task.sync-databases-trigger
@@ -3520,7 +3521,8 @@
            sync
            util
            util.config
-           warehouses.secrets}
+           warehouses.secrets
+           workspaces}
    :model-exports #{:model/Database}
    :model-imports #{:model/Action
                     :model/Card
@@ -3668,9 +3670,8 @@
 
   workspaces
   {:team "Graphy"
-   :api #{metabase.workspaces.core
-          metabase.workspaces.table-remapping}
-   :uses #{premium-features}}
+   :api #{metabase.workspaces.core metabase.workspaces.hooks metabase.workspaces.table-remapping}
+   :uses #{models premium-features}}
 
   xrays
   {:team "Graphy"
@@ -4136,6 +4137,7 @@
            premium-features
            query-processor
            settings
+           sync
            util
            warehouses
            warehouses.schema
@@ -4917,7 +4919,6 @@
            cache
            database-routing
            driver
-           events
            lib.metadata
            lib.schema
            models

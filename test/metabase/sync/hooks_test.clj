@@ -1,0 +1,47 @@
+(ns metabase.sync.hooks-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.sync.hooks :as sync.hooks]
+   [metabase.sync.sync :as sync]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.test :as mt]
+   [metabase.util.quick-task :as quick-task]))
+
+(set! *warn-on-reflection* true)
+
+(deftest new-database-is-synced-test
+  (mt/with-temp [:model/Database {:as db} {:is_full_sync true}]
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [quick-task/submit-task!         (fn [task] (task))
+                                  sync/sync-database!             (fn [_] (swap! calls inc))
+                                  sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
+        (testing "default (disable-auto-sync=false): a sync entry point is invoked"
+          (reset! calls 0)
+          (sync.hooks/after-database-saved nil db)
+          (is (= 1 @calls)))
+        (testing "with disable-auto-sync=true: no sync entry point is invoked"
+          (reset! calls 0)
+          (mt/with-temporary-setting-values [disable-auto-sync true]
+            (sync.hooks/after-database-saved nil db))
+          (is (zero? @calls)))))))
+
+(deftest connected-stub-is-synced-test
+  (mt/with-temp [:model/Database {:as stub} {:is_full_sync true :is_stub true}
+                 :model/Database {:as db}   {:is_full_sync true}]
+    (let [calls     (atom 0)
+          connected (assoc stub :is_stub false)]
+      (mt/with-dynamic-fn-redefs [quick-task/submit-task!         (fn [task] (task))
+                                  sync/sync-database!             (fn [_] (swap! calls inc))
+                                  sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
+        (testing "a stub that gets connected is synced"
+          (reset! calls 0)
+          (sync.hooks/after-database-saved stub connected)
+          (is (= 1 @calls)))
+        (testing "a stub that stays a stub is not synced"
+          (reset! calls 0)
+          (sync.hooks/after-database-saved stub stub)
+          (is (zero? @calls)))
+        (testing "a regular database update is not synced"
+          (reset! calls 0)
+          (sync.hooks/after-database-saved db db)
+          (is (zero? @calls)))))))
