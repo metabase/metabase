@@ -1,12 +1,10 @@
 (ns metabase.transforms.models.transform-tag
   (:require
    [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -14,9 +12,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(events/derive! :event/transform-tag-create :metabase/event)
-(events/derive! :event/transform-tag-update :metabase/event)
-(events/derive! :event/transform-tag-delete :metabase/event)
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
@@ -25,35 +21,7 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(methodical/defmethod t2/simple-hydrate [:model/TransformTag :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (api/entitled-data-analyst?))))
-
-(methodical/defmethod t2/simple-hydrate [:model/TransformTag :can_write]
-  [_model k instance]
-  (assoc instance k
-         (boolean
-          (and (not (remote-sync/read-only?))
-               (or api/*is-superuser?*
-                   (and (api/entitled-data-analyst?)
-                        (let [transforms (transform/transforms-with-tags [(:id instance)])]
-                          (every? mi/can-write? (t2/hydrate transforms :can_write)))))))))
-
-(defmethod mi/can-create? :model/TransformTag
-  [_model _instance]
-  (and (not (remote-sync/read-only?))
-       (api/entitled-data-analyst?)))
-
-(mu/defn tag-name-exists? :- :boolean
-  "Check if a tag with the given name already exists"
-  [tag-name :- :string]
-  (transforms.db/tag-name-exists? tag-name))
-
-(mu/defn tag-name-exists-excluding? :- :boolean
-  "Check if a tag with the given name exists, excluding the specified ID"
-  [tag-name :- :string
-   tag-id   :- ms/PositiveInt]
-  (transforms.db/tag-name-exists-excluding? tag-name tag-id))
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
   [tag :- [:or ::transforms.schema/transform-tag ::transforms.schema/transform-tag.update]]
@@ -69,40 +37,105 @@
     tag
     (merge tag (translate-name tag))))
 
+(defn- check-name-free
+  "Throws a 400 when the `:name` of `tag` belongs to another TransformTag."
+  [{tag-name :name, :keys [id]}]
+  (when-let [tag-name (not-empty (str tag-name))]
+    (let [taken-by (transforms.db/tag-id-by-name tag-name)]
+      (when (and taken-by (not= taken-by id))
+        (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400}))))))
+
+(t2/define-before-insert :model/TransformTag
+  [tag]
+  (check-name-free tag)
+  tag)
+
 (t2/define-before-update :model/TransformTag [tag]
+  (when (contains? (t2/changes tag) :name)
+    (check-name-free tag))
   (if (or (nil? (:built_in_type tag))
-          mi/*deserializing?*
           (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
-    (-> (merge (translate-name tag) ;; translated default names
-               {:built_in_type nil} ;; never translate this again
-               (t2/changes tag))    ;; include user edits
-        (update :name str)))) ;; convert deferred to string
+    (-> (merge (translate-name tag)
+               {:built_in_type nil}
+               (t2/changes tag))
+        (update :name str))))
+
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+(mu/defn tag-id->writable :- [:map-of ms/PositiveInt :boolean]
+  "The map from each of `tag-ids` to whether the current user writes every Transform it tags, a tag of no Transform
+  being writable, in a fixed number of queries."
+  [tag-ids :- [:set ms/PositiveInt]]
+  (let [links      (when (seq tag-ids)
+                     (transforms.db/transform-tag-links-for-tags tag-ids))
+        transforms (when (seq links)
+                     (transforms.db/transforms (into #{} (map :transform_id) links)))
+        writable   (into {} (map (juxt :id mi/can-write?)) (t2/hydrate transforms :can_write))]
+    (reduce (fn [acc {:keys [tag_id transform_id]}]
+              (update acc tag_id #(and (not (false? %)) (get writable transform_id false))))
+            (zipmap tag-ids (repeat true))
+            links)))
+
+(defmethod mi/can-create? :model/TransformTag
+  [_model _instance]
+  (and (not (remote-sync/read-only?))
+       (api/entitled-data-analyst?)))
+
+(defmethod mi/can-update? :model/TransformTag
+  [tag _changes]
+  (mi/can-write? tag))
+
+;;; -------------------------------------------------- Hydration ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_read]
+  [_model k tags]
+  (let [answer (boolean (api/entitled-data-analyst?))]
+    (mapv #(vary-meta % assoc k answer) tags)))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_write]
+  [_model k tags]
+  (let [open?       (and (not (remote-sync/read-only?))
+                         (or api/*is-superuser?* (api/entitled-data-analyst?)))
+        by-transform (when (and open? (not api/*is-superuser?*) (seq tags))
+                       (tag-id->writable (into #{} (map :id) tags)))]
+    (mapv #(assoc % k (boolean (and open? (or api/*is-superuser?* (get by-transform (:id %) false))))) tags)))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_run]
   "Add :can_run to transform tags. Returns true if all transforms associated with the tag can be written by the current user."
   [_model _k tags]
   (if-not (seq tags)
     tags
-    (let [tag-ids (into #{} (map :id) tags)
-          ;; Get all transform-tag associations
-          associations (transforms.db/transform-tag-links-for-tags tag-ids)
-          ;; Get unique transform IDs
-          transform-ids (into #{} (map :transform_id) associations)
-          ;; Fetch transforms and check can-write? for each
-          transforms (when (seq transform-ids)
-                       (transforms.db/transforms transform-ids))
-          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) (t2/hydrate transforms :can_write))
-          ;; Build tag-id -> can_run map
-          tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]
-                                          (update acc tag_id (fnil conj #{}) transform_id))
-                                        {}
-                                        associations)
-          tag-id->can-run (into {}
-                                (map (fn [[tag-id tform-ids]]
-                                       [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
-                                tag-id->transform-ids)]
+    (let [tag-id->can-run (tag-id->writable (into #{} (map :id) tags))]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
+
+;;; ------------------------------------------------ Serialization -------------------------------------------------
+
+(defn- built-in-name-kept
+  "`item`, a load item, with the name of the built-in tag it updates."
+  [{:keys [local row] :as item}]
+  (cond-> item
+    (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
+    (update :row assoc :name (:name local))))
+
+(defn- free-name-taken
+  "`item`, a load item, with the first of its name, then the name followed by \" (2)\", \" (3)\" and so on, that no other
+  tag has, `taken` being the names the items before it took, each with its entity id."
+  [taken {{:keys [entity_id] tag-name :name} :row, :keys [local] :as item}]
+  (let [own?  (fn [owner] (or (nil? owner) (= owner entity_id) (= owner (:entity_id local))))
+        free? (fn [candidate] (own? (or (get taken candidate) (transforms.db/tag-entity-id-by-name candidate))))
+        n     (first (filter free? (cons tag-name (map #(str tag-name " (" % ")") (iterate inc 2)))))]
+    [(assoc-in item [:row :name] n) (assoc taken n entity_id)]))
+
+(defmethod serialization/before-load :model/TransformTag [_ items]
+  (first
+   (reduce (fn [[items taken] item]
+             (if (not (string? (not-empty (get-in item [:row :name]))))
+               [(conj items item) taken]
+               (let [[item taken] (free-name-taken taken item)]
+                 [(conj items item) taken])))
+           [[] {}]
+           (map built-in-name-kept items))))
 
 (defmethod serialization/spec :model/TransformTag [_]
   {:schema    ::transforms.schema/external-transform-tag
@@ -114,18 +147,7 @@
           [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
         entities))
 
-;; Event hooks for remote-sync tracking
-(t2/define-after-insert :model/TransformTag [tag]
-  (events/publish-event! :event/transform-tag-create {:object tag})
-  tag)
-
-(t2/define-after-update :model/TransformTag [tag]
-  (events/publish-event! :event/transform-tag-update {:object tag})
-  tag)
-
-(t2/define-before-delete :model/TransformTag [tag]
-  (events/publish-event! :event/transform-tag-delete {:object tag})
-  tag)
+;;; ------------------------------------------------- Remote sync --------------------------------------------------
 
 (defmethod remote-sync/spec :model/TransformTag
   [_model]

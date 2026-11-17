@@ -120,16 +120,15 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
-(mu/defn tag-name-exists?
-  "Whether a TransformTag named `tag-name` exists."
+(mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
+  "The id of the TransformTag named `tag-name`, or nil."
   [tag-name :- :string]
-  (t2/exists? :model/TransformTag :name tag-name))
+  (t2/select-one-pk :model/TransformTag :name tag-name))
 
-(mu/defn tag-name-exists-excluding?
-  "Whether a TransformTag named `tag-name` other than `tag-id` exists."
-  [tag-name :- :string
-   tag-id   :- ms/PositiveInt]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+(mu/defn tag-entity-id-by-name :- [:maybe :string]
+  "The entity id of the TransformTag named `tag-name`, or nil."
+  [tag-name :- :string]
+  (t2/select-one-fn :entity_id :model/TransformTag :name [:auto/param tag-name]))
 
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."

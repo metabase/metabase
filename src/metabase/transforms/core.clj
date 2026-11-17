@@ -40,15 +40,12 @@
   add-source-readable
   is-temp-transform-table?]
  [metabase.transforms.crud
-  check-database-feature
   requestable-indexes
   check-feature-enabled!
-  validate-incremental-column-type!
-  validate-target-schema!
-  validate-transform-query!
   get-transforms
   get-transform
   create-transform!
+  publish-update-event!
   update-transform!
   delete-transform!]
  [metabase.transforms.canceling
@@ -67,10 +64,6 @@
   cancel-dag-run!
   dag-run-transforms]
  [metabase.transforms.schedule
-  validate-cron-expression
-  initialize-job!
-  update-job!
-  delete-job!
   delete-trigger!
   existing-trigger]
  [metabase.transforms.models.transform
@@ -92,7 +85,4 @@
  [metabase.transforms.models.transform-job
   activate-job!
   deactivate-job!
-  update-job-tags!]
- [metabase.transforms.models.transform-tag
-  tag-name-exists?
-  tag-name-exists-excluding?])
+  update-job-tags!])

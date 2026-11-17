@@ -31,6 +31,13 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
 (defn- backfill-all-existing-entities!
   []
   (deps.test/synchronously-run-dependency-job!))
@@ -938,8 +945,7 @@
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)
            category-field-id (mt/id :products :category)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
-                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition products-id price-field-id 50)}]
          (testing "creating a segment creates dependency to its table"
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
@@ -950,7 +956,9 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (t2/update! :model/Segment :id segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
+           (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -969,8 +977,7 @@
    (fn [_]
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
-                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition products-id price-field-id 50)}]
          (testing "creating a card using a segment creates dependencies to both segment and table"
            (deps.test/synchronously-run-dependency-job!)
            (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
@@ -997,8 +1004,7 @@
              orders (lib.metadata/table mp orders-id)
              quantity (lib.metadata/field mp (mt/id :orders :quantity))
              subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
-         (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
-                                                         :definition (-> (lib/query mp orders)
+         (mt/with-temp [:model/Measure {measure-id :id} {:definition (-> (lib/query mp orders)
                                                                          (lib/aggregate (lib/sum quantity)))}]
            (testing "creating a measure creates dependency to its table"
              (assert-pending :measure measure-id)
@@ -1115,12 +1121,10 @@
            orders (lib.metadata/table mp orders-id)
            quantity (lib.metadata/field mp (mt/id :orders :quantity))
            subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
-       (mt/with-temp [:model/Measure {measure1-id :id} {:table_id orders-id
-                                                        :definition (-> (lib/query mp orders)
+       (mt/with-temp [:model/Measure {measure1-id :id} {:definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum quantity)))}]
          (let [mp' (mt/metadata-provider)]
-           (mt/with-temp [:model/Measure {measure2-id :id} {:table_id orders-id
-                                                            :definition (-> (lib/query mp' orders)
+           (mt/with-temp [:model/Measure {measure2-id :id} {:definition (-> (lib/query mp' orders)
                                                                             (lib/aggregate (lib/+ (lib.metadata/measure mp' measure1-id)
                                                                                                   (lib/sum subtotal))))}]
              (testing "creating a measure that references another measure creates dependencies to both"
@@ -1142,8 +1146,7 @@
      (let [orders-id (mt/id :orders)
            orders (lib.metadata/table mp orders-id)
            quantity (lib.metadata/field mp (mt/id :orders :quantity))]
-       (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
-                                                       :definition (-> (lib/query mp orders)
+       (mt/with-temp [:model/Measure {measure-id :id} {:definition (-> (lib/query mp orders)
                                                                        (lib/aggregate (lib/sum quantity)))}]
          (deps.test/synchronously-run-dependency-job!)
          (testing "creating a card using a measure creates dependencies to both measure and table"

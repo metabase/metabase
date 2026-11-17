@@ -35,7 +35,8 @@
         (when (seq changes)
           (replacement.db/update-transform! (:id transform) changes)
           (events/publish-event! :event/transform-update
-                                 {:object (merge transform changes) :user-id api/*current-user-id*}))))))
+                                 {:object (merge transform changes) :user-id api/*current-user-id*})
+          (events/publish-event! :event/update-transform {:object (merge transform changes)}))))))
 
 (defn- swap-parameter-source-card-id
   "For a parameters collection, replace `values_source_config.card_id` references to `old-source-id` with

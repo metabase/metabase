@@ -181,11 +181,6 @@
             [:owner_email {:optional true} [:maybe :string]]]]
   (transforms.core/check-feature-enabled! (transforms.u/->definition body))
   (api/create-check :model/Transform body)
-  (transforms.core/check-database-feature (transforms.u/->definition body))
-  (transforms.core/validate-incremental-column-type! (transforms.u/->definition body))
-  (api/check (not (transforms-base.u/planned-target-table-exists? body))
-             409
-             (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
       transforms.u/add-source-readable))
 
@@ -341,8 +336,9 @@
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/write-check :model/Transform id)
-  (transforms-rest.db/reset-checkpoint! id)
+  (let [transform (api/write-check :model/Transform id)]
+    (transforms-rest.db/reset-checkpoint! id)
+    (transforms.core/publish-update-event! transform))
   nil)
 
 (mu/defn- check-feature-and-lock! :- :nil

@@ -3281,6 +3281,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           events
            lib.schema
            models
            request

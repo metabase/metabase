@@ -117,10 +117,6 @@
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job with schedule:" schedule)
-  ;; Validate cron expression
-  (api/check-400 (transforms.core/validate-cron-expression schedule)
-                 (deferred-tru "Invalid cron expression: {0}" schedule))
-  ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
     (let [existing-tags (transforms-rest.db/existing-tag-ids tag_ids)]
       (api/check-400 (= (set tag_ids) existing-tags)
@@ -129,10 +125,8 @@
                   :description     description
                   :schedule        schedule
                   :ui_display_type ui_display_type}
-        _        (api/check-403 (mi/can-create? :model/TransformJob (assoc job-data :tag_ids tag_ids)))
+        _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
         job      (transforms-rest.db/insert-job! job-data)]
-    (transforms.core/initialize-job! job)
-    ;; Add tag associations if provided
     (when (seq tag_ids)
       (transforms-rest.db/insert-job-tags!
        (map-indexed (fn [idx tag-id]
@@ -187,43 +181,29 @@
                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (let [existing-job (t2/hydrate (transforms-rest.db/job job-id) :tag_ids)]
-    ;; Check write permission on both current state and final state (with new tags if provided)
-    (api/write-check existing-job)
-    (when (some? tag-ids)
-      (api/write-check (assoc existing-job :tag_ids tag-ids)))
-    ;; Validate cron expression if provided
-    (when schedule
-      (api/check-400 (transforms.core/validate-cron-expression schedule)
-                     (deferred-tru "Invalid cron expression: {0}" schedule)))
-    ;; Validate tag IDs if provided
+    (api/update-check (api/check-404 existing-job) (m/assoc-some nil :tag_ids tag-ids))
     (when (seq tag-ids)
       (let [existing-tags (transforms-rest.db/existing-tag-ids tag-ids)]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
-    (let [was-active     (:active existing-job)
-          will-be-active (if (some? active) active was-active)]
-      ;; DB writes that can fail commit before any Quartz side effect, so a tag FK race or
-      ;; non-toggle-update failure can't roll back state already written to the scheduler.
-      (t2/with-transaction [_conn]
-        (when-let [updates (m/assoc-some nil
-                                         :name name
-                                         :description description
-                                         :schedule schedule
-                                         :ui_display_type ui_display_type)]
-          (transforms-rest.db/update-job! job-id updates))
-        (when (some? tag-ids)
-          (transforms.core/update-job-tags! job-id tag-ids)))
-      (when (some? active)
-        (if active
-          (transforms.core/activate-job! job-id)
-          (transforms.core/deactivate-job! job-id)))
-      ;; A schedule edit on a job that stays active needs a separate trigger rebuild;
-      ;; activate-job! only runs when :active toggled false→true.
-      (when (and schedule was-active will-be-active)
-        (transforms.core/update-job! job-id schedule))
-      (-> (transforms-rest.db/job job-id)
-          (t2/hydrate :tag_ids :last_run)
-          (update :last_run transforms-base.u/present-run)))))
+    ;; The row update comes last in the transaction: its hook moves the Quartz trigger, so a failure of the tag
+    ;; write cannot leave the scheduler ahead of the app DB.
+    (t2/with-transaction [_conn]
+      (when (some? tag-ids)
+        (transforms.core/update-job-tags! job-id tag-ids))
+      (when-let [updates (m/assoc-some nil
+                                       :name name
+                                       :description description
+                                       :schedule schedule
+                                       :ui_display_type ui_display_type)]
+        (transforms-rest.db/update-job! job-id updates)))
+    (when (some? active)
+      (if active
+        (transforms.core/activate-job! job-id)
+        (transforms.core/deactivate-job! job-id)))
+    (-> (transforms-rest.db/job job-id)
+        (t2/hydrate :tag_ids :last_run)
+        (update :last_run transforms-base.u/present-run))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
@@ -231,7 +211,6 @@
   (log/info "Deleting transform job" job-id)
   (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
   (transforms-rest.db/delete-job! job-id)
-  (transforms.core/delete-job! job-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/run" :- [:map
