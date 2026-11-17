@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupDatabaseEndpoints,
@@ -7,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderRoutes, screen, within } from "__support__/ui";
+import { renderRoutes, screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import type { RouteObject } from "metabase/router";
 import { createMockSegment, createMockUser } from "metabase-types/api/mocks";
@@ -15,6 +16,7 @@ import {
   ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -63,6 +65,45 @@ function setup({ initialRoute }: SetupOpts) {
   });
 
   return { trackSimpleEvent };
+}
+
+// A row of the field list, found by the column name its display name input
+// uses as a placeholder.
+function getFieldRow(columnName: string) {
+  const row = screen
+    .getAllByRole("listitem")
+    .find((item) => within(item).queryByPlaceholderText(columnName));
+  if (row == null) {
+    throw new Error(`No row for ${columnName}`);
+  }
+  return row;
+}
+
+function getIdFieldsRequestUrls() {
+  return fetchMock.callHistory
+    .calls()
+    .map((call) => call.url)
+    .filter((url) => url.includes("/idfields"));
+}
+
+async function expectFkTargetOptions() {
+  const listbox = await screen.findByRole("listbox");
+  for (const option of [
+    "Orders → ID",
+    "People → ID",
+    "Products → ID",
+    "Reviews → ID",
+  ]) {
+    expect(within(listbox).getByText(option)).toBeVisible();
+  }
+  return listbox;
+}
+
+async function chooseNoSemanticType(input: HTMLElement) {
+  await userEvent.click(input);
+  await userEvent.click(
+    within(await screen.findByRole("listbox")).getByText("No semantic type"),
+  );
 }
 
 describe("reference segment pages", () => {
@@ -123,6 +164,97 @@ describe("reference segment pages", () => {
     expect(
       screen.queryByText("Something’s gone wrong"),
     ).not.toBeInTheDocument();
+  });
+
+  it("changes the FK target and the semantic type of segment fields in the list and the detail view (metabase#55617, metabase#55618)", async () => {
+    setup({ initialRoute: "/reference/segments" });
+
+    await userEvent.click(
+      await screen.findByRole("link", {
+        name: new RegExp(ORDERS_SEGMENT.name),
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("link", { name: /Fields in this segment/ }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Edit/ }));
+
+    // metabase#55618
+    expect(
+      await screen.findAllByPlaceholderText("Select a target"),
+    ).toHaveLength(2);
+    const userIdTarget = within(getFieldRow("USER_ID")).getByPlaceholderText(
+      "Select a target",
+    );
+    expect(userIdTarget).toHaveValue("People → ID");
+    expect(
+      within(getFieldRow("PRODUCT_ID")).getByPlaceholderText("Select a target"),
+    ).toHaveValue("Products → ID");
+    expect(getIdFieldsRequestUrls()).not.toHaveLength(0);
+    for (const url of getIdFieldsRequestUrls()) {
+      expect(new URL(url).pathname).toBe(
+        `/api/database/${SAMPLE_DB_ID}/idfields`,
+      );
+    }
+
+    await userEvent.click(userIdTarget);
+    const listbox = await expectFkTargetOptions();
+    await userEvent.click(within(listbox).getByText("Reviews → ID"));
+
+    await waitFor(() =>
+      expect(
+        within(getFieldRow("USER_ID")).getByPlaceholderText("Select a target"),
+      ).toHaveValue("Reviews → ID"),
+    );
+    expect(
+      within(getFieldRow("PRODUCT_ID")).getByPlaceholderText("Select a target"),
+    ).toHaveValue("Products → ID");
+
+    // metabase#55617
+    const discountType = within(getFieldRow("DISCOUNT")).getByPlaceholderText(
+      "Select a semantic type",
+    );
+    expect(
+      screen
+        .getAllByPlaceholderText("Select a semantic type")
+        .indexOf(discountType),
+    ).toBeGreaterThan(0);
+    expect(discountType).toHaveValue("Discount");
+    await chooseNoSemanticType(discountType);
+    await waitFor(() =>
+      expect(
+        within(getFieldRow("DISCOUNT")).getByPlaceholderText(
+          "Select a semantic type",
+        ),
+      ).toHaveValue("No semantic type"),
+    );
+
+    // field detail view
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(await screen.findByRole("link", { name: /User ID/ }));
+
+    // metabase#55618
+    await userEvent.click(await screen.findByRole("button", { name: /Edit/ }));
+    const targetInput = await screen.findByPlaceholderText("Select a target");
+    expect(targetInput).toHaveValue("People → ID");
+    await userEvent.click(targetInput);
+    const detailListbox = await expectFkTargetOptions();
+    await userEvent.click(within(detailListbox).getByText("Reviews → ID"));
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Select a target")).toHaveValue(
+        "Reviews → ID",
+      ),
+    );
+
+    // metabase#55617
+    const fieldType = screen.getByPlaceholderText("Select a semantic type");
+    expect(fieldType).toHaveValue("Foreign Key");
+    await chooseNoSemanticType(fieldType);
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Select a semantic type")).toHaveValue(
+        "No semantic type",
+      ),
+    );
   });
 
   it("tracks x-raying a segment from its sidebar", async () => {
