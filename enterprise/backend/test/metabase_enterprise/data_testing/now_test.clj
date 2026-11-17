@@ -15,7 +15,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -73,6 +72,10 @@
      :columns [{:name "id" :cast_type int-type}]
      :rows    (mapv (fn [id] {"id" id}) (sort ids))}))
 
+(def ^:private refusals
+  "The messages of the refusals [[outcome!]] caught, until [[refusal-messages!]] reads them."
+  (atom []))
+
 (defn- outcome!
   "Run the saved test `test-id`, a `test-model` row, of `subject`, a `subject-type`, as crowberto. Returns the status of
   its one expectation (`:error` when that expectation could not run), or the error type of the run's refusal."
@@ -84,9 +87,15 @@
         (assert (empty? more))
         (:status expectation))
       (catch ExceptionInfo e
-        ;; The error type is what the tests compare; the message carries the database's own words, for a failure.
-        (log/warnf "The data test was refused (%s): %s" (:error-type (ex-data e)) (ex-message e))
+        (swap! refusals conj (ex-message e))
         (:error-type (ex-data e))))))
+
+(defn- refusal-messages!
+  "The messages of the refusals since the last call, which carry the database's own words; for an assertion's message,
+  so a failure on a driver that cannot run locally says why."
+  []
+  (let [[messages] (reset-vals! refusals [])]
+    (str/join "\n" messages)))
 
 (defn- run-card-test!
   "Save a card with the query `query` and a test of it with `inputs`, one expectation and the further `test-fields`,
@@ -188,8 +197,10 @@
           inputs [(orders-input {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
           run!   #(run-transform-test! query % inputs (constantly (selects [1])))]
       (testing "a transform test with `now` selects the rows of the pinned month"
+        (refusal-messages!)
         (is (= {:pinned :passed :unpinned :failed}
-               {:pinned (run! {:now now}) :unpinned (run! {})}))))))
+               {:pinned (run! {:now now}) :unpinned (run! {})})
+            (refusal-messages!))))))
 
 (deftest native-subject-with-now-is-refused-test
   (mt/test-drivers #{:h2 :postgres}
