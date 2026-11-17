@@ -132,16 +132,23 @@ endpoint's own helper.
 `(t2/update! :model/X :id id {:archived true})` does everything, for every writer. No archive logic in endpoints.
 
 - `archived` is the state; `archived_directly` is the cause: true when archived on its own, false when it follows a
-  parent. In `before-update`, when `archived` changes: `(assoc row :archived_directly (mi/archived-directly row))`,
-  which keeps a cause the write gives and otherwise takes the new `archived`.
-- A cascade writes followers with `:archived_directly false` inside `(mi/with-archived-cause-given ...)`: on archive
-  the rows not yet archived, on restore the rows not archived directly.
+  parent. In `before-update`, when `archived` changes and the cause is not in the changes:
+  `(assoc row :archived_directly (mi/archived-directly row parent-archived?))`, where `parent-archived?` is a function
+  that asks whether the row's parent is archived (its Collection, `collection/archived?`; for a Card also its Dashboard
+  or Document, for a Document also its Exploration). A restore is never direct; an explicit cause in the changes is kept.
+- The parent is written first and the followers after it, in the same transaction: a model with followers declares
+  `(mi/define-update-in-transaction :model/X)` and a `(defmethod mi/after-archived-change! :model/X [model rows changes])`
+  that writes them through their models, one statement per kind. The followers then find their parent archived and
+  derive their cause from it; there is no binding.
 - Collection archives its subtree in a fixed number of statements; a collection that inherits an archive does not
-  cascade again. Dashboard carries its dashboard questions, Document its cards, Timeline its events (a follower
-  without `archived_directly` always follows).
+  cascade again. Dashboard carries its dashboard questions, Document its cards, Exploration its summary documents,
+  Timeline its events (a follower without `archived_directly` always follows).
 - A live row cannot be inserted into or moved into an archived parent
   (`collection/check-collection-not-archived`), checked only when the parent changes.
-- The subtree write permission is `mi/can-update?` on the Collection.
+- A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: the parent's `mi/can-update?` also
+  covers every row the archive or restore writes, each kind loaded once by the same `<module>.db` selection the cascade
+  uses and hydrated once (`mi/can-update-each?`). A per-user rule such as a sandbox restriction belongs to a model's
+  `can-update?`, never to its hooks.
 
 ## Lay out a model file
 

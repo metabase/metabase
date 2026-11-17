@@ -1,7 +1,6 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
-   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -197,14 +196,12 @@
       (vec (sort-by pk-of instances)))))
 
 (mu/defn update-row!
-  "Update the `model` row whose primary key `pk` is `id` with `changes`, running the model's hooks. An `:archived` in
-  `changes` comes with the `archived_directly` the imported row has, which stays the stored one when `changes` omit it."
+  "Update the `model` row whose primary key `pk` is `id` with `changes`, running the model's hooks."
   [model   :- :keyword
    pk      :- :keyword
    id      :- [:or :int :string]
    changes :- ::row]
-  (mi/with-archived-cause-given
-    (t2/update! model pk [:auto/param id] changes)))
+  (t2/update! model pk [:auto/param id] changes))
 
 (mu/defn delete-rows!
   "Delete the `model` rows whose primary key `pk` is one of `ids`, running the model's hooks."

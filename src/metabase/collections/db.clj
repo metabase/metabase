@@ -138,6 +138,12 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-pk->fn :archived :model/Collection :id [:in collection-ids]))
 
+(mu/defn collection-archived?
+  "Whether the Collection with `collection-id` is archived, which the root, nil, never is."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
+  (boolean (when collection-id
+             (t2/select-one-fn :archived :model/Collection :id collection-id))))
+
 (mu/defn collections-in-namespace
   "The Collections in the namespace named `namespace-name`."
   [namespace-name :- :string]
@@ -307,14 +313,14 @@
   [ids                  :- [:sequential ::lib.schema.id/collection]
    archive-operation-id :- :string]
   (t2/update! :model/Collection :id [:in ids]
-              {:archived true, :archived_directly false, :archive_operation_id archive-operation-id}))
+              {:archived true, :archive_operation_id archive-operation-id}))
 
 (mu/defn restore-collections!
   "Restore, through their model, the Collections with `ids`, which an archive of an ancestor took down, returning the
   number updated."
   [ids :- [:sequential ::lib.schema.id/collection]]
   (t2/update! :model/Collection :id [:in ids]
-              {:archived false, :archived_directly false, :archive_operation_id nil}))
+              {:archived false, :archive_operation_id nil}))
 
 (mu/defn move-descendant-collections!
   "Move the Collections under `orig-children-location` to `new-children-location` and set `remote-synced?`,
@@ -342,13 +348,23 @@
                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
-(mu/defn archive-items-in-collections!
-  "Archive, through their model, the unarchived `model` rows in the Collections with `collection-ids` along with
-  them, returning the number updated."
+(defn- archivable-conditions
+  "The key-value conditions of the rows in the Collections with `collection-ids` that archiving them archives."
+  [collection-ids]
+  [:collection_id [:in collection-ids] :archived false])
+
+(mu/defn items-archived-with-collections
+  "The unarchived `model` rows in the Collections with `collection-ids`, which archiving them archives along with
+  them."
   [model          :- :keyword
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/update! model {:collection_id [:in collection-ids], :archived false}
-              {:archived true, :archived_directly false}))
+  (apply t2/select model (archivable-conditions collection-ids)))
+
+(mu/defn archive-items-in-collections!
+  "Archive, through their model, the rows of [[items-archived-with-collections]], returning the number updated."
+  [model          :- :keyword
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (apply t2/update! model (concat (archivable-conditions collection-ids) [{:archived true}])))
 
 (defn- archived-parent-exists
   "The condition that the `parent-table` row that `child-column` names is archived."
@@ -364,17 +380,27 @@
                     [:not (archived-parent-exists :document :report_card.document_id)]]
    :model/Document [[:not (archived-parent-exists :exploration :document.exploration_id)]]})
 
-(mu/defn restore-items-in-collections!
-  "Restore, through their model, the `model` rows in the Collections with `collection-ids` that were archived along
-  with them, unless the Dashboard, Document or Exploration they belong to is still archived, returning the number
-  updated."
+(defn- restorable-where
+  "The condition on the `model` rows in the Collections with `collection-ids` that restoring them restores."
+  [model collection-ids]
+  (into [:and
+         [:in :collection_id collection-ids]
+         [:= :archived true]
+         [:= :archived_directly false]]
+        (get archived-parent-clauses model)))
+
+(mu/defn items-restored-with-collections
+  "The `model` rows in the Collections with `collection-ids` that were archived along with them, unless the Dashboard,
+  Document or Exploration they belong to is still archived, which restoring them restores along with them."
   [model          :- :keyword
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (if-let [ids (not-empty (t2/select-pks-vec model {:where (into [:and
-                                                                  [:in :collection_id collection-ids]
-                                                                  [:= :archived true]
-                                                                  [:= :archived_directly false]]
-                                                                 (get archived-parent-clauses model))}))]
+  (t2/select model {:where (restorable-where model collection-ids)}))
+
+(mu/defn restore-items-in-collections!
+  "Restore, through their model, the rows of [[items-restored-with-collections]], returning the number updated."
+  [model          :- :keyword
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (if-let [ids (not-empty (t2/select-pks-vec model {:where (restorable-where model collection-ids)}))]
     (t2/update! model :id [:in ids] {:archived false})
     0))
 
@@ -384,7 +410,7 @@
   `archived` flag records only that the user deleted them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived false}
-              {:archived true, :archived_directly false}))
+              {:archived true}))
 
 (mu/defn restore-pulses-in-collections!
   "Restore the Pulses in the Collections with `collection-ids` that were archived along with them, returning the

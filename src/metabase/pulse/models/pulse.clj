@@ -133,7 +133,7 @@
         (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) false)
         (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) true)))
     (cond-> pulse
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly pulse)))))
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly pulse #(collection/archived? (:collection_id pulse)))))))
 
 (t2/define-before-delete :model/Pulse
   [pulse]

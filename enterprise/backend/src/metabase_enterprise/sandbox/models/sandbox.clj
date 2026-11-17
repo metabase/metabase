@@ -195,7 +195,7 @@
   (boolean (and id
                 api/*current-user-id*
                 (not api/*is-superuser?*)
-                (contains? (get (sandbox-dependency-set) entity-kind) id))))
+                (contains? (get (mi/cached-for-update-check ::sandbox-dependency-set sandbox-dependency-set) entity-kind) id))))
 
 (defn- check-non-admin-cannot-affect-sandboxing!
   "Throws a 403 if the `entity-kind` (`:card` or `:snippet`) entity with `id` is in the sandbox dependency set and
@@ -223,16 +223,20 @@
                               e)))))))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches `:dataset_query`,
-  `:archived`, or `:result_metadata` (for a Card-backed sandbox, the column allow-list). If the result metadata
-  changes, also checks that it does not violate the constraints placed on sandboxes (the Card cannot add fields or
-  change types vs. the original Table)."
+  "Refuses an update to a Card a sandbox is built out of that changes its result metadata so that it stops matching the
+  Tables the sandboxes built out of it, which the Card cannot do by adding fields or changing types vs. the original
+  Table."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (some #(contains? changes %) [:dataset_query :archived :result_metadata])
-    (check-non-admin-cannot-affect-sandboxing! :card card-id))
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
+
+(defenterprise sandboxes-allow-result-metadata-write?
+  "Whether sandboxing lets the current user store result metadata for the Card with `card-id`: only an admin may for one
+  in the sandbox dependency set."
+  :feature :sandboxes
+  [card-id]
+  (not (non-admin-affects-sandboxing? :card card-id)))
 
 (defenterprise sandboxes-allow-card-update?
   "Whether sandboxing lets the current user apply `changes`, the `:dataset_query`, `:archived` or `:result_metadata` of
@@ -247,14 +251,6 @@
   :feature :sandboxes
   [{card-id :id}]
   (check-non-admin-cannot-affect-sandboxing! :card card-id))
-
-(defenterprise pre-update-check-sandbox-constraints-for-snippet
-  "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches `:content`, `:name`,
-  or `:archived`."
-  :feature :sandboxes
-  [{snippet-id :id} changes]
-  (when (some #(contains? changes %) [:content :name :archived])
-    (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id)))
 
 (defenterprise sandboxes-allow-snippet-update?
   "Whether sandboxing lets the current user apply `changes` to a snippet: only an admin may change the `:content`,

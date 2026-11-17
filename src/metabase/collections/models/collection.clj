@@ -1499,13 +1499,45 @@
   (can-write-collection-or-root? (or parent_id (some-> location location-path->parent-id))
                                  {:root-namespace collection-namespace}))
 
+(def ^:private archivable-item-models
+  "The models that follow the `archived` state of their Collection by `collection_id`, in the order their cascades run,
+  Cards before the Dashboards and Documents that cascade to the Cards they hold."
+  [:model/Card :model/Dashboard :model/Document :model/Exploration :model/Timeline :model/NativeQuerySnippet])
+
+(def ^:private restorable-item-models
+  "The models that follow the restore of their Collection by `collection_id`, in the order their restores run, the
+  Dashboards, Explorations and Documents before the Cards and Documents they hold, which stay archived with them."
+  [:model/Dashboard :model/Exploration :model/Document :model/Timeline :model/NativeQuerySnippet :model/Card])
+
+(defn- archive-followers-updatable?
+  "Whether the current user may apply `changes`, which archive or restore `collection`, to every item the change takes
+  along, the items of the Collections under it too: each kind of item loaded once, and hydrated once, by the selection
+  the cascade writes. The Collections themselves are the subtree write check."
+  [collection changes]
+  (or (not (mi/changes-archived? collection changes))
+      (mi/with-update-check-cache
+        (let [archive?    (boolean (:archived changes))
+              children    (str (children-location collection) "%")
+              descendants (cond
+                            archive?                         (collections.db/unarchived-collection-ids-with-location-like children)
+                            (:archived_directly collection)  (collections.db/archived-collection-ids-in-operation-with-location-like
+                                                              children (:archive_operation_id collection))
+                            :else                            [])
+              ids         (vec (cons (:id collection) descendants))
+              rows-of     (if archive?
+                            collections.db/items-archived-with-collections
+                            collections.db/items-restored-with-collections)]
+          (or (and (not archive?) (not (:archived_directly collection)))
+              (every? #(mi/can-update-each? % (rows-of % ids) changes) archivable-item-models))))))
+
 (defmethod mi/can-update? :model/Collection
   [collection changes]
   (boolean
    (and (mi/can-write? collection)
         (if-let [new-parent (move-target collection changes)]
           (can-move-to? collection new-parent)
-          true))))
+          true)
+        (archive-followers-updatable? collection changes))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-modifying-tenant-root-collections?*
@@ -1557,12 +1589,15 @@
       (when (= :api-key (collections.db/user-type user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn archived?
+  "Whether the Collection with `collection-id` is archived, which the root, nil, never is."
+  [collection-id]
+  (collections.db/collection-archived? collection-id))
+
 (defn check-collection-not-archived
-  "Throws a 400 when `archived?` is false and the Collection with `collection-id`, if any, is archived."
-  [archived? collection-id]
-  (when (and collection-id
-             (not archived?)
-             (get (collections.db/collection-archived-flags [collection-id]) collection-id))
+  "Throws a 400 when `row-archived?` is false and the Collection with `collection-id`, if any, is archived."
+  [row-archived? collection-id]
+  (when (and (not row-archived?) (archived? collection-id))
     (throw (ex-info (tru "An archived Collection cannot hold what is not archived.")
                     {:status-code 400, :errors {:collection_id (tru "archived Collection")}}))))
 
@@ -1931,16 +1966,6 @@
     :else
     row))
 
-(def ^:private archivable-item-models
-  "The models that follow the `archived` state of their Collection by `collection_id`, in the order their cascades run,
-  Cards before the Dashboards and Documents that cascade to the Cards they hold."
-  [:model/Card :model/Dashboard :model/Document :model/Exploration :model/Timeline :model/NativeQuerySnippet])
-
-(def ^:private restorable-item-models
-  "The models that follow the restore of their Collection by `collection_id`, in the order their restores run, the
-  Dashboards, Explorations and Documents before the Cards and Documents they hold, which stay archived with them."
-  [:model/Dashboard :model/Exploration :model/Document :model/Timeline :model/NativeQuerySnippet :model/Card])
-
 (defn- archive-subtree!
   "Archives the Collections under `row` and the items in them, along with `row`, in one operation: a statement for the
   descendants and one for each kind of item."
@@ -1965,7 +1990,7 @@
   [row]
   (let [descendants (collections.db/archived-collection-ids-in-operation-with-location-like
                      (str (children-location row) "%")
-                     (:archive_operation_id (t2/original row)))
+                     (:archive_operation_id row))
         ids         (vec (cons (:id row) descendants))]
     (when (seq descendants)
       (collections.db/restore-collections! (vec descendants)))
@@ -1973,21 +1998,20 @@
     (collections.db/restore-pulses-in-collections! ids)
     (collections.db/restore-actions-in-collections! ids)))
 
-(defn- cascade-archived
-  "Writes the archive or restore `row` takes to the Collections under it and the items in them, with the cause that they
-  follow it. A Collection that follows an archive does not cascade: the Collection it follows writes its items."
-  [row]
-  (when (contains? (t2/changes row) :archived)
-    (if (:archived row)
-      (when (:archived_directly row)
-        (mi/with-archived-cause-given (archive-subtree! row)))
-      (when (:archived_directly (t2/original row))
-        (mi/with-archived-cause-given (restore-subtree! row))))))
+(defmethod mi/after-archived-change! :model/Collection
+  [_model rows changes]
+  (doseq [before rows]
+    (if (:archived changes)
+      (let [row (collections.db/collection (:id before))]
+        (when (:archived_directly row)
+          (archive-subtree! row)))
+      (when (:archived_directly before)
+        (restore-subtree! before)))))
 
 (defn- archived-columns
   "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives."
   [row]
-  (let [row (assoc row :archived_directly (mi/archived-directly row))]
+  (let [row (assoc row :archived_directly (mi/archived-directly row #(archived? (location-path->parent-id (:location row)))))]
     (cond-> row
       (not (contains? (t2/changes row) :archive_operation_id))
       (assoc :archive_operation_id (when (and (:archived row) (:archived_directly row))
@@ -2042,8 +2066,7 @@
       (check-ancestors-exist row ancestors))
     (when (and (contains? changes :type) (= library-collection-type (:type row)))
       (check-single-library [row]))
-    (u/prog1 (before-update-row row ancestors)
-      (cascade-archived <>))))
+    (before-update-row row ancestors)))
 
 (mi/define-update-in-transaction :model/Collection)
 

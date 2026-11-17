@@ -433,7 +433,9 @@
       (api/check-not-archived existing))
     (let [collection-id (when (contains? args :collection_id)
                           (v2.resolve/resolve-collection-id (:collection_id args)))
-          move          (cond-> {} (contains? args :collection_id) (assoc :collection_id collection-id))]
+          move          (cond-> {}
+                          (contains? args :collection_id) (assoc :collection_id collection-id)
+                          (contains? args :archived)      (assoc :archived (:archived args)))]
       (api/update-check existing move)
       (let [old-ids (ast-id-set (:document existing))
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document

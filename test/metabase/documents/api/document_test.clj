@@ -1739,24 +1739,36 @@
           (is (true? (:archived card)))
           (is (false? (:archived_directly card)))))
       (testing "directly archived documents stay archived when collection is unarchived"
-        ;; First, directly archive the document
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "document/%s" doc-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (true? (:archived doc)))
+          (is (true? (:archived_directly doc)))
+          (is (true? (:archived card)))
+          (is (false? (:archived_directly card)))))
+      (testing "a document that is not archived in an archived collection is archived as following it"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
-        ;; Then unarchive the collection
-        (mt/user-http-request :crowberto
-                              :put 200 (format "collection/%s" coll-id)
-                              {:archived false})
-        ;; Document should remain archived because it was archived directly
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
-          (is (true? (:archived doc)))
-          (is (true? (:archived_directly doc)))
-          (is (true? (:archived card)))
-          (is (false? (:archived_directly card))))))))
+        (is (=? {:archived true, :archived_directly false}
+                (t2/select-one [:model/Document :archived :archived_directly] :id doc-id)))))))
 
 (deftest archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"

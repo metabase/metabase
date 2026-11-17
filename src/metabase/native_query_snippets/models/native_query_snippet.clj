@@ -129,23 +129,17 @@
   (u/prog1 (t2.realize/realize snippet)
     (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
-(defenterprise pre-update-check-sandbox-constraints-for-snippet
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_ _])
-
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (let [changes (t2/changes snippet)]
     (when (contains? changes :collection_id)
       (check-collection snippet))
-    (pre-update-check-sandbox-constraints-for-snippet snippet changes)
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
     (when (contains? changes :name)
       (check-name snippet))
     (cond-> snippet
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet))
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet))))
       (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
 
 (t2/define-after-update :model/NativeQuerySnippet

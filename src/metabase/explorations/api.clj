@@ -808,7 +808,7 @@
   (let [existing (get-exploration-or-404 id)
         allowed  (select-keys updates updatable-columns)
         updates' (api/updates-without-collection-when-archiving existing allowed)]
-    (api/write-check existing)
+    (api/update-check existing updates')
     (check-destination-collection-perms! existing updates')
     (let [archived-document-ids (when (contains? updates' :archived)
                                   (explorations.db/summary-document-ids-following id (boolean (:archived updates'))))]

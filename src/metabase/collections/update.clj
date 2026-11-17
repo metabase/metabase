@@ -124,8 +124,10 @@
   [id                 :- ms/PositiveInt
    collection-updates :- UpdateCollectionArguments]
   (let [collection-before-update (t2/hydrate (api/check-404 (collections.db/collection id)) :parent_id)
-        updates                  (u/select-keys-when collection-updates :present [:name :description :authority_level])]
-    (api/update-check collection-before-update updates)
+        updates                  (u/select-keys-when collection-updates :present [:name :description :authority_level])
+        archived-change?         (some-> (:archived collection-updates) boolean (not= (boolean (:archived collection-before-update))))]
+    (api/update-check collection-before-update
+                      (cond-> updates archived-change? (assoc :archived (boolean (:archived collection-updates)))))
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
@@ -138,7 +140,7 @@
     (t2/with-transaction [_conn]
       (when (seq updates)
         (collections.db/update-collection! id updates))
-      (if (some-> (:archived collection-updates) boolean (not= (boolean (:archived collection-before-update))))
+      (if archived-change?
         (archive-or-restore! collection-before-update collection-updates)
         (move-collection! collection-before-update collection-updates)))
     (u/prog1 (collections.db/collection id)

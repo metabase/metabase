@@ -208,7 +208,7 @@
     (when placed?
       (check-data-app-action action namespace))
     (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly action)))))
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly action #(collection/archived? (:collection_id action)))))))
 
 (defn- normalized-query
   "The query of `query-action` normalized, or nil when it has none."

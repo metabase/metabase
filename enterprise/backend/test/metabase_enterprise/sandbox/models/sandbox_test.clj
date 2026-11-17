@@ -7,6 +7,7 @@
    [metabase-enterprise.sandbox.test-util :as sbx.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -290,11 +291,7 @@
     (guarded-writes-test
      with-card-policy
      (fn [{:keys [card]}]
-       [["query"           card-msg #(t2/update! :model/Card :id (:id card) {:dataset_query (mt/mbql-query venues {:limit 1})})]
-        ["result metadata" card-msg #(t2/update! :model/Card :id (:id card)
-                                                 {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")})]
-        ["archive"         card-msg #(t2/update! :model/Card :id (:id card) {:archived true})]
-        ["delete"  card-msg #(t2/delete! :model/Card :id (:id card))]]))
+       [["delete" card-msg #(t2/delete! :model/Card :id (:id card))]]))
     (untouched-test
      with-card-policy
      (fn [{:keys [other]}]
@@ -395,11 +392,18 @@
 
 (deftest only-admins-can-change-a-card-a-sandbox-reads-through-a-snippet-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-snippet-policy
-     (fn [{:keys [nested-card]}]
-       [["query of the nested Card" card-msg #(t2/update! :model/Card :id (:id nested-card)
-                                                          {:dataset_query (mt/mbql-query venues)})]]))))
+    (letfn [(update-check [nested-card]
+              (api/update-check (t2/select-one :model/Card :id (:id nested-card)) {:dataset_query (mt/mbql-query venues)}))]
+      (testing "a non-admin is refused the query of the nested Card"
+        (with-snippet-policy
+          (fn [{:keys [nested-card]}]
+            (mt/with-test-user :rasta
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
+      (testing "an admin may change it"
+        (with-snippet-policy
+          (fn [{:keys [nested-card]}]
+            (mt/with-test-user :crowberto
+              (is (true? (update-check nested-card))))))))))
 
 (deftest only-admins-can-change-a-snippet-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
@@ -735,7 +739,7 @@
             (f colls)))))))
 
 (defn- archive-collection! [coll]
-  (t2/update! :model/Collection :id (:id coll) {:archived true}))
+  (collections/update-collection! (:id coll) {:archived true}))
 
 (defn- archived? [coll]
   (t2/select-one-fn :archived :model/Collection :id (:id coll)))
@@ -753,7 +757,7 @@
                                   [dep-snippet    snippet-msg]]]
                 (testing (str "a Collection with a policy dependency in it: " (:name coll))
                   (testing "archiving is refused and rolled back"
-                    (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (archive-collection! coll)))
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (archive-collection! coll)))
                     (is (false? (archived? coll)))
                     (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
                     (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))

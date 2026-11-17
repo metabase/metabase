@@ -144,7 +144,7 @@
   (let [existing-document (api/check-404 (documents.db/document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
-    (api/update-check existing-document (select-keys body [:collection_id]))
+    (api/update-check existing-document (select-keys body [:collection_id :archived]))
     (m.document/update-document! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
@@ -189,10 +189,9 @@
                                                                 :collection_id new-collection-id))
                                                      @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
-                  (mi/with-archived-cause-given
-                    (documents.db/update-card! (:id new-card)
-                                               {:archived          (boolean (:archived card))
-                                                :archived_directly (boolean (:archived_directly card))})))
+                  (documents.db/update-card! (:id new-card)
+                                             {:archived          (boolean (:archived card))
+                                              :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
             (t2/hydrate cards-to-copy :can_read))))

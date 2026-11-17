@@ -756,14 +756,26 @@
       (t2/update! :model/Document :id [:in ids] changes)
       (t2/select :model/Document :id [:in ids]))))
 
-(mu/defn summary-document-ids-following
-  "The IDs of the Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a
-  restore of it archives or restores along with it."
+(defn- summary-document-conditions
+  "The conditions of the Summary Documents of an Exploration that an archive of it, when `archive?`, or a restore of it
+  archives or restores along with it."
+  [archive?]
+  (if archive?
+    [:archived false]
+    [:archived true :archived_directly false]))
+
+(mu/defn summary-documents-following
+  "The Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a restore
+  of it archives or restores along with it."
   [exploration-id :- ms/PositiveInt
    archive?       :- :boolean]
-  (if archive?
-    (t2/select-pks-vec :model/Document :exploration_id exploration-id :archived false)
-    (t2/select-pks-vec :model/Document :exploration_id exploration-id :archived true :archived_directly false)))
+  (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
+
+(mu/defn summary-document-ids-following
+  "The IDs of the Summary Documents of [[summary-documents-following]]."
+  [exploration-id :- ms/PositiveInt
+   archive?       :- :boolean]
+  (mapv :id (summary-documents-following exploration-id archive?)))
 
 (mu/defn documents-by-ids
   "The Documents with `document-ids`."
@@ -781,13 +793,13 @@
   "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly,
   returning them as updated."
   [exploration-id :- ms/PositiveInt]
-  (update-summary-documents! exploration-id [:archived false] {:archived true, :archived_directly false}))
+  (update-summary-documents! exploration-id (summary-document-conditions true) {:archived true}))
 
 (mu/defn unarchive-summary-documents!
   "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it, returning them
   as updated."
   [exploration-id :- ms/PositiveInt]
-  (update-summary-documents! exploration-id [:archived true :archived_directly false] {:archived false}))
+  (update-summary-documents! exploration-id (summary-document-conditions false) {:archived false}))
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 

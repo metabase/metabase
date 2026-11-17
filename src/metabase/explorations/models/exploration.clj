@@ -48,15 +48,12 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn- cascade-archived
-  "Writes the archive or restore `exploration`, an update with `changes`, takes to its Summary Documents, with the cause
-  that they follow it."
-  [exploration changes]
-  (when (contains? changes :archived)
-    (mi/with-archived-cause-given
-      (if (:archived exploration)
-        (explorations.db/archive-summary-documents! (:id exploration))
-        (explorations.db/unarchive-summary-documents! (:id exploration))))))
+(defmethod mi/after-archived-change! :model/Exploration
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (if (:archived changes)
+      (explorations.db/archive-summary-documents! id)
+      (explorations.db/unarchive-summary-documents! id))))
 
 (t2/define-before-insert :model/Exploration
   [{:keys [archived collection_id] :as exploration}]
@@ -68,9 +65,8 @@
   (let [changes (t2/changes exploration)]
     (when (contains? changes :collection_id)
       (collection/check-collection-not-archived archived collection_id))
-    (u/prog1 (cond-> exploration
-               (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration)))
-      (cascade-archived <> changes))))
+    (cond-> exploration
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
 
 (mi/define-update-in-transaction :model/Exploration)
 
@@ -102,6 +98,16 @@
 (defmethod mi/can-create? :model/Exploration
   [_model {collection-id :collection_id}]
   (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(defmethod mi/can-update? :model/Exploration
+  [exploration changes]
+  (boolean
+   (and (mi/can-write? exploration)
+        (or (not (mi/changes-archived? exploration changes))
+            (mi/with-update-check-cache
+              (mi/can-update-each? :model/Document
+                                   (explorations.db/summary-documents-following (:id exploration) (boolean (:archived changes)))
+                                   changes))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]

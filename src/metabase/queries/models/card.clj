@@ -488,7 +488,8 @@
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  "Checks that a change of the result metadata of a Card keeps it matching the Tables sandboxes are built out of it, in
+  Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
@@ -1180,6 +1181,13 @@
     (throw (ex-info (tru "An archived Dashboard or Document cannot hold a Card that is not archived.")
                     {:status-code 400}))))
 
+(defn- card-parent-archived?
+  "Whether the Collection, Dashboard or Document that `card` is in is archived."
+  [{:keys [collection_id dashboard_id document_id]}]
+  (boolean (or (collection/archived? collection_id)
+               (and dashboard_id (queries.db/dashboard-archived? dashboard_id))
+               (and document_id (queries.db/document-archived? document_id)))))
+
 (defn- delete-notifications-of-card
   "Deletes the alerts of the Card with `card-id`, which are found before any is deleted."
   [card-id]
@@ -1270,7 +1278,7 @@
     (when (:archived changes)
       (delete-notifications-of-card (:id card)))
     (-> card
-        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card)))
+        (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card))))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)

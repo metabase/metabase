@@ -83,15 +83,18 @@
   (collection/check-allowed-content :model/Document collection_id)
   (collection/check-collection-not-archived archived collection_id))
 
-(defn- cascade-archived
-  "Writes the archive or restore `document`, an update with `changes`, takes to the Cards in it, with the cause that
-  they follow it."
-  [document changes]
-  (when (contains? changes :archived)
-    (mi/with-archived-cause-given
-      (if (:archived document)
-        (documents.db/archive-document-cards! (:id document))
-        (documents.db/restore-document-cards! (:id document))))))
+(defn- document-parent-archived?
+  "Whether the Collection that `document` is in, or the Exploration it summarizes, is archived."
+  [{:keys [collection_id exploration_id]}]
+  (boolean (or (collection/archived? collection_id)
+               (and exploration_id (documents.db/exploration-archived? exploration_id)))))
+
+(defmethod mi/after-archived-change! :model/Document
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (if (:archived changes)
+      (documents.db/archive-document-cards! id)
+      (documents.db/restore-document-cards! id))))
 
 (t2/define-before-insert :model/Document
   [document]
@@ -115,9 +118,8 @@
                       {:status-code 400})))
     (when (contains? changes :collection_id)
       (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))
-    (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
-               (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document)))
-      (cascade-archived <> changes))))
+    (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document #(document-parent-archived? document))))))
 
 (mi/define-update-in-transaction :model/Document)
 (t2/define-after-select :model/Document
@@ -241,10 +243,22 @@
   [_model {collection-id :collection_id}]
   (collection-writable? collection-id))
 
+(defn- archive-followers-updatable?
+  "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
+  [document changes]
+  (or (not (mi/changes-archived? document changes))
+      (mi/with-update-check-cache
+        (mi/can-update-each? :model/Card
+                             (if (:archived changes)
+                               (documents.db/cards-archived-with-document (:id document))
+                               (documents.db/cards-restored-with-document (:id document)))
+                             changes))))
+
 (defmethod mi/can-update? :model/Document
   [document changes]
   (boolean
    (and (mi/can-write? document)
+        (archive-followers-updatable? document changes)
         (or (not (collection-move? document changes))
             (and (collection-writable? (:collection_id document))
                  (collection-writable? (:collection_id changes))))

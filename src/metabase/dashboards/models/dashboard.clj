@@ -89,15 +89,12 @@
     (collection/check-collection-namespace :model/Dashboard collection_id)
     (collection/check-collection-not-archived archived collection_id)))
 
-(defn- cascade-archived
-  "Writes the archive or restore `dashboard`, an update with `changes`, takes to the Cards internal to it, with the cause
-  that they follow it."
-  [dashboard changes]
-  (when (contains? changes :archived)
-    (mi/with-archived-cause-given
-      (if (:archived dashboard)
-        (dashboards.db/archive-dashboard-questions! (:id dashboard))
-        (dashboards.db/unarchive-dashboard-questions! (:id dashboard))))))
+(defmethod mi/after-archived-change! :model/Dashboard
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (if (:archived changes)
+      (dashboards.db/archive-dashboard-questions! id)
+      (dashboards.db/unarchive-dashboard-questions! id))))
 
 (defn- check-name
   "Throws a 400 unless `dashboard` has a name."
@@ -139,7 +136,8 @@
 (t2/define-before-update :model/Dashboard
   [dashboard]
   (let [changes             (t2/changes dashboard)
-        archived-directly   (when (contains? changes :archived) (mi/archived-directly dashboard))
+        archived-directly   (when (contains? changes :archived)
+                              (mi/archived-directly dashboard #(collection/archived? (:collection_id dashboard))))
         dashboard           (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes             (lib/normalize ::dashboards.schema/dashboard changes)]
     (when (contains? changes :collection_id)
@@ -156,7 +154,6 @@
                  (cond-> (contains? changes :archived) (assoc :archived_directly archived-directly))
                  maybe-populate-initially-published-at
                  public-sharing/add-public-uuid-prefix-if-changed)
-      (cascade-archived <> changes)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))))
@@ -281,11 +278,24 @@
        (or (not (creates-shared-dashboard? dashboard))
            (boolean (mi/superuser?)))))
 
+(defn- archive-followers-updatable?
+  "Whether the current user may apply `changes` to the Cards internal to `dashboard` that archiving or restoring it
+  takes along."
+  [dashboard changes]
+  (or (not (mi/changes-archived? dashboard changes))
+      (mi/with-update-check-cache
+        (mi/can-update-each? :model/Card
+                             (if (:archived changes)
+                               (dashboards.db/questions-archived-with-dashboard (:id dashboard))
+                               (dashboards.db/questions-restored-with-dashboard (:id dashboard)))
+                             changes))))
+
 (defmethod mi/can-update? :model/Dashboard
   [dashboard changes]
   (boolean
    (and (or (changes-only-public-link? dashboard changes)
             (mi/can-write? dashboard))
+        (archive-followers-updatable? dashboard changes)
         (can-change-collection? dashboard changes)
         (can-change-embedding? dashboard changes)
         (can-change-public-link? dashboard changes))))
@@ -349,6 +359,13 @@
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- set-questions-archived!
+  "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
+  [card-ids archived?]
+  (mi/with-update-check-cache
+    (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived card-ids archived?) {:archived archived?})))
+  (dashboards.db/set-cards-archived! card-ids archived?))
+
 (defn archive-or-unarchive-internal-dashboard-questions!
   "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
   dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
@@ -365,9 +382,9 @@
         ;; DQs that ARE used get unarchived
         internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
     (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (dashboards.db/set-cards-archived! ids true))
+      (set-questions-archived! (vec ids) true))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (dashboards.db/set-cards-archived! ids false))))
+      (set-questions-archived! (vec ids) false))))
 
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."

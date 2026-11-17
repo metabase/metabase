@@ -10,7 +10,6 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -49,11 +48,10 @@
   (when (and (contains? columns :icon) (not (mr/validate timeline-event/Icon (:icon columns))))
     (throw (ex-info (tru "Invalid Timeline icon.") {:status-code 400}))))
 
-(defn- cascade-archived
-  "Writes the archive or restore `timeline`, an update with `changes`, takes to its events, which follow it."
-  [timeline changes]
-  (when (contains? changes :archived)
-    (timeline.db/set-timeline-events-archived! (:id timeline) (boolean (:archived timeline)))))
+(defmethod mi/after-archived-change! :model/Timeline
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (timeline.db/set-timeline-events-archived! id (boolean (:archived changes)))))
 
 (t2/define-before-insert :model/Timeline
   [row]
@@ -70,9 +68,8 @@
     (when (contains? changes :collection_id)
       (collection/check-collection-not-archived (:archived row) (:collection_id row)))
     (check-columns changes)
-    (u/prog1 (cond-> row
-               (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row)))
-      (cascade-archived <> changes))))
+    (cond-> row
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
 
 (mi/define-update-in-transaction :model/Timeline)
 
