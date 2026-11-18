@@ -894,13 +894,12 @@
       (let [mp            (mt/metadata-provider)
             reviews-count (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews))) (lib/count))
             orders-count  (count-metric-query (orders-query))]
-        (mt/with-temp [:model/Measure {raw-measure :id} {:name "reviews count" :table_id (mt/id :reviews)
+        (mt/with-temp [:model/Measure {raw-measure :id} {:name "reviews count"
                                                          :definition reviews-count}
-                       :model/Measure {orders-measure :id} {:name "orders count" :table_id (mt/id :orders)
+                       :model/Measure {orders-measure :id} {:name "orders count"
                                                             :definition orders-count}
                        :model/Segment {raw-segment :id}
                        {:name       "rated"
-                        :table_id   (mt/id :reviews)
                         :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                 (lib/> (lib.metadata/field mp (mt/id :reviews :rating)) 3))}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1366,9 +1365,9 @@
   (testing "a measure in the trash is never curated"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [orders-count (lib/aggregate (orders-query) (lib/count))]
-        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count"
                                                   :definition orders-count}
-                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                       :model/Measure {trashed :id} {:name "trashed orders count"
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1380,9 +1379,9 @@
   (testing "a query using a measure in the trash is refused, as a read of that measure is"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [orders-count (lib/aggregate (orders-query) (lib/count))]
-        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count"
                                                   :definition orders-count}
-                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                       :model/Measure {trashed :id} {:name "trashed orders count"
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}
                        :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
@@ -1712,11 +1711,9 @@
             orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))
             price  (first (filter #(= (:id %) (mt/id :products :price)) (lib/visible-columns orders)))]
         (mt/with-temp [:model/Measure {raw-measure :id} {:name       "reviews count"
-                                                         :table_id   (mt/id :reviews)
                                                          :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                                                     (lib/count))}
                        :model/Measure {hop-measure :id} {:name       "orders product price"
-                                                         :table_id   (mt/id :orders)
                                                          :definition (lib/aggregate orders (lib/sum price))}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1730,7 +1727,7 @@
   "The viewing context of an ad-hoc query on the card `card-id`, rendered for `metabot` under `profile-id`."
   [metabot profile-id card-id]
   (let [mp    (mt/metadata-provider)
-        query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))]
+        query (lib/query mp (lib.metadata/card mp card-id))]
     (as-metabot metabot profile-id
                 #(user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))))
 

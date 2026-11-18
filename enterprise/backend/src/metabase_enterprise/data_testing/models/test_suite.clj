@@ -3,18 +3,15 @@
   `:model/TestSuiteRun`, a run of a suite. A member names its test by test type and entity id, with no foreign key: a
   suite can name a test this instance lacks."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase-enterprise.data-testing.suite :as data-testing.suite]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -25,7 +22,14 @@
 (doto :model/TestSuite
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/events))
+
+(defmethod events/spec :model/TestSuite
+  [_model]
+  {:create :event/test-suite-create
+   :update :event/test-suite-update
+   :delete :event/test-suite-delete})
 
 (methodical/defmethod t2/table-name :model/TestSuiteRun [_model] :test_suite_run)
 
@@ -53,23 +57,6 @@
   [suite _event-type]
   (select-keys suite [:name :description]))
 
-(t2/define-after-insert :model/TestSuite [suite]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/test-suite-create
-                           {:object  (t2/instance :model/TestSuite suite)
-                            :user-id (:creator_id suite)}))
-  suite)
-
-(t2/define-after-update :model/TestSuite [suite]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/test-suite-update {:object (t2/instance :model/TestSuite suite)}))
-  suite)
-
-(t2/define-before-delete :model/TestSuite [suite]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/test-suite-delete {:object suite}))
-  suite)
-
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (defmethod serialization/spec :model/TestSuite [_]
@@ -90,24 +77,6 @@
    :transform {:suite_id  serialization/import-only-transform
                :test_type {:export (fn [_store _rows values _opts] (mapv name values))
                            :import (fn [_store _entities values _opts] (mapv keyword values))}}})
-
-(defmethod serialization/before-load :model/TestSuite [_ items]
-  ;; A hand-edited file can name a test twice, or have a member that is missing test_type, test_entity_id, or both;
-  ;; refuse the file with a message that names the suite. Without the check, a test named twice loads as one member when
-  ;; the suite already holds that test and fails on the unique constraint otherwise, and a member missing either column
-  ;; fails on a not-null constraint.
-  (doseq [{{suite-name :name :keys [members]} :entity} items]
-    (when (some #(or (nil? (:test_type %)) (nil? (:test_entity_id %))) members)
-      (throw (ex-info (tru "Test suite {0} has a member that is missing test_type, test_entity_id, or both." (pr-str suite-name))
-                      {:status-code 400
-                       :suite       suite-name})))
-    (when-let [repeated (not-empty (data-testing.suite/repeated-tests members))]
-      (throw (ex-info (tru "Test suite {0} names the same test more than once: {1}"
-                           (pr-str suite-name)
-                           (str/join ", " repeated))
-                      {:status-code 400
-                       :suite       suite-name}))))
-  items)
 
 (defmethod serialization/storage-paths :model/TestSuite [_ entities _ctx]
   (mapv (fn [suite]

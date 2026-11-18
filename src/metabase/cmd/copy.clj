@@ -174,6 +174,7 @@
       :model/ContentDiagnosticsFinding
       :model/TransformTest
       :model/CardTest
+      :model/SegmentTest
       :model/DataTestRun
       :model/TestSuite
       :model/TestSuiteMember

@@ -14,6 +14,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -47,6 +48,7 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
@@ -265,7 +267,9 @@
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-2
                                        :type        :metric}
-     :model/Segment  _                {:table_id table-id-2}
+     :model/Segment  _                {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                     (-> (lib/query mp (lib.metadata/table mp table-id-2))
+                                                         (lib/filter (lib/= 1 1))))}
      :model/Transform _                {:name   "Source DB transform"
                                         :source {:type  :query
                                                  :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
@@ -403,15 +407,9 @@
 
 (deftest create-db-provider-name-test
   (testing "POST /api/database"
-    (testing "can we set `provider_name` when creating a Database?"
-      (is (= {:provider_name "AWS RDS"}
-             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))
-    (testing "provider_name is optional and can be nil"
+    (testing "`provider_name` is derived from the engine and the host, not taken from the request"
       (is (= {:provider_name nil}
-             (select-keys (create-db-via-api! {}) [:provider_name]))))
-    (testing "can explicitly set provider_name to nil"
-      (is (= {:provider_name nil}
-             (select-keys (create-db-via-api! {:provider_name nil}) [:provider_name]))))))
+             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))))
 
 (deftest create-db-ignore-schedules-if-no-manual-sync-test
   (testing "POST /api/database"
@@ -678,13 +676,15 @@
       (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
 
 (deftest reject-sample-database-edit-test
-  (testing "PUT /api/database/:id rejects any edit to the sample database with a sample-specific message"
+  (testing "PUT /api/database/:id rejects any edit to the sample database"
     (mt/with-temp [:model/Database {db-id :id} {:engine    ::test-driver
                                                 :is_sample true
                                                 :name      "Sample Database"}]
-      (is (re-find #"sample database cannot be edited"
-                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                         {:name "New Name"})))
+      (is (= "The sample database cannot be edited."
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                   {:name "New Name"})))
+      (testing "a user who cannot write the database is refused first"
+        (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "New Name"}))
       (testing "the row is unchanged"
         (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id))))
       (testing "the guard is lifted when test endpoints are enabled (e2e tests edit the sample database)"
@@ -713,18 +713,10 @@
 
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
-    (testing "should be able to set and unset `provider_name`"
+    (testing "`provider_name` in the request is ignored, since it is derived from the engine and the host"
       (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-        (let [updates1 {:provider_name "AWS RDS"}
-              updates2 {:provider_name nil}
-              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
-              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
-          (updates1!)
-          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
-            (is (= "AWS RDS" (:provider_name curr-db))))
-          (updates2!)
-          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
-            (is (= nil (:provider_name curr-db)))))))))
+        (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) {:provider_name "AWS RDS"})
+        (is (nil? (t2/select-one-fn :provider_name :model/Database :id db-id)))))))
 
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
@@ -1808,6 +1800,19 @@
       (testing "values-2 still exists?"
         (is (= false
                (t2/exists? :model/FieldValues :id (u/the-id values-2))))))))
+
+(deftest discard-db-fieldvalues-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Database    {db-id :id}    {:engine "h2", :details (:details (mt/db))}
+                   :model/Table       {table-id :id} {:db_id db-id}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/field-values-delete topic)
+                                                (swap! deleted conj (:id (:previous-object event)))))]
+          (warehouses-rest.db/delete-field-values-for-database! db-id))
+        (is (contains? @deleted fv-id))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
   (testing "Do we get an audit log entry when we discard all the FieldValues for a DB?"
@@ -2919,10 +2924,11 @@
                        :model/Database {dest-id :id} {:engine             :h2
                                                       :details            {:host "localhost"}
                                                       :router_database_id router-id}]
-          (is (= "Cannot configure a write connection on a destination database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
-                                       {:write_data_details {:host                  "write-host"
-                                                             :write-data-connection true}}))))))
+          (with-redefs [driver/can-connect? (constantly true)]
+            (is (= "Cannot configure a write connection on a destination database."
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                         {:write_data_details {:host                  "write-host"
+                                                               :write-data-connection true}})))))))
     (testing "Cannot set write_data_details on a router database"
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
@@ -3031,21 +3037,19 @@
                                 {:admin_details {:host "admin-host"}}))))))
 
 (deftest update-database-preserves-overlay-details-test
-  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
+  (testing "PUT /api/database/:id without write_data_details/admin_details keys"
     (testing "preserves nullable fields instead of nil-ing them out"
       (mt/with-premium-features #{:writable-connection :workspaces}
         (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
                                                     :details            {:host "localhost"}
                                                     :write_data_details {:host "write-host"}
-                                                    :admin_details      {:host "admin-host"}
-                                                    :provider_name      "AWS RDS"}]
+                                                    :admin_details      {:host "admin-host"}}]
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:name "Renamed DB"})
             (is (=? {:name               "Renamed DB"
                      :write_data_details {:host "write-host"}
-                     :admin_details      {:host "admin-host"}
-                     :provider_name      "AWS RDS"}
+                     :admin_details      {:host "admin-host"}}
                     (t2/select-one :model/Database :id db-id)))))))))
 
 (deftest put-validates-admin-details-connection-test
@@ -3106,10 +3110,11 @@
                        :model/Database {dest-id :id}   {:engine             :h2
                                                         :details            {:host "localhost"}
                                                         :router_database_id router-id}]
-          (is (= "Cannot configure an admin connection on a destination database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
-                                       {:admin_details {:host             "admin-host"
-                                                        :admin-connection true}}))))))
+          (with-redefs [driver/can-connect? (constantly true)]
+            (is (= "Cannot configure an admin connection on a destination database."
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                         {:admin_details {:host             "admin-host"
+                                                          :admin-connection true}})))))))
     (testing "Cannot set admin_details on a router database"
       (mt/with-premium-features #{:workspaces}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
@@ -3172,8 +3177,7 @@
         orders-name (t2/select-one-fn :name :model/Table :id (mt/id :orders))
         people-name (t2/select-one-fn :name :model/Table :id (mt/id :people))]
     (testing "GET /api/database/:id/schema/:schema?include_measures=true hydrates :measures per table"
-      (mt/with-temp [:model/Measure _ {:table_id   (mt/id :orders)
-                                       :name       "Some measure"
+      (mt/with-temp [:model/Measure _ {:name       "Some measure"
                                        :creator_id (mt/user->id :crowberto)
                                        :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                        (lib/aggregate (lib/count)))}]
@@ -3193,7 +3197,9 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {t :id}     {:db_id db-id}
                    :model/Card     {c :id}     {:database_id db-id :table_id t}
-                   :model/Segment  {s :id}     {:table_id t}]
+                   :model/Segment  {s :id}     {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                              (-> (lib/query mp (lib.metadata/table mp t))
+                                                                  (lib/filter (lib/= 1 1))))}]
       (mt/user-http-request :crowberto :delete 204 (format "database/%d" db-id))
       (is (not (t2/exists? :model/Database :id db-id)))
       (is (not (t2/exists? :model/Card :id c)))
@@ -3208,3 +3214,9 @@
       (mt/with-model-cleanup [:model/Database]
         (is (=? {:is_sample true}
                 (mt/user-http-request :crowberto :post 200 "database/sample_database")))))))
+
+(deftest sync-schema-request-runs-for-database-test
+  (let [database-ids (atom [])]
+    (mt/with-dynamic-fn-redefs [sync/schedule-database-sync! #(swap! database-ids conj %)]
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)))
+      (is (= [(mt/id)] @database-ids)))))

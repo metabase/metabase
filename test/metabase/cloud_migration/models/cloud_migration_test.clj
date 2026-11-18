@@ -260,6 +260,7 @@
            :model/MetabotGroupLimit
            :model/MetabotInstanceLimit
            :model/Sandbox
+           :model/SegmentTest
            :model/TableRemapping
            :model/Tenant
            :model/TestSuite

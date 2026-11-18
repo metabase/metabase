@@ -16,12 +16,10 @@
       (or (some->> (:setting/disabled-reasons (ex-data e)) (map :key))
           (throw e)))))
 
-;; validate-settable-for-db! only validates and throws despite the bang; nothing is mutated
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- can-configure-data-editing-for-db? [db]
   (try
     (let [driver-support? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
-      (setting/validate-settable-for-db! :database-enable-table-editing db driver-support?))
+      (setting/validate-settable-for-db :database-enable-table-editing db driver-support?))
     true
     (catch Exception _
       false)))

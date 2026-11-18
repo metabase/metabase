@@ -61,13 +61,20 @@
           (testing "declares every serialized key in its schema"
             (is (empty? (remove (schema-keys (:schema spec)) serialized)))))))))
 
+(deftest schema-keys-match-external-keys-test
+  (testing "the schema of each spec declares exactly the keys an import reads from its entities"
+    (doseq [[model-name model spec] (model-specs)]
+      (testing model-name
+        (is (= (serialization.entity/external-keys model)
+               (schema-keys (:schema spec))))))))
+
 (deftest validate-export-test
   (let [spec {:schema [:map {:closed true} [:name :string]]}]
     (mt/with-dynamic-fn-redefs [serialization.spec/spec-of (fn [_] spec)]
       (testing "export matching its spec's schema passes"
         (is (nil? (serialization.entity/validate-export :model/Model {:name "x"}))))
       (testing "export with key its spec's schema does not declare throws"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid export of :model/Model"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Model"
                               (serialization.entity/validate-export :model/Model {:name "x" :id 1})))))
     (mt/with-dynamic-fn-redefs [serialization.spec/spec-of (fn [_] {})]
       (testing "spec without schema throws"

@@ -26,6 +26,43 @@
   ;; advanced-permissions: the Data Analyst role only opens Data Studio while the plan includes it
   #{:advanced-permissions :transforms-basic :transforms-testing})
 
+(defn refusal
+  "The `:error-type` and message of the refusal that `thunk` throws, with the entries of its ex-data under
+  `data-keys`, or nil when `thunk` does not throw."
+  [thunk & data-keys]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (merge {:error-type (:error-type (ex-data e))
+              :message    (ex-message e)}
+             (select-keys (ex-data e) data-keys)))))
+
+(defn people-rows-input
+  "A rows input standing in for `PUBLIC.PEOPLE`, declaring `column-names` as text, with no rows."
+  [& column-names]
+  {:table   {:schema "PUBLIC" :name "PEOPLE"}
+   :format  :rows
+   :columns (mapv (fn [column-name] {:name column-name :cast_type "VARCHAR"}) column-names)
+   :rows    []})
+
+(defn from-google-segment
+  "Segment attributes for a segment on the people table: the people whose source is Google."
+  []
+  (let [mp (mt/metadata-provider)]
+    {:name       "From Google"
+     :table_id   (mt/id :people)
+     :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                             (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
+
+(defn segment-on
+  "Segment attributes for a segment named `segment-name` on the table `table-id`, selecting every row."
+  [table-id segment-name]
+  (let [mp (mt/metadata-provider)]
+    {:name       segment-name
+     :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                             (lib/= 1 1))}))
+
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."
   [features & body]

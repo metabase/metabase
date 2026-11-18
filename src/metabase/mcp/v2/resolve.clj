@@ -11,8 +11,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
-   [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
+   [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
 
@@ -168,7 +167,7 @@
   (when (seq ids)
     (into {}
           (map (juxt :id :name))
-          (filterv mi/can-read? (t2/hydrate (mcp.db/collections-for-read-check ids) :can_read)))))
+          (mi/readable (mcp.db/collections-for-read-check ids)))))
 
 (defn collection-path
   "The display path of the collection with `collection-id` — ancestor names joined with `/`, ending

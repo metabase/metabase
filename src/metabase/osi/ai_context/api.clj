@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.osi.db :as osi.db]
-   [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.osi.schema :as osi.schema]
    [metabase.request.core :as request]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
@@ -32,7 +31,7 @@
 
     - a string is length-capped as the `:instructions` it becomes, and
     - validation (and every read) only ever sees the object form."
-  (mu/with AiContext {:decode/api osi-ai-context/->ai-context}))
+  (mu/with AiContext {:decode/api osi.schema/normalize-ai-context}))
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's

@@ -50,6 +50,8 @@
                   driver driver/*driver*
                   query  (cond-> query
                            (not (driver.u/supports? driver :mbql-5-native-query-execution (lib.metadata/database query)))
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
                            lib/->legacy-MBQL)]
               ;; ok, now execute the query.
               (log/debug "Executing write query")

@@ -642,6 +642,11 @@
                  (mt/user-http-request :lucky :post 403
                                        (str "metabot/conversations/" convo-id "/fork")
                                        {:message_id a1}))))
+        (testing "an admin who did not originate it cannot fork"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :post 403
+                                       (str "metabot/conversations/" convo-id "/fork")
+                                       {:message_id a1}))))
         (testing "a nonexistent conversation 404s"
           (mt/user-http-request :rasta :post 404
                                 (str "metabot/conversations/" (random-uuid) "/fork")

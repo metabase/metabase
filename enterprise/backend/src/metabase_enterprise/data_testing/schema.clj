@@ -207,9 +207,21 @@
   "What a client sends to update a card test. Omitted fields are left unchanged."
   (test-update :card_id ::lib.schema.id/card))
 
+(mr/def ::segment-test.create
+  "What a client sends to create a segment test."
+  (test-create :segment_id ::lib.schema.id/segment))
+
+(mr/def ::segment-test
+  "A saved segment test."
+  (saved-test :segment_id ::lib.schema.id/segment :segment :metabase.segments.schema/segment))
+
+(mr/def ::segment-test.update
+  "What a client sends to update a segment test. Omitted fields are left unchanged."
+  (test-update :segment_id ::lib.schema.id/segment))
+
 (mr/def ::saved-test
   "A saved test of any subject type."
-  [:or ::transform-test ::card-test])
+  [:or ::transform-test ::card-test ::segment-test])
 
 (mr/def ::run-status
   "The persisted lifecycle state of a test run."
@@ -219,7 +231,7 @@
 (mr/def ::test-type
   "The kind of test a run ran. It selects the table that `test_id` points into."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
-   :transform :card])
+   :transform :card :segment])
 
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
@@ -277,6 +289,13 @@
   "A card test as the read endpoints return it, with its newest run."
   [:merge
    ::card-test
+   [:map {:closed true}
+    [:last_run [:maybe ::data-test-run]]]])
+
+(mr/def ::segment-test.response
+  "A segment test as the read endpoints return it, with its newest run."
+  [:merge
+   ::segment-test
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
@@ -493,16 +512,35 @@
    [:position       :int]
    [:serdes/meta    {:optional true} ::models.schema/external-meta]])
 
+(defn repeated-tests
+  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". A member is a map with a
+  `:test_type`, a keyword or a string, and a `:test_entity_id`; either may be missing, which other checks refuse."
+  [members]
+  (into []
+        (keep (fn [[[test-type eid] n]]
+                (when (> n 1)
+                  (str test-type " test " eid))))
+        (frequencies (map (juxt #(some-> % :test_type name) :test_entity_id) members))))
+
 (mr/def ::external-test-suite
-  "A TestSuite as serialization writes it, with its members nested in order."
+  "A TestSuite as serialization writes it, with its members nested in order. A test can be a member at most once."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys ::test-suite [:entity_id :name :creator_id]]
     [:map {:closed true}
      [:description {:optional true} [:maybe :string]]
-     [:members     {:optional true} [:maybe [:sequential [:ref ::external-test-suite-member]]]]
+     [:members     {:optional true} [:maybe [:and
+                                             [:sequential [:ref ::external-test-suite-member]]
+                                             [:fn {:error/fn (fn [{members :value} _options]
+                                                               (str "names the same test more than once: "
+                                                                    (str/join ", " (repeated-tests members))))}
+                                              #(empty? (repeated-tests %))]]]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."
   (external-test ::card-test :card_id))
+
+(mr/def ::external-segment-test
+  "A SegmentTest as serialization writes it, with references in place of ids."
+  (external-test ::segment-test :segment_id))

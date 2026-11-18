@@ -136,7 +136,7 @@
            %)
         (remote-sync.tu/files! url "main")))
 
-(deftest pull-deleting-a-member-test-keeps-the-member-test
+(deftest pull-deleting-a-member-test-removes-the-member-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-model-cleanup [:model/TestSuite :model/CardTest :model/Card :model/Collection]
@@ -153,12 +153,13 @@
             (let [{v2 :version :as pulled} (remote-sync.tu/pull! url v1)]
               (is (=? {:status :success} pulled))
               (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the pull deleted the card test")
-              (testing "a pull that deletes a test the suite file still names keeps the member, as git has it"
-                (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))
-              (testing "and leaves no local change"
-                (is (empty? (map (juxt :status :key) (remote-sync.tu/local-changes! url v2))))))))))))
+              (testing "a pull that deletes a test removes it from its suites, like any delete of a test"
+                (is (= [] (data-testing.test-util/member-refs (:id suite)))))
+              (testing "so the suite is a local change, which the next push writes"
+                (is (= #{["update" :model/TestSuite]}
+                       (into #{} (map (juxt :status (comp first :key))) (remote-sync.tu/local-changes! url v2))))))))))))
 
-(deftest read-only-test-delete-keeps-synced-suite-members-test
+(deftest read-only-test-delete-removes-the-member-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Collection unsynced {:name "Unsynced" :location "/"}
                    :model/Card       card     {:name "Unsynced card" :collection_id (:id unsynced)}
@@ -169,8 +170,8 @@
         (mt/user-http-request :crowberto :put 403 (str "ee/test-suite/" (:id suite)) {:members []})
         (mt/user-http-request :crowberto :delete 204 (str "ee/card-test/" (:id t)))
         (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the delete happened")
-        (testing "on a read-only instance, deleting a test of an unsynced card leaves the suite's members unchanged"
-          (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))
+        (testing "on a read-only instance, deleting a test of an unsynced card still removes it from its suites"
+          (is (= [] (data-testing.test-util/member-refs (:id suite)))))))))
 
 (defn- pull-messages!
   "A pair `[result messages]`: the result of a pull of `url` from `version`, or what the pull threw; and the messages of
@@ -185,13 +186,13 @@
   (doseq [[case-name edit expected]
           [["a file that names one test twice"
             (fn [yaml member] (str/replace yaml member (str member (str/replace member "position: 0" "position: 1"))))
-            ["\"Nightly\" names the same test more than once" "card test EID"]]
+            ["TestSuite \"SUITE\"" "names the same test more than once: card test EID"]]
            ["a file whose member has no test_type"
             (fn [yaml _member] (str/replace yaml "  test_type: card\n" ""))
-            ["\"Nightly\" has a member that is missing test_type, test_entity_id, or both"]]
+            ["TestSuite \"SUITE\"" "{:members [{:test_type \"missing required key\"}]}"]]
            ["a file whose member has no test_entity_id"
             (fn [yaml _member] (str/replace yaml #"  test_entity_id: \S+\n" ""))
-            ["\"Nightly\" has a member that is missing test_type, test_entity_id, or both"]]]]
+            ["TestSuite \"SUITE\"" "{:members [{:test_entity_id \"missing required key\"}]}"]]]]
     (testing case-name
       (remote-sync.tu/with-repository [url]
         (remote-sync.tu/with-remote-sync [url :read-write]
@@ -208,10 +209,12 @@
               (is (not= yaml-text edited) "premise: the edit changed the file")
               (remote-sync.tu/commit! url "main" {path edited})
               (let [[result messages] (pull-messages! url v1)]
-                (testing "fails the pull with a message naming the suite"
+                (testing "fails the pull with a message naming the suite and what is wrong"
                   (is (not= :success (:status result)))
-                  ;; EID stands for the entity id of `t`, which the message must name
+                  ;; SUITE and EID stand for the entity ids of `suite` and `t`, which the message must name
                   (doseq [text expected]
-                    (is (str/includes? messages (str/replace text "EID" (:entity_id t))))))
+                    (is (str/includes? messages (-> text
+                                                    (str/replace "SUITE" (:entity_id suite))
+                                                    (str/replace "EID" (:entity_id t)))))))
                 (testing "and leaves the suite as it was"
                   (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))))

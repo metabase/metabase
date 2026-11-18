@@ -24,6 +24,7 @@
    [metabase-enterprise.data-testing.api]
    [metabase-enterprise.data-testing.card-api]
    [metabase-enterprise.data-testing.run-api]
+   [metabase-enterprise.data-testing.segment-api]
    [metabase-enterprise.data-testing.suite-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
@@ -164,6 +165,7 @@
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/segment-test"                 (premium-handler metabase-enterprise.data-testing.segment-api/routes :transforms-testing)
    "/semantic-search"              (premium-handler metabase-enterprise.search.semantic.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)

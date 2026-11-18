@@ -1,8 +1,7 @@
 (ns metabase-enterprise.data-testing.suite
   "Test suites as the current user sees them: [[member-ref]] is the `[test-type entity-id]` a member names;
   [[saved-tests-by]] finds the saved tests that members name; [[with-members]] resolves each member to the saved test
-  it names; [[member-rows]] turns the members a client sends into the rows a suite stores; [[repeated-tests]] finds a
-  test named twice; and [[runs-for-reader]] hides from the run history what the reader may not see."
+  it names; [[member-rows]] turns the members a client sends into the rows a suite stores; and [[runs-for-reader]] hides from the run history what the reader may not see."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-testing.db :as data-testing.db]
@@ -72,16 +71,6 @@
   (throw (ex-info (tru "There is no {0} test {1} that you can read." (name test-type) (pr-str value))
                   {:status-code 400})))
 
-(defn repeated-tests
-  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". A member is a map with a
-  `:test_type`, a keyword or a string, and a `:test_entity_id`."
-  [members]
-  (into []
-        (keep (fn [[[test-type eid] n]]
-                (when (> n 1)
-                  (str test-type " test " eid))))
-        (frequencies (map (juxt (comp name :test_type) :test_entity_id) members))))
-
 (mu/defn member-rows :- [:sequential [:map {:closed true}
                                       [:test_type      ::data-testing.schema/test-type]
                                       [:test_entity_id :string]]]
@@ -104,7 +93,7 @@
                              {:test_type test_type :test_entity_id test_entity_id}
                              (refuse-member test_type test_entity_id))))
                        requested)]
-    (when-let [repeated (not-empty (repeated-tests rows))]
+    (when-let [repeated (not-empty (data-testing.schema/repeated-tests rows))]
       (throw (ex-info (tru "A test can be in a suite at most once. Named more than once: {0}" (str/join ", " repeated))
                       {:status-code 400})))
     rows))

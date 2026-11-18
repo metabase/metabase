@@ -1,9 +1,7 @@
 (ns metabase.session.events.revoke-on-deactivation-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.events.core :as events]
    [metabase.session.core :as session]
-   [metabase.session.events.revoke-on-deactivation] ; for side effects: registers the event subscriber
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -21,14 +19,14 @@
 (defn- ending [session-id]
   (select-keys (t2/select-one :model/Session :id session-id) [:end_reason :ended_by_user_id :key_hashed]))
 
-(deftest revoke-on-event-test
-  (testing ":event/user-credentials-revoked ends the user's sessions, leaving other users' untouched"
-    (mt/with-temp [:model/User {victim :id}    {}
+(deftest after-user-deactivated-test
+  (testing "deactivating a user ends the user's sessions, leaving other users' untouched"
+    (mt/with-temp [:model/User {victim :id}    {:is_active true}
                    :model/User {bystander :id} {}]
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (events/publish-event! :event/user-credentials-revoked {:user-id victim}))
+          (t2/update! :model/User :id victim {:is_active false}))
         (is (= {:end_reason "user-deactivated", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
                (ending victim-session))
             "victim's session is ended, attributed to the deactivating admin, and its key destroyed")

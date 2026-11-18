@@ -4,8 +4,15 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(mr/def ::python-library.request-path
+  (mu/with-api-error-message
+   [:enum "common" "common.py"]
+   (deferred-tru "Invalid library path. Only ''common'' is currently supported.")))
 
 (mr/def ::python-library
   "A PythonLibrary as selected from the app DB: every column of `:python_library`."

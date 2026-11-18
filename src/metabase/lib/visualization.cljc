@@ -66,7 +66,7 @@
 (mu/defn ref->column-settings-key :- :string
   "The `:column_settings` key of the column `a-ref` refers to, wrapping the legacy reference that settings key it by."
   [a-ref :- ::lib.schema.ref/ref]
-  (encode-json ["ref" (lib.convert/->legacy-MBQL a-ref)]))
+  (encode-json ["ref" (lib.convert/->legacy-MBQL-ref a-ref)]))
 
 (defn- column-settings-where
   "The settings of the first column of `viz-settings` whose parsed key satisfies `pred`."

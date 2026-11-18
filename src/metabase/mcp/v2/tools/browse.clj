@@ -154,7 +154,7 @@
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
   (let [rows (mcp.db/browsable-databases database-detailed-keys
                                          (schema.table/browsable-databases-honeysql-filter))
-        dbs  (filterv mi/can-read? (t2/hydrate rows :can_read))]
+        dbs  (mi/readable rows)]
     (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
                                                                  "data needs query-builder or table-metadata "
                                                                  "permission on at least one database.")])}
@@ -230,8 +230,7 @@
   [{:keys [database_id] :as args}]
   (check-database! database_id)
   (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
-                    (#(t2/hydrate % :can_read))
-                    (filterv mi/can-read?))]
+                    mi/readable)]
     (paged-list-content args models {} #(project-rows :question args %))))
 
 ;;; ------------------------------------------------- get_fields ---------------------------------------------------
@@ -301,8 +300,7 @@
         related          (when (seq related-ids)
                            (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter (comp browsable-db-ids :db_id))
-                                (#(t2/hydrate % :can_read))
-                                (filter mi/can-read?)
+                                mi/readable
                                 (u/index-by :id)))
         expand-ids       (into #{}
                                (mapcat (fn [[_ target-ids]]
