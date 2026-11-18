@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { isColumnNameColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
 
 import type { SummaryPivotChange } from "./types";
@@ -39,6 +40,19 @@ function getColumnSplitToSync(
     columns: columnSplit.columns.map(getName),
     values: columnSplit.values.map(getName),
   };
+}
+
+/** The Rows of the pivot table that the question shows, when it shows one. */
+export function getPivotRowKeys(question: Question): string[] | undefined {
+  const columnSplit = question.settings()["pivot_table.column_split"];
+  if (
+    question.display() !== "pivot" ||
+    !columnSplit ||
+    !isColumnNameColumnSplitSetting(columnSplit)
+  ) {
+    return undefined;
+  }
+  return columnSplit.rows;
 }
 
 export function getSummaryQuestion(

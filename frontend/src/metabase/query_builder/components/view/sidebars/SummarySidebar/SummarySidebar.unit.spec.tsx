@@ -146,6 +146,7 @@ const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
 
 type SetupOpts = {
   query?: Lib.Query;
+  pivotRowKeys?: string[];
 };
 
 function setup({
@@ -153,20 +154,34 @@ function setup({
     SAMPLE_PROVIDER,
     DEFAULT_TEST_QUERY,
   ),
+  pivotRowKeys: initialPivotRowKeys,
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
 
   function Wrapper() {
     const [query, setQuery] = useState(initialQuery);
+    const [pivotRowKeys, setPivotRowKeys] = useState(initialPivotRowKeys);
     return (
-      <SummarySidebar
-        query={query}
-        stageIndex={STAGE_INDEX}
-        onQueryChange={(nextQuery, pivotChange) => {
-          setQuery(nextQuery);
-          onQueryChange(nextQuery, pivotChange);
-        }}
-      />
+      <>
+        <SummarySidebar
+          query={query}
+          stageIndex={STAGE_INDEX}
+          pivotRowKeys={pivotRowKeys}
+          onQueryChange={(nextQuery, pivotChange) => {
+            setQuery(nextQuery);
+            if (pivotChange?.type === "show") {
+              setPivotRowKeys(pivotChange.columnSplit.rows);
+            }
+            if (pivotChange?.type === "hide") {
+              setPivotRowKeys(undefined);
+            }
+            onQueryChange(nextQuery, pivotChange);
+          }}
+        />
+        <button onClick={() => setPivotRowKeys(undefined)}>
+          Use another visualization
+        </button>
+      </>
     );
   }
 
@@ -821,6 +836,88 @@ describe("SummarySidebar", () => {
       expect(getChipLabels("columns")).toEqual(["Product → Category"]);
       expect(onQueryChange).toHaveBeenLastCalledWith(queryWithRows, {
         type: "hide",
+      });
+    });
+
+    describe("pivot table question", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              { type: "column", name: "CREATED_AT", unit: "month" },
+              {
+                type: "column",
+                sourceFieldId: ORDERS.PRODUCT_ID,
+                name: "CATEGORY",
+              },
+              {
+                type: "column",
+                sourceFieldId: ORDERS.PRODUCT_ID,
+                name: "VENDOR",
+              },
+            ],
+          },
+        ],
+      });
+
+      it("opens in pivot mode with the Rows of the question, in their order", () => {
+        const { onQueryChange } = setup({
+          query,
+          pivotRowKeys: ["VENDOR", "CREATED_AT"],
+        });
+
+        expect(getWell("values").getByText("Values")).toBeInTheDocument();
+        expect(getChipLabels("rows")).toEqual([
+          "Product → Vendor",
+          "Created At: Month",
+        ]);
+        expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+        expect(onQueryChange).not.toHaveBeenCalled();
+      });
+
+      it("opens outside pivot mode when no Rows of the question is a grouping", () => {
+        setup({ query, pivotRowKeys: ["TOTAL"] });
+
+        expect(
+          screen.queryByTestId("summary-well-rows"),
+        ).not.toBeInTheDocument();
+        expect(getChipLabels("columns")).toHaveLength(3);
+      });
+
+      it("keeps the other Rows when a Rows grouping is removed", async () => {
+        const { getLastPivotChange } = setup({
+          query,
+          pivotRowKeys: ["VENDOR", "CREATED_AT"],
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Remove Product → Vendor" }),
+        );
+
+        expect(getLastPivotChange()).toEqual({
+          type: "show",
+          columnSplit: {
+            rows: ["CREATED_AT"],
+            columns: ["CATEGORY"],
+            values: ["count"],
+          },
+        });
+        expect(getChipLabels("rows")).toEqual(["Created At: Month"]);
+      });
+
+      it("leaves the pivot mode when the question stops showing a pivot table", async () => {
+        setup({ query, pivotRowKeys: ["VENDOR", "CREATED_AT"] });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Use another visualization" }),
+        );
+
+        expect(
+          screen.queryByTestId("summary-well-rows"),
+        ).not.toBeInTheDocument();
+        expect(getChipLabels("columns")).toHaveLength(3);
       });
     });
 

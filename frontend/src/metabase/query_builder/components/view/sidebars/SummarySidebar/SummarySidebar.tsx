@@ -79,6 +79,7 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 }
 
 type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
+  pivotRowKeys?: string[];
   onQueryChange: (
     nextQuery: Lib.Query,
     pivotChange?: SummaryPivotChange,
@@ -87,22 +88,29 @@ type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
 
 export function SummarySidebar({
   query,
+  pivotRowKeys,
   onQueryChange,
   stageIndex,
 }: SummarySidebarProps) {
   const dispatch = useDispatch();
   const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
   const [isPivotToggled, setIsPivotToggled] = useState(false);
-  const [rowKeys, setRowKeys] = useState<string[]>([]);
-  const isPivotMode = isPivotToggled || rowKeys.length > 0;
+  const [storedRowKeys, setStoredRowKeys] = useState<string[]>([]);
+  const rowKeys = pivotRowKeys ?? storedRowKeys;
   const { rowItems, columnItems } = useMemo(
     () => getRowAndColumnItems(query, stageIndex, rowKeys),
     [query, stageIndex, rowKeys],
   );
+  const isPivotMode = isPivotToggled || rowItems.length > 0;
   const pivotSplit = useMemo(
     () => getPivotSplit(query, stageIndex, rowKeys),
     [query, stageIndex, rowKeys],
   );
+  const storeRowKeys = (
+    nextRowKeys: string[],
+    pivotChange: SummaryPivotChange | undefined,
+  ) => setStoredRowKeys(pivotChange?.type === "show" ? [] : nextRowKeys);
+
   const handleQueryChange = (
     nextQuery: Lib.Query,
     options?: SummaryQueryChangeOptions,
@@ -127,21 +135,20 @@ export function SummarySidebar({
       rowKeys,
       addedWellId,
     });
-    setRowKeys(nextRowKeys);
-    onQueryChange(
-      result.query,
-      getPivotChange(
-        pivotSplit,
-        getPivotSplit(result.query, stageIndex, nextRowKeys),
-      ),
+    const pivotChange = getPivotChange(
+      pivotSplit,
+      getPivotSplit(result.query, stageIndex, nextRowKeys),
     );
+    storeRowKeys(nextRowKeys, pivotChange);
+    onQueryChange(result.query, pivotChange);
   };
 
   const handleRowKeysChange = (nextRowKeys: string[]) => {
-    setRowKeys(nextRowKeys);
     const nextPivotSplit = getPivotSplit(query, stageIndex, nextRowKeys);
+    const pivotChange = getPivotChange(pivotSplit, nextPivotSplit);
+    storeRowKeys(nextRowKeys, pivotChange);
     if (!_.isEqual(pivotSplit, nextPivotSplit)) {
-      onQueryChange(query, getPivotChange(pivotSplit, nextPivotSplit));
+      onQueryChange(query, pivotChange);
     }
   };
   const tc = useTranslateContent();

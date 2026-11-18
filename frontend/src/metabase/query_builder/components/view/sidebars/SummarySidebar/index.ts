@@ -1,2 +1,2 @@
 export { SummarySidebar } from "./SummarySidebar";
-export { getSummaryQuestion } from "./pivot-question";
+export { getPivotRowKeys, getSummaryQuestion } from "./pivot-question";
