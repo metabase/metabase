@@ -11,8 +11,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -235,9 +235,10 @@
 
 (defn- dashboard-metadata [dashboard]
   (letfn [(normalize-card [card]
-            (-> card
-                (m/update-existing :dataset_query lib-be/normalize-query)
-                (dissoc :id)))
+            (->> (-> card
+                     (m/update-existing :dataset_query lib-be/normalize-query)
+                     (dissoc :id))
+                 (lib/normalize ::queries.schema/card)))
           (normalize-series [series]
             (map normalize-card series))
           (normalize-dashcard [{:keys [card], :as dashcard}]
@@ -268,8 +269,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
-      (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
+    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table :can_read)]
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]
         {:linked-table-id table_id

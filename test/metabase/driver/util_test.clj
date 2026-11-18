@@ -1,5 +1,6 @@
 (ns metabase.driver.util-test
   (:require
+   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -1089,6 +1090,80 @@
       {:sub "s"}
       {:exp "nope"})))
 
+(deftest ^:parallel wif-ambient-token-http-gcp-happy-path-test
+  (testing "GCP returns the trimmed body of the metadata-server identity endpoint"
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body "  gcp-jwt-contents\n"})]
+      (is (= "gcp-jwt-contents" (driver.u/wif-ambient-token-http "GCP" "databricks"))))))
+
+(deftest ^:parallel wif-ambient-token-http-gcp-request-shape-test
+  (testing "GCP hits the metadata server with the audience query param and the Metadata-Flavor header"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [url opts]
+                                             (reset! captured {:url url :opts opts})
+                                             {:status 200 :body "jwt"})]
+        (driver.u/wif-ambient-token-http "GCP" "my/audience:x")
+        (let [{:keys [url opts]} @captured]
+          (is (str/starts-with? url (str "http://metadata.google.internal"
+                                         "/computeMetadata/v1/instance/service-accounts/default/identity?")))
+          (is (str/includes? url "audience=my%2Faudience%3Ax"))
+          (is (= "Google" (get-in opts [:headers "Metadata-Flavor"]))))))))
+
+(deftest ^:parallel wif-ambient-token-http-unsupported-provider-test
+  (testing "providers without an HTTP mode in Step 3 throw"
+    (are [provider] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Unsupported WIF provider"
+                     (driver.u/wif-ambient-token-http provider "aud"))
+      "AWS"
+      "AZURE"
+      nil
+      ""
+      "gcp"
+      "bogus")))
+
+(deftest ^:parallel wif-ambient-token-http-blank-audience-test
+  (testing "GCP requires a non-blank audience"
+    (are [audience] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"requires an audience"
+                     (driver.u/wif-ambient-token-http "GCP" audience))
+      nil
+      "")))
+
+(deftest ^:parallel wif-ambient-token-http-non-200-test
+  (testing "a non-200 metadata response surfaces as an informative exception, without retrying"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! calls inc)
+                                             {:status 403 :body "forbidden"})]
+        (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                           #"metadata server"
+                                           (driver.u/wif-ambient-token-http "GCP" "aud")))]
+          (is (= {:provider "GCP" :status 403}
+                 (-> thrown ex-data (select-keys [:provider :status]))))
+          (is (= 1 @calls)))))))
+
+(deftest ^:parallel wif-ambient-token-http-empty-body-test
+  (testing "a 200 with an empty body throws a diagnostic error instead of an NPE in str/trim"
+    (are [body] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"200 with no body"
+                 (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body body})]
+                   (driver.u/wif-ambient-token-http "GCP" "aud")))
+      nil
+      "")))
+
+(deftest ^:parallel wif-ambient-token-http-retries-once-on-exception-test
+  (testing "transient exceptions are retried once before giving up"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! calls inc)
+                                             (if (= 1 @calls)
+                                               (throw (java.net.SocketTimeoutException. "boom"))
+                                               {:status 200 :body "jwt-after-retry"}))]
+        (is (= "jwt-after-retry" (driver.u/wif-ambient-token-http "GCP" "aud")))
+        (is (= 2 @calls))))))
+
 ;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
 
 (deftest ^:parallel scrub-exceptions-test
@@ -1165,3 +1240,24 @@
   (testing "non-batch throwables pass through"
     (let [e (ex-info "boom" {})]
       (is (identical? e (driver.u/batch-exception e))))))
+
+(deftest ^:parallel random-workspace-password-character-classes-test
+  (let [char-sets @#'driver.u/workspace-password-char-sets
+        allowed   (set (apply str char-sets))]
+    (doseq [password (repeatedly 500 driver.u/random-workspace-password)]
+      (testing password
+        (is (<= 32 (count password) 63)
+            "length is 32 to 63")
+        (is (every? allowed password)
+            "every character comes from one of the sets")
+        (doseq [char-set char-sets]
+          (is (some (set char-set) password)
+              (str "contains a character from " char-set)))))))
+
+(deftest random-workspace-password-uses-secure-random-test
+  (testing "no draw goes through clojure.core's java.util.Random-backed fns"
+    (let [boom (fn [& _] (throw (ex-info "java.util.Random path used" {})))]
+      (mt/with-dynamic-fn-redefs [rand-int boom
+                                  rand-nth boom
+                                  shuffle  boom]
+        (is (string? (driver.u/random-workspace-password)))))))

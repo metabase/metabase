@@ -71,7 +71,7 @@
   [parts]
   (let [outputs (into {}
                       (comp (filter #(= :tool-output (:type %)))
-                            (map (juxt :id identity)))
+                            (u/index-by :id))
                       parts)]
     (->> parts
          (remove #(= :tool-output (:type %)))
@@ -121,8 +121,7 @@
   (->> parts
        (remove #(#{:usage :finish :error :reasoning} (:type %)))
        (filter streaming/persistable-data-part?)
-       internal-parts->storable
-       (schema.v2/check-message-data "metabot_message.data")))
+       internal-parts->storable))
 
 (defn extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -327,8 +326,7 @@
            (assoc :slack_thread_ts slack-thread-ts))))
       (metabot.db/insert-messages!
        (cond-> {:conversation_id conversation-id
-                :data            (schema.v2/check-message-data "metabot_message.data"
-                                                               [{:type "text" :text (:content user-message)}])
+                :data            [{:type "text" :text (:content user-message)}]
                 :data_version    schema.v2/current-data-version
                 :role            :user
                 :profile_id      profile-id
@@ -574,7 +572,7 @@
   [messages]
   (some (fn [turn-rows]
           (when-let [{:keys [rows]} (replayable-turn turn-rows)]
-            (when-let [user-row (first (filter user-row? rows))]
+            (when-let [user-row (u/seek user-row? rows)]
               (let [content (message-text user-row)]
                 (when-not (str/blank? content)
                   {:content content :profile-id (:profile_id user-row)})))))
@@ -583,7 +581,7 @@
 (defn- turn->llm-messages
   [turn-rows]
   (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
-    (let [user-row (first (filter user-row? rows))]
+    (let [user-row (u/seek user-row? rows)]
       (concat (when user-row [(user-row->llm-message user-row)])
               (assistant-row->llm-messages reply)))))
 

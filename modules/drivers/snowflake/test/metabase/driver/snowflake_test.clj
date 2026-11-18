@@ -627,14 +627,14 @@
           (spit tok-file token-a)
           (mt/with-temp [:model/Database db {:engine  :snowflake
                                              :details (wif-live-details-with-token {:wif-token-file-path tok-file})}]
-            (let [pool-cache @#'sql-jdbc.conn/pool-cache-key->connection-pool
+            (let [pool-cache #'sql-jdbc.conn/pool-cache-key->connection-pool
                   cache-key  [(:id db) :default]
                   query!     (fn []
                                (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
                                            ["SELECT CURRENT_USER() AS \"user\""]))]
               (testing "initial query works with token-a"
                 (is (= [{:user wif-user}] (query!))))
-              (let [initial-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
+              (let [initial-exp (get-in (pool-cache) [cache-key :password-expiry-timestamp])]
                 (is (integer? initial-exp)
                     ":password-expiry-timestamp propagated from resolve-wif-credentials to the pool spec")
                 (is (< (System/currentTimeMillis) initial-exp)
@@ -646,10 +646,10 @@
                     (is (not= token-a token-b) "second mint returns a distinct token")
                     (spit tok-file token-b)
                     ;; Backdate the cached expiry — this is what token expiry looks like to `pool-invalidation-reason`.
-                    (swap! pool-cache assoc-in [cache-key :password-expiry-timestamp] 1)
+                    (#'sql-jdbc.conn/swap-pools-state! assoc-in [:pools cache-key :password-expiry-timestamp] 1)
                     (is (= [{:user wif-user}] (query!))
                         "query succeeds after simulated expiry — pool must have been rebuilt with token-b")
-                    (let [new-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
+                    (let [new-exp (get-in (pool-cache) [cache-key :password-expiry-timestamp])]
                       (is (> new-exp initial-exp)
                           "new pool's :password-expiry-timestamp reflects the fresher token"))))))))))))
 

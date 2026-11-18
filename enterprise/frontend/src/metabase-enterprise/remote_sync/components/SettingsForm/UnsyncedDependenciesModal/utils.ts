@@ -1,33 +1,48 @@
-import type {
-  CollectionType,
-  RegularCollectionId,
-  RemoteSyncUnsyncedDependency,
-} from "metabase-types/api";
+import type { RemoteSyncItem, RemoteSyncItemId } from "metabase-types/api";
+
+import { getItemCollections, getItemName } from "../../../utils";
 
 export type DependencyGroupCollection = {
-  id: RegularCollectionId;
+  id: RemoteSyncItemId;
   name: string;
-  type: CollectionType | null;
 };
 
 export type DependencyGroup = {
   key: string;
   collection: DependencyGroupCollection | null;
-  dependencies: RemoteSyncUnsyncedDependency[];
+  dependencies: RemoteSyncItem[];
 };
 
-const getTopLevelCollection = ({
-  collection,
-}: RemoteSyncUnsyncedDependency): DependencyGroupCollection | null => {
-  const topLevel = collection?.effective_ancestors[0] ?? collection;
+function getTopLevelCollection(
+  dependency: RemoteSyncItem,
+): DependencyGroupCollection | null {
+  const [topLevel] = getItemCollections(dependency);
   return topLevel != null && typeof topLevel.id === "number"
-    ? { id: topLevel.id, name: topLevel.name, type: topLevel.type }
+    ? { id: topLevel.id, name: topLevel.name }
     : null;
-};
+}
 
-export const getDependencyGroups = (
-  dependencies: RemoteSyncUnsyncedDependency[],
-): DependencyGroup[] => {
+function compareNames(a: string, b: string) {
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
+}
+
+export function sortItems(items: RemoteSyncItem[]): RemoteSyncItem[] {
+  return [...items].sort((a, b) =>
+    compareNames(getItemName(a), getItemName(b)),
+  );
+}
+
+function sortGroups(groups: DependencyGroup[]): DependencyGroup[] {
+  return [...groups].sort((a, b) =>
+    a.collection == null || b.collection == null
+      ? Number(a.collection == null) - Number(b.collection == null)
+      : compareNames(a.collection.name, b.collection.name),
+  );
+}
+
+export function getDependencyGroups(
+  dependencies: RemoteSyncItem[],
+): DependencyGroup[] {
   const groups = new Map<string, DependencyGroup>();
   dependencies.forEach((dependency) => {
     const collection = getTopLevelCollection(dependency);
@@ -38,5 +53,10 @@ export const getDependencyGroups = (
       dependencies: [...group.dependencies, dependency],
     });
   });
-  return [...groups.values()];
-};
+  return sortGroups(
+    [...groups.values()].map((group) => ({
+      ...group,
+      dependencies: sortItems(group.dependencies),
+    })),
+  );
+}

@@ -43,11 +43,13 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  Bookmark,
   Card,
   Database,
   Dataset,
   Timeline,
   UnsavedCard,
+  User,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -228,16 +230,20 @@ const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
 
 interface SetupOpts {
   card: Card | UnsavedCard | null;
+  bookmarks?: Bookmark[];
   dataset?: Dataset;
   database?: Database;
   echoQueryParameters?: boolean;
   initialRoute?: string;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
+  withUndos?: boolean;
+  currentUser?: User;
 }
 
 export const setup = async ({
   card,
+  bookmarks = [],
   dataset = createMockDataset(),
   database = TEST_DB,
   echoQueryParameters = false,
@@ -250,6 +256,13 @@ export const setup = async ({
   }`,
   timelines = [],
   timelinesResponse,
+  withUndos = false,
+  currentUser = createMockUser({
+    permissions: createMockUserPermissions({
+      can_create_queries: true,
+      can_create_native_queries: true,
+    }),
+  }),
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -257,7 +270,7 @@ export const setup = async ({
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
-  setupBookmarksEndpoints([]);
+  setupBookmarksEndpoints(bookmarks);
   setupTimelinesEndpoints(timelinesResponse ?? timelines);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
@@ -316,14 +329,10 @@ export const setup = async ({
     </>,
     {
       withRouter: true,
+      withUndos,
       initialRoute,
       storeInitialState: createMockState({
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({
-            can_create_queries: true,
-            can_create_native_queries: true,
-          }),
-        }),
+        currentUser,
         settings: mockSettings({ "site-url": "http://localhost:3000" }),
       }),
     },

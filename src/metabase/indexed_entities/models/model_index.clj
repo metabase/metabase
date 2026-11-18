@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.events.core :as events]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    ;; legacy usage, do not use this in new code
@@ -11,7 +12,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
@@ -31,7 +31,16 @@
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
-#_(derive :model/ModelIndex :hook/search-index)
+#_(derive :model/ModelIndex :search/indexed)
+(doto :model/ModelIndex
+  (derive :hook/events)
+  (derive :search/indexed-deletes))
+
+(defmethod events/spec :model/ModelIndex
+  [_model]
+  {:create :event/model-index-create
+   :update :event/model-index-update
+   :delete :event/model-index-delete})
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
@@ -226,7 +235,6 @@
                   :model       [:model/Card [:= :model.id :model_index.model_id]]
                   :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
 
-(perms/define-collection-based-visibility! "indexed-entity" :denormalized-from :model/Card)
-
 ;; TODO resolve the toucan2 issue preventing us from using this hook
-(underive :model/ModelIndexValue :hook/search-index)
+(underive :model/ModelIndexValue :search/indexed)
+(underive :model/ModelIndexValue :hook/events)

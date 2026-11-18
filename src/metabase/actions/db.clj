@@ -3,10 +3,12 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.actions.schema :as actions.schema]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -22,16 +24,19 @@
 
 (mu/defn synced-action-details-clause :- [:fn vector?]
   "The clause over an action details table aliased `alias` selecting the details of the synced actions."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :action_id :model/Action))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :action_id :model/Action opts))
 
 (mu/defn synced-actions-clause :- [:fn vector?]
   "The clause over the Action table aliased `alias` selecting the actions remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
    [:or
-    (remote-sync/synced-fk-clause alias :collection_id :model/Collection)
+    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)
     [:and
      [:= (u/qualified-key alias :collection_id) nil]
      [:= (u/qualified-key alias :model_id) nil]]]])
@@ -70,15 +75,10 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(mu/defn card-type
-  "The type of the Card with `card-id`, or nil."
+(mu/defn card-placement
+  "The id, type and Collection id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type [:model/Card :type] :id card-id))
-
-(mu/defn card-collection-id
-  "The Collection id of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
+  (t2/select-one [:model/Card :id :type :collection_id] :id card-id))
 
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
@@ -90,11 +90,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
 
-(mu/defn unarchived-collection-exists?
-  "Whether the unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
-
 (mu/defn action
   "The Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
@@ -105,10 +100,10 @@
   [action-id :- ::lib.schema.id/action]
   (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
 
-(mu/defn action-model-id
-  "The model Card id of the Action with `action-id`, or nil."
+(mu/defn action-type-and-model
+  "The id, type and model Card id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one-fn :model_id [:model/Action :model_id] :id action-id))
+  (t2/select-one [:model/Action :id :type :model_id] :id action-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -279,3 +274,15 @@
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table :db_id database-id :is_writable nil))
+
+(mu/defn synced-action-items :- [:sequential ::actions.schema/action]
+  "The Actions with `ids`, with their model and its Collection, and their own Collection, with ancestors, as remote
+  sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root         (collection.root/hydrated-root-collection)
+        actions-root (collection.root/hydrated-root-collection :data-actions)]
+    (-> (t2/select [:model/Action :id :name :type :model_id :collection_id] :id [:in ids])
+        (t2/hydrate [:model [:collection :effective_ancestors]] [:collection :effective_ancestors])
+        (->> (mapv (fn [action]
+                     (-> (collection.root/hydrate-root-collection action (if (:model_id action) root actions-root))
+                         (update :model #(some-> % (collection.root/hydrate-root-collection root))))))))))

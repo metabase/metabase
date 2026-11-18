@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import _ from "underscore";
 
 import type {
@@ -215,6 +216,9 @@ const KEYS_TO_COMPARE = new Set([
   "currency_position",
   "number_separators",
   "decimals",
+  "duration_unit",
+  "duration_style",
+  "duration_precision",
   "scale",
   "prefix",
   "suffix",

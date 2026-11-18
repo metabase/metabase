@@ -38,6 +38,7 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -512,8 +513,12 @@
 
 (defmethod options-style-method :aggregation [_tag] ::options-style.last-unless-empty)
 
+;; TODO (Cam 2026-11-16) give this a name to make it clear that it's not ANY ref (Metrics/Segments/Measures aren't
+;; allowed by this schema) -- just the subset that refers to specific columns. See my note on
+;; `:metabase.lib.schema.ref/ref`.
 (mr/def ::Reference
-  "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
+  "Schema for any type of valid Field clause, expression reference, or for an indexed reference to an aggregation
+  clause."
   (one-of aggregation expression field))
 
 (defclause ^{:added "0.50.0"} offset
@@ -1802,8 +1807,7 @@
   "The native query itself: a SQL string, or for drivers like MongoDB a query in the driver's own shape."
   [:or
    :string
-   [:schema {::mr/deliberately-open true
-             :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline; its shape is the driver's"}
+   [:schema {:description "a driver's native query when it is not a string, e.g. a MongoDB pipeline; its shape is the driver's"}
     :some]])
 
 (mr/def ::NativeQuery.Common
@@ -2010,7 +2014,7 @@
      [:selected?          {:optional true} :boolean]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-     [:settings           {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+     [:settings           {:optional true} [:maybe [:ref ::lib.schema.visualization/visualization-settings]]]
      [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
      [:table_id           {:optional true} [:maybe [:ref ::SourceTable]]]
      [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
@@ -2409,7 +2413,7 @@
     [:pivot-measures                       {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:show-row-totals                      {:optional true} [:maybe :boolean]]
     [:show-column-totals                   {:optional true} [:maybe :boolean]]
-    [:viz-settings                         {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+    [:viz-settings                         {:optional true} [:maybe [:ref ::lib.schema.visualization/visualization-settings]]]
     [:user-parameters                      {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     [:qp/source-card-id                    {:optional true} [:ref ::lib.schema.id/card]]
     [:qp/skip-result-metadata-persistence  {:optional true} :boolean]

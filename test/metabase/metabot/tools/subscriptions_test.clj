@@ -34,7 +34,7 @@
 
 (deftest ^:parallel arguments-test
   (testing "an unsupported day_of_week fails argument validation"
-    (is (=? #"Invalid tool arguments: `schedule` .*should be either \"sunday\".*"
+    (is (=? #"Invalid tool arguments: `schedule.day_of_week` should be either \"sunday\".*"
             (test-util/tool-boundary-error "create_dashboard_subscription"
                                            #'agent-subscriptions/create-dashboard-subscription-tool
                                            {:dashboard_id  1

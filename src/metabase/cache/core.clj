@@ -12,6 +12,7 @@
 (p/import-vars
  [metabase.cache.models.cache-config
   card-strategy
+  delete-target-configs!
   root-strategy]
  [metabase.cache.settings
   enable-query-caching

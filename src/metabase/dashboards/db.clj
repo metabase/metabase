@@ -5,11 +5,13 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -19,25 +21,35 @@
 
 (mu/defn synced-dashboard-tabs-clause :- [:fn vector?]
   "The clause over the DashboardTab table aliased `alias` selecting the tabs of the Dashboards remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard opts))
 
 (mu/defn synced-dashcards-clause :- [:fn vector?]
   "The clause over the DashboardCard table aliased `alias` selecting the cards of the Dashboards remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard opts))
 
 (mu/defn synced-dashboards-clause :- [:fn vector?]
   "The clause over the Dashboard table aliased `alias` selecting the Dashboards remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
+
+(mu/defn dashboard-collection-rows
+  "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
+  read."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/Dashboard :id :collection_id] :id [:in dashboard-ids]))
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
@@ -107,23 +119,49 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-set :model/Card :dashboard_id dashboard-id))
 
-(mu/defn set-cards-archived!
-  "Set the archived flags of the Cards with `card-ids`, returning the number updated."
+(mu/defn cards-to-set-archived
+  "The Cards with `card-ids` whose `archived` flag differs from `archived?`, which setting it changes."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
-  (t2/update! :model/Card :id [:in card-ids] {:archived archived? :archived_directly archived?}))
+  (t2/select :model/Card :id [:in card-ids] :archived (not archived?)))
+
+(mu/defn set-cards-archived!
+  "Set the `archived` flag of the [[cards-to-set-archived]], which gives them their `archived_directly`, returning the
+  number updated."
+  [card-ids  :- [:sequential ::lib.schema.id/card]
+   archived? :- :boolean]
+  (t2/update! :model/Card :id [:in card-ids] :archived (not archived?) {:archived archived?}))
+
+(defn- archivable-question-conditions
+  "The key-value conditions of the Cards internal to the Dashboard with `dashboard-id` that archiving it archives."
+  [dashboard-id]
+  [:dashboard_id dashboard-id :archived false])
+
+(defn- restorable-question-conditions
+  "The key-value conditions of the Cards internal to the Dashboard with `dashboard-id` that restoring it restores."
+  [dashboard-id]
+  [:dashboard_id dashboard-id :archived true :archived_directly false])
+
+(mu/defn questions-archived-with-dashboard
+  "The unarchived Cards internal to the Dashboard with `dashboard-id`, which archiving it archives along with it."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (apply t2/select :model/Card (archivable-question-conditions dashboard-id)))
+
+(mu/defn questions-restored-with-dashboard
+  "The Cards internal to the Dashboard with `dashboard-id` that were archived along with it, which restoring it
+  restores."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (apply t2/select :model/Card (restorable-question-conditions dashboard-id)))
 
 (mu/defn archive-dashboard-questions!
-  "Archive the unarchived Cards internal to the Dashboard with `dashboard-id`, not directly, returning the number
-  updated."
+  "Archive, through their model, the rows of [[questions-archived-with-dashboard]], returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/update! :model/Card :dashboard_id dashboard-id :archived false {:archived true :archived_directly false}))
+  (apply t2/update! :model/Card (concat (archivable-question-conditions dashboard-id) [{:archived true}])))
 
 (mu/defn unarchive-dashboard-questions!
-  "Unarchive the Cards internal to the Dashboard with `dashboard-id` that were not archived directly, returning the
-  number updated."
+  "Restore, through their model, the rows of [[questions-restored-with-dashboard]], returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/update! :model/Card :dashboard_id dashboard-id :archived true :archived_directly false {:archived false}))
+  (apply t2/update! :model/Card (concat (restorable-question-conditions dashboard-id) [{:archived false}])))
 
 (mu/defn move-dashboard-questions!
   "Move the Cards internal to the Dashboard with `dashboard-id` to the Collection with `collection-id`, returning
@@ -137,10 +175,29 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards-by-ids
+  "The Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Card :id [:in ids])
+    []))
+
+(mu/defn actions-by-ids
+  "The Actions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Action :id [:in ids])
+    []))
+
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (queries/card-query-info card-id))
+
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "A map of Card id to the id of its Collection, nil for the root, for the Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pk->fn :collection_id :model/Card :id [:in card-ids]))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
@@ -294,9 +351,9 @@
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
-(mu/defn ensure-integer-link-card-id
-  "Return `id` if it is an integer, else throw a 400."
-  [id :- ms/VisualizationSettingsValue]
+(defn ensure-integer-link-card-id
+  "Return `id`, a value the client sent as the id of a link card's entity, if it is an integer, else throw a 400."
+  [id]
   (when-not (integer? id)
     (throw (ex-info "Link card entity id must be an integer"
                     {:status-code 400, :id id})))
@@ -373,8 +430,32 @@
   [[link-card-info-rows]], or nil."
   [model :- :string
    id    :- [:or :int :string]]
-  (t2/select-one (serialization/link-card-model->toucan-model model)
-                 (h2x/assert-map-or-nil! (link-card-info-query-for-model model id))))
+  (if (= model "collection")
+    (some-> (t2/select-one [:model/Collection :id :name :description :type :namespace]
+                           :id (ensure-integer-link-card-id id))
+            (assoc :model model))
+    (t2/select-one (serialization/link-card-model->toucan-model model)
+                   (h2x/assert-map-or-nil! (link-card-info-query-for-model model id)))))
+
+(mu/defn link-card-entities
+  "The instances of the link-card `model` (a string like \"card\" or \"table\") with integer `ids`, projected like
+  [[link-card-entity]]; none for an unknown model."
+  [model :- :string
+   ids   :- [:sequential :int]]
+  (cond
+    (empty? ids)
+    []
+
+    (= model "collection")
+    (mapv #(assoc % :model model)
+          (t2/select [:model/Collection :id :name :description :type :namespace] :id [:in ids]))
+
+    (contains? serialization/link-card-model->toucan-model model)
+    (t2/select (serialization/link-card-model->toucan-model model)
+               (h2x/assert-map-or-nil! (link-card-info-query-for-model model ids)))
+
+    :else
+    []))
 
 (defn- link-card-info-query
   [link-card-model->ids]
@@ -383,6 +464,17 @@
     {:select   [:*]
      :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
+
+(mu/defn link-card-collection-read-columns :- [:map-of ms/PositiveInt :map]
+  "The `:type` and `:namespace` of the Collections with `collection-ids`, the columns their read check reads that
+  [[link-card-info-rows]] does not carry, keyed by id."
+  [collection-ids :- [:sequential [:or :int :string]]]
+  (if (empty? collection-ids)
+    {}
+    (into {}
+          (map (juxt :id #(select-keys % [:type :namespace])))
+          (t2/select [:model/Collection :id :type :namespace]
+                     :id [:in (mapv ensure-integer-link-card-id collection-ids)]))))
 
 (mu/defn link-card-info-rows
   "The name, description, and related columns of the entities the link cards `link-card-model->ids`
@@ -418,3 +510,11 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
              :dashboard_id [:in [:auto/param dashboard-ids]]))
+
+(mu/defn synced-dashboard-items :- [:sequential ::dashboards.schema/dashboard]
+  "The Dashboards with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Dashboard :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

@@ -26,7 +26,7 @@
   (testing "the provider fetches a fresh connection even when toucan2's *current-connectable* is bound to a Connection"
     (let [data-source (h2-data-source "quartz-provider-test")
           app-db      (mdb.connection/application-db :h2 data-source)]
-      (binding [mdb.connection/*application-db* app-db]
+      (mdb.connection/with-application-db app-db
         (with-open [^Connection outer (.getConnection data-source)]
           (binding [t2.conn/*current-connectable* outer]
             (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)]
@@ -57,7 +57,7 @@
           (let [data-source (h2-data-source "quartz-deadlock-test")
                 app-db      (mdb.connection/application-db :h2 data-source :create-pool? true)]
             (try
-              (binding [mdb.connection/*application-db* app-db]
+              (mdb.connection/with-application-db app-db
                 ;; saturate the main pool by checking out its only connection...
                 (with-open [^Connection main-conn (.getConnection ^javax.sql.DataSource app-db)]
                   ;; ...and simulate being inside a `with-transaction` block on it
@@ -128,6 +128,7 @@
   #{"metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"
     "metabase.audit_app.task.partitions.ManagePartitions"
     "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"
+    "metabase.change_log.task.truncate_change_log.TruncateChangeLog"
     "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"
     "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"
     "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"
@@ -158,6 +159,7 @@
     "metabase.search.task.search_index.SearchIndexInit"
     "metabase.search.task.search_index.SearchIndexReindex"
     "metabase.session.task.session_cleanup.SessionCleanup"
+    "metabase.sync.task.sync_database.SyncDatabase"
     "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"
     "metabase.sync.task.sync_databases.UpdateFieldValues"
     "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"

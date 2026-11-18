@@ -14,7 +14,7 @@
     "The rows of `model` whose parent, the row its spec's `:parent` names, has its primary key in the set
     `parent-pks`.")
   (insert-rows! [store model rows]
-    "Inserts `rows` of `model`, running its hooks, and returns the inserted instances.")
+    "Inserts `rows` of `model`, running its hooks, and returns the inserted instances in the order of `rows`.")
   (update-row! [store model pk changes]
     "Updates the row of `model` whose primary key is `pk` with `changes`, running the model's hooks.")
   (delete-rows! [store model pks]

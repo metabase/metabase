@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
-   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.expectations.empty :as expectations.empty]
    [metabase-enterprise.data-testing.expectations.equals :as expectations.equals]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
@@ -88,7 +87,7 @@
   (testing "no expectations at all is fine"
     (is (valid? []))
     (is (= [] (records []))))
-  (testing "an `equals` comparing against SQL is a shape the schema knows, though no run can use it"
+  (testing "an `equals` comparing against SQL is fine"
     (is (valid? [{"type" "equals" "name" "n" "format" "sql" "sql" "SELECT 1"}]))))
 
 (deftest builds-the-type-that-owns-each-branch-test
@@ -156,17 +155,6 @@
     (is (not (valid? ["SELECT 1"])))))
 
 ;;; ----------------------------------- Checks deferred to run time -----------------------------------
-
-(deftest equals-sql-is-accepted-but-cannot-run-test
-  ;; Passing the schema says the shape is storable, not that a run can use it. Refusing it at read
-  ;; time would instead make every already-stored test of this shape unreadable.
-  (testing "equals/sql builds, then refuses at probe time as not implemented"
-    (let [[r] (records [{"type" "equals" "name" "n" "format" "sql" "sql" "SELECT 1"}])]
-      (is (satisfies? expectations.protocol/Expectation r))
-      (is (= ::data-testing.errors/unsupported-format
-             (try (expectations.protocol/probes r nil)
-                  ::no-refusal
-                  (catch clojure.lang.ExceptionInfo e (:error-type (ex-data e)))))))))
 
 (deftest database-type-and-column-name-are-not-checked-here-test
   ;; Neither is checked anywhere: `compile/rows-query` writes a column name as one quoted identifier
@@ -236,3 +224,30 @@
   (testing "and an input's format, which is the same kind of dispatch"
     (is (= #{"unknown format :nope, must be one of: rows, sql"}
            (explained ::data-testing.schema/inputs [{:table {:name "PEOPLE"} :format :nope}])))))
+
+;;; ---------------------------------- One test shape, one subject key per type ----------------------------------
+
+(def ^:private definition
+  {:name "t" :inputs [] :expectations [{:type :empty :name "none" :sql "SELECT 1"}]})
+
+(def ^:private saved
+  {:id 1 :entity_id "abcdefghijklmnopqrstu" :creator_id 1
+   :created_at #t "2026-11-06T00:00:00Z" :updated_at #t "2026-11-06T00:00:00Z"})
+
+(deftest test-schemas-differ-only-in-the-subject-key-test
+  (doseq [[test-type subject-key other-key] [[:transform-test :transform_id :card_id]
+                                             [:card-test      :card_id      :transform_id]]
+          :let [schema (fn [suffix] (keyword "metabase-enterprise.data-testing.schema"
+                                             (str (name test-type) suffix)))]]
+    (testing (str test-type)
+      (testing "create takes the definition and the subject key, and no other subject's key"
+        (is (mr/validate (schema ".create") (assoc definition subject-key 1)))
+        (is (not (mr/validate (schema ".create") definition)))
+        (is (not (mr/validate (schema ".create") (assoc definition other-key 1)))))
+      (testing "update takes any subset of them"
+        (is (mr/validate (schema ".update") {}))
+        (is (mr/validate (schema ".update") {subject-key 2 :name "renamed"}))
+        (is (not (mr/validate (schema ".update") {other-key 2}))))
+      (testing "a saved test is the definition, the subject key and the row's own columns"
+        (is (mr/validate (schema "") (merge saved definition {subject-key 1})))
+        (is (not (mr/validate (schema "") (merge saved definition {other-key 1}))))))))

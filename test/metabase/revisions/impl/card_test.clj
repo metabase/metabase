@@ -8,15 +8,21 @@
    [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (comment metabase.revisions.init/keep-me)
 
+(defn- diff-strings
+  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  [model o1 o2]
+  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
-                         (u/build-sentence (revision/diff-strings :model/Card x y)))
+                         (u/build-sentence (diff-strings :model/Card x y)))
     {:name        "Diff Test"
      :description nil}
     {:name        "Diff Test Changed"
@@ -43,7 +49,7 @@
   (testing "When a collection referenced in a revision has been deleted, the description should not show 'null'"
     (let [deleted-coll-id 99999]
       (are [x y expected] (= expected
-                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+                             (u/build-sentence (diff-strings :model/Card x y)))
         ;; moved from nil (root) to a now-deleted collection
         {:name "Apple"}
         {:name          "Apple"
@@ -62,7 +68,7 @@
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
     (mt/with-test-user :crowberto
       (are [x y expected] (= expected
-                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+                             (u/build-sentence (diff-strings :model/Card x y)))
 
         {:name "Apple"}
         {:name          "Apple"
@@ -84,7 +90,7 @@
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Card :id card-id)
     :entity       :model/Card
     :id           card-id
@@ -162,7 +168,7 @@
                          :dataset_query_metrics_v2_migration_backup}
                        col)
               (testing (format "we should have a revision description for %s" col)
-                (let [diff-strings (revision/diff-strings
+                (let [diff-strings (diff-strings
                                     ;; TODO -- huh? Shouldn't this be testing against `:model/Card` here???
                                     :model/Dashboard
                                     before
@@ -184,7 +190,7 @@
           (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
         (testing "we should have a revision description for :result_metadata on model"
           (is (some? (u/build-sentence
-                      (revision/diff-strings
+                      (diff-strings
                        :model/Dashboard
                        before
                        changes)))))))))

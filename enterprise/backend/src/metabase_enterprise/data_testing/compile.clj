@@ -9,6 +9,7 @@
   Every identifier is built with `h2x/identifier` and every cast with `h2x/cast`, which quote what cannot be written
   bare, and every value is a bound parameter, so nothing an author writes is spliced into the SQL."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -16,7 +17,9 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +34,7 @@
 ;; The name may be blank, as a transform's target name may be: the validator then refuses the test for what it lacks,
 ;; rather than a schema error about the target.
 (mr/def ::output-table
-  "A table the subject writes, by schema and name. The name may be blank."
+  "A table that holds the output of the query under test, by schema and name. The name may be blank."
   [:map {:closed true}
    [:schema {:optional true} [:maybe :string]]
    [:name   :string]])
@@ -100,12 +103,42 @@
               table-key                    (table-keys schema name default-schema)]
           [table-key {:db nil :schema nil :table table}])))
 
+(def output-name
+  "The bare table name [[replace-tables]] writes for an output token. A subject whose output has no real table lists
+  `{:schema nil :name output-name}` among its output tables."
+  "__mb_output")
+
+(mr/def ::output-token
+  "A placeholder SQL may write for the output, such as `{{output}}`: a name in double braces."
+  [:re #"^\{\{\s*[^{}\s]+\s*\}\}$"])
+
+(mu/defn- replace-output-token :- :string
+  "`sql` with every occurrence of `output-token`, whitespace inside its braces allowed, replaced by [[output-name]]."
+  [sql          :- :string
+   output-token :- ::output-token]
+  (let [inner (second (re-find #"^\{\{\s*(.+?)\s*\}\}$" output-token))]
+    (str/replace sql
+                 (re-pattern (str "\\{\\{\\s*" (Pattern/quote inner) "\\s*\\}\\}"))
+                 (constantly output-name))))
+
 (mu/defn replace-tables :- :string
-  "`sql` reading from the temp tables of `replacements` instead of the tables they replace."
-  [driver       :- :keyword
-   sql          :- :string
-   replacements :- ::table-replacements]
-  (sql-tools/replace-names driver sql {:tables replacements} {:allow-unused? true}))
+  "`sql` reading from the temp tables of `replacements` instead of the tables they replace.
+
+  With `output-token`, every occurrence of it, whitespace inside its braces allowed, first becomes [[output-name]],
+  string literals included."
+  ([driver       :- :keyword
+    sql          :- :string
+    replacements :- ::table-replacements]
+   (replace-tables driver sql replacements nil))
+  ([driver       :- :keyword
+    sql          :- :string
+    replacements :- ::table-replacements
+    output-token :- [:maybe ::output-token]]
+   (sql-tools/replace-names driver
+                            (cond-> sql
+                              output-token (replace-output-token output-token))
+                            {:tables replacements}
+                            {:allow-unused? true})))
 
 (mu/defn rewrite-query :- ::compiled-query
   "`compiled` reading from the temp tables of `replacements` instead of the tables they replace."
@@ -175,21 +208,28 @@
   (compiled driver {:select [[[:count [:inline 1]] (as :field-alias "__mb_count")]]
                     :from   [(from table)]}))
 
+(def comparison-tag
+  "The column [[comparison-query]] adds to each side to tell the two apart. No compared column may share its name."
+  "__mb_src")
+
 (mu/defn comparison-query :- ::compiled-query
-  "The query returning each row over the columns `sql-names` whose count differs between the temp tables `output-table`
-  and `expected-table`, followed by how many more times it appears in `output-table`."
+  "The query returning each row whose count differs between the temp tables `output-table` and `expected-table`,
+  followed by how many more times it appears in `output-table`. The row's columns are `sql-names`, as `output-table`
+  spells them; `expected-names` are the same columns as `expected-table` spells them, paired by position."
   [driver         :- :keyword
    output-table   :- :string
    expected-table :- :string
-   sql-names      :- [:sequential :string]]
+   sql-names      :- [:sequential :string]
+   expected-names :- [:sequential :string]]
   (let [columns (mapv field sql-names)
-        src     (field "__mb_src")
-        tagged  (fn [table tag]
-                  {:select (conj (mapv as columns) [[:inline tag] (as :field-alias "__mb_src")])
+        src     (field comparison-tag)
+        tagged  (fn [table table-columns tag]
+                  {:select (conj (mapv as table-columns) [[:inline tag] (as :field-alias comparison-tag)])
                    :from   [(from table)]})]
+    ;; `UNION ALL` takes its column names from its first branch, so the expected side needs no aliases.
     (compiled driver {:select   (conj (mapv as columns) [[:sum src] (as :field-alias "__mb_delta")])
-                      :from     [[{:union-all [(tagged output-table 1)
-                                               (tagged expected-table -1)]}
+                      :from     [[{:union-all [(tagged output-table columns 1)
+                                               (tagged expected-table (mapv field expected-names) -1)]}
                                   (as :table-alias "__mb_comparison")]]
                       :group-by columns
                       :having   [:<> [:sum src] [:inline 0]]})))

@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
@@ -800,6 +801,15 @@
         (is (= message
                (test-util/tool-boundary-error "search" #'metabot.tools/search-tool {field value})))))))
 
+(deftest ^:parallel repeated-bad-search-args-test
+  (testing "one mistake repeated across a long list does not hide a later argument's error"
+    (is (= (str "Invalid tool arguments: `entity_types[0]`, `[1]`, `[2]` and 197 more should be either "
+                "\"dashboard\", \"document\", \"measure\", \"metric\", \"model\", \"question\", \"segment\" "
+                "or \"table\"; received a number. `keyword_queries[1]` should be a string; received a number.")
+           (test-util/tool-boundary-error "search" #'metabot.tools/search-tool
+                                          {:entity_types    (vec (repeat 200 5))
+                                           :keyword_queries ["orders" 5]})))))
+
 (deftest ^:parallel scalar-search-args-every-variant-test
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
@@ -952,13 +962,17 @@
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Measure
                        {measure-id :id measure-eid :entity_id}
-                       {:name     "MeasureSearch Sample Revenue"
-                        :table_id (mt/id :orders)}
+                       {:name       "MeasureSearch Sample Revenue"
+                        :definition (let [mp (mt/metadata-provider)]
+                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/aggregate (lib/count))))}
 
                        :model/Segment
                        {segment-id :id segment-eid :entity_id}
-                       {:name     "MeasureSearch Sample Big Orders"
-                        :table_id (mt/id :orders)}]
+                       {:name       "MeasureSearch Sample Big Orders"
+                        :definition (let [mp (mt/metadata-provider)]
+                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/filter (lib/= 1 1))))}]
           (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
                 by-key  (into {} (map (juxt (juxt :type :id) identity))
                               (search/search {:term-queries ["MeasureSearch Sample"]}))]

@@ -515,8 +515,7 @@ export class UnconnectedDataSelector extends Component<
     }
   }
 
-  getDatabases = () =>
-    this.state.databases.filter((database) => !database.is_saved_questions);
+  getDatabases = () => this.state.databases;
 
   async hydrateActiveStep() {
     const { steps } = this.props;

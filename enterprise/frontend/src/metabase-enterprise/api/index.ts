@@ -10,6 +10,7 @@ export * from "./content-diagnostics";
 export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./data-app";
+export * from "./data-test-run";
 export * from "./db-routing";
 export * from "./dependencies";
 export * from "./erd";

@@ -5,13 +5,13 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
@@ -323,16 +323,15 @@
     (sequential? expr)
     (into (empty expr) (map #(replace-qualification % from to) expr))
 
+    (map? expr)
+    (update-vals expr #(replace-qualification % from to))
+
     :else
     expr))
 
 (defn- insert-values [expr table m]
-  (walk/postwalk
-   (fn [x]
-     (if (and (keyword? x) (has-table? table x))
-       (get m (remove-table table x))
-       x))
-   expr))
+  (match/replace-all expr
+    (kw :guard (and (keyword? kw) (has-table? table kw))) (get m (remove-table table kw))))
 
 (defn- construct-source-where [id-fields]
   (cond
@@ -439,7 +438,8 @@
                      (update :visibility #(or % :all))
                      (update :attrs #(merge ~default-attrs %)))]
        (validate-spec! spec#)
-       (derive (:model spec#) :hook/search-index)
+       (derive (:model spec#) :hook/events)
+       (derive (:model spec#) :search/indexed)
        (defmethod spec* ~search-model [~'_] spec#))))
 
 (def ^:private model-hooks*
@@ -462,7 +462,9 @@
   (model-hooks* (methods spec*)))
 
 (defn- instance->db-values
-  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query, leaving as it is
+  a value that its write transform refuses, such as the `:unknown` an unrecognized stored value reads as, since only the
+  columns the hooks read are looked up in the result."
   [instance]
   (let [xforms (try
                  (let [model (t2/model instance)]
@@ -473,7 +475,12 @@
                    nil))]
     (reduce-kv
      (fn [m k v]
-       (assoc m k (if-let [f (get xforms k)] (f v) v)))
+       (assoc m k (if-let [f (get xforms k)]
+                    (try
+                      (f v)
+                      (catch Exception _
+                        v))
+                    v)))
      {}
      instance)))
 
@@ -489,11 +496,6 @@
           (get (model-hooks) (t2/model instance)))))
 
 (comment
-  (doseq [d (descendants :hook/search-index)]
-    (underive d :hook/search-index))
-  (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index))
-
   (methods spec)
   (model-hooks)
 

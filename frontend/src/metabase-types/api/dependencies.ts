@@ -239,7 +239,7 @@ export type ActionDependencyNode = BaseDependencyNode<
 >;
 
 // The API sends `description` and `created_at` to admins only.
-export type DataAppDependencyNodeData = Pick<DataApp, "name" | "display_name"> &
+export type DataAppDependencyNodeData = Pick<DataApp, "slug" | "name"> &
   Partial<Pick<DataApp, "description" | "created_at">>;
 
 export type DataAppDependencyNode = BaseDependencyNode<

@@ -68,7 +68,7 @@
 (projections/register-projection!
  :search-result
  {:concise  (fn [row]
-              (m/remove-vals nil? (select-keys row concise-row-keys)))
+              (u/select-non-nil-keys row concise-row-keys))
   ;; The v1 engine enriches some rows (metrics) with its own field vocabulary; the v2 surface
   ;; names entity ids `entity_id` and never emits portable FK arrays, so translate/strip here.
   ;; A metric's source card is referenced by its numeric `source_card_id` here, so its portable
@@ -121,9 +121,8 @@
   [ids]
   (when (seq ids)
     (into {}
-          (comp (filter mi/can-read?)
-                (map (juxt :id :name)))
-          (mcp.db/collections-for-read-check ids))))
+          (map (juxt :id :name))
+          (mi/readable (mcp.db/collections-for-read-check ids)))))
 
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
@@ -418,7 +417,7 @@
    sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
    case-insensitive substring."
   [queries archived]
-  (let [readable (filter mi/can-read? (mcp.db/snippets-by-archived-state archived))
+  (let [readable (mi/readable (mcp.db/snippets-by-archived-state archived))
         matches  (if (seq queries)
                    (let [needles (mapv u/lower-case-en queries)]
                      (filter (fn [{:keys [name]}]

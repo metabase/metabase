@@ -27,11 +27,13 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.session.api :as session.api]
+   [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
@@ -172,12 +174,16 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(mr/def ::echo.body
+  "The body of an echo request, returned as it arrived."
+  [:map {:closed false, :description "echo request body"}])
+
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map {:closed true}
                       [:fail {:default false} ms/BooleanValue]]
-   body :- ms/OpaqueJSONObject]
+   body :- ::echo.body]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -308,6 +314,15 @@
     (llm.settings/set-llm-providers! value))
   nil)
 
+(api.macros/defendpoint :put "/isolated-origin" :- :nil
+  "Set `MB_ISOLATED_ORIGIN`, or unset it with a nil `value`. It is an environment-only setting, and the E2E backend is
+  one process for every spec, so a spec turns the isolated origin on here. A snapshot restore unsets it."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map {:closed true} [:value [:maybe ms/NonBlankString]]]]
+  (setting/set! :isolated-origin value :bypass-read-only? true)
+  nil)
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -316,13 +331,18 @@
   []
   (refresh-cache-configs!))
 
+(mr/def ::query-spec
+  "A test query spec, of which only the database is read here."
+  [:map {:closed false, :description "a test query spec"}
+   [:database ::lib.schema.id/database]])
+
 (api.macros/defendpoint :post "/query" :- ::lib.schema/query
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
-  (-> (lib-be/application-database-metadata-provider (get query-spec "database"))
-      (lib/test-query (walk/keywordize-keys query-spec))))
+   query-spec :- ::query-spec]
+  (-> (lib-be/application-database-metadata-provider (:database query-spec))
+      (lib/test-query query-spec)))
 
 (def ^:private TestAdvisory
   "Schema for a single advisory in the testing seed endpoint."
@@ -353,9 +373,9 @@
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   native-query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
-  (-> (lib-be/application-database-metadata-provider (get native-query-spec "database"))
-      (lib/test-native-query (walk/keywordize-keys native-query-spec))))
+   native-query-spec :- ::query-spec]
+  (-> (lib-be/application-database-metadata-provider (:database native-query-spec))
+      (lib/test-native-query native-query-spec)))
 
 ;;;; Metabot AI usage seeding
 

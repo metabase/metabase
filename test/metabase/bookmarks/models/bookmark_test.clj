@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.bookmarks.models.bookmark :as bookmark]
+   [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel bookmarks-for-user-test
@@ -55,3 +57,8 @@
               :description "Dashboard description"
               :id          "dashboard-853"}
              (#'bookmark/normalize-bookmark-result row))))))
+
+(deftest ^:parallel ordering-type-schema-test
+  (testing "BookmarkOrdering type is bookmarkable model"
+    (is (mr/validate ::bookmarks.schema/bookmark-ordering.update {:type "dashboard"}))
+    (is (not (mr/validate ::bookmarks.schema/bookmark-ordering.update {:type "table"})))))

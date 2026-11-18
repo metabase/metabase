@@ -1,6 +1,7 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
+   [metabase.events.core :as events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -9,7 +10,7 @@
 
 (mr/def ::row
   "A row of any serialized model, as its spec imports it; the model's own hooks and schemas check it."
-  [:map {:closed false, ::mr/deliberately-open true, :description "row of a serialized model"}])
+  [:map {:closed false, :description "row of a serialized model"}])
 
 (mr/def ::columns
   "The columns a query selects, or nil for every column."
@@ -183,10 +184,17 @@
              :entity_local_id [:in [:auto/param (vec local-ids)]]))
 
 (mu/defn insert-rows! :- [:sequential ::row]
-  "Insert `rows` of `model`, running its hooks, and return the inserted instances."
+  "Insert `rows` of `model`, running its hooks, and return the inserted instances in the order of `rows`: matched by the
+  primary key `rows` hold, or else by the generated one, which grows in the order of `rows`."
   [model :- :keyword
    rows  :- [:sequential ::row]]
-  (t2/insert-returning-instances! model rows))
+  (let [pks       (t2/primary-keys model)
+        pk-of     (apply juxt pks)
+        instances (t2/insert-returning-instances! model rows)]
+    (if (every? #(contains? (first rows) %) pks)
+      (let [by-pk (into {} (map (juxt pk-of identity)) instances)]
+        (mapv (comp by-pk pk-of) rows))
+      (vec (sort-by pk-of instances)))))
 
 (mu/defn update-row!
   "Update the `model` row whose primary key `pk` is `id` with `changes`, running the model's hooks."
@@ -204,10 +212,12 @@
   (t2/delete! model pk [:in [:auto/param ids]]))
 
 (defn do-in-transaction
-  "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open."
+  "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open, in a batch of events that
+  delivers them before the outermost one commits."
   [thunk]
   (t2/with-transaction [_]
-    (thunk)))
+    (events/with-batched-events
+      (thunk))))
 
 (defn do-in-repeatable-read-transaction
   "Calls `thunk` in a REPEATABLE READ transaction of the app DB, or in the transaction already open, whose isolation

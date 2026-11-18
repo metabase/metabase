@@ -10,8 +10,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -89,7 +89,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    [:display                ms/NonBlankString]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
@@ -107,7 +107,7 @@
    [:description             {:optional true} [:maybe :string]]
    [:dataset_query           ::lib-be.schema/maybe-legacy-query]
    [:display                 :keyword]
-   [:visualization_settings  {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings  {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]
@@ -188,12 +188,11 @@
   [{:keys [id]} :- ConversationIdParams
    _query-params
    {:keys [message_id]} :- ForkConversationBody]
-  (let [conversation (api/check-404 (metabot.db/conversation-id-and-user-id id))]
-    (api/check-403 (= (:user_id conversation) api/*current-user-id*))
-    (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
-      (api/check-400 (some? new-conversation-id)
-                     (tru "Can only fork from a completed Metabot response."))
-      (with-context-window (metabot.persistence/conversation-detail new-conversation-id)))))
+  (api/write-check (metabot.db/conversation-id-and-user-id id))
+  (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
+    (api/check-400 (some? new-conversation-id)
+                   (tru "Can only fork from a completed Metabot response."))
+    (with-context-window (metabot.persistence/conversation-detail new-conversation-id))))
 
 (api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the
@@ -218,13 +217,12 @@
       (when specified?
         (api/check-400 (= specified-collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
-                            dashboard-collection-id specified-collection-id))))
-    (api/create-check :model/Card {:collection_id (:collection_id card)}))
+                            dashboard-collection-id specified-collection-id)))
+      (api/create-check :model/Card (assoc card :collection_id dashboard-collection-id)))
+    (api/create-check :model/Card card))
   ;; Create the card and stamp its origin in ONE transaction so they cannot desync.
   ;; The stamp is a raw table update — it should not run the Card model's heavy
-  ;; before-update pipeline (query normalization, metadata population). The
-  ;; `:card-create` event is delayed until after the transaction commits so
-  ;; subscribers see the card.
+  ;; before-update pipeline (query normalization, metadata population).
   (let [created (t2/with-transaction [_conn]
                   (u/prog1 (queries/create-card!
                             (-> (select-keys card [:name :description :dataset_query :display
@@ -232,11 +230,8 @@
                                                    :dashboard_id :dashboard_tab_id])
                                 (update :display keyword)
                                 (update :visualization_settings #(or % {})))
-                            {:id api/*current-user-id*}
-                            :delay-event)
+                            {:id api/*current-user-id*})
                     (metabot.db/link-card-to-conversation! (:id <>) id chart_id)))]
-    (events/publish-event! :event/card-create
-                           {:object created :user-id api/*current-user-id*})
     (assoc created
            :metabot_conversation_id id
            :metabot_chart_id        chart_id)))

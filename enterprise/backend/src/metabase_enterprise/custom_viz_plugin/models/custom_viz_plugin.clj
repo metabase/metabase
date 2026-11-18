@@ -5,6 +5,7 @@
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
@@ -32,9 +33,30 @@
    :manifest mi/transform-json
    :bundle   transform-bundle})
 
+(defn- with-bundle-hash
+  "The `row` with `bundle_hash` matching the `bundle` it sets."
+  [row]
+  (cond-> row
+    (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) cache/bytes-hash))))
+
+(t2/define-before-insert :model/CustomVizPlugin
+  [plugin]
+  (with-bundle-hash plugin))
+
+(t2/define-before-update :model/CustomVizPlugin
+  [plugin]
+  (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
+
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/CustomVizPlugin
+  [_model]
+  {:create :event/custom-viz-plugin-create
+   :update :event/custom-viz-plugin-update
+   :delete :event/custom-viz-plugin-delete})
 
 (def non-blob-columns
   "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
@@ -42,13 +64,13 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(defmethod mi/can-read? :model/CustomVizPlugin
-  ([_instance]   (some? api/*current-user-id*))
-  ([_model _pk]  (some? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some? api/*current-user-id*))))
 
-(defmethod mi/can-write? :model/CustomVizPlugin
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _instance]
@@ -70,8 +92,8 @@
 (defmethod serialization/spec :model/CustomVizPlugin [_]
   {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
    :identity  [:identifier]
-   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [:status :error_message :dev_bundle_url]
+   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version]
+   :skip      [:status :error_message :dev_bundle_url :bundle_hash]
    :defaults  {:enabled true}
    :transform {:bundle {:export (fn [_store _batch bundles _opts] (mapv bundle->b64 bundles))
                         :import (fn [_store _batch encoded _opts] (mapv b64->bundle encoded))}}})
@@ -109,7 +131,11 @@
 ;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
 (defmethod serialization/before-load :model/CustomVizPlugin [_ items]
-  (mapv (fn [item] (update item :row #(merge % (bundle-columns %)))) items))
+  (mapv (fn [{:keys [row local] :as item}]
+          (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
+            (update item :row dissoc :bundle)
+            (update item :row #(merge % (bundle-columns %)))))
+        items))
 
 (defmethod serialization/after-load :model/CustomVizPlugin [_ items]
   (doseq [{:keys [local]} items

@@ -33,7 +33,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
 
@@ -100,7 +101,7 @@
        :query
        (if-let [db-id (get-in source [:query :database])]
          (if-let [db (resolve* :model/Database db-id)]
-           (and (boolean (mi/can-query? db))
+           (and (boolean (mi/can-query? (t2/hydrate db :can_query)))
                 (source-query-permissions-ok? (:query source)))
            false)
          false)
@@ -114,7 +115,7 @@
               (and (seq table-ids)
                    (every? (fn [table-id]
                              (when-let [table (resolve* :model/Table table-id)]
-                               (mi/can-query? table)))
+                               (mi/can-query? (t2/hydrate table :can_query))))
                            table-ids))))))
 
        (throw (ex-info (str "Unknown transform source type: " (:type source)) {}))))))
@@ -133,13 +134,13 @@
 (mu/defn prefetch-source-models :- ::source-models
   "Bulk-load the source databases and tables referenced by `transforms` into a
   `{:model/Database {id db} :model/Table {id table}}` map"
-  [transforms :- [:sequential ::transforms.schema/transform]]
+  [transforms :- [:sequential [:or ::transforms.schema/transform ::transforms.schema/transform.create]]]
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (transforms.db/databases db-ids)))
+                       (u/index-by :id (t2/hydrate (transforms.db/databases db-ids) :can_query)))
      :model/Table    (when (seq table-ids)
-                       (u/index-by :id (transforms.db/tables table-ids)))}))
+                       (u/index-by :id (t2/hydrate (transforms.db/tables table-ids) :can_query)))}))
 
 (mu/defn add-source-readable :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
   "Add :source_readable field to a transform or collection of transforms.
@@ -147,8 +148,9 @@
   referenced by the transform."
   [transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
   (if (sequential? transform-or-transforms)
-    (mapv #(assoc % :source_readable (source-tables-readable? (->definition %)))
-          transform-or-transforms)
+    (let [models-cache (prefetch-source-models transform-or-transforms)]
+      (mapv #(assoc % :source_readable (source-tables-readable? (->definition %) models-cache))
+            transform-or-transforms))
     (assoc transform-or-transforms :source_readable (source-tables-readable? (->definition transform-or-transforms)))))
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
@@ -241,7 +243,13 @@
                                 driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
                                                                           transform-timeout-ms)]
                         (run-transform! cancel-chan source-range-params)))]
+            ;; Record the remap once per run, after the write (so it can't point at a table that was never written)
+            ;; and before the succeed mark (so a record failure fails the run instead of leaving a succeeded run
+            ;; unremapped). A full rebuild records here, before the indexes: its retry rebuilds anyway, so an index
+            ;; failure keeps the remap to the copy that was written. An append records after the watermark below,
+            ;; so a retry after a record failure starts from the saved watermark and doesn't re-append the rows.
             (when full-create?
+              (transforms-base.u/record-workspace-target-remapping! transform)
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
               (let [running-indexes (table-index/mark-runnable-indexes-running!
@@ -256,6 +264,8 @@
                      running-indexes
                      "Index status could not be verified after the transform completed.")))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
+            (when-not full-create?
+              (transforms-base.u/record-workspace-target-remapping! transform))
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
             ;; fail-started-run! after succeed-started-run! has already fired.

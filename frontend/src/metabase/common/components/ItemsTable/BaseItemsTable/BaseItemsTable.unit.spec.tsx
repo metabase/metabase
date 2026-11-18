@@ -2,7 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   COLLECTION_CONTENT_COLUMNS,
   type CollectionContentTableColumn,
@@ -183,6 +189,35 @@ describe("BaseItemsTable", () => {
       expect(tooltip).toHaveTextContent(DESCRIPTION);
     });
 
+    it("renders a markdown link in the description tooltip and hides it on unhover", async () => {
+      const plainItem = getCollectionItem({
+        id: 1,
+        name: "Plain item",
+        description: null,
+      });
+      const linkedItem = getCollectionItem({
+        id: 2,
+        name: "Linked item",
+        description: "[link](https://metabase.com)",
+      });
+      setup({ items: [plainItem, linkedItem] });
+
+      const row = screen.getByRole("row", { name: /Linked item/ });
+      const icon = within(row).getByLabelText("info icon");
+      await userEvent.hover(icon);
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(
+        within(tooltip).getByRole("link", { name: "link" }),
+      ).toHaveAttribute("href", "https://metabase.com");
+      expect(tooltip).not.toHaveTextContent("[link]");
+
+      await userEvent.unhover(icon);
+      await waitFor(() => {
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+    });
+
     it("shows markdown in description on hover", async () => {
       const DESCRIPTION = "**important** text";
       const ITEM = getCollectionItem({ description: DESCRIPTION });
@@ -196,6 +231,69 @@ describe("BaseItemsTable", () => {
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");
+    });
+  });
+
+  describe("last edited by", () => {
+    // jsdom has no layout: every cell is as wide as a narrow column, and its
+    // text is as wide as its length.
+    const COLUMN_WIDTH = 200;
+    const CHARACTER_WIDTH = 8;
+    const LONG_EMAIL = "averyverylongemail@veryverylongdomain.com";
+    const SHORT_EMAIL = "me@email.com";
+    let elementRectSpy: jest.SpyInstance;
+    let rangeRectSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      elementRectSpy = jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue(new DOMRect(0, 0, COLUMN_WIDTH, 16));
+      rangeRectSpy = jest
+        .spyOn(Range.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: Range) {
+          const textLength = this.startContainer.textContent?.length ?? 0;
+          return new DOMRect(0, 0, textLength * CHARACTER_WIDTH, 16);
+        });
+    });
+
+    afterEach(() => {
+      elementRectSpy.mockRestore();
+      rangeRectSpy.mockRestore();
+    });
+
+    function getItemEditedBy(id: number, email: string) {
+      return getCollectionItem({
+        id,
+        name: `Item ${id}`,
+        "last-edit-info": {
+          id: 1,
+          first_name: null,
+          last_name: null,
+          email,
+          timestamp,
+        },
+      });
+    }
+
+    it("shows the editor's email when the editor has no name, with a tooltip only for a truncated email", async () => {
+      setup({
+        items: [
+          getItemEditedBy(1, LONG_EMAIL),
+          getItemEditedBy(2, SHORT_EMAIL),
+        ],
+      });
+
+      const longEmail = screen.getByText(LONG_EMAIL);
+      await userEvent.hover(longEmail);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(LONG_EMAIL);
+
+      await userEvent.unhover(longEmail);
+      await waitFor(() => {
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+
+      await userEvent.hover(screen.getByText(SHORT_EMAIL));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
   });
 

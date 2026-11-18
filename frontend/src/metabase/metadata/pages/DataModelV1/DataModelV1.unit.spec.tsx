@@ -193,7 +193,7 @@ async function setup({
   waitForTable = true,
   shouldSkipTableMocks = false,
 }: SetupOpts = {}) {
-  setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
+  setupDatabasesEndpoints(databases);
   setupCardDataset();
 
   if (!shouldSkipTableMocks) {

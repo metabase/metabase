@@ -8,8 +8,10 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -31,7 +33,8 @@
 
 (mu/defn synced-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTag table aliased `alias` selecting the tags remote sync syncs, all but the built-in ones."
-  [alias :- :keyword]
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :built_in_type) nil])
 
 (mu/defn built-in-transform-tags-clause :- [:fn vector?]
@@ -41,8 +44,9 @@
 
 (mu/defn synced-transform-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTransformTag table aliased `alias` selecting the tags of synced transforms."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -104,6 +108,21 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/Transform :id transform-id))
 
+(mu/defn transforms-in-collections
+  "The Transforms in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select :model/Transform :collection_id [:in [:auto/param collection-ids]]))
+
+(mu/defn collections-by-ids
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
+
+(mu/defn delete-collection!
+  "Delete the Collection with `collection-id`."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/delete! :model/Collection :id [:auto/param collection-id]))
+
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
 (mu/defn tag
@@ -116,16 +135,15 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
-(mu/defn tag-name-exists?
-  "Whether a TransformTag named `tag-name` exists."
+(mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
+  "The id of the TransformTag named `tag-name`, or nil."
   [tag-name :- :string]
-  (t2/exists? :model/TransformTag :name tag-name))
+  (t2/select-one-pk :model/TransformTag :name tag-name))
 
-(mu/defn tag-name-exists-excluding?
-  "Whether a TransformTag named `tag-name` other than `tag-id` exists."
-  [tag-name :- :string
-   tag-id   :- ms/PositiveInt]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+(mu/defn tag-entity-id-by-name :- [:maybe :string]
+  "The entity id of the TransformTag named `tag-name`, or nil."
+  [tag-name :- :string]
+  (t2/select-one-fn :entity_id :model/TransformTag :name [:auto/param tag-name]))
 
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
@@ -915,3 +933,16 @@
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
+(mu/defn synced-transform-items :- [:sequential ::transforms.schema/transform]
+  "The Transforms with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :transforms)]
+    (-> (t2/select [:model/Transform :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn synced-transform-tag-items :- [:sequential ::transforms.schema/transform-tag]
+  "The TransformTags with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/TransformTag :id :name] :id [:in ids]))

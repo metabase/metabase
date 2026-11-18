@@ -122,7 +122,7 @@
 (def ^:private RowValueSchema
   "One cell value in a chart series, matching the frontend's `RowValue`. The `object` arm is never read by this
   code -- it's forwarded to the interestingness stats/repr code as-is -- so it's opaque rather than typed."
-  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+  [:maybe [:or :string number? :boolean ::metabot.schema/row-value.object]])
 
 (def ^:private SeriesConfigSchema
   "One series of a chart, pre-materialized by the frontend for `analyze_chart`."
@@ -208,7 +208,9 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The open tab, sent with a dashboard
+   [:tab_id          {:optional true} [:maybe :int]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
@@ -266,7 +268,7 @@
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
    [:research_plan              {:optional true} [:maybe ::research-plan]]
-   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:references                 {:optional true} [:maybe ::metabot.schema/references]]
    ;; The agent-streaming API overwrites this from the request's client header (see [[host-app-request?]]),
    ;; so a value sent by the client has no effect.
    [:in_host_app                {:optional true} [:maybe :boolean]]])

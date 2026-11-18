@@ -5,7 +5,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.glossary.core :as glossary.core]
    [metabase.glossary.db :as glossary.db]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.glossary.schema :as glossary.schema]
+   [metabase.models.interface :as mi]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -18,7 +19,7 @@
   [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
   {:data      (t2/hydrate (glossary.db/glossary-entries search) :creator)
-   :can_write (boolean (and (api/entitled-data-analyst?) (not (remote-sync/read-only?))))})
+   :can_write (mi/can-create? :model/Glossary {})})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -29,10 +30,9 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:term ms/NonBlankString]
-            [:definition ms/NonBlankString]]]
-  (api/check-data-studio-access)
-  (api/check-403 (not (remote-sync/read-only?)))
+            [:term ::glossary.schema/glossary.term]
+            [:definition ::glossary.schema/glossary.definition]]]
+  (api/create-check :model/Glossary body)
   (t2/hydrate (glossary.core/create-entry! api/*current-user-id* body) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -44,20 +44,14 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- [:map {:closed true}
-            [:term ms/NonBlankString]
-            [:definition ms/NonBlankString]]]
-  (api/check-data-studio-access)
-  (api/check-403 (not (remote-sync/read-only?)))
-  (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
+            [:term ::glossary.schema/glossary.term]
+            [:definition ::glossary.schema/glossary.definition]]]
+  (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
+  (t2/hydrate (api/check-404 (glossary.core/update-entry! id body)) :creator))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/check-data-studio-access)
-  (api/check-403 (not (remote-sync/read-only?)))
-  (api/check-404 (glossary.core/delete-entry! api/*current-user-id* id))
+  (api/write-check (glossary.db/glossary-entry id))
+  (api/check-404 (glossary.core/delete-entry! id))
   api/generic-204-no-content)

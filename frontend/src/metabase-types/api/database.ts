@@ -64,7 +64,6 @@ export type DatabaseNativePermissions = "write" | "none";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions: boolean;
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
@@ -163,7 +162,6 @@ export type GetDatabaseHealthResponse =
 
 export type ListDatabasesRequest = {
   include?: "tables" | "schemas";
-  saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
@@ -262,12 +260,6 @@ export type DatabaseEditErrorType = {
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
-}
-
-export interface SavedQuestionDatabase {
-  id: -1337;
-  name: "Saved Questions";
-  is_saved_questions: true;
 }
 
 export interface CreateDestinationDatabaseRequest {

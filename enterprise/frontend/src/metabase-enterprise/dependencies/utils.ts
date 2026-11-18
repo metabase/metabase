@@ -58,7 +58,6 @@ export function getNodeId(
 export function getNodeLabel(node: DependencyNode): string {
   switch (node.type) {
     case "table":
-    case "data-app":
       return node.data.display_name;
     case "sandbox":
       return node.data.table?.display_name ?? t`Row and column security rule`;
@@ -240,7 +239,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "data-app":
       return {
         label: t`View this data app`,
-        url: Urls.dataApp(node.data.name),
+        url: Urls.dataApp(node.data.slug),
       };
   }
 }

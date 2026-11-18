@@ -5,7 +5,10 @@
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
    [metabase.config.core :as config]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -48,7 +51,10 @@
                              ;; The main purpose of this is to power [[metabase.testing-api.api]] which allows you to
                              ;; reset the application DB with data from a SQL dump -- during the restore process it is
                              ;; important that we do not allow anyone to access the DB.
-                             ^ReentrantReadWriteLock lock]
+                             ^ReentrantReadWriteLock lock
+                             ;; Whether the DB is MariaDB, which `db-type` reports as `:mysql`. It is `false` for other
+                             ;; types, and `nil` for `:mysql` until [[mariadb?]] reads it from a connection.
+                             ^clojure.lang.Atom    mariadb?]
   javax.sql.DataSource
   (getConnection [_]
     (try
@@ -71,9 +77,9 @@
 
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
-  with [[*application-db*]]:
+  with [[with-application-db]]:
 
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 my-data-source)]
+    (mdb.connection/with-application-db (mdb.connection/application-db :h2 my-data-source)
       ...)
 
   Options:
@@ -98,18 +104,42 @@
     :status      (atom initial-db-status)
     ;; for memoization purposes. See [[unique-identifier]] for more information.
     :id          (swap! application-db-counter inc)
-    :lock        (ReentrantReadWriteLock.)}))
+    :lock        (ReentrantReadWriteLock.)
+    :mariadb?    (atom (if (= db-type :mysql) nil false))}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^ApplicationDB *application-db*
-  "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance
-  with [[application-db]]."
-  (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+;; A plain def, not a defonce, so reloading the protocol or the handle type leaves a handle that still works. The root,
+;; which owns the connection pool, is installed only the first time.
+(def ^:private application-db-component
+  (system/mutable-component-handle ::application-db
+                                   #(application-db mdb.env/db-type mdb.env/data-source :create-pool? true)))
+
+(defn application-db-handle
+  "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the application DB.
+  Deref it for the DB this thread sees, or use [[current-application-db]]."
+  []
+  application-db-component)
+
+(defn current-application-db
+  "The application DB currently visible to this thread."
+  ^ApplicationDB []
+  @(application-db-handle))
+
+(defn do-with-application-db
+  "Impl for [[with-application-db]]."
+  [application-db thunk]
+  (mc/binding (application-db-handle) application-db thunk))
+
+(defmacro with-application-db
+  "Run `body` with `application-db` as the application DB this thread sees.
+  Threads that inherit this thread's bindings, such as a `future` started in `body`, see it too."
+  {:style/indent [:defn]}
+  [application-db & body]
+  `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type *application-db*))
+  (.db-type (current-application-db)))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -121,21 +151,42 @@
     :h2       :h2
     :mysql    :mysql))
 
-;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source *application-db*))
+  (.data-source (current-application-db)))
+
+(defn mariadb?
+  "Whether the application DB is MariaDB, which [[db-type]] reports as `:mysql`.
+  On a `:mysql` application DB, the first successful call opens a connection to read the product name.
+  A failed read throws, and the next call tries again."
+  []
+  (let [app-db (current-application-db)
+        cell   (.mariadb? ^ApplicationDB app-db)]
+    ;; Concurrent first callers share one read rather than each taking a connection.
+    (locking cell
+      (if-some [answer @cell]
+        answer
+        ;; Connects through `app-db` itself, so the read uses its pool and respects its lock.
+        (reset! cell (with-open [conn (.getConnection ^javax.sql.DataSource app-db)]
+                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))))))
+
+(defn record-mariadb!
+  "Record whether the application DB is MariaDB, so [[mariadb?]] need not connect.
+  A no-op when the answer is already known, which it always is for types other than `:mysql`."
+  [answer]
+  (compare-and-set! (.mariadb? (current-application-db)) nil (boolean answer))
+  nil)
 
 (defn quartz-data-source
-  "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the current [[*application-db*]]'s
+  "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the [[current-application-db]]'s
   dedicated Quartz connection pool (or its regular data source if it was created without pooling).
 
   Like connections acquired through the [[ApplicationDB]] itself, acquiring a connection through this takes the
   application DB's read lock, so the testing API can block new connections while restoring the app DB."
   ^javax.sql.DataSource []
-  (let [^ApplicationDB app-db            *application-db*
+  (let [^ApplicationDB app-db            (current-application-db)
         ^ReentrantReadWriteLock lock     (.lock app-db)
         ^javax.sql.DataSource data-source (.quartz-data-source app-db)]
     (reify javax.sql.DataSource
@@ -163,11 +214,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id *application-db*))
+  (.id (current-application-db)))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection *application-db* f))
+  (t2.conn/do-with-connection (current-application-db) f))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *transaction-depth* 0)
@@ -288,10 +339,9 @@
 (defn- call-outside-transaction
   "Call `thunk` with every transaction-scoped binding cleared, and return its result."
   [thunk]
-  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
-  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
-  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
-  ;; immediately rather than enqueue into this now-drained accumulator.
+  ;; A callback may start async work, such as a `future`, and that work must not inherit this transaction.
+  ;; It needs its own connection, because this one goes back to the pool when the callback returns.
+  ;; A do-after-commit it registers must run at once, because this accumulator has already been drained.
   ;; A thunk registered late runs on a thread that still has every binding of the finished transaction, so clear
   ;; the rest too: its before-commit callbacks have also run, and its state must not be mistaken for a live one.
   (binding [t2.conn/*current-connectable* nil
@@ -302,6 +352,8 @@
             *rollback-required*           nil
             *open-savepoints*             nil]
     (thunk)))
+
+(quick-task/register-submission-wrapper! ::outside-transaction call-outside-transaction)
 
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still
@@ -600,8 +652,8 @@
 (defn do-with-unshared-connection
   "Impl for [[with-unshared-connection]]."
   [f]
-  ;; through *application-db* (not the raw data source) so its connection read-lock gate applies
-  (with-open [conn (.getConnection *application-db*)]
+  ;; through the ApplicationDB (not the raw data source) so its connection read-lock gate applies
+  (with-open [conn (.getConnection (current-application-db))]
     (f (t2.conn/unshared-connection! conn))))
 
 (defmacro with-unshared-connection

@@ -7,6 +7,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.run-query :as tools.run-query]
@@ -95,11 +96,23 @@
         (tools.error/throw-recoverable! recovery-code {} {:cause e})
         (throw e)))))
 
+(defn- non-terminal-on-new-warnings
+  "`result` marked `:non-terminal?` when `validation-result` has reference warnings that are new in this turn.
+
+  A profile that ends its turn on this tool then gives the model one more step to act on them, when the turn has one
+  left. Warnings that this turn has already shown do not, so sending the SQL again accepts it instead of looping."
+  [result {:keys [warnings repeated-warnings?]}]
+  (cond-> result
+    (and (seq warnings) (not repeated-warnings?)) (assoc :non-terminal? true)))
+
 (defn- query-viz-part
-  [{:keys [query-id query]} title]
-  (streaming/viz-part {:entity-id (str (random-uuid))
+  "The chart part that shows `action-result` in the conversation, under its chart's id when it has one. Without a
+  `display` the frontend picks one from the results."
+  [{:keys [query-id query chart-id]} title display]
+  (streaming/viz-part {:entity-id (or chart-id (str (random-uuid)))
                        :query-id query-id
                        :query (links/->frontend-query query)
+                       :display display
                        :title title}))
 
 (defn- query-delivery
@@ -116,10 +129,10 @@
 (defn- delivery-parts
   "Returns the data parts that deliver `action-result` by `delivery`, as [[query-delivery]] returns it, or nil for
    `:hidden`."
-  [delivery buffer-id {:keys [query-content] :as action-result} title]
+  [delivery buffer-id {:keys [query-content] :as action-result} title & {:keys [display]}]
   (case delivery
     :editor [(code-edit-part buffer-id query-content)]
-    :link   [(query-viz-part action-result title)]
+    :link   [(query-viz-part action-result title display)]
     :hidden nil))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -143,29 +156,46 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      ;; The editor variant proposes the query in the open buffer and never shows a chart.
      :args (cond-> create-sql-schema
-             (not code-edit?) (conj shared/show-chart-arg))})
-  (handle [_ {database-id :database_id sql-query :sql_query :keys [title show_chart]} ctx]
+             (not code-edit?) (conj shared/visualization-arg shared/show-chart-arg))})
+  (handle [_ {database-id :database_id sql-query :sql_query :keys [title visualization show_chart]} ctx]
     (let [buffer-id     (when code-edit?
                           (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
                               (tools/unrecoverable!
                                ::missing-editor
                                {:user-message
                                 (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
-          action-result (sql.common/validated-sql-action!
-                         (do-with-notebook-fallback
-                          ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
+          {:keys [validation-result] :as operation-result}
+          (do-with-notebook-fallback
+           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query}))
+          action-result (sql.common/validated-sql-action! operation-result)
           query-id      (:query-id action-result)
-          structured    (assoc action-result :result-type :query)
+          ;; Outside the editor the query gets a chart, shown or not, so its `chart_id` can go on a dashboard.
+          chart         (when-not code-edit?
+                          (create-chart-tools/create-chart
+                           {:query-id      query-id
+                            :chart-type    (shared/visualization-chart-type visualization)
+                            :queries-state {query-id (:query action-result)}}))
+          structured    (cond-> (assoc action-result :result-type :query)
+                          chart (assoc :chart-id (:chart-id chart) :chart-type (:chart-type chart)))
           readable?     (and (not code-edit?) (tools.run-query/sql-results-readable?))
           ;; Where the model cannot read the results, the chart is the one way the user sees anything.
           delivery      (query-delivery buffer-id (and (false? show_chart) readable?))
           instr         (case delivery
                           :editor instructions/query-loaded-in-editor-instructions
                           :hidden (instructions/query-hidden-instructions-for query-id)
-                          :link   (instructions/query-created-instructions-for query-id readable?))]
-      (m/assoc-some {:output            (format-query-output structured instr {:preamble? true})
-                     :structured-output structured}
-                    :data-parts (delivery-parts delivery buffer-id action-result title)))))
+                          :link   (instructions/query-created-instructions-for
+                                   query-id readable? (:chart-id chart) (shared/tool-offered? "edit_chart")))
+          instr         (instructions/with-sql-reference-warnings
+                          (cond-> instr
+                            (and chart (shared/tool-offered? "write_dashboard"))
+                            (str "\n" (instructions/add-to-dashboard-instruction (:chart-id chart))))
+                          validation-result)]
+      (non-terminal-on-new-warnings
+       (m/assoc-some {:output            (format-query-output structured instr {:preamble? true})
+                      :structured-output structured}
+                     :data-parts (delivery-parts delivery buffer-id structured title
+                                                 :display (when visualization (:chart-type chart))))
+       validation-result))))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."
@@ -192,7 +222,7 @@
 
 (defn- sql-edit-result!
   "The result of an edit or replace, delivered to the user as [[query-delivery]] decides."
-  [operation-result title show-chart instruction-fn ctx & {:keys [edit?]}]
+  [{:keys [validation-result] :as operation-result} title show-chart instruction-fn ctx & {:keys [edit?]}]
   (let [action-result (sql.common/validated-sql-action! operation-result {:edit? edit?})
         query-id      (:query-id action-result)
         structured    (assoc action-result :result-type :query)
@@ -204,14 +234,18 @@
         ;; Readability reads the app DB, so it is checked only when hiding was asked.
         readable?     (and hide-asked? (tools.run-query/sql-results-readable?))
         delivery      (query-delivery buffer-id (and readable? (not client-query?)))
-        instr         (cond-> (instruction-fn query-id delivery)
-                        (and hide-asked? client-query?) (str "\n\n" instructions/client-query-shown-instruction)
-                        (and readable? client-query?)   (str " " instructions/client-query-variant-instruction))]
+        instr         (instructions/with-sql-reference-warnings
+                        (cond-> (instruction-fn query-id delivery)
+                          (and hide-asked? client-query?) (str "\n\n" instructions/client-query-shown-instruction)
+                          (and readable? client-query?)   (str " " instructions/client-query-variant-instruction))
+                        validation-result)]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id (:query action-result)))
-    (m/assoc-some {:output            (format-query-output structured instr)
-                   :structured-output structured}
-                  :data-parts (delivery-parts delivery buffer-id action-result title))))
+    (non-terminal-on-new-warnings
+     (m/assoc-some {:output            (format-query-output structured instr)
+                    :structured-output structured}
+                   :data-parts (delivery-parts delivery buffer-id action-result title))
+     validation-result)))
 
 (defrecord EditSqlQueryTool []
   tools/Tool

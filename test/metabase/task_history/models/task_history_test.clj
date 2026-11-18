@@ -2,10 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib.core :as lib]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Clock Instant ZoneId)))
@@ -238,3 +241,9 @@
                        {:level "info" :msg "message 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}
                        {:level "warn" :msg "warning 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}]
                       remaining-logs)))))))))
+
+(deftest status-must-be-known-test
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-history.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-history.update {:status :unknown}))
+    (is (= {:status :unknown} (lib/normalize ::task-history.schema/task-history.update {:status "unknown"})))))

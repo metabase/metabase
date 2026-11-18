@@ -1173,7 +1173,7 @@
                    (qp/process-query
                     (assoc (lib/query mp (lib.metadata/table mp table-id))
                            :parameters [{:type   :string/=
-                                         :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
+                                         :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref type-field))]
                                          :value  ["toucan"]}]))))))
          (testing "a native field filter over a postgres enum column filters correctly (#63537)"
            (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
@@ -2881,7 +2881,7 @@
                     (testing "fails and names the unmemberable owner"
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
-                           #"not a member of \d+ role"
+                           #"login \"ws_pre_adp_role\" lacks the privileges of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\"( WITH INHERIT TRUE)?;`"
                            (postgres/assert-can-alter-default-privileges! user-spec schema))))
                     (testing "passes once the current_user becomes a member of the owner role"
                       (jdbc/execute! admin-spec
@@ -2916,7 +2916,10 @@
                                            "CREATE SCHEMA %s AUTHORIZATION %s;")
                                       qgrantor qgrantor qschema qgrantor)])
               (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
-                    _             (driver/init-workspace-isolation! :postgres (mt/db) workspace+det)
+                    ;; the shared test cluster grants CREATE on public to PUBLIC on Postgres 14, which init
+                    ;; refuses; metabase.driver.postgres.workspace-test covers that check
+                    _             (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                                    (driver/init-workspace-isolation! :postgres (mt/db) workspace+det))
                     iso-user      (-> workspace+det :database_details :user)
                     qiso          (sql.u/quote-name :postgres :field iso-user)]
                 (try
@@ -2930,7 +2933,7 @@
                                                "RESET ROLE;")
                                           qgrantor qschema qiso)])
                   (testing "destroy completes without error"
-                    (is (some? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
+                    (is (nil? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
                   (testing "the iso-user has been dropped"
                     (is (empty? (jdbc/query admin-spec
                                             ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
@@ -2978,7 +2981,11 @@
             workspace (merge {:id ws-id}
                              (driver/workspace-isolation-details :postgres (mt/db) {:id ws-id}))]
         (try
-          (is (= :ok (do (driver/init-workspace-isolation! :postgres database workspace) :ok)))
+          ;; the shared test cluster grants CREATE on public to PUBLIC on Postgres 14, which init refuses;
+          ;; metabase.driver.postgres.workspace-test covers that check
+          (is (= :ok (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                       (driver/init-workspace-isolation! :postgres database workspace)
+                       :ok)))
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
 
@@ -2999,3 +3006,16 @@
           (discrete (lib/median price))         #"PERCENTILE_DISC\(0\.5\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)"
           (lib/percentile price 0.9)            #"PERCENTILE_CONT\(0\.9\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)"
           (lib/median price)                    #"PERCENTILE_CONT\(0\.5\) within group \(order by (\"[^\"]+\"\.)+\"price\"\)")))))
+
+(deftest failed-parameterized-query-in-a-test-transaction-reports-its-own-error-test
+  (mt/test-driver :postgres
+    (testing "inside a transaction, a parameterized query that fails reports its own error, not \"current transaction is aborted\""
+      ;; The `:sql-jdbc` test connection, without the autosave the `:postgres` one adds: the transaction Redshift runs.
+      ((get-method driver/do-with-test-connection :sql-jdbc)
+       :postgres
+       (mt/id)
+       (fn [conn]
+         ;; The driver opens the transaction with the first statement it executes.
+         (driver/query-on-connection :postgres conn ["SELECT 1" []] {})
+         (is (thrown-with-msg? Exception #"column \"no_such_column\" does not exist"
+                               (driver/query-on-connection :postgres conn ["SELECT no_such_column WHERE 1 = ?" [1]] {}))))))))

@@ -32,6 +32,8 @@
        (parameters/substitute-parameters query)
        (-> (lib/query metadata-provider (mbql.normalize/normalize query))
            parameters/substitute-parameters
+           ;; existing usage -- do not use going forward
+           #_{:clj-kondo/ignore [:deprecated-var]}
            lib/->legacy-MBQL)))))
 
 (deftest ^:parallel expand-mbql-top-level-params-test
@@ -499,7 +501,7 @@
                   (assoc q :parameters
                          [{:id     "c77842b9"
                            :target [:dimension
-                                    (lib/->legacy-MBQL (lib/expression-ref q "CC Date"))
+                                    (lib/->legacy-MBQL-ref (lib/expression-ref q "CC Date"))
                                     {:stage-number 0}]
                            :type   :date/range
                            :value  "2026-01-01~2026-03-31"}]))]

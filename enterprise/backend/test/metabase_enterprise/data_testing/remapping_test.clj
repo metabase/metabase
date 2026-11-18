@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.macaw.references]
    [metabase.test :as mt]
@@ -182,7 +183,7 @@
      {:inputs              inputs
       :expectations        expectations
       :referenced-tables   (declared-refs sql)
-      :rewritten-transform (rewrite sql replacements)
+      :rewritten-query (rewrite sql replacements)
       :replacements        replacements
       :default-schema      "PUBLIC"})))
 
@@ -271,6 +272,49 @@
                 (str "PEOPLE is not a reference here and should survive; rewritten="
                      (pr-str rewritten)))))))))
 
+;;; ------------------------------------------ Output token ------------------------------------------
+
+(def ^:private output-token
+  "The token an expectation writes for an output that has no real table."
+  "{{output}}")
+
+(def ^:private token-replacements
+  "Replacements mapping PUBLIC.PEOPLE to TMP_IN_1 and the reserved output name to TMP_OUT."
+  (data-testing.compile/table-replacements
+   [{:schema nil :name data-testing.compile/output-name}]
+   {(declared-input "PUBLIC" "PEOPLE") "TMP_IN_1"}
+   "TMP_OUT" "PUBLIC"))
+
+(deftest output-token-rewrites-to-the-output-temp-table-test
+  (doseq [[desc sql] [["in FROM"                     "SELECT * FROM {{output}}"]
+                      ["in a JOIN next to an input"  "SELECT o.X FROM {{output}} o JOIN PEOPLE p ON p.ID = o.X"]
+                      ["as a column qualifier"       "SELECT {{output}}.X FROM {{output}}"]
+                      ["with spaces inside braces"   "SELECT * FROM {{ output }}"]]]
+    (testing desc
+      (let [rewritten (data-testing.compile/replace-tables :h2 sql token-replacements output-token)]
+        (is (contains? (table-refs rewritten) {:schema nil :table "tmp_out"})
+            (str "rewritten=" (pr-str rewritten)))
+        (is (only-temp-tables? (table-refs rewritten))
+            (str "rewritten=" (pr-str rewritten)))
+        (is (= #{} (data-testing.compile/dangling-qualifiers :h2 rewritten))
+            (str "rewritten=" (pr-str rewritten)))))))
+
+(deftest output-token-in-a-string-literal-is-replaced-test
+  (testing "the token is replaced as text before any parse, so a literal holding it changes too"
+    (let [rewritten (data-testing.compile/replace-tables
+                     :h2 "SELECT * FROM {{output}} WHERE NOTE = '{{output}}'" token-replacements output-token)]
+      (is (str/includes? rewritten (str "'" data-testing.compile/output-name "'"))
+          (str "rewritten=" (pr-str rewritten))))))
+
+(deftest output-token-is-left-alone-without-a-token-test
+  (testing "with no token, `{{output}}` reaches the parser as written, and it cannot parse it"
+    (doseq [rewrite-fn [#(data-testing.compile/replace-tables :h2 % token-replacements)
+                        #(data-testing.compile/replace-tables :h2 % token-replacements nil)]]
+      (is (sql-parsing/parse-error?
+           (try (rewrite-fn "SELECT * FROM {{output}}")
+                nil
+                (catch Exception e e)))))))
+
 ;;; ------------------------------------------- End to end -------------------------------------------
 
 (deftest case-mismatched-run-must-not-report-on-real-data-test
@@ -299,7 +343,7 @@
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
             (let [outcome (try
-                            (data-testing.runner/run-test! transform transform-test)
+                            (data-testing.runner/run-test! :transform transform transform-test)
                             (catch Exception e
                               {:refused (ex-message e)}))]
               (is (not= {:status :failed} outcome)
@@ -326,5 +370,5 @@
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
                                         :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
-          (is (= :passed (:status (data-testing.runner/run-test! transform transform-test))))
+          (is (= :passed (:status (data-testing.runner/run-test! :transform transform transform-test))))
           (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:schema schema :name target}))))))))

@@ -1,17 +1,17 @@
 (ns metabase-enterprise.data-testing.validator
-  "May this transform test run? [[validate]] answers, once, for the whole test, and throws a typed refusal when the
+  "May this test run? [[validate]] answers, once, for the whole test, and throws a typed refusal when the
   answer is no. Pure: it parses and rewrites SQL, and opens no connection.
 
   Two guards, run against the test as a whole:
 
-  - Guard A (pre-rewrite): every table the transform reads must have a declared input, and every declared input must
-    be read, and no two inputs may be ones a reference cannot tell apart. A read with no input would leave that table
-    pointing at the REAL table (via `replace-names` `:allow-unused?`) — a false-green that reads production data into
-    a passing test.
+  - Guard A (pre-rewrite): every table the query under test reads must have a declared input, and every declared
+    input must be read, and no two inputs may be ones a reference cannot tell apart. A read with no input would leave
+    that table pointing at the REAL table (via `replace-names` `:allow-unused?`) — a false-green that reads production
+    data into a passing test.
   - Guard B (post-rewrite): every table the rewritten queries read must be one of the run's temp tables. A leftover
     real table means `replace-names` did not rewrite something it should have (e.g. a reference shape the parser
-    could not match), and running it would hit the real table or error at execution. This covers the transform and
-    every expectation that carries the author's own SQL.
+    could not match), and running it would hit the real table or error at execution. This covers the query under test
+    and every expectation that carries the author's own SQL.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -22,20 +22,19 @@
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- table-match? :- :boolean
-  "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by name, with schema
-  equal, or the reference bare (nil schema) against a declared table in `default-schema` — the one-directional
-  defaulting `table-replacements` uses when it rewrites (a bare read resolves to the default schema; a bare
-  declaration does not cover a qualified read).
+(mu/defn table-match? :- :boolean
+  "Do the tables `ref` and `decl` name the same table? Their names must be equal, case aside. Their schemas must be
+  equal, case aside, unless `ref` has no schema and `decl` is in `default-schema`; a `decl` without a schema matches
+  only a `ref` without one.
 
-  Names match case-agnostically. The parser reports a reference as a bare string, so nothing here can tell a quoted
-  `\"Orders\"` — which an engine reads literally — from an unquoted `ORDERS`, and counting them as the same table is
-  the safe direction: it can only make this guard accept, and the rewrite's own guard still refuses a reference it
-  did not remap."
+  Case is ignored because the parser reports a table name as a bare string: nothing here can tell a quoted
+  `\"Orders\"`, which an engine reads literally, from an unquoted `ORDERS`. The rewrite replaces both with the same
+  input."
   [{ref-schema :schema ref-name :name} :- ::data-testing.schema/table
    {d-schema :schema d-name :name}     :- ::data-testing.schema/table
    default-schema                      :- [:maybe :string]]
@@ -61,7 +60,7 @@
     (into [] (remove (fn [ref] (some #(table-match? ref % default-schema) declared))) referenced-tables)))
 
 (mu/defn- unused-inputs :- [:sequential ::data-testing.schema/table]
-  "The declared inputs the transform does not read — a fake for a table the query never touches
+  "The declared inputs the query under test does not read — a fake for a table the query never touches
   (usually a stale or mistyped input). Empty means the suite declares nothing extraneous. Together
   with `missing-inputs`, this makes the declared set exactly the referenced set: every read faked,
   no fake unused."
@@ -126,7 +125,7 @@
 
 (mu/defn- check-rewrite
   "Throw unless every table `rewritten` reads is one of `temp-tables`. `source` names the query for the author: nil is
-  the transform under test, a string is the expectation that carries the SQL."
+  the query under test, a string is the expectation that carries the SQL."
   [driver      :- :keyword
    rewritten   :- :string
    temp-tables :- [:set :string]
@@ -146,16 +145,18 @@
               source (assoc :expectation source))))))
 
 (mu/defn- check-expectation-sql
-  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten. Its SQL is the
-  author's, so SQL the parser cannot read is a refusal naming the expectation rather than the parser's own escape."
+  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten with `replacements`
+  and `output-token`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation
+  rather than the parser's own escape."
   [driver           :- :keyword
    expectation-name :- :string
    sql              :- :string
    replacements     :- ::data-testing.compile/table-replacements
+   output-token     :- [:maybe ::data-testing.compile/output-token]
    temp-tables      :- [:set :string]]
   (try
     (check-rewrite driver
-                   (data-testing.compile/replace-tables driver sql replacements)
+                   (data-testing.compile/replace-tables driver sql replacements output-token)
                    temp-tables
                    expectation-name)
     (catch Exception e
@@ -167,24 +168,99 @@
                 {:expectation expectation-name}))
         (throw e)))))
 
+(def ^:private placeholder
+  "A `{{...}}` placeholder, with the name inside its braces as the group, whitespace around it excluded."
+  #"\{\{\s*([^{}]*?)\s*\}\}")
+
+(mu/defn- check-placeholders :- :nil
+  "Throw unless every placeholder in the SQL of expectation `expectation-name` is `output-token`. Whitespace inside
+  the braces does not matter and case does, as in [[data-testing.compile/replace-tables]]."
+  [expectation-name :- :string
+   sql              :- :string
+   output-token     :- ::data-testing.compile/output-token]
+  (let [token-name (second (re-find placeholder output-token))]
+    (when-let [unknown (seq (into []
+                                  (comp (remove (fn [[_ placeholder-name]] (= token-name placeholder-name)))
+                                        (map first)
+                                        (distinct))
+                                  (re-seq placeholder sql)))]
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/unknown-placeholder
+              (tru "Expectation \"{0}\" uses placeholders a test does not know: {1}. Write {2} for the output of the query under test."
+                   expectation-name (str/join ", " unknown) output-token)
+              {:placeholders  (vec unknown)
+               :response/keys #{:placeholders}})))))
+
+(mr/def ::column-read
+  "A column that SQL reads, with the schema and name of its table, all three spelled as Metabase's metadata spells
+  them."
+  [:map {:closed true}
+   [:schema [:maybe :string]]
+   [:name   :string]
+   [:column :string]])
+
+(mu/defn- missing-input-columns :- [:sequential [:map
+                                                 [:table    ::data-testing.schema/table]
+                                                 [:columns  [:sequential :string]]
+                                                 [:declared [:map-of :string :string]]]]
+  "For each rows input, the columns that it lacks, spelled as their table spells them; an input that lacks none is
+  left out. An input lacks a column of `columns-read` when the input's table matches the column's table, as
+  [[table-match?]] matches with the input's table as `ref`, and no name that the input declares has the same
+  [[data-testing.u/column-key]] as the column.
+  `:declared` maps a column the input lacks to the input's spelling of it, when the two differ only in case."
+  [inputs         :- ::data-testing.schema/inputs
+   columns-read   :- [:set ::column-read]
+   default-schema :- [:maybe :string]
+   ignore-case?   :- :boolean]
+  (into []
+        (keep (fn [{:keys [table columns format]}]
+                (when (= :rows format)
+                  (let [declared (into #{} (map #(data-testing.u/column-key ignore-case? (:name %))) columns)
+                        missing  (into (sorted-set)
+                                       ;; The input is `ref`, so an input without a schema stands for its table in the
+                                       ;; default schema; Guard A has already refused one for a qualified reference.
+                                       (comp (filter #(table-match? table (select-keys % [:schema :name]) default-schema))
+                                             (map :column)
+                                             (remove #(contains? declared (data-testing.u/column-key ignore-case? %))))
+                                       columns-read)]
+                    (when (seq missing)
+                      {:table    table
+                       :columns  (vec missing)
+                       :declared (into {}
+                                       (keep (fn [column]
+                                               (some #(when (= (data-testing.u/fold-identifier %)
+                                                               (data-testing.u/fold-identifier column))
+                                                        [column %])
+                                                     (map :name columns))))
+                                       missing)})))))
+        inputs))
+
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
   temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
   typed refusal from [[metabase-enterprise.data-testing.errors]].
 
-  `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-transform`
+  `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
-  the temp tables everything may read; `default-schema` is the schema an unqualified reference resolves to in the
-  database under test."
+  the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
+  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test.
+
+  `columns-read`, when given, are the columns of tables that the query under test reads; a rows input is refused when
+  its table has a column among them that the input does not declare. `ignore-case?` says whether the database ignores
+  case in column names."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-transform replacements default-schema]}
+   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema
+           columns-read ignore-case?]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
        [:expectations        ::data-testing.schema/expectations]
        [:referenced-tables   [:set ::data-testing.schema/table]]
-       [:rewritten-transform :string]
+       [:rewritten-query :string]
        [:replacements        ::data-testing.compile/table-replacements]
-       [:default-schema      [:maybe :string]]]]
+       [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
+       [:default-schema      [:maybe :string]]
+       [:columns-read        {:optional true} [:maybe [:set ::column-read]]]
+       [:ignore-case?        {:optional true} :boolean]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/missing-inputs
@@ -206,11 +282,27 @@
                  (str/join ", " colliding))
             {:tables (vec colliding)
              :response/keys #{:tables}})))
+  (when-let [missing (seq (missing-input-columns inputs (or columns-read #{}) default-schema
+                                                 (boolean ignore-case?)))]
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/missing-input-columns
+            (tru "Test input(s) lack column(s) that the query under test reads: {0}. Declare each in the input for its table, spelled as the table spells it."
+                 (str/join "; " (for [{:keys [table columns declared]} missing]
+                                  (str (table-label table) ": "
+                                       (str/join ", " (for [column columns]
+                                                        (if-let [spelled (declared column)]
+                                                          (tru "{0} (declared as {1}, which differs in case)" column spelled)
+                                                          column)))))))
+            {:tables        (mapv (comp table-label :table) missing)
+             :columns       (into {} (map (juxt (comp table-label :table) :columns)) missing)
+             :response/keys #{:tables :columns}})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
-    (check-rewrite driver rewritten-transform temp-tables nil)
+    (check-rewrite driver rewritten-query temp-tables nil)
     (doseq [{:keys [name sql]} expectations
             :when              sql]
-      (check-expectation-sql driver name sql replacements temp-tables)))
+      (when output-token
+        (check-placeholders name sql output-token))
+      (check-expectation-sql driver name sql replacements output-token temp-tables)))
   (when (empty? expectations)
     (throw (data-testing.errors/ex
             ::data-testing.errors/no-expectations

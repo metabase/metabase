@@ -11,9 +11,10 @@
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
-   (java.sql Connection SQLException Savepoint)
+   (java.sql Connection DatabaseMetaData SQLException Savepoint)
    (java.util.concurrent Semaphore)
-   (java.util.concurrent.locks ReentrantReadWriteLock)))
+   (java.util.concurrent.locks ReentrantReadWriteLock)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -136,7 +137,7 @@
 
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
-    (with-open [conn (.getConnection mdb.connection/*application-db*)]
+    (with-open [conn (.getConnection ^javax.sql.DataSource (mdb.connection/current-application-db))]
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 
@@ -920,7 +921,7 @@
     (let [data-source (mdb.data-source/raw-connection-string->DataSource
                        "jdbc:h2:mem:quartz-lock-test;DB_CLOSE_DELAY=-1")
           app-db      (mdb.connection/application-db :h2 data-source)]
-      (binding [mdb.connection/*application-db* app-db]
+      (mdb.connection/with-application-db app-db
         (let [quartz-ds                    (mdb.connection/quartz-data-source)
               ^ReentrantReadWriteLock lock (:lock app-db)]
           (.. lock writeLock lock)
@@ -934,3 +935,69 @@
                 (.. lock writeLock unlock)))
             (is (true? (deref acquire 5000 ::timed-out))
                 "getConnection should proceed once the write lock is released")))))))
+
+(defn- product-data-source
+  "A data source whose connections report `product`, counting its `getConnection` calls in `calls`.
+  The first call throws when `fail-first?` is set."
+  [product calls fail-first?]
+  (reify DataSource
+    (getConnection [_]
+      (when (and (= 1 (swap! calls inc)) fail-first?)
+        (throw (SQLException. "unreachable")))
+      (reify Connection
+        (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] product)))
+        (close [_])))))
+
+(defn- do-with-product-app-db
+  "Bind an application DB of `db-type` whose connections report `product`, and call `f` with a function returning
+  how many connections it has opened.
+  The first connection throws when `fail-first?` is set."
+  [db-type product fail-first? f]
+  (let [calls (atom 0)]
+    (mdb.connection/with-application-db
+      (mdb.connection/application-db db-type (product-data-source product calls fail-first?))
+      (f #(deref calls)))))
+
+(deftest mariadb?-test
+  (testing "a :mysql application DB reads the product name once"
+    (doseq [[product expected] {"MariaDB" true, "MySQL" false}]
+      (do-with-product-app-db
+       :mysql product false
+       (fn [calls]
+         (is (= {:answers [expected expected], :calls 1}
+                {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls (calls)}))))))
+  (testing "a failed read is not cached, so the next call tries again"
+    (do-with-product-app-db
+     :mysql "MariaDB" true
+     (fn [calls]
+       (is (thrown? SQLException (mdb.connection/mariadb?)))
+       (is (true? (mdb.connection/mariadb?)))
+       (is (= 2 (calls))))))
+  (testing "other application DB types are never MariaDB, and never connect"
+    (do-with-product-app-db
+     :h2 "MariaDB" false
+     (fn [calls]
+       (is (= {:answer false, :calls 0}
+              {:answer (mdb.connection/mariadb?), :calls (calls)}))))))
+
+(deftest record-mariadb!-test
+  (testing "a recorded answer is used without connecting"
+    (do-with-product-app-db
+     :mysql "MySQL" false
+     (fn [calls]
+       (mdb.connection/record-mariadb! true)
+       (is (= {:answer true, :calls 0}
+              {:answer (mdb.connection/mariadb?), :calls (calls)})))))
+  (testing "an answer already read is kept"
+    (do-with-product-app-db
+     :mysql "MySQL" false
+     (fn [_calls]
+       (mdb.connection/mariadb?)
+       (mdb.connection/record-mariadb! true)
+       (is (false? (mdb.connection/mariadb?))))))
+  (testing "a recorded answer is ignored for types other than :mysql"
+    (do-with-product-app-db
+     :h2 "MariaDB" false
+     (fn [_calls]
+       (mdb.connection/record-mariadb! true)
+       (is (false? (mdb.connection/mariadb?)))))))
