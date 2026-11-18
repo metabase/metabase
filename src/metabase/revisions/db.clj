@@ -33,7 +33,7 @@
 (def revisioned-model-row-schema
   "The literal registry keyword of the row/update schema of each model revisions are tracked for (a literal
   keyword, not a `require`, to avoid a dependency cycle with the module that owns each model)."
-  {:model/Card        :metabase.queries.schema/card.update
+  {:model/Card        :metabase.queries.schema/card
    :model/Dashboard   :metabase.dashboards.schema/dashboard.update
    :model/Document    :metabase.documents.schema/document.update
    :model/Exploration :metabase.explorations.schema/exploration.update

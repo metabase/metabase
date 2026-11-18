@@ -1749,7 +1749,7 @@
       (maybe-unverify! card-before-update updated-fields actor)
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
-                                                  #(lib/normalize ::queries.schema/card.dataset-query %)))
+                                                  #(lib/normalize ::queries.schema/card.dataset-query.write %)))
       (cache/invalidate-config! {:questions [(:id card-before-update)]
                                  :with-overrides? true}))
     ;; Update all transitively dependent cards if the database was changed (#74561)
