@@ -6,9 +6,16 @@
       "members": [
         "bshepherdson",
         "dpsutton",
-        "metamben",
+        "technomancy",
         "rileythomp",
-        "technomancy"
+        "metamben"
+      ]
+    },
+    {
+      "name": "Query Research",
+      "label": ".Team/QueryResearch",
+      "members": [
+        "camsaul"
       ]
     },
     {
@@ -18,19 +25,8 @@
       "members": [
         "ranquild",
         "heypoom",
-        "sanex3339",
-        "NevRA"
-      ]
-    },
-    {
-      "name": "Graphy",
-      "label": ".Team/Graphy",
-      "members": [
-        "ranquild",
-        "galdre",
-        "escherize",
-        "alxnddr",
-        "tsplude"
+        "NevRA",
+        "sanex3339"
       ]
     },
     {
@@ -39,18 +35,7 @@
       "members": [
         "WiNloSt",
         "npretto",
-        "heypoom",
-        "sanex3339"
-      ]
-    },
-    {
-      "name": "DevEx",
-      "label": ".Team/DevEx",
-      "members": [
-        "fraserdrops",
-        "nemanjaglumac",
-        "romeovs",
-        "ChrisVandoo"
+        "NevRA"
       ]
     },
     {
@@ -58,74 +43,144 @@
       "label": ".Team/Metabot",
       "codeowner": "@metabase/metabot",
       "members": [
-        "lbrdnk",
         "crisptrutski",
-        "andreis",
+        "lbrdnk",
         "prascuna",
-        "Krever",
         "svozniuk",
+        "Krever",
         "radutoev"
-      ]
-    },
-    {
-      "name": "Cloud",
-      "label": "cloud",
-      "members": [
-        "filipesilva"
-      ]
-    },
-    {
-      "name": "UX West",
-      "label": ".Team/UXWest",
-      "members": [
-        "npfitz",
-        "nvoxland",
-        "deniskaber",
-        "andsalves",
-        "kevinkelleher12",
-        "AndreyChernykh",
-        "appleby"
       ]
     },
     {
       "name": "Gadget",
       "label": ".Team/Gadget",
       "members": [
+        "brybacki",
+        "egorgrushin",
         "nmezzopera",
         "bronsa",
-        "wotbrew",
-        "qnkhuat",
-        "chodorowicz",
-        "kamilmielnik",
-        "stasgavrylov",
-        "uladzimirdev",
-        "egorgrushin",
-        "metatyb",
-        "olehk-mb",
-        "annatomka",
-        "brybacki",
-        "BillyBobFry",
         "radex",
-        "mbradek"
+        "mbradek",
+        "metatyb"
       ]
     },
     {
-      "name": "Growth Eng",
-      "label": ".Team/GrowthEng",
+      "name": "UX West",
+      "label": ".Team/UXWest",
       "members": [
-        "iethree",
-        "bpander",
+        "andsalves",
+        "deniskaber",
+        "appleby",
+        "nmezzopera"
+      ]
+    },
+    {
+      "name": "UI Tools",
+      "label": ".Team/UITools",
+      "members": [
+        "annatomka",
+        "kamilmielnik",
+        "BillyBobFry"
+      ]
+    },
+    {
+      "name": "Design Loop",
+      "label": ".Team/DesignLoop",
+      "members": [
         "gantoreno",
-        "tmashara"
+        "chodorowicz",
+        "kevinkelleher12",
+        "olehk-mb"
       ]
     },
     {
-      "name": "Security Engineering",
-      "label": ".Team/SecurityEngineering",
+      "name": "Product Loop",
+      "label": ".Team/ProductLoop",
       "members": [
-        "bowbahdoe",
+        "stasgavrylov"
+      ]
+    },
+    {
+      "name": "Verification",
+      "label": ".Team/Verification",
+      "members": [
+        "escherize",
+        "undrfined",
+        "sloansparger",
+        "galdre"
+      ]
+    },
+    {
+      "name": "Harness",
+      "label": ".Team/Harness",
+      "members": [
+        "AndreyChernykh",
+        "nvoxland",
+        "npfitz",
+        "alxnddr"
+      ]
+    },
+    {
+      "name": "EngOps",
+      "label": ".Team/EngOps",
+      "members": [
+        "fraserdrops",
+        "romeovs",
+        "iethree",
+        "tsplude"
+      ]
+    },
+    {
+      "name": "GitOps",
+      "label": ".Team/GitOps",
+      "members": [
+        "ChrisVandoo",
+        "nemanjaglumac",
+        "uladzimirdev",
+        "iethree"
+      ]
+    },
+    {
+      "name": "Growth",
+      "label": ".Team/Growth",
+      "members": [
+        "bpander",
+        "tmashara",
+        "iethree"
+      ]
+    },
+    {
+      "name": "Cloud Ops",
+      "label": ".Team/CloudOps",
+      "members": [
+        "Onlinehead",
+        "imrkd",
+        "oreonl"
+      ]
+    },
+    {
+      "name": "Billing",
+      "label": ".Team/Billing",
+      "members": [
+        "filipesilva",
+        "kidd",
+        "imrkd"
+      ]
+    },
+    {
+      "name": "Security",
+      "label": ".Team/Security",
+      "members": [
         "enthym-aa",
+        "bowbahdoe",
         "johnswanson"
+      ]
+    },
+    {
+      "name": "Company OS",
+      "label": ".Team/CompanyOS",
+      "members": [
+        "andreis"
       ]
     }
   ]
