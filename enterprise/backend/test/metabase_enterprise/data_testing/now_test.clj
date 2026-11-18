@@ -5,14 +5,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
-   [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -20,8 +17,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)
-   (java.sql Connection PreparedStatement ResultSet)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,10 +72,6 @@
      :columns [{:name "id" :cast_type int-type}]
      :rows    (mapv (fn [id] {"id" id}) (sort ids))}))
 
-(def ^:private refusals
-  "The messages of the refusals [[outcome!]] caught, until [[refusal-messages!]] reads them."
-  (atom []))
-
 (defn- outcome!
   "Run the saved test `test-id`, a `test-model` row, of `subject`, a `subject-type`, as crowberto. Returns the status of
   its one expectation (`:error` when that expectation could not run), or the error type of the run's refusal."
@@ -91,15 +83,7 @@
         (assert (empty? more))
         (:status expectation))
       (catch ExceptionInfo e
-        (swap! refusals conj (ex-message e))
         (:error-type (ex-data e))))))
-
-(defn- refusal-messages!
-  "The messages of the refusals since the last call, which carry the database's own words; for an assertion's message,
-  so a failure on a driver that cannot run locally says why."
-  []
-  (let [[messages] (reset-vals! refusals [])]
-    (str/join "\n" messages)))
 
 (defn- run-card-test!
   "Save a card with the query `query` and a test of it with `inputs`, one expectation and the further `test-fields`,
@@ -177,80 +161,6 @@
           (is (= "Asia/Tokyo" (session-tz)))
           (is (= :passed (run!))))))))
 
-(defn- first-warehouse-error!
-  "Where Redshift's transaction aborts when the query under test of a run of `subject`, a `subject-type`, with
-  `definition` is prepared and run on a test connection that holds the run's inputs, step by step as a run does it,
-  with `SELECT 1` after each step; and the SQL and parameters of the query, and of the same query compiled as a card.
-  A run's own preparation drops some errors, and then reports only that the transaction is aborted."
-  [subject-type subject definition]
-  (try
-    (let [{:keys [driver database input->table labels compiled]}
-          (#'data-testing.runner/validated-plan subject-type subject definition)
-          card-compiled (try
-                          (:compiled (#'data-testing.runner/subject-plan
-                                      :card {:id 1 :dataset_query (get-in subject [:source :query]) :name "probe"}
-                                      (:inputs definition)
-                                      (some-> (:now definition) t/offset-date-time)))
-                          (catch Throwable e (ex-message e)))]
-      (str "SQL: " (:query compiled) "\nParameters: " (pr-str (:params compiled))
-           "\nAs a card: " (pr-str card-compiled)
-           "\nFirst error: "
-           (driver/do-with-test-connection
-            driver database
-            (fn [^Connection conn]
-              (let [output (driver/temp-table-name driver)
-                    sql    ^String (:query compiled)
-                    stmt   (volatile! nil)
-                    ps     #(deref stmt)
-                    steps  [["create the inputs" #(#'data-testing.runner/create-inputs! driver conn input->table labels)]
-                            ["describe the query" #(with-open [s (.prepareStatement conn sql)]
-                                                     (.getParameterCount (.getParameterMetaData s)))]
-                            ["prepare as a run does" #(vreset! stmt (.prepareStatement conn sql
-                                                                                       ResultSet/TYPE_FORWARD_ONLY
-                                                                                       ResultSet/CONCUR_READ_ONLY
-                                                                                       ResultSet/CLOSE_CURSORS_AT_COMMIT))]
-                            ["set the fetch direction" #(.setFetchDirection ^PreparedStatement (ps) ResultSet/FETCH_FORWARD)]
-                            ["set the fetch size" #(.setFetchSize ^PreparedStatement (ps) (int (driver.settings/sql-jdbc-fetch-size)))]
-                            ["set the query timeout" #(.setQueryTimeout ^PreparedStatement (ps) (int (/ driver.settings/*query-timeout-ms* 1000)))]
-                            ["count the parameters" #(.getParameterCount (.getParameterMetaData ^PreparedStatement (ps)))]
-                            ["set the parameters" #(doseq [[i param] (map-indexed vector (:params compiled))]
-                                                     (sql-jdbc.execute/set-parameter driver ^PreparedStatement (ps) (inc i) param))]
-                            ["cap the rows" #(do (.setFetchSize ^PreparedStatement (ps) 0) (.setMaxRows ^PreparedStatement (ps) 1))]
-                            ["execute" #(with-open [rs (.executeQuery ^PreparedStatement (ps))] (.next rs))]
-                            ["close the statement" #(.close ^PreparedStatement (ps))]
-                            ["create the output" #(data-testing.executor/create-temp-table! driver conn output compiled)]]
-                    select-1 #(try
-                                (with-open [s  (.createStatement conn)
-                                            rs (.executeQuery s "SELECT 1")]
-                                  (.next rs)
-                                  nil)
-                                (catch Throwable e (ex-message e)))]
-                (try
-                  (str
-                   "session "
-                   (try
-                     (with-open [s  (.createStatement conn)
-                                 rs (.executeQuery s (str "SELECT current_setting('timezone'), current_setting('search_path'),"
-                                                          " current_user"))]
-                       (.next rs)
-                       (pr-str [(.getString rs 1) (.getString rs 2) (.getString rs 3)]))
-                     (catch Throwable e (str "unreadable: " (ex-message e))))
-                   ", rolled back: "
-                   (try (.rollback conn) "yes" (catch Throwable e (ex-message e)))
-                   "; "
-                   (or (some (fn [[step thunk]]
-                               (let [error   (try (thunk) nil (catch Throwable e (ex-message e)))
-                                     aborted (select-1)]
-                                 (when (or error aborted)
-                                   (str "at \"" step "\": " (or error "no error")
-                                        (when aborted (str "; then SELECT 1 fails: " aborted))))))
-                             steps)
-                       "none"))
-                  (finally
-                    (when-let [^PreparedStatement s @stmt] (.close s)))))))))
-    (catch Throwable e
-      (str "The probe failed: " (ex-message e)))))
-
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and
   one expectation, `(expectation-of target)` where `target` is the target table's qualified name, then run the test.
@@ -267,14 +177,7 @@
                                                               :inputs       inputs
                                                               :expectations [(expectation-of (str schema "." target-name))]}
                                                              test-fields)]
-      (let [result (outcome! :transform transform :model/TransformTest test-id)]
-        (when (= ::data-testing.errors/query-failed result)
-          (swap! refusals conj (first-warehouse-error!
-                                :transform transform
-                                (data-testing.runner/test-definition (t2/select-one :model/TransformTest :id test-id))))
-          (swap! refusals conj (str "The same test of a card, run next: "
-                                    (run-card-test! source-query test-fields inputs [(expectation-of "unused")]))))
-        result))))
+      (outcome! :transform transform :model/TransformTest test-id))))
 
 (deftest transform-reads-the-pinned-clock-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -282,10 +185,8 @@
           inputs [(orders-input {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
           run!   #(run-transform-test! query % inputs (constantly (selects [1])))]
       (testing "a transform test with `now` selects the rows of the pinned month"
-        (refusal-messages!)
         (is (= {:pinned :passed :unpinned :failed}
-               {:pinned (run! {:now now}) :unpinned (run! {})})
-            (refusal-messages!))))))
+               {:pinned (run! {:now now}) :unpinned (run! {})}))))))
 
 (deftest native-subject-with-now-is-refused-test
   (mt/test-drivers #{:h2 :postgres}
