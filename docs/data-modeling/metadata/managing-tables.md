@@ -13,6 +13,8 @@ _Data Studio > Connected data_
 
 ![Connected data](../images/data-structure.png)
 
+You can manage table settings and metadata to make it easier for people to work with your data in **Data Studio > Connected data**.
+
 You can do things like:
 
 - Browse all the tables in your Metabase

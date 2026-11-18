@@ -11,7 +11,7 @@ summary: Data apps are custom apps that an AI coding agent builds on your semant
 
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
-Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
+Data apps are custom apps that you build on your Metabase data. Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
 
 A data app runs with the permissions of the person who opens it, so people see only the Metabase data that they're allowed to see. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
 
