@@ -7,6 +7,16 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
+  `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It
+  calls the driver's own method to learn the type of its current-time form, and returns a literal of the pinned moment
+  with that type: a wall-clock time in the results timezone when the form is untyped or typed `timestamp` or
+  `datetime`, and an instant otherwise.
+
+- The `:sql-jdbc` implementation of `metabase.driver/do-with-test-connection` sets the session timezone to the report
+  timezone when the driver supports one. A driver that overrides the method without calling the `:sql-jdbc` one should
+  set it too, or a data test reads dates in whatever timezone its pooled connection last had.
+
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
