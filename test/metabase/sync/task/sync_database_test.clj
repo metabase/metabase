@@ -30,7 +30,8 @@
       (is (= (.getKey job) (.getJobKey trigger)))
       (is (= "metabase.task.sync-database.trigger.7" (.getName (.getKey trigger)))))
     (testing "job carries Database id and is deleted with its last trigger"
-      (is (= 7 (get (.getJobDataMap job) "id")))
+      (is (= {"id" 7, task/metrics-job-name-key "metabase.task.sync-database.job"}
+             (into {} (.getJobDataMap job))))
       (is (not (.isDurable job))))
     (testing "trigger fires once however long it waits"
       (is (= 0 (.getRepeatCount trigger)))

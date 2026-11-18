@@ -41,12 +41,13 @@
 
 (defn- job
   "The job that syncs the Database with `database-id`, with a key of its own so that each Database has one run at a
-  time."
+  time, and one name in metrics for all Databases."
   ^JobDetail [database-id]
   (jobs/build
    (jobs/with-description (format "Sync Database %d" database-id))
    (jobs/of-type SyncDatabase)
-   (jobs/using-job-data {"id" database-id})
+   (jobs/using-job-data {"id"                      database-id
+                         task/metrics-job-name-key "metabase.task.sync-database.job"})
    (jobs/with-identity (jobs/key (format "metabase.task.sync-database.job.%d" database-id)))))
 
 (defn- trigger

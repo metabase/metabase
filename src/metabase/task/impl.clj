@@ -254,6 +254,10 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
+(def metrics-job-name-key
+  "The key of a job data entry that names the job in metrics in place of its job key, for jobs with a key per target."
+  "metrics-job-name")
+
 (mu/defn schedule-once! :- [:maybe :boolean]
   "Store the one-shot `trigger` of `job` in place of a stored trigger with its key, whether that one waits or its run is
   in progress, and return true, or nil when this node has no running scheduler or Quartz refuses the trigger."
