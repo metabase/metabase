@@ -2,7 +2,6 @@
   "The audit rows that the writes of a subscription record: what a user does records, the upkeep that follows does not."
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -18,18 +17,83 @@
   (mapv (juxt :topic :model :model_id)
         (t2/select [:model/AuditLog :topic :model :model_id] :id [:> before] {:order-by [[:id :asc]]})))
 
-(deftest creating-subscription-records-subscription-create-only-test
+(def ^:private email-channel
+  {:channel_type  "email"
+   :schedule_type "daily"
+   :schedule_hour 12
+   :enabled       true
+   :recipients    []})
+
+(defn- rows-since [before]
+  (t2/select [:model/AuditLog :topic :model :model_id :user_id :details] :id [:> before] {:order-by [[:id :asc]]}))
+
+(deftest pulse-writes-record-one-row-each-test
   (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/Card card {:name "Subscribed card"}]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Subscribed card"}
+                   :model/Dashboard {dashboard-id :id} {:name "Dashboard"}]
+      (mt/with-model-cleanup [:model/Pulse]
+        (let [cards   [{:id card-id :include_csv false :include_xls false :dashboard_card_id nil}]
+              rasta   (mt/user->id :rasta)
+              before  (max-id)
+              pulse   (mt/user-http-request :rasta :post 200 "pulse"
+                                            {:name "Subscription" :dashboard_id dashboard-id :cards cards
+                                             :channels [email-channel]})
+              pulse-id (:id pulse)]
+          (testing "creating a subscription stores subscription-create only"
+            (is (=? [{:topic :subscription-create :model "Pulse" :model_id pulse-id :user_id rasta
+                      :details {:archived false :name "Subscription" :dashboard_id dashboard-id :parameters []
+                                :channel ["email"] :schedule ["daily"] :recipients [[]]}}]
+                    (rows-since before))))
+          (testing "changing the pulse, its channels and their recipients stores one row"
+            (let [before (max-id)]
+              (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                    {:name "Renamed"
+                                     :channels [(assoc email-channel :schedule_hour 8
+                                                       :recipients [{:id (mt/user->id :crowberto)}])]})
+              (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id rasta
+                        :details {:name "Renamed" :channel ["email"] :schedule ["daily"]}}]
+                      (rows-since before)))))
+          (testing "changing only the channels stores one row"
+            (let [before (max-id)]
+              (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                    {:channels [(assoc email-channel :schedule_hour 9
+                                                       :recipients [{:id (mt/user->id :crowberto)}])]})
+              (is (= [:subscription-update] (map :topic (rows-since before))))))
+          (testing "changing only the recipients stores one row"
+            (let [before (max-id)]
+              (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                    {:channels [(assoc email-channel :schedule_hour 9
+                                                       :recipients [{:id (mt/user->id :rasta)}])]})
+              (is (= [:subscription-update] (map :topic (rows-since before))))))
+          (testing "archiving stores one row"
+            (let [before (max-id)]
+              (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id) {:archived true})
+              (is (= [:subscription-update] (map :topic (rows-since before)))))))))))
+
+(deftest creating-legacy-pulse-records-pulse-create-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:name "Pulsed card"}]
       (mt/with-model-cleanup [:model/Pulse]
         (let [before (max-id)
-              pulse  (mt/with-current-user (mt/user->id :rasta)
-                       (models.pulse/create-pulse! [(models.pulse/card->ref card)]
-                                                   [{:channel_type :email :schedule_type :daily :schedule_hour 18
-                                                     :enabled true :recipients [{:email "foo@example.com"}]}]
-                                                   {:name "Subscription" :creator_id (mt/user->id :rasta)
-                                                    :skip_if_empty false}))]
-          (is (= [[:subscription-create "Pulse" (:id pulse)]] (topics-since before))))))))
+              pulse  (mt/user-http-request :rasta :post 200 "pulse"
+                                           {:name "Legacy" :cards [{:id card-id :include_csv false :include_xls false
+                                                                    :dashboard_card_id nil}]
+                                            :channels [email-channel] :skip_if_empty false})]
+          (is (=? [{:topic :pulse-create :model "Pulse" :model_id (:id pulse) :user_id (mt/user->id :rasta)}]
+                  (rows-since before))))))))
+
+(deftest updating-alert-records-alert-update-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:name "Alerted card"}
+                   :model/Pulse {alert-id :id} {:name "Alert" :alert_condition "rows" :skip_if_empty true}
+                   :model/PulseCard _ {:pulse_id alert-id :card_id card-id :position 0}
+                   :model/PulseChannel _ {:pulse_id alert-id :channel_type :email :schedule_type :daily :schedule_hour 1}]
+      (let [before (max-id)]
+        (mt/with-current-user (mt/user->id :rasta)
+          (t2/update! :model/Pulse :id alert-id {:alert_first_only true}))
+        (is (=? [{:topic :alert-update :model "Card" :model_id alert-id :user_id (mt/user->id :rasta)
+                  :details {:name "Alerted card" :card_id card-id :channel ["email"]}}]
+                (rows-since before)))))))
 
 (deftest renaming-or-moving-dashboard-records-no-subscription-update-test
   (mt/with-premium-features #{:audit-app}

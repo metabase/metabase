@@ -6,6 +6,7 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
+   [metabase.pulse.core :as pulse]
    [metabase.util.events :as u.events]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -124,13 +125,9 @@
   (record! topic event))
 
 (events/derive! ::pulse-event ::event)
-(events/derive! :event/pulse-create ::pulse-event)
-(events/derive! :event/pulse-delete ::pulse-event)
 (events/derive! :event/subscription-unsubscribe ::pulse-event)
 (events/derive! :event/subscription-unsubscribe-undo ::pulse-event)
 (events/derive! :event/alert-unsubscribe ::pulse-event)
-(events/derive! :event/subscription-create ::pulse-event)
-(events/derive! :event/subscription-update ::pulse-event)
 (events/derive! :event/subscription-send ::pulse-event)
 (events/derive! :event/alert-send ::pulse-event)
 
@@ -158,21 +155,59 @@
               :model    :model/Pulse
               :model-id model-id})))
 
-(events/derive! ::alert-event ::event)
-(events/derive! :event/alert-create ::alert-event)
-(events/derive! :event/alert-delete ::alert-event)
-(events/derive! :event/alert-update ::alert-event)
+(defn- pulse-row
+  "The audit row params of the Pulse or Alert `pulse-id` after the writes `events`, as the user who made them: the
+  creation or the update of a Subscription, the creation of a legacy Pulse, the update of an Alert, none for the
+  creation of one."
+  [pulse-id events]
+  (let [created?  (some #(and (= :model/Pulse (:model %)) (= :create (:operation %))) events)
+        pulse-row (some #(when (= :model/Pulse (:model %)) (:object %)) events)
+        alert     (when-not (and pulse-row (nil? (:alert_condition pulse-row)))
+                    (pulse/retrieve-alert pulse-id))]
+    (if alert
+      (when-not created?
+        [:event/alert-update {:details  (create-details-map alert (:name (:card alert)) true (:id (:card alert)))
+                              :model    :model/Card
+                              :model-id (:id alert)}])
+      (when-let [pulse (pulse/retrieve-pulse pulse-id)]
+        [(cond
+           (not created?)        :event/subscription-update
+           (:dashboard_id pulse) :event/subscription-create
+           :else                 :event/pulse-create)
+         {:details  (create-details-map pulse (:name pulse) false (:dashboard_id pulse))
+          :model    :model/Pulse
+          :model-id pulse-id}]))))
 
-(methodical/defmethod events/publish-event! ::alert-event
-  [topic {:keys [object user-id] :as _event}]
-  (let [card      (:card object)
-        card-name (:name card)]
-    ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-    (record! topic
-             {:details  (create-details-map object card-name true (:id card))
-              :user-id  user-id
-              :model    :model/Card
-              :model-id (:id object)})))
+(defn- record-pulses!
+  "Record, once per Pulse, the writes of a batch to a Pulse, its cards, its channels and their recipients: one row per
+  Pulse that a user wrote, none for one that was deleted, nor for the upkeep of a Dashboard's subscriptions, nor for a
+  write that no user made."
+  [_owner events _all-events]
+  (let [channel->pulse (audit-app.db/pulse-ids-of-channels
+                        (into #{} (comp (filter #(= :model/PulseChannelRecipient (:model %)))
+                                        (keep #(:pulse_channel_id (or (:object %) (:previous-object %)))))
+                              events))
+        pulse-id-of    (fn [{:keys [model object previous-object]}]
+                         (let [row (or object previous-object)]
+                           (case model
+                             :model/Pulse                 (:id row)
+                             :model/PulseChannelRecipient (channel->pulse (:pulse_channel_id row))
+                             (:pulse_id row))))]
+    (doseq [[pulse-id pulse-events] (group-by pulse-id-of events)
+            :when (and pulse-id
+                       (some :user-id pulse-events)
+                       (some u.events/user-edit? pulse-events)
+                       (not-any? #(and (= :model/Pulse (:model %)) (= :delete (:operation %))) pulse-events))
+            :let  [[topic params] (pulse-row pulse-id pulse-events)]
+            :when topic]
+      (record! topic (assoc params :user-id (some :user-id pulse-events))))))
+
+(events/register-owned-consumer! ::pulses
+                                 (fn [{:keys [model]}]
+                                   (when (#{:model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient}
+                                          model)
+                                     ::pulses))
+                                 record-pulses!)
 
 (events/derive! ::notification-event ::event)
 (events/derive! :event/notification-create ::notification-event)

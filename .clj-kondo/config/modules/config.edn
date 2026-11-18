@@ -412,6 +412,7 @@
            lib.schema
            models
            premium-features
+           pulse
            settings
            task
            task.history
@@ -435,6 +436,9 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
                     :model/QueryExecution
                     :model/RemoteSyncTask
                     :model/Segment

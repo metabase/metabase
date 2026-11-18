@@ -55,38 +55,3 @@
               (pulse-card/bulk-create! new-pulse-cards))))))))
 
 (events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)
-
-(defn- pulse-owner
-  "The id of the Pulse that the `event` of a write of it, of its cards, its channels or their recipients is about."
-  [{:keys [model object previous-object]}]
-  (let [row (or object previous-object)]
-    (case model
-      :model/Pulse                 (:id row)
-      (:model/PulseCard
-       :model/PulseChannel)        (:pulse_id row)
-      :model/PulseChannelRecipient (some-> (:pulse_channel_id row) pulse.db/pulse-id-of-channel)
-      nil)))
-
-(defn- record-pulse!
-  "Publish the creation or the update of the Pulse `pulse-id`, as the Alert or the Subscription it is, once for the
-  `events` of a batch, as the user who wrote it."
-  [pulse-id events _all-events]
-  (when-let [user-id (some :user-id events)]
-    (let [pulse-event? #(= :model/Pulse (:model %))
-          created?     (some #(and (pulse-event? %) (= :create (:operation %))) events)
-          deleted?     (some #(and (pulse-event? %) (= :delete (:operation %))) events)
-          pulse-row    (some #(when (pulse-event? %) (:object %)) events)
-          subscription (fn []
-                         (when-let [pulse (models.pulse/retrieve-pulse pulse-id)]
-                           (if created?
-                             (events/publish-event! :event/subscription-create {:object pulse :user-id user-id})
-                             (events/publish-event! :event/subscription-update {:object pulse :user-id user-id}))))]
-      (when (and (not deleted?) (some u.events/user-edit? events))
-        (if (and pulse-row (nil? (:alert_condition pulse-row)))
-          (subscription)
-          (if-let [alert (models.pulse/retrieve-alert pulse-id)]
-            (when-not created?
-              (events/publish-event! :event/alert-update {:object alert :user-id user-id}))
-            (subscription)))))))
-
-(events/register-owned-consumer! ::pulse-records pulse-owner record-pulse!)
