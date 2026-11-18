@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -97,6 +98,34 @@
                       (boolean (mi/can-create? model (dissoc saved-test :id)))))))
        (is (false? (mt/with-current-user (mt/user->id :rasta)
                      (boolean (mi/can-create? model (dissoc (t2/select-one model :id test-id) :id))))))))))
+
+(deftest can-write-of-a-batch-follows-each-tests-own-subject-test
+  ;; Card tests only: a non-admin's write on a transform or a segment needs the data analyst role, not a collection,
+  ;; and only a superuser may write an action.
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable :id}       {}
+                     :model/Collection {read-only :id}      {}
+                     :model/Card       {writable-card :id}  {:collection_id writable
+                                                             :dataset_query (data-testing.test-util/categories-query)}
+                     :model/Card       {read-only-card :id} {:collection_id read-only
+                                                             :dataset_query (data-testing.test-util/categories-query)}
+                     :model/CardTest   {writable-test :id}  {:card_id writable-card :name "On the writable card"}
+                     :model/CardTest   {read-only-test :id} {:card_id read-only-card :name "On the read-only card"}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) read-only)
+        (let [batch (fn [user test-ids]
+                      (mt/with-current-user (mt/user->id user)
+                        (mapv (comp boolean mi/can-write?)
+                              (t2/hydrate (mapv #(t2/select-one :model/CardTest :id %) test-ids) :can_write))))]
+          (testing "premise: hydrated alone, Rasta may write the test of the writable card and not the other"
+            (is (true? (hydrated? :rasta :model/CardTest writable-test :can_write mi/can-write?)))
+            (is (false? (hydrated? :rasta :model/CardTest read-only-test :can_write mi/can-write?))))
+          (testing "in one batch, each test gets the answer for its own card, whichever comes first"
+            (is (= [true false] (batch :rasta [writable-test read-only-test])))
+            (is (= [false true] (batch :rasta [read-only-test writable-test]))))
+          (testing "control: an admin may write both tests of the batch"
+            (is (= [true true] (batch :crowberto [writable-test read-only-test])))))))))
 
 (deftest only-transform-tests-are-read-only-on-a-read-only-instance-test
   (do-with-each-test-type!

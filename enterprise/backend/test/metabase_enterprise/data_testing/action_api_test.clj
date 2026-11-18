@@ -328,6 +328,29 @@
                        (t2/delete! :model/DataTestRun :test_type "action" :test_id test-id)
                        (t2/delete! :model/Card :id hidden-id)))))))))))))
 
+(deftest runs-of-a-test-of-an-implicit-action-are-refused-as-unsupported-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (do-with-action!
+           coll-id
+           (constantly {:type :implicit :kind "row/update"})
+           (fn [action-id]
+             ;; The API refuses to save a test of an implicit action; an import can store one.
+             (mt/with-temp [:model/ActionTest {test-id :id} (body action-id)]
+               (let [run-path (str "ee/action-test/" test-id "/run")]
+                 (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+                 (try
+                   (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                                 :perms/create-queries :query-builder-and-native}
+                     (doseq [user [:crowberto :rasta]]
+                       (testing (str "a run by " user " is refused: only query actions can be tested")
+                         (is (= "action-test.unsupported-action"
+                                (:error-code (mt/user-http-request user :post run-path)))))))
+                   (finally
+                     (t2/delete! :model/DataTestRun :test_type "action" :test_id test-id))))))))))))
+
 (deftest deleting-an-action-deletes-its-tests-test
   (mt/with-premium-features #{:transforms-testing}
     (do-with-action! nil (fn [action-id]
