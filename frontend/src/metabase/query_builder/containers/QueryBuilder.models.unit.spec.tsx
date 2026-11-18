@@ -651,8 +651,8 @@ const getLastRequestBody = (url: string, method: "POST" | "PUT"): unknown => {
 const getEditBarButton = (name: string) =>
   within(screen.getByTestId("dataset-edit-bar")).getByRole("button", { name });
 
-const runQueryFromEditor = () =>
-  userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+const runQueryFromEditor = async () =>
+  userEvent.click(await screen.findByRole("button", { name: "Get Answer" }));
 
 const expectSaveBlockedUntilRun = async (name: string) => {
   const saveButton = getEditBarButton(name);
