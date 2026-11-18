@@ -18,6 +18,7 @@
    The data also holds the values that explain the error, and the failing op's `:op-index` and `:op-name`.
    This namespace words no errors: each tool turns that data into text for its own model."
   (:require
+   [clojure.set :as set]
    [malli.error :as me]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -1019,28 +1020,30 @@
               {:keys [parameter_id card_id]}                parameter_mappings]
           [parameter_id dashcard-id card_id])))
 
-(defn- asked-to-drop?
-  "Whether `ops` dropped the connection of `parameter-id` on `dashcard-id` on purpose.
-   An `unwire_parameter` op does for its filter, on its dashcard or, without one, on every dashcard.
-   A `patch_dashcard` op that sets `parameter_mappings` does for every filter it leaves out of them."
-  [ops parameter-id dashcard-id]
-  (some (fn [{:keys [op parameter_id dashcard_id patch] :as o}]
-          (case op
-            "unwire_parameter" (and (= parameter-id parameter_id)
-                                    (or (not (contains? o :dashcard_id)) (= dashcard-id dashcard_id)))
-            "patch_dashcard"   (and (= dashcard-id dashcard_id)
-                                    (contains? patch :parameter_mappings)
-                                    (not-any? #(= parameter-id (:parameter_id %)) (:parameter_mappings patch)))
-            false))
-        ops))
+(def ^:private intentional-drop-ops
+  "The ops whose dropped connections were asked for: `unwire_parameter`, and `patch_dashcard` setting
+   `parameter_mappings`."
+  #{"unwire_parameter" "patch_dashcard"})
+
+(defn- apply-op-tracking-drops
+  "Runs [[apply-op-at]], and keeps `::asked-drops`, the connections, as [[connections]] gives them, that an op in
+   [[intentional-drop-ops]] removed and no later op restored."
+  [state idx op]
+  (let [before (connections (:dashcards state))
+        state' (apply-op-at state idx op)
+        after  (connections (:dashcards state'))]
+    (update state' ::asked-drops
+            (fn [asked]
+              (cond-> (set/difference (or asked #{}) after)
+                (contains? intentional-drop-ops (:op op)) (set/union (set/difference before after)))))))
 
 (defn- dropped-connections
   "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id :series}`
    maps.
    The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
    A connection counts only when its filter and its dashcard survive, its card is still on the dashcard or was
-   replaced, and no op in `ops` dropped it on purpose, as [[asked-to-drop?]] judges."
-  [current payload ops]
+   replaced, and it isn't in `asked-drops`, the connections the ops dropped on purpose."
+  [current payload asked-drops]
   (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
         stored-dashcards     (u/index-by :id (:dashcards current))
         saved-dashcards      (u/index-by :id (:dashcards payload))
@@ -1059,7 +1062,7 @@
                :when (and (surviving-parameter? parameter-id)
                           new-slot
                           (not (contains? after [parameter-id dashcard-id new-slot]))
-                          (not (asked-to-drop? ops parameter-id dashcard-id)))]
+                          (not (contains? asked-drops [parameter-id dashcard-id card-id])))]
            {:parameter_id parameter-id
             :dashcard_id  dashcard-id
             :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
@@ -1085,7 +1088,7 @@
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
   (let [ops     (prepare-ops ops)
-        state   (-> (reduce-kv apply-op-at
+        state   (-> (reduce-kv apply-op-tracking-drops
                                (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
                                ops)
                     check-tab-coverage!
@@ -1095,7 +1098,7 @@
                     (update :dashcards (partial mapv series-ids)))]
     (with-meta payload
                {::effects {:pushed-dashcard-ids  (::pushed state)
-                           :dropped-connections (dropped-connections current payload ops)}})))
+                           :dropped-connections (dropped-connections current payload (::asked-drops state))}})))
 
 (defn effects
   "What the ops did beyond the payload [[compile-ops]] returns, read from its metadata.

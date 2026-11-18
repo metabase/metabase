@@ -1500,6 +1500,12 @@
            (dropped-connections (p1-dash a-dashcard)
                                 [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 9)]}}
                                  {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "a connection an op drops on purpose and a later op restores is reported when a third op drops it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
   (testing "a mapping stored without a card id never filtered anything, so losing it is not reported"
     (is (= []
            (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(dissoc (p1-mapping 9) :card_id)]))
