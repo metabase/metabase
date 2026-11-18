@@ -379,7 +379,7 @@
   [val goal-part]
   (-> (timeseries-result val)
       (assoc-in [:card :visualization_settings :graph.goal_value] {:id 42 :type "card" :column "target"})
-      (assoc-in [:result :data :referenced_entities] {"card" {"42" goal-part}})))
+      (assoc :goal-values {"card" {"42" goal-part}})))
 
 (deftest ^:parallel goal-met-referenced-goal-test
   (testing "Timeseries whose goal is another card's value"

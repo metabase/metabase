@@ -356,13 +356,14 @@
     (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
         (lib/aggregate (lib/count)))))
 
-(defn- rendered-card-results
-  "The results [[slackbot.query/generate-card-output]] hands the PNG renderer for the card with `card-id`."
+(defn- rendered-card-args
+  "The results and render options [[slackbot.query/generate-card-output]] hands the PNG renderer for the card with
+  `card-id`, as `{:results _ :options _}`."
   [card-id]
   (let [rendered (atom nil)]
-    (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card-to-png (fn [_timezone _card results _width _options]
-                                                                         (reset! rendered results)
-                                                                         (byte-array 0))]
+    (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card-to-png (fn [_timezone _card results _width options]
+                                                                          (reset! rendered {:results results :options options})
+                                                                          (byte-array 0))]
       (mt/with-current-user (mt/user->id :rasta)
         (is (= :image (:type (slackbot.query/generate-card-output card-id))))))
     @rendered))
@@ -377,12 +378,12 @@
     (testing "a saved chart image gets the values of its dynamic goals (GDGT-3511)"
       (is (=? {:status "completed"
                :data   {:rows [[1000]]}}
-              (get-in (rendered-card-results card-id) [:data :referenced_entities "card" (str goal-id)]))))
+              (get-in (rendered-card-args card-id) [:options :channel.render/goal-values "card" (str goal-id)]))))
     (testing "a failure getting the goals still renders the chart"
       (mt/with-dynamic-fn-redefs [dynamic-goals/chart-goal-values (fn [& _] (throw (ex-info "boom" {})))]
-        (let [results (rendered-card-results card-id)]
+        (let [{:keys [results options]} (rendered-card-args card-id)]
           (is (= [[100]] (get-in results [:data :rows])))
-          (is (nil? (get-in results [:data :referenced_entities]))))))))
+          (is (nil? (:channel.render/goal-values options))))))))
 
 (deftest generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"

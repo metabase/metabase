@@ -22,7 +22,7 @@
 
 (def ^:private expected-data-keys
   "The only keys that should appear in the :data sub-map of a notification result."
-  #{:cols :rows :viz-settings :results_metadata :insights :referenced_entities :results_timezone
+  #{:cols :rows :viz-settings :results_metadata :insights :results_timezone
     :format-rows? :pivot-export-options})
 
 (defn- check-result-structure
@@ -69,10 +69,10 @@
                                               :color "#84BB4C"}]}})
 
 (defn- referenced-goal-result [part goal-id]
-  (get-in part [:result :data :referenced_entities "card" (str goal-id)]))
+  (get-in part [:goal-values "card" (str goal-id)]))
 
 (deftest execute-card-adds-goal-values-test
-  (testing "execute-card adds the dynamic goal values the static renderer and alerts resolve against"
+  (testing "execute-card adds the dynamic goal values the static renderer and alerts resolve against, next to the result"
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                    :model/Card {card-id :id} (gauge-with-referenced-goal goal-id)]
       (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
@@ -172,7 +172,7 @@
                   (referenced-goal-result part goal-id)))
           (testing "the other combined cards don't run it again"
             (is (= [series-id] (map (comp :id :card) (get-in part [:dashcard :series-results]))))
-            (is (nil? (get-in part [:dashcard :series-results 0 :result :data :referenced_entities])))))))))
+            (is (not (contains? (get-in part [:dashcard :series-results 0]) :goal-values)))))))))
 
 (deftest execute-card-without-goals-runs-no-goal-values-test
   (testing "a card that draws no dynamic goal runs no goal source"
@@ -183,7 +183,7 @@
         (mt/with-dynamic-fn-redefs [dynamic-goals/run-source (fn [& _] (swap! calls inc) {:status "completed"})]
           (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
             (check-result-structure (:result part))
-            (is (not (contains? (get-in part [:result :data]) :referenced_entities)))))
+            (is (not (contains? part :goal-values)))))
         (is (zero? @calls))))))
 
 (deftest execute-card-failed-goal-source-test
@@ -205,12 +205,12 @@
         (testing "alert"
           (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
             (check-result-structure (:result part))
-            (is (nil? (get-in part [:result :data :referenced_entities])))))
+            (is (not (contains? part :goal-values)))))
         (testing "dashboard subscription"
           (mt/with-current-user (mt/user->id :rasta)
             (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
               (check-result-structure (:result part))
-              (is (nil? (get-in part [:result :data :referenced_entities]))))))))))
+              (is (not (contains? part :goal-values))))))))))
 
 (defn- dashboard-card-part
   "The part of the only card on the dashboard with `dash-id`, executed as `user-id`."
@@ -245,12 +245,13 @@
                                                                                                 :column "count"}}}
                    :model/Dashboard     {dash-id :id} {}
                    :model/DashboardCard _             {:dashboard_id dash-id :card_id (:id card)}]
-      (letfn [(rendered-goal [{:keys [card dashcard result]}]
+      (letfn [(rendered-goal [{:keys [card dashcard result goal-values]}]
                 (let [captured (atom nil)]
                   (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                                 (reset! captured viz-settings)
                                                                 {:type :svg :content "<svg></svg>"})]
-                    (channel.render/render-pulse-card :inline nil card dashcard result))
+                    (channel.render/render-pulse-card :inline nil card dashcard result
+                                                      {:channel.render/goal-values goal-values}))
                   (:progress.goal @captured)))]
         (testing "alert"
           (is (= 1000 (rendered-goal (notification.payload.execute/execute-card (mt/user->id :rasta) (:id card))))))

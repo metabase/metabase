@@ -246,12 +246,14 @@
        :card-id     card-id}))))
 
 (defn- render-saved-card-png
-  "Render a saved card (already fetched from DB) and pre-fetched results to PNG bytes."
-  [card results]
+  "Render a saved card (already fetched from DB) and pre-fetched results to PNG bytes. `goal-values` resolve the card's
+  dynamic goals."
+  [card results goal-values]
   (let [{:keys [width]} (render-dimensions (:display card))
         options          {:channel.render/include-title? false
                           :channel.render/padding-x      render-padding-x-px
-                          :channel.render/padding-y      0}]
+                          :channel.render/padding-y      0
+                          :channel.render/goal-values    goal-values}]
     ;; TODO: should we use the user's timezone for this?
     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                              card
@@ -275,7 +277,7 @@
     (if (and (-> card :display keyword supported-png-display-types)
              (seq (get-in results [:data :rows])))
       {:type      :image
-       :content   (render-saved-card-png card (dynamic-goals/assoc-chart-goal-values results card nil))
+       :content   (render-saved-card-png card results (dynamic-goals/chart-goal-values-or-nil card nil))
        :card-name card-name}
       {:type      :table
        :content   (format-results-as-table-blocks results)

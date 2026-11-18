@@ -279,19 +279,15 @@
   (cond-> (goal-values (chart-goal-sources card dashcard) :dashboard-id dashboard-id :ignore-cache? ignore-cache?)
     anonymous? scrub-errors))
 
-(defn assoc-chart-goal-values
-  "`result` (a completed QP result for `card` on `dashcard`) with its [[chart-goal-values]] under
-  `[:data :referenced_entities]`, where static rendering reads them. Never throws; a chart with no goals runs nothing."
-  [result card dashcard & {:as opts}]
-  (if (= :completed (:status result))
-    (try
-      (if-let [values (not-empty (chart-goal-values card dashcard opts))]
-        (assoc-in result [:data :referenced_entities] values)
-        result)
-      (catch Throwable e
-        (log/warnf e "Error getting goal values for Card %s" (:id card))
-        result))
-    result))
+(defn chart-goal-values-or-nil
+  "[[chart-goal-values]] for in-process renderers, or nil when the chart draws no goals sourced elsewhere. Never throws:
+  a failure logs a warning and yields nil, so the chart renders without its goals."
+  [card dashcard & {:as opts}]
+  (try
+    (not-empty (chart-goal-values card dashcard opts))
+    (catch Throwable e
+      (log/warnf e "Error getting goal values for Card %s" (:id card))
+      nil)))
 
 (mu/defn chart-context-goal-values :- ::goal-values
   "Anonymous (public/embed/preview) path; takes only a shared resolver's output. Withholds every goal when the token

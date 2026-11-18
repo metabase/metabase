@@ -578,7 +578,7 @@
 (def ^:private goal-ref
   {:id 42 :type "card" :column "target"})
 
-(def ^:private goal-referenced-entities
+(def ^:private goal-values
   {"card" {"42" {:status "completed"
                  :data   {:cols [{:name "target" :display_name "Target" :base_type :type/Integer}]
                           :rows [[80]]}}}})
@@ -600,12 +600,11 @@
                                                :display_name "Y"
                                                :base_type    :type/Integer
                                                :source       :aggregation}]
-                        :rows                [["a" 1] ["b" 2]]
-                        :referenced_entities goal-referenced-entities}]
+                        :rows                [["a" 1] ["b" 2]]}]
           (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                         (reset! captured viz-settings)
                                                         {:type :svg :content "<svg></svg>"})]
-            (channel.render/render-pulse-card-for-display nil card {:data data}))
+            (channel.render/render-pulse-card-for-display nil card {:data data} {:channel.render/goal-values goal-values}))
           (is (= 80 (:graph.goal_value @captured))))))))
 
 (deftest ^:parallel render-resolves-dynamic-goal-on-dashcard-test
@@ -627,12 +626,12 @@
                                              :display_name "Y"
                                              :base_type    :type/Integer
                                              :source       :aggregation}]
-                      :rows                [["a" 1] ["b" 2]]
-                      :referenced_entities goal-referenced-entities}]
+                      :rows                [["a" 1] ["b" 2]]}]
         (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                       (reset! captured viz-settings)
                                                       {:type :svg :content "<svg></svg>"})]
-          (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
+          (channel.render/render-pulse-card :inline nil card dashcard {:data data}
+                                            {:channel.render/goal-values goal-values}))
         (is (= 80 (:graph.goal_value @captured)))))))
 
 (deftest render-resolves-dynamic-goal-on-visualizer-dashcard-test
@@ -664,12 +663,12 @@
                                                  :display_name "Y"
                                                  :base_type    :type/Integer
                                                  :source       :aggregation}]
-                          :rows                [["a" 1] ["b" 2]]
-                          :referenced_entities goal-referenced-entities}]
+                          :rows                [["a" 1] ["b" 2]]}]
             (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                           (reset! captured viz-settings)
                                                           {:type :svg :content "<svg></svg>"})]
-              (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
+              (channel.render/render-pulse-card :inline nil card dashcard {:data data}
+                                                {:channel.render/goal-values goal-values}))
             (is (= (if show-goal 80 goal-ref)
                    (get-in @captured [:visualization :settings :graph.goal_value])))))))))
 
@@ -681,12 +680,11 @@
                     :display                :progress
                     :visualization_settings {:progress.goal goal-ref}}
           data     {:cols                [{:name "count" :display_name "Count" :base_type :type/Integer}]
-                    :rows                [[42]]
-                    :referenced_entities goal-referenced-entities}]
+                    :rows                [[42]]}]
       (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                     (reset! captured viz-settings)
                                                     {:type :svg :content "<svg></svg>"})]
-        (channel.render/render-pulse-card-for-display nil card {:data data}))
+        (channel.render/render-pulse-card-for-display nil card {:data data} {:channel.render/goal-values goal-values}))
       (is (= 80 (:progress.goal @captured))))))
 
 (defn- run-and-render
@@ -694,12 +692,13 @@
   source's result and the viz settings the renderer got."
   [card source-id]
   (let [captured (atom nil)
-        result   (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))]
+        part     (notification.execute/execute-card (mt/user->id :crowberto) (:id card))
+        result   (:result part)]
     (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                   (reset! captured viz-settings)
                                                   {:type :svg :content "<svg></svg>"})]
-      (channel.render/render-pulse-card-for-display nil card result))
-    {:goal         (get-in result [:data :referenced_entities "card" (str source-id)])
+      (channel.render/render-pulse-card-for-display nil card result {:channel.render/goal-values (:goal-values part)}))
+    {:goal         (get-in part [:goal-values "card" (str source-id)])
      :viz-settings @captured}))
 
 (deftest render-failed-goal-error-types-test
@@ -765,12 +764,11 @@
                     :display                :gauge
                     :visualization_settings {:gauge.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
           data     {:cols             [{:name "count" :display_name "Count" :base_type :type/Integer}]
-                    :rows             [[42]]
-                    :referenced_entities goal-referenced-entities}]
+                    :rows             [[42]]}]
       (mt/with-dynamic-fn-redefs [js.svg/gauge (fn [card _data]
                                                  (reset! captured (:visualization_settings card))
                                                  (byte-array 0))]
-        (channel.render/render-pulse-card-for-display nil card {:data data}))
+        (channel.render/render-pulse-card-for-display nil card {:data data} {:channel.render/goal-values goal-values}))
       (is (= [{:min 0 :max 80 :color "#84BB4C"}] (:gauge.segments @captured))))))
 
 (deftest ^:parallel render-resolves-dynamic-scalar-segments-test
@@ -782,10 +780,10 @@
           data      (fn [value]
                       {:cols                [{:name "count" :display_name "Count" :base_type :type/Integer}]
                        :rows                [[value]]
-                       :viz-settings        {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}
-                       :referenced_entities goal-referenced-entities})
+                       :viz-settings        {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}})
           rendered  (fn [value]
-                      (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data (data value)})))]
+                      (hiccup/html (channel.render/render-pulse-card-for-display
+                                    nil card {:data (data value)} {:channel.render/goal-values goal-values})))]
       (testing "value inside the resolved range takes the segment color"
         (is (str/includes? (rendered 42) "#84BB4C")))
       (testing "value outside it doesn't"
@@ -829,7 +827,6 @@
                                          :base_type    :type/Integer
                                          :source       :aggregation}]
                   :rows                [["a" 1]]
-                  :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}
                   ;; the result carries the card's settings too, as a notification's does
                   :viz-settings        {:graph.show_goal  show-goal
                                         :graph.goal_value goal-ref}}]
@@ -838,7 +835,9 @@
                                                                (reset! captured viz-settings)
                                                                {:type :svg :content stub-svg})]
                    ;; render-pulse-card-for-display returns the content hiccup directly
-                   (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data})))]
+                   (hiccup/html (channel.render/render-pulse-card-for-display
+                                 nil card {:data data}
+                                 {:channel.render/goal-values {"card" {"42" {:status "failed" :error "boom"}}}})))]
         {:html html, :viz-settings @captured, :warnings (mapv :message (messages))}))))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
@@ -889,10 +888,8 @@
                        (binding [js.svg/*javascript-visualization* (fn [_cards-with-data _viz]
                                                                      {:type :svg :content stub-svg})]
                          (channel.render/render-pulse-card-for-display
-                          nil card {:data (assoc data
-                                                 :viz-settings        viz
-                                                 :referenced_entities {"card" {"42" {:status "failed"
-                                                                                     :error  "boom"}}})}))
+                          nil card {:data (assoc data :viz-settings viz)}
+                          {:channel.render/goal-values {"card" {"42" {:status "failed" :error "boom"}}}}))
                        (mapv :message (messages))))]
       (testing "an empty result renders as no results"
         (are [rows] (empty? (warnings {:cols [{:name "x" :display_name "X" :base_type :type/Text}

@@ -750,9 +750,10 @@
                                                                          :color "#FF0000"}
                                                                         {:max   {:id goal-id :type "card" :column "count"}
                                                                          :color "#84BB4C"}]}}]
-      (let [result  (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))
-            content (html (:content (channel.render/render-pulse-card :inline "UTC" card nil result)))]
-        (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
+      (let [{:keys [result goal-values]} (notification.execute/execute-card (mt/user->id :crowberto) (:id card))
+            content (html (:content (channel.render/render-pulse-card :inline "UTC" card nil result
+                                                                      {:channel.render/goal-values goal-values})))]
+        (is (= 1000 (get-in goal-values ["card" (str goal-id) :data :rows 0 0])))
         (is (str/includes? content "#84BB4C"))
         (is (not (str/includes? content "#FF0000")))))))
 

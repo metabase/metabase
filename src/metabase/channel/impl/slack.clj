@@ -108,15 +108,17 @@
      (case (:type part)
        :card
        (binding [urls/*dashcard-parameters* all-params]
-         (let [{:keys [card dashcard result]}         part
-               {card-id :id card-name :name :as card} card
-               title                                  (or (-> dashcard :visualization_settings :card.title)
-                                                          card-name)
-               rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-               title-link                             (if dashcard
-                                                        (urls/dashcard-url dashcard)
-                                                        (when-not (= :table-editable (:display card))
-                                                          (urls/card-url card-id)))]
+         (let [{:keys [card dashcard result goal-values]} part
+               {card-id :id card-name :name :as card}     card
+               title                                      (or (-> dashcard :visualization_settings :card.title)
+                                                              card-name)
+               rendered-info                              (channel.render/render-pulse-card
+                                                           :inline (channel.render/defaulted-timezone card) card dashcard result
+                                                           {:channel.render/goal-values goal-values})
+               title-link                                 (if dashcard
+                                                            (urls/dashcard-url dashcard)
+                                                            (when-not (= :table-editable (:display card))
+                                                              (urls/card-url card-id)))]
            (conj (maybe-append-params-block
                   [{:type "section"
                     :text {:type     "mrkdwn"

@@ -60,6 +60,7 @@
    [metabase.util.log :as log]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memo]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [toucan2.core :as t2])
   (:import
    (java.awt Color)
@@ -609,10 +610,11 @@
   Used for card types that can't fill an arbitrary box (gauge, funnel, progress, scalar, table, ...), which
   [[draw-image-in-cell!]] fits into the `cell-w` x `cell-h` point box preserving aspect. They lay out at their
   intrinsic size, so they're supersampled by the magnification that fit will apply -- see [[fixed-body-scale]]."
-  ^bytes [timezone {:keys [card dashcard result]} cell-w cell-h]
+  ^bytes [timezone {:keys [card dashcard result goal-values]} cell-w cell-h]
   (-> (render.card/render-pulse-card :inline timezone card dashcard result
                                      {:channel.render/include-title?       false
-                                      :channel.render/include-description? false})
+                                      :channel.render/include-description? false
+                                      :channel.render/goal-values          goal-values})
       ;; the px width is CSSBox's layout viewport, not the output size -- the scale fn decides that
       (render.card/png-from-render-info (-> cell-w pt->px (min 2200) (max 240) long)
                                         {:channel.render/scale (partial fixed-body-scale cell-w cell-h)})))
@@ -644,20 +646,23 @@
 
   Used for rectangular charts and for square/wide pies (which then place their legend to the side).
 
+  Goals are resolved against `goal-values` here, so the JS renders plain numbers.
+
   Returns nil if the chart doesn't produce an SVG."
-  ^bytes [card dashcard data w-px h-px]
+  ^bytes [card dashcard data goal-values w-px h-px]
   (binding [js.svg/*chart-size* {:width       w-px
                                  :height      h-px
                                  :scale       common/chart-supersample
                                  :fit-within? true
                                  :grid-size   (when (and (:size_x dashcard) (:size_y dashcard))
                                                 {:width (:size_x dashcard) :height (:size_y dashcard)})}]
-    (let [viz                    (or (:visualization_settings dashcard)
-                                     (:visualization_settings card))
-          {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
+    (let [[card' dashcard' data'] (dynamic-goals/resolve-drawn-goals card dashcard data goal-values)
+          viz                    (or (:visualization_settings dashcard')
+                                     (:visualization_settings card'))
+          {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card' dashcard' data') viz)]
       (when (= :svg type)
-        ;; static-viz resolved this chart's goals itself; without an SVG the card-body fallback warns instead
-        (render.card/log-unresolved-goals! card dashcard data)
+        ;; without an SVG the card-body fallback warns instead
+        (render.card/log-unresolved-goals! card dashcard data goal-values)
         (js.svg/svg-string->bytes content)))))
 
 (defn- param-entries
@@ -1111,7 +1116,7 @@
         ;; time). A result too large for memory comes back marked `:render/too-large?` instead of loaded. Once this
         ;; function returns, the realized rows are unreferenced and become garbage before the next card is drawn --
         ;; so peak memory is one card's rows, not the whole dashboard's.
-        {:keys [card dashcard inline-params]
+        {:keys [card dashcard inline-params goal-values]
          {:keys [data]} :result
          :as part}      (channel.shared/maybe-realize-data-rows part)
         title      (render.util/dashcard-title card dashcard)
@@ -1166,7 +1171,7 @@
           (draw-no-results! doc cs x body-top cell-w body-h)
 
           :let [png (when fill?
-                      (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
+                      (sized-chart-png card dashcard data goal-values (pt->px cell-w) (pt->px body-h)))]
 
           ;; rectangular charts and pies: fill the body area exactly
           png

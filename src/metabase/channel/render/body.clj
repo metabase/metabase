@@ -196,8 +196,6 @@
     [:rows-file-size   {:optional true} [:maybe :int]]
     [:model            {:optional true} [:maybe :boolean]]
     [:dataset          {:optional true} [:maybe :boolean]]
-    ;; added by notifications and Slackbot from `metabase.dynamic-goals.core`
-    [:referenced_entities {:optional true} [:maybe ::dynamic-goals/goal-values]]
     [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
                                                      [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                      [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
@@ -319,6 +317,7 @@
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
    [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
+   [:channel.render/goal-values                {:description "resolves the card's dynamic goals", :optional true} [:maybe ::dynamic-goals/goal-values]]
    [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
    [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]
    [:channel.render/scale                      {:description "default: 1.0, a factor, or a fn of the laid-out content's logical width/height returning one", :optional true} [:maybe [:or number? ifn?]]]])
