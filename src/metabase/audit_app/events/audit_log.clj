@@ -5,6 +5,7 @@
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.audit-app.spec :as audit.spec]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -221,11 +222,12 @@
 (defn- record-lifecycle-events!
   "Record the rows of the lifecycle events of the audited models of a batch, once per batch."
   [_owner events all-events]
-  (let [roots (rolled-roots)]
-    (record-own-rows! events roots)
-    (record-parent-rows! events all-events)
-    (record-rolled-rows! events roots)
-    (record-moments! events)))
+  (when (premium-features/log-enabled?)
+    (let [roots (rolled-roots)]
+      (record-own-rows! events roots)
+      (record-parent-rows! events all-events)
+      (record-rolled-rows! events roots)
+      (record-moments! events))))
 
 (events/register-owned-consumer! ::lifecycle
                                  (fn [{:keys [model]}]
@@ -269,7 +271,8 @@
 (defn- record-manual!
   "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object."
   [topic {:keys [object] :as params}]
-  (record! topic (assoc params :details (merge (:details params) (manual-details topic object)))))
+  (when (premium-features/log-enabled?)
+    (record! topic (assoc params :details (merge (:details params) (manual-details topic object))))))
 
 (events/derive! ::table-event ::event)
 (events/derive! :event/table-manual-scan ::table-event)
@@ -316,16 +319,17 @@
 
 (methodical/defmethod events/publish-event! ::notification-event
   [topic {:keys [object previous-object user-id] :as event}]
-  (record! topic
-           {:details  (merge (:details event)
-                             (if (not-empty previous-object)
-                               (audit-log/update-details (notification-details object)
-                                                         (notification-details previous-object))
-                               (notification-details object)))
-            :object   object
-            :model    :model/Notification
-            :model-id (:id object)
-            :user-id  user-id}))
+  (when (premium-features/log-enabled?)
+    (record! topic
+             {:details  (merge (:details event)
+                               (if (not-empty previous-object)
+                                 (audit-log/update-details (notification-details object)
+                                                           (notification-details previous-object))
+                                 (notification-details object)))
+              :object   object
+              :model    :model/Notification
+              :model-id (:id object)
+              :user-id  user-id})))
 
 (events/derive! ::notification-handler-event ::event)
 (events/derive! :event/notification-unsubscribe-ex ::notification-handler-event)
@@ -366,7 +370,8 @@
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic {:keys [object] :as event}]
-  (record! topic (assoc event :details (merge (:details event) (user-details topic object)))))
+  (when (premium-features/log-enabled?)
+    (record! topic (assoc event :details (merge (:details event) (user-details topic object))))))
 
 (events/derive! ::session-event ::event)
 (events/derive! :event/session-revoked ::session-event)
