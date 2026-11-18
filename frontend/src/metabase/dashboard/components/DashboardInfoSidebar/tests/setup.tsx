@@ -10,9 +10,16 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { setDashboardAttributes } from "metabase/dashboard/actions/core";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
-import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
+import type {
+  Dashboard,
+  Revision,
+  Settings,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockDashboard,
   createMockSettings,
@@ -26,21 +33,26 @@ import { DashboardInfoSidebar } from "../DashboardInfoSidebar";
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
+  revisions?: Revision[];
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
+  revisions = [],
   enterprisePlugins = [],
 }: SetupOpts = {}) {
-  const setDashboardAttribute = jest.fn();
+  const setDashboardAttribute = Object.assign(
+    jest.fn(setDashboardAttributes),
+    setDashboardAttributes,
+  );
   const onClose = jest.fn();
 
   const currentUser = createMockUser();
   setupDashboardEndpoints(dashboard);
   setupUsersEndpoints([currentUser]);
-  setupRevisionsEndpoints([]);
+  setupRevisionsEndpoints(revisions);
   setupPerformanceEndpoints([]);
   setupAuditInfoEndpoint();
 
@@ -61,17 +73,17 @@ export async function setup({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <Route
       path="*"
       element={
         <MockDashboardContext
           dashboard={dashboard}
-          // Unjustified type cast. FIXME
-          setDashboardAttributes={setDashboardAttribute as any}
+          setDashboardAttributes={setDashboardAttribute}
           closeSidebar={onClose}
         >
           <DashboardInfoSidebar />
+          <UndoListing />
         </MockDashboardContext>
       }
     />,
@@ -83,6 +95,7 @@ export async function setup({
     setDashboardAttribute,
     onClose,
     dashboard,
+    store,
   };
 }
 

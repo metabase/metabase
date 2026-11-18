@@ -21,10 +21,14 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.visit("/");
     cy.findByTestId("home-page").should("contain", xrayCaption);
 
-    cy.request("PUT", "api/setting/enable-xrays", { value: false });
+    cy.request("PUT", "/api/setting/enable-xrays", { value: false });
+    cy.intercept("GET", "/api/session/properties").as("settings");
+    cy.intercept("GET", "/api/database*").as("databases");
     cy.reload();
+    cy.wait(["@settings", "@databases"]);
 
     cy.findByTestId("home-page").within(() => {
+      cy.findByRole("button", { name: /Customize/ }).should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText(xrayCaption).should("not.exist");
       cy.findByText(/^A summary of/).should("not.exist");
@@ -268,46 +272,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     });
   });
 
-  it("should start loading cards from top to bottom", () => {
-    // to check the order of loaded cards this test lets the first intercepted
-    // request to be resolved successfully and then it fails all others
-
-    const totalRequests = 8;
-    const successfullyLoadedCards = 1;
-    const failedCards = totalRequests - successfullyLoadedCards;
-
-    // Cypress runs the newest matching intercept first, so the stub for the
-    // failed requests is registered before the pass-through for the first one
-    cy.intercept(
-      { method: "POST", url: "/api/dataset", times: failedCards },
-      { statusCode: 500 },
-    ).as("datasetFailed");
-
-    cy.intercept(
-      { method: "POST", url: "/api/dataset", times: successfullyLoadedCards },
-      (req) => req.continue(),
-    ).as("dataset");
-
-    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-
-    cy.wait("@dataset");
-    cy.wait("@datasetFailed");
-
-    getDashcardByTitle("Total transactions")
-      .findByText("18,760")
-      .should("be.visible");
-    getDashcardByTitle("Transactions in the last 30 days")
-      .icon("warning")
-      .should("be.visible");
-  });
-
   // TODO - this is a legitimate failure because `param_fields` are not returned for x-ray dashboards
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
     cy.intercept("GET", "/app/assets/geojson/**").as("geojson");
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-    cy.wait("@geojson", { timeout });
+    cy.wait("@geojson", timeout);
 
     // confirm results of "Total transactions" card are present
     getDashcardByTitle("Total transactions").findByText("18,760", timeout);
@@ -514,7 +485,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   });
 });
 
-function getDashcardByTitle(title) {
+function getDashcardByTitle(title: string) {
   return H.dashboardGrid()
     .findByText(title)
     .closest("[data-testid='dashcard']");

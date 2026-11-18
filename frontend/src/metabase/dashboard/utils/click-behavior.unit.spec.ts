@@ -7,6 +7,7 @@ import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
+  ClickBehavior,
   ClickBehaviorTarget,
   FieldId,
   TemplateTagType,
@@ -16,6 +17,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockField,
   createMockNativeDatasetQuery,
   createMockParameter,
@@ -38,6 +40,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
+  canSaveClickBehavior,
   formatSourceForTarget,
   getTargetsForDashboard,
   getTargetsForQuestion,
@@ -895,6 +898,48 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         clickBehavior,
       });
       expect(value).toEqual([10]);
+    });
+  });
+
+  describe("canSaveClickBehavior", () => {
+    const TABS = [
+      createMockDashboardTab({ id: 1, name: "first" }),
+      createMockDashboardTab({ id: 2, name: "second" }),
+    ];
+
+    const getDashboardLink = (tabId: number | undefined): ClickBehavior => ({
+      type: "link",
+      linkType: "dashboard",
+      targetId: 10,
+      tabId,
+      parameterMapping: {},
+    });
+
+    it("should not allow saving a dashboard link to a removed tab when there are several tabs to choose from", () => {
+      expect(
+        canSaveClickBehavior(
+          getDashboardLink(999),
+          createMockDashboard({ id: 10, tabs: TABS }),
+        ),
+      ).toBe(false);
+    });
+
+    it("should allow saving a dashboard link to an existing tab", () => {
+      expect(
+        canSaveClickBehavior(
+          getDashboardLink(2),
+          createMockDashboard({ id: 10, tabs: TABS }),
+        ),
+      ).toBe(true);
+    });
+
+    it("should allow saving a dashboard link when the target dashboard has a single tab", () => {
+      expect(
+        canSaveClickBehavior(
+          getDashboardLink(999),
+          createMockDashboard({ id: 10, tabs: [TABS[0]] }),
+        ),
+      ).toBe(true);
     });
   });
 });
