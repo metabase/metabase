@@ -175,6 +175,7 @@
       :model/TransformTest
       :model/CardTest
       :model/ActionTest
+      :model/SegmentTest
       :model/DataTestRun
       :model/Workspace
       :model/WorkspaceDatabase

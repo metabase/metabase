@@ -19,14 +19,12 @@
 (defonce ^:private active-runs
   (atom #{}))
 
-(def ^:private run-topics
-  ;; The audit topics of each test type's runs.
-  {:transform {:start   :event/transform-test-run-start
-               :timeout :event/transform-test-run-timeout}
-   :card      {:start   :event/card-test-run-start
-               :timeout :event/card-test-run-timeout}
-   :action    {:start   :event/action-test-run-start
-               :timeout :event/action-test-run-timeout}})
+(defn- run-topic
+  "The audit topic of the `event` (`:start` or `:timeout`) of a run of a `test-type` test, such as
+  `:event/card-test-run-start`, or nil for a test type this version does not know."
+  [test-type event]
+  (when (contains? data-testing.db/test-type->model test-type)
+    (keyword "event" (str (name test-type) "-test-run-" (name event)))))
 
 (mu/defn start-run! :- ::data-testing.schema/data-test-run
   "Create a started run of the `test-type` test `test-id`, publish the start event of `test-type`, and register the run
@@ -38,7 +36,7 @@
     test-id      :- ms/PositiveInt
     initiated-by :- [:maybe ::lib.schema.id/user]]
    (let [run (data-testing.db/insert-test-run! test-type test-id initiated-by)]
-     (events/publish-event! (get-in run-topics [test-type :start])
+     (events/publish-event! (run-topic test-type :start)
                             (-> {:object run}
                                 (m/assoc-some :user-id initiated-by)))
      (swap! active-runs conj (:id run))
@@ -79,7 +77,7 @@
                                    :terminal {:status "timeout" :end_time :%now}})]
     (doseq [run reaped]
       ;; A run of a test type this version does not know, written by a newer node, has no topic here.
-      (if-let [topic (get-in run-topics [(:test_type run) :timeout])]
+      (if-let [topic (run-topic (:test_type run) :timeout)]
         (try
           (events/publish-event! topic
                                  (-> {:object (assoc run :status :timeout)}

@@ -135,6 +135,7 @@
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
+    :model/SegmentTest                       metabase-enterprise.data-testing.models.segment-test
     :model/SemanticSearchTokenTracking       metabase-enterprise.search.semantic.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting

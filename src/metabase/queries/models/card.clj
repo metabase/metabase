@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -135,7 +136,11 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/change-log))
+
+(methodical/defmethod change-log/ignored-columns :model/Card [_model]
+  #{:last_used_at :view_count})
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it

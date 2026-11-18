@@ -4642,6 +4642,42 @@
                 "Custom job"  true}
                (job-active)))))))
 
+(deftest unarchive-transforms-folders-test
+  (testing "b20m1q unarchives every archived transforms folder and leaves every other collection as it is"
+    (impl/test-migrations ["b20m1q"] [migrate!]
+      (let [op-id         (str (random-uuid))
+            collection!   (fn [{:keys [name namespace location archived? archived-directly?]}]
+                            (t2/insert-returning-pk! :collection
+                                                     (cond-> {:name       name
+                                                              :slug       name
+                                                              :location   location
+                                                              :namespace  namespace
+                                                              :entity_id  (u/generate-nano-id)
+                                                              :created_at :%now
+                                                              :archived   archived?}
+                                                       archived? (assoc :archived_directly    archived-directly?
+                                                                        :archive_operation_id op-id))))
+            folder-id     (collection! {:name "folder" :namespace "transforms" :location "/"
+                                        :archived? true :archived-directly? true})
+            subfolder-id  (collection! {:name "subfolder" :namespace "transforms" :location (format "/%d/" folder-id)
+                                        :archived? true :archived-directly? false})
+            live-id       (collection! {:name "live" :namespace "transforms" :location "/" :archived? false})
+            trashed-id    (collection! {:name "trashed" :namespace nil :location "/"
+                                        :archived? true :archived-directly? true})
+            archive-state (fn [id]
+                            (t2/select-one [:collection :archived :archived_directly :archive_operation_id] :id id))
+            unarchived    {:archived false :archived_directly nil :archive_operation_id nil}]
+        (migrate!)
+        (testing "the archived transforms folder and its subfolder show again, in their old place"
+          (is (= unarchived (archive-state folder-id)))
+          (is (= unarchived (archive-state subfolder-id)))
+          (is (= (format "/%d/" folder-id) (t2/select-one-fn :location :collection :id subfolder-id))))
+        (testing "a transforms folder that is not archived is unchanged"
+          (is (= unarchived (archive-state live-id))))
+        (testing "an archived collection outside the transforms namespace stays in the Trash"
+          (is (= {:archived true :archived_directly true :archive_operation_id op-id}
+                 (archive-state trashed-id))))))))
+
 (deftest transform-source-database-delete-cascade-test
   (testing "pz7hdr..kq4w2m delete orphan query transforms, then transforms with their source database"
     (impl/test-migrations ["pz7hdr" "kq4w2m"] [migrate!]
@@ -5021,6 +5057,46 @@
         (testing "rollback drops action_test"
           (is (thrown? Exception (t2/select :action_test))))))))
 
+(deftest workspace-idempotency-key-test
+  (testing "wk6itt..kbq7xz: workspace.idempotency_key is unique per creator, and the rollback drops it"
+    ;; No end id: kbq7xz is in the changelog on MySQL and MariaDB only, so it cannot end the range on every app DB.
+    (impl/test-migrations ["wk6itt"] [migrate!]
+      (let [new-user! (fn [email]
+                        (t2/insert-returning-pk! :core_user {:first_name    "Workspace"
+                                                             :last_name     "Creator"
+                                                             :email         email
+                                                             :entity_id     (u/generate-nano-id)
+                                                             :date_joined   :%now
+                                                             :password      "password"
+                                                             :password_salt "salt"}))
+            alice     (new-user! "ws-idempotency-alice@test.com")
+            bob       (new-user! "ws-idempotency-bob@test.com")
+            ws!       (fn [creator-id idempotency-key]
+                        (t2/insert-returning-pk! :workspace {:name            "WS"
+                                                             :creator_id      creator-id
+                                                             :idempotency_key idempotency-key}))
+            existing  (t2/insert-returning-pk! :workspace {:name "Before" :creator_id alice})
+            boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                        (liquibase/with-liquibase [liquibase conn]
+                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (migrate!)
+        (testing "existing workspaces get no key"
+          (is (=? {:idempotency_key nil} (t2/select-one :workspace :id existing))))
+        (testing "a key is unique per creator"
+          (ws! alice "k1")
+          (is (thrown? Exception (ws! alice "k1")))
+          (is (pos-int? (ws! bob "k1")) "another creator may use the same key")
+          (is (pos-int? (ws! alice "K1")) "keys that differ only in letter case are two keys, on every app DB"))
+        (testing "workspaces without a key never conflict"
+          (is (pos-int? (ws! alice nil)))
+          (is (pos-int? (ws! alice nil))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops the column and keeps the workspaces"
+          (is (not (contains? (t2/select-one :workspace :id existing) :idempotency_key)))
+          (is (= 6 (t2/count :workspace))))))))
+
 (deftest data-app-slug-and-name-columns-migration-test
   (impl/test-migrations ["rwnbah"] [migrate!]
     (let [app-id (t2/insert-returning-pk! :data_app
@@ -5050,6 +5126,67 @@
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
+
+(deftest segment-test-table-test
+  (testing "lcbmfh..nxuoll: segment_test holds the tests of a segment, and the rollback drops it"
+    (impl/test-migrations ["lcbmfh" "nxuoll"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                              :last_name     "Owner"
+                                                              :email         "segment-test-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                      :engine     "h2"
+                                                                      :created_at :%now
+                                                                      :updated_at :%now
+                                                                      :details    "{}"})
+            table-id     (t2/insert-returning-pk! :metabase_table {:name       "customers"
+                                                                   :db_id      db-id
+                                                                   :active     true
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+            segment-id   (t2/insert-returning-pk! :segment {:name       "Active customers"
+                                                            :entity_id  (u/generate-nano-id)
+                                                            :table_id   table-id
+                                                            :creator_id user-id
+                                                            :definition "{}"
+                                                            :created_at :%now
+                                                            :updated_at :%now})
+            boundary     (with-open [conn (.getConnection (mdb/data-source))]
+                           (liquibase/with-liquibase [liquibase conn]
+                             (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            segment-test (fn [entity-id]
+                           {:entity_id    entity-id
+                            :segment_id   segment-id
+                            :creator_id   user-id
+                            :name         "Churned customers are excluded"
+                            :inputs       "[]"
+                            :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :segment_test (segment-test entity-id))]
+          (testing "a segment test is stored with its timestamps"
+            (is (=? {:segment_id segment-id :creator_id user-id :entity_id entity-id :created_at some? :updated_at some?}
+                    (t2/select-one :segment_test :id test-id))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :segment_test (segment-test entity-id)))))
+          (testing "a segment test must name a segment that exists"
+            (is (thrown? Exception (t2/insert! :segment_test (assoc (segment-test (u/generate-nano-id))
+                                                                    :segment_id Integer/MAX_VALUE)))))
+          (when (= :postgres (mdb/db-type))
+            (testing "entity_id compares byte by byte"
+              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
+                                                          WHERE table_name = 'segment_test' AND column_name = 'entity_id'"]))))))
+          (testing "deleting the segment deletes its tests"
+            (t2/delete! :segment :id segment-id)
+            (is (nil? (t2/select-one :segment_test :id test-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops segment_test"
+          (is (thrown? Exception (t2/select :segment_test))))))))
 
 (deftest backfill-collection-permission-columns-test
   (impl/test-migrations ["fonded" "fonder"] [migrate!]

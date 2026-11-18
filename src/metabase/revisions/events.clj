@@ -77,6 +77,14 @@
   [topic event]
   (push-revision! :model/ActionTest event {:is-creation? (= topic :event/action-test-create)}))
 
+(events/derive! ::segment-test-event ::event)
+(events/derive! :event/segment-test-create ::segment-test-event)
+(events/derive! :event/segment-test-update ::segment-test-event)
+
+(methodical/defmethod events/publish-event! ::segment-test-event
+  [topic event]
+  (push-revision! :model/SegmentTest event {:is-creation? (= topic :event/segment-test-create)}))
+
 (events/derive! ::segment-event ::event)
 (events/derive! :event/segment-create ::segment-event)
 (events/derive! :event/segment-update ::segment-event)

@@ -9,7 +9,9 @@ import {
   createMockRemoteSyncDataAppData,
   createMockRemoteSyncDirtyItem,
   createMockRemoteSyncSegmentData,
+  createMockRemoteSyncSegmentTestData,
   createMockRemoteSyncTableUserSettingsData,
+  createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
 
@@ -28,6 +30,10 @@ describe("getModelIcon", () => {
   it("shows an action test with the list icon", () => {
     expect(getModelIcon("actiontest")).toBe("list");
   });
+
+  it("shows a segment test with the list icon", () => {
+    expect(getModelIcon("segmenttest")).toBe("list");
+  });
 });
 
 describe("getItemUrl", () => {
@@ -40,6 +46,12 @@ describe("getItemUrl", () => {
   it("does not link an action test, since action tests have no page", () => {
     expect(
       getItemUrl(createMockRemoteSyncDirtyItem({ model: "actiontest" })),
+    ).toBeNull();
+  });
+
+  it("does not link a segment test, since segment tests have no page", () => {
+    expect(
+      getItemUrl(createMockRemoteSyncDirtyItem({ model: "segmenttest" })),
     ).toBeNull();
   });
 
@@ -130,6 +142,20 @@ describe("getItemCollections and getItemTable", () => {
 
     expect(getItemCollections(actionTest)).toEqual([sales]);
     expect(getItemTable(actionTest)).toBeNull();
+  });
+
+  it("puts a segment test in its segment's table, in the collection the table is published in", () => {
+    const library = createMockCollection({ id: 2, name: "Library" });
+    const table = createMockTable({ id: 5, collection: library });
+    const segmentTest = createMockRemoteSyncDirtyItem({
+      model: "segmenttest",
+      data: createMockRemoteSyncSegmentTestData({
+        segment: createMockSegment({ table }),
+      }),
+    });
+
+    expect(getItemCollections(segmentTest)).toEqual([library]);
+    expect(getItemTable(segmentTest)).toEqual(table);
   });
 
   it("puts a segment in its table, in the collection the table is published in", () => {

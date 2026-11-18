@@ -7,6 +7,14 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `POST /api/ee/transform-test`, `PUT /api/ee/transform-test/:id` and `POST /api/ee/transform-test/:id/run` refuse a
+  test whose input, given as rows, lacks a column that the transform's query reads from the input's table, with `400`
+  and the `error-code` `transform-test.missing-input-columns`; the response's `columns` names the missing columns of
+  each table. Such a test could be saved before, and every run of it failed with `422` and
+  `transform-test.query-failed`. Only the columns that the SQL parser places on one table are checked. The columns of
+  tables that Metabase hides, and the columns marked sensitive or retired, are not checked. On a database that keeps
+  the case of column names, a declared name that differs from the table's only in case is missing.
+
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
   **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
@@ -28,6 +36,17 @@ summary: Breaking changes to the Metabase API, listed by release.
     over the value that an admin sets.
   - A serialization export no longer lists `agent-api-enabled?`. An export made by Metabase 65 lists it and still
     imports; the key has no effect.
+
+- `GET /api/ee/workspace-instance/current` returns `{"data": {"databases": [{"database_id", "schema"}]}}`, one entry for
+  each database that has a `database-workspace-schema`. It no longer returns `name`, `can_write`, or each database's
+  `input_schemas` and `output`. `POST /api/ee/workspace-instance/current` takes and returns the same
+  `{"databases": [{"database_id", "schema"}]}` shape, and refuses the old body with `400`. `POST` and
+  `DELETE /current` no longer return `400` on an instance that `config.yml` set up; `DELETE /current` returns `400`
+  while `MB_WORKSPACES_ENABLED=true`, and `POST /current` while `MB_WORKSPACES_ENABLED=false`. While
+  `MB_WORKSPACES_ENABLED` is set, `POST /current` and `PUT /api/database/:id` return `400` for a request that would
+  change a database's `database-workspace-schema`. The
+  `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` are replaced by the `workspaces-enabled` setting and each
+  database's `database-workspace-schema`; Metabase translates an old value into them at startup.
 
 - `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
   run it with `POST /api/ee/transform-test/:id/run`.
@@ -97,6 +116,12 @@ summary: Breaking changes to the Metabase API, listed by release.
   `display_name`, `visibility_type` or `json_unfolding` with `400 Bad Request`. Leave a key out to keep its value.
   `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
   way.
+
+- `PUT /api/collection/:id` with `{"archived": true}` answers `400 Bad Request` for a collection in the `transforms`
+  namespace (a transforms folder). Unarchiving a transforms folder still works.
+
+- New `DELETE /api/transform/collection/:id` deletes a transforms folder, its subfolders and every transform in them.
+  It keeps the output tables of the transforms. With `delete-tables=true`, it drops the output tables too.
 
 - `POST /api/pulse` and `PUT /api/pulse/:id` answer `collection_id` and `collection_position` on a dashboard
   subscription with `400 Bad Request` when they do not fit the dashboard. A dashboard subscription is always in its

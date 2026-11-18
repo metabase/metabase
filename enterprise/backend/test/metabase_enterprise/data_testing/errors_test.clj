@@ -40,6 +40,7 @@
    ::errors/unremapped-reference       400
    ::errors/no-expectations            400
    ::errors/unknown-placeholder        400
+   ::errors/missing-input-columns      400
    ::errors/colliding-columns          400
    ::errors/not-a-single-write         400
    ::errors/no-output                  400
@@ -80,6 +81,7 @@
              ::errors/unremapped-reference
              ::errors/no-expectations
              ::errors/unknown-placeholder
+             ::errors/missing-input-columns
              ::errors/colliding-columns
              ::errors/not-a-single-write
              ::errors/no-output
@@ -127,6 +129,7 @@
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
    ::errors/no-expectations            "transform-test.no-expectations"
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
+   ::errors/missing-input-columns      "transform-test.missing-input-columns"
    ::errors/colliding-columns          "transform-test.colliding-columns"
    ::errors/not-a-single-write         "transform-test.not-a-single-write"
    ::errors/no-output                  "transform-test.no-output"

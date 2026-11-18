@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import {
@@ -18,13 +19,19 @@ import { Api } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { defer } from "metabase/utils/promise";
-import type { Dashboard } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { Dashboard, NormalizedQueryParameter } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockDataset,
+  createMockParameter,
+  createMockParameterMapping,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -39,6 +46,7 @@ import {
   fetchDashboardCardData,
   reloadDashboardCards,
 } from "./data-fetching";
+import { setParameterValue } from "./parameters";
 
 type SetupOpts = {
   dashboards?: Dashboard[];
@@ -496,6 +504,74 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
 }
 
 describe("fetchDashboardCardData", () => {
+  it("should fetch the cards of an x-ray dashboard from top to bottom", async () => {
+    const dashboardId = "/auto/dashboard/table/1";
+    // Cards are stored in id order, but laid out in a different order
+    const positions = [
+      { row: 8, col: 0 },
+      { row: 0, col: 6 },
+      { row: 4, col: 12 },
+      { row: 0, col: 0 },
+      { row: 12, col: 0 },
+      { row: 4, col: 0 },
+      { row: 8, col: 12 },
+      { row: 0, col: 12 },
+    ];
+    const dashcards = positions.map(({ row, col }, index) =>
+      createMockDashboardCard({
+        id: index + 1,
+        card_id: index + 1,
+        dashboard_id: dashboardId,
+        row,
+        col,
+        card: createMockCard({
+          id: index + 1,
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: `SELECT 'card-${index + 1}'`,
+          }),
+        }),
+      }),
+    );
+
+    // Only the first request succeeds, so only the card fetched first has data
+    const requestedCardIds: number[] = [];
+    fetchMock.post("path:/api/dataset", ({ options }) => {
+      const match = String(options.body).match(/card-(\d+)/);
+      requestedCardIds.push(Number(match?.[1]));
+      return requestedCardIds.length === 1
+        ? { data: { rows: [[1]], cols: [] } }
+        : { status: 500, body: { message: "Query failed" } };
+    });
+
+    const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
+    const store = setup({
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD.id,
+        dashboards: {
+          [DASHBOARD.id]: createMockStoreDashboard({
+            ...DASHBOARD,
+            dashcards: dashcards.map((dc) => dc.id),
+          }),
+        },
+        dashcards: Object.fromEntries(dashcards.map((dc) => [dc.id, dc])),
+      }),
+    });
+
+    await store.dispatch(fetchDashboardCardData());
+
+    expect(requestedCardIds).toEqual([4, 2, 8, 6, 3, 1, 7, 5]);
+
+    const { dashcardData } = store.getState().dashboard;
+    expect(dashcardData[4][4]).not.toHaveProperty("error");
+    expect(dashcardData[4][4]).toHaveProperty("data.rows", [[1]]);
+    [1, 2, 3, 5, 6, 7, 8].forEach((id) => {
+      expect(dashcardData[id][id]).toHaveProperty(
+        "error.data.message",
+        "Query failed",
+      );
+    });
+  });
+
   it("should make at most 5 api calls simultaneously", async () => {
     const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
       100,
@@ -624,6 +700,104 @@ describe("fetchDashboardCardData", () => {
     // Before the fix, the batch cancellation loop would cancel Tab 1's
     // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
+  });
+});
+
+describe("fetchCardDataAction", () => {
+  it("should not rerun a query with unset values when the last result lists the same parameters in another order (metabase#39863)", async () => {
+    const dashboardId = 400;
+    // Clojure maps stop preserving insertion order at nine entries.
+    const parameters = _.range(1, 10).map((index) =>
+      createMockParameter({
+        id: String(index),
+        slug: `filter-${index}`,
+        type: "number/<=",
+      }),
+    );
+    const card = createMockCard({ id: 40 });
+    const dashcard = createMockDashboardCard({
+      id: 41,
+      card_id: card.id,
+      dashboard_id: dashboardId,
+      card,
+      parameter_mappings: parameters.map((parameter, index) =>
+        createMockParameterMapping({
+          parameter_id: parameter.id,
+          card_id: card.id,
+          target: ["dimension", ["field", index + 1, null]],
+        }),
+      ),
+    });
+    const store = setup({
+      dashboard: createMockDashboardState({
+        dashboardId,
+        dashboards: {
+          [dashboardId]: createMockStoreDashboard({
+            id: dashboardId,
+            dashcards: [dashcard.id],
+            parameters,
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        parameterValues: { [parameters[0].id]: [10] },
+      }),
+    });
+
+    const queryUrl = `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${card.id}/query`;
+    const expectedParameters = parameters.map(
+      (parameter, index): NormalizedQueryParameter => ({
+        id: parameter.id,
+        type: "number/<=",
+        target: ["dimension", ["field", index + 1, null]],
+        ...(index === 0 ? { value: [10] } : {}),
+      }),
+    );
+    let responseParameters = expectedParameters;
+    fetchMock.post(
+      queryUrl,
+      () =>
+        createMockDataset({
+          json_query: {
+            ...card.dataset_query,
+            parameters: responseParameters
+              .map((parameter) => ({
+                ...parameter,
+                value: parameter.value ?? null,
+              }))
+              .reverse(),
+          },
+        }),
+      { delay: 100 },
+    );
+    const getLastQueryBody = () => {
+      const call = checkNotNull(fetchMock.callHistory.lastCall(queryUrl));
+      const body: unknown = JSON.parse(String(call.options.body));
+      return body;
+    };
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+    expect(getLastQueryBody()).toEqual(
+      expect.objectContaining({ parameters: expectedParameters }),
+    );
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+
+    await store.dispatch(setParameterValue(parameters[0].id, [20]));
+    responseParameters = expectedParameters.map((parameter, index) =>
+      index === 0 ? { ...parameter, value: [20] } : parameter,
+    );
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
+    expect(getLastQueryBody()).toEqual(
+      expect.objectContaining({
+        parameters: responseParameters,
+      }),
+    );
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(2);
   });
 });
 
