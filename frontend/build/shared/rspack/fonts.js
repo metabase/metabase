@@ -11,8 +11,8 @@ const fontverter = require("fontverter");
 // whenever the browser picked the face that lacks it.
 //
 // Google's latin subset, widened to whole blocks for the symbols that turn up
-// in otherwise-latin text: sub- and superscripts, currency, letterlike, arrows
-// and mathematical operators. A chart labels a series CO₂, a trend draws an
+// in otherwise-latin text: sub- and superscripts, currency, letterlike, arrows,
+// mathematical operators and keyboard symbols. A chart labels a series CO₂, a trend draws an
 // arrow, a header carries a summation. None of those is worth fetching an
 // entire script for, and a page that renders one while the second chunk is
 // still in flight measures the fallback's metrics and lays itself out around
@@ -33,6 +33,9 @@ const LATIN_RANGES = [
   [0x2100, 0x214f],
   [0x2190, 0x21ff],
   [0x2200, 0x22ff],
+  // The keys a shortcut hint names on a Mac, such as the command key in the
+  // search box of every page.
+  [0x2300, 0x23ff],
   // zrender sizes every chart's text by measuring this one character on a
   // canvas, and a canvas measurement downloads the chunk that claims the
   // character. No bundled font draws it, so the system font measures it either
