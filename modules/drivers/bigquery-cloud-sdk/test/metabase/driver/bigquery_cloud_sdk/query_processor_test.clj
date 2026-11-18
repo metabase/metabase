@@ -52,6 +52,25 @@
     (symbol? x) (-> x str with-test-db-name symbol)
     :else       x))
 
+(deftest ^:parallel valid-project-identifier?-test
+  (let [valid? @#'bigquery.qp/valid-project-identifier?]
+    (testing "accepts standard, domain-scoped, and sovereign-prefixed (e.g. s3ns:) BigQuery project IDs"
+      (are [project-id] (true? (valid? project-id))
+        nil
+        "my-project-123"
+        "s3ns:analytics-prod"
+        "s3ns:sandbox-project-with-thirty-chars"
+        "google.com:legacy-project"))
+    (testing "rejects empty prefixes, SQL injection, backticks, and whitespace"
+      (are [project-id] (false? (valid? project-id))
+        ""
+        "s3ns:"
+        ":my-project"
+        "S3NS:my-project"
+        "my`project"
+        "my-project; DROP TABLE users"
+        "my project"))))
+
 (deftest ^:parallel native-query-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [[100] [99]]

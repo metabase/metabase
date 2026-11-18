@@ -28,7 +28,7 @@ driver:
         # Disabled this for now as we haven't been able to successfully test it.
         # If we can confirm it's working, we can bring it back.
         # - {name: "Credential configuration file", value: "credential-config"}
-        - {name: "Application Default Credentials", value: "application-default"}
+        - {name: "Application Default Credentials", value: "application-default", hidden-when-hosted: true}
     - name: service-account-json
       display-name: Service account JSON file
       helper-text: The key file of the service account Metabase uses to read and query your datasets.

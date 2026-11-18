@@ -40,12 +40,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- valid-project-identifier?
-  "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
-  letters, numbers, and underscores, cannot start with a number, and for project-id, can be at most 30 characters long."
+  "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Supports standard GCP project IDs as well
+  as domain- or sovereign-prefixed project IDs such as `s3ns:my-project` or `example.com:my-project`."
   [s]
   (boolean (or (nil? s)
                (and (string? s)
-                    (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
+                    (re-matches #"^(?:[a-z0-9.\-]+:)?[a-zA-Z_0-9.\-]{1,63}$" s)))))
 
 (def ^:private ProjectIdentifierString
   [:fn
