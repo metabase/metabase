@@ -3,6 +3,19 @@
     {
       "name": "Querying",
       "label": ".Team/Querying",
+      "owns": [
+        "drivers",
+        "database connection auth (OAuth, IAM, workload identity federation)",
+        "query processor",
+        "MBQL and metabase-lib",
+        "SQL parsing",
+        "sqlglot-java",
+        "linked filters",
+        "database routing",
+        "metadata sync",
+        "native query snippets",
+        "writable connections"
+      ],
       "members": [
         "bshepherdson",
         "dpsutton",
@@ -14,6 +27,11 @@
     {
       "name": "Query Research",
       "label": ".Team/QueryResearch",
+      "owns": [
+        "dbt metrics import",
+        "semantic layer import (OSI)",
+        "MBQL 5 migration"
+      ],
       "members": [
         "camsaul"
       ]
@@ -22,6 +40,14 @@
       "name": "Data Apps",
       "label": ".Team/DataApps",
       "codeowner": "@metabase/data-apps",
+      "owns": [
+        "data apps",
+        "data app dev preview",
+        "remote sync",
+        "serialization",
+        "dependency tracking",
+        "Data Studio"
+      ],
       "members": [
         "ranquild",
         "heypoom",
@@ -32,6 +58,15 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
+      "owns": [
+        "embedding SDK",
+        "modular embedding",
+        "static and guest embedding",
+        "embedding data picker",
+        "embedding hub",
+        "tenants",
+        "embedding sample apps"
+      ],
       "members": [
         "WiNloSt",
         "npretto",
@@ -42,6 +77,17 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "codeowner": "@metabase/metabot",
+      "owns": [
+        "Metabot",
+        "Metabot tools and prompts",
+        "Agent API",
+        "MCP server",
+        "Slack Metabot",
+        "search",
+        "semantic search and embeddings",
+        "ai-service",
+        "Metabot evals"
+      ],
       "members": [
         "crisptrutski",
         "lbrdnk",
@@ -54,6 +100,18 @@
     {
       "name": "Gadget",
       "label": ".Team/Gadget",
+      "owns": [
+        "Security Center",
+        "security advisories registry",
+        "health checks",
+        "dynamic goals",
+        "alerts and dashboard subscriptions",
+        "transforms",
+        "actions",
+        "custom visualizations",
+        "CSV uploads",
+        "model persistence"
+      ],
       "members": [
         "brybacki",
         "egorgrushin",
@@ -67,6 +125,18 @@
     {
       "name": "UX West",
       "label": ".Team/UXWest",
+      "owns": [
+        "visualizations",
+        "static viz",
+        "visualizer",
+        "summary formulas and summary wells",
+        "explorations",
+        "data exports",
+        "caching",
+        "cloud migration",
+        "segments and measures",
+        "X-rays"
+      ],
       "members": [
         "andsalves",
         "deniskaber",
@@ -77,6 +147,13 @@
     {
       "name": "UI Tools",
       "label": ".Team/UITools",
+      "owns": [
+        "design system (metabase/ui)",
+        "UI components and styling",
+        "accessibility",
+        "timelines",
+        "Loki visual tests"
+      ],
       "members": [
         "annatomka",
         "kamilmielnik",
@@ -86,6 +163,13 @@
     {
       "name": "Design Loop",
       "label": ".Team/DesignLoop",
+      "owns": [
+        "product analytics",
+        "filter UX",
+        "custom expression editor UX",
+        "design prototypes",
+        "overwatch"
+      ],
       "members": [
         "gantoreno",
         "chodorowicz",
@@ -96,6 +180,9 @@
     {
       "name": "Product Loop",
       "label": ".Team/ProductLoop",
+      "owns": [
+        "rde-harness"
+      ],
       "members": [
         "stasgavrylov"
       ]
@@ -103,6 +190,15 @@
     {
       "name": "Verification",
       "label": ".Team/Verification",
+      "owns": [
+        "data testing",
+        "workspaces",
+        "instance linting",
+        "metabase-cli",
+        "representations",
+        "rde-control-plane",
+        "Library"
+      ],
       "members": [
         "escherize",
         "undrfined",
@@ -113,6 +209,12 @@
     {
       "name": "Harness",
       "label": ".Team/Harness",
+      "owns": [
+        "mbcode",
+        "rde packaging and releases",
+        "local Metabase sidecar",
+        "@metabase/client"
+      ],
       "members": [
         "AndreyChernykh",
         "nvoxland",
@@ -123,6 +225,13 @@
     {
       "name": "EngOps",
       "label": ".Team/EngOps",
+      "owns": [
+        "metareview",
+        "mb-shares",
+        "design-bot",
+        "micro-sites",
+        "AI coding agent tooling"
+      ],
       "members": [
         "fraserdrops",
         "romeovs",
@@ -133,6 +242,17 @@
     {
       "name": "GitOps",
       "label": ".Team/GitOps",
+      "owns": [
+        "ci-conductor",
+        "CI workflows",
+        "hawk",
+        "flaky tests and quarantine",
+        "e2e test infrastructure",
+        "frontend build and bundle",
+        "release builds and backports",
+        "eng-ci-stats",
+        "backend platform (API framework, settings, logging, tracing, events, plugins)"
+      ],
       "members": [
         "ChrisVandoo",
         "nemanjaglumac",
@@ -143,6 +263,12 @@
     {
       "name": "Growth",
       "label": ".Team/Growth",
+      "owns": [
+        "metabase-dot-com",
+        "docs site",
+        "docs link checking",
+        "Metabase Track"
+      ],
       "members": [
         "bpander",
         "tmashara",
@@ -152,6 +278,15 @@
     {
       "name": "Cloud Ops",
       "label": ".Team/CloudOps",
+      "owns": [
+        "Metabase Cloud infrastructure",
+        "helm-charts",
+        "metabase-ops",
+        "cloud-operator",
+        "WAF and CrowdSec",
+        "agents-platform",
+        "internal-vibes-hosting"
+      ],
       "members": [
         "Onlinehead",
         "imrkd",
@@ -161,6 +296,15 @@
     {
       "name": "Billing",
       "label": ".Team/Billing",
+      "owns": [
+        "harbormaster",
+        "store",
+        "infra-frontend",
+        "subscriptions, trials and plans",
+        "premium features and license tokens",
+        "change-log",
+        "Cloud add-ons (database replication, Google Sheets)"
+      ],
       "members": [
         "filipesilva",
         "kidd",
@@ -170,6 +314,19 @@
     {
       "name": "Security",
       "label": ".Team/Security",
+      "owns": [
+        "data and collection permissions",
+        "sandboxing",
+        "connection impersonation",
+        "SSO",
+        "MFA",
+        "sessions and login",
+        "password reset",
+        "API keys",
+        "support access grants",
+        "MCP OAuth server",
+        "security fixes (metabase-private)"
+      ],
       "members": [
         "enthym-aa",
         "bowbahdoe",
@@ -179,6 +336,9 @@
     {
       "name": "Company OS",
       "label": ".Team/CompanyOS",
+      "owns": [
+        "CompanyOS"
+      ],
       "members": [
         "andreis"
       ]
