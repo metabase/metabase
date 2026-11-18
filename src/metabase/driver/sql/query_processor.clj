@@ -18,6 +18,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
@@ -2441,7 +2442,7 @@
   "UUID -> SQL alias map for `all-ctes`, with aliases suffixed to avoid name collisions."
   [all-ctes stage-cte-names]
   ;; Prime with `stage-cte-names` so that user CTE aliases don't collide with compiler-generated stage CTEs.
-  (let [gen (lib.util/unique-name-generator (vec stage-cte-names))]
+  (let [gen (lib.util.unique-name-generator/unique-name-generator (vec stage-cte-names))]
     (into {} (map (fn [{cte-uuid :lib/uuid, cte-name :cte-name}]
                     [cte-uuid (gen cte-uuid cte-name)]))
           all-ctes)))

@@ -20,7 +20,6 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -41,13 +40,6 @@
    (p/import-vars [clojure.core format])
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
-
-#?(:clj
-   (p/import-vars [metabase.lib.util.unique-name-generator unique-name-generator])
-   :cljs
-   (def unique-name-generator
-     "See [[metabase.lib.util.unique-name-generator/unique-name-generator]]."
-     metabase.lib.util.unique-name-generator/unique-name-generator))
 
 ;; AssertionError is recoverable too, not just Exception: callers run assert/:pre they don't own, and a
 ;; bad-data assert should degrade through `handler` like any other exception. Fatal Errors still propagate.

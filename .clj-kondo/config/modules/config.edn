@@ -1329,6 +1329,7 @@
            metabase.lib.ref
            metabase.lib.types.isa
            metabase.lib.util
+           metabase.lib.util.unique-name-generator
            metabase.lib.walk}
    :uses #{lib.legacy-mbql
            lib.metadata
