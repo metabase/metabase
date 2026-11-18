@@ -11,8 +11,6 @@ redirect_from:
 
 > Due to problems with the platform, we no longer recommend using Elastic Beanstalk to run Metabase in production.
 
-If you're running Metabase on Elastic Beanstalk, we recommend you switch to a different setup.
-
 ## Alternatives to Elastic Beanstalk
 
 ### Metabase Cloud

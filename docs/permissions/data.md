@@ -7,7 +7,7 @@ redirect_from:
 
 # Data permissions
 
-This page covers permissions for databases and tables. If you haven't already, check out our [Permissions introduction][permissions-introduction].
+If you haven't already, check out our [Permissions introduction][permissions-introduction].
 
 ## Setting permissions on a database, schema, or table
 
