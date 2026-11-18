@@ -1,6 +1,5 @@
 import {
   type Placement,
-  type ReferenceElement,
   type ShiftOptions,
   limitShift,
 } from "@floating-ui/dom";
@@ -22,8 +21,9 @@ export function createStickyShiftLimiter(): StickyShiftLimiter {
   const keepAttached = limitShift();
   let lastPosition:
     | {
-        anchor: ReferenceElement;
-        dropdown: HTMLElement;
+        // compared by identity only, so `unknown` is enough
+        anchor: unknown;
+        dropdown: unknown;
         anchorStart: number;
         start: number;
       }
@@ -39,8 +39,8 @@ export function createStickyShiftLimiter(): StickyShiftLimiter {
       }
 
       const axis = getShiftAxis(state.placement);
-      const anchor: ReferenceElement = state.elements.reference;
-      const dropdown: HTMLElement = state.elements.floating;
+      const anchor: unknown = state.elements.reference;
+      const dropdown: unknown = state.elements.floating;
       const anchorStart = state.rects.reference[axis];
       const previous = lastPosition;
       const coords =
