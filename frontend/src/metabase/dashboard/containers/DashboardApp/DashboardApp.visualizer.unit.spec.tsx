@@ -544,6 +544,7 @@ const FUNNEL_DASHCARD = createMockVisualizerDashboardCard({
 });
 
 const SERIES_B_COLOR = "#F9D45C";
+const ADDED_SERIES_COLOR = "#88BF4D";
 // the sum of the Products by Category counts
 const PIE_TOTAL = "26";
 
@@ -1253,7 +1254,7 @@ function expectCurrentDisplay(modal: HTMLElement, display: string) {
   ).toBeChecked();
 }
 
-/** The labels on the left of a cartesian chart, then on its right */
+/** The y-axis labels of a cartesian chart, on both sides */
 function getYAxisLabels(chart: HTMLElement) {
   return Array.from(
     chart.querySelectorAll(
@@ -2709,27 +2710,31 @@ describe("DashboardApp > visualizer", () => {
       );
       const pieSidebar = within(pieModal).getByTestId("chartsettings-sidebar");
       await userEvent.click(within(pieSidebar).getByText("Display"));
-      const pieChart = within(pieModal).getByTestId("chart-container");
-      expect(within(pieChart).getByText(PIE_TOTAL)).toBeInTheDocument();
-      expect(within(pieChart).getByText("Total")).toBeInTheDocument();
+      const getPieChart = () => within(pieModal).getByTestId("chart-container");
+      expect(within(getPieChart()).getByText(PIE_TOTAL)).toBeInTheDocument();
+      expect(within(getPieChart()).getByText("Total")).toBeInTheDocument();
       await userEvent.click(within(pieSidebar).getByText("Show total"));
       await waitFor(() =>
-        expect(within(pieChart).queryByText("Total")).not.toBeInTheDocument(),
-      );
-      expect(within(pieChart).queryByText(PIE_TOTAL)).not.toBeInTheDocument();
-      await saveVisualizer();
-
-      const pieDashcard = await findDashcard(PIE_DASHCARD.id);
-      await waitFor(() =>
         expect(
-          within(pieDashcard).queryByText("Total"),
+          within(getPieChart()).queryByText("Total"),
         ).not.toBeInTheDocument(),
       );
-      const dashcardPieChart =
-        within(pieDashcard).getByTestId("chart-container");
-      expect(getPieSlices(dashcardPieChart)).toHaveLength(4);
+      expect(getPieSlices(getPieChart())).toHaveLength(4);
       expect(
-        within(dashcardPieChart).queryByText(PIE_TOTAL),
+        within(getPieChart()).queryByText(PIE_TOTAL),
+      ).not.toBeInTheDocument();
+      await saveVisualizer();
+
+      const getDashcardPieChart = () =>
+        within(getDashcard(PIE_DASHCARD.id)).getByTestId("chart-container");
+      await waitFor(() =>
+        expect(getPieSlices(getDashcardPieChart())).toHaveLength(4),
+      );
+      expect(
+        within(getDashcardPieChart()).queryByText("Total"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getDashcardPieChart()).queryByText(PIE_TOTAL),
       ).not.toBeInTheDocument();
     });
 
@@ -2841,11 +2846,11 @@ describe("DashboardApp > visualizer", () => {
         "Product → Category",
       ]);
       // the sum of the Orders by Product Category counts
-      expect(
-        await within(within(modal).getByTestId("chart-container")).findByText(
-          "10",
-        ),
-      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          within(within(modal).getByTestId("chart-container")).getByText("10"),
+        ).toBeInTheDocument(),
+      );
 
       await userEvent.click(within(vizPicker).getByTestId("funnel"));
       expectColumnSelected(ORDERS_BY_CATEGORY.name, "Count");
@@ -3071,9 +3076,14 @@ describe("DashboardApp > visualizer", () => {
         expect(getWellItems("horizontal-well")).toEqual(dimensionWellItems);
         expectCurrentDisplay(modal, display);
 
-        const chart = within(modal).getByTestId("chart-container");
         for (const label of [...xAxisLabels, ...yAxisLabels]) {
-          expect(await within(chart).findByText(label)).toBeInTheDocument();
+          await waitFor(() =>
+            expect(
+              within(within(modal).getByTestId("chart-container")).getByText(
+                label,
+              ),
+            ).toBeInTheDocument(),
+          );
         }
 
         expectColumnSelected(firstCard.name, "Count");
@@ -3223,10 +3233,15 @@ describe("DashboardApp > visualizer", () => {
         TAX_OVER_TOTAL.name,
       ]);
 
-      const chart = within(modal).getByTestId("chart-container");
-      await waitFor(() => expect(getYAxisLabels(chart)).toContain("6%"));
+      const getChart = () => within(modal).getByTestId("chart-container");
+      await waitFor(() =>
+        expect(
+          getChart().querySelector(`path[stroke='${ADDED_SERIES_COLOR}']`),
+        ).toBeInTheDocument(),
+      );
+      await waitFor(() => expect(getYAxisLabels(getChart())).toContain("6%"));
       // a single percent axis: no axis with the unformatted ratios of the added series
-      for (const label of getYAxisLabels(chart)) {
+      for (const label of getYAxisLabels(getChart())) {
         expect(label).toMatch(/^\d+(\.\d+)?%$/);
       }
     });
