@@ -19,9 +19,9 @@
       "members": [
         "bshepherdson",
         "dpsutton",
-        "technomancy",
+        "metamben",
         "rileythomp",
-        "metamben"
+        "technomancy"
       ]
     },
     {
@@ -49,9 +49,9 @@
         "Data Studio"
       ],
       "members": [
-        "ranquild",
         "heypoom",
         "NevRA",
+        "ranquild",
         "sanex3339"
       ]
     },
@@ -68,9 +68,9 @@
         "embedding sample apps"
       ],
       "members": [
-        "WiNloSt",
+        "NevRA",
         "npretto",
-        "NevRA"
+        "WiNloSt"
       ]
     },
     {
@@ -90,11 +90,11 @@
       ],
       "members": [
         "crisptrutski",
+        "Krever",
         "lbrdnk",
         "prascuna",
-        "svozniuk",
-        "Krever",
-        "radutoev"
+        "radutoev",
+        "svozniuk"
       ]
     },
     {
@@ -114,13 +114,13 @@
         "backend platform (API framework, settings, logging, tracing, events, plugins)"
       ],
       "members": [
+        "bronsa",
         "brybacki",
         "egorgrushin",
-        "nmezzopera",
-        "bronsa",
-        "radex",
         "mbradek",
-        "metatyb"
+        "metatyb",
+        "nmezzopera",
+        "radex"
       ]
     },
     {
@@ -136,12 +136,13 @@
         "caching",
         "cloud migration",
         "segments and measures",
-        "X-rays"
+        "X-rays",
+        "timelines"
       ],
       "members": [
         "andsalves",
-        "deniskaber",
         "appleby",
+        "deniskaber",
         "nmezzopera"
       ]
     },
@@ -152,13 +153,12 @@
         "design system (metabase/ui)",
         "UI components and styling",
         "accessibility",
-        "timelines",
         "Loki visual tests"
       ],
       "members": [
         "annatomka",
-        "kamilmielnik",
-        "BillyBobFry"
+        "BillyBobFry",
+        "kamilmielnik"
       ]
     },
     {
@@ -172,8 +172,8 @@
         "overwatch"
       ],
       "members": [
-        "gantoreno",
         "chodorowicz",
+        "gantoreno",
         "kevinkelleher12",
         "olehk-mb"
       ]
@@ -202,9 +202,9 @@
       ],
       "members": [
         "escherize",
-        "undrfined",
+        "galdre",
         "sloansparger",
-        "galdre"
+        "undrfined"
       ]
     },
     {
@@ -217,10 +217,10 @@
         "@metabase/client"
       ],
       "members": [
+        "alxnddr",
         "AndreyChernykh",
-        "nvoxland",
         "npfitz",
-        "alxnddr"
+        "nvoxland"
       ]
     },
     {
@@ -235,8 +235,8 @@
       ],
       "members": [
         "fraserdrops",
-        "romeovs",
         "iethree",
+        "romeovs",
         "tsplude"
       ]
     },
@@ -255,9 +255,9 @@
       ],
       "members": [
         "ChrisVandoo",
+        "iethree",
         "nemanjaglumac",
-        "uladzimirdev",
-        "iethree"
+        "uladzimirdev"
       ]
     },
     {
@@ -271,8 +271,8 @@
       ],
       "members": [
         "bpander",
-        "tmashara",
-        "iethree"
+        "iethree",
+        "tmashara"
       ]
     },
     {
@@ -288,8 +288,8 @@
         "internal-vibes-hosting"
       ],
       "members": [
-        "Onlinehead",
         "imrkd",
+        "Onlinehead",
         "oreonl"
       ]
     },
@@ -307,8 +307,8 @@
       ],
       "members": [
         "filipesilva",
-        "kidd",
-        "imrkd"
+        "imrkd",
+        "kidd"
       ]
     },
     {
@@ -328,8 +328,8 @@
         "security fixes (metabase-private)"
       ],
       "members": [
-        "enthym-aa",
         "bowbahdoe",
+        "enthym-aa",
         "johnswanson"
       ]
     },
