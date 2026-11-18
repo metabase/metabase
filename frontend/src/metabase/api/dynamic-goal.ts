@@ -16,8 +16,7 @@ export const dynamicGoalApi = Api.injectEndpoints({
         method: "POST",
         url: "/api/dynamic-goal/values",
         body,
-        // a goal that fails to load must not log the viewer out
-        noEvent: true,
+        noEvent: true, // a goal that fails to load must not log the viewer out
       }),
       providesTags: (_response, _error, { sources }) =>
         sources.map((source) => idTag(source.type, source.id)),
