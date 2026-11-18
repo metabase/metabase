@@ -6,7 +6,7 @@ import { Box, Group, NumberInput, Text, rem } from "metabase/ui";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 
-import { MenuItemStyled } from "./MenuItem.styled";
+import { ComparisonMenuItem } from "./ComparisonMenuItem";
 import S from "./PeriodsAgoMenuOption.module.css";
 
 type PeriodsAgoMenuOptionProps = {
@@ -93,7 +93,7 @@ export function PeriodsAgoMenuOption({
   );
 
   return (
-    <MenuItemStyled py="xxs" aria-selected={isSelected}>
+    <ComparisonMenuItem py="xxs" aria-selected={isSelected}>
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group gap="sm">
           <NumberInput
@@ -116,6 +116,6 @@ export function PeriodsAgoMenuOption({
           </Text>
         )}
       </Box>
-    </MenuItemStyled>
+    </ComparisonMenuItem>
   );
 }

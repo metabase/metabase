@@ -37,7 +37,7 @@ export function TemporalUnitSettings({
           size="lg"
           rightSection={<Icon name="chevrondown" />}
           fullWidth
-          px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
+          px={rem(11)} // needs to be the same as the default input padding in Input.config.tsx
           justify="space-between"
         >
           {getSelectedText(selectedUnits, isAll, isNone)}
