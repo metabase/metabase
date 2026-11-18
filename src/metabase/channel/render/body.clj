@@ -177,19 +177,6 @@
    [:col            {:optional true} [:maybe :string]]
    [:unit           {:optional true} [:maybe :keyword]]])
 
-(mr/def ::ReferencedEntityResult
-  "One goal source's result under `[:data :referenced_entities type-string id-string]`, which notifications and
-  Slackbot add to a QP result from `metabase.dynamic-goals.core`."
-  [:map {:closed true}
-   [:status     [:enum "completed" "failed"]]
-   [:error      {:optional true} [:maybe :string]]
-   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters" "too-many-sources"]]]
-   [:data       {:optional true} [:maybe [:map {:closed true}
-                                          [:cols {:optional true}
-                                           [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
-                                          [:rows {:optional true}
-                                           [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
-
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it: the query processor's result metadata plus the rows."
   [:merge
@@ -209,7 +196,8 @@
     [:rows-file-size   {:optional true} [:maybe :int]]
     [:model            {:optional true} [:maybe :boolean]]
     [:dataset          {:optional true} [:maybe :boolean]]
-    [:referenced_entities {:optional true} [:maybe [:map-of :string [:map-of :string ::ReferencedEntityResult]]]]
+    ;; added by notifications and Slackbot from `metabase.dynamic-goals.core`
+    [:referenced_entities {:optional true} [:maybe ::dynamic-goals/goal-values]]
     [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
                                                      [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                      [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]

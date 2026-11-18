@@ -5,6 +5,7 @@
   results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`."
   (:require
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.visualization-settings.dynamic-goal-settings :as dynamic-goal-settings]))
 
 (set! *warn-on-reflection* true)
@@ -46,6 +47,21 @@
 (def goal-entity-types
   "The entity `:type`s a dynamic goal can reference."
   (set (keys goal-entity-models)))
+
+(mr/def ::source-result
+  "The result of running one goal source."
+  [:map
+   [:status     [:enum "completed" "failed"]]
+   [:error      {:optional true} [:maybe :string]]
+   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters" "withheld"
+                                          "too-many-sources"]]]
+   [:data       {:optional true} [:maybe [:map
+                                          [:cols [:sequential :map]]
+                                          [:rows [:sequential [:sequential :any]]]]]]])
+
+(mr/def ::goal-values
+  "Goal source results by source type, then by source id. A source with no entry wasn't run."
+  [:map-of :string [:map-of :string ::source-result]])
 
 (defn- values-in
   [viz-settings settings]
