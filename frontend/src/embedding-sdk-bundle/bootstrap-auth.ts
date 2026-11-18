@@ -109,7 +109,8 @@ function startJwtAuth(authConfig: any) {
     return;
   }
 
-  setAuthState({ status: "in-progress" });
+  const startedAtMs = performance.now();
+  setAuthState({ status: "in-progress", startedAtMs });
 
   performFullAuthFlow({
     metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
@@ -135,11 +136,16 @@ function startJwtAuth(authConfig: any) {
         session: result.session,
         user: result.user,
         siteSettings: result.siteSettings,
+        startedAtMs,
+        completedAtMs: performance.now(),
+        isJwtProviderUriPassed: Boolean(
+          "jwtProviderUri" in authConfig && authConfig.jwtProviderUri,
+        ),
       });
     })
     .catch((error) => {
       console.error("SDK Bootstrap Auth: Auth failed:", error);
-      setAuthState({ status: "error", error });
+      setAuthState({ status: "error", error, startedAtMs });
     });
 }
 

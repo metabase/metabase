@@ -17,13 +17,14 @@ To set application permissions, go to the top right of the screen and click the 
 
 Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:
 
-- [Settings](../configuring-metabase/settings.md)
+- [General](../configuring-metabase/settings.md)
 - [Domains](../configuring-metabase/domains.md)
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
+- [Uploads](../databases/uploads.md)
 - [Appearance](../configuring-metabase/appearance.md)
 - [Public sharing](../embedding/public-links.md)
 - [Embedding in other applications](../embedding/start.md)
@@ -31,18 +32,20 @@ Settings access defines which groups can view and edit the settings under the Ad
 
 Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
 
+Authentication settings aren't included either, even though people with Settings access can see the **Authentication** tab. Only admins can change [API keys](../people-and-groups/api-keys.md), [Google Sign-In](../people-and-groups/google-sign-in.md), [LDAP](../people-and-groups/ldap.md), [SAML](../people-and-groups/authenticating-with-saml.md), [JWT](../people-and-groups/authenticating-with-jwt.md), [OIDC](../people-and-groups/authenticating-with-oidc.md), and [user provisioning](../people-and-groups/user-provisioning.md). These settings control which groups people get added to (for example, through group mappings), so someone who could edit them could give themselves admin access. If someone without admin access tries to save these settings, Metabase shows the error: "You don't have permissions to do that."
+
 ## Monitoring access
 
 People in groups with Monitoring access can view:
 
 - [Monitor](../monitor/start.md), including:
+  - [Content diagnostics](../monitor/content-diagnostics.md)
   - [Erroring questions](../monitor/erroring-questions.md)
   - [Background tasks](../monitor/background-tasks.md)
   - [Scheduled jobs](../monitor/scheduled-jobs.md)
   - [Application logs](../monitor/application-logs.md) (read-only)
   - [Model persistence log](../monitor/model-persistence-log.md)
-- The **Help** tab in Admin
-- [Troubleshooting](../troubleshooting-guide/index.md)
+- The **Help** tab in Admin, including [diagnostic info](../troubleshooting-guide/index.md#getting-diagnostic-info) for support requests
 
 The following Monitor pages aren't included in Monitoring access:
 
@@ -61,4 +64,6 @@ This setting determines who can create:
 
 People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](../permissions/collections.md).
 
-To prevent people from creating alerts and subscriptions, set the "Subscriptions and alerts" permission to "No".
+By default, the All Users group has this permission, so everyone can create alerts and subscriptions. To prevent people from creating alerts and subscriptions, set the "Subscriptions and alerts" permission to "No" for the All Users group and for any other groups those people are in.
+
+Subscriptions and alerts is the only application permission you can give to [tenant groups](../embedding/tenants.md#group-types). Tenant users start with this permission set to No; see [Subscription permissions for tenants](../embedding/tenants.md#subscription-permissions-for-tenants).

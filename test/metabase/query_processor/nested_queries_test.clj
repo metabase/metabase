@@ -1972,6 +1972,47 @@
                                          (lib/with-fields [b-col])
                                          (lib/order-by b-col :desc)))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::filter-on-boolean-expression-reference]
+  [_driver _feature _database]
+  true)
+
+;;; SQL Server compiles a filter that compares a boolean expression reference with a value to a predicate compared
+;;; with a value, which is a syntax error.
+(defmethod driver/database-supports? [:sqlserver ::filter-on-boolean-expression-reference]
+  [_driver _feature _database]
+  false)
+
+;;; A boolean custom column from a source card can be used in custom columns, filters and aggregations downstream.
+;;; Selecting a bare boolean expression is unsupported on Oracle and Mongo: those are the `:expressions` drivers
+;;; lacking `:expressions/date` (Oracle) and `:distinct-where` (Mongo).
+(deftest ^:parallel source-card-boolean-expression-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :expressions/date :distinct-where)
+    (mt/dataset test-data
+      (let [mp0      (mt/metadata-provider)
+            category (lib.metadata/field mp0 (mt/id :products :category))
+            card-q   (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :products)))
+                         (lib/expression "b" (lib/starts-with category "Gi")))
+            mp       (qp.test-util/metadata-provider-with-cards-for-queries mp0 [card-q])
+            base     (lib/query mp (lib.metadata/card mp 1))
+            b        (m/find-first #(= "b" (:name %)) (lib/visible-columns base))
+            n-rows   #(count (mt/rows (qp/process-query %)))]
+        (testing "a custom column comparing the boolean column with a literal"
+          (let [query (lib/expression base "ne" (lib/!= b true))
+                ne    (m/find-first #(= "ne" (:name %)) (lib/visible-columns query))]
+            (is (= 200 (n-rows query)))
+            (when (driver/database-supports? driver/*driver* ::filter-on-boolean-expression-reference (mt/db))
+              (testing "used in a filter"
+                (is (= 149 (n-rows (lib/filter query (lib/= ne true)))))))))
+        (testing "a filter on the boolean column"
+          (is (= 51 (n-rows (lib/filter base (lib/= b true))))))
+        ;; Postgres has no `MIN(boolean)` and SQL Server and Redshift cannot aggregate one; no driver feature captures
+        ;; this, so the aggregation runs on H2 only.
+        (when (= driver/*driver* :h2)
+          (testing "min of the boolean column"
+            (is (= [[false]]
+                   (mt/formatted-rows [mt/boolish->bool]
+                                      (qp/process-query (lib/aggregate base (lib/min b))))))))))))
+
 ;;; A custom column that is just a field reference (CREATED_AT) survives nesting as a distinct column.
 (deftest ^:parallel field-only-expression-survives-nesting-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)

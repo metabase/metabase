@@ -39,6 +39,7 @@ import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  Bookmark,
   Card,
   Database,
   Dataset,
@@ -232,16 +233,19 @@ const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
 
 interface SetupOpts {
   card: Card | UnsavedCard | null;
+  bookmarks?: Bookmark[];
   dataset?: Dataset;
   database?: Database;
   echoQueryParameters?: boolean;
   initialRoute?: string;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
+  withUndos?: boolean;
 }
 
 export const setup = async ({
   card,
+  bookmarks = [],
   dataset = createMockDataset(),
   database = TEST_DB,
   echoQueryParameters = false,
@@ -254,6 +258,7 @@ export const setup = async ({
   }`,
   timelines = [],
   timelinesResponse,
+  withUndos = false,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -261,7 +266,7 @@ export const setup = async ({
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
-  setupBookmarksEndpoints([]);
+  setupBookmarksEndpoints(bookmarks);
   setupTimelinesEndpoints(timelinesResponse ?? timelines);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
@@ -320,6 +325,7 @@ export const setup = async ({
     </>,
     {
       withRouter: true,
+      withUndos,
       initialRoute,
       storeInitialState: createMockState({
         currentUser: createMockUser({

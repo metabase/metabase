@@ -2,6 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { getDataFromClicked } from "metabase/value-formatting";
 import * as dateFormatUtils from "metabase/value-formatting";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -75,6 +77,8 @@ const metadata = createMockMetadata({
     }),
   ],
 });
+
+const provider = createMetadataProvider({ metadata });
 
 const productId = checkNotNull(metadata.field(PRODUCTS.ID));
 const productTitle = checkNotNull(metadata.field(PRODUCTS.TITLE));
@@ -211,6 +215,63 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         type: "variable",
         id: "my_field_filter",
       });
+    });
+
+    it("should produce a dimension target for a boolean custom column that accepts only boolean sources", () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            expressions: [
+              {
+                name: "Boolean column",
+                value: {
+                  type: "operator",
+                  operator: "starts-with",
+                  args: [
+                    { type: "column", name: "CATEGORY" },
+                    { type: "literal", value: "Gi" },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const question = new Question(
+        createMockCard({ dataset_query: Lib.toJsQuery(query) }),
+        metadata,
+      );
+
+      const target = getTargetsForQuestion(question).find(
+        ({ name }) => name === "Boolean column",
+      );
+
+      expect(target?.target).toEqual({
+        type: "dimension",
+        id: target?.id,
+        dimension: [
+          "dimension",
+          ["expression", "Boolean column", { "base-type": "type/Boolean" }],
+          { "stage-number": 0 },
+        ],
+      });
+      expect(
+        target?.sourceFilters.column(
+          createMockColumn({
+            base_type: "type/Boolean",
+            effective_type: "type/Boolean",
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        target?.sourceFilters.column(
+          createMockColumn({
+            base_type: "type/Text",
+            effective_type: "type/Text",
+          }),
+        ),
+      ).toBe(false);
     });
 
     describe("filtering sources", () => {

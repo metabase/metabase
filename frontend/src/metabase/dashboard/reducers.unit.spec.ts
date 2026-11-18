@@ -1,6 +1,6 @@
 import { createMockStoreDashboard } from "__support__/state";
-import { INITIALIZE } from "metabase/redux/dashboard";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import { INITIALIZE, initialize, reset } from "metabase/redux/dashboard";
+import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
@@ -20,7 +20,7 @@ import {
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 import { dashboardReducers as reducer } from "./reducers";
-import { timelineEvents } from "./reducers-typed";
+import { linkTargets, timelineEvents } from "./reducers-typed";
 
 const TEST_DASHBOARD = createMockDashboard();
 
@@ -551,6 +551,30 @@ describe("dashboard reducers", () => {
     it("forgets the tracking when another dashboard is opened", () => {
       const state = reducer(trackedState(), { type: INITIALIZE });
       expect(state.timelineEvents.hasTrackedEventsShown).toBe(false);
+    });
+  });
+
+  describe("linkTargets", () => {
+    const LINK_TARGETS = {
+      questions: { 7: createMockCard({ id: 7 }) },
+      dashboards: {},
+    };
+
+    it("keeps link targets after reset, so cached dashboard reuses them", () => {
+      expect(linkTargets(LINK_TARGETS, reset())).toBe(LINK_TARGETS);
+    });
+
+    it("keeps link targets when dashboard is initialized from cache", () => {
+      expect(linkTargets(LINK_TARGETS, initialize({ clearCache: false }))).toBe(
+        LINK_TARGETS,
+      );
+    });
+
+    it("clears link targets when another dashboard is opened", () => {
+      expect(linkTargets(LINK_TARGETS, initialize())).toEqual({
+        questions: {},
+        dashboards: {},
+      });
     });
   });
 });
