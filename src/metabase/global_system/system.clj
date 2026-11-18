@@ -324,7 +324,8 @@
    Where those paths leave the order open, components on the path to the latest-started component stop first."
   [graph]
   (let [running              @started-components
-        position             (zipmap @start-order (range))
+        ;; where each running component stands in the start order
+        position             (zipmap (filter running @start-order) (range))
         ;; the running components and what they use, directly or not; a user that is not running holds nothing back
         relevant             (into (set (keys running)) (dep/transitive-dependencies-set graph (keys running)))
         ;; an object no component key can equal, used by every relevant component, so each is a node even when it
@@ -337,14 +338,11 @@
                                      (dep/graph)
                                      relevant)
         latest-start-reached (fn [k]
-                               (transduce (comp (filter #(contains? running %)) (map position))
-                                          max
-                                          -1
-                                          (dep/transitive-dependencies graph k)))
+                               (apply max -1 (keep position (dep/transitive-dependencies graph k))))
         ;; a running component ranks by its own start position, which stands in for the dependencies nobody declared;
         ;; the key breaks ties, so the order never depends on how the graph library treats equal nodes
         rank                 (u/for-map [k relevant]
-                               [k [(if (contains? running k) (position k) (latest-start-reached k))
+                               [k [(or (position k) (latest-start-reached k))
                                    (str k)]])]
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
     ;; greatest rank last; the placeholder has no rank, and nil compares below every rank
