@@ -66,10 +66,20 @@ describe("scenarios > question > custom column > path", () => {
 
     cy.log("add a new expression");
     H.getNotebookStep("data").button("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: `Path([${CC_NAME}])`,
-      name: "extracted path",
+
+    cy.log("insert the function from the function browser");
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("path");
+      cy.findByText("path").click();
     });
+    H.CustomExpressionEditor.value().should("equal", "path()");
+
+    cy.log("keep typing in the editor without clicking it");
+    H.CustomExpressionEditor.type(`[${CC_NAME}]`, { focus: false });
+    H.CustomExpressionEditor.value().should("equal", `path([${CC_NAME}])`);
+    H.CustomExpressionEditor.blur();
+    H.CustomExpressionEditor.nameInput().type("extracted path");
 
     H.popover().button("Done").click();
     H.visualize();

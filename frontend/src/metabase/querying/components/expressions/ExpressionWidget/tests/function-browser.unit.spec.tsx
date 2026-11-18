@@ -8,6 +8,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   getEditorValue,
+  getEditorView,
   pressKey,
   selectRange,
   setup,
@@ -50,6 +51,11 @@ async function clickFunction(name: string) {
   await userEvent.click(await within(functionBrowser).findByText(name));
 }
 
+/** Keystrokes after an insertion must reach the editor, not the browser. */
+function expectEditorToHaveFocus() {
+  expect(getEditorView().contentDOM).toHaveFocus();
+}
+
 async function clearEditor() {
   await selectRange(0, getEditorValue().length);
   await pressKey("Backspace");
@@ -70,9 +76,11 @@ describe("ExpressionWidget > function browser", () => {
 
     await clickFunction("datetimeAdd");
     await waitFor(() => expect(getEditorValue()).toBe("datetimeAdd()"));
+    expectEditorToHaveFocus();
 
     await clickFunction("day");
     await waitFor(() => expect(getEditorValue()).toBe("datetimeAdd(day())"));
+    expectEditorToHaveFocus();
 
     await typeText('"foo"');
     await pressKey("ArrowRight");
@@ -91,8 +99,13 @@ describe("ExpressionWidget > function browser", () => {
       within(functionBrowser).getByPlaceholderText("Search functions…"),
       "now",
     );
+    expect(
+      within(functionBrowser).getByPlaceholderText("Search functions…"),
+    ).toHaveFocus();
     await clickFunction("now");
     await waitFor(() => expect(getEditorValue()).toBe("now()"));
+    // the editor takes the focus back from the search input
+    expectEditorToHaveFocus();
     await waitForValidationDebounce();
   });
 
@@ -105,6 +118,7 @@ describe("ExpressionWidget > function browser", () => {
     await openFunctionBrowser();
     await clickFunction("day");
     await waitFor(() => expect(getEditorValue()).toBe("foo day() baz"));
+    expectEditorToHaveFocus();
     await waitForValidationDebounce();
   });
 
