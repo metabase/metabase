@@ -115,8 +115,8 @@ def write_target(node):
 def shadowing_cte_names(node, dialect=None):
     """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside.
 
-    None shadows the table an INSERT, UPDATE, DELETE or MERGE writes, except in T-SQL: Postgres, MySQL and the rest
-    write the real table of that name, and T-SQL writes through the CTE to the table it reads."""
+    No CTE name shadows the table an INSERT, UPDATE, DELETE or MERGE writes, except in T-SQL: Postgres, MySQL and the
+    rest write the real table of that name, and T-SQL writes through the CTE to the table it reads."""
     if dialect != "tsql" and write_target(node):
         return set()
     names = set()
@@ -1943,6 +1943,10 @@ def _writes_or_locks(node: exp.Expression) -> bool:
 # names the built-in ones known to matter, and no list of names can be complete. Grants on the database credential
 # are what keep such a function from writing. The read-only flag on the QP's connection does not on every driver:
 # the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
+def _read_only(stmt: exp.Expression) -> bool:
+    return not any(_writes_or_locks(node) for node in stmt.walk())
+
+
 def _write_function(stmt: exp.Expression):
     """The name of the first function in `stmt` that is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
     spelling (`NEXT VALUE FOR s`, `s.nextval`), or None."""
@@ -1955,10 +1959,6 @@ def _write_function(stmt: exp.Expression):
         if name in _WRITE_FUNCTIONS:
             return name
     return None
-
-
-def _read_only(stmt: exp.Expression) -> bool:
-    return not any(_writes_or_locks(node) for node in stmt.walk())
 
 
 # Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
@@ -2049,8 +2049,8 @@ def _pg_literal_end(sql: str, i: int, backslash_escapes: bool):
 
 def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> int:
     """The number of statements Postgres reads in `sql` with `standard_conforming_strings` set as given, counting a
-    piece between semicolons only when it holds more than whitespace and comments. A literal, quoted name or comment
-    that does not end ends the count, with the piece it started counted."""
+    piece between semicolons only when it holds more than whitespace and comments. Nothing after a literal, quoted
+    name or comment that does not end is read."""
     count, content, i, n = 0, False, 0, len(sql)
     while i < n:
         c = sql[i]
@@ -2154,7 +2154,7 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     return _statement_reason(stmts[0], sql, dialect)
 
 
-def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, recheck: bool = True) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
 
@@ -2162,7 +2162,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
     its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
     stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
-    statement names (a sequence, a large object), and must return no rows (no RETURNING or OUTPUT clause). When the
+    statement names (a sequence, a large object), must return no rows (no RETURNING or OUTPUT clause), and its
+    reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
     statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
     For "postgres", every mode also refuses, as "backslash-quote", a statement whose reconstruction Postgres would read
@@ -2193,6 +2194,13 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
             if problem is None and dialect == "postgres" and _hidden_by_string_setting(rebuilt):
                 problem = ("backslash-quote", None)
+            # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
+            # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
+            # its quote moves. The rebuild must pass the same checks and rebuild to itself.
+            if problem is None and stmt_type == "confined-write" and recheck:
+                again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect, recheck=False))
+                if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
+                    problem = ("rebuild-differs", again.get("reason"))
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if rebuilt is not None:

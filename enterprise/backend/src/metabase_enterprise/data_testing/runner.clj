@@ -268,7 +268,7 @@
                :response/keys #{:columns}})))))
 
 (mu/defn- run-subject! :- :any
-  "Call `thunk`, which runs the query under test, and return what it returns. Rethrows its failure as
+  "Call `thunk`, which runs the query under test, and return what `thunk` returns. Rethrows a failure of `thunk` as
   `::data-testing.errors/query-failed`, quoting the warehouse with each temp table of `labels` named as the author
   wrote it."
   [labels :- ::labels
@@ -317,8 +317,8 @@
   read them, and the labels a message renders them as.
 
   Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a write that is not one
-  INSERT, UPDATE or DELETE or that cannot be checked, a test the validator rejects — so a caller that only wants the
-  answer to \"could this run?\" gets it by asking for the plan and discarding it."
+  INSERT, UPDATE or DELETE, returns rows or cannot be checked, a test the validator rejects — so a caller that only
+  wants the answer to \"could this run?\" gets it by asking for the plan and discarding it."
   [subject-type                           :- ::data-testing.subject/subject-type
    subject                                :- ::data-testing.subject/subject
    {:keys [inputs expectations] :as definition} :- ::definition]

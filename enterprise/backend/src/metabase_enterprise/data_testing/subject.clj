@@ -73,8 +73,8 @@
            [:writes?  [:= true]]]]])
 
 (mr/def ::definition
-  "What a run reads of a test, and a subject's plan may: its inputs, its expectations, and the values of the subject's
-  parameters."
+  "The parts of a test that a run reads and a subject's plan may read: its inputs, its expectations, and the values
+  of the subject's parameters."
   [:map {:closed true}
    [:inputs       ::data-testing.schema/inputs]
    [:expectations ::data-testing.schema/expectations]

@@ -122,17 +122,31 @@
    :stmt-type  "read"
    :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
 
+  ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt
+  ;; literal as ending one quote later than SQLGlot did, under either setting.
+  {:name       "a confined write whose rebuilt E'' string moves a quote, so text the parser read as a string runs as SQL, is refused"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET note = E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ WHERE id = 1"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  {:name       "a confined write whose rebuilt E'' string never ends is refused"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET note = E'a\\\\' WHERE id = 1"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
   {:name       "a quote doubled inside a literal is one statement under either setting"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = 'it''s'"
    :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = 'it''s'"}}
 
-  {:name       "a dollar-quoted string without backslashes is one statement under either setting"
+  {:name       "a dollar-quoted string without backslashes is rebuilt as a plain literal, one statement under either setting"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = $q$it's; DELETE FROM orders$q$"
    :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
+   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = 'it''s; DELETE FROM orders'"}}
 
   {:name       "a backslash that is not before a quote is one statement under either setting"
    :dialect    "postgres"
@@ -146,20 +160,26 @@
    :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
-  {:name       "an E'' string whose quote is escaped is one statement under either setting"
+  {:name       "an E'' string whose quote is escaped is rebuilt with the quote doubled, one statement under either setting"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = E'it\\'s; DELETE FROM orders'"
    :stmt-type  "confined-write"
+   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = e'it''s; DELETE FROM orders'"}}
+
+  {:name       "a backslash before a quote in a quoted name starts no literal"
+   :dialect    "postgres"
+   :sql        "UPDATE \"a\\'\" SET note = ';' WHERE id = 1"
+   :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
-  {:name       "a backslash before a quote in a quoted name or a comment ends no literal"
+  {:name       "nor does one in a comment"
    :dialect    "postgres"
-   :sql        "UPDATE \"a\\'\" SET note = 'x' /* b\\' */ WHERE id = 1"
+   :sql        "UPDATE orders SET note = 'x' /* b\\' */ || ';' WHERE id = 1"
    :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "Redshift is not checked for the setting: SQLGlot reads its backslash as an escape already"
    :dialect    "redshift"
-   :sql        "UPDATE orders SET note = 'it\\'s'"
+   :sql        "UPDATE orders SET note = 'it\\'s; DELETE FROM orders'"
    :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true}}]}

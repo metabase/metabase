@@ -153,22 +153,19 @@
     (testing "a transform test has no placeholders: braces in a string literal are its SQL's own"
       (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))
 
-(deftest refused-write-says-why-test
-  (testing "a write that calls a function that waits is refused, and the refusal's data names the function"
-    (let [e (try (validator/ensure-single-write :postgres "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1")
-                 nil
-                 (catch ExceptionInfo e e))]
-      (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
-             (select-keys (ex-data e) [:error-type :reason :detail]))))))
-
 (defn- write-refusal
-  "The `:error-type`, `:reason` and `:detail` of the refusal [[validator/ensure-single-write]] gives the Postgres `sql`,
-  or the SQL it returns when it is not refused."
+  "The `:error-type`, `:reason` and `:detail` of the refusal [[validator/ensure-single-write]] throws for the Postgres
+  `sql`, or the SQL it returns when it throws none."
   [sql]
   (try
     (validator/ensure-single-write :postgres sql)
     (catch ExceptionInfo e
       (select-keys (ex-data e) [:error-type :reason :detail]))))
+
+(deftest refused-write-says-why-test
+  (testing "a write that calls a function that waits is refused, and the refusal's data names the function"
+    (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
+           (write-refusal "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1")))))
 
 (deftest write-calling-a-known-writing-function-is-refused-test
   (testing "control: a plain UPDATE comes back as the SQL to run"
@@ -183,6 +180,15 @@
   (testing "a write that deletes a large object is refused, naming the function"
     (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "lo_unlink"}
            (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1")))))
+
+(deftest write-whose-rebuild-reads-differently-is-refused-test
+  (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
+    (is (= "UPDATE t SET name = e'it''s' WHERE id = 1"
+           (write-refusal "UPDATE t SET name = E'it\\'s' WHERE id = 1"))))
+  (testing "a write whose rebuilt E'' string ends one quote later, running `setval` that the parser read as text, is refused"
+    (is (= {:error-type ::errors/not-a-single-write :reason "rebuild-differs" :detail "write-function"}
+           (write-refusal (str "UPDATE t SET name = E'\\\\' || $q$' || (SELECT setval($z$s$z$, 1))::text --$q$"
+                               " WHERE id = 1"))))))
 
 ;;; ------------------------------------------------ Missing input columns ------------------------------------------------
 
