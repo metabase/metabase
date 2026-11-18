@@ -110,7 +110,7 @@ To apply a saved theme to an embed you already generated, copy the theme's value
 
 ## Set colors and fonts
 
-{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
 
 The theme editor sets colors and fonts. This section and the ones that follow describe the full theme object you set in code. The theme object includes more options than the editor, like chart colors, styles for individual components, and the z-index of overlays. It works without the wizard.
 
@@ -135,7 +135,7 @@ For the full list of colors, see [Colors](./appearance-reference.md#colors).
 
 ## Set chart colors
 
-{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
 
 To change the series colors in charts, set `colors.charts`. You can set up to eight colors. Each one is either a color string or an object with a `base` color, where `tint` and `shade` are optional lighter and darker variations:
 
@@ -154,7 +154,7 @@ If you set a custom series color in a chart's [visualization settings](../questi
 
 ## Style individual components
 
-{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
 
 To style specific components, like dashboard cards or data tables, set options under `components`:
 
@@ -181,7 +181,7 @@ For the full list of component options, see [Component options](./appearance-ref
 
 ## Fix overlays hidden behind your app's modals
 
-{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
 
 Metabase overlays, like click-action menus and save dialogs, have a z-index of `200`. If your app renders its own modal, drawer, or backdrop with a higher z-index, it hides the Metabase overlay.
 

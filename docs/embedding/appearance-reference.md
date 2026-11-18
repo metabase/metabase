@@ -9,13 +9,9 @@ This page lists every option in the `theme` object for [modular embedding](./mod
 
 To add a theme to your embeds, see [Customize the appearance of your embeds](./appearance.md).
 
-{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
-
-All the options except `preset` require a Pro or Enterprise plan.
-
 ## Example theme
 
-This example sets every option in the theme object. See the tables below for more information on each option.
+This example sets every option in the theme object. Every option except `preset` requires a Pro or Enterprise plan. See the tables below for more information on each option.
 
 ```js
 {
@@ -142,6 +138,10 @@ This example sets every option in the theme object. See the tables below for mor
 
 ## Theme options
 
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
+
+All the options except `preset` require a Pro or Enterprise plan.
+
 | Option       | Type                  | What it does                                                                                                                                                                            |
 | ------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `preset`     | `"light"` or `"dark"` | The theme preset to use as a base. Available on all plans.                                                                                                                              |
@@ -152,6 +152,8 @@ This example sets every option in the theme object. See the tables below for mor
 | `components` | object                | Overrides for individual components and visualizations. See [Component options](#component-options).                                                                                    |
 
 ## Colors
+
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
 
 Set colors inside the `colors` object. Each option accepts any CSS color string:
 
@@ -212,6 +214,8 @@ colors: {
 If you set a custom series color in a chart's [visualization settings](../questions/visualizations/visualizing-results.md), that color overrides the theme.
 
 ## Component options
+
+{% include plans-blockquote.html feature="Custom themes" is_plural=true %}
 
 Each component in the `components` object has its own table below. Dotted keys are nested objects, so `card.backgroundColor` under `dashboard` expands to:
 
