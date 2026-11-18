@@ -387,16 +387,18 @@
    [:tables       [:map-of :string :string]]])
 
 (mr/def ::test-suite-run.member-status
-  "The outcome of one member of a suite run. Only `:passed` counts as passed.
+  "The outcome of one member of a suite run. The suite passes only when every member is `:passed`.
 
   `:missing`: no test has the member's type and entity id, its type is one this version does not know, or the thing it
-  tests is gone. `:forbidden`: the user who ran the suite may not run the test. `:refused`: the test could not run, as
-  its own run endpoint would have refused it. `:error`: the run failed for any other reason."
+  tests is gone. `:forbidden`: the user who ran the suite may not run the test. `:refused`: the test's own run endpoint
+  would have refused the run, before or after it started. `:error`: loading the test's subject, checking the user's
+  permission, or the run failed for any other reason."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
    :passed :failed :refused :error :forbidden :missing])
 
 (mr/def ::test-suite-run.error
-  "Why a member did not run: the `:error_code` of a refusal, as the test's own run endpoint gives it, and a message."
+  "Why a member did not pass or fail: the `:error_code` of a refusal, as the test's own run endpoint gives it, and a
+  message."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:error_code {:optional true} :string]
    [:message    [:maybe :string]]])
@@ -418,7 +420,7 @@
 
 (mr/def ::test-suite-run.member
   "The outcome of one member of a suite run, as the run endpoint returns it to the user who ran it: with the test's id
-  and name when that user may read the test, and the test's own run result when it ran."
+  and name when that user may read the test, and the test's own run result when the member passed or failed."
   [:merge
    ::test-suite-run.stored-member
    [:map {:closed true}
@@ -427,8 +429,8 @@
     [:result  {:optional true} ::run-result]]])
 
 (mr/def ::test-suite-run
-  "A run of a test suite. `:members` is nil until the run finishes, and stays nil if the run ended without reaching the
-  end. `:suite_id` is nil once the suite is deleted."
+  "A run of a test suite. `:members` is nil while the run is started, and stays nil when it ends in `:error`, or in
+  `:timeout` because the process running it stopped. `:suite_id` is nil once the suite is deleted."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:suite_id       [:maybe ms/PositiveInt]]
@@ -440,11 +442,12 @@
    [:members        [:maybe ::test-suite-run.stored-members]]])
 
 (mr/def ::test-suite-run.result
-  "The outcome of a suite run as the run endpoint returns it."
+  "The outcome of a suite run as the run endpoint returns it. `:timeout` when the cluster reaper timed the run out while
+  it ran, which happens only when this process stopped heartbeating it."
   [:map {:closed true}
    [:id       ms/PositiveInt]
    [:suite_id ms/PositiveInt]
-   [:status   [:enum :passed :failed]]
+   [:status   [:enum :passed :failed :timeout]]
    [:members  [:sequential ::test-suite-run.member]]])
 
 (mr/def ::test-suite-runs.response

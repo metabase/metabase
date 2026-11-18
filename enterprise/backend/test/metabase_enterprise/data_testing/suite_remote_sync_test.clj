@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -11,20 +12,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- add-members!
-  "Make `refs`, `[test-type entity-id]` pairs, the members of the suite `suite-id`, in order."
-  [suite-id refs]
-  (t2/insert! :model/TestSuiteMember (map-indexed (fn [i [test-type eid]]
-                                                    {:suite_id suite-id :test_type test-type :test_entity_id eid :position i})
-                                                  refs)))
-
-(defn- member-refs
-  "The members of the suite with entity id `suite-eid`, in order, as `[test-type entity-id]`."
-  [suite-eid]
-  (let [suite-id (t2/select-one-pk :model/TestSuite :entity_id suite-eid)]
-    (into [] (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember
-                               {:where [:= :suite_id suite-id] :order-by [[:position :asc]]}))))
 
 (deftest push-writes-every-suite-with-its-members-test
   (remote-sync.tu/with-repository [url]
@@ -34,7 +21,7 @@
                      :model/CardTest   t        {:card_id (:id card) :name "Unsynced test"}
                      :model/TestSuite  suite    {:name "Nightly checks"}]
         (let [missing-eid (u/generate-nano-id)]
-          (add-members! (:id suite) [[:card (:entity_id t)] [:card missing-eid]])
+          (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)] [:card missing-eid]])
           (is (=? {:status :success} (remote-sync.tu/push! url nil)))
           (let [path (remote-sync.tu/entity-path! url "main" suite)]
             (testing "a suite of tests that do not sync, or that are missing, is written under test_suites, by its name"
@@ -54,7 +41,7 @@
                        :model/CardTest  t     {:card_id (:id card) :name "Kept"}
                        :model/CardTest  other {:card_id (:id card) :name "Other"}
                        :model/TestSuite suite {:name "Nightly"}]
-          (add-members! (:id suite) [[:card (:entity_id t)]])
+          (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
           (let [{v1 :version} (remote-sync.tu/push! url nil)
                 path          (remote-sync.tu/entity-path! url "main" suite)
                 yaml-text     (remote-sync.tu/read-file! url "main" path)
@@ -70,7 +57,7 @@
                                                                          "- position: 1\n"))})
               (let [{v2 :version :as result} (remote-sync.tu/pull! url v1)]
                 (is (=? {:status :success} result))
-                (is (= [[:card missing-eid] [:card (:entity_id t)]] (member-refs (:entity_id suite))))
+                (is (= [[:card missing-eid] [:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite))))
                 (testing "and a run of the suite reports the missing member, which fails the suite"
                   (is (=? {:status  "failed"
                            :members [{:status "missing" :test_entity_id missing-eid} {:test_entity_id (:entity_id t)}]}
@@ -84,11 +71,11 @@
                                                                  (str/replace "SWAP" (:entity_id t)))}))
                   (let [{v3 :version :as result} (remote-sync.tu/pull! url v2)]
                     (is (=? {:status :success} result))
-                    (is (= [[:card (:entity_id t)] [:card missing-eid]] (member-refs (:entity_id suite))))
+                    (is (= [[:card (:entity_id t)] [:card missing-eid]] (data-testing.test-util/member-rows (:id suite))))
                     (testing "a pull that changes the members replaces them"
                       (remote-sync.tu/commit! url "main" {path (str/replace yaml-text (:entity_id t) (:entity_id other))})
                       (is (=? {:status :success} (remote-sync.tu/pull! url v3)))
-                      (is (= [[:card (:entity_id other)]] (member-refs (:entity_id suite)))))))))))))))
+                      (is (= [[:card (:entity_id other)]] (data-testing.test-util/member-rows (:id suite)))))))))))))))
 
 (deftest member-changes-are-local-changes-test
   (remote-sync.tu/with-repository [url]
@@ -98,7 +85,7 @@
                      :model/TestSuite suite {:name "Nightly"}]
         (let [{v1 :version} (remote-sync.tu/push! url nil)]
           (testing "adding a member to a pushed suite is a local update of the suite"
-            (add-members! (:id suite) [[:card (:entity_id t)]])
+            (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
             (is (= #{["update" :model/TestSuite "Nightly"]}
                    (into #{}
                          (map (juxt :status (comp first :key) (comp :name :entity :doc)))
@@ -117,3 +104,94 @@
           (testing "but can read and run it"
             (mt/user-http-request :crowberto :get 200 path)
             (is (= "passed" (:status (mt/user-http-request :crowberto :post 200 (str path "/run")))))))))))
+
+(deftest pull-of-a-suite-keeps-its-member-rows-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/TestSuite suite {:name "Nightly" :description "Before"}]
+        (let [a (u/generate-nano-id)
+              b (u/generate-nano-id)
+              _ (data-testing.test-util/add-members! (:id suite) [[:card a] [:transform b]])
+              ids-before    (t2/select-fn-vec :id :model/TestSuiteMember {:where    [:= :suite_id (:id suite)]
+                                                                          :order-by [[:position :asc]]})
+              {v1 :version} (remote-sync.tu/push! url nil)
+              path          (remote-sync.tu/entity-path! url "main" suite)]
+          (remote-sync.tu/commit! url "main" {path (str/replace (remote-sync.tu/read-file! url "main" path)
+                                                                "description: Before" "description: After")})
+          (is (=? {:status :success} (remote-sync.tu/pull! url v1)))
+          (is (= "After" (t2/select-one-fn :description :model/TestSuite :id (:id suite)))
+              "premise: the pull loaded the suite")
+          (testing "a pull that loads a suite with unchanged members keeps their content"
+            (is (= [[:card a] [:transform b]] (data-testing.test-util/member-rows (:id suite)))))
+          (testing "and keeps their rows"
+            (is (= ids-before (t2/select-fn-vec :id :model/TestSuiteMember {:where    [:= :suite_id (:id suite)]
+                                                                            :order-by [[:position :asc]]})))))))))
+
+(defn- test-file-path!
+  "The path of the YAML file of the test `t` at the tip of `main`, outside `test_suites/`, or nil. A suite file that
+  names `t` also holds its entity id."
+  [url t]
+  (some #(when (and (not (str/starts-with? % "test_suites/"))
+                    (str/includes? (remote-sync.tu/read-file! url "main" %) (str "\nentity_id: " (:entity_id t))))
+           %)
+        (remote-sync.tu/files! url "main")))
+
+(deftest pull-deleting-a-member-test-keeps-the-member-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/TestSuite :model/CardTest :model/Card :model/Collection]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}
+                       :model/CardTest   t      {:card_id (:id card) :name "Synced test"}
+                       :model/TestSuite  suite  {:name "Nightly"}]
+          (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
+          (let [{v1 :version :as pushed} (remote-sync.tu/push! url nil)
+                test-path                (test-file-path! url t)]
+            (is (=? {:status :success} pushed))
+            (is (some? test-path) "premise: the card test was pushed to its own file")
+            (remote-sync.tu/commit! url "main" {test-path nil})
+            (let [{v2 :version :as pulled} (remote-sync.tu/pull! url v1)]
+              (is (=? {:status :success} pulled))
+              (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the pull deleted the card test")
+              (testing "a pull that deletes a test the suite file still names keeps the member, as git has it"
+                (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite)))))
+              (testing "and leaves no local change"
+                (is (empty? (map (juxt :status :key) (remote-sync.tu/local-changes! url v2))))))))))))
+
+(deftest read-only-test-delete-keeps-synced-suite-members-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Collection unsynced {:name "Unsynced" :location "/"}
+                   :model/Card       card     {:name "Unsynced card" :collection_id (:id unsynced)}
+                   :model/CardTest   t        {:card_id (:id card) :name "Unsynced test"}
+                   :model/TestSuite  suite    {:name "Nightly"}]
+      (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
+      (remote-sync.tu/with-remote-sync ["file:///nonexistent/remote-sync-test-suite" :read-only]
+        (mt/user-http-request :crowberto :put 403 (str "ee/test-suite/" (:id suite)) {:members []})
+        (mt/user-http-request :crowberto :delete (str "ee/card-test/" (:id t)))
+        (testing "on a read-only instance, deleting a test of an unsynced card leaves the suite's members unchanged"
+          (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite)))))))))
+
+(deftest pull-of-a-suite-naming-a-test-twice-is-refused-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Card      card  {:name "Card"}
+                     :model/CardTest  t     {:card_id (:id card)}
+                     :model/TestSuite suite {:name "Nightly"}]
+        (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
+        (let [{v1 :version} (remote-sync.tu/push! url nil)
+              path          (remote-sync.tu/entity-path! url "main" suite)
+              yaml-text     (remote-sync.tu/read-file! url "main" path)
+              member        (str "- position: 0\n  test_entity_id: " (:entity_id t) "\n  test_type: card\n")]
+          (is (str/includes? yaml-text member) "premise: the file lists the member as the fixture expects")
+          (remote-sync.tu/commit! url "main" {path (str/replace yaml-text member
+                                                                (str member (str/replace member "position: 0" "position: 1")))})
+          (let [result   (try (remote-sync.tu/pull! url v1) (catch Exception e e))
+                messages (str/join "\n" (if (instance? Throwable result)
+                                          (keep ex-message (take-while some? (iterate ex-cause result)))
+                                          [(pr-str result)]))]
+            (testing "a pull of a suite file that names one test twice fails, naming the suite and the test"
+              (is (not= :success (:status result)))
+              (is (str/includes? messages "\"Nightly\" names the same test more than once"))
+              (is (str/includes? messages (str "card test " (:entity_id t)))))
+            (testing "and leaves the suite as it was"
+              (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite)))))))))))

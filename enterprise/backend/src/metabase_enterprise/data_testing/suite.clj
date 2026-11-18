@@ -1,13 +1,14 @@
 (ns metabase-enterprise.data-testing.suite
-  "Test suites as the current user sees them: [[with-members]] resolves each member to the saved test it names,
-  [[member-rows]] turns the members a client sends into the rows a suite stores, and [[runs-for-reader]] hides from the
-  run history what the reader may not see."
+  "Test suites as the current user sees them: [[saved-tests-by]] finds the saved tests that members name;
+  [[with-members]] resolves each member to the saved test it names; [[member-rows]] turns the members a client sends
+  into the rows a suite stores; and [[runs-for-reader]] hides from the run history what the reader may not see."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -20,8 +21,16 @@
   "A saved test by type and either id or entity id."
   [:tuple :keyword [:or ms/PositiveInt :string]])
 
+(mu/defn member-ref :- TestRef
+  "The `[test-type entity-id]` of the test that `member`, a stored member or a member outcome, names."
+  [member :- [:or
+              ::data-testing.schema/test-suite.member
+              ::data-testing.schema/test-suite-run.stored-member
+              ::data-testing.schema/test-suite-run.member]]
+  ((juxt :test_type :test_entity_id) member))
+
 (mu/defn saved-tests-by :- [:map-of TestKey ::data-testing.schema/saved-test]
-  "The saved tests whose `column` holds one of the values in `refs`, `[test-type value]` pairs, keyed by pair, each
+  "A map from each of `refs`, `[test-type value]` pairs, to the saved test of that type whose `column` holds that value,
   hydrated with `:can_read`. A pair of a test type this version does not know, or that names no test, is absent."
   [column :- [:enum :id :entity_id]
    refs   :- [:sequential TestKey]]
@@ -47,16 +56,16 @@
   "`suites`, each with its members in order, as the current user sees them."
   [suites :- [:sequential ::data-testing.schema/test-suite]]
   (let [members  (data-testing.db/suite-members (mapv :id suites))
-        tests    (saved-tests-by :entity_id (mapv (juxt :test_type :test_entity_id) members))
+        tests    (saved-tests-by :entity_id (mapv member-ref members))
         by-suite (group-by :suite_id members)]
     (mapv (fn [suite]
-            (assoc suite :members (mapv #(member-response % (get tests [(:test_type %) (:test_entity_id %)]))
+            (assoc suite :members (mapv #(member-response % (get tests (member-ref %)))
                                         (get by-suite (:id suite)))))
           suites)))
 
 (defn- refuse-member
-  "Throw a 400 for a requested member naming `value`, the id or entity id of a `test-type` test, that names no test the
-  current user can read. The message is the same whether the test is missing or unreadable."
+  "Throw a 400 for a requested member that names, by `value`, its id or entity id, no `test-type` test that the current
+  user can read. The message is the same whether the test is missing or unreadable."
   [test-type value]
   (throw (ex-info (tru "There is no {0} test {1} that you can read." (name test-type) (pr-str value))
                   {:status-code 400})))
@@ -84,22 +93,33 @@
                              (refuse-member test_type test_entity_id))))
                        requested)]
     (when-let [repeated (seq (keep (fn [[row n]] (when (> n 1) row)) (frequencies rows)))]
-      (throw (ex-info (tru "A test can be in a suite only once. Named more than once: {0}"
+      (throw (ex-info (tru "A test can be in a suite at most once. Named more than once: {0}"
                            (pr-str (mapv (juxt (comp name :test_type) :test_entity_id) repeated)))
                       {:status-code 400})))
     rows))
 
 (mu/defn runs-for-reader :- [:sequential ::data-testing.schema/test-suite-run]
-  "`runs` with the `:error` removed from each member whose test the current user cannot read: a refusal can quote the
-  test's SQL. A member whose test is missing keeps its error."
+  "`runs` with the `:error` removed from each member unless the member's test exists and the current user may run it.
+  An error can quote the SQL of the test's query and of the cards and snippets that query includes; reading the test
+  does not grant reading that SQL, running it does. A permission check that throws withholds the error. Every member
+  keeps its status."
   [runs :- [:sequential ::data-testing.schema/test-suite-run]]
-  (let [refs   (into [] (comp (mapcat :members) (filter :error) (map (juxt :test_type :test_entity_id)) (distinct)) runs)
-        tests  (saved-tests-by :entity_id refs)
-        hidden (into #{} (keep (fn [[ref saved-test]] (when-not (mi/can-read? saved-test) ref))) tests)]
+  (let [refs  (into [] (comp (mapcat :members) (filter :error) (map member-ref) (distinct)) runs)
+        shown (into #{}
+                    (keep (fn [[[test-type :as ref] saved-test]]
+                            ;; A permission check that throws withholds the error rather than fail the history.
+                            (when (try
+                                    ((:can-run? (data-testing.test-type/spec test-type)) saved-test)
+                                    (catch Exception e
+                                      (log/warnf e "Could not check whether the user may run %s test %s"
+                                                 (name test-type) (:id saved-test))
+                                      false))
+                              ref)))
+                    (saved-tests-by :entity_id refs))]
     (mapv (fn [run]
             (cond-> run
               (seq (:members run))
               (update :members (partial mapv #(cond-> %
-                                                (contains? hidden [(:test_type %) (:test_entity_id %)])
+                                                (not (contains? shown (member-ref %)))
                                                 (dissoc :error))))))
           runs)))

@@ -1,16 +1,19 @@
 (ns metabase-enterprise.data-testing.models.test-suite
-  "`:model/TestSuite`, a named list of saved data tests, `:model/TestSuiteMember`, one test in a suite, and
+  "`:model/TestSuite`, a named list of saved data tests; `:model/TestSuiteMember`, one test in a suite; and
   `:model/TestSuiteRun`, a run of a suite. A member names its test by test type and entity id, with no foreign key: a
   suite can name a test this instance lacks."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -43,10 +46,7 @@
 (methodical/defmethod t2/batched-hydrate [:model/TestSuiteRun :initiated_by_user]
   "Add the user who started each run, or nil."
   [_model _k runs]
-  (let [user-ids (into #{} (keep :initiated_by) runs)
-        id->user (when (seq user-ids) (data-testing.db/users-by-id user-ids))]
-    (for [run runs]
-      (assoc run :initiated_by_user (get id->user (:initiated_by run))))))
+  (data-testing.models.data-test-run/with-initiated-by-users runs))
 
 (defmethod audit-app/model-details :model/TestSuite
   [suite _event-type]
@@ -82,9 +82,24 @@
   ;; one suite on the same test, which the unique constraint refuses.
   {:schema    ::data-testing.schema/external-test-suite-member
    :identity  [:suite_id :test_type :test_entity_id]
-   :copy      [:test_type :test_entity_id :position]
+   :copy      [:test_entity_id :position]
    :parent    {:model :model/TestSuite :key :suite_id :order :position}
-   :transform {:suite_id serialization/import-only-transform}})
+   ;; Rows of the app DB hold the test type as a keyword, so an imported one must be too, to match on the identity.
+   :transform {:suite_id  serialization/import-only-transform
+               :test_type {:export (fn [_store _rows values _opts] (mapv name values))
+                           :import (fn [_store _entities values _opts] (mapv keyword values))}}})
+
+(defmethod serialization/before-load :model/TestSuite [_ items]
+  (doseq [{{suite-name :name :keys [members]} :entity} items
+          :let [repeated (keep (fn [[ref n]] (when (> n 1) ref))
+                               (frequencies (map (juxt (comp name :test_type) :test_entity_id) members)))]
+          :when (seq repeated)]
+    (throw (ex-info (tru "Test suite {0} names the same test more than once: {1}"
+                         (pr-str suite-name)
+                         (str/join ", " (map (fn [[test-type eid]] (str test-type " test " eid)) repeated)))
+                    {:status-code 400
+                     :suite       suite-name})))
+  items)
 
 (defmethod serialization/storage-paths :model/TestSuite [_ entities _ctx]
   (mapv (fn [suite]

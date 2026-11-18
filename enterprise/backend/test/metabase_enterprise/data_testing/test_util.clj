@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn cast-types
   "An integer and a text `cast_type` the current driver accepts as a `CAST` target.
@@ -43,3 +44,16 @@
               :schema   "PUBLIC"
               :name     (str (u/upper-case-en (name table)) "_SUMMARY")
               :database (mt/id)}}))
+
+(defn add-members!
+  "Make `refs`, `[test-type entity-id]` pairs, the members of the suite `suite-id`, in order."
+  [suite-id refs]
+  (t2/insert! :model/TestSuiteMember (map-indexed (fn [i [test-type eid]]
+                                                    {:suite_id suite-id :test_type test-type :test_entity_id eid :position i})
+                                                  refs)))
+
+(defn member-rows
+  "The members of the suite `suite-id`, in order, as `[test-type test-entity-id]`."
+  [suite-id]
+  (into [] (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember
+                             {:where [:= :suite_id suite-id] :order-by [[:position :asc]]})))

@@ -18,10 +18,15 @@
   {:status    mi/transform-keyword
    :test_type mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:model/DataTestRun :initiated_by_user]
-  "Add the user who started each run, or nil."
-  [_model _k runs]
+(defn with-initiated-by-users
+  "`runs`, rows of any run model, each with the user who started it, or nil, under `:initiated_by_user`."
+  [runs]
   (let [user-ids (into #{} (keep :initiated_by) runs)
         id->user (when (seq user-ids) (data-testing.db/users-by-id user-ids))]
     (for [run runs]
       (assoc run :initiated_by_user (get id->user (:initiated_by run))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/DataTestRun :initiated_by_user]
+  "Add the user who started each run, or nil."
+  [_model _k runs]
+  (with-initiated-by-users runs))

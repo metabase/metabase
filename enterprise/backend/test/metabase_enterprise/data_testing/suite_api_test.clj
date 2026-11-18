@@ -3,21 +3,19 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.app-db.core :as mdb]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- member-rows
-  "The member rows of the suite `suite-id`, in order, as `[test-type test-entity-id]`."
-  [suite-id]
-  (into [] (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember
-                             {:where [:= :suite_id suite-id] :order-by [[:position :asc]]})))
+(set! *warn-on-reflection* true)
 
 (deftest premium-feature-test
-  (testing "every endpoint refuses an instance without the feature"
+  (testing "every CRUD endpoint refuses an instance without the feature"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/TestSuite {suite-id :id} {}]
         (let [path (str "ee/test-suite/" suite-id)]
@@ -69,11 +67,11 @@
                                                      {:test_type "card" :test_id test-b}]})))
             (is (= [[:card eid-a]] (do (mt/user-http-request :crowberto :put 200 path
                                                              {:members [{:test_type "card" :test_id test-a}]})
-                                       (member-rows (:id created))))))
+                                       (data-testing.test-util/member-rows (:id created))))))
           (testing "DELETE removes the suite and its members"
             (mt/user-http-request :crowberto :delete 204 path)
             (is (not (t2/exists? :model/TestSuite :id (:id created))))
-            (is (= [] (member-rows (:id created))))
+            (is (= [] (data-testing.test-util/member-rows (:id created))))
             (mt/user-http-request :crowberto :get 404 path))
           (finally
             (t2/delete! :model/TestSuite :id (:id created))))))))
@@ -85,22 +83,24 @@
                                      eid     :entity_id}      {:card_id card-id}
                    :model/TestSuite {suite-id :id}            {}]
       (let [missing-id (inc (t2/select-one-fn :max-id [:model/CardTest [:%max.id :max-id]]))
-            path       (str "ee/test-suite/" suite-id)]
+            path       (str "ee/test-suite/" suite-id)
+            suites     (t2/count :model/TestSuite)]
         (testing "a test id that names no test is refused"
           (mt/user-http-request :crowberto :post 400 "ee/test-suite"
                                 {:name "s" :members [{:test_type "card" :test_id missing-id}]})
           (mt/user-http-request :crowberto :put 400 path {:members [{:test_type "card" :test_id missing-id}]}))
         (testing "an entity id that names no test and no member of the suite is refused"
           (mt/user-http-request :crowberto :put 400 path {:members [{:test_type "card" :test_entity_id (u/generate-nano-id)}]}))
-        (testing "a test of another type with the same id is a different test"
+        (testing "a test of another type with the same entity id is a different test"
           (mt/user-http-request :crowberto :put 400 path {:members [{:test_type "transform" :test_entity_id eid}]}))
-        (testing "a test given twice is refused, by id or by entity id"
+        (testing "a test named once by id and once by entity id is refused as a duplicate"
           (mt/user-http-request :crowberto :put 400 path {:members [{:test_type "card" :test_id test-id}
                                                                     {:test_type "card" :test_entity_id eid}]}))
         (testing "a member with both an id and an entity id is refused"
           (mt/user-http-request :crowberto :put 400 path {:members [{:test_type "card" :test_id test-id :test_entity_id eid}]}))
-        (testing "nothing was written"
-          (is (= [] (member-rows suite-id))))))))
+        (testing "nothing was written: no suite was created, and no member was written to the suite"
+          (is (= suites (t2/count :model/TestSuite)))
+          (is (= [] (data-testing.test-util/member-rows suite-id))))))))
 
 (deftest missing-members-test
   (mt/with-premium-features #{:transforms-testing}
@@ -136,7 +136,7 @@
                                             {:suite_id suite-id :test_type :card :test_entity_id hidden-eid :position 1}])
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (let [path (str "ee/test-suite/" suite-id)]
-          (testing "a user who cannot enter Data Studio is refused by every endpoint"
+          (testing "a user who cannot enter Data Studio is refused by every CRUD endpoint"
             (doseq [request [[:get 403 "ee/test-suite"]
                              [:post 403 "ee/test-suite" {:name "s" :members []}]
                              [:get 403 path]
@@ -168,3 +168,76 @@
             (testing "a Data Studio user may delete the suite"
               (mt/user-http-request :lucky :delete 204 path)
               (is (not (t2/exists? :model/TestSuite :id suite-id))))))))))
+
+(defn- put-members-concurrently!
+  "PUT `first-members` and then `second-members` to `path`, as crowberto. The first request's transaction stays open
+  until the second request has waited a second inside `update-test-suite!`. Returns the status and error message of
+  both responses, and whether the second request was still waiting when the first was let go."
+  [path first-members second-members]
+  (let [original       (mt/original-fn #'data-testing.db/update-test-suite!)
+        calls          (atom 0)
+        first-wrote    (promise)
+        second-entered (promise)
+        release        (promise)
+        put!           #(let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :put path {:members %})]
+                          {:status status :message (:message body)})]
+    (mt/with-dynamic-fn-redefs [data-testing.db/update-test-suite!
+                                (fn [& args]
+                                  (if (= 1 (swap! calls inc))
+                                    (t2/with-transaction [_conn]
+                                      (u/prog1 (apply original args)
+                                        (deliver first-wrote true)
+                                        (deref release 30000 nil)))
+                                    (do (deliver second-entered true)
+                                        (apply original args))))]
+      (let [first-response  (future (put! first-members))
+            _               (deref first-wrote 30000 nil)
+            second-response (future (put! second-members))
+            _               (deref second-entered 30000 nil)
+            _               (Thread/sleep 1000)
+            second-waited?  (not (realized? second-response))]
+        (deliver release true)
+        {:first          (deref first-response 30000 :timeout)
+         :second         (deref second-response 30000 :timeout)
+         :second-waited? second-waited?}))))
+
+(deftest concurrent-member-updates-test
+  ;; Postgres only: how the second request waits on the first depends on the app DB's locking.
+  ;; Global values: each request needs its own connection and transaction, so the fixtures must be committed.
+  (when (= :postgres (mdb/db-type))
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:transforms-testing}
+        (mt/with-temp [:model/Card     {card-id :id}                 {}
+                       :model/CardTest {test-a :id eid-a :entity_id} {:card_id card-id :name "A"}
+                       :model/CardTest {test-b :id eid-b :entity_id} {:card_id card-id :name "B"}
+                       :model/CardTest {test-c :id eid-c :entity_id} {:card_id card-id :name "C"}
+                       :model/CardTest {test-d :id eid-d :entity_id} {:card_id card-id :name "D"}]
+          (let [ref       (fn [test-id] {:test_type "card" :test_id test-id})
+                suite-ids (atom [])
+                new-suite (fn []
+                            (u/prog1 (:id (mt/user-http-request :crowberto :post 200 "ee/test-suite"
+                                                                {:name "Concurrent" :members [(ref test-a)]}))
+                              (swap! suite-ids conj <>)))]
+            (try
+              (doseq [[case-name first-ids second-ids expected-eids]
+                      [["lists with no test in common" [test-a test-b] [test-c test-d] [eid-c eid-d]]
+                       ["lists that share a test"      [test-a test-b] [test-b test-a] [eid-b eid-a]]]
+                      :let [expected (mapv (partial vector :card) expected-eids)]]
+                (testing case-name
+                  (testing "one PUT after the other leaves the second list"
+                    (let [suite-id (new-suite)
+                          path     (str "ee/test-suite/" suite-id)]
+                      (mt/user-http-request :crowberto :put 200 path {:members (map ref first-ids)})
+                      (mt/user-http-request :crowberto :put 200 path {:members (map ref second-ids)})
+                      (is (= expected (data-testing.test-util/member-rows suite-id)))))
+                  (testing "two concurrent PUTs both succeed, and the second replaces the first"
+                    (let [suite-id  (new-suite)
+                          responses (put-members-concurrently! (str "ee/test-suite/" suite-id)
+                                                               (map ref first-ids)
+                                                               (map ref second-ids))]
+                      (is (:second-waited? responses))
+                      (is (=? {:status 200} (:first responses)))
+                      (is (=? {:status 200} (:second responses)))
+                      (is (= expected (data-testing.test-util/member-rows suite-id)))))))
+              (finally
+                (t2/delete! :model/TestSuite :id [:in @suite-ids])))))))))

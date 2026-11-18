@@ -90,12 +90,14 @@
                [:description {:optional true} [:maybe :string]]]
    members :- [:maybe SuiteMemberRows]]
   (t2/with-transaction [_conn]
-    (when (some? members)
-      (replace-suite-members! id members))
+    ;; The suite row is updated first: its row lock makes a concurrent update of the same suite wait until this one
+    ;; commits, so the second replaces the members the first wrote instead of merging with them.
     (let [updates (cond-> updates
                     (some? members) (assoc :updated_at :%now))]
       (when (seq updates)
-        (t2/update! :model/TestSuite :id id updates)))))
+        (t2/update! :model/TestSuite :id id updates)))
+    (when (some? members)
+      (replace-suite-members! id members))))
 
 (mu/defn delete-test-suite!
   "Delete the TestSuite with `id`, and its members."
@@ -129,6 +131,16 @@
               :status "started"
               (cond-> {:status status :end_time :%now}
                 members (assoc :members members))))
+
+(mu/defn add-members-to-ended-suite-run! :- :int
+  "Set the `members` of the TestSuiteRun `run-id` if it has ended, for a run the cluster reaper timed out while it ran,
+  which ended without them. Returns the number of rows updated."
+  [run-id  :- ms/PositiveInt
+   members :- ::data-testing.schema/test-suite-run.stored-members]
+  (t2/update! :model/TestSuiteRun
+              :id run-id
+              :status [:not= "started"]
+              {:members members}))
 
 (mu/defn suite-runs :- [:sequential ::data-testing.schema/test-suite-run]
   "A page of the runs of the suite `suite-id`, newest first."

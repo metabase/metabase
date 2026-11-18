@@ -59,7 +59,7 @@
   ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
   ;; runs are never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
-  (data-testing.db/delete-suite-members-of-test! :card (:entity_id card-test))
+  (data-testing.models/remove-deleted-test-from-suites! :card (:entity_id card-test))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/card-test-delete {:object card-test}))
   card-test)

@@ -77,64 +77,76 @@
   [run-ids :- [:sequential ms/PositiveInt]]
   (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
 
+(defn- logging-throwables
+  "Call `thunk` and return its value; if it throws, log the throwable as the failure of `what` and return nil, so that the
+  caller goes on with its other work."
+  [what thunk]
+  (try
+    (thunk)
+    (catch Throwable t
+      (log/warnf t "Failed to %s" what)
+      nil)))
+
 (mu/defn heartbeat-and-reconcile-runs! :- :nil
-  "Heartbeat the test runs and suite runs owned by this process and forget any that became terminal elsewhere."
+  "Heartbeat the test runs and suite runs owned by this process and forget any that became terminal elsewhere. A
+  failure for one kind of run does not stop the other."
   []
-  (rt/heartbeat-and-reconcile! {:model      :model/DataTestRun
-                                :active     [:status "started"]
-                                :ids        @active-runs
-                                :heartbeat! heartbeat-runs!
-                                :on-gone    #(swap! active-runs disj %)})
-  (rt/heartbeat-and-reconcile! {:model      :model/TestSuiteRun
-                                :active     [:status "started"]
-                                :ids        @active-suite-runs
-                                :heartbeat! #(rt/heartbeat-ids! :model/TestSuiteRun [:status "started"] :last_heartbeat %)
-                                :on-gone    #(swap! active-suite-runs disj %)}))
+  (logging-throwables
+   "heartbeat test runs"
+   #(rt/heartbeat-and-reconcile! {:model      :model/DataTestRun
+                                  :active     [:status "started"]
+                                  :ids        @active-runs
+                                  :heartbeat! heartbeat-runs!
+                                  :on-gone    (fn [id] (swap! active-runs disj id))}))
+  (logging-throwables
+   "heartbeat suite runs"
+   #(rt/heartbeat-and-reconcile! {:model      :model/TestSuiteRun
+                                  :active     [:status "started"]
+                                  :ids        @active-suite-runs
+                                  :heartbeat! (fn [ids] (rt/heartbeat-ids! :model/TestSuiteRun [:status "started"] :last_heartbeat ids))
+                                  :on-gone    (fn [id] (swap! active-suite-runs disj id))}))
+  nil)
+
+(defn- reap-and-publish!
+  "Time out the started rows of `model`, a run model, whose owning process has stopped heartbeating for
+  `stale-minutes`, publish for each the timeout topic `(topic-of run)` returns, and return them. A run with no topic is
+  logged, and a failed publish does not stop the others."
+  [model stale-minutes topic-of]
+  (let [reaped (rt/reap-orphaned! {:model    model
+                                   :active   [:status "started"]
+                                   :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
+                                   :terminal {:status "timeout" :end_time :%now}})]
+    (doseq [run reaped]
+      (if-let [topic (topic-of run)]
+        (logging-throwables
+         (str "publish the timeout event of run " (:id run) " of " (name model))
+         #(events/publish-event! topic (-> {:object (assoc run :status :timeout)}
+                                           (m/assoc-some :user-id (:initiated_by run)))))
+        (log/warnf "Timed out run %s of %s, which has no timeout event" (:id run) (name model))))
+    reaped))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/stored-data-test-run]]
   "Time out started runs of every test type whose owning process has stopped heartbeating, and return them. Publish
   the timeout event of each run whose test type has one."
   [stale-minutes :- ms/PositiveInt]
-  (let [reaped (rt/reap-orphaned! {:model    :model/DataTestRun
-                                   :active   [:status "started"]
-                                   :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-                                   :terminal {:status "timeout" :end_time :%now}})]
-    (doseq [run reaped]
-      ;; A run of a test type this version does not know, written by a newer node, has no topic here.
-      (if-let [topic (get-in (data-testing.test-type/spec (:test_type run)) [:run-topics :timeout])]
-        (try
-          (events/publish-event! topic
-                                 (-> {:object (assoc run :status :timeout)}
-                                     (m/assoc-some :user-id (:initiated_by run))))
-          (catch Throwable t
-            (log/warnf "Failed to publish test run timeout event for run %s: %s"
-                       (:id run)
-                       (ex-message t))))
-        (log/warnf "Timed out run %s of test type %s, which has no timeout event" (:id run) (:test_type run))))
-    reaped))
+  ;; A run of a test type this version does not know, written by a newer node, has no topic here.
+  (reap-and-publish! :model/DataTestRun stale-minutes
+                     #(get-in (data-testing.test-type/spec (:test_type %)) [:run-topics :timeout])))
 
 (mu/defn reap-orphaned-suite-runs! :- [:maybe [:sequential ::data-testing.schema/test-suite-run]]
   "Time out started suite runs whose owning process has stopped heartbeating, publish the timeout event of each, and
   return them."
   [stale-minutes :- ms/PositiveInt]
-  (let [reaped (rt/reap-orphaned! {:model    :model/TestSuiteRun
-                                   :active   [:status "started"]
-                                   :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-                                   :terminal {:status "timeout" :end_time :%now}})]
-    (doseq [run reaped]
-      (try
-        (events/publish-event! :event/test-suite-run-timeout
-                               (-> {:object (assoc run :status :timeout)}
-                                   (m/assoc-some :user-id (:initiated_by run))))
-        (catch Throwable t
-          (log/warnf "Failed to publish suite run timeout event for run %s: %s" (:id run) (ex-message t)))))
-    reaped))
+  (reap-and-publish! :model/TestSuiteRun stale-minutes (constantly :event/test-suite-run-timeout)))
 
 (defmethod task/init! ::DataTestRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
 
 (defmethod task/init! ::DataTestRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transform-testing.reaper"
-                        :label   "test run or suite run"
-                        :reap-fn #(concat (reap-orphaned-runs! heartbeat-stale-minutes)
-                                          (reap-orphaned-suite-runs! heartbeat-stale-minutes))}))
+                        :label   "test or suite run"
+                        ;; A failure to reap one kind of run does not stop the other.
+                        :reap-fn #(concat (logging-throwables "reap test runs"
+                                                              (fn [] (reap-orphaned-runs! heartbeat-stale-minutes)))
+                                          (logging-throwables "reap suite runs"
+                                                              (fn [] (reap-orphaned-suite-runs! heartbeat-stale-minutes))))}))

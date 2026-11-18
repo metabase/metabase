@@ -45,6 +45,15 @@
   {:inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
+(mu/defn remove-deleted-test-from-suites!
+  "Remove the deleted `test-type` test with entity id `entity-id` from every suite, unless a remote-sync pull or a
+  serialization load deletes it, or remote sync keeps synced content read-only. Then the suites stay as git has them,
+  and a run reports the test as missing."
+  [test-type :- ::data-testing.schema/test-type
+   entity-id :- :string]
+  (when-not (or mi/*deserializing?* (remote-sync/read-only?))
+    (data-testing.db/delete-suite-members-of-test! test-type entity-id)))
+
 (defn with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
   [test-type tests]
@@ -189,7 +198,7 @@
   ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
   ;; delete's transaction. Toucan 2 has no after-delete hook.
   (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  (data-testing.db/delete-suite-members-of-test! :transform (:entity_id transform-test))
+  (remove-deleted-test-from-suites! :transform (:entity_id transform-test))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/transform-test-delete {:object transform-test}))
   transform-test)

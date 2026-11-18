@@ -1,9 +1,15 @@
 (ns metabase-enterprise.data-testing.suite-run-api-test
   "`POST /api/ee/test-suite/:id/run` and `GET /api/ee/test-suite/:id/runs`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -31,13 +37,6 @@
    :collection_id collection-id
    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")})
 
-(defn- add-members!
-  "Make `refs`, `[test-type entity-id]` pairs, the members of the suite `suite-id`, in order."
-  [suite-id refs]
-  (t2/insert! :model/TestSuiteMember (map-indexed (fn [i [test-type eid]]
-                                                    {:suite_id suite-id :test_type test-type :test_entity_id eid :position i})
-                                                  refs)))
-
 (defn- run-path [suite-id] (str "ee/test-suite/" suite-id "/run"))
 
 (defn- runs-path [suite-id] (str "ee/test-suite/" suite-id "/runs"))
@@ -63,9 +62,9 @@
                    :model/TestSuite {missing-suite :id}   {}
                    :model/TestSuite {empty-suite :id}     {}]
       (let [missing-eid (u/generate-nano-id)]
-        (add-members! suite-id [[:card pass-eid] [:card fail-eid] [:card refused-eid] [:card missing-eid]])
-        (add-members! passing-suite [[:card pass-eid]])
-        (add-members! missing-suite [[:card pass-eid] [:card missing-eid]])
+        (data-testing.test-util/add-members! suite-id [[:card pass-eid] [:card fail-eid] [:card refused-eid] [:card missing-eid]])
+        (data-testing.test-util/add-members! passing-suite [[:card pass-eid]])
+        (data-testing.test-util/add-members! missing-suite [[:card pass-eid] [:card missing-eid]])
         (let [response (mt/user-http-request :crowberto :post 200 (run-path suite-id))
               [pass fail refused missing] (:members response)]
           (testing "each member reports its own outcome, in order, and the suite fails"
@@ -106,10 +105,11 @@
           (is (= {:status "passed" :members []}
                  (select-keys (mt/user-http-request :crowberto :post 200 (run-path empty-suite)) [:status :members]))))
         (testing "GET runs pages the history of one suite, newest first, without results or names"
-          (mt/user-http-request :crowberto :post 200 (run-path suite-id))
-          (let [{:keys [data total limit offset]} (mt/user-http-request :crowberto :get 200 (runs-path suite-id) :limit 1)]
+          (let [{newest :id}                      (mt/user-http-request :crowberto :post 200 (run-path suite-id))
+                {:keys [data total limit offset]} (mt/user-http-request :crowberto :get 200 (runs-path suite-id) :limit 1)]
             (is (= [2 1 0] [total limit offset]))
-            (is (=? [{:suite_id          suite-id
+            (is (=? [{:id                newest
+                      :suite_id          suite-id
                       :status            "failed"
                       :initiated_by_user {:id (mt/user->id :crowberto)}
                       :members           [{:status "passed" :test_entity_id pass-eid :data_test_run_id pos-int?}
@@ -135,12 +135,12 @@
                      :model/CardTest   {hidden-id :id
                                         hidden-eid :entity_id} {:card_id hidden-card-id :name "Hidden" :inputs [] :expectations passing}
                      :model/TestSuite  {suite-id :id}         {}]
-        (add-members! suite-id [[:card readable-eid] [:card hidden-eid]])
+        (data-testing.test-util/add-members! suite-id [[:card readable-eid] [:card hidden-eid]])
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (testing "a user who cannot enter Data Studio cannot run a suite or read its history"
           (mt/user-http-request :rasta :post 403 (run-path suite-id))
           (mt/user-http-request :rasta :get 403 (runs-path suite-id)))
-        (testing "an admin's run refuses the hidden test, and records why"
+        (testing "setup: an admin's run records a refusal, with its error, for both members"
           (is (=? {:members [{:status "refused"} {:status "refused" :error {:message string?}}]}
                   (mt/user-http-request :crowberto :post 200 (run-path suite-id)))))
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -153,3 +153,134 @@
               (is (= {:test_type "card" :test_entity_id hidden-eid :position 1 :status "forbidden"}
                      (second (:members (mt/user-http-request :lucky :post 200 (run-path suite-id))))))
               (is (= runs-before (t2/count :model/DataTestRun :test_type "card" :test_id hidden-id))))))))))
+
+(defn- native-card
+  "A native card with the query `sql`, in the collection `collection-id`."
+  [collection-id sql]
+  {:name          "People"
+   :collection_id collection-id
+   :dataset_query (lib/native-query (mt/metadata-provider) sql)})
+
+(def ^:private failing-sql
+  "SQL that fails on the warehouse; the failure message quotes it, marker included."
+  "SELECT ID, NAME, 'SECRET_MARKER' AS S FROM PUBLIC.PEOPLE WHERE NOPE_COLUMN = 1")
+
+(deftest run-history-withholds-errors-from-reader-who-cannot-run-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id}        {}
+                     :model/Collection {hidden-coll-id :id} {}
+                     :model/Card       {source-id :id}      (native-card hidden-coll-id failing-sql)]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card      {card-id :id}             {:name          "On source"
+                                                                     :collection_id coll-id
+                                                                     :dataset_query (lib/query mp (lib.metadata/card mp source-id))}
+                         :model/CardTest  {test-id :id eid :entity_id} {:card_id card-id :name "Readable" :inputs inputs :expectations passing}
+                         :model/TestSuite {suite-id :id}            {}]
+            (data-testing.test-util/add-members! suite-id [[:card eid]])
+            (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+            (mt/user-http-request :crowberto :post 200 (run-path suite-id))
+            (testing "control: a reader who may run the test sees the error, which quotes the source card's SQL"
+              (is (str/includes? (-> (mt/user-http-request :crowberto :get 200 (runs-path suite-id))
+                                     :data first :members first :error :message str)
+                                 "SECRET_MARKER")))
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (testing "premise: the reader reads the test and its card, not the source card, and may not run the test"
+                (mt/user-http-request :lucky :get 200 (str "ee/card-test/" test-id))
+                (mt/user-http-request :lucky :get 200 (str "card/" card-id))
+                (mt/user-http-request :lucky :get 403 (str "card/" source-id))
+                (mt/user-http-request :lucky :post 403 (str "ee/card-test/" test-id "/run")))
+              (testing "the history withholds a member's error message from a reader who may not run its test"
+                (is (nil? (-> (mt/user-http-request :lucky :get 200 (runs-path suite-id))
+                              :data first :members first :error :message)))))))))))
+
+(deftest run-history-withholds-errors-of-deleted-test-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {hidden-coll-id :id} {}
+                     :model/Card       {hidden-card-id :id} (native-card hidden-coll-id failing-sql)
+                     :model/CardTest   {hidden-id :id
+                                        hidden-eid :entity_id} {:card_id hidden-card-id :name "Hidden" :inputs inputs :expectations passing}
+                     :model/TestSuite  {suite-id :id}       {}]
+        (data-testing.test-util/add-members! suite-id [[:card hidden-eid]])
+        (testing "premise: the run recorded an error that quotes the hidden card's SQL"
+          (is (str/includes? (-> (mt/user-http-request :crowberto :post 200 (run-path suite-id))
+                                 :members first :error :message str)
+                             "SECRET_MARKER")))
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (letfn [(lucky-member [] (-> (mt/user-http-request :lucky :get 200 (runs-path suite-id)) :data first :members first))]
+            (testing "control: while the test exists, a reader who cannot read it does not see its error"
+              (is (=? {:status "refused"} (lucky-member)))
+              (is (not (contains? (lucky-member) :error))))
+            (t2/delete! :model/CardTest :id hidden-id)
+            (testing "after the test is deleted, the history withholds its error message"
+              (is (=? {:status "refused"} (lucky-member)))
+              (is (nil? (-> (lucky-member) :error :message))))))))))
+
+(deftest run-response-agrees-with-stored-run-when-reaped-mid-run-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card      {card-id :id}      (card nil)
+                   :model/CardTest  {eid-0 :entity_id} {:card_id card-id :name "First" :inputs inputs :expectations passing}
+                   :model/CardTest  {eid-1 :entity_id} {:card_id card-id :name "Second" :inputs inputs :expectations passing}
+                   :model/TestSuite {suite-id :id}     {}]
+      (data-testing.test-util/add-members! suite-id [[:card eid-0] [:card eid-1]])
+      (let [run-test! (mt/original-fn #'data-testing.runner/run-test!)
+            calls     (atom 0)
+            reaped    (atom nil)]
+        (mt/with-dynamic-fn-redefs [data-testing.runner/run-test! (fn [& args]
+                                                                    (when (= 2 (swap! calls inc))
+                                                                      (t2/query {:update :test_suite_run
+                                                                                 :set    {:last_heartbeat (t/minus (t/offset-date-time) (t/minutes 10))}
+                                                                                 :where  [:and [:= :suite_id suite-id] [:= :status "started"]]})
+                                                                      (reset! reaped (mapv :id (data-testing.run-tracking/reap-orphaned-suite-runs! 5))))
+                                                                    (apply run-test! args))]
+          (let [response (mt/user-http-request :crowberto :post 200 (run-path suite-id))
+                stored   (-> (mt/user-http-request :crowberto :get 200 (runs-path suite-id)) :data first)]
+            (testing "premise: the reaper timed the run out between its members"
+              (is (= [(:id response)] @reaped)))
+            (testing "the response and the stored run report the same status and member outcomes"
+              (is (= [(:status response) (mapv :status (:members response))]
+                     [(:status stored) (mapv :status (:members stored))])))))))))
+
+(deftest member-exception-before-its-run-is-its-error-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card      {card-id :id}            (card nil)
+                   :model/CardTest  {eid-0 :entity_id}       {:card_id card-id :name "First" :inputs inputs :expectations passing}
+                   :model/CardTest  {id-1 :id eid-1 :entity_id} {:card_id card-id :name "Second" :inputs inputs :expectations passing}
+                   :model/CardTest  {eid-2 :entity_id}       {:card_id card-id :name "Third" :inputs inputs :expectations passing}
+                   :model/TestSuite {suite-id :id}           {}]
+      (data-testing.test-util/add-members! suite-id [[:card eid-0] [:card eid-1] [:card eid-2]])
+      (letfn [(run-and-stored []
+                (let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :post (run-path suite-id))]
+                  [status
+                   (select-keys body [:status :members])
+                   (select-keys (-> (mt/user-http-request :crowberto :get 200 (runs-path suite-id)) :data first)
+                                [:status :members])]))
+              (outcome [message]
+                {:status  "failed"
+                 :members [{:status "passed"}
+                           {:status "error" :error {:message message}}
+                           {:status "passed"}]})]
+        (testing "control: an exception inside a member's run is that member's error"
+          (let [run-test! (mt/original-fn #'data-testing.runner/run-test!)]
+            (mt/with-dynamic-fn-redefs [data-testing.runner/run-test! (fn [test-type subject saved-test & more]
+                                                                        (if (= id-1 (:id saved-test))
+                                                                          (throw (ex-info "inside the run" {}))
+                                                                          (apply run-test! test-type subject saved-test more)))]
+              (is (=? [200 (outcome "inside the run") (outcome "inside the run")]
+                      (run-and-stored))))))
+        (testing "an exception in a member's permission check is that member's error"
+          (let [spec data-testing.test-type/spec]
+            (with-redefs [data-testing.test-type/spec (fn [test-type]
+                                                        (cond-> (spec test-type)
+                                                          (= :card test-type)
+                                                          (update :can-run? (fn [can-run?]
+                                                                              (fn [saved-test]
+                                                                                (if (= id-1 (:id saved-test))
+                                                                                  (throw (ex-info "in the permission check" {}))
+                                                                                  (can-run? saved-test)))))))]
+              (let [[status response stored] (run-and-stored)]
+                (is (=? [200 (outcome "in the permission check")] [status response]))
+                (testing "and the history, whose own check of that member throws too, withholds the error"
+                  (is (=? {:status "failed" :members [{:status "passed"} {:status "error"} {:status "passed"}]} stored))
+                  (is (not (contains? (second (:members stored)) :error))))))))))))

@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
+   [metabase-enterprise.data-testing.models]
+   [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.util.malli.registry :as mr]
@@ -15,7 +17,8 @@
         (is (keyword? model))
         (is (int? (t2/count model))))
       (testing "names a start and a timeout topic"
-        (is (= #{:start :timeout} (set (keys run-topics)))))
+        (is (= #{:start :timeout} (set (keys run-topics))))
+        (is (every? qualified-keyword? (vals run-topics))))
       (testing "names how to load a test's subject and whether the current user may run it"
         (is (ifn? subject))
         (is (ifn? can-run?))))))

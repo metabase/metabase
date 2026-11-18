@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -17,9 +18,9 @@
   (.isAfter ^OffsetDateTime timestamp (minutes-ago 1)))
 
 (defn- members
-  "The members of the suite `suite-id`, as `[test-type test-entity-id]`."
+  "The members of the suite `suite-id`, as a set of `[test-type test-entity-id]`."
   [suite-id]
-  (set (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember :suite_id suite-id)))
+  (set (data-testing.test-util/member-rows suite-id)))
 
 (deftest deleting-a-test-removes-it-from-every-suite-test
   (mt/with-temp [:model/Card          {card-id :id}        {}
