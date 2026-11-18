@@ -17,7 +17,16 @@ export {
   hasDay,
   hasHour,
 } from "./datetime-utils";
-export { duration, formatDurationLong } from "./duration";
+export {
+  DEFAULT_DURATION_PRECISION,
+  DEFAULT_DURATION_STYLE,
+  DEFAULT_DURATION_UNIT,
+  type FormatDurationOptions,
+  duration,
+  formatDuration,
+  formatDurationLong,
+  getDurationTickInterval,
+} from "./duration";
 export { formatField } from "./field";
 export { formatNullable } from "./nullable";
 export {

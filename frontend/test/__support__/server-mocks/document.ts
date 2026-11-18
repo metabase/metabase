@@ -1,6 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  CardId,
+  Dataset,
   Document,
   DocumentId,
   GetPublicDocument,
@@ -77,11 +79,30 @@ export function setupListPublicDocumentsEndpoint(
   fetchMock.get("path:/api/document/public", publicDocuments);
 }
 
+export function setupPublicDocumentEndpoints(uuid: string, doc: Document) {
+  fetchMock.get(`path:/api/public/document/${uuid}`, doc);
+}
+
+export function setupPublicDocumentCardQueryEndpoint(
+  uuid: string,
+  cardId: CardId,
+  dataset: Dataset,
+) {
+  fetchMock.get(`path:/api/public/document/${uuid}/card/${cardId}`, dataset);
+}
+
 export function setupDocumentErrorEndpoint(
   id: DocumentId,
   { status }: { status: number },
 ) {
   fetchMock.get(`path:/api/document/${id}`, { status });
+}
+
+export function setupPublicDocumentErrorEndpoint(
+  uuid: string,
+  { status }: { status: number },
+) {
+  fetchMock.get(`path:/api/public/document/${uuid}`, { status });
 }
 
 export function setupCopyDocumentEndpoint(id: DocumentId, copy: Document) {

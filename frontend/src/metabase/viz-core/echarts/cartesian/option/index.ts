@@ -37,6 +37,7 @@ import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
+import { applyYAxisTicks } from "./y-axis";
 
 export function getBrushStyle(renderingContext: RenderingContext) {
   const brandColor = Color(renderingContext.getColor("core-brand"));
@@ -304,7 +305,7 @@ export const getCartesianChartOption = (
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
   };
