@@ -31,11 +31,6 @@
   [_original-model _k]
   :model/Card)
 
-(defmethod data-testing.test-type/spec :card [_test-type]
-  {:model      :model/CardTest
-   :run-topics {:start   :event/card-test-run-start
-                :timeout :event/card-test-run-timeout}})
-
 (t2/deftransforms :model/CardTest
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
@@ -131,6 +126,13 @@
   [instance changes]
   (and (can-save-test? (:card_id instance))
        (can-save-test? (:card_id changes (:card_id instance)))))
+
+(defmethod data-testing.test-type/spec :card [_test-type]
+  {:model      :model/CardTest
+   :run-topics {:start   :event/card-test-run-start
+                :timeout :event/card-test-run-timeout}
+   :subject    #(data-testing.db/card (:card_id %))
+   :can-run?   can-run?})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

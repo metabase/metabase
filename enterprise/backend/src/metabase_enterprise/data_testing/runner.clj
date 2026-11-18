@@ -340,38 +340,46 @@
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
   "Run `saved-test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
-  recording the run under the test.
+  recording the run under the test. `:on-start`, when given, is called with the id of the run once it is recorded.
 
   Throws a typed refusal from [[metabase-enterprise.data-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
-  [subject-type                                             :- ::data-testing.subject/subject-type
-   subject                                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [inputs expectations] :as _saved-test} :- ::data-testing.schema/saved-test]
-  (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
-        (validated-plan subject-type subject inputs expectations)
-        {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
-        final-status (atom :error)]
-    (try
-      (let [result
-            (driver/do-with-test-connection
-             driver database
-             (fn [conn]
-               (try
-                 (create-inputs! driver conn input->table labels)
-                 (create-output! driver conn output-table compiled labels)
-                 (let [results (check-expectations driver conn
-                                                   {:driver driver
-                                                    :output-table output-table
-                                                    :replacements replacements
-                                                    :output-token output-token}
-                                                   expectations labels)]
-                   {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
-                    :expectations results
-                    :tables       labels})
-                 (finally
-                   (doseq [table (cons output-table (vals input->table))]
-                     (data-testing.executor/drop-temp-table! driver conn table))))))]
-        (reset! final-status (:status result))
-        result)
-      (finally
-        (data-testing.run-tracking/finish-run! run-id @final-status)))))
+  ([subject-type :- ::data-testing.subject/subject-type
+    subject      :- ::data-testing.subject/subject
+    saved-test   :- ::data-testing.schema/saved-test]
+   (run-test! subject-type subject saved-test {}))
+  ([subject-type                                             :- ::data-testing.subject/subject-type
+    subject                                                  :- ::data-testing.subject/subject
+    {test-id :id :keys [inputs expectations] :as _saved-test} :- ::data-testing.schema/saved-test
+    {:keys [on-start]}                                       :- [:map {:closed true}
+                                                                 [:on-start {:optional true} ifn?]]]
+   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
+         (validated-plan subject-type subject inputs expectations)
+         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
+         final-status (atom :error)]
+     (try
+       (when on-start
+         (on-start run-id))
+       (let [result
+             (driver/do-with-test-connection
+              driver database
+              (fn [conn]
+                (try
+                  (create-inputs! driver conn input->table labels)
+                  (create-output! driver conn output-table compiled labels)
+                  (let [results (check-expectations driver conn
+                                                    {:driver driver
+                                                     :output-table output-table
+                                                     :replacements replacements
+                                                     :output-token output-token}
+                                                    expectations labels)]
+                    {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
+                     :expectations results
+                     :tables       labels})
+                  (finally
+                    (doseq [table (cons output-table (vals input->table))]
+                      (data-testing.executor/drop-temp-table! driver conn table))))))]
+         (reset! final-status (:status result))
+         result)
+       (finally
+         (data-testing.run-tracking/finish-run! run-id @final-status))))))

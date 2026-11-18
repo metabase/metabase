@@ -1,8 +1,20 @@
 (ns metabase-enterprise.data-testing.models.test-suite-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime ZoneOffset)))
+
+(set! *warn-on-reflection* true)
+
+(defn- minutes-ago ^OffsetDateTime [^long n]
+  (.minusMinutes (OffsetDateTime/now ZoneOffset/UTC) n))
+
+(defn- recent?
+  [timestamp]
+  (.isAfter ^OffsetDateTime timestamp (minutes-ago 1)))
 
 (defn- members
   "The members of the suite `suite-id`, as `[test-type test-entity-id]`."
@@ -61,3 +73,62 @@
                   :topic    :test-suite-delete
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-delete suite-id))))))))
+
+(deftest suite-run-lifecycle-test
+  (mt/with-temp [:model/TestSuite {suite-id :id} {}]
+    (let [initiated-by             (mt/user->id :crowberto)
+          {run-id :id :as started} (data-testing.run-tracking/start-suite-run! suite-id initiated-by)
+          members                  [{:test_type :card :test_entity_id "abc" :position 0 :status :missing}]]
+      (testing "a new run is started, with no members yet"
+        (is (=? {:suite_id suite-id :initiated_by initiated-by :status :started :end_time nil :members nil}
+                started)))
+      (testing "the owning process heartbeats its run"
+        (t2/update! :model/TestSuiteRun :id run-id {:last_heartbeat (minutes-ago 10)})
+        (data-testing.run-tracking/heartbeat-and-reconcile-runs!)
+        (is (recent? (t2/select-one-fn :last_heartbeat :model/TestSuiteRun :id run-id))))
+      (testing "finishing sets the status, the end time and the member outcomes"
+        (is (= 1 (data-testing.run-tracking/finish-suite-run! run-id :failed members)))
+        (is (=? {:status :failed :end_time some? :members members}
+                (t2/select-one :model/TestSuiteRun :id run-id)))))))
+
+(deftest reap-orphaned-suite-runs-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/TestSuite    {suite-id :id} {}
+                   :model/TestSuiteRun {stale-id :id} {:suite_id       suite-id
+                                                       :initiated_by   (mt/user->id :rasta)
+                                                       :last_heartbeat (minutes-ago 10)}
+                   :model/TestSuiteRun {fresh-id :id} {:suite_id suite-id :last_heartbeat (minutes-ago 1)}]
+      (testing "only a stale started run is timed out"
+        (is (= [stale-id] (mapv :id (data-testing.run-tracking/reap-orphaned-suite-runs! 5))))
+        (is (= :timeout (t2/select-one-fn :status :model/TestSuiteRun :id stale-id)))
+        (is (= :started (t2/select-one-fn :status :model/TestSuiteRun :id fresh-id))))
+      (testing "the timeout is audited, naming the user who started the run"
+        (is (= {:model_id stale-id
+                :user_id  (mt/user->id :rasta)
+                :details  {:suite_id suite-id :status "timeout"}
+                :topic    :test-suite-run-timeout
+                :model    "TestSuiteRun"}
+               (mt/latest-audit-log-entry :test-suite-run-timeout stale-id))))
+      (testing "a late completion cannot overwrite the timeout"
+        (is (zero? (data-testing.run-tracking/finish-suite-run! stale-id :passed [])))
+        (is (= :timeout (t2/select-one-fn :status :model/TestSuiteRun :id stale-id)))))))
+
+(deftest suite-run-start-is-audited-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/TestSuite {suite-id :id} {}]
+      (let [{run-id :id} (data-testing.run-tracking/start-suite-run! suite-id (mt/user->id :rasta))]
+        (try
+          (is (= {:model_id run-id
+                  :user_id  (mt/user->id :rasta)
+                  :details  {:suite_id suite-id :status "started"}
+                  :topic    :test-suite-run-start
+                  :model    "TestSuiteRun"}
+                 (mt/latest-audit-log-entry :test-suite-run-start run-id)))
+          (finally
+            (data-testing.run-tracking/finish-suite-run! run-id :error nil)))))))
+
+(deftest deleting-a-suite-keeps-its-runs-test
+  (mt/with-temp [:model/TestSuite    {suite-id :id} {}
+                 :model/TestSuiteRun {run-id :id}   {:suite_id suite-id :status :passed}]
+    (t2/delete! :model/TestSuite :id suite-id)
+    (is (=? {:suite_id nil :status :passed} (t2/select-one :model/TestSuiteRun :id run-id)))))

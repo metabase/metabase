@@ -4,11 +4,14 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.suite :as data-testing.suite]
+   [metabase-enterprise.data-testing.suite-run :as data-testing.suite-run]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.request.core :as request]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,6 +76,35 @@
   (api/check-404 (data-testing.db/test-suite id))
   (data-testing.db/delete-test-suite! id)
   nil)
+
+(api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/test-suite-run.result
+  "Run every member of a test suite, in order, within the request, and record the run.
+
+  Each member runs as its own run endpoint would run it, under the same permission rule, and reports its `status`:
+  `passed` or `failed` with its `result`; `refused` with the `error` its run endpoint would have returned; `error`
+  when its run failed for another reason; `forbidden` when the caller may not run it (with no name when the caller
+  cannot read it); `missing` when this instance has no such test. The suite's `status` is `passed` iff every member
+  passed."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-data-studio-access)
+  (data-testing.suite-run/run-suite! (api/check-404 (data-testing.db/test-suite id))))
+
+(api.macros/defendpoint :get "/:id/runs" :- ::data-testing.schema/test-suite-runs.response
+  "List the runs of a test suite, newest first. A member's outcome has no name or result, and no `error` when the
+  caller cannot read the member's test."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-data-studio-access)
+  (api/check-404 (data-testing.db/test-suite id))
+  (let [limit  (or (request/limit) 20)
+        offset (or (request/offset) 0)]
+    {:data   (-> (data-testing.db/suite-runs id limit offset)
+                 data-testing.suite/runs-for-reader
+                 (t2/hydrate :initiated_by_user))
+     :limit  limit
+     :offset offset
+     :total  (data-testing.db/suite-run-count id)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/test-suite` routes."

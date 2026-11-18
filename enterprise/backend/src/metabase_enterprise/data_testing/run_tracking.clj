@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.run-tracking
-  "Cluster-safe lifecycle tracking for the runs of every type of test."
+  "Cluster-safe lifecycle tracking for the runs of every type of test, and for the runs of test suites."
   (:require
    [medley.core :as m]
    [metabase-enterprise.data-testing.db :as data-testing.db]
@@ -18,6 +18,9 @@
 (def ^:private heartbeat-stale-minutes 5)
 
 (defonce ^:private active-runs
+  (atom #{}))
+
+(defonce ^:private active-suite-runs
   (atom #{}))
 
 (mu/defn start-run! :- ::data-testing.schema/data-test-run
@@ -47,19 +50,46 @@
     (finally
       (swap! active-runs disj run-id))))
 
+(mu/defn start-suite-run! :- ::data-testing.schema/test-suite-run
+  "Create a started run of the suite `suite-id`, publish its start event, and register the run as owned by this
+  process."
+  [suite-id     :- ms/PositiveInt
+   initiated-by :- [:maybe ::lib.schema.id/user]]
+  (let [run (data-testing.db/insert-suite-run! suite-id initiated-by)]
+    (events/publish-event! :event/test-suite-run-start (-> {:object run}
+                                                           (m/assoc-some :user-id initiated-by)))
+    (swap! active-suite-runs conj (:id run))
+    run))
+
+(mu/defn finish-suite-run! :- :int
+  "Finish the suite run `run-id` with `status` and the outcomes of its `members` if it is still started, then release
+  this process's ownership. Returns the number of runs finished: 0 when the cluster reaper timed the run out first."
+  [run-id  :- ms/PositiveInt
+   status  :- ::data-testing.schema/run-status
+   members :- [:maybe ::data-testing.schema/test-suite-run.stored-members]]
+  (try
+    (data-testing.db/finish-started-suite-run! run-id status members)
+    (finally
+      (swap! active-suite-runs disj run-id))))
+
 (mu/defn heartbeat-runs!
   "Stamp a heartbeat on the given runs while they are still started."
   [run-ids :- [:sequential ms/PositiveInt]]
   (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
 
 (mu/defn heartbeat-and-reconcile-runs! :- :nil
-  "Heartbeat the runs owned by this process and forget any that became terminal elsewhere."
+  "Heartbeat the test runs and suite runs owned by this process and forget any that became terminal elsewhere."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/DataTestRun
                                 :active     [:status "started"]
                                 :ids        @active-runs
                                 :heartbeat! heartbeat-runs!
-                                :on-gone    #(swap! active-runs disj %)}))
+                                :on-gone    #(swap! active-runs disj %)})
+  (rt/heartbeat-and-reconcile! {:model      :model/TestSuiteRun
+                                :active     [:status "started"]
+                                :ids        @active-suite-runs
+                                :heartbeat! #(rt/heartbeat-ids! :model/TestSuiteRun [:status "started"] :last_heartbeat %)
+                                :on-gone    #(swap! active-suite-runs disj %)}))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/stored-data-test-run]]
   "Time out started runs of every test type whose owning process has stopped heartbeating, and return them. Publish
@@ -83,10 +113,28 @@
         (log/warnf "Timed out run %s of test type %s, which has no timeout event" (:id run) (:test_type run))))
     reaped))
 
+(mu/defn reap-orphaned-suite-runs! :- [:maybe [:sequential ::data-testing.schema/test-suite-run]]
+  "Time out started suite runs whose owning process has stopped heartbeating, publish the timeout event of each, and
+  return them."
+  [stale-minutes :- ms/PositiveInt]
+  (let [reaped (rt/reap-orphaned! {:model    :model/TestSuiteRun
+                                   :active   [:status "started"]
+                                   :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
+                                   :terminal {:status "timeout" :end_time :%now}})]
+    (doseq [run reaped]
+      (try
+        (events/publish-event! :event/test-suite-run-timeout
+                               (-> {:object (assoc run :status :timeout)}
+                                   (m/assoc-some :user-id (:initiated_by run))))
+        (catch Throwable t
+          (log/warnf "Failed to publish suite run timeout event for run %s: %s" (:id run) (ex-message t)))))
+    reaped))
+
 (defmethod task/init! ::DataTestRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
 
 (defmethod task/init! ::DataTestRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transform-testing.reaper"
-                        :label   "test run"
-                        :reap-fn #(reap-orphaned-runs! heartbeat-stale-minutes)}))
+                        :label   "test run or suite run"
+                        :reap-fn #(concat (reap-orphaned-runs! heartbeat-stale-minutes)
+                                          (reap-orphaned-suite-runs! heartbeat-stale-minutes))}))

@@ -177,6 +177,7 @@
       :model/DataTestRun
       :model/TestSuite
       :model/TestSuiteMember
+      :model/TestSuiteRun
       :model/Workspace
       :model/WorkspaceDatabase
       :model/TableRemapping])))

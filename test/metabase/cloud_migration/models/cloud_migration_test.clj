@@ -264,6 +264,7 @@
            :model/Tenant
            :model/TestSuite
            :model/TestSuiteMember
+           :model/TestSuiteRun
            :model/TransformTest
            :model/Workspace
            :model/WorkspaceDatabase])))

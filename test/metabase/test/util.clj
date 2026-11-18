@@ -438,6 +438,12 @@
       {:creator_id (rasta-id)
        :name       (str "Test Suite " (u/generate-nano-id))}))
 
+   :model/TestSuiteRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
+
    :model/DataTestRun
    (fn [_]
      {:test_type      :transform

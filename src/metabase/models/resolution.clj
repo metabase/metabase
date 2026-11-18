@@ -148,6 +148,7 @@
     :model/Tenant                            metabase-enterprise.tenants.models
     :model/TestSuite                         metabase-enterprise.data-testing.models.test-suite
     :model/TestSuiteMember                   metabase-enterprise.data-testing.models.test-suite
+    :model/TestSuiteRun                      metabase-enterprise.data-testing.models.test-suite
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform

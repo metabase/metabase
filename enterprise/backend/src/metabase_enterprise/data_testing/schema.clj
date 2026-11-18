@@ -380,6 +380,78 @@
    [:expectations [:sequential ::expectation-result]]
    [:tables       [:map-of :string :string]]])
 
+(mr/def ::test-suite-run.member-status
+  "The outcome of one member of a suite run. Only `:passed` counts as passed.
+
+  `:missing`: no test has the member's type and entity id, its type is one this version does not know, or the thing it
+  tests is gone. `:forbidden`: the user who ran the suite may not run the test. `:refused`: the test could not run, as
+  its own run endpoint would have refused it. `:error`: the run failed for any other reason."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword}
+   :passed :failed :refused :error :forbidden :missing])
+
+(mr/def ::test-suite-run.error
+  "Why a member did not run: the `:error_code` of a refusal, as the test's own run endpoint gives it, and a message."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   [:error_code {:optional true} :string]
+   [:message    [:maybe :string]]])
+
+(mr/def ::test-suite-run.stored-member
+  "The outcome of one member of a suite run as the run history keeps it: no name and no result, which the reader of the
+  history may not be allowed to see."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   [:test_type        [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
+   [:test_entity_id   :string]
+   [:position         :int]
+   [:status           ::test-suite-run.member-status]
+   [:data_test_run_id {:optional true} ms/PositiveInt]
+   [:error            {:optional true} ::test-suite-run.error]])
+
+(mr/def ::test-suite-run.stored-members
+  "The outcomes of the members of a suite run, in order."
+  [:sequential ::test-suite-run.stored-member])
+
+(mr/def ::test-suite-run.member
+  "The outcome of one member of a suite run, as the run endpoint returns it to the user who ran it: with the test's id
+  and name when that user may read the test, and the test's own run result when it ran."
+  [:merge
+   ::test-suite-run.stored-member
+   [:map {:closed true}
+    [:test_id {:optional true} ms/PositiveInt]
+    [:name    {:optional true} :string]
+    [:result  {:optional true} ::run-result]]])
+
+(mr/def ::test-suite-run
+  "A run of a test suite. `:members` is nil until the run finishes, and stays nil if the run ended without reaching the
+  end. `:suite_id` is nil once the suite is deleted."
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:suite_id       [:maybe ms/PositiveInt]]
+   [:initiated_by   [:maybe ::lib.schema.id/user]]
+   [:status         ::run-status]
+   [:start_time     ms/TemporalInstant]
+   [:end_time       [:maybe ms/TemporalInstant]]
+   [:last_heartbeat ms/TemporalInstant]
+   [:members        [:maybe ::test-suite-run.stored-members]]])
+
+(mr/def ::test-suite-run.result
+  "The outcome of a suite run as the run endpoint returns it."
+  [:map {:closed true}
+   [:id       ms/PositiveInt]
+   [:suite_id ms/PositiveInt]
+   [:status   [:enum :passed :failed]]
+   [:members  [:sequential ::test-suite-run.member]]])
+
+(mr/def ::test-suite-runs.response
+  "A page of the runs of a suite, each with the user who started it."
+  [:map {:closed true}
+   [:data   [:sequential [:merge
+                          ::test-suite-run
+                          [:map {:closed true}
+                           [:initiated_by_user [:maybe ::user]]]]]]
+   [:limit  pos-int?]
+   [:offset :int]
+   [:total  :int]])
+
 (mr/def ::connection
   "A connection from `driver/do-with-test-connection`: a JDBC connection, or the BigQuery client and session that stand
   in for one."

@@ -110,6 +110,41 @@
                                        :order-by [[:suite_id :asc] [:position :asc]]})
     []))
 
+(mu/defn insert-suite-run! :- ::data-testing.schema/test-suite-run
+  "Insert a started TestSuiteRun of the suite `suite-id` and return it."
+  [suite-id     :- ms/PositiveInt
+   initiated-by :- [:maybe ::lib.schema.id/user]]
+  (t2/insert-returning-instance! :model/TestSuiteRun {:suite_id     suite-id
+                                                      :initiated_by initiated-by
+                                                      :status       :started}))
+
+(mu/defn finish-started-suite-run! :- :int
+  "Set `status`, the end time and `members` of the TestSuiteRun `run-id` if it is still started. Returns the number of
+  rows updated."
+  [run-id  :- ms/PositiveInt
+   status  :- ::data-testing.schema/run-status
+   members :- [:maybe ::data-testing.schema/test-suite-run.stored-members]]
+  (t2/update! :model/TestSuiteRun
+              :id run-id
+              :status "started"
+              (cond-> {:status status :end_time :%now}
+                members (assoc :members members))))
+
+(mu/defn suite-runs :- [:sequential ::data-testing.schema/test-suite-run]
+  "A page of the runs of the suite `suite-id`, newest first."
+  [suite-id :- ms/PositiveInt
+   limit    :- ms/PositiveInt
+   offset   :- ms/IntGreaterThanOrEqualToZero]
+  (t2/select :model/TestSuiteRun {:where    [:= :suite_id suite-id]
+                                  :order-by [[:start_time :desc] [:id :desc]]
+                                  :limit    limit
+                                  :offset   offset}))
+
+(mu/defn suite-run-count :- :int
+  "The number of runs of the suite `suite-id`."
+  [suite-id :- ms/PositiveInt]
+  (t2/count :model/TestSuiteRun :suite_id suite-id))
+
 (mu/defn delete-suite-members-of-test!
   "Remove the `test-type` test with entity id `entity-id` from every TestSuite."
   [test-type :- ::data-testing.schema/test-type

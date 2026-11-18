@@ -2,9 +2,13 @@
   "[[spec]]: what the module needs to know about each type of saved test.")
 
 (defmulti spec
-  "How the module handles the saved tests of `test-type`: `:model`, the model of those tests, and `:run-topics`, the
-  audit topics of their runs, `{:start topic :timeout topic}`. Nil for a test type this version does not know, such as
-  one a newer node wrote into the run history."
+  "How the module handles the saved tests of `test-type`, or nil for a test type this version does not know, such as one
+  a newer node wrote into the run history:
+
+  - `:model`: the model of those tests;
+  - `:run-topics`: the audit topics of their runs, `{:start topic :timeout topic}`;
+  - `:subject`: a function of a saved test that returns the thing it tests, or nil when that is gone;
+  - `:can-run?`: a function of a saved test that returns whether the current user may run it."
   {:arglists '([test-type])}
   identity)
 

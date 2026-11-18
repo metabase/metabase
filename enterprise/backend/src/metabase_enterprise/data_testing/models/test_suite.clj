@@ -1,7 +1,11 @@
 (ns metabase-enterprise.data-testing.models.test-suite
-  "`:model/TestSuite`, a named list of saved data tests, and `:model/TestSuiteMember`, one test in a suite. A member
-  names its test by test type and entity id, with no foreign key: a suite can name a test this instance lacks."
+  "`:model/TestSuite`, a named list of saved data tests, `:model/TestSuiteMember`, one test in a suite, and
+  `:model/TestSuiteRun`, a run of a suite. A member names its test by test type and entity id, with no foreign key: a
+  suite can name a test this instance lacks."
   (:require
+   [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -17,10 +21,30 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+(methodical/defmethod t2/table-name :model/TestSuiteRun [_model] :test_suite_run)
+
 (derive :model/TestSuiteMember :metabase/model)
+
+(derive :model/TestSuiteRun :metabase/model)
 
 (t2/deftransforms :model/TestSuiteMember
   {:test_type mi/transform-keyword})
+
+(t2/deftransforms :model/TestSuiteRun
+  {:status  mi/transform-keyword
+   :members (data-testing.models/json-column ::data-testing.schema/test-suite-run.stored-members)})
+
+(defmethod audit-app/model-details :model/TestSuiteRun
+  [run _event-type]
+  (select-keys run [:suite_id :status]))
+
+(methodical/defmethod t2/batched-hydrate [:model/TestSuiteRun :initiated_by_user]
+  "Add the user who started each run, or nil."
+  [_model _k runs]
+  (let [user-ids (into #{} (keep :initiated_by) runs)
+        id->user (when (seq user-ids) (data-testing.db/users-by-id user-ids))]
+    (for [run runs]
+      (assoc run :initiated_by_user (get id->user (:initiated_by run))))))
 
 (defmethod audit-app/model-details :model/TestSuite
   [suite _event-type]

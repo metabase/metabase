@@ -1,6 +1,7 @@
 ## Adds test_suite, a named list of saved data tests, and test_suite_member, its members. A member names its test by
 ## test type and entity id, with no foreign key: the types live in different tables, and a suite pulled from git can name
-## a test this instance lacks. Deleting a test through its model deletes its member rows.
+## a test this instance lacks. Deleting a test through its model deletes its member rows. Adds test_suite_run, the run
+## history of suites, which outlives the suite.
 
 databaseChangeLog:
   - changeSet:
@@ -161,3 +162,109 @@ databaseChangeLog:
                   name: test_type
               - column:
                   name: test_entity_id
+
+  - changeSet:
+      id: lyhhry
+      author: galdre
+      comment: Add test_suite_run
+      changes:
+        - createTable:
+            tableName: test_suite_run
+            remarks: A run of a test suite and the outcome of each of its members
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: suite_id
+                  type: int
+                  remarks: The suite that was run; null once the suite is deleted
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: The user who started the run
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: started, passed, failed, error, or timeout
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: When the run started
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: When the run finished; null while it is running
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  remarks: Heartbeat stamped while the run executes; a stale value means the owning process died
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: members
+                  type: ${text.type}
+                  remarks: JSON array of the outcome of each member, written when the run finishes
+
+  - changeSet:
+      id: 4gejxi
+      author: galdre
+      comment: Index test_suite_run by suite and start time, for the run history of a suite
+      changes:
+        - createIndex:
+            tableName: test_suite_run
+            indexName: idx_test_suite_run_suite_id_start_time
+            columns:
+              - column:
+                  name: suite_id
+              - column:
+                  name: start_time
+
+  - changeSet:
+      id: 0yc90m
+      author: galdre
+      comment: Add FK constraint on test_suite_run.suite_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: test_suite_run
+            baseColumnNames: suite_id
+            referencedTableName: test_suite
+            referencedColumnNames: id
+            constraintName: fk_test_suite_run_suite_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 8ottux
+      author: galdre
+      comment: Index test_suite_run.initiated_by
+      changes:
+        - createIndex:
+            tableName: test_suite_run
+            indexName: idx_test_suite_run_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: uo7p23
+      author: galdre
+      comment: Add FK constraint on test_suite_run.initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: test_suite_run
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_test_suite_run_initiated_by
+            onDelete: SET NULL

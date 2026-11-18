@@ -144,6 +144,7 @@
     :model/TimelineEvent
     ;; Run history is intentionally not serialized.
     :model/DataTestRun
+    :model/TestSuiteRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TestSuite
     :model/TestSuiteMember

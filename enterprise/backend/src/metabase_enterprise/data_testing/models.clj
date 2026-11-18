@@ -41,11 +41,6 @@
   [_original-model _k]
   :model/Transform)
 
-(defmethod data-testing.test-type/spec :transform [_test-type]
-  {:model      :model/TransformTest
-   :run-topics {:start   :event/transform-test-run-start
-                :timeout :event/transform-test-run-timeout}})
-
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
@@ -138,6 +133,13 @@
        (can-save? (:transform_id changes (:transform_id instance)))
        (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
            (not (remote-sync/read-only?)))))
+
+(defmethod data-testing.test-type/spec :transform [_test-type]
+  {:model      :model/TransformTest
+   :run-topics {:start   :event/transform-test-run-start
+                :timeout :event/transform-test-run-timeout}
+   :subject    #(data-testing.db/transform (:transform_id %))
+   :can-run?   #(can-run-test? (:transform_id %))})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

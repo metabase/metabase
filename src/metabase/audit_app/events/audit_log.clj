@@ -373,6 +373,8 @@
 (events/derive! :event/test-suite-create ::test-suite-event)
 (events/derive! :event/test-suite-update ::test-suite-event)
 (events/derive! :event/test-suite-delete ::test-suite-event)
+(events/derive! :event/test-suite-run-start ::test-suite-event)
+(events/derive! :event/test-suite-run-timeout ::test-suite-event)
 
 (methodical/defmethod events/publish-event! ::test-suite-event
   [topic event]

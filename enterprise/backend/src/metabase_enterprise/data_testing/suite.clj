@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.suite
-  "Test suites as the current user sees them: [[with-members]] resolves each member to the saved test it names, and
-  [[member-rows]] turns the members a client sends into the rows a suite stores."
+  "Test suites as the current user sees them: [[with-members]] resolves each member to the saved test it names,
+  [[member-rows]] turns the members a client sends into the rows a suite stores, and [[runs-for-reader]] hides from the
+  run history what the reader may not see."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -19,7 +20,7 @@
   "A saved test by type and either id or entity id."
   [:tuple :keyword [:or ms/PositiveInt :string]])
 
-(mu/defn- saved-tests-by :- [:map-of TestKey ::data-testing.schema/saved-test]
+(mu/defn saved-tests-by :- [:map-of TestKey ::data-testing.schema/saved-test]
   "The saved tests whose `column` holds one of the values in `refs`, `[test-type value]` pairs, keyed by pair, each
   hydrated with `:can_read`. A pair of a test type this version does not know, or that names no test, is absent."
   [column :- [:enum :id :entity_id]
@@ -87,3 +88,18 @@
                            (pr-str (mapv (juxt (comp name :test_type) :test_entity_id) repeated)))
                       {:status-code 400})))
     rows))
+
+(mu/defn runs-for-reader :- [:sequential ::data-testing.schema/test-suite-run]
+  "`runs` with the `:error` removed from each member whose test the current user cannot read: a refusal can quote the
+  test's SQL. A member whose test is missing keeps its error."
+  [runs :- [:sequential ::data-testing.schema/test-suite-run]]
+  (let [refs   (into [] (comp (mapcat :members) (filter :error) (map (juxt :test_type :test_entity_id)) (distinct)) runs)
+        tests  (saved-tests-by :entity_id refs)
+        hidden (into #{} (keep (fn [[ref saved-test]] (when-not (mi/can-read? saved-test) ref))) tests)]
+    (mapv (fn [run]
+            (cond-> run
+              (seq (:members run))
+              (update :members (partial mapv #(cond-> %
+                                                (contains? hidden [(:test_type %) (:test_entity_id %)])
+                                                (dissoc :error))))))
+          runs)))
