@@ -45,7 +45,7 @@
                                                  ["bun" "run" "embedding-sdk:docs:generate"] 1}
                                                 docs-generate/suite-names)]
     (testing "every suite runs"
-      (is (= 4 (count calls))))
+      (is (= (count docs-generate/suite-names) (count calls))))
     (testing "the failed suites are reported, in suite order"
       (is (= ["backend" "embedding-sdk"] failed))
       (is (str/includes? out "Failed: backend, embedding-sdk")))))

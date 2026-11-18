@@ -1,0 +1,54 @@
+(ns mage.docs-docker-tags-test
+  (:require
+   [clojure.test :refer [are deftest is testing]]
+   [mage.docs-docker-tags :as docs-docker-tags]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private version-info
+  "Like `version-info.json`: `older` is not in version order."
+  {:latest {:version "v0.65.5"}
+   :older  [{:version "v0.65.4"}
+            {:version "v0.64.7"}
+            {:version "v0.58.41"}
+            {:version "v0.64.10"}
+            {:version "v0.64.9.1"}
+            {:version "v0.58.40"}]
+   :beta   {:version "v0.66.0-beta"}})
+
+(deftest branch-major-test
+  (are [branch major] (= major (docs-docker-tags/branch-major branch))
+    "release-x.64.x" 64
+    "release-x.65.x" 65
+    "master"         nil
+    "doc-529-pin"    nil
+    ""               nil))
+
+(deftest newest-release-test
+  (testing "the newest release of a major version, compared as numbers"
+    (is (= "64.10" (docs-docker-tags/newest-release version-info 64)))
+    (is (= "58.41" (docs-docker-tags/newest-release version-info 58))))
+  (testing "the `latest` release when there is no major version"
+    (is (= "65.5" (docs-docker-tags/newest-release version-info nil))))
+  (testing "nil for a major version that has no release yet (the beta does not count)"
+    (is (nil? (docs-docker-tags/newest-release version-info 66)))))
+
+(deftest pin-tags-test
+  (testing "fixed tags move to the release, with the prefix of each edition"
+    (are [before after] (= after (docs-docker-tags/pin-tags before "65.5"))
+      "docker pull metabase/metabase:v0.64.4"               "docker pull metabase/metabase:v0.65.5"
+      "docker pull metabase/metabase-enterprise:v1.64.4"    "docker pull metabase/metabase-enterprise:v1.65.5"
+      "image: metabase/metabase:v0.64.3.1\n"                "image: metabase/metabase:v0.65.5\n"
+      "podman pull docker.io/metabase/metabase:v0.65.2"     "podman pull docker.io/metabase/metabase:v0.65.5"
+      "change the image to `metabase/metabase:v0.64.4`."    "change the image to `metabase/metabase:v0.65.5`."
+      "an OSS image with an EE tag metabase/metabase:v1.65.2" "an OSS image with an EE tag metabase/metabase:v0.65.5"))
+  (testing "other text stays as it is"
+    (are [text] (= text (docs-docker-tags/pin-tags text "65.5"))
+      "metabase/metabase:latest"
+      "metabase/metabase:v0.65.x"
+      "metabase/metabase:v0.65.4.x"
+      "metabase/metabase:v0.64-lts"
+      "metabase/metabase:v0.66.0-beta"
+      "metabase/metabase:<tag>"
+      "ca072cd44a49        metabase/metabase        \"/app/run_metabase.sh\""
+      "mycompany/metabase-custom")))
