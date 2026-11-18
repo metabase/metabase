@@ -473,6 +473,21 @@
                    tool-result
                    :archived_subscriptions)))))))
 
+(deftest write-only-token-gets-archived-subscription-count-test
+  (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard dash {:name       "Sales"
+                                            :parameters [{:id "gone", :name "Gone", :slug "gone", :type "category"}]}
+                     :model/Pulse     _    {:dashboard_id (:id dash)
+                                            :creator_id   (mt/user->id :rasta)
+                                            :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+        (let [result (tool-result (call-tool! :crowberto #{"agent:content:write"} "dashboard_write"
+                                              (wire {:method "update"
+                                                     :id     (:id dash)
+                                                     :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))]
+          (is (=? {:id (:id dash), :archived_subscription_count 1} result))
+          (is (not (contains? result :archived_subscriptions))))))))
+
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
             `:card_id`, so a stale one would report the replace as a no-op and an agent validating before

@@ -212,5 +212,8 @@
                           (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
                           (seq dropped)                (assoc :dropped_connections dropped)
                           (seq archived-subscriptions) (assoc :archived_subscriptions
-                                                              (mapv archived-subscription-row archived-subscriptions)))
-                        []))))
+                                                              (mapv archived-subscription-row archived-subscriptions)
+                                                              :archived_subscription_count
+                                                              (count archived-subscriptions)))
+                        ;; A token that can't read the dashboard back still learns that subscriptions were archived.
+                        [:archived_subscription_count]))))
