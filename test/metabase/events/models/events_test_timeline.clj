@@ -5,43 +5,46 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/EventsTestTimeline [_model] :timeline)
+(methodical/defmethod t2/table-name ::Timeline [_model] :timeline)
 
-(doto :model/EventsTestTimeline
+(doto ::Timeline
+  (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod events/spec :model/EventsTestTimeline
+(defmethod events/spec ::Timeline
   [_model]
   {:create :event/events-test-timeline-create
    :update :event/events-test-timeline-update
    :delete :event/events-test-timeline-delete})
 
-(methodical/defmethod t2/table-name :model/EventsTestTimelineUpdateOnly [_model] :timeline)
+(methodical/defmethod t2/table-name ::TimelineUpdateOnly [_model] :timeline)
 
-(doto :model/EventsTestTimelineUpdateOnly
+(doto ::TimelineUpdateOnly
+  (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod events/spec :model/EventsTestTimelineUpdateOnly
+(defmethod events/spec ::TimelineUpdateOnly
   [_model]
   {:update :event/events-test-timeline-update-only-update})
 
-(methodical/defmethod t2/table-name :model/EventsTestTimelineSelfUpdate [_model] :timeline)
+(methodical/defmethod t2/table-name ::TimelineSelfUpdate [_model] :timeline)
 
-(doto :model/EventsTestTimelineSelfUpdate
+(doto ::TimelineSelfUpdate
+  (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod events/spec :model/EventsTestTimelineSelfUpdate
+(defmethod events/spec ::TimelineSelfUpdate
   [_model]
   {:create :event/events-test-timeline-self-update-create
    :update :event/events-test-timeline-self-update-update})
 
-(t2/define-after-insert :model/EventsTestTimelineSelfUpdate
+(t2/define-after-insert ::TimelineSelfUpdate
   [row]
-  (t2/update! :model/EventsTestTimelineSelfUpdate :id (:id row) {:description "set by the hook"})
+  (t2/update! ::TimelineSelfUpdate :id (:id row) {:description "set by the hook"})
   row)
