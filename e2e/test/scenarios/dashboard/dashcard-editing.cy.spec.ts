@@ -7,6 +7,8 @@ import {
   ORDERS_DASHBOARD_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers/api/createQuestion";
+import type { CardId } from "metabase-types/api";
 import {
   createMockDashboardCard,
   createMockHeadingDashboardCard,
@@ -32,7 +34,7 @@ describe("scenarios > dashboard cards > undo", () => {
         H.getDashboardCard(3).findByText("Text card 4");
       };
 
-      const getPositions = ($grid) => {
+      const getPositions = ($grid: JQuery<HTMLElement>) => {
         const gridRect = $grid[0].getBoundingClientRect();
         return $grid
           .find("[data-testid='dashcard-container']")
@@ -249,12 +251,12 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
   });
 });
 
-function addSection(name) {
+function addSection(name: string) {
   cy.findByLabelText("Add section").click();
   H.menu().findByLabelText(name).click();
 }
 
-function selectQuestion(question) {
+function selectQuestion(question: string) {
   H.dashboardGrid()
     .findAllByText("Select question")
     .first()
@@ -264,7 +266,11 @@ function selectQuestion(question) {
   H.dashboardGrid().findByText(question).should("exist");
 }
 
-function overwriteSectionDashCardTitle(index, originalTitle, newTitle) {
+function overwriteSectionDashCardTitle(
+  index: number,
+  originalTitle: string,
+  newTitle: string,
+) {
   H.showDashcardVisualizerModalSettings(index, {
     isVisualizerCard: false,
   });
@@ -276,7 +282,10 @@ function filterPanel() {
   return cy.findByTestId("edit-dashboard-parameters-widget-container");
 }
 
-function mapDashCardToFilter(dashcardElement, filterName) {
+function mapDashCardToFilter(
+  dashcardElement: Cypress.Chainable<JQuery<HTMLElement>>,
+  filterName: string,
+) {
   filterPanel().findByText(filterName).click();
   H.selectDashboardFilter(dashcardElement, filterName);
   H.sidebar().button("Done").click();
@@ -289,10 +298,11 @@ function assertPlaceholderCardCanBeDragged() {
     );
 
     const $target = $cards
-      .filter((_i, card) =>
-        card
-          .querySelector("[data-testid='dashcard']")
-          ?.textContent?.includes("Select question"),
+      .filter(
+        (_i, card) =>
+          card
+            .querySelector("[data-testid='dashcard']")
+            ?.textContent?.includes("Select question") ?? false,
       )
       .first();
 
@@ -366,7 +376,7 @@ const NEXT_QUESTION_CREATE_INFO = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-function getReplaceQuestionDashcards(mappedQuestionId) {
+function getReplaceQuestionDashcards(mappedQuestionId: CardId) {
   const mappedQuestionDashcard = createMockDashboardCard({
     id: 2,
     card_id: mappedQuestionId,
@@ -553,8 +563,11 @@ function findTargetDashcard() {
 }
 
 function replaceQuestion(
-  dashcardElement,
-  { nextQuestionName, collectionName },
+  dashcardElement: Cypress.Chainable<JQuery<HTMLElement>>,
+  {
+    nextQuestionName,
+    collectionName,
+  }: { nextQuestionName: string; collectionName?: string },
 ) {
   dashcardElement.realHover().findByLabelText("Replace").click();
   H.entityPickerModal().within(() => {
@@ -566,11 +579,11 @@ function replaceQuestion(
   cy.wait("@cardQuery");
 }
 
-function assertDashCardTitle(title) {
+function assertDashCardTitle(title: string) {
   cy.findByTestId("legend-caption-title").should("have.text", title);
 }
 
-function overwriteTargetDashCardTitle(textTitle) {
+function overwriteTargetDashCardTitle(textTitle: string) {
   findTargetDashcard()
     .realHover({ scrollBehavior: "bottom" })
     .findByLabelText("Show visualization options")
@@ -581,7 +594,10 @@ function overwriteTargetDashCardTitle(textTitle) {
   });
 }
 
-function connectDashboardFilter(dashcardElement, { filterName, columnName }) {
+function connectDashboardFilter(
+  dashcardElement: Cypress.Chainable<JQuery<HTMLElement>>,
+  { filterName, columnName }: { filterName: string; columnName: string },
+) {
   filterPanel().findByText(filterName).click();
   dashcardElement.button(/Select/).click();
   H.popover().findByText(columnName).click();
@@ -589,8 +605,11 @@ function connectDashboardFilter(dashcardElement, { filterName, columnName }) {
 }
 
 function assertDashboardFilterMapping(
-  dashcardElement,
-  { filterName, expectedColumName },
+  dashcardElement: Cypress.Chainable<JQuery<HTMLElement>>,
+  {
+    filterName,
+    expectedColumName,
+  }: { filterName: string; expectedColumName: string },
 ) {
   filterPanel().findByText(filterName).click();
   dashcardElement.findByText(expectedColumName).should("exist");
@@ -620,7 +639,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     H.getDraggableElements().should(($items) => {
       const columnNames = $items
         .toArray()
-        .map((item) => item.dataset.testid.replace("draggable-item-", ""));
+        .map((item) => item.dataset.testid?.replace("draggable-item-", ""));
       expect(columnNames[0]).to.equal("User ID");
       expect(columnNames.indexOf("ID")).to.be.above(0);
     });
@@ -632,7 +651,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
 });
 
 describe("issue 63416", () => {
-  const questionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     name: "63416 Question",
     query: {
       "source-table": ORDERS_ID,
@@ -730,7 +749,7 @@ describe("issue 63416", () => {
 });
 
 describe("issue 64138", () => {
-  const MAP_QUESTION = {
+  const MAP_QUESTION: StructuredQuestionDetails = {
     query: {
       "source-table": PEOPLE_ID,
     },
@@ -792,7 +811,7 @@ describe("issue 64138", () => {
     cy.location("search").should("match", /objectId=\d+/);
   });
 
-  function getMarkerIcon(index) {
+  function getMarkerIcon(index: number) {
     // pick the last one so it will be on top
     return H.getDashboardCard(index)
       .find(".leaflet-marker-icon")
