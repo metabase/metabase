@@ -463,18 +463,12 @@
               options)))
 
 (mu/defn goal-values-response
-  "The goal values of a resolved [[card-context]] or [[dashcard-context]], run like its chart: as an anonymous admin with
-  database routing off. Withheld when the token signs a parameter value. Returns a `StreamingResponse`."
-  [{:keys [card dashcard dashboard signed-parameter-ids]} :- [:or ::card-context ::dashcard-context]]
-  (let [chart-context (cond-> {:card                 card
-                               :signed-parameter-ids signed-parameter-ids}
-                        dashcard  (assoc :dashcard dashcard)
-                        dashboard (assoc :dashboard-id (:id dashboard)))]
-    (database-routing/with-anonymous-router-access
-      (request/as-admin
-        (binding [api/*current-user-id* nil]
-          (dynamic-goals/goal-values-response
-           #(dynamic-goals/chart-context-goal-values chart-context)))))))
+  "The goal values of a resolved [[card-context]] or [[dashcard-context]], with database routing off like its chart.
+  Withheld when the token signs a parameter value. Returns a `StreamingResponse`."
+  [context :- [:or ::card-context ::dashcard-context]]
+  (database-routing/with-anonymous-router-access
+    ;; goals run without parameter values
+    (dynamic-goals/chart-context-goal-values-response (dissoc context :parameters))))
 
 (defn- tile-slug->value
   [object-parameters parameter-values]

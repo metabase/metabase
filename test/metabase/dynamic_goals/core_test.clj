@@ -822,7 +822,7 @@
                                                                                           {:min (goal-ref failing-id)}]})
                  :model/Dashboard {dash-id :id}    {}]
     (t2/delete! :model/Card :id deleted-id)
-    (let [context {:card (card chart-id) :dashcard nil :dashboard-id dash-id :signed-parameter-ids #{}}]
+    (let [context {:card (card chart-id) :dashcard nil :dashboard (t2/select-one :model/Dashboard :id dash-id) :signed-parameter-ids #{}}]
       (testing "with no current user, the goals run with full perms"
         (let [values (dynamic-goals/chart-context-goal-values context)]
           (is (=? {:status "completed" :data {:rows [[1000]]}} (source-result values :card goal-id)))

@@ -256,14 +256,16 @@
               options)))
 
 ;;; Chart context resolvers: one per public chart identity shape. A chart route and its `/goal-values` route resolve
-;;; through the same fn with the same arguments, so a check added to a resolver guards both.
+;;; through the same fn with the same arguments, so a check added to a resolver guards both. A public link signs no
+;;; parameter values, so `:signed-parameter-ids` is always empty.
 
 (defn- resolve-public-card
   "`{:card card}` for the public Card with `uuid`. 400 when public sharing is disabled, 404 when no unarchived Card
   has the uuid."
   [uuid]
   (public-sharing.validation/check-public-sharing-enabled)
-  {:card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))})
+  {:card                 (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))
+   :signed-parameter-ids #{}})
 
 (defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
@@ -423,7 +425,7 @@
         dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
     ;; [[qp.dashboard/process-query-for-dashcard]] checks this again for the chart routes
     (qp.dashboard/check-card-and-dashcard-are-in-dashboard (:id dashboard) card-id dashcard)
-    {:dashboard dashboard, :dashcard dashcard, :card card}))
+    {:dashboard dashboard, :dashcard dashcard, :card card, :signed-parameter-ids #{}}))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for pre-loaded Card `card` on pre-loaded DashboardCard `dashcard` belonging to
@@ -934,7 +936,8 @@
   404 when the Document or Card is missing or archived, or the Card isn't embedded in the Document."
   [uuid card-id]
   (public-sharing.validation/check-public-sharing-enabled)
-  {:card (validate-card-in-public-document uuid card-id)})
+  {:card                 (validate-card-in-public-document uuid card-id)
+   :signed-parameter-ids #{}})
 
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
   :- ::query-result-response
@@ -985,26 +988,13 @@
   "Response schema for a public or embed `/goal-values` endpoint."
   (qp.streaming/response-schema ::dynamic-goals/goal-values))
 
-(defn- chart-goal-values-response
-  "Streams the values of the goals the chart a resolver returned draws, from its saved settings only. They run with
-  superuser perms and no current user, like the chart's own query."
-  [{:keys [card dashcard dashboard]}]
-  (let [chart-context (m/assoc-some {:card                 card
-                                     :signed-parameter-ids #{}}
-                                    :dashcard     dashcard
-                                    :dashboard-id (:id dashboard))]
-    (dynamic-goals/goal-values-response
-     #(request/as-admin
-        (binding [api/*current-user-id* nil]
-          (dynamic-goals/chart-context-goal-values chart-context))))))
-
 (api.macros/defendpoint :get "/card/:uuid/goal-values"
   :- ::goal-values-response
   "Fetch the values of the dynamic goals of a publicly-accessible Card. Does not require auth credentials. Public
   sharing must be enabled."
   [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]]
-  (chart-goal-values-response (resolve-public-card uuid)))
+  (dynamic-goals/chart-context-goal-values-response (resolve-public-card uuid)))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/goal-values"
   :- ::goal-values-response
@@ -1014,7 +1004,7 @@
                                           [:uuid        ms/UUIDString]
                                           [:dashcard-id ms/PositiveInt]
                                           [:card-id     ms/PositiveInt]]]
-  (chart-goal-values-response (resolve-public-dashcard uuid dashcard-id card-id)))
+  (dynamic-goals/chart-context-goal-values-response (resolve-public-dashcard uuid dashcard-id card-id)))
 
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id/goal-values"
   :- ::goal-values-response
@@ -1023,7 +1013,7 @@
   [{:keys [uuid card-id]} :- [:map {:closed true}
                               [:uuid    ms/UUIDString]
                               [:card-id ms/PositiveInt]]]
-  (chart-goal-values-response (resolve-public-document-card uuid card-id)))
+  (dynamic-goals/chart-context-goal-values-response (resolve-public-document-card uuid card-id)))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
