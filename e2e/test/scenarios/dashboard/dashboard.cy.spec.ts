@@ -1571,11 +1571,11 @@ describe("issue 47170", () => {
 
     cy.request("POST", `/api/bookmark/dashboard/${ORDERS_DASHBOARD_ID}`);
 
-    H.createDashboard({ name: "Dashboard A" }, { wrapId: true }).then(
-      ({ body: { id: dashboardId } }) => {
+    H.createDashboard({ name: "Dashboard A" }, { wrapId: true })
+      .then(() => cy.get<DashboardId>("@dashboardId"))
+      .then((dashboardId) => {
         cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
-      },
-    );
+      });
 
     // Keep the first dashboard loading so that navigating away cancels its fetch
     cy.intercept(
