@@ -271,6 +271,11 @@ const elements = [
     enforcePublicApi: true,
   }),
   createElement({ type: "shared", name: "metadata" }),
+  createElement({
+    type: "shared",
+    name: "product-analytics-core",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav" }),
@@ -403,6 +408,11 @@ const elements = [
   createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
+  createElement({
+    type: "feature",
+    name: "product-analytics",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "public" }),
   createElement({
     type: "feature",

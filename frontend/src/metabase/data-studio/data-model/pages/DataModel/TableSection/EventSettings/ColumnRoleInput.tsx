@@ -2,13 +2,15 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  getColumnRoleFields,
+  getColumnRoleValue,
+} from "metabase/product-analytics-core";
 import { Group, Icon, Select, SelectItem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { EventTableColumnRole, Field, Table } from "metabase-types/api";
 
 import S from "../TableAttributes.module.css";
-
-import { getColumnRoleFields, getColumnRoleValue } from "./utils";
 
 type ColumnRoleInputProps = {
   table: Table;

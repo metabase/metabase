@@ -1,7 +1,7 @@
 import type { EventTableSettings, Field } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
-import { getColumnRoleValue, isEventTableSetUp } from "./utils";
+import { getColumnRoleValue, isEventTableSetUp } from "./event-tables";
 
 const CREATED_AT = createMockField({
   id: 1,
@@ -107,5 +107,27 @@ describe("isEventTableSetUp", () => {
       eventSettings: SET_UP_SETTINGS,
     });
     expect(isEventTableSetUp(table)).toBe(false);
+  });
+
+  describe("without the table's fields", () => {
+    const createTableWithoutFields = (eventSettings: EventTableSettings) =>
+      createMockTable({
+        entity_type: "entity/EventTable",
+        event_settings: eventSettings,
+      });
+
+    it("is set up when every required column is set", () => {
+      expect(isEventTableSetUp(createTableWithoutFields(SET_UP_SETTINGS))).toBe(
+        true,
+      );
+    });
+
+    it("isn't set up while a required column is missing", () => {
+      const table = createTableWithoutFields({
+        "columns.timestamp": "created_at",
+        "columns.person": null,
+      });
+      expect(isEventTableSetUp(table)).toBe(false);
+    });
   });
 });

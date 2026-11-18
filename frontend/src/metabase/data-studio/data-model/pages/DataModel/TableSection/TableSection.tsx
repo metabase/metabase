@@ -17,6 +17,10 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import {
+  isEventTable,
+  isEventTableSetUp,
+} from "metabase/product-analytics-core";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import {
@@ -34,11 +38,7 @@ import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { dependencyGraph } from "metabase/urls/dependencies";
 import type { FieldId, Table } from "metabase-types/api";
 
-import {
-  EventSettings,
-  isEventTable,
-  isEventTableSetUp,
-} from "./EventSettings";
+import { EventSettings } from "./EventSettings";
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableActionsMenu } from "./TableActionsMenu";
