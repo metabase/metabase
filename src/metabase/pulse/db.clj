@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util.malli :as mu]
@@ -107,6 +108,11 @@
   "The id of the Pulse with `pulse-id` if it exists, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one-pk :model/Pulse :id pulse-id))
+
+(mu/defn pulse-id-of-channel
+  "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
+  [pulse-channel-id :- ms/PositiveInt]
+  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
 
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
@@ -408,7 +414,10 @@
   running model hooks."
   [channel-id :- ms/PositiveInt
    user-ids   :- [:set ::lib.schema.id/user]]
-  (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids]))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`."

@@ -16,11 +16,11 @@ export {
   type DataAppActionMock,
   type DataAppActionMockCall,
   type DataAppActionMockError,
-} from "./testing/lib/public/data-app-actions";
+} from "./data-apps/public/testing/data-app-actions";
 export {
   mockDataAppQuery,
   mockDataAppQueryError,
   type DataAppQueryMock,
   type DataAppQueryMockCall,
   type DataAppMockError,
-} from "./testing/lib/public/data-app-queries";
+} from "./data-apps/public/testing/data-app-queries";

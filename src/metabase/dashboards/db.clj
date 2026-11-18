@@ -119,23 +119,49 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-set :model/Card :dashboard_id dashboard-id))
 
-(mu/defn set-cards-archived!
-  "Set the archived flags of the Cards with `card-ids`, returning the number updated."
+(mu/defn cards-to-set-archived
+  "The Cards with `card-ids` whose `archived` flag differs from `archived?`, which setting it changes."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
-  (t2/update! :model/Card :id [:in card-ids] {:archived archived? :archived_directly archived?}))
+  (t2/select :model/Card :id [:in card-ids] :archived (not archived?)))
+
+(mu/defn set-cards-archived!
+  "Set the `archived` flag of the [[cards-to-set-archived]], which gives them their `archived_directly`, returning the
+  number updated."
+  [card-ids  :- [:sequential ::lib.schema.id/card]
+   archived? :- :boolean]
+  (t2/update! :model/Card :id [:in card-ids] :archived (not archived?) {:archived archived?}))
+
+(defn- archivable-question-conditions
+  "The key-value conditions of the Cards internal to the Dashboard with `dashboard-id` that archiving it archives."
+  [dashboard-id]
+  [:dashboard_id dashboard-id :archived false])
+
+(defn- restorable-question-conditions
+  "The key-value conditions of the Cards internal to the Dashboard with `dashboard-id` that restoring it restores."
+  [dashboard-id]
+  [:dashboard_id dashboard-id :archived true :archived_directly false])
+
+(mu/defn questions-archived-with-dashboard
+  "The unarchived Cards internal to the Dashboard with `dashboard-id`, which archiving it archives along with it."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (apply t2/select :model/Card (archivable-question-conditions dashboard-id)))
+
+(mu/defn questions-restored-with-dashboard
+  "The Cards internal to the Dashboard with `dashboard-id` that were archived along with it, which restoring it
+  restores."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (apply t2/select :model/Card (restorable-question-conditions dashboard-id)))
 
 (mu/defn archive-dashboard-questions!
-  "Archive the unarchived Cards internal to the Dashboard with `dashboard-id`, not directly, returning the number
-  updated."
+  "Archive, through their model, the rows of [[questions-archived-with-dashboard]], returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/update! :model/Card :dashboard_id dashboard-id :archived false {:archived true :archived_directly false}))
+  (apply t2/update! :model/Card (concat (archivable-question-conditions dashboard-id) [{:archived true}])))
 
 (mu/defn unarchive-dashboard-questions!
-  "Unarchive the Cards internal to the Dashboard with `dashboard-id` that were not archived directly, returning the
-  number updated."
+  "Restore, through their model, the rows of [[questions-restored-with-dashboard]], returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/update! :model/Card :dashboard_id dashboard-id :archived true :archived_directly false {:archived false}))
+  (apply t2/update! :model/Card (concat (restorable-question-conditions dashboard-id) [{:archived false}])))
 
 (mu/defn move-dashboard-questions!
   "Move the Cards internal to the Dashboard with `dashboard-id` to the Collection with `collection-id`, returning

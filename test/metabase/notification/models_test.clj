@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.models-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
@@ -10,6 +11,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -67,29 +69,34 @@
         (t2/update! :model/Notification :id noti-id {:creator_id (mt/user->id :rasta)}))
       (is (= (mt/user->id :rasta)
              (t2/select-one-fn :creator_id :model/Notification :id noti-id)))))
-  (testing "non-superusers and unauthenticated callers can't change creator_id"
+  (testing "a plain update with no current user can change creator_id"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
-      (testing "non-superuser (single-pk update)"
+      (t2/update! :model/Notification :id noti-id {:creator_id (mt/user->id :lucky)})
+      (is (= (mt/user->id :lucky)
+             (t2/select-one-fn :creator_id :model/Notification :id noti-id))))))
+
+(deftest update-check-creator-id-test
+  (notification.tu/with-card-notification
+    [{noti-id :id} {:notification {:creator_id (mt/user->id :rasta)}}]
+    (let [noti     (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))
+          reassign {:creator_id (mt/user->id :lucky)}]
+      (testing "non-superusers cannot reassign creator_id, not even the creator"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (thrown-with-msg?
-               java.lang.Exception
-               #"Only superusers can change a notification's creator_id."
-               (t2/update! :model/Notification :id noti-id {:creator_id (mt/user->id :lucky)})))))
-      (testing "non-superuser (bulk update via :id [:in …])"
-        ;; The admin bulk endpoint uses this form; the model hook is the backstop in case the
-        ;; endpoint's superuser check is ever relaxed or bypassed.
+          (is (thrown-with-msg? Exception #"You don't have permissions to do that."
+                                (api/update-check noti reassign)))))
+      (testing "superusers can reassign creator_id"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (api/update-check noti reassign))))
+      (testing "echoing the unchanged creator_id is allowed for the creator"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (thrown-with-msg?
-               java.lang.Exception
-               #"Only superusers can change a notification's creator_id."
-               (t2/update! :model/Notification :id [:in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
-      (testing "no current user (system context)"
-        (is (thrown-with-msg?
-             java.lang.Exception
-             #"Only superusers can change a notification's creator_id."
-             (t2/update! :model/Notification :id noti-id {:creator_id (mt/user->id :lucky)})))))))
+          (is (api/update-check noti {:creator_id (mt/user->id :rasta)})))))))
+
+(deftest subscription-schema-checks-cron-schedule-test
+  (let [subscription {:type :notification-subscription/cron :notification_id 1}]
+    (is (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "0 * * * * ? *")))
+    (is (not (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "not a cron"))))))
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"
@@ -251,7 +258,8 @@
 
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"
-    (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack}
+    (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack
+                                                  :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (t2/insert! :model/NotificationHandler {:channel_type :channel/slack

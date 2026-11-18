@@ -9,7 +9,9 @@
   - `:transform`, a map from a column to its transform, `{:export f :import g}`, where `f` and `g` are fns of the
     store, the batch (rows on export, entities on import), the column's values in that batch, and the import options
     (empty on export), returning the transformed values in the same order. An `:as` key exports the column under
-    another key. A transform with no `:export` is never exported.
+    another key. A transform with no `:export` is never exported. A transform with `:validates-query?` imports a query
+    that it validates against the query schema itself, so an import leaves its column out of the check of the entity
+    against `:schema`.
   - `:defaults`, the default `true` or `false` of boolean columns. An export leaves out the columns that are nil or at
     their default, and an import sets each column the spec copies or exports that an entity lacks to its default, or
     to nil.

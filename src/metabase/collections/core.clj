@@ -19,7 +19,6 @@
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection
-  archive-or-unarchive-collection!
   has-remote-synced-collection?
   clear-remote-synced-collection!
   create-library-collection!

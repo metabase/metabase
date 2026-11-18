@@ -19,7 +19,7 @@
 
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed, whose keys are the MetaStore's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "MetaStore affected version range"}
+  [:map {:closed false, :description "MetaStore affected version range"}
    [:min   ::semver]
    [:fixed ::semver]])
 
@@ -28,7 +28,7 @@
 
 (mr/def ::download-jar-url
   "A downloadable JAR for a given fixed version, whose keys are the MetaStore's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "MetaStore downloadable JAR"}
+  [:map {:closed false, :description "MetaStore downloadable JAR"}
    [:version ::semver]
    [:url     :string]])
 
