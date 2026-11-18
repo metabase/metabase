@@ -66,26 +66,26 @@
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database :as outer-query} :- ::qp.schema/any-query]
+  [{database-id :database :as query} :- ::qp.schema/any-query]
   (when (and (= audit/audit-db-id database-id)
-             (or (qp.util/userland-query? outer-query)
+             (or (qp.util/userland-query? query)
                  *param-values-query*
                  *current-user-id*))
-    (check-audit-db-permissions outer-query))
+    (check-audit-db-permissions query))
   (when *current-user-id*
-    (check-query-does-not-access-inactive-tables outer-query)
-    (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+    (check-query-does-not-access-inactive-tables query)
+    (let [required-perms  (query-perms/required-perms-for-query query :already-preprocessed? true)
           source-card-ids (:card-ids required-perms)]
       ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
       ;; (unless overridden by `gtap-perms`) and any queries that touch blocked tables/DBs
-      (check-block-permissions outer-query)
+      (check-block-permissions query)
       (cond
         ;; if card-id is bound this means that this is not an ad hoc query and we can just
         ;; check that the user has permission to read this card
         *card-id*
         (do (query-perms/check-card-read-perms database-id *card-id*)
             (query-perms/check-card-result-metadata-data-perms database-id *card-id*)
-            (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+            (when-not (query-perms/has-perm-for-query? query :perms/view-data required-perms)
               (throw (query-perms/perms-exception required-perms)))
             (let [other-card-ids (remove #{*card-id*} source-card-ids)]
               (query-perms/check-cards-read-perms database-id other-card-ids)
@@ -105,7 +105,7 @@
           (query-perms/check-cards-read-perms database-id source-card-ids)
           (doseq [card-id source-card-ids]
             (query-perms/check-card-result-metadata-data-perms database-id card-id))
-          (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+          (when-not (query-perms/has-perm-for-query? query :perms/view-data required-perms)
             (throw (query-perms/perms-exception required-perms))))
 
         ;; Ad-hoc query (not a saved question)
@@ -115,13 +115,13 @@
           ;; Recursively check permissions for any source Cards
           (query-perms/check-cards-read-perms database-id source-card-ids)
           ;; Check that we have the data permissions to run this card
-          (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
+          (query-perms/check-data-perms query required-perms :throw-exceptions? true)
           ;; Check that all columns from source cards result_metadata are accessible
           (doseq [card-id source-card-ids]
             (query-perms/check-card-result-metadata-data-perms database-id card-id))
           ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
-                                          (lib/query (qp.store/metadata-provider) outer-query))]
+                                          (lib/query (qp.store/metadata-provider) query))]
             (check-query-permissions* query)))))))
 
 (defn check-query-permissions
