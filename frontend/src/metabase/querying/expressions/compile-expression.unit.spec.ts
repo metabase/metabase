@@ -421,6 +421,26 @@ describe("old recursive-parser tests", () => {
     );
   });
 
+  it("should handle the discrete option for Median and Percentile", () => {
+    expect(aggregation("Median([Total])")).toEqual(
+      op("median", fields.orders.TOTAL),
+    );
+    expect(aggregation('Median([Total], "discrete")')).toEqual(
+      opt("median", { "percentile-type": "discrete" }, fields.orders.TOTAL),
+    );
+    expect(aggregation("Percentile([Total], 0.9)")).toEqual(
+      op("percentile", fields.orders.TOTAL, 0.9),
+    );
+    expect(aggregation('Percentile([Total], 0.9, "discrete")')).toEqual(
+      opt(
+        "percentile",
+        { "percentile-type": "discrete" },
+        fields.orders.TOTAL,
+        0.9,
+      ),
+    );
+  });
+
   it("should resolve segments", () => {
     expect(filter("[Expensive Things]")).toEqual(segments.EXPENSIVE_THINGS);
     expect(expr("NOT [Expensive Things]")).toEqual(

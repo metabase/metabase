@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [mapv update-keys #?@(:clj [some])])
+  (:refer-clojure :exclude [mapv update-keys #?@(:clj [some every?])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]

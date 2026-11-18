@@ -575,6 +575,24 @@
                 ["2016-06-01T00:00:00Z" 71.954]]
                (mt/rows (qp/process-query q))))))))
 
+(deftest discrete-percentile-test
+  ;; no ClickHouse server needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp                  (lib.tu/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:database {:engine       :clickhouse
+                                         :dbms-version {:version "24.4" :semantic-version {:major 24 :minor 4}}}})
+        price               (lib.metadata/field mp (meta/id :venues :price))
+        compile-aggregation (fn [aggregation]
+                              (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                                              (lib/aggregate aggregation)))))
+        discrete            #(lib/update-options % assoc :percentile-type :discrete)]
+    (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+      (discrete (lib/percentile price 0.9)) "quantileExactLow(0.9)(`PUBLIC`.`VENUES`.`PRICE`)"
+      (discrete (lib/median price))         "quantileExactLow(0.5)(`PUBLIC`.`VENUES`.`PRICE`)"
+      (lib/percentile price 0.9)            "quantile(0.9)(`PUBLIC`.`VENUES`.`PRICE`)"
+      (lib/median price)                    "`median`(`PUBLIC`.`VENUES`.`PRICE`)")))
+
 (deftest ^:parallel comment-question-mark-test
   (mt/test-driver :clickhouse
     (testing "a query with a question mark in the comment and has a variable should work correctly (#56690)"

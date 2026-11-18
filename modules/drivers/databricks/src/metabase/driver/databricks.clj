@@ -19,6 +19,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -55,20 +56,21 @@
   ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
    "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
 
-(doseq [[feature supported?] {:basic-aggregations              true
-                              :binning                         true
-                              :database-routing                true
-                              :describe-fields                 true
-                              :expression-aggregations         true
-                              :expression-literals             true
-                              :expressions                     true
-                              :multi-level-schema              true
-                              :native-parameters               true
-                              :nested-queries                  true
-                              :set-timezone                    true
-                              :stage-ctes                      true
-                              :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
+(doseq [[feature supported?] {:basic-aggregations               true
+                              :binning                          true
+                              :database-routing                 true
+                              :describe-fields                  true
+                              :expression-aggregations          true
+                              :expression-literals              true
+                              :expressions                      true
+                              :multi-level-schema               true
+                              :native-parameters                true
+                              :nested-queries                   true
+                              :percentile-aggregations/discrete true
+                              :set-timezone                     true
+                              :stage-ctes                       true
+                              :standard-deviation-aggregations  true
+                              :test/jvm-timezone-setting        false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
@@ -581,6 +583,20 @@
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast {} expr "string"]))
+
+;; `:hive-like` compiles percentiles to `percentile(x, p)`, which interpolates. Databricks Runtime 11.3+ also has the
+;; SQL-standard `percentile_disc`, which returns an actual value from the column.
+(defmethod sql.qp/->honeysql [:databricks :percentile]
+  [driver [_ _opts field p :as clause]]
+  (case (lib/percentile-type clause)
+    :discrete   [::h2x/percentile-disc (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)]
+    :continuous ((get-method sql.qp/->honeysql [:hive-like :percentile]) driver clause)))
+
+(defmethod sql.qp/->honeysql [:databricks :median]
+  [driver [_ opts field :as clause]]
+  (case (lib/percentile-type clause)
+    :discrete   (sql.qp/->honeysql driver [:percentile opts field 0.5])
+    :continuous ((get-method sql.qp/->honeysql [:hive-like :median]) driver clause)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

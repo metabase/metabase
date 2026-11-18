@@ -298,8 +298,7 @@
         (m/assoc-some :settings (not-empty (without-duration-style (:settings base)))))))
 
 (lib.hierarchy/derive ::no-semantic-type ::aggregation)
-(doseq [tag [:percentile :var]]
-  (lib.hierarchy/derive tag ::no-semantic-type))
+(lib.hierarchy/derive :var ::no-semantic-type)
 
 ;; The default preserves the semantic type.
 ;; But for ::no-semantic-type we should drop
@@ -308,6 +307,15 @@
   [query stage-number clause]
   (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
           :semantic-type))
+
+;; a continuous percentile interpolates, so the result is not a value of the column and the semantic type does not
+;; carry over; a discrete percentile (`:percentile-type :discrete` in the options) returns an actual value of the
+;; column, so it keeps the semantic type like `:min`.
+(defmethod lib.metadata.calculation/metadata-method :percentile
+  [query stage-number [_tag opts :as clause]]
+  (if (= (:percentile-type opts) :discrete)
+    ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+    ((get-method lib.metadata.calculation/metadata-method ::no-semantic-type) query stage-number clause)))
 
 ;;; we don't currently have sophisticated logic for generating nice display names for filter clauses.
 ;;;
@@ -596,3 +604,9 @@
       (lib.remove-replace/remove-clause query stage-number ag))
     query
     (aggregations query stage-number))))
+
+(mu/defn percentile-type :- ::lib.schema.aggregation/percentile-options.percentile-type
+  "Whether this `:percentile` or `:median` `clause` should use `:continuous` or `:discrete` percentiles (if the driver
+  supports `:percentile-aggregations/discrete`)."
+  [clause :- [:or :mbql.clause/percentile :mbql.clause/median]]
+  (get (lib.options/options clause) :percentile-type :continuous))

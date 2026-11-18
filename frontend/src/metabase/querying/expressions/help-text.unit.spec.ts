@@ -50,12 +50,13 @@ describe("getHelpText", () => {
             args: ["Score"],
           },
           0.9,
+          "discrete",
         ],
       });
       expect(helpText?.description).toBe(
         "Returns the value of the column at the percentile value.",
       );
-      expect(helpText?.args).toHaveLength(2);
+      expect(helpText?.args).toHaveLength(3);
     });
 
     it("convertTimezone", () => {

@@ -660,6 +660,24 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     });
   });
 
+  it("should format Median and Percentile with the discrete option", async () => {
+    await all({
+      "Median([Total])": op("median", fields.orders.TOTAL),
+      'Median([Total], "discrete")': opt(
+        "median",
+        { "percentile-type": "discrete" },
+        fields.orders.TOTAL,
+      ),
+      "Percentile([Total], 0.9)": op("percentile", fields.orders.TOTAL, 0.9),
+      'Percentile([Total], 0.9, "discrete")': opt(
+        "percentile",
+        { "percentile-type": "discrete" },
+        fields.orders.TOTAL,
+        0.9,
+      ),
+    });
+  });
+
   it("should format aggregation functions", async () => {
     await all({
       "Count()": op("count"),

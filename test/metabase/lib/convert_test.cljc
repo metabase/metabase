@@ -1776,3 +1776,36 @@
               mbql5))
       (is (=? legacy (lib.convert/->legacy-MBQL mbql5)))
       (is (some? (-> mbql5 lib.convert/->legacy-MBQL lib.convert/->mbql5))))))
+
+(deftest ^:parallel discrete-percentile-round-trip-test
+  (testing "legacy MBQL carries :percentile-type in :aggregation-options, so discrete percentiles round trip"
+    (let [price     (meta/field-metadata :venues :price)
+          price-ref [:field (meta/id :venues :price) {:base-type :type/Integer}]
+          discrete  (fn [clause]
+                      (lib/update-options clause assoc :percentile-type :discrete))]
+      (doseq [[clause legacy-inner] [[(discrete (lib/percentile price 0.9)) [:percentile price-ref 0.9]]
+                                     [(discrete (lib/median price))         [:median price-ref]]]
+              :let [legacy [:aggregation-options legacy-inner {:percentile-type :discrete}]]]
+        (testing (pr-str clause)
+          (testing "as a standalone clause"
+            (is (=? legacy
+                    (lib.convert/->legacy-MBQL clause))))
+          (testing "as an aggregation in a query"
+            (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                   (lib/aggregate clause))
+                  legacy-query (lib.convert/->legacy-MBQL query)]
+              (is (=? {:type  :query
+                       :query {:source-table (meta/id :venues)
+                               :aggregation  [legacy]}}
+                      legacy-query))
+              (testing "the option survives legacy normalization"
+                (is (=? {:query {:aggregation [legacy]}}
+                        (mbql.normalize/normalize legacy-query))))
+              (testing "and converting back to MBQL 5"
+                (is (= :discrete
+                       (get-in (lib.convert/->mbql5 legacy-query) [:stages 0 :aggregation 0 1 :percentile-type]))))))))
+      (testing "the default (continuous) percentile is not wrapped"
+        (is (=? [:percentile price-ref 0.9]
+                (lib.convert/->legacy-MBQL (lib/percentile price 0.9))))
+        (is (=? [:median price-ref]
+                (lib.convert/->legacy-MBQL (lib/median price))))))))

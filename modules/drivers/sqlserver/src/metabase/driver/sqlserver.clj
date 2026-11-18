@@ -27,6 +27,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-tools.core :as sql-tools]
@@ -105,12 +106,22 @@
   [_driver database]
   (:db (:details database)))
 
-(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
-  [_ _ db :- ::lib.schema.metadata/database]
+(mu/defn- approx-percentiles-supported? :- :boolean
+  "Whether `db` has `APPROX_PERCENTILE_CONT` and `APPROX_PERCENTILE_DISC`, which both arrived in SQL Server 2022 (major
+  version 16)."
+  [db :- ::lib.schema.metadata/database]
   (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]
     (when (zero? major-version)
       (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
+
+(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db :- ::lib.schema.metadata/database]
+  (approx-percentiles-supported? db))
+
+(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations/discrete]
+  [_ _ db :- ::lib.schema.metadata/database]
+  (approx-percentiles-supported? db))
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
@@ -928,25 +939,38 @@
   [driver [_ _opts field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
-(defn- format-approx-percentile-cont
-  [_tag [expr p :as _args]]
+(defn- format-approx-percentile
+  "Format one of SQL Server's approximate percentile aggregates: `<fn-name>(p) WITHIN GROUP (ORDER BY expr)`."
+  [fn-name [expr p :as _args]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
         [p-sql & p-args]       (sql/format-expr p {:nested true})]
-    (into [(format "APPROX_PERCENTILE_CONT(%s) WITHIN GROUP (ORDER BY %s)" p-sql expr-sql)]
+    (into [(format "%s(%s) WITHIN GROUP (ORDER BY %s)" fn-name p-sql expr-sql)]
           cat
           [p-args expr-args])))
 
+(defn- format-approx-percentile-cont
+  [_tag args]
+  (format-approx-percentile "APPROX_PERCENTILE_CONT" args))
+
 (sql/register-fn! ::approx-percentile-cont #'format-approx-percentile-cont)
 
+(defn- format-approx-percentile-disc
+  [_tag args]
+  (format-approx-percentile "APPROX_PERCENTILE_DISC" args))
+
+(sql/register-fn! ::approx-percentile-disc #'format-approx-percentile-disc)
+
 (defmethod sql.qp/->honeysql [:sqlserver :percentile]
-  [driver [_ _opts arg val]]
-  [::approx-percentile-cont
+  [driver [_ _opts arg p :as clause]]
+  [(case (lib/percentile-type clause)
+     :discrete   ::approx-percentile-disc
+     :continuous ::approx-percentile-cont)
    (sql.qp/->honeysql driver arg)
-   (sql.qp/->honeysql driver val)])
+   (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
-  [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
+  [driver [_ opts arg]]
+  (sql.qp/->honeysql driver [:percentile opts arg 0.5]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compared-field-options*

@@ -36,6 +36,7 @@ export type DatabaseFeature =
   | "nested-queries"
   | "standard-deviation-aggregations"
   | "percentile-aggregations"
+  | "percentile-aggregations/discrete"
   | "persist-models"
   | "persist-models-enabled"
   | "regex"

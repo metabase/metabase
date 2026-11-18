@@ -23,6 +23,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -89,6 +90,7 @@
                               :jdbc/set-max-rows                false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
+                              :percentile-aggregations/discrete true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
                               :test/jvm-timezone-setting        false
@@ -670,6 +672,27 @@
 (defmethod sql.qp/->honeysql [:redshift :avg]
   [driver [_ _opts field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
+(defn- format-approximate-percentile-disc
+  "(sql/format-expr [::approximate-percentile-disc :a [:inline 0.9]])
+     => [\"APPROXIMATE PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY a)\"]"
+  [_tag [expr p :as _args]]
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
+        [p-sql & p-args]       (sql/format-expr p {:nested true})]
+    (into [(format "APPROXIMATE PERCENTILE_DISC(%s) WITHIN GROUP (ORDER BY %s)" p-sql expr-sql)]
+          cat
+          [p-args expr-args])))
+
+(sql/register-fn! ::approximate-percentile-disc #'format-approximate-percentile-disc)
+
+;; Redshift has `PERCENTILE_DISC` only as a window function; the only discrete percentile aggregate is the approximate
+;; one. It still returns an actual value from the column, which is what a discrete percentile promises. Continuous
+;; percentiles use the inherited `PERCENTILE_CONT`, and the inherited `:median` passes its options through to this.
+(defmethod sql.qp/->honeysql [:redshift :percentile]
+  [driver [_ _opts field p :as clause]]
+  (case (lib/percentile-type clause)
+    :discrete   [::approximate-percentile-disc (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)]
+    :continuous ((get-method sql.qp/->honeysql [:postgres :percentile]) driver clause)))
 
 (defmethod sql.qp/->integer :redshift
   [driver value]

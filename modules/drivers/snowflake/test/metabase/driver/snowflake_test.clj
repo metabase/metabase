@@ -2285,6 +2285,23 @@
         (testing msg
           (is (str/includes? (compile! filter-clause) expected)))))))
 
+(deftest discrete-percentile-test
+  ;; no Snowflake warehouse needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp                  (lib.tu/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:database {:engine :snowflake, :details {:db "test-data"}}})
+        price               (lib.metadata/field mp (meta/id :venues :price))
+        compile-aggregation (fn [aggregation]
+                              (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                                              (lib/aggregate aggregation)))))
+        discrete            #(lib/update-options % assoc :percentile-type :discrete)]
+    (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+      (discrete (lib/percentile price 0.9)) "PERCENTILE_DISC(0.9) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+      (discrete (lib/median price))         "PERCENTILE_DISC(0.5) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+      (lib/percentile price 0.9)            "PERCENTILE_CONT(0.9) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")"
+      (lib/median price)                    "PERCENTILE_CONT(0.5) within group (order by \"PUBLIC\".\"VENUES\".\"PRICE\")")))
+
 (deftest snowflake-collate-comparison-test
   (mt/test-driver :snowflake
     (let [mp (mt/metadata-provider)

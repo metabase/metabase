@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [some #?(:clj doseq)])
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.i18n :as i18n]
@@ -53,10 +54,23 @@
 
 (lib.hierarchy/derive :max ::type-is-type-of-first-arg-or-number)
 
+(mr/def ::percentile-options.percentile-type
+  "How a `:percentile` or `:median` clause picks its result. `:continuous`, the default when the option is absent,
+  interpolates between the two nearest values. `:discrete` returns an actual value from the column: the first one
+  whose cumulative distribution reaches the percentile."
+  [:enum {:decode/normalize common/normalize-keyword} :continuous :discrete])
+
+(mr/def ::percentile-options
+  "Options specific to `:percentile` and `:median`: `:percentile-type` (see [[::common/percentile-type]]). Absent means
+  `:continuous`."
+  [:map
+   [:percentile-type {:optional true} ::percentile-options.percentile-type]])
+
 ;;; apparently median and percentile only work for numeric args in Postgres, as opposed to anything orderable. Not
 ;;; sure this makes sense conceptually, but since there probably isn't as much of a use case we can keep that
 ;;; restriction in MBQL for now.
 (mbql-clause/define-tuple-mbql-clause :median
+  {:options [:merge ::common/options ::percentile-options]}
   [:schema [:ref ::expression/number]])
 
 (lib.hierarchy/derive :median ::type-is-type-of-first-arg-or-number)
@@ -75,6 +89,7 @@
     #(<= 0 % 1)]])
 
 (mbql-clause/define-tuple-mbql-clause :percentile
+  {:options [:merge ::common/options ::percentile-options]}
   #_expr       [:ref ::expression/number]
   #_percentile [:ref ::percentile.percentile])
 

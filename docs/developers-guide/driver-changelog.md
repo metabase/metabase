@@ -7,6 +7,15 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New driver feature `:percentile-aggregations/discrete`: the driver can compute discrete percentiles, i.e.
+  `:percentile` and `:median` clauses whose options carry `:percentile-type :discrete`, which return an actual value
+  from the column instead of interpolating between the two nearest values. It defaults to false for every driver,
+  including `:sql`. A driver that declares it must honor the option in its `:percentile` and `:median`
+  implementations; you can use `lib/percentile-type` to check which type to use when compiling these clauses. The
+  `:sql` default emits `PERCENTILE_DISC(p) WITHIN GROUP (ORDER BY x)` for a discrete `:percentile`, and compiles a
+  discrete `:median` as a discrete `:percentile` of 0.5, so a driver whose database has standard `PERCENTILE_DISC`
+  only needs to declare the feature. `metabase.util.honey-sql-2/percentile-disc` is the HoneySQL function for it.
+
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.

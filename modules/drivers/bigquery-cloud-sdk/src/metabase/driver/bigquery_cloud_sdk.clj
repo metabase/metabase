@@ -1191,6 +1191,7 @@
                               :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
+                              :percentile-aggregations/discrete true
                               :regex/lookaheads-and-lookbehinds false
                               ;; we can't support `alter table .. rename ..` in general since it won't work for
                               ;; streaming tables

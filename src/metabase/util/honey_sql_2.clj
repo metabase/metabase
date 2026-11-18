@@ -138,21 +138,32 @@
 
 (sql/register-fn! ::distinct-count #'format-distinct-count)
 
-;; register the function `percentile` with HoneySQL
-(defn- format-percentile-cont
-  "(hsql/format (sql/call :percentile-cont :a 0.9)) => \"percentile_cont(0.9) within group (order by a)\""
-  [_tag [expr p]]
+(defn- format-within-group-percentile
+  "Format a SQL-standard ordered-set percentile aggregate: `<fn-name>(p) within group (order by expr)`."
+  [fn-name [expr p]]
   (let [p                      (if (number? p)
                                  [:inline p]
                                  p)
         [expr-sql & expr-args] (sql/format-expr expr)
         [p-sql & p-args]       (sql/format-expr p)]
-    (into [(clojure.core/format "PERCENTILE_CONT(%s) within group (order by %s)" p-sql expr-sql)]
+    (into [(clojure.core/format "%s(%s) within group (order by %s)" fn-name p-sql expr-sql)]
           cat
           [expr-args
            p-args])))
 
+(defn- format-percentile-cont
+  "(sql/format-expr [::percentile-cont :a 0.9]) => [\"PERCENTILE_CONT(0.9) within group (order by a)\"]"
+  [_tag args]
+  (format-within-group-percentile "PERCENTILE_CONT" args))
+
 (sql/register-fn! ::percentile-cont #'format-percentile-cont)
+
+(defn- format-percentile-disc
+  "(sql/format-expr [::percentile-disc :a 0.9]) => [\"PERCENTILE_DISC(0.9) within group (order by a)\"]"
+  [_tag args]
+  (format-within-group-percentile "PERCENTILE_DISC" args))
+
+(sql/register-fn! ::percentile-disc #'format-percentile-disc)
 
 (defn- format-collate
   [_fn [expr collation]]

@@ -13,6 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -30,6 +31,8 @@
     ZonedDateTime]
    [java.util Arrays UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
+
+(comment metabase.driver.clickhouse-nippy/keep-me)
 
 (sql/register-dialect!
  ::clickhouse
@@ -314,19 +317,36 @@
   [driver [_ _opts field]]
   [:'log10 (sql.qp/->honeysql driver field)])
 
-(defn- format-quantile
-  [_fn [p field]]
+(defn- format-parametric-quantile
+  "Format a call to one of ClickHouse's parametric quantile aggregates: `<fn-name>(p)(field)`."
+  [fn-name [p field]]
   (let [[p-sql & p-args]         (sql/format-expr p {:nested true})
         [field-sql & field-args] (sql/format-expr field {:nested true})]
-    (into [(format "quantile(%s)(%s)" p-sql field-sql)]
+    (into [(format "%s(%s)(%s)" fn-name p-sql field-sql)]
           cat
           [p-args field-args])))
 
+(defn- format-quantile
+  [_fn args]
+  (format-parametric-quantile "quantile" args))
+
 (sql/register-fn! ::quantile #'format-quantile)
 
+(defn- format-quantile-exact-low
+  [_fn args]
+  (format-parametric-quantile "quantileExactLow" args))
+
+(sql/register-fn! ::quantile-exact-low #'format-quantile-exact-low)
+
+;; `quantile` interpolates; `quantileExactLow` returns an actual value from the column (the lower one of the two middle
+;; values for an even-sized median, like `PERCENTILE_DISC`).
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
-  [driver [_ _opts field p]]
-  [::quantile (sql.qp/->honeysql driver p) (sql.qp/->honeysql driver field)])
+  [driver [_ _opts field p :as clause]]
+  [(case (lib/percentile-type clause)
+     :discrete   ::quantile-exact-low
+     :continuous ::quantile)
+   (sql.qp/->honeysql driver p)
+   (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
   [driver [_ _opts arg pattern]]
@@ -356,8 +376,10 @@
   [:'stddevPop (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :median]
-  [driver [_ _opts field]]
-  [:'median (sql.qp/->honeysql driver field)])
+  [driver [_ opts field :as clause]]
+  (case (lib/percentile-type clause)
+    :discrete   (sql.qp/->honeysql driver [:percentile opts field 0.5])
+    :continuous [:'median (sql.qp/->honeysql driver field)]))
 
 ;; Substring does not work for Enums, so we need to cast to String
 (defmethod sql.qp/->honeysql [:clickhouse :substring]

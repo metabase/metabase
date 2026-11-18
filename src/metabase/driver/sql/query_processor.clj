@@ -1042,18 +1042,28 @@
     :%count.*))
 
 (defmethod ->honeysql [:sql :avg]    [driver [_ _opts field]] [:avg        (->honeysql driver field)])
-(defmethod ->honeysql [:sql :median] [driver [_ _opts field]] [:median     (->honeysql driver field)])
 (defmethod ->honeysql [:sql :stddev] [driver [_ _opts field]] [:stddev_pop (->honeysql driver field)])
 (defmethod ->honeysql [:sql :var]    [driver [_ _opts field]] [:var_pop    (->honeysql driver field)])
 (defmethod ->honeysql [:sql :sum]    [driver [_ _opts field]] [:sum        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :min]    [driver [_ _opts field]] [:min        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :max]    [driver [_ _opts field]] [:max        (->honeysql driver field)])
 
+(defmethod ->honeysql [:sql :median]
+  [driver [_ opts field :as clause]]
+  (case (lib/percentile-type clause)
+    ;; `MEDIAN` has no discrete variant in any dialect; `PERCENTILE_DISC(0.5)` is the discrete median.
+    :discrete   (->honeysql driver [:percentile opts field 0.5])
+    :continuous [:median (->honeysql driver field)]))
+
 (defmethod ->honeysql [:sql :percentile]
-  [driver [_ _opts field p]]
+  [driver [_ _opts field p :as clause]]
   (let [field (->honeysql driver field)
         p     (->honeysql driver p)]
-    [::h2x/percentile-cont field p]))
+    [(case (lib/percentile-type clause)
+       :discrete   ::h2x/percentile-disc
+       :continuous ::h2x/percentile-cont)
+     field
+     p]))
 
 (defmethod ->honeysql [:sql :distinct]
   [driver [_ _opts field]]

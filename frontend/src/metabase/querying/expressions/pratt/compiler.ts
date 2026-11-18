@@ -256,6 +256,10 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
       args.pop();
       options["case-sensitive"] = false;
     }
+    if (last === "discrete") {
+      args.pop();
+      options["percentile-type"] = "discrete";
+    }
     if (operator === "datetime" && args.length === 2) {
       args.pop();
       options["mode"] = compileDatetimeMode(node, last);

@@ -1425,7 +1425,10 @@
      ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
      [:name         {:optional true} ::lib.schema.common/non-blank-string]
      ;; user-facing display name for this aggregation instead of the default one
-     [:display-name {:optional true} ::lib.schema.common/non-blank-string]]))
+     [:display-name {:optional true} ::lib.schema.common/non-blank-string]
+     ;; only for `:percentile` and `:median`: whether to compute a `:continuous` (the default) or `:discrete`
+     ;; percentile.
+     [:percentile-type {:optional true} [:ref ::lib.schema.aggregation/percentile-options.percentile-type]]]))
 
 (defclause* aggregation-options
   [:and

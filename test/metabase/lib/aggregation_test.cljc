@@ -1182,3 +1182,24 @@
               [(lib/aggregation-column query -1 (first (lib/aggregations query)))]))
       (is (= ["NAME" "sum" "sum_2" "count" "count_2" "NAME_2" "sum_3" "revenue"]
              (map :name (lib/returned-columns query)))))))
+
+(deftest ^:parallel percentile-type-option-test
+  (let [price    (meta/field-metadata :venues :price)
+        discrete (fn [clause]
+                   (lib/update-options clause assoc :percentile-type :discrete))
+        metadata (fn [clause]
+                   (first (lib/aggregations-metadata (lib/aggregate (lib.tu/venues-query) clause))))]
+    (is (= :type/Category (:semantic-type price)))
+    (testing "a continuous percentile interpolates between values, so it does not keep the column's semantic type"
+      (is (nil? (:semantic-type (metadata (lib/percentile price 0.9))))))
+    (testing "a discrete percentile returns an actual value of the column, so it keeps the semantic type like :min"
+      (is (= :type/Category (:semantic-type (metadata (discrete (lib/percentile price 0.9))))))
+      (is (= :type/Category (:semantic-type (metadata (discrete (lib/median price)))))))
+    (testing "the option does not change the names"
+      (is (=? {:name "percentile", :display-name "0.9th percentile of Price"}
+              (metadata (discrete (lib/percentile price 0.9)))))
+      (is (=? {:name "median", :display-name "Median of Price"}
+              (metadata (discrete (lib/median price))))))
+    (testing "the option is read with lib/options"
+      (is (= :discrete (:percentile-type (lib/options (discrete (lib/median price))))))
+      (is (nil? (:percentile-type (lib/options (lib/median price))))))))

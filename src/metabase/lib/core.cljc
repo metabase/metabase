@@ -561,6 +561,14 @@
     aggregation-clause :- ::lib.schema.aggregation/aggregation]
    (lib.aggregation/aggregation-column a-query stage-number aggregation-clause)))
 
+(mu/defn percentile-type :- ::lib.schema.aggregation/percentile-options.percentile-type
+  "Whether this `:percentile` or `:median` `clause` should use `:continuous` or `:discrete` percentiles (if the driver
+  supports `:percentile-aggregations/discrete`).
+
+  **Code Health:** Healthy."
+  [clause :- [:or :mbql.clause/percentile :mbql.clause/median]]
+  (lib.aggregation/percentile-type clause))
+
 ;;; These functions all directly construct an aggregation clause suitable for passing to [[aggregate]], taking
 ;;; input column and/or filter clauses as arguments, depending on the operator.
 ;;;

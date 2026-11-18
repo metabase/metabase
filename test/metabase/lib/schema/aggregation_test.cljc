@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -208,3 +209,22 @@
                       true]]
                     1]]]]
         (is (mr/validate ::lib.schema.aggregation/aggregation expr))))))
+
+(deftest ^:parallel percentile-type-option-test
+  (let [uuid-str "00000000-0000-0000-0000-000000000000"
+        field    [:field {:lib/uuid uuid-str} 1]]
+    (testing "valid"
+      (are [clause] (not (me/humanize (mr/explain ::lib.schema.aggregation/aggregation clause)))
+        [:percentile {:lib/uuid uuid-str, :percentile-type :discrete} field 0.9]
+        [:percentile {:lib/uuid uuid-str, :percentile-type :continuous} field 0.9]
+        [:median {:lib/uuid uuid-str, :percentile-type :discrete} field]
+        [:median {:lib/uuid uuid-str, :percentile-type :continuous} field]))
+    (testing "invalid"
+      (are [clause] (me/humanize (mr/explain ::lib.schema.aggregation/aggregation clause))
+        [:percentile {:lib/uuid uuid-str, :percentile-type :approximate} field 0.9]
+        [:percentile {:lib/uuid uuid-str, :percentile-type "discrete"} field 0.9]
+        [:median {:lib/uuid uuid-str, :percentile-type nil} field]))
+    (testing "normalization keywordizes the option"
+      (is (= [:median {:lib/uuid uuid-str, :percentile-type :discrete} field]
+             (lib.normalize/normalize :mbql.clause/median
+                                      ["median" {"lib/uuid" uuid-str, "percentile-type" "discrete"} ["field" {"lib/uuid" uuid-str} 1]]))))))

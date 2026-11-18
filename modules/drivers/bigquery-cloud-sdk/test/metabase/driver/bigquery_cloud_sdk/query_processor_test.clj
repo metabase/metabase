@@ -1235,6 +1235,27 @@
                    qp.compile/compile
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))
 
+(deftest discrete-percentile-test
+  ;; no BigQuery project needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (testing "APPROX_QUANTILES already returns actual column values, so discrete and continuous percentiles compile the same"
+    (let [mp                  (lib.tu/merged-mock-metadata-provider
+                               meta/metadata-provider
+                               {:database {:engine  :bigquery-cloud-sdk
+                                           :details {:project-id-from-credentials "test-project"}}})
+          price               (lib.metadata/field mp (meta/id :venues :price))
+          compile-aggregation (fn [aggregation]
+                                (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                                                (lib/aggregate aggregation)))))
+          discrete            #(lib/update-options % assoc :percentile-type :discrete)]
+      (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+        (discrete (lib/percentile price 0.9)) "APPROX_QUANTILES(`PUBLIC.VENUES`.`PRICE`, 10)[OFFSET(9)]"
+        (discrete (lib/median price))         "APPROX_QUANTILES(`PUBLIC.VENUES`.`PRICE`, 10)[OFFSET(5)]")
+      (is (= (compile-aggregation (lib/percentile price 0.9))
+             (compile-aggregation (discrete (lib/percentile price 0.9)))))
+      (is (= (compile-aggregation (lib/median price))
+             (compile-aggregation (discrete (lib/median price))))))))
+
 (deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure columns name `source` in source query work correctly (#18742)"

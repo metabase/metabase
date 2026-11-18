@@ -17,7 +17,10 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -917,3 +920,19 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest discrete-percentile-test
+  ;; no Databricks workspace needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp                  (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :databricks}})
+        price               (lib.metadata/field mp (meta/id :venues :price))
+        compile-aggregation (fn [aggregation]
+                              (:query (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                                                              (lib/aggregate aggregation)))))
+        discrete            #(lib/update-options % assoc :percentile-type :discrete)]
+    (are [aggregation expected] (str/includes? (compile-aggregation aggregation) expected)
+      (discrete (lib/percentile price 0.9)) "PERCENTILE_DISC(0.9) within group (order by `PUBLIC`.`VENUES`.`PRICE`)"
+      (discrete (lib/median price))         "PERCENTILE_DISC(0.5) within group (order by `PUBLIC`.`VENUES`.`PRICE`)"
+      (lib/percentile price 0.9)            "PERCENTILE(`PUBLIC`.`VENUES`.`PRICE`, 0.9)"
+      ;; the `:hive-like` median passes 0.5 as a parameter rather than inline
+      (lib/median price)                    "PERCENTILE(`PUBLIC`.`VENUES`.`PRICE`, ")))
