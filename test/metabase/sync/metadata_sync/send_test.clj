@@ -203,6 +203,9 @@
   (testing "a stub Database does not count"
     (mt/with-temp [:model/Database {stub-name :name} {:is_stub true :initial_sync_status "complete"}]
       (is (= {:status-code 404 :error-code "metadata-sync-database-not-found"} (error-data stub-name {})))))
+  (testing "the audit Database does not count"
+    (mt/with-temp [:model/Database {audit-name :name} {:is_audit true :initial_sync_status "complete"}]
+      (is (= {:status-code 404 :error-code "metadata-sync-database-not-found"} (error-data audit-name {})))))
   (testing "a Database with the name and another engine does not count"
     (mt/with-temp [:model/Database {database-name :name} {:initial_sync_status "complete"}]
       (is (= {:status-code 404 :error-code "metadata-sync-database-not-found"}
@@ -252,3 +255,16 @@
               (testing (str "a page stops reading once the stats pass the limit: read one Table at a time, only the "
                             "Table that did not fit is read again, by the next page")
                 (is (= {(tables "a") 1 (tables "b") 1 (tables "c") 2 (tables "d") 1} (frequencies @reads)))))))))))
+
+(deftest answer-names-its-database-test
+  (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
+    (add-tables! db-id some-tables)
+    (with-redefs [pages/table-field-limit 1]
+      (testing "every answer names the Database of its request, by name and engine"
+        (is (= #{[db-name "h2"]} (set (map (juxt :database :engine) (answers db-name)))))))))
+
+(deftest bad-schema-filter-test
+  (mt/with-temp [:model/Database {db-name :name} {:initial_sync_status "complete"}]
+    (testing "a schema filter that is not a pattern is refused, and is not a server error"
+      (is (= {:status-code 400 :error-code "metadata-sync-bad-schema-filter"}
+             (error-data db-name {:schema_filters {:type "inclusion" :patterns "["}}))))))

@@ -9,7 +9,8 @@
    [metabase.sync.metadata-sync.wire :as wire]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -195,3 +196,58 @@
     (testing "the row count is not in a Table's entry: it is in its stats"
       (is (not (contains? (first (tables/entries (tables/selection db-id nil)))
                           :estimated_row_count))))))
+
+(deftest defective-duplicate-fields-are-not-sent-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id :schema "public" :name "wrens"}
+                 :model/Field    _              {:table_id table-id :name "song" :base_type :type/Text}
+                 :model/Field    {twin :id}     {:table_id table-id :name "song_twin" :base_type :type/Text}]
+    ;; a legacy duplicate has the name of another Field; H2's unique index refuses that, so only the flag is set here
+    (t2/query-one {:update :metabase_field :set {:is_defective_duplicate true} :where [:= :id twin]})
+    (testing "a Field marked as a defective duplicate is not sent, so a path is sent once"
+      (is (= [["song"]] (mapv :path (:fields (get (entries db-id) ["public" "wrens"]))))))
+    (testing "and it does not weigh in the Field counts"
+      (is (= [{:table_id table-id :field_count 1}] (sync.db/described-field-counts db-id))))))
+
+(deftest table-columns-of-the-sender-are-not-sent-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table    _           {:db_id db-id :schema "public" :name "finches" :data_source :ingested
+                                              :is_writable true}
+                 :model/Table    _           {:db_id db-id :schema "public" :name "gulls" :data_source :upload}
+                 :model/Table    _           {:db_id db-id :schema "public" :name "herons"
+                                              :data_source :metabase-transform}]
+    (let [entries-by-key (entries db-id)]
+      (testing "a data source that says what the data is, is sent"
+        (is (= "ingested" (:data_source (entries-by-key ["public" "finches"])))))
+      (testing "a data source that says how this instance made the Table is not sent"
+        (is (not (contains? (entries-by-key ["public" "gulls"]) :data_source)))
+        (is (not (contains? (entries-by-key ["public" "herons"]) :data_source))))
+      (testing "whether the sender's login can write the Table is not sent"
+        (is (not-any? #(contains? % :is_writable) (vals entries-by-key))))
+      (testing "the entries are valid"
+        (is (every? #(mr/validate ::tables/table %) (vals entries-by-key)))))))
+
+(deftest user-set-columns-are-named-test
+  (mt/with-temp [:model/Database {db-id :id}  {}
+                 :model/Table    {wrens :id}  {:db_id db-id :schema "public" :name "wrens" :description "Small birds"}
+                 :model/Table    {gulls :id}  {:db_id db-id :schema "public" :name "gulls" :data_source :upload}
+                 :model/Table    _            {:db_id db-id :schema "public" :name "owls"}
+                 :model/Field    {song :id}   {:table_id wrens :name "song" :base_type :type/Text
+                                               :description "What it sings" :semantic_type :type/Category}
+                 :model/Field    _            {:table_id wrens :name "nest" :base_type :type/Text}]
+    (t2/insert! :model/TableUserSettings {:table_id wrens :description "Small birds"})
+    (t2/insert! :model/TableUserSettings {:table_id gulls :data_source :upload})
+    (t2/insert! :model/FieldUserSettings {:field_id song :description "What it sings" :semantic_type :type/Category})
+    (let [entries-by-key (entries db-id)
+          wrens-entry    (entries-by-key ["public" "wrens"])]
+      (testing "a Table names the columns a user set, of the ones sync also writes"
+        (is (= ["description"] (:user_set wrens-entry))))
+      (testing "a Field does too, in a fixed order"
+        (is (= ["description" "semantic_type"] (:user_set (field-named wrens-entry "song")))))
+      (testing "a Table and a Field with no user-set column have no such key"
+        (is (not (contains? (entries-by-key ["public" "owls"]) :user_set)))
+        (is (not (contains? (field-named wrens-entry "nest") :user_set))))
+      (testing "a column whose value is not sent is not named"
+        (is (not (contains? (entries-by-key ["public" "gulls"]) :user_set))))
+      (testing "the entries are valid"
+        (is (every? #(mr/validate ::tables/table %) (vals entries-by-key)))))))

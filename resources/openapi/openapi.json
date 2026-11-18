@@ -31961,6 +31961,15 @@
               "minLength" : 1,
               "type" : "string"
             },
+            "maxItems" : 50,
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "user_set" : {
+            "items" : {
+              "enum" : [ "description", "fk_target_field_id", "semantic_type" ],
+              "type" : "string"
+            },
             "minItems" : 1,
             "type" : "array"
           }
@@ -31986,6 +31995,10 @@
       "metabase.sync.metadata-sync.tables.table" : {
         "description" : "a Table's entry: each of `table-columns` that has a value, and its Fields",
         "properties" : {
+          "data_source" : {
+            "enum" : [ "ingested", "source-data", "transform", "unknown" ],
+            "type" : "string"
+          },
           "fields" : {
             "items" : {
               "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.field"
@@ -31999,6 +32012,14 @@
           },
           "schema" : {
             "type" : "string"
+          },
+          "user_set" : {
+            "items" : {
+              "enum" : [ "data_layer", "data_source", "description", "visibility_type" ],
+              "type" : "string"
+            },
+            "minItems" : 1,
+            "type" : "array"
           }
         },
         "required" : [ "name", "fields" ],
@@ -32106,12 +32127,23 @@
       },
       "metabase.sync.metadata-sync.wire.response" : {
         "additionalProperties" : false,
+        "description" : "An answer. It names the Database of its request, by `database` and `engine`, so that a receiver can refuse an\n  answer that is for another Database.",
         "properties" : {
           "batches" : {
             "items" : {
               "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.batch"
             },
             "type" : "array"
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
           },
           "format_version" : {
             "type" : "integer"
@@ -32124,7 +32156,7 @@
             } ]
           }
         },
-        "required" : [ "format_version", "batches" ],
+        "required" : [ "format_version", "database", "engine", "batches" ],
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.stats-batch" : {
@@ -83911,7 +83943,7 @@
     },
     "/api/warehouse/metadata/apply" : {
       "post" : {
-        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last\n  answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. Do not run a sync\n  of the Database during a seed: both insert Tables, and the second insert of one key fails.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply:\n  `metadata-sync-format-version-differs`, `metadata-sync-unknown-batch-type` and `metadata-sync-malformed-response`\n  before any write, and `metadata-sync-apply-failed` for a write that failed. No message holds the answer's values.",
+        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last\n  answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. A Table the\n  Database already had is not changed, except that an empty FK target, row count or list of field values is filled.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any\n  write:\n\n  - `metadata-sync-format-version-differs`: the answer has another format version.\n  - `metadata-sync-unknown-batch-type`: the answer has a batch of a type this version does not know.\n  - `metadata-sync-malformed-response`: the answer does not have the right shape, or has a value that this version\n    does not accept, such as a type that only a newer Metabase knows.\n  - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.\n\n  And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer.",
         "operationId" : "post-api-warehouse-metadata-apply",
         "parameters" : [ ],
         "requestBody" : {
@@ -83959,7 +83991,7 @@
     },
     "/api/warehouse/metadata/changes" : {
       "post" : {
-        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a page\n  at a time. Ask again with the answer's `next` while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases and the\n    destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
+        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a\n  page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`\n  while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 400 `metadata-sync-bad-schema-filter`: the `schema_filters` patterns cannot be read.\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit\n    Database and the destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
         "operationId" : "post-api-warehouse-metadata-changes",
         "parameters" : [ ],
         "requestBody" : {
@@ -83995,7 +84027,7 @@
     },
     "/api/warehouse/metadata/request" : {
       "post" : {
-        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser.\n\n  Errors: 404 `metadata-sync-no-database`, and 400 `metadata-sync-database-not-loadable` for a stub Database or the\n  audit Database.",
+        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser.\n\n  A request also starts a seed, or keeps it going: for 10 minutes after each request and each applied answer, no sync\n  of the Database runs in this Metabase process, until the last answer is applied.\n\n  Errors, each with an `error-code` in the body:\n\n  - 404 `metadata-sync-no-database`: there is no Database with this id.\n  - 400 `metadata-sync-database-not-loadable`: a stub Database, the audit Database, or a destination Database of\n    database routing.\n  - 409 `metadata-sync-sync-running`: a sync of the Database runs. Ask again when it ends.",
         "operationId" : "post-api-warehouse-metadata-request",
         "parameters" : [ ],
         "requestBody" : {

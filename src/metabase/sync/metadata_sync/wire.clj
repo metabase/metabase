@@ -83,8 +83,12 @@
    ["stats"    ::stats-batch]])
 
 (mr/def ::response
+  "An answer. It names the Database of its request, by `database` and `engine`, so that a receiver can refuse an
+  answer that is for another Database."
   [:map {:closed true}
    [:format_version :int]
+   [:database       ms/NonBlankString]
+   [:engine         ms/NonBlankString]
    [:batches        [:sequential ::batch]]
    [:next           {:optional true} [:maybe ::pages/cursor]]])
 
@@ -100,3 +104,7 @@
 (def database-not-ready
   "The error code of a request for a Database whose first sync on the sender is not complete."
   "metadata-sync-database-not-ready")
+
+(def bad-schema-filter
+  "The error code of a request whose schema filter cannot be read as patterns."
+  "metadata-sync-bad-schema-filter")

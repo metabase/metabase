@@ -1,6 +1,7 @@
 (ns metabase.sync.metadata-sync.stats-test
   (:require
    [clojure.test :refer :all]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.metadata-sync.stats :as stats]
    [metabase.sync.metadata-sync.tables :as tables]
    [metabase.test :as mt]
@@ -53,3 +54,20 @@
                  :model/FieldValues _             {:field_id gone :type :full :values ["b"]}]
     (testing "the values of a Field that is not described are left out, and a Table with no stats has no entry"
       (is (= {} (stats/table-stats (tables db-id)))))))
+
+(deftest values-of-fields-that-may-have-none-are-not-sent-test
+  (mt/with-temp [:model/Database    {db-id :id}  {}
+                 :model/Table       {orders :id} {:db_id db-id :name "orders"}
+                 :model/Field       {status :id} {:table_id orders :name "status" :base_type :type/Text}
+                 :model/Field       {secret :id} {:table_id orders :name "secret" :base_type :type/Text
+                                                  :visibility_type :sensitive}
+                 :model/Field       {unused :id} {:table_id orders :name "unused" :base_type :type/Text
+                                                  :visibility_type :hidden}
+                 :model/FieldValues _            {:field_id status :type :full :values ["open"]}
+                 :model/FieldValues _            {:field_id secret :type :full :values ["left from before"]}
+                 :model/FieldValues _            {:field_id unused :type :full :values ["left from before"]}]
+    (testing "the values of a sensitive or hidden Field are not sent, also when it still has a row of them"
+      (is (= [["status"]]
+             (mapv :field (get-in (stats/table-stats (tables db-id)) [orders :field_values])))))
+    (testing "and they do not weigh in the counts"
+      (is (= [{:table_id orders :field_values_count 1}] (sync.db/described-full-field-values-counts db-id))))))

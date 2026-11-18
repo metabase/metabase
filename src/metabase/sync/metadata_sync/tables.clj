@@ -15,23 +15,38 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings])
   (:import
-   (java.time.temporal Temporal)))
+   (java.time.temporal Temporal)
+   (java.util.regex PatternSyntaxException)))
 
 (set! *warn-on-reflection* true)
 
 (def table-columns
   "The Table columns an entry carries."
   [:schema :name :display_name :description :entity_type :visibility_type :data_layer :data_source :data_authority
-   :field_order :caveats :points_of_interest :show_in_getting_started :owner_email :database_require_filter
-   :is_writable])
+   :field_order :caveats :points_of_interest :show_in_getting_started :owner_email :database_require_filter])
 
 (def left-out-table-columns
   "The Table columns serialization copies that an entry does not carry, and why."
   {:active       "only active Tables are sent"
    :is_upload    "an upload belongs to the instance that made it"
-   :is_published "publishing belongs to each instance"})
+   :is_published "publishing belongs to each instance"
+   :is_writable  "it depends on the login, so each instance reads its own"})
+
+(def sent-data-sources
+  "The values of a Table's `data_source` that are sent: the ones that say what the data is. `metabase-transform` and
+  `upload` say how one instance made the Table, with a transform or an upload that another instance does not have."
+  #{"ingested" "source-data" "transform" "unknown"})
+
+(def field-user-set-columns
+  "The Field columns an entry can name in `user_set`: the ones a user can set that sync also writes."
+  (sort (map name (keys warehouse-schema.user-settings/field-set-flags))))
+
+(def table-user-set-columns
+  "The Table columns an entry can name in `user_set`: the ones a user can set that something else also writes."
+  (sort (map name (keys warehouse-schema.user-settings/table-set-flags))))
 
 (def field-columns
   "The Field columns an entry carries."
@@ -65,14 +80,17 @@
    [:path          [:sequential {:min 1 :max max-path-length} ms/NonBlankString]]
    [:base_type     ms/NonBlankString]
    [:database_type ms/NonBlankString]
-   [:last_analyzed {:optional true} ms/NonBlankString]])
+   [:last_analyzed {:optional true} ms/NonBlankString]
+   [:user_set      {:optional true} [:sequential {:min 1} (into [:enum] field-user-set-columns)]]])
 
 (mr/def ::table
   [:map {::mr/deliberately-open true
          :description           "a Table's entry: each of `table-columns` that has a value, and its Fields"}
-   [:name   ms/NonBlankString]
-   [:schema {:optional true} :string]
-   [:fields [:sequential ::field]]])
+   [:name        ms/NonBlankString]
+   [:schema      {:optional true} :string]
+   [:data_source {:optional true} (into [:enum] (sort sent-data-sources))]
+   [:user_set    {:optional true} [:sequential {:min 1} (into [:enum] table-user-set-columns)]]
+   [:fields      [:sequential ::field]]])
 
 (defn- wire-value
   "`value` as an entry holds it: a keyword as its name, and a time as a string."
@@ -88,11 +106,20 @@
   (cond-> field
     (not (:coercion_strategy field)) (dissoc :effective_type)))
 
-(defn- field-entry [field path]
+(defn- user-set
+  "The names of the columns that the settings row `flags` says a user set, in a fixed order, or nil when it says none.
+  `column->flag` gives each column's flag."
+  [column->flag flags]
+  (not-empty (vec (sort (for [[column flag] column->flag
+                              :when         (true? (get flags flag))]
+                          (name column))))))
+
+(defn- field-entry [field path flags]
   (-> (select-keys field field-columns)
       coercion-pair
       (update-vals wire-value)
-      (assoc :path path)
+      (assoc :path path
+             :user_set (user-set warehouse-schema.user-settings/field-set-flags flags))
       u/remove-nils))
 
 (defn- field-paths
@@ -109,18 +136,30 @@
 
 (defn- field-entries
   "The entries of `fields`, the Fields of one Table, parents before their children. A Field with a parent that is not
-  sent is not sent."
-  [fields]
+  sent is not sent. `flags-by-field` holds the settings row of each Field that has a user-set column."
+  [fields flags-by-field]
   (let [paths (field-paths fields)]
     (->> fields
-         (keep (fn [field] (some->> (paths (:id field)) (field-entry field))))
+         (keep (fn [{field-id :id :as field}]
+                 (when-let [path (paths field-id)]
+                   (field-entry field path (flags-by-field field-id)))))
          (sort-by (comp count :path))
          vec)))
 
-(defn- table-entry [table field-entries]
+(defn- without-unsent-data-source
+  "The Table `entry` without a data source that is not sent, and without its name in `user_set`."
+  [{:keys [data_source] :as entry}]
+  (if (or (nil? data_source) (sent-data-sources data_source))
+    entry
+    (-> (dissoc entry :data_source)
+        (update :user_set #(not-empty (vec (remove #{"data_source"} %)))))))
+
+(defn- table-entry [table field-entries flags]
   (-> (select-keys table table-columns)
       (update-vals wire-value)
-      (assoc :fields field-entries)
+      (assoc :fields   field-entries
+             :user_set (user-set warehouse-schema.user-settings/table-set-flags flags))
+      without-unsent-data-source
       u/remove-nils))
 
 (defn- filter-patterns
@@ -130,6 +169,15 @@
     "inclusion" [patterns nil]
     "exclusion" [nil patterns]
     [nil nil]))
+
+(defn valid-schema-filter?
+  "Whether the patterns of `schema-filter` can be read: a Database's schema filter is used as a regular expression."
+  [{:keys [patterns]}]
+  (try
+    (driver.s/schema-pattern->re-pattern patterns)
+    true
+    (catch PatternSyntaxException _
+      false)))
 
 (defn- sent-schema?
   "Whether Tables in `schema` are sent: never the ones in a workspace's own schema, which no other instance has."
@@ -157,9 +205,13 @@
   [tables :- [:sequential ::sync.db/described-table]]
   (let [table-ids       (mapv :id tables)
         rows            (into {} (map (juxt :id identity)) (pages/in-batches sync.db/tables-with-ids table-ids))
-        fields-by-table (group-by :table_id (pages/in-batches sync.db/described-fields table-ids))]
+        fields-by-table (group-by :table_id (pages/in-batches sync.db/described-fields table-ids))
+        flags-by-table  (m/index-by :table_id (pages/in-batches sync.db/table-user-set-flags table-ids))
+        flags-by-field  (m/index-by :field_id (pages/in-batches sync.db/field-user-set-flags table-ids))]
     (into []
           (keep (fn [{table-id :id}]
                   (when-let [table (rows table-id)]
-                    (table-entry table (field-entries (fields-by-table table-id []))))))
+                    (table-entry table
+                                 (field-entries (fields-by-table table-id []) flags-by-field)
+                                 (flags-by-table table-id)))))
           tables)))

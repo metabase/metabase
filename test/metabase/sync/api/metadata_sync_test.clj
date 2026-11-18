@@ -1,8 +1,11 @@
 (ns metabase.sync.api.metadata-sync-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.wire :as wire]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -46,8 +49,8 @@
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
     (add-tables! db-id some-tables)
     (let [{:keys [batches] :as response} (mt/user-http-request :crowberto :post 200 changes-url (request db-name))]
-      (testing "the answer names the format version, and has no cursor when nothing is left"
-        (is (= {:format_version wire/format-version :batches ["database" "tables"]}
+      (testing "the answer names the format version and its Database, and has no cursor when nothing is left"
+        (is (= {:format_version wire/format-version :database db-name :engine "h2" :batches ["database" "tables"]}
                (update response :batches #(mapv :type %)))))
       (testing "the tables are every Table, in key order"
         (is (= [[nil "loose"] ["public" "orders"] ["public" "people"]]
@@ -112,23 +115,74 @@
         (is (= [409 "metadata-sync-database-ambiguous"] (error-code changes-url (request database-name)))))))
   (mt/with-temp [:model/Database {database-name :name} {:initial_sync_status "incomplete"}]
     (testing "a Database whose first sync is not complete gets 422"
-      (is (= [422 "metadata-sync-database-not-ready"] (error-code changes-url (request database-name)))))))
+      (is (= [422 "metadata-sync-database-not-ready"] (error-code changes-url (request database-name))))))
+  (testing "a schema filter that is not a list of patterns gets 400, not a server error"
+    (is (= [400 "metadata-sync-bad-schema-filter"]
+           (error-code changes-url (request (mt/random-name) {:schema_filters {:type "inclusion" :patterns "["}}))))))
 
 ;;; ------------------------------------------------ Receiver ------------------------------------------------
 
+(defn- answer-of
+  "An answer with `batches` that names the Database with `db-id`, as the answer to its request does."
+  [db-id & batches]
+  {:format_version wire/format-version
+   :database       (t2/select-one-fn :name :model/Database :id db-id)
+   :engine         "h2"
+   :batches        (vec batches)})
+
+(def ^:private one-table
+  {:type "tables" :tables [{:schema "PUBLIC" :name "wrens"
+                            :fields [{:path ["song"] :base_type "type/Text" :database_type "TEXT"}]}]})
+
 (deftest receiver-errors-test
-  (testing "no such Database"
-    (is (= [404 "metadata-sync-no-database"] (error-code request-url {:database_id Integer/MAX_VALUE}))))
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (testing "an answer of another format version gets 422, and nothing is written"
+  (testing "no such Database, for a request and for an answer"
+    (is (= [404 "metadata-sync-no-database"] (error-code request-url {:database_id Integer/MAX_VALUE})))
+    (is (= [404 "metadata-sync-no-database"]
+           (error-code apply-url {:database_id Integer/MAX_VALUE
+                                  :response    {:format_version wire/format-version :batches []}}))))
+  (testing "a Database that takes no metadata from another Metabase"
+    (mt/with-temp [:model/Database {stub-id :id} {:is_stub true}]
+      (is (= [400 "metadata-sync-database-not-loadable"] (error-code request-url {:database_id stub-id})))
+      (is (= [400 "metadata-sync-database-not-loadable"]
+             (error-code apply-url {:database_id stub-id :response (answer-of stub-id one-table)})))))
+  (mt/with-temp [:model/Database {db-id :id} {:initial_sync_status "incomplete"}]
+    (testing "an answer of another format version gets 422"
       (is (= [422 "metadata-sync-format-version-differs"]
              (error-code apply-url {:database_id db-id
-                                    :response    {:format_version (inc wire/format-version) :batches []}}))))
+                                    :response    (assoc (answer-of db-id one-table)
+                                                        :format_version (inc wire/format-version))}))))
+    (testing "an answer with a batch type this version does not know gets 422"
+      (is (= [422 "metadata-sync-unknown-batch-type"]
+             (error-code apply-url {:database_id db-id :response (answer-of db-id one-table {:type "remaps"})}))))
     (testing "a malformed answer gets 422"
       (is (= [422 "metadata-sync-malformed-response"]
              (error-code apply-url {:database_id db-id
-                                    :response    {:format_version wire/format-version
-                                                  :batches        [{:type "tables" :tables "none"}]}}))))))
+                                    :response    (answer-of db-id {:type "tables" :tables "none"})}))))
+    (testing "an answer for another Database gets 422"
+      (is (= [422 "metadata-sync-answer-of-another-database"]
+             (error-code apply-url {:database_id db-id
+                                    :response    (assoc (answer-of db-id one-table) :database "Another")}))))
+    (testing "while a sync of the Database runs, a request and an answer get 409"
+      (let [during (fn [thunk]
+                     ((sync-util/with-duplicate-ops-prevented :sync (driver.u/lib-database db-id) thunk)))]
+        (is (= [409 "metadata-sync-sync-running"] (during #(error-code request-url {:database_id db-id}))))
+        (is (= [409 "metadata-sync-sync-running"]
+               (during #(error-code apply-url {:database_id db-id :response (answer-of db-id one-table)}))))))
+    (testing "a write that fails gets 422, and the body says nothing of the cause"
+      (mt/with-dynamic-fn-redefs [sync.db/insert-table-rows! (fn [_rows]
+                                                               (throw (ex-info "the app DB refused wrens" {})))]
+        (let [{:keys [status body]} (mt/user-http-request-full-response
+                                     :crowberto :post apply-url
+                                     {:database_id db-id :response (answer-of db-id one-table)})]
+          (is (= [422 "metadata-sync-apply-failed"] [status (:error-code body)]))
+          (is (not (re-find #"wrens" (pr-str body)))))))
+    (testing "none of the refused answers wrote anything"
+      (is (zero? (t2/count :model/Table :db_id db-id)))
+      (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))))
+    (testing "the same answer is applied once nothing refuses it"
+      (is (=? {:counts {:tables_inserted 1 :fields_inserted 1}}
+              (mt/user-http-request :crowberto :post 200 apply-url
+                                    {:database_id db-id :response (answer-of db-id one-table)}))))))
 
 (deftest seed-over-http-test
   (mt/with-temp [:model/Database {sender :id sender-name :name} {:initial_sync_status "complete"}
@@ -137,15 +191,18 @@
       (t2/update! :model/Field :id (field-id (tables "orders") "user_id")
                   {:fk_target_field_id (field-id (tables "people") "id")})
       (t2/update! :model/Field :id (field-id (tables "orders") "total")
-                  {:fingerprint {:global {:distinct-count 2} :type {:type/Number {:min 1.0 :max 2.0}}}})
+                  {:fingerprint      {:global {:distinct-count 2} :type {:type/Number {:min 1.0 :max 2.0}}}
+                   :has_field_values :list})
       (t2/insert! :model/FieldValues {:field_id (field-id (tables "orders") "total") :type :full :values [1 2]})
       (with-redefs [pages/table-field-limit 1]
         (loop [after nil rounds 1]
           (let [req      (mt/user-http-request :crowberto :post 200 request-url
                                                (cond-> {:database_id receiver} after (assoc :after after)))
                 response (mt/user-http-request :crowberto :post 200 changes-url (assoc req :database sender-name))
+                ;; both Databases are in one app DB, so the answer gets the name of the request back
                 {:keys [next]} (mt/user-http-request :crowberto :post 200 apply-url
-                                                     {:database_id receiver :response response})]
+                                                     {:database_id receiver
+                                                      :response    (assoc response :database (:database req))})]
             (cond
               (nil? next)   nil
               (> rounds 20) (throw (ex-info "the seed does not end" {:rounds rounds}))

@@ -42,6 +42,13 @@
       :else
       database)))
 
+(defn- check-schema-filter!
+  "Throw an API error when `schema-filter` cannot be read. The message does not repeat it."
+  [schema-filter]
+  (when-not (or (nil? schema-filter) (tables/valid-schema-filter? schema-filter))
+    (throw (ex-info (tru "The schema filter of the request is not a list of schema patterns.")
+                    {:status-code 400 :error-code wire/bad-schema-filter}))))
+
 (defn- counts-by-table [rows count-key]
   (into {} (map (juxt :table_id count-key)) rows))
 
@@ -155,12 +162,16 @@
 
 (mu/defn changes-response :- ::wire/response
   "The answer to `request`: the next page of the metadata of the Database it names, and the cursor of the page after
-  it, when there is one. The first answer, with no `after`, also holds the database values first."
+  it, when there is one. The first answer, with no `after`, also holds the database values first. Every answer names
+  the request's Database and engine."
   [{database-name :database :keys [engine schema_filters after]} :- ::wire/request]
+  (check-schema-filter! schema_filters)
   (let [{database-id :id :as database} (served-database database-name engine)
         selected                       (tables/selection database-id schema_filters)
         {:keys [batch next]}           (next-page database-id selected after)]
     (cond-> {:format_version wire/format-version
+             :database       database-name
+             :engine         engine
              :batches        (cond-> []
                                (nil? after) (conj (merge {:type "database"} (wire/database-values database)))
                                batch        (conj batch))}

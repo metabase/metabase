@@ -2,12 +2,13 @@
   "The receiver's side of a seed: the request to send to the other Metabase, and how its answer is applied.
 
   A seed is a loop that something outside Metabase runs, since no Metabase calls another: build a request with
-  [[request]], send it to the other Metabase's `POST /api/warehouse/metadata/changes`, and give the answer to
+  [[request!]], send it to the other Metabase's `POST /api/warehouse/metadata/changes`, and give the answer to
   [[apply-response!]], again with the answer's `next` while it has one.
 
   A seed only adds. It inserts the Tables the receiver does not have, with their Fields, and fills FK targets, row
-  counts and field values that are empty. It never changes or removes a row, so a Table the receiver has, active or
-  not, keeps what it has, and the receiver's own sync corrects it later.
+  counts and field values that are empty. It removes no row, and changes a row it did not insert only to fill such
+  an empty value, so a Table the receiver has, active or not, keeps what it has, and the receiver's own sync corrects
+  it later.
 
   Answers hold warehouse metadata, and field values are rows of the customer's tables, so nothing here logs them."
   (:require
@@ -18,6 +19,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.search.core :as search]
    [metabase.sync.db :as sync.db]
    [metabase.sync.metadata-sync.pages :as pages]
@@ -31,7 +33,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [toucan2.core :as t2])
   (:import
    (java.time Duration Instant)))
@@ -39,8 +44,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- receiving-database
-  "The Database with `database-id`, when a seed may write it. Throws for no such Database, a stub Database, or the
-  audit Database, which describes this Metabase's own app DB."
+  "The Database with `database-id`, when a seed may write it. Throws for no such Database, a stub Database, the audit
+  Database, which describes this Metabase's own app DB, or a destination Database of database routing, which has no
+  metadata of its own."
   [database-id]
   (let [database (sync.db/database database-id)]
     (cond
@@ -48,7 +54,7 @@
       (throw (ex-info (tru "There is no Database with id {0}." database-id)
                       {:status-code 404 :error-code "metadata-sync-no-database"}))
 
-      (or (:is_stub database) (:is_audit database))
+      (or (:is_stub database) (:is_audit database) (:router_database_id database))
       (throw (ex-info (tru "The Database {0} does not take metadata from another Metabase." (pr-str (:name database)))
                       {:status-code 400 :error-code "metadata-sync-database-not-loadable"}))
 
@@ -58,18 +64,15 @@
 ;;; ------------------------------------------------ Lease ------------------------------------------------
 
 ;; A seed is many calls that something outside Metabase makes. From the first until the last answer is applied, the
-;; receiving Database has a lease, and no sync of it runs: a sync and a seed both insert Tables. The lease is in this
-;; JVM only. It ends with the last answer, or once no call renewed it for [[lease-duration]], so a seed that stops does
-;; not stop sync for ever.
+;; receiving Database has a lease, and no sync operation of it runs: a sync and a seed both insert Tables. The lease
+;; is in this JVM only. It ends with the last answer, or once no call renewed it for [[lease-duration]], so a seed
+;; that stops does not stop sync for ever.
 
 (def ^:private lease-duration (Duration/ofMinutes 10))
 
 (defonce ^:private leases
   ;; Database id -> the Instant its lease ends.
   (atom {}))
-
-(defn- renew-lease! [database-id]
-  (swap! leases assoc database-id (.plus (Instant/now) ^Duration lease-duration)))
 
 (defn- end-lease! [database-id]
   (swap! leases dissoc database-id))
@@ -83,12 +86,19 @@
 
 (sync-util/register-busy-predicate! #'seed-running)
 
-(defn- check-no-sync-running!
-  "Throw when a sync of the Database with `database-id` runs: it would insert Tables while the seed does."
+(defn- take-lease!
+  "Give the Database with `database-id` a lease, or renew the one it has. Throws, and puts the lease back as it was,
+  when a sync of the Database runs: it would insert Tables while the seed does. The lease is set first and the sync is
+  looked for second. Sync does the same the other way round, so of a seed and a sync that start together, at least
+  one yields."
   [database-id]
-  (when (sync-util/sync-running? database-id)
-    (throw (ex-info (tru "A sync of this Database is running. Try again when it ends.")
-                    {:status-code 409 :error-code "metadata-sync-sync-running"}))))
+  (let [[before] (swap-vals! leases assoc database-id (.plus (Instant/now) ^Duration lease-duration))]
+    (when (sync-util/sync-running? database-id)
+      (swap! leases #(if-let [ends (before database-id)]
+                       (assoc % database-id ends)
+                       (dissoc % database-id)))
+      (throw (ex-info (tru "A sync of this Database is running. Try again when it ends.")
+                      {:status-code 409 :error-code "metadata-sync-sync-running"})))))
 
 ;;; ------------------------------------------------ Request ------------------------------------------------
 
@@ -100,14 +110,16 @@
       (not (str/blank? inclusion)) {:type "inclusion" :patterns inclusion}
       (not (str/blank? exclusion)) {:type "exclusion" :patterns exclusion})))
 
-(mu/defn request :- ::wire/request
+(mu/defn request! :- ::wire/request
   "The request to send to the other Metabase for the metadata of the Database with `database-id`, from the cursor
-  `after`, or from the start when it is nil. It names the Database by name and engine, with its schema filters."
+  `after`, or from the start when it is nil. It names the Database by name and engine, with its schema filters.
+
+  It also gives the Database its lease, or renews it, so no sync of the Database runs for the next 10 minutes, and it
+  is refused (`metadata-sync-sync-running`) while one runs."
   [database-id :- ::lib.schema.id/database
    after       :- [:maybe ::pages/cursor]]
   (let [database (receiving-database database-id)]
-    (check-no-sync-running! database-id)
-    (renew-lease! database-id)
+    (take-lease! database-id)
     (u/remove-nils
      {:database       (:name database)
       :engine         (u/qualified-name (:engine database))
@@ -122,14 +134,15 @@
     :data_sensitivity :entity_type :data_layer :data_source :data_authority :field_order})
 
 (defn- row-value
-  "The value of `column` in the entry `entry`, as the app DB models expect it."
+  "The value of `column` in the entry `entry`, as the app DB models expect it. A value of the wrong kind stays as it
+  is, or makes this throw: the checks of an answer then refuse it."
   [entry column]
   (let [value (get entry column)]
     (cond
-      (nil? value)              nil
-      (keyword-columns column)  (keyword value)
-      (= column :last_analyzed) (u.date/parse value)
-      :else                     value)))
+      (nil? value)                                   nil
+      (and (keyword-columns column) (string? value)) (keyword value)
+      (= column :last_analyzed)                      (u.date/parse value)
+      :else                                          value)))
 
 (defn- table-defaults
   "The values a new Table named `table-name` gets when the entry has none: nil for any column not here."
@@ -249,12 +262,14 @@
       ;; Without a coercion, the effective type is the base type, as the Field model makes it.
       (nil? (:coercion_strategy row)) (assoc :effective_type (:base_type row)))))
 
-(defn- field-ids-by-key
-  "The ids of the Fields of the Tables with `table-ids`, by `[table-id parent-id name]`."
+(defn- field-ids-by-path
+  "The ids of the Fields of the Tables with `table-ids`, by `[table-id path]`."
   [table-ids]
-  (into {}
-        (map (juxt (juxt :table_id :parent_id :name) :id))
-        (pages/in-batches sync.db/field-keys-of-tables table-ids)))
+  (let [rows  (pages/in-batches sync.db/field-keys-of-tables (vec table-ids))
+        by-id (m/index-by :id rows)
+        path  (fn path [{:keys [parent_id] field-name :name}]
+                (conj (if parent_id (path (by-id parent_id)) []) field-name))]
+    (into {} (map (juxt (juxt :table_id path) :id)) rows)))
 
 (defn- insert-fields!
   "Insert the Fields of the entries of `tables`, each `[table-id entry]`, one level of nesting at a time, so that a
@@ -266,21 +281,46 @@
                     (group-by (comp count :path second))
                     (sort-by key)
                     (map val))]
-    (loop [[level & deeper] levels, ids {}, inserted 0]
-      (if-not level
-        inserted
-        (let [rows (for [[table-id {:keys [path] :as field-entry}] level]
-                     (field-row table-id (ids [table-id (pop path)]) field-entry))]
-          (doseq [batch (partition-all pages/query-batch-size rows)]
-            (sync.db/insert-field-rows! (vec batch)))
-          (recur deeper
-                 ;; Only a deeper level needs the ids of this one.
-                 (if (seq deeper)
-                   (let [by-key (field-ids-by-key (mapv first tables))]
-                     (into ids (for [[table-id {:keys [path]}] level]
-                                 [[table-id path] (by-key [table-id (ids [table-id (pop path)]) (peek path)])])))
-                   ids)
-                 (+ inserted (count rows))))))))
+    (reduce (fn [inserted level]
+              ;; Only a nested level needs ids: the ones of its parents, which the levels before it inserted.
+              (let [ids  (if (pos? inserted) (field-ids-by-path (map first tables)) {})
+                    rows (for [[table-id {:keys [path] :as field-entry}] level]
+                           (field-row table-id (ids [table-id (pop path)]) field-entry))]
+                (doseq [batch (partition-all pages/query-batch-size rows)]
+                  (sync.db/insert-field-rows! (vec batch)))
+                (+ inserted (count rows))))
+            0
+            levels)))
+
+(defn- set-flags
+  "The flags of a settings row for `entry`: true for each column it names in `user_set`, false for the others.
+  `column->flag` gives each column's flag."
+  [column->flag {:keys [user_set]}]
+  (let [named (set user_set)]
+    (into {} (map (fn [[column flag]] [flag (contains? named (name column))])) column->flag)))
+
+(defn- insert-user-settings!
+  "Insert a settings row, through the models, for each of the new `tables`, each `[table-id entry]`, and each of their
+  Fields whose entry names a column that a user set on the sender. This Metabase's sync then leaves that column as it
+  is, as the sender's does."
+  [tables]
+  (let [table-rows (for [[table-id entry] tables
+                         :when            (seq (:user_set entry))]
+                     (assoc (set-flags warehouse-schema.user-settings/table-set-flags entry) :table_id table-id))
+        flagged    (for [[table-id entry] tables
+                         field-entry      (:fields entry)
+                         :when            (seq (:user_set field-entry))]
+                     [table-id field-entry])
+        field-ids  (when (seq flagged)
+                     (field-ids-by-path (distinct (map first flagged))))]
+    (doseq [batch (partition-all pages/query-batch-size table-rows)]
+      (sync.db/insert-table-user-settings! (vec batch)))
+    (doseq [batch (partition-all pages/query-batch-size flagged)]
+      (sync.db/insert-field-user-settings!
+       (mapv (fn [[table-id field-entry]]
+               (assoc (set-flags warehouse-schema.user-settings/field-set-flags field-entry)
+                      :field_id (field-ids [table-id (vec (:path field-entry))])))
+             batch)))))
 
 (defn- after-insert!
   "Do for the new `tables` of the Database with `database-id`, all at once, what the Table and Field models' insert
@@ -296,15 +336,18 @@
 (defn- apply-tables!
   "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not, once for each key,
   with its Fields. They are inserted a batch of rows at a time, not through the models, and [[after-insert!]] does
-  what the models' hooks would."
+  what the models' hooks would. A new Table or Field with columns that a user set on the sender gets a settings row
+  that says so."
   [database-id {:keys [tables]}]
   (let [existing    (tables-by-key database-id (map pages/table-key tables))
         new-entries (m/distinct-by unique-key (remove (comp existing unique-key) tables))]
     (doseq [batch (partition-all pages/query-batch-size new-entries)]
       (sync.db/insert-table-rows! (mapv #(table-row database-id %) batch)))
     (let [inserted (tables-by-key database-id (map pages/table-key new-entries))
-          fields   (insert-fields! (mapv (juxt (comp :id inserted unique-key) identity) new-entries))]
+          by-id    (mapv (juxt (comp :id inserted unique-key) identity) new-entries)
+          fields   (insert-fields! by-id)]
       (when (seq inserted)
+        (insert-user-settings! by-id)
         (after-insert! database-id (vals inserted)))
       {:tables_inserted (count new-entries)
        :tables_existing (count (filter (comp existing unique-key) tables))
@@ -313,65 +356,93 @@
 (defn- target-key [{{table-schema :schema table-name :table} :target}]
   [table-schema table-name])
 
-(defn- fk-changes
-  "The FK targets, by Field id, that the links of `batch` set: for a Field whose FK target is empty, when the receiver
-  has both the Field and its target. A link it cannot resolve is skipped and logged."
+(defn- fk-pairs
+  "`[fk-field target-field]` for each link of the links `batch` whose Table the Database with `database-id` has as an
+  active Table. Either Field is nil when this Metabase does not have it."
   [database-id {:keys [tables]}]
   (let [fk-tables (tables-by-key database-id (map pages/table-key tables) :active-only? true)
         targets   (tables-by-key database-id (into [] (comp (mapcat :links) (map target-key)) tables)
                                  :active-only? true)
-        fields    (pages/in-batches sync.db/link-fields-of-tables
-                                    (vec (distinct (map :id (concat (vals fk-tables) (vals targets))))))
-        by-table  (field-index fields)]
-    (into {}
-          (for [{:keys [links] :as links-table} tables
-                :let  [table-id (:id (fk-tables (unique-key links-table)))]
-                :when table-id
-                {:keys [field target]} links
-                :let  [fk-field     (resolve-field by-table table-id field)
-                       target-field (resolve-field by-table
-                                                   (:id (targets (unique-key {:schema (:schema target)
-                                                                              :name   (:table target)})))
-                                                   (:field target))]
-                :when (or (and fk-field target-field)
-                          (log/warnf "Skipping an FK link of Table %d: this Metabase does not have %s"
-                                     table-id (if fk-field "its target" "its Field")))
-                :when (nil? (:fk_target_field_id fk-field))]
-            [(:id fk-field) (:id target-field)]))))
+        by-table  (field-index (pages/in-batches sync.db/top-level-fields-of-tables
+                                                 (vec (distinct (map :id (concat (vals fk-tables) (vals targets)))))))]
+    (for [{:keys [links] :as links-table} tables
+          :let  [table-id (:id (fk-tables (unique-key links-table)))]
+          :when table-id
+          {:keys [field target]} links]
+      [(resolve-field by-table table-id field)
+       (resolve-field by-table
+                      (:id (targets (unique-key {:schema (:schema target) :name (:table target)})))
+                      (:field target))])))
+
+(defn- user-set-columns
+  "The columns that a user set, by Field id, for each of the Fields with `field-ids` that has a settings row."
+  [field-ids]
+  (into {}
+        (map (juxt :field_id warehouse-schema.user-settings/user-set-field-columns))
+        (pages/in-batches sync.db/field-user-settings-of-fields (vec field-ids))))
+
+(defn- fk-changes
+  "What sync writes when it finds that `fk-field` points at `target-field`: the target, the FK semantic type, and no
+  automatic list of values. The other columns of `user-set`, the ones a user set on this Field, are left as they are.
+  The target is always written: it is empty, and the link is what the seed is here to copy."
+  [fk-field target-field user-set]
+  (apply dissoc
+         (cond-> {:fk_target_field_id (:id target-field) :semantic_type :type/FK}
+           (= "auto-list" (:has_field_values fk-field)) (assoc :has_field_values nil))
+         (disj user-set :fk_target_field_id)))
 
 (defn- apply-links!
-  "Set the FK targets that the links of `batch` give and that are empty, one Field at a time through the model, as
-  sync does."
+  "Fill the FK targets that the links of `batch` give and that are empty, one Field at a time through the model, with
+  what sync writes for an FK. A link whose Field or target this Metabase does not have is skipped, and the batch's
+  skipped links are logged as one count."
   [database-id batch]
-  (let [changes (fk-changes database-id batch)]
-    (doseq [[field-id target-id] changes]
-      (sync.db/update-field! field-id {:fk_target_field_id target-id}))
-    {:fks_set (count changes)}))
+  (let [pairs    (fk-pairs database-id batch)
+        fillable (into {}
+                       (comp (filter (fn [[fk-field target-field]]
+                                       (and fk-field target-field (nil? (:fk_target_field_id fk-field)))))
+                             (map (fn [[fk-field :as pair]] [(:id fk-field) pair])))
+                       pairs)
+        skipped  (count (remove (partial every? some?) pairs))
+        user-set (user-set-columns (keys fillable))]
+    (when (pos? skipped)
+      (log/warnf "Skipped %d FK links of Database %d: this Metabase does not have the Field or its target"
+                 skipped database-id))
+    (doseq [[field-id [fk-field target-field]] fillable]
+      (sync.db/update-field! field-id (fk-changes fk-field target-field (user-set field-id #{}))))
+    {:fks_set (count fillable)}))
+
+(defn- fields-to-give-values
+  "`[field-id entry]` for each entry of `field-values` whose Field, in the Table with `table-id`, this Metabase has,
+  that can have field values, and that has no FieldValues row of any type: the model's hooks would delete the others.
+  A Field is there once."
+  [table-id field-values by-table has-values]
+  (->> field-values
+       (keep (fn [{:keys [field] :as entry}]
+               (when-let [{field-id :id :as receiving} (resolve-field by-table table-id field)]
+                 (when (and (not (has-values field-id))
+                            (field-values/field-should-have-field-values? receiving))
+                   [field-id entry]))))
+       (m/distinct-by first)))
 
 (defn- apply-table-stats!
-  "Set the row count of `table` when it is empty, and insert a `:full` FieldValues row, through the model, for each
-  Field of the stats `entry` that has no FieldValues row of any type: the model's hooks would delete the others.
-  Returns the counts."
+  "Set the row count of `table` when it is empty, and insert a `:full` FieldValues row, through the model, for each of
+  the [[fields-to-give-values]] of the stats `entry`. Returns the counts."
   [{table-id :id :as table} {:keys [estimated_row_count field_values]} by-table has-values]
   (let [row-count? (and (some? estimated_row_count) (nil? (:estimated_row_count table)))
-        inserted   (into []
-                         (keep (fn [{:keys [field values has_more_values]}]
-                                 (when-let [{field-id :id} (resolve-field by-table table-id field)]
-                                   (when-not (has-values field-id)
-                                     (sync.db/insert-full-field-values! field-id {:values          values
-                                                                                  :has_more_values has_more_values})))))
-                         field_values)]
+        to-fill    (fields-to-give-values table-id field_values by-table has-values)]
+    (doseq [[field-id {:keys [values has_more_values]}] to-fill]
+      (sync.db/insert-full-field-values! field-id {:values values :has_more_values has_more_values}))
     (when row-count?
       (sync.db/update-table! table-id {:estimated_row_count estimated_row_count}))
     {:row_counts_set        (if row-count? 1 0)
-     :field_values_inserted (count inserted)}))
+     :field_values_inserted (count to-fill)}))
 
 (defn- apply-stats!
-  "Apply the stats of `batch` to the active Tables of the Database with `database-id` that have its keys."
+  "Apply the stats of `batch` to the active Tables of the Database with `database-id` that have its keys, each once."
   [database-id {:keys [tables]}]
   (let [receiving  (tables-by-key database-id (map pages/table-key tables) :active-only? true)
         table-ids  (mapv :id (vals receiving))
-        by-table   (field-index (pages/in-batches sync.db/link-fields-of-tables table-ids))
+        by-table   (field-index (pages/in-batches sync.db/top-level-fields-of-tables table-ids))
         has-values (into #{} (mapcat sync.db/field-ids-with-field-values)
                          (partition-all pages/query-batch-size table-ids))]
     (transduce (keep (fn [entry]
@@ -379,7 +450,7 @@
                          (apply-table-stats! table entry by-table has-values))))
                (completing (partial merge-with +))
                {:row_counts_set 0 :field_values_inserted 0}
-               tables)))
+               (m/distinct-by unique-key tables))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------
 
@@ -398,27 +469,92 @@
     (or (not= (count paths) (count known))
         (some #(and (next %) (not (known (pop %)))) paths))))
 
-(defn- check-response!
-  "Throw unless `response` is an answer this version can apply: of its format version, with batch types it knows, and
-  of the right shape, with each nested Field's parent in its Table's entry. The error says nothing of the answer's values: they are warehouse metadata."
+(def ^:private enum-columns
+  "The values of the columns that a model takes as any keyword, by model. The models' transforms check the others."
+  {:model/Field {:visibility_type  (set lib.schema.metadata/column-visibility-types)
+                 :has_field_values (set lib.schema.metadata/column-has-field-values-options)
+                 :data_sensitivity (set lib.schema.metadata/column-data-sensitivity-types)}
+   :model/Table {:visibility_type table/visibility-types
+                 :field_order     table/field-orderings}})
+
+(defn- accepted-row?
+  "Whether this Metabase's `model` takes `row`: it has the shape of `row-schema`, its [[enum-columns]] have values
+  this version knows, and the model's transforms take its values. A transform throws for a type that this version
+  does not know."
+  [model row-schema row]
+  (and (mr/validate row-schema row)
+       (every? (fn [[column allowed]]
+                 (let [value (get row column)]
+                   (or (nil? value) (contains? allowed value))))
+               (enum-columns model))
+       (some? (sync.db/row-as-written model row))))
+
+(defn- accepted-table?
+  "Whether the rows that the Table entry `table` gives, its own and its Fields', are rows this Metabase takes for the
+  Database with `database-id`."
+  [database-id table]
+  (try
+    (and (accepted-row? :model/Table ::warehouse-schema.schema/table.update (table-row database-id table))
+         (every? #(accepted-row? :model/Field
+                                 ::warehouse-schema.schema/field.update
+                                 (field-row nil nil (update % :path vec)))
+                 (:fields table)))
+    (catch Exception _
+      false)))
+
+(defn- table-entries
+  "The Table entries of the tables batches of `response`."
   [response]
-  (when (not= wire/format-version (:format_version response))
-    (throw (refused (tru "The other Metabase sends format version {0}, and this Metabase reads version {1}."
-                         (pr-str (:format_version response)) wire/format-version)
-                    "metadata-sync-format-version-differs")))
-  (when-let [unknown (seq (into (sorted-set)
-                                (comp (filter map?) (keep :type) (remove known-batch-types) (map str))
-                                (when (sequential? (:batches response)) (:batches response))))]
-    (throw (refused (tru "The other Metabase sent a batch of type {0}, which this version does not know."
-                         (str/join ", " unknown))
-                    "metadata-sync-unknown-batch-type")))
+  (for [{batch-type :type :keys [tables]} (:batches response)
+        :when (= "tables" batch-type)
+        table tables]
+    table))
+
+(defn- check-format-version! [response]
+  (let [version (:format_version response)]
+    (when (not= wire/format-version version)
+      (throw (refused (if (int? version)
+                        (tru "The other Metabase sends format version {0}, and this Metabase reads version {1}."
+                             (str version) (str wire/format-version))
+                        (tru "The other Metabase sends no format version. This Metabase reads version {0}."
+                             (str wire/format-version)))
+                      "metadata-sync-format-version-differs")))))
+
+(defn- check-batch-types! [{:keys [batches]}]
+  (when (and (sequential? batches)
+             (some #(and (map? %) (some? (:type %)) (not (known-batch-types (:type %)))) batches))
+    (throw (refused (tru "The other Metabase sent a batch of a type that this version does not know.")
+                    "metadata-sync-unknown-batch-type"))))
+
+(defn- check-shape! [response]
   (when-not (and (mr/validate ::wire/response response)
-                 (not-any? broken-field-paths? (for [{batch-type :type :keys [tables]} (:batches response)
-                                                     :when (= "tables" batch-type)
-                                                     table tables]
-                                                 table)))
+                 (not-any? broken-field-paths? (table-entries response)))
     (throw (refused (tru "The answer of the other Metabase does not have the shape this version applies.")
                     "metadata-sync-malformed-response"))))
+
+(defn- check-database! [database response]
+  (when-not (and (= (:name database) (:database response))
+                 (= (u/qualified-name (:engine database)) (:engine response)))
+    (throw (refused (tru "The answer of the other Metabase is for another Database than {0}."
+                         (pr-str (:name database)))
+                    "metadata-sync-answer-of-another-database"))))
+
+(defn- check-values! [database response]
+  (when-not (every? #(accepted-table? (:id database) %) (table-entries response))
+    (throw (refused (tru "The answer of the other Metabase has a value that this version does not accept.")
+                    "metadata-sync-malformed-response"))))
+
+(defn- check-response!
+  "Throw unless `response` is an answer this version can apply to `database`: of its format version, with batch types
+  it knows, of the right shape, with each nested Field's parent in its Table's entry, for this Database by name and
+  engine, and with values that this Metabase's Table and Field models take. No error repeats a value of the answer:
+  they are warehouse metadata."
+  [database response]
+  (check-format-version! response)
+  (check-batch-types! response)
+  (check-shape! response)
+  (check-database! database response)
+  (check-values! database response))
 
 (defn- apply-batch!
   "Apply one `batch` to the Database `database`, and return the counts."
@@ -439,7 +575,7 @@
     (t2/with-transaction [_conn]
       (dependencies.hooks/with-batched-marks
         (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches)))
-    (catch Throwable e
+    (catch Exception e
       (throw (ex-info (tru "The answer of the other Metabase could not be applied, and nothing of it was written.")
                       {:status-code 422 :error-code "metadata-sync-apply-failed"}
                       e)))))
@@ -461,27 +597,26 @@
    [:counts ::counts]])
 
 (mu/defn apply-response! :- ::result
-  "Apply the other Metabase's `response` to a [[request]] for the Database with `database-id`, and return the cursor of
-  the next request (`:next`), when there is one, and counts of what it did.
+  "Apply the other Metabase's `response` to a [[request!]] for the Database with `database-id`, and return the cursor
+  of the next request (`:next`), when there is one, and counts of what it did.
 
   Before any write it refuses, with an `:error-code` in the ex-data, an answer of another format version, one with a
-  batch type it does not know, and a malformed one. An answer is applied in one transaction, so one that fails while
-  it is written writes nothing (`metadata-sync-apply-failed`), and can be sent again. Each Table a seed inserts counts
-  as synced at once; once an answer has no next cursor, the Database counts as synced too. An answer with no batches
-  and no cursor therefore marks the Database as synced, also when it has no Tables.
+  batch type it does not know, a malformed one, one with a value this version does not accept, and one that is for
+  another Database. An answer is applied in one transaction, so one that fails while it is written writes nothing
+  (`metadata-sync-apply-failed`), and can be sent again. Each Table a seed inserts counts as synced at once; once an
+  answer has no next cursor, the Database counts as synced too. An answer with no batches and no cursor therefore
+  marks the Database as synced, also when it has no Tables. A Table the receiver had keeps its sync status.
 
-  From the first [[request]] until the last answer, no sync of the Database runs in this JVM, and while a sync of it
+  From the first [[request!]] until the last answer, no sync of the Database runs in this JVM, and while a sync of it
   runs, a request or an answer is refused (`metadata-sync-sync-running`): both insert Tables. See the lease above."
   [database-id :- ::lib.schema.id/database
    response    :- [:map {::mr/deliberately-open true
                          :description           "the other Metabase's answer, decoded from JSON, which this checks"}]]
   (let [database (receiving-database database-id)]
-    (check-response! response)
-    (check-no-sync-running! database-id)
-    (renew-lease! database-id)
+    (check-response! database response)
+    (take-lease! database-id)
     (let [counts (apply-batches! database (:batches response))]
       (when-not (:next response)
-        (sync-util/set-initial-table-sync-complete-for-db! database)
         (sync-util/set-initial-database-sync-complete! database)
         (end-lease! database-id))
       (cond-> {:counts counts}

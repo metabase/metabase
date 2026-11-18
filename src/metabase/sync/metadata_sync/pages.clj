@@ -1,10 +1,10 @@
 (ns metabase.sync.metadata-sync.pages
   "How the metadata of a Database is cut into the parts that one answer holds.
 
-  The metadata is sent as three kinds, in this order: the tables (each Table with its Fields) of every Table, then the links of
-  every Table, then the stats of every Table. So the Tables that a link points at are on the receiver before the link.
-  Each kind is sent in key order, and a cursor says where the next answer starts. The sender keeps no state: a cursor
-  holds all of it. These are pure functions: they read nothing."
+  The metadata is sent as three kinds, in this order: the tables (each Table with its Fields) of every Table, then
+  the links of every Table, then the stats of every Table. So the Tables that a link points at are on the receiver
+  before the link. Each kind is sent in key order, and a cursor says where the next answer starts. The sender keeps no
+  state: a cursor holds all of it. Nothing here reads the app DB itself: [[in-batches]] calls the query it is given."
   (:require
    [metabase.util.malli.registry :as mr]))
 

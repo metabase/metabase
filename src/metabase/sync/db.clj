@@ -715,12 +715,13 @@
 ;;; --------------------------------------- Metadata sync: what is sent ---------------------------------------
 
 (mu/defn databases-named :- [:sequential (ms/InstanceOf :model/Database)]
-  "The Databases named `database-name`, as the app DB's collation compares names, leaving out stubs and the
-  destination Databases of database routing."
+  "The Databases named `database-name`, as the app DB's collation compares names, leaving out stubs, the audit
+  Database and the destination Databases of database routing."
   [database-name :- :string]
   (t2/select :model/Database {:where    [:and
                                          [:= :name [:auto/param database-name]]
                                          [:= :is_stub false]
+                                         [:= :is_audit false]
                                          [:= :router_database_id nil]]
                               :order-by [[:id :asc]]}))
 
@@ -750,11 +751,13 @@
   (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn- described-field-clause
-  "Honey SQL clause matching the Fields aliased `field-alias` that metadata sync sends: active and not retired. A
-  nested Field is sent too, unless an ancestor is not."
+  "Honey SQL clause matching the Fields aliased `field-alias` that metadata sync sends: active and not retired, and
+  not a defective duplicate, a legacy row with the name of another Field. A nested Field is sent too, unless an
+  ancestor is not."
   [field-alias :- :keyword]
   [:and
    [:= (u/qualified-key field-alias :active) true]
+   [:= (u/qualified-key field-alias :is_defective_duplicate) false]
    [:or
     [:= (u/qualified-key field-alias :visibility_type) nil]
     [:not= (u/qualified-key field-alias :visibility_type) "retired"]]])
@@ -766,6 +769,17 @@
   [:and
    (described-field-clause field-alias)
    [:= (u/qualified-key field-alias :parent_id) nil]])
+
+(mu/defn- field-values-field-clause
+  "Honey SQL clause matching the Fields aliased `field-alias` whose field values metadata sync sends: the top-level
+  Fields it sends that are not sensitive or hidden. Such a Field must have no cached values, but can still have a row
+  of them from before it was marked."
+  [field-alias :- :keyword]
+  [:and
+   (top-level-field-clause field-alias)
+   [:or
+    [:= (u/qualified-key field-alias :visibility_type) nil]
+    [:not-in (u/qualified-key field-alias :visibility_type) ["sensitive" "hidden"]]]])
 
 (mu/defn described-fields :- [:sequential ::warehouse-schema.schema/field]
   "The Fields of the Tables with `table-ids` that metadata sync sends: active and not retired, nested ones too."
@@ -829,8 +843,9 @@
 (mu/defn described-full-field-values-counts :- [:sequential [:map {:closed true}
                                                              [:table_id           ::lib.schema.id/table]
                                                              [:field_values_count :int]]]
-  "The count of the FieldValues rows of type `:full` of the described top-level Fields (active, not retired) of each
-  Table of the Database with `database-id`, for the Tables that have any. It reads no values."
+  "The count of the FieldValues rows of type `:full` of the described top-level Fields that can have field values
+  (active, not retired, sensitive or hidden) of each Table of the Database with `database-id`, for the Tables that
+  have any. It reads no values."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select   [:f.table_id [[:count :*] :field_values_count]]
              :from     [[(t2/table-name :model/FieldValues) :v]]
@@ -838,7 +853,7 @@
                         [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
              :where    [:and
                         [:= :t.db_id [:auto/param database-id]]
-                        (top-level-field-clause :f)
+                        (field-values-field-clause :f)
                         [:= :v.type "full"]]
              :group-by [:f.table_id]}))
 
@@ -850,8 +865,9 @@
                                                       [:has_more_values       [:maybe :boolean]]
                                                       [:updated_at            (ms/InstanceOfClass
                                                                                java.time.OffsetDateTime)]]]
-  "The FieldValues of type `:full` of the described top-level Fields (active, not retired) of the Tables with
-  `table-ids`: each with its Table id and its Field's name. Per-user kinds are left out."
+  "The FieldValues of type `:full` of the described top-level Fields that can have field values (active, not retired,
+  sensitive or hidden) of the Tables with `table-ids`: each with its Table id and its Field's name. Per-user kinds
+  are left out."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (map #(into {} %)
        (t2/select [:model/FieldValues :id [:f.table_id :table_id] [:f.name :field_name] :values :has_more_values
@@ -859,8 +875,43 @@
                   {:join  [[(t2/table-name :model/Field) :f] [:= :f.id :metabase_fieldvalues.field_id]]
                    :where [:and
                            [:in :f.table_id table-ids]
-                           (top-level-field-clause :f)
+                           (field-values-field-clause :f)
                            [:= :metabase_fieldvalues.type "full"]]})))
+
+(mu/defn field-user-set-flags :- [:sequential [:map {:closed true}
+                                               [:field_id               ::lib.schema.id/field]
+                                               [:description_set        [:maybe :boolean]]
+                                               [:semantic_type_set      [:maybe :boolean]]
+                                               [:fk_target_field_id_set [:maybe :boolean]]]]
+  "The flags that say which columns a user set, for each Field of the Tables with `table-ids` that has a true one."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/query {:select [:s.field_id :s.description_set :s.semantic_type_set :s.fk_target_field_id_set]
+             :from   [[(t2/table-name :model/FieldUserSettings) :s]]
+             :join   [[(t2/table-name :model/Field) :f] [:= :f.id :s.field_id]]
+             :where  [:and
+                      [:in :f.table_id table-ids]
+                      [:or
+                       [:= :s.description_set true]
+                       [:= :s.semantic_type_set true]
+                       [:= :s.fk_target_field_id_set true]]]}))
+
+(mu/defn table-user-set-flags :- [:sequential [:map {:closed true}
+                                               [:table_id            ::lib.schema.id/table]
+                                               [:description_set     [:maybe :boolean]]
+                                               [:visibility_type_set [:maybe :boolean]]
+                                               [:data_layer_set      [:maybe :boolean]]
+                                               [:data_source_set     [:maybe :boolean]]]]
+  "The flags that say which columns a user set, for each Table with one of `table-ids` that has a true one."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/query {:select [:s.table_id :s.description_set :s.visibility_type_set :s.data_layer_set :s.data_source_set]
+             :from   [[(t2/table-name :model/TableUserSettings) :s]]
+             :where  [:and
+                      [:in :s.table_id table-ids]
+                      [:or
+                       [:= :s.description_set true]
+                       [:= :s.visibility_type_set true]
+                       [:= :s.data_layer_set true]
+                       [:= :s.data_source_set true]]]}))
 
 ;;; -------------------------------------- Metadata sync: what is written --------------------------------------
 
@@ -872,36 +923,59 @@
                                    [:= :db_id [:auto/param database-id]]
                                    [:in :name table-names]]}))
 
-(mu/defn link-fields-of-tables :- [:sequential [:map {:closed true}
-                                                [:id                 ::lib.schema.id/field]
-                                                [:table_id           ::lib.schema.id/table]
-                                                [:name               :string]
-                                                [:fk_target_field_id [:maybe ::lib.schema.id/field]]]]
-  "The `id`, `table_id`, `name` and `fk_target_field_id` of the Fields of the Tables with `table-ids` that a link can
-  start or end at: active, top-level and not retired."
+(mu/defn top-level-fields-of-tables :- [:sequential [:map {:closed true}
+                                                     [:id                 ::lib.schema.id/field]
+                                                     [:table_id           ::lib.schema.id/table]
+                                                     [:name               :string]
+                                                     [:fk_target_field_id [:maybe ::lib.schema.id/field]]
+                                                     [:base_type          :string]
+                                                     [:visibility_type    [:maybe :string]]
+                                                     [:has_field_values   [:maybe :string]]
+                                                     [:preview_display    [:maybe :boolean]]]]
+  "The Fields of the Tables with `table-ids` that a link can start or end at, and that field values can be for:
+  active, top-level and not retired. Each has its `id`, `table_id`, `name` and `fk_target_field_id`, and the columns
+  that say whether it can have field values, as the app DB holds them: strings, not keywords."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select [:f.id :f.table_id :f.name :f.fk_target_field_id]
+  (t2/query {:select [:f.id :f.table_id :f.name :f.fk_target_field_id :f.base_type :f.visibility_type
+                      :f.has_field_values :f.preview_display]
              :from   [[(t2/table-name :model/Field) :f]]
              :where  [:and
                       [:in :f.table_id table-ids]
                       (top-level-field-clause :f)]}))
 
+(mu/defn field-user-settings-of-fields :- [:sequential ::warehouse-schema.schema/field-user-settings]
+  "The FieldUserSettings of the Fields with `field-ids` that have one."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select :model/FieldUserSettings :field_id [:in field-ids]))
+
+(mu/defn insert-field-user-settings!
+  "Insert the FieldUserSettings `rows`, through the model."
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
+  (t2/insert! :model/FieldUserSettings rows))
+
+(mu/defn insert-table-user-settings!
+  "Insert the TableUserSettings `rows`, through the model."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
+  (t2/insert! :model/TableUserSettings rows))
+
+(defn row-as-written
+  "`row` of `model` as a raw insert writes it: with the model's transforms applied to each value. Throws when a
+  transform refuses a value, as an insert through the model does."
+  [model row]
+  (reduce-kv (fn [row column {to-db :in}]
+               (cond-> row
+                 (and to-db (some? (get row column))) (update column to-db)))
+             row
+             (t2/transforms model)))
+
 (defn- insert-rows-as-written!
   "Insert `rows` of `model` with one multi-row insert, into its table and not through the model, so none of its hooks
-  run, but with its transforms applied to each value and the insert time."
+  run, but each as [[row-as-written]], with the insert time."
   [model rows]
-  (let [transforms (t2/transforms model)
-        now        (mi/now)]
+  (let [now (mi/now)]
     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the callers' callers log the rows
     (t2/insert! (t2/table-name model)
-                (mapv (fn [row]
-                        (-> (reduce-kv (fn [row column {to-db :in}]
-                                         (cond-> row
-                                           (and to-db (some? (get row column))) (update column to-db)))
-                                       row
-                                       transforms)
-                            (assoc :created_at now :updated_at now)))
-                      rows))))
+                (mapv #(assoc (row-as-written model %) :created_at now :updated_at now) rows))))
 
 (mu/defn insert-table-rows!
   "Insert the Table `rows` with one multi-row insert, not through the model, so none of the model's hooks run: the

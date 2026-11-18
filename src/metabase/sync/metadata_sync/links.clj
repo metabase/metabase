@@ -1,6 +1,6 @@
 (ns metabase.sync.metadata-sync.links
   "The links of the Tables that one instance sends another: the values of a Table that point at another Table, by
-  name. A link is an FK target (`fk`). Display remaps are not sent: a receiver gets them from git.
+  name. A link is an FK target (`fk`). Display remaps are not sent: they are content, not warehouse metadata.
 
   A link is only part of a Table's links when both of its ends are described: its Table and Field, and the Table and
   Field it points at."

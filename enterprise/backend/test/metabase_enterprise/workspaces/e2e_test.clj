@@ -1024,14 +1024,18 @@
 
 (defn- seed-over-http!
   "Seed the receiver's Database `receiver-id` from the sender's Database named `sender-name` as the app does. Returns
-  the HTTP statuses, the number of rounds and the summed counts, and the error body of a call that failed."
+  the HTTP statuses, the number of rounds and the summed counts, and the error body of a call that failed. Both
+  Databases are in one app DB here, where two cannot have one name, so the request is sent with the sender's name and
+  the answer gets the name of the request back."
   [api-key sender-name receiver-id]
   (loop [after nil rounds 1 statuses [] counts {}]
     (let [request  (post-metadata! api-key "request" (cond-> {:database_id receiver-id} after (assoc :after after)))
           answer   (when (= 200 (:status request))
                      (post-metadata! api-key "changes" (assoc (:body request) :database sender-name)))
           applied  (when (= 200 (:status answer))
-                     (post-metadata! api-key "apply" {:database_id receiver-id :response (:body answer)}))
+                     (post-metadata! api-key "apply" {:database_id receiver-id
+                                                      :response    (assoc (:body answer)
+                                                                          :database (:database (:body request)))}))
           statuses (into statuses (keep :status) [request answer applied])
           counts   (merge-with + counts (get-in applied [:body :counts]))]
       (cond
