@@ -78,13 +78,12 @@ export type AllCollectionsWhyPage = {
   collections: WhyTarget[];
 };
 
-/** The person's whole access: what's blocked and filtered, then counts of what they can open. */
+/** The person's whole access: the collections they can open and the ones they can't, and every table with its status. */
 export type SummaryWhyPage = {
   kind: "summary";
   verdict: WhyVerdict;
-  blocked: WhyTarget[];
-  filtered: WhyTarget[];
   collections: WhyTarget[];
+  blockedCollections: WhyTarget[];
   tables: WhyTarget[];
 };
 
@@ -330,10 +329,9 @@ function getSummaryPage(
             : "allowed",
       text: t`${who} can open ${collectionCount} and view ${tableCount}.`,
     },
-    blocked,
-    filtered,
     collections: openCollections,
-    tables: viewableTables,
+    blockedCollections: collectionTargets.filter(isBlocking),
+    tables: tableTargets,
   };
 }
 
@@ -562,14 +560,14 @@ function getNoResultsVerdictText(
   }
 }
 
-function isBlocking({ column, cell }: WhyTarget) {
+export function isBlocking({ column, cell }: WhyTarget) {
   return (
     (column === "view_data" && cell.value === "blocked") ||
     (column === "collection" && cell.value === "none")
   );
 }
 
-function isFiltered(target: WhyTarget) {
+export function isFiltered(target: WhyTarget) {
   return target.column === "view_data" && target.security != null;
 }
 

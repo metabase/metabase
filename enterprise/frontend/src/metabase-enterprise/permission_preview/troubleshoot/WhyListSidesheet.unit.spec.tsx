@@ -443,47 +443,149 @@ describe("WhyListSidesheet", () => {
     expect(screen.getAllByText("· Sample Database")).toHaveLength(2);
   });
 
-  it("names the database after each table in See everything: Blocked, Filtered rows, and Has access to Tables", async () => {
-    setup({
-      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tableIds: [ORDERS_ID, REVIEWS_ID, ACCOUNTS_ID],
-    });
-    await userEvent.click(
-      await screen.findByText("See everything Sandy Sales can access"),
-    );
+  it("names the database after each table in See everything: Rows filtered, Blocked, and the Can view fold", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (4)"));
 
+    expect(await findToggle("Orders · Sample Database")).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", {
-        name: /^Orders · Sample Database/,
-      }),
+      screen.getByRole("group", { name: "Reviews · Sample Database" }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Can't access (1)"));
+    await userEvent.click(getToggle("2 tables"));
     expect(
-      await screen.findByRole("group", { name: "Reviews · Sample Database" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("group", {
+      await screen.findByRole("group", {
         name: "Accounts · Sample Database from Sales",
       }),
     ).toBeInTheDocument();
   });
 
   it("names a sandboxed table's status Rows filtered in See everything's Tables, and Can view for the rest", async () => {
-    setup({
-      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tableIds: [ORDERS_ID, ACCOUNTS_ID],
-    });
-    await userEvent.click(
-      await screen.findByText("See everything Sandy Sales can access"),
-    );
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (4)"));
+    await userEvent.click(await findToggle("2 tables"));
 
-    const orders = await findRowStatus("Orders · Sample Database from Sales");
+    // the Tables header's counts say it too, so skip the buttons that fold
+    const orders = (
+      await screen.findAllByRole("button", { name: /Rows filtered/ })
+    ).find((button) => !button.hasAttribute("aria-expanded"));
 
     expect(orders).toHaveTextContent("Rows filtered");
     expect(orders).not.toHaveTextContent("Row and column security");
     expect(
-      getRowStatus("Accounts · Sample Database from Sales"),
+      await findRowStatus("Accounts · Sample Database from Sales"),
     ).toHaveTextContent("Can view");
+  });
+
+  it("starts every See everything section folded, with its counts per status under its name", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      mainCollections: {
+        ...COLLECTIONS,
+        collections: [
+          ...COLLECTIONS.collections,
+          getCollection(17, "Product templates", 1, "none"),
+          getCollection(18, "Onboarding kit", 1, "none"),
+        ],
+      },
+    });
+    await openSeeEverything();
+
+    const folds = [
+      getFold("Collections (2)"),
+      getFold("Tables (4)"),
+      getFold("Can't access (2)"),
+    ];
+    expect(within(folds[0]).getByText("1 Curate · 1 View")).toBeInTheDocument();
+    expect(
+      within(folds[1]).getByText("1 Rows filtered · 1 Blocked · 2 Can view"),
+    ).toBeInTheDocument();
+    expect(within(folds[2]).getByText("2 collections")).toBeInTheDocument();
+    for (const fold of folds) {
+      expect(fold).toHaveAttribute("aria-expanded", "false");
+    }
+    expect(screen.queryByText("Has access to")).not.toBeInTheDocument();
+    expect(screen.queryByText("Filtered rows")).not.toBeInTheDocument();
+  });
+
+  it("says one collection in the Can't access count", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      mainCollections: {
+        ...COLLECTIONS,
+        collections: [
+          ...COLLECTIONS.collections,
+          getCollection(17, "Product templates", 1, "none"),
+        ],
+      },
+    });
+    await openSeeEverything();
+
+    expect(
+      within(getFold("Can't access (1)")).getByText("1 collection"),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves Can't access out when no collection is blocked, though a table is", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+
+    expect(screen.queryByText(/^Can't access/)).not.toBeInTheDocument();
+    expect(
+      within(getFold("Tables (4)")).getByText(/1 Blocked/),
+    ).toBeInTheDocument();
+  });
+
+  it("puts every table in Tables, Blocked ones too, with the filtered one opening to its rules", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (4)"));
+
+    const reviews = await findRowStatus("Reviews · Sample Database");
+    expect(reviews).toHaveTextContent("Blocked");
+    expect(reviews).not.toHaveAttribute("aria-expanded");
+    expect(getToggle("Orders · Sample Database")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(getVisibleTexts("Rules set by Sales")).toHaveLength(0);
+
+    await userEvent.click(getToggle("Orders · Sample Database"));
+
+    await waitFor(() =>
+      expect(getVisibleTexts("Rules set by Sales")).toHaveLength(1),
+    );
+    expect(getToggle("2 tables")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows a single table that can be viewed as a row of its own in See everything, not a fold of one", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, ACCOUNTS],
+    });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (2)"));
+
+    expect(
+      await findRowStatus("Accounts · Sample Database from Sales"),
+    ).toHaveTextContent("Can view");
+    expect(screen.queryByText("1 table")).not.toBeInTheDocument();
+    // a status nobody has is left out of the counts
+    expect(
+      within(getFold("Tables (2)")).getByText("1 Rows filtered · 1 Can view"),
+    ).toBeInTheDocument();
+  });
+
+  it("names no group under a collection in See everything, as it still does on All collections", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+    await userEvent.click(getFold("Collections (2)"));
+
+    expect(
+      await screen.findByRole("group", { name: "Sales reports" }),
+    ).toBeInTheDocument();
+    expect(getVisibleTexts("from Sales")).toHaveLength(0);
   });
 
   it("toggles a row from its name, and opens the table's detail from its status", async () => {
@@ -661,8 +763,6 @@ describe("WhyListSidesheet", () => {
     const summary = await screen.findByTestId("why-verdict");
     expect(summary).toHaveTextContent("Sandy Sales can open");
     expect(within(summary).queryByRole("img")).not.toBeInTheDocument();
-    expect(screen.getByText("Filtered rows")).toBeInTheDocument();
-    expect(screen.getByText("Has access to")).toBeInTheDocument();
   });
 
   it("keeps All permissions open after opening one of its lines and going Back", async () => {
@@ -926,10 +1026,10 @@ describe("WhyListSidesheet", () => {
 
     expect(
       await screen.findByRole("button", { name: /Collections \(5\)/ }),
-    ).toHaveAttribute("aria-expanded", "true");
-    // Product templates and the Reviews table
+    ).toHaveAttribute("aria-expanded", "false");
+    // Product templates; the Reviews table is in Tables
     expect(
-      screen.getByRole("button", { name: /Can't access \(2\)/ }),
+      screen.getByRole("button", { name: /Can't access \(1\)/ }),
     ).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -994,6 +1094,8 @@ type SetupOpts = {
   tenantCollections?: PreviewCollectionsResponse;
   /** The opened dashboard's name, Sales overview unless given. */
   dashboardName?: string;
+  /** The tables the person's databases hold, Orders, Reviews, Accounts and Invoices unless given. */
+  tables?: PreviewTableAccess[];
   /** The tables the dashboard uses, Orders unless given. */
   tableIds?: number[];
   /** Whether the dashboard opens, and whether its cards load; both allowed unless given. */
@@ -1021,6 +1123,7 @@ function setup({
   sharedCollections = NO_COLLECTIONS,
   tenantCollections = NO_COLLECTIONS,
   dashboardName = SALES_OVERVIEW.name,
+  tables = DATA.databases[0].tables,
   tableIds = [ORDERS_ID],
   dashboardRead = ALLOW,
   dashboardQuery = ALLOW,
@@ -1035,7 +1138,10 @@ function setup({
     name: dashboardName,
     table_ids: tableIds,
   });
-  setupPermissionPreviewDataEndpoint(DATA);
+  setupPermissionPreviewDataEndpoint({
+    ...DATA,
+    databases: [{ ...DATA.databases[0], tables }],
+  });
   setupPermissionDebugEndpoint(
     {
       userId: SANDY.id,
@@ -1133,6 +1239,32 @@ function getScrollContainer() {
     },
   });
   return container;
+}
+
+async function openSeeEverything() {
+  await userEvent.click(
+    await screen.findByText("See everything Sandy Sales can access"),
+  );
+  await screen.findByText(/^Tables \(/);
+}
+
+/** A See everything section's header, by its name; its counts are under the name. */
+function getFold(name: string) {
+  const fold = screen
+    .getAllByRole("button")
+    .find(
+      (button) =>
+        button.hasAttribute("aria-expanded") &&
+        within(button).queryByText(name) != null,
+    );
+  if (fold == null) {
+    throw new Error(`No section named ${name} opens in place`);
+  }
+  return fold;
+}
+
+function findToggle(name: string) {
+  return waitFor(() => getToggle(name));
 }
 
 /** A row that opens in place, by its name. */

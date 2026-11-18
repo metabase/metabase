@@ -511,9 +511,9 @@ describe("useWhyList", () => {
         ]),
       );
       // nor does their whole access count another tenant's collection as one they can't access
-      expect(result.current?.summary.blocked.map(({ title }) => title)).toEqual(
-        [],
-      );
+      expect(
+        result.current?.summary.blockedCollections.map(({ title }) => title),
+      ).toEqual([]);
     });
   });
 
@@ -529,7 +529,8 @@ describe("useWhyList", () => {
         kind: "partial",
         text: "Sandy Sales can open 1 collection and view 0 tables.",
       },
-      blocked: [{ title: "Orders" }],
+      blockedCollections: [],
+      tables: [{ title: "Orders" }],
     });
   });
 });

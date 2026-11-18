@@ -52,6 +52,8 @@ import {
   type SummaryWhyPage,
   type WhyPreview,
   type WhyVerdict,
+  isBlocking,
+  isFiltered,
   useWhyList,
 } from "./use-why-list";
 
@@ -906,7 +908,7 @@ function CollectionList({
   );
 }
 
-/** What the person can access first and unfolded, then what's filtered, then what they can't access, folded. */
+/** Collections, tables and what they can't access, each folded, with its counts per status under its name. */
 function SummaryCard({
   summary,
   onOpen,
@@ -914,46 +916,155 @@ function SummaryCard({
   summary: SummaryWhyPage;
   onOpen: (target: WhyTarget) => void;
 }) {
-  const { collections, tables, blocked } = summary;
+  const { collections, tables, blockedCollections } = summary;
   return (
     <SidesheetCard>
       <Verdict verdict={summary.verdict} hasIcon={false} />
-      {(collections.length > 0 || tables.length > 0) && (
-        <SidesheetCardSection title={t`Has access to`}>
-          <Stack gap="xs">
-            {collections.length > 0 && (
-              <Disclosure
-                rowKey="summary-collections"
-                label={t`Collections (${collections.length})`}
-                initiallyOpen
-              >
-                <AccessRows targets={collections} onOpen={onOpen} />
-              </Disclosure>
-            )}
-            {tables.length > 0 && (
-              <Disclosure
-                rowKey="summary-tables"
-                label={t`Tables (${tables.length})`}
-                initiallyOpen
-              >
-                <AccessRows targets={tables} onOpen={onOpen} />
-              </Disclosure>
-            )}
-          </Stack>
-        </SidesheetCardSection>
-      )}
-      <FilteredSection targets={summary.filtered} onOpen={onOpen} />
-      {blocked.length > 0 && (
-        <SidesheetCardSection>
-          <Disclosure
-            rowKey="summary-blocked"
-            label={t`Can't access (${blocked.length})`}
-          >
-            <AccessRows targets={blocked} onOpen={onOpen} />
-          </Disclosure>
-        </SidesheetCardSection>
-      )}
+      <SidesheetCardSection>
+        <Stack gap="sm">
+          {collections.length > 0 && (
+            <Disclosure
+              rowKey="summary-collections"
+              label={t`Collections (${collections.length})`}
+              breakdown={getCollectionsBreakdown(collections)}
+            >
+              <AccessRows
+                targets={collections}
+                hasGroup={false}
+                onOpen={onOpen}
+              />
+            </Disclosure>
+          )}
+          {tables.length > 0 && (
+            <Disclosure
+              rowKey="summary-tables"
+              label={t`Tables (${tables.length})`}
+              breakdown={getTablesBreakdown(tables)}
+            >
+              <SummaryTables tables={tables} onOpen={onOpen} />
+            </Disclosure>
+          )}
+          {blockedCollections.length > 0 && (
+            <Disclosure
+              rowKey="summary-blocked"
+              label={t`Can't access (${blockedCollections.length})`}
+              breakdown={ngettext(
+                msgid`${blockedCollections.length} collection`,
+                `${blockedCollections.length} collections`,
+                blockedCollections.length,
+              )}
+            >
+              <AccessRows targets={blockedCollections} onOpen={onOpen} />
+            </Disclosure>
+          )}
+        </Stack>
+      </SidesheetCardSection>
     </SidesheetCard>
+  );
+}
+
+/** "2 Curate · 4 View": the collections per status, Curate first. */
+function getCollectionsBreakdown(collections: WhyTarget[]) {
+  return ["write", "read"]
+    .map((value) => ({
+      count: collections.filter((target) => target.cell.value === value).length,
+      label: getWhyValueLabel("collection", value),
+    }))
+    .filter(({ count }) => count > 0)
+    .map(({ count, label }) => t`${count} ${label}`)
+    .join(" · ");
+}
+
+type TableStatus = "filtered" | "blocked" | "view";
+
+function getTableStatus(target: WhyTarget): TableStatus {
+  if (isBlocking(target)) {
+    return "blocked";
+  }
+  return isFiltered(target) ? "filtered" : "view";
+}
+
+/** "2 Rows filtered · 6 Can view": the tables per status, Rows filtered first, then Blocked, then Can view. */
+function getTablesBreakdown(tables: WhyTarget[]) {
+  const labels: Record<TableStatus, string> = {
+    filtered: t`Rows filtered`,
+    blocked: t`Blocked`,
+    view: t`Can view`,
+  };
+  return (["filtered", "blocked", "view"] as const)
+    .map((status) => ({
+      count: tables.filter((target) => getTableStatus(target) === status)
+        .length,
+      label: labels[status],
+    }))
+    .filter(({ count }) => count > 0)
+    .map(({ count, label }) => t`${count} ${label}`)
+    .join(" · ");
+}
+
+/**
+ * Every table: one that's filtered or blocked is a row of its own, a filtered one opening to its rules; two or more
+ * that can be viewed fold into one closed row, a single one is a row of its own.
+ */
+function SummaryTables({
+  tables,
+  onOpen,
+}: {
+  tables: WhyTarget[];
+  onOpen: (target: WhyTarget) => void;
+}) {
+  const filtered = tables.filter(
+    (target) => getTableStatus(target) === "filtered",
+  );
+  const blocked = tables.filter(
+    (target) => getTableStatus(target) === "blocked",
+  );
+  const viewable = tables.filter((target) => getTableStatus(target) === "view");
+  const viewableCount = viewable.length;
+  return (
+    <Box>
+      {filtered.map((target, index) => (
+        <ToggleRow
+          key={index}
+          rowKey={`summary-filtered-table-${index}`}
+          label={<TargetName target={target} />}
+          initiallyOpen={false}
+          status={<StatusLink target={target} onClick={() => onOpen(target)} />}
+        >
+          {target.security != null && (
+            <Stack gap="xs">
+              <Text component="div" c="text-secondary">
+                <SecurityRows security={target.security} />
+              </Text>
+              <Text size="sm" c="text-secondary">
+                {t`Rules set by ${target.security.group_name}`}
+              </Text>
+            </Stack>
+          )}
+        </ToggleRow>
+      ))}
+      <AccessRows targets={blocked} onOpen={onOpen} />
+      {viewableCount > 1 ? (
+        <ToggleRow
+          rowKey="summary-full-access-tables"
+          label={
+            <Text truncate="end">
+              {ngettext(
+                msgid`${viewableCount} table`,
+                `${viewableCount} tables`,
+                viewableCount,
+              )}
+            </Text>
+          }
+          initiallyOpen={false}
+          status={<Text c="text-secondary">{t`Can view`}</Text>}
+        >
+          <AccessRows targets={viewable} onOpen={onOpen} />
+        </ToggleRow>
+      ) : (
+        <AccessRows targets={viewable} onOpen={onOpen} />
+      )}
+    </Box>
   );
 }
 
@@ -1020,59 +1131,26 @@ function VerdictAlert({ verdict }: { verdict: WhyVerdict }) {
   );
 }
 
-/** One row per table under row security: an attribute per line, then the group that set the rules. */
-function FilteredSection({
-  targets,
-  onOpen,
-}: {
-  targets: WhyTarget[];
-  onOpen: (target: WhyTarget) => void;
-}) {
-  if (targets.length === 0) {
-    return null;
-  }
-  return (
-    <SidesheetCardSection title={t`Filtered rows`}>
-      <Box>
-        {targets.map((target, index) => (
-          <UnstyledButton
-            key={index}
-            className={S.row}
-            onClick={() => onOpen(target)}
-          >
-            <Flex align="center" gap="sm" justify="space-between">
-              <TargetName target={target} />
-              <Icon name="chevronright" c="text-secondary" />
-            </Flex>
-            {target.security != null && (
-              <Stack gap="xs" mt="xs">
-                <Text component="div" c="text-secondary">
-                  <SecurityRows security={target.security} />
-                </Text>
-                <Text size="sm" c="text-secondary">
-                  {t`Rules set by ${target.security.group_name}`}
-                </Text>
-              </Stack>
-            )}
-          </UnstyledButton>
-        ))}
-      </Box>
-    </SidesheetCardSection>
-  );
-}
-
 /** A collection or table, and the value it gets, "Curate · from Sales"; blocking values name no group. */
 function AccessRows({
   targets,
+  hasGroup = true,
   onOpen,
 }: {
   targets: WhyTarget[];
+  /** Whether each row names the group its value comes from. */
+  hasGroup?: boolean;
   onOpen: (target: WhyTarget) => void;
 }) {
   return (
     <Box>
       {targets.map((target, index) => (
-        <AccessRow key={index} target={target} onOpen={() => onOpen(target)} />
+        <AccessRow
+          key={index}
+          target={target}
+          hasGroup={hasGroup}
+          onOpen={() => onOpen(target)}
+        />
       ))}
     </Box>
   );
@@ -1082,6 +1160,7 @@ function AccessRow({
   target,
   label,
   value,
+  hasGroup = true,
   onOpen,
 }: {
   target: WhyTarget;
@@ -1089,6 +1168,8 @@ function AccessRow({
   label?: ReactNode;
   /** In place of "Curate · from Sales": a table's data reads "Full access". */
   value?: string;
+  /** Whether to name the group the value comes from, under the name. */
+  hasGroup?: boolean;
   onOpen: () => void;
 }) {
   const option = getPreviewOption(target.column, target.cell.value);
@@ -1099,7 +1180,7 @@ function AccessRow({
     <Row
       name={label ?? <TargetName target={target} />}
       detail={
-        value == null && group != null && !isBlocking
+        hasGroup && value == null && group != null && !isBlocking
           ? t`from ${group}`
           : undefined
       }
@@ -1214,24 +1295,36 @@ function StatusButton({
 function Disclosure({
   rowKey,
   label,
+  breakdown,
   initiallyOpen = false,
   children,
 }: {
   rowKey: string;
   label: string;
+  /** Under the label, dimmed, on one line that truncates. */
+  breakdown?: string;
   initiallyOpen?: boolean;
   children: ReactNode;
 }) {
   const [isExpanded, toggle] = useOpenRow(rowKey, initiallyOpen);
   return (
     <div>
-      <UnstyledButton aria-expanded={isExpanded} onClick={toggle}>
-        <Flex align="center" gap="xs">
+      <UnstyledButton aria-expanded={isExpanded} maw="100%" onClick={toggle}>
+        <Flex align="flex-start" gap="xs" wrap="nowrap">
           <Icon
             name={isExpanded ? "chevrondown" : "chevronright"}
             c="text-secondary"
+            mt="xxs"
+            style={{ flexShrink: 0 }}
           />
-          <Text c="text-secondary">{label}</Text>
+          <Stack gap={0} miw={0}>
+            <Text c="text-secondary">{label}</Text>
+            {breakdown != null && (
+              <Text size="sm" c="text-secondary" truncate="end">
+                {breakdown}
+              </Text>
+            )}
+          </Stack>
         </Flex>
       </UnstyledButton>
       <Collapse in={isExpanded}>{children}</Collapse>
