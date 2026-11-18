@@ -41,6 +41,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.workspaces.core :as workspaces]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
@@ -642,17 +643,24 @@
    (let [target (canonicalize-target (:id database) target)]
      (when-let [table (or (target-table (:id database) target)
                           (when create?
-                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+                            (u/prog1 (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))
+                              ;; In a workspace that the request names, a new Table is active only in that workspace.
+                              (when (workspaces/workspace-bound?)
+                                (transforms-base.db/update-table! (:id <>) {:active false})))))]
        ;; If the table has nil schema, check if the physical table actually lives under
-       ;; the driver's default schema. If so, fix the Table record before syncing.
-       (let [table (if (nil? (:schema table))
+       ;; the driver's default schema. If so, fix the Table record before syncing. Not in a workspace that the request
+       ;; names: the Table is shared, and the copy is not the physical table.
+       (let [table (if (and (nil? (:schema table)) (not (workspaces/workspace-bound?)))
                      (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
                        (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
                            (-> (transforms-base.db/table (:id table))
                                (t2/hydrate :db)))
                        table)
                      table)]
-         (sync/sync-table! table)
+         ;; In a workspace that the request names, the copy is recorded for the workspace, and the shared Table and
+         ;; Fields are not synced from it.
+         (when-not (workspaces/sync-copy-of-table! database table)
+           (sync/sync-table! table))
          table)))))
 
 (mu/defn activate-table-and-mark-computed!
@@ -664,7 +672,8 @@
                                                 :data_source :metabase-transform
                                                 :is_writable false)
                                 {:create? true})]
-    (when-not (:active table)
+    ;; In a workspace that the request names, the Table is active in that workspace only ([[sync-table!]]).
+    (when-not (or (:active table) (workspaces/workspace-bound?))
       (transforms-base.db/update-table! (:id table) {:active true}))
     table))
 
@@ -936,7 +945,9 @@
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
-      (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
+      ;; In a workspace that the request names, the Table is shared, and the run wrote the workspace's copy of it.
+      (when-not (workspaces/workspace-bound?)
+        (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)})))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try

@@ -206,7 +206,9 @@
               (binding [t2.connection/*current-connectable* nil]
                 (ws.remapping-cleanup/clear-mappings-for-iso! db
                                                               (:database_id wsd)
-                                                              (:output_namespace wsd)))))
+                                                              (:output_namespace wsd))
+                ;; The copies were in the iso namespace too.
+                (ws.db/delete-copies-of-database! (:workspace_id wsd) (:database_id wsd)))))
           (ws.db/update-workspace-database! workspace-database-id
                                             {:output_namespace ""
                                              :database_details {}
@@ -320,7 +322,8 @@
               ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
               ;; (mirrors `deprovision-workspace-database!`).
               (binding [t2.connection/*current-connectable* nil]
-                (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
+                (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema)
+                (ws.db/delete-copies-of-database! (:workspace_id wsd) (:database_id wsd)))))
           (ws.db/delete-workspace-database! (:id wsd))
           nil)))))
 

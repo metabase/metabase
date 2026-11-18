@@ -65,6 +65,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.workspaces.copy :as ws.copy]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
@@ -334,6 +335,25 @@
   :feature :none
   []
   (= :bound (:mode (current-workspace))))
+
+(defenterprise sync-copy-of-table!
+  "EE impl: in a workspace that the request names, record how the copy of `table` differs from the shared metadata
+   ([[ws.copy/record-copy!]]) and return true; elsewhere return false. Ungated like [[workspace-mode?]]."
+  :feature :none
+  [database table]
+  (if-let [workspace-id (when (workspace-bound?) (workspaces/current-workspace-id))]
+    (do (ws.copy/record-copy! workspace-id database table)
+        true)
+    false))
+
+(defenterprise apply-copy-metadata
+  "EE impl: in a workspace that the request names, `tables` with the workspace's copy rows over them
+   ([[ws.copy/apply-to-tables]]); elsewhere `tables`. Ungated like [[workspace-mode?]]."
+  :feature :none
+  [tables hydrate-fields]
+  (if-let [workspace-id (when (workspace-bound?) (workspaces/current-workspace-id))]
+    (ws.copy/apply-to-tables workspace-id tables hydrate-fields)
+    tables))
 
 (defenterprise workspace-connection-details
   "EE impl: the connection details the current workspace uses for the Database with `database-id`, over that

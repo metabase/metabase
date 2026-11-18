@@ -21,8 +21,9 @@
    ------------
    - `metadatas` applies `f` on the way out. Parent serves canonical from its cache;
      wrapper transforms; caller sees transformed.
-   - `cached-metadatas` does the same. Without this, callers reaching the parent's cache
-     directly via the `CachedMetadataProvider` API would bypass `f`.
+   - `cached-metadatas` does the same, with a spec that names the ids it reads. Without this,
+     callers reaching the parent's cache directly via the `CachedMetadataProvider` API would
+     bypass `f`.
    - `store-metadata!`, `cache-value!`, `cached-value`, `clear-cache!`, `has-cache?` all
      delegate to the parent. The wrapper has no opinion about non-read operations; whatever
      the parent does is what happens.
@@ -44,7 +45,8 @@
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-metadatas [_this metadata-type metadata-ids]
-    (f {:lib/type metadata-type}
+    ;; `:id` tells `f` that this reads objects by id, as a spec with `:id` does, and not a listing of the active ones
+    (f {:lib/type metadata-type, :id (set metadata-ids)}
        (lib.metadata.protocols/cached-metadatas parent-metadata-provider metadata-type metadata-ids)))
   (store-metadata! [_this metadata]
     (lib.metadata.protocols/store-metadata! parent-metadata-provider metadata))

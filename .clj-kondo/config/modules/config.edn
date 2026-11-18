@@ -4948,12 +4948,14 @@
            server
            settings
            sql-tools
+           sync
            util
            warehouses
            warehouses.secrets
            workspaces}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/User}}}
 

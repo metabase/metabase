@@ -1,6 +1,10 @@
-## Workspaces that a request names with its X-Metabase-Workspace-Id header: each such workspace has its own table
-## remappings, keyed by table_remapping.workspace_id. 0 stands for the instance's own remappings: a unique key needs a
-## value that is not null, as from_db's empty string is.
+## Workspaces that a request names with its X-Metabase-Workspace-Id header.
+##
+## - Each such workspace has its own table remappings, keyed by table_remapping.workspace_id. 0 stands for the
+##   instance's own remappings: a unique key needs a value that is not null, as from_db's empty string is.
+## - workspace_table_copy and workspace_field_copy hold how a workspace's copies, which its transforms write, differ
+##   from the Tables and Fields that every workspace shares: a Table only the workspace has, a column the copy adds
+##   (which gets an inactive shared Field), drops, or gives another type.
 
 databaseChangeLog:
   - changeSet:
@@ -45,3 +49,215 @@ databaseChangeLog:
             tableName: table_remapping
             constraintName: idx_unique_table_remapping_source
             columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: c0oit1
+      author: nvoxland
+      comment: Add workspace_table_copy, whether a Table that every workspace shares is active in a workspace that holds a copy of it
+      changes:
+        - createTable:
+            tableName: workspace_table_copy
+            remarks: Whether a Table that every workspace shares is active in a workspace that holds a copy of it
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that holds the copy
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The shared Table the copy is a copy of
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  remarks: Whether the Table is active in the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: us3cup
+      author: nvoxland
+      comment: A Table has one copy row in each workspace
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_table_copy
+            constraintName: idx_unique_workspace_table_copy
+            columnNames: workspace_id, table_id
+
+  - changeSet:
+      id: ny7rds
+      author: nvoxland
+      comment: Delete a workspace's table copy rows with the workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_copy
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_copy_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: kcykuw
+      author: nvoxland
+      comment: Delete a Table's copy rows with the Table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_copy
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_copy_table_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: akdoun
+      author: nvoxland
+      comment: Index workspace_table_copy.table_id, for the deletes of a Table
+      changes:
+        - createIndex:
+            tableName: workspace_table_copy
+            indexName: idx_workspace_table_copy_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: sfxxgu
+      author: nvoxland
+      comment: Add workspace_field_copy, a Field that every workspace shares as a workspace's copy of its Table has it
+      changes:
+        - createTable:
+            tableName: workspace_field_copy
+            remarks: A Field that every workspace shares as a workspace's copy of its Table has it
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that holds the copy
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: The shared Field, which is inactive when only copies have the column
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  remarks: Whether the copy has the column
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_type
+                  type: varchar(255)
+                  remarks: The base type of the column in the copy
+              - column:
+                  name: effective_type
+                  type: varchar(255)
+                  remarks: The effective type of the column in the copy
+              - column:
+                  name: database_type
+                  type: ${text.type}
+                  remarks: The database type of the column in the copy
+              - column:
+                  name: database_position
+                  type: int
+                  remarks: The position of the column in the copy
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: nbtmqc
+      author: nvoxland
+      comment: A Field has one copy row in each workspace
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_field_copy
+            constraintName: idx_unique_workspace_field_copy
+            columnNames: workspace_id, field_id
+
+  - changeSet:
+      id: b2v9td
+      author: nvoxland
+      comment: Delete a workspace's field copy rows with the workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_field_copy
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_field_copy_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: kdrrqm
+      author: nvoxland
+      comment: Delete a Field's copy rows with the Field
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_field_copy
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_workspace_field_copy_field_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: nkybxe
+      author: nvoxland
+      comment: Index workspace_field_copy.field_id, for the deletes of a Field
+      changes:
+        - createIndex:
+            tableName: workspace_field_copy
+            indexName: idx_workspace_field_copy_field_id
+            columns:
+              - column:
+                  name: field_id

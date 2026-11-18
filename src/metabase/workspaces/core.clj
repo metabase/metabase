@@ -63,6 +63,24 @@
   []
   false)
 
+(defenterprise sync-copy-of-table!
+  "In a workspace that the current request names ([[workspace-bound?]]), record how the copy of `table` in
+   `database` that the request's transform wrote differs from the shared metadata, for that workspace only, and return
+   true: the Table and Fields that every workspace shares are not synced from the copy. Otherwise return false, and
+   the caller syncs `table` as usual. The OSS fallback returns false."
+  metabase-enterprise.workspaces.core
+  [_database _table]
+  false)
+
+(defenterprise apply-copy-metadata
+  "`tables`, each with its hydrated `:fields`, as the workspace that the current request names ([[workspace-bound?]])
+   has them: with the columns and types of its copies, and the Tables only it has active. Hydrates a Field it adds
+   with `hydrate-fields`, a fn of a sequence of Fields. Elsewhere `tables` as they are. The OSS fallback returns
+   `tables`."
+  metabase-enterprise.workspaces.core
+  [tables _hydrate-fields]
+  tables)
+
 ;;; ---------------------------------------- The workspace a request names -----------------------------------------
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}

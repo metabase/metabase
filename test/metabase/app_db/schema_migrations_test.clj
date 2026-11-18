@@ -5494,12 +5494,37 @@
         (is (thrown? Exception (t2/insert! :table_remapping (remapping 1 "public__orders_2"))))
         (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping 0 "public__orders_2")
                                                                    :to_schema "other")))))
+      (let [ws-id      (t2/insert-returning-pk! :workspace {:name "ws" :created_at :%now :updated_at :%now})
+            table-id   (t2/insert-returning-pk! :metabase_table {:db_id db-id :name "orders" :active false
+                                                                 :created_at :%now :updated_at :%now})
+            field-id   (fn [field-name]
+                         (t2/insert-returning-pk! :metabase_field {:table_id table-id :name field-name
+                                                                   :base_type "type/Integer" :database_type "integer"
+                                                                   :active false :created_at :%now :updated_at :%now}))
+            id-1       (field-id "id")
+            id-2       (field-id "total")
+            field-copy (fn [field-id] {:workspace_id ws-id :field_id field-id :active true :base_type "type/Text"})]
+        (testing "a workspace has one copy row of a Table and of a Field"
+          (t2/insert! :workspace_table_copy {:workspace_id ws-id :table_id table-id :active true})
+          (t2/insert! :workspace_field_copy [(field-copy id-1) (field-copy id-2)])
+          (is (thrown? Exception (t2/insert! :workspace_table_copy {:workspace_id ws-id :table_id table-id :active true})))
+          (is (thrown? Exception (t2/insert! :workspace_field_copy (field-copy id-1)))))
+        (testing "a Field's copy rows are deleted with it"
+          (t2/delete! :metabase_field :id id-2)
+          (is (= [id-1] (t2/select-fn-vec :field_id :workspace_field_copy))))
+        (testing "a workspace's copy rows are deleted with it"
+          (t2/delete! :workspace :id ws-id)
+          (is (not (t2/exists? :workspace_table_copy)))
+          (is (not (t2/exists? :workspace_field_copy)))))
       (with-open [conn (.getConnection (mdb/data-source))]
         (liquibase/with-liquibase [liquibase conn]
           (rollback/rollback-to-deployment! conn liquibase boundary)))
       (testing "rollback keeps only the instance's own remappings, and drops the column"
         (is (= [{:to_schema "mb__isolation_"}] (t2/select [:table_remapping :to_schema])))
         (is (not (contains? (t2/select-one :table_remapping) :workspace_id))))
+      (testing "rollback drops the copy tables"
+        (is (thrown? Exception (t2/select :workspace_table_copy)))
+        (is (thrown? Exception (t2/select :workspace_field_copy))))
       (testing "rollback restores the unique key of a source table"
         (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping nil "public__orders_2")
                                                                    :to_schema "other"))))))))
