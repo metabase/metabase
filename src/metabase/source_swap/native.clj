@@ -34,6 +34,25 @@
 (def ^:private opt-start-marker "/*__MB_OPT_START__*/")
 (def ^:private opt-end-marker "/*__MB_OPT_END__*/")
 
+(defn- with-opt-start-marker
+  "Append the start marker of an optional clause to `sql`, the SQL before the clause.
+
+   The parser attaches a comment to the preceding token when the comment is on that token's line, and to the following
+   token otherwise. An optional clause that starts with `AND`/`OR` on a new line would get its marker attached to the
+   operator, which the generator prints after the operator (`AND [[ x ]]` instead of `[[ AND x ]]`). For such a
+   clause, the marker goes at the end of the previous line instead, unless that line may end in a line comment (`--`,
+   or `#` in MySQL) that would swallow it."
+  [sql args]
+  (let [[_ before whitespace] (re-find #"(?s)^(.*\S)(\s*\n\s*)$" sql)
+        last-line             (when before
+                                (re-find #"[^\n]*$" before))]
+    (if (and before
+             (not (re-find #"--|#" last-line))
+             (string? (first args))
+             (re-find #"(?i)^\s*(?:AND|OR)\b" (first args)))
+      (str before " " opt-start-marker whitespace)
+      (str sql opt-start-marker))))
+
 (defn- process-tokens
   "Process a sequence of parsed tokens, returning {:sql ... :placeholders ... :idx ...}.
    Recursively handles optional clause contents."
@@ -63,7 +82,7 @@
                    inner-placeholders :placeholders
                    new-idx :idx} (process-tokens (:args token) idx)]
               (recur rest-tokens
-                     (str sql opt-start-marker inner-sql opt-end-marker)
+                     (str (with-opt-start-marker sql (:args token)) inner-sql opt-end-marker)
                      (merge placeholders inner-placeholders)
                      new-idx))
 
