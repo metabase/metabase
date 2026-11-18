@@ -150,6 +150,8 @@ const configs = [
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
+      // Own package with its own toolchain; checked by `bun run test:host-app`.
+      "frontend/ui-package/host-app/**",
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
@@ -1174,6 +1176,13 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    // Ambient module shims must mirror the default exports they describe.
+    files: ["frontend/ui-package/src/*.d.ts"],
+    rules: {
+      "import/no-default-export": "off",
     },
   },
   {

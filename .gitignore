@@ -217,3 +217,16 @@ dependency-graph.json
 
 # mage modules-tree --html output
 /modules.html
+
+# @metabase/ui package build output
+/frontend/ui-package/dist/
+/frontend/ui-package/.pack/
+/frontend/ui-package/.api-temp/
+/frontend/ui-package/LICENSE.txt
+
+# @metabase/ui host app
+/frontend/ui-package/host-app/node_modules/
+/frontend/ui-package/host-app/dist/
+/frontend/ui-package/host-app/test-results/
+/frontend/ui-package/host-app/test-artifacts/
+/frontend/ui-package/host-app/playwright-report/
