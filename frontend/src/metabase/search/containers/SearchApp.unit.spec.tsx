@@ -106,6 +106,15 @@ const ROBERT = createMockUserListResult({
 const TWO_USERS = [BOBBY, ROBERT];
 const TEST_COLLECTION = createMockCollection();
 
+interface SetupOpts {
+  searchText: string;
+  searchFilters?: SearchFilters;
+  searchItems?: SearchResult[];
+  hasContentVerification?: boolean;
+  nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
+  users?: UserListResult[];
+}
+
 const setup = async ({
   searchText,
   searchFilters = {},
@@ -113,14 +122,7 @@ const setup = async ({
   hasContentVerification = false,
   nativeQueryContents,
   users = TEST_USER_LIST,
-}: {
-  searchText: string;
-  searchFilters?: SearchFilters;
-  searchItems?: SearchResult[];
-  hasContentVerification?: boolean;
-  nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
-  users?: UserListResult[];
-}) => {
+}: SetupOpts) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       content_verification: hasContentVerification,
@@ -525,6 +527,17 @@ describe("SearchApp", () => {
       expect(
         getFilter("type").queryByLabelText("close icon"),
       ).not.toBeInTheDocument();
+      await waitForLoaderToBeRemoved();
+      expect(
+        screen
+          .getAllByTestId("search-result-item-name")
+          .map((item) => item.textContent),
+      ).toEqual([
+        "Test Card",
+        "Test Collection",
+        "Test Dashboard",
+        "Test Database",
+      ]);
     });
   });
 
