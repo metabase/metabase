@@ -54,7 +54,7 @@
     :comment-update
     :user-update
     :api-key-update :api-key-regenerate
-    :pulse-create :subscription-create :subscription-update :alert-update})
+    :pulse-create :subscription-create})
 
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,
@@ -72,8 +72,7 @@
 
 (def ^:private oss-topics
   "The topics that the audit specs of the models of Metabase store, which are public: they are what the Audit Log keeps."
-  #{:alert-update
-    :api-key-create :api-key-delete :api-key-regenerate :api-key-update
+  #{:api-key-create :api-key-delete :api-key-regenerate :api-key-update
     :cache-config-update
     :card-create :card-delete :card-public-link-created :card-public-link-deleted :card-update
     :channel-create :channel-update

@@ -82,17 +82,17 @@
           (is (=? [{:topic :pulse-create :model "Pulse" :model_id (:id pulse) :user_id (mt/user->id :rasta)}]
                   (rows-since before))))))))
 
-(deftest updating-alert-records-alert-update-test
+(deftest updating-subscription-records-subscription-update-test
   (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/Card {card-id :id} {:name "Alerted card"}
-                   :model/Pulse {alert-id :id} {:name "Alert" :alert_condition "rows" :skip_if_empty true}
-                   :model/PulseCard _ {:pulse_id alert-id :card_id card-id :position 0}
-                   :model/PulseChannel _ {:pulse_id alert-id :channel_type :email :schedule_type :daily :schedule_hour 1}]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Subscribed card"}
+                   :model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                   :model/Pulse {pulse-id :id} {:dashboard_id dashboard-id :name "Dashboard" :creator_id (mt/user->id :rasta)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id :position 0}
+                   :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email :schedule_type :daily :schedule_hour 1}]
       (let [before (max-id)]
-        (mt/with-current-user (mt/user->id :rasta)
-          (t2/update! :model/Pulse :id alert-id {:alert_first_only true}))
-        (is (=? [{:topic :alert-update :model "Card" :model_id alert-id :user_id (mt/user->id :rasta)
-                  :details {:name "Alerted card" :card_id card-id :channel ["email"]}}]
+        (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id) {:name "Renamed"})
+        (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id (mt/user->id :rasta)
+                  :details {:name "Renamed" :dashboard_id dashboard-id :channel ["email"]}}]
                 (rows-since before)))))))
 
 (deftest renaming-or-moving-dashboard-records-no-subscription-update-test

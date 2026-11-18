@@ -81,13 +81,6 @@
     (subject event)
     [model (:id (row-of event))]))
 
-(defn- recorded-user
-  "The id of the user that the row of the lifecycle `event` is recorded as."
-  [{:keys [model operation object user-id]}]
-  (or (when (= :create operation)
-        (some->> (:creator (audit.spec/spec model)) (get object)))
-      user-id))
-
 (defn- record-event!
   "Record the row of the lifecycle `event` of a write by the user `user-id`, with `extra` beside its details, when its
   spec stores a topic for it."
@@ -162,7 +155,7 @@
                      (nil? (audit.spec/parent model))
                      (not (contains? roots model))
                      (spec-edit? event))]
-    (record-event! event (recorded-user event) (context-details event))))
+    (record-event! event user-id (context-details event))))
 
 (defn- record-parent-rows!
   "Record, once per parent and topic, the writes of the models that record them under a parent with a topic, none for a

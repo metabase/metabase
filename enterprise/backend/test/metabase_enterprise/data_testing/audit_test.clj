@@ -181,17 +181,17 @@
         (t2/delete! :model/CardTest :id card-test-id)
         (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
 
-(deftest card-test-audit-events-name-the-creator-then-the-acting-user-test
-  (testing "The create row names the test's creator; the update and delete rows name the user who acts"
+(deftest card-test-audit-events-name-the-acting-user-test
+  (testing "The rows of the create, update and delete of a card test name the user who acts, who is its creator"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Card {card-id :id} {}]
         (let [{card-test-id :id} (data-testing.models.card-test/create-card-test! {:card_id      card-id
-                                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                                   :creator_id   (mt/user->id :rasta)
                                                                                    :name         "Original"
                                                                                    :inputs       []
                                                                                    :expectations []})]
           (testing "create"
-            (is (=? {:user_id (mt/user->id :crowberto)}
+            (is (=? {:user_id (mt/user->id :rasta)}
                     (mt/latest-audit-log-entry :card-test-create card-test-id))))
           (testing "update"
             (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})

@@ -36,7 +36,6 @@
   {:track          [:user_id :group_id :is_group_manager]
    :track-redacted []
    :skip           []
-   :changes?       false
    :details        permissions.audit/membership-details
    :subject        permissions.audit/membership-subject
    :topics         {:create :group-membership-create

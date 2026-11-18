@@ -783,11 +783,14 @@
                (:details (mt/latest-audit-log-entry :write-permission-failure (:id card)))))))))
 
 (deftest bookkeeping-updates-record-nothing-test
-  (mt/with-temp [:model/User   {user-id :id}   {}
-                 :model/Pulse  {pulse-id :id}  {:name "Pulse"}]
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [before (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
-        (t2/update! :model/User :id user-id {:last_login (java.time.OffsetDateTime/now)})
-        (t2/update! :model/Pulse :id pulse-id {:collection_position 1})
-        (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
-        (is (= [] (t2/select :model/AuditLog :id [:> before] :model [:in ["User" "Pulse" "Card"]])))))))
+  (mt/with-temp [:model/User            {user-id :id}  {}
+                 :model/Pulse           {pulse-id :id} {:name "Pulse"}
+                 :model/PermissionsGroup {group-id :id} {}]
+    (let [{key-id :id} (mt/user-http-request :crowberto :post 200 "api-key" {:group_id group-id :name "Bookkept key"})]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [before (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
+          (t2/update! :model/User :id user-id {:last_login (java.time.OffsetDateTime/now)})
+          (t2/update! :model/Pulse :id pulse-id {:collection_position 1})
+          (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
+          (t2/update! :model/ApiKey :id key-id {:last_used_at (java.time.OffsetDateTime/now)})
+          (is (= [] (t2/select :model/AuditLog :id [:> before] :model [:in ["User" "Pulse" "Card" "ApiKey"]]))))))))

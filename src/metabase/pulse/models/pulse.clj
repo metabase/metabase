@@ -74,9 +74,8 @@
    :skip           [:collection_position :entity_id]
    :changes?       false
    :details        pulse.audit/details
-   :subject        pulse.audit/subject
    :topics         {:create pulse.audit/create-topic
-                    :update pulse.audit/update-topic}})
+                    :update :subscription-update}})
 
 (defmethod change-log/spec :model/Pulse [_model]
   {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id

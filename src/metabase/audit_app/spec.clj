@@ -33,7 +33,6 @@
     default.
   - `:subject`, a fn of the event returning the `[model id]` under which its row is recorded, the model and the id of
     its row by default.
-  - `:creator`, the column holding the user that a create is recorded as, when a user made it.
   - `:context-details?`, true for a model whose rows take the `:details` that the context of the write carries."
   (:require
    [toucan2.model :as t2.model]))
@@ -63,7 +62,6 @@
                                                     [:when    fn?]
                                                     [:details {:optional true} fn?]]]]
    [:subject         {:optional true} fn?]
-   [:creator         {:optional true} :keyword]
    [:context-details? {:optional true} :boolean]])
 
 (defmulti spec
