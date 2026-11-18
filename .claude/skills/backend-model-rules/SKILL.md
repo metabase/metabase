@@ -1,6 +1,6 @@
 ---
 name: backend-model-rules
-description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold invariants that do not depend on the user, `mi/can-*?` methods hold per-user rules, write paths call `api/*-check` and open a batch of writes. Use when adding or changing a model, a hook, a permission check, an endpoint or tool that writes a model, a cascade, or archiving. Preloaded by every `*-backend-expert` agent.
+description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold invariants that do not depend on the user, `mi/can-*?` methods hold per-user rules, write paths call `api/*-check` and open a batch of writes, and each feature that needs to know something about a model reads it from that model's `<feature>/spec`. Use when adding or changing a model, a column, a hook, a permission check, an endpoint or tool that writes a model, a cascade, archiving, or a per-model spec. Preloaded by every `*-backend-expert` agent.
 ---
 
 # Model rules
@@ -90,23 +90,40 @@ that needs the row as stored.
 
 ## Write paths
 
-An endpoint or tool: parse the request, load the row with `api/check-404`, call `api/update-check` with the changes
-(or `api/create-check` with the whole new row, not only its collection), write, return the hydrated row.
+**A plain `t2/insert!`, `t2/update!` or `t2/delete!` on `:model/X` does the right thing, whoever calls it.** People write
+`(t2/insert! :model/Card ...)` in a `<module>/db.clj` function and expect a correct Card. So nothing a row needs may
+live in a function that wraps the write: there is no `create-card!` that differs from the insert in `db.clj`.
 
-- A write through the model (`t2/insert!`, `t2/update!`, `t2/delete!` on `:model/X`, with or without a where clause) is
-  complete wherever it is called, also from a plain function in `<module>/db.clj`: the hooks enforce the rules and
-  `:hook/events` publishes the lifecycle events. A shared write function is a convenience, not a requirement.
+What a writer used to do in such a function has one of these homes:
+
+| It | Home |
+|---|---|
+| fills a default (`parameters []`, `type :question`) | the entity schema in `<module>/schema.clj` that every entry point decodes with |
+| normalizes a value (a query, keywords, a legacy shape) | the same schema; the API, SerDes, MCP and the tools decode their input with it, and nothing normalizes after that |
+| checks what the row alone answers | the same schema |
+| checks against the database, derives a column, keeps other rows in step (a dashboard question gets its dashcard, positions in a collection are reconciled) | the model's hooks |
+| reacts to the write (revision, audit row, search index, dependencies) | a consumer of the model's events, through its spec |
+| asks whether this user may do it | `mi/can-create?` / `mi/can-update?`, called by the entry point with `api/create-check` / `api/update-check` |
+| serves only an entry point (the API computes result metadata for a new card and waits for it briefly; a request key that is no column; the shape of the response) | that entry point: `api.clj`, or a `<module>/<name>.clj` that `api.clj` calls when the block stands on its own |
+
+- A model file has no public write function. `<module>/db.clj` holds the statements, each a plain call through the
+  model, named for what it does; a state change of a row the product owns (a run starts, a task ends) is one of them.
+- An entry point parses and decodes the request with the schema, loads the row with `api/check-404`, calls
+  `api/update-check` with the changes (or `api/create-check` with the whole new row), calls the `db.clj` function, and
+  returns the hydrated row. A bulk endpoint hydrates `:can_write` once.
 - A statement that bypasses the model (`t2/query` with hand-written SQL, a write against a table-name keyword) runs
   no hooks and publishes nothing; do not write that way.
-- The caller's job: the per-user check at every user-facing writer (REST, MCP and Metabot tools, Agent API, bulk,
-  revert, copy; a bulk endpoint hydrates `:can_write` once); `events/with-batched-events` around a write of several rows
-  of one aggregate, so its reactions happen once per owner (nothing on a throw; nested batches join); and
-  `events/with-event-context` for what the write's records need.
+- A caller opens `events/with-batched-events` around a write of several rows of one aggregate, so its reactions
+  happen once per owner (nothing on a throw; nested batches join), and `events/with-event-context` for what the
+  write's records need. Replacing the parts of an entity with a new list (dashcards, tabs, channels) is one shared
+  helper that compares the lists and calls the plain statements; it holds no rule of its own.
 - Nobody publishes a lifecycle event by hand. A model that publishes derives `:hook/events` and implements `events/spec`,
   `{operation topic}` with full keywords, which may omit an operation; every write then publishes in its transaction.
   The topic is named after the model (`:event/pulse-update`); the audit consumer chooses the topic it stores. A moment
   that is a column change (public link, publish) is derived by its consumer with `u.events/changed?`; only a moment that
   is no row write (login, read, sync begin, transform run, user invited) is published by hand.
+- To check a rule, write the row with a plain `t2/` call in a test and look at what is stored and what reacted. If
+  that differs from what the endpoint leaves, the model is wrong.
 
 ## Events
 
@@ -127,15 +144,89 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 - Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
   runs for every writer; a writer calls what only it starts (`sync/start-initial-sync!`). Records (revision, audit
   row) need a non-nil `:user-id`, and archive-carried writes (`:archived-with`) record nothing.
-- A user's update of an audited model always records an audit row; only a consumer's `ignored-columns` (`{:default #{..}
-  :model/X #{..}}` in its `events.clj`, plus a comparator when membership is not enough) and archive-carried writes do
-  not. A write the product makes in a user's request is no user action: list its columns there, or bind
-  `api/*current-user-id*` to nil.
+- A user's update of an audited model always records an audit row; only a change of nothing but the `:skip` columns of
+  its `audit/spec` and archive-carried writes do not. A write the product makes in a user's request is no user action:
+  its columns are in `:skip`, or it binds the current user to nil (`request/with-current-user nil`).
 - The SerDes import validates every entity against its spec `:schema` (the strict write variant of the entity schema);
   `serialization-skip-schema-validation` only normalizes. An import started by a user records as that user's edits.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - Entity schemas have a strict write variant (closed, what a caller may set) and a tolerant stored-row variant (what
   `after-select` returns, including legacy shapes); the request schema and the SerDes spec use the write variant.
+
+## Specs
+
+A feature that needs to know something about a model reads it from the model, never from a list of models of its
+own. Each such feature has one multimethod, `<feature>/spec`, that a model implements once, in its model file, with a
+literal map:
+
+    (defmethod revisions/spec :model/Card [_model]
+      {:track         [:name :description :dataset_query ...]
+       :skip          [:view_count :last_used_at ...]
+       :same?         {:result_metadata queries.revisions/same-result-metadata?}
+       :before-revert queries.revisions/before-revert})
+
+- The multimethod lives in a tiny `<feature>/spec.clj` that requires nothing but Toucan, dispatches on the model
+  keyword, and returns nil for a model without a spec. Its docstring is the reference for the keys. The feature's code
+  (`events.clj`, jobs, API) names no `:model/X`.
+- The model file only wires: the map's functions are imported, never written inline. Code of one model for one feature
+  lives in `<the model's module>/<feature>.clj` (`queries/revisions.clj`, `dashboards/search.clj`), app-DB queries in
+  `<module>/db.clj`. A spec that is plain data stays whole in the model file; do not create a near-empty file.
+- A value that decides something is a function, not a format of its own: a keyword or a column set where that says it
+  all, else a function. Keywords are written in full so that they can be searched.
+- A spec found by a name (a search model, an API name, an item type) is keyed by the model and returns a map from
+  each name to its spec, since Card answers to `"card"`, `"dataset"` and `"metric"`. The feature finds a name by loading
+  every model and indexing the specs, on first use; it keeps no table from names to models.
+
+| Spec | A model has one when | Keys |
+|---|---|---|
+| `events/spec` | it derives `:hook/events` | `{:create :event/x-create :update :event/x-update :delete :event/x-delete}`, any of them left out |
+| `app-db-copy/spec` | always: every model | `:skip?` (explicit `true` or `false`), `:select`, `:transform` |
+| `change-log/spec` | the change log tracks it | `:track`, `:skip` |
+| `serialization/spec` | it is exported | `:schema`, `:copy`, `:skip`, `:transform`, `:defaults`, `:identity`, `:parent`, `:children`, and the functions `:storage-paths`, `:import-dependencies`, `:export-dependencies`, `:before-load`, `:loaded-entities`, `:after-load` |
+| `remote-sync/spec` | remote sync syncs it | `:synced-items`, `:synced-filter-clause`, `:built-in-filter-clause`, `:name` |
+| `revisions/spec` | it has revisions, or its rows are parts of an entity that has | `:track`, `:skip`, `:parent`, `:children`, `:same?`, `:before-revert`, `:revert!`, `:describe`, `:authorize` |
+| `audit/spec` | a user's write of it records an audit row | `:track`, `:track-redacted`, `:skip`, `:details`, `:topics`, `:moments`, `:parent` |
+| `search/spec` | it is searchable | per search model name: `:attrs`, `:search-terms`, `:render-terms`, `:visibility`, `:where`, `:joins`, `:bookmark` |
+| `dependencies/spec` | it has dependencies, or its writes change those of another entity | `:type`, `:inlined?`, `:items`; `:hydrate`, `:dependencies`, `:analysis`; `:invalidates` |
+| `replacement/spec` | it is a source that can be replaced, or it uses one | `:source-database-id`, `:hydrate`, `:upgrade-field-refs`, `:swap-source` |
+| `collection-items/spec` | it shows in a collection | per item name: `:namespaces`, `:rank`, `:items`, `:hydrate` |
+| `recent-views/spec` | it shows in recent views | per name: `:load`, `:render` |
+| `staleness/spec` | it can be stale | `:candidates`, `:load`, `:render` |
+| `eid-translation/spec` | it derives `:hook/entity-id` and the API translates its entity ids | `:names` |
+
+What the shared keys mean, wherever they appear:
+
+- `:track` and `:skip` list every column of the table but `:id`, `:created_at` and `:updated_at`: the columns the
+  feature follows, and the ones whose change alone it ignores. The audit spec splits the first in two: `:track` columns
+  are stored in the row's details, `:track-redacted` columns record a row without their value (a query).
+- `:parent {:model :model/Y :key :y_id}` says a row is a part of another entity, and `:children {key :model/Z}` nests
+  the parts in it, as in SerDes.
+- `:hydrate` loads what a pure function needs, for a list of rows at once; the function that follows it
+  (`:dependencies`, `:swap-source`) takes one hydrated row and queries nothing.
+- `:items` or `:candidates` returns the whole query of the model's rows for a list of mixed models, with the same
+  columns from every model and the permission filter inside it; `:load` takes the ids of a page and returns the rows
+  to show, and `:render` turns one of them into the API item, or nil to leave it out.
+- `:invalidates` of the dependencies spec has one function per status table (`:dependency-status`,
+  `:analysis-finding-status`, `:result-metadata-status`), each returning `{:entities {type ids} :dependents-of {type
+  ids}}`; `:inlined?` says the dependents expand the entity inline (a snippet, a measure), so every transitive
+  dependent is meant.
+- `:topics` of the audit spec is left out when the stored topic is the name of the event the model publishes;
+  otherwise it holds, per operation, a keyword or a function of the event that returns the topic, nil to record nothing.
+
+### Adding or changing a model
+
+- **A new model.** Give it `app-db-copy/spec` and add it to the copy order when it is copied; `events/spec` when
+  anything reacts to its writes; then each spec of the table whose feature it takes part in. The enumeration tests
+  say which are missing: a model with no copy spec, with an entity id and no translation names, neither tracked nor
+  untracked by the change log, neither exported nor excluded from SerDes.
+- **A new column.** Put it in every spec of its model that lists columns: `:track` or `:skip` of the change log and of
+  revisions, `:track`, `:track-redacted` or `:skip` of the audit log, `:copy`, `:skip` or `:transform` of SerDes. The
+  `spec-columns-test` of each fails until you do. A counter, a timestamp the product sets, or a value the product
+  computes goes in `:skip`; keep such columns in one private var of the model file and refer to it from each spec.
+- **A new part of an entity** (a row that belongs to a dashboard, a pulse, a table). Declare `:parent` in the specs that
+  have one and name the owner in the functions of the dependencies spec; no feature needs a line of its own.
+- **A feature that needs a fact about models.** Add a key to its spec, or a new `<feature>/spec`, and a test that
+  checks every spec against a closed schema; never a `case` on the model or a map from models in the feature's code.
 
 ## Archiving
 
@@ -160,8 +251,9 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 
 ## Lay out a model file
 
-Banners `;;; ---- Hooks ----`, centred in a line of about 120 columns, in this order: `Model setup`, `Hooks`, `Permissions`,
-`Hydration`, `Writes`, `Revisions`, `Serialization`, `Remote sync`, `Search`.
+Banners `;;; ---- Hooks ----`, centred in a line of about 120 columns, in this order: `Definition` (the table name, the
+derives, the transforms), `Hydration`, `Hooks`, `Permissions`, `Specs`. `Specs` holds every `defmethod <feature>/spec` of
+the model, in the order of the table above; the code they refer to is in `<module>/<feature>.clj`.
 
 The `Serialization` section holds only `(defmethod serialization/spec :model/X ...)`, a literal map whose fns are
 references (keys in the `metabase.serialization.spec` docstring). The model's own SerDes fns live in
@@ -173,5 +265,6 @@ references (keys in the `metabase.serialization.spec` docstring). The model's ow
   when the test depends on it. Build queries with `metabase.lib`.
 - Test a hook through `t2/insert!` / `t2/update!`; a permission rule through `api/create-check` / `api/update-check` as
   each kind of user; an event consumer by writing the row, not by publishing the event; a list endpoint with
-  `t2/with-call-count` at two sizes. Run the enumeration tests (entity ids, SerDes specs, stats) for a new model.
+  `t2/with-call-count` at two sizes. Run the enumeration tests (entity ids, specs, stats) for a new model, and the
+  `spec-columns-test` of each feature for a new column.
 Before handing off: `./bin/mage kondo <file>`, `./bin/mage fix-modules-config`, and the tests of each writer you touched.
