@@ -2,9 +2,10 @@
   "`:model/ActionTest`: a saved test of one action."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.actions.core :as actions]
+   [metabase-enterprise.data-testing.subject.action :as data-testing.subject.action]
    [metabase.audit-app.core :as audit-app]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -84,14 +85,14 @@
   `parameters` that do not fit the action, have no query to check: a run refuses them before the query compiles."
   [action parameters]
   (or (not= :query (keyword (:type action)))
-      (let [values (try
-                     (actions/parameter-values action (or parameters {}))
-                     (catch clojure.lang.ExceptionInfo e
-                       (if (= 400 (:status-code (ex-data e)))
-                         ::unfit
-                         (throw e))))]
-        (or (= ::unfit values)
-            (query-perms/can-run-query? (actions/query-with-parameter-values action values))))))
+      (let [query (try
+                    (data-testing.subject.action/filled-query action parameters)
+                    (catch clojure.lang.ExceptionInfo e
+                      (if (= ::data-testing.errors/invalid-parameters (:error-type (ex-data e)))
+                        ::unfit
+                        (throw e))))]
+        (or (= ::unfit query)
+            (query-perms/can-run-query? query)))))
 
 (mu/defn can-run? :- :boolean
   "Whether the current user may run the saved `action-test`: they may read its action, run the action's query with the
