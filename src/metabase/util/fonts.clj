@@ -4,7 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
-   [metabase.util.files :as u.files])
+   [metabase.util.files :as u.files]
+   [metabase.util.json :as json])
   (:import
    (java.net URI URL)
    (java.nio.file FileSystem Path)
@@ -104,17 +105,48 @@
   second is still reading. A delay lets exactly one thread do the read, and the rest wait for it."
   (delay (read-emitted-filenames bundled-fonts-resource)))
 
-(defn find-hashed-file
-  "Filename the build emitted for `stem`.`ext` of `font-name`, content hash included, or nil when the
-  frontend has not been built. For example `(find-hashed-file \"Lato\" \"lato-v16-latin-700\" \"woff2\")`
-  returns `\"lato-v16-latin-700.a1b2c3d4.woff2\"`."
-  [font-name stem ext]
-  (let [pattern (re-pattern (str (Pattern/quote stem) "\\.[a-f0-9]+\\." ext))]
-    (some #(when (re-matches pattern %) %)
-          (get @emitted-filenames (font-dirname font-name)))))
+(def ^:private unicode-ranges-resource
+  "Written by the frontend build: the `unicode-range` of each chunk a bundled face is split into,
+  keyed by the chunk's name."
+  "frontend_client/app/dist/font-unicode-ranges.json")
 
-(defn hashed-font-url-path
-  "Web path of a bundled font file, or nil when the frontend has not been built."
+(def ^:private unicode-ranges
+  (delay (some-> (io/resource unicode-ranges-resource) slurp json/decode)))
+
+(def ^:private unmarked-chunk
+  "The chunk of a split face that the build emits under the name the whole face would have had."
+  "latin")
+
+(defn- emitted-chunks
+  "The files the build emitted for `stem`.`ext`, as a map of chunk name to filename. The name is nil
+  for a whole face and for the unmarked chunk of a split one."
+  [filenames stem ext]
+  (let [pattern (re-pattern (str (Pattern/quote stem) "(?:\\.([a-z]+))?\\.[a-f0-9]+\\." (Pattern/quote ext)))]
+    (into {}
+          (keep #(when-let [[filename chunk] (re-matches pattern %)]
+                   [chunk filename]))
+          filenames)))
+
+(defn- unicode-range
+  [chunk]
+  ;; A rule with no range claims every codepoint, so a chunk the build gave no range must not get one.
+  (or (get @unicode-ranges chunk)
+      (throw (ex-info (format "The frontend build published no unicode-range for font chunk %s" (pr-str chunk))
+                      {:chunk chunk}))))
+
+(defn font-face-sources
+  "Every file the build emitted for `stem`.`ext` of `font-name`, as a vector of maps with the web
+  `:path` of the file and, when the face is split, the `:unicode-range` it covers. Declare one
+  `@font-face` rule for each: a split face renders all its characters only with every chunk declared.
+  Empty when the frontend has not been built. Throws when the build did not publish the range of
+  a chunk. For example `(font-face-sources \"PT Serif\" \"PTSerif-Bold\" \"woff2\")` returns
+
+    [{:path \"/app/dist/fonts/PT_Serif/PTSerif-Bold.a1b2c3d4.woff2\"      :unicode-range \"U+20-FF, ...\"}
+     {:path \"/app/dist/fonts/PT_Serif/PTSerif-Bold.rest.e5f6a7b8.woff2\" :unicode-range \"U+100-130, ...\"}]"
   [font-name stem ext]
-  (when-let [filename (find-hashed-file font-name stem ext)]
-    (str "/app/dist/fonts/" (font-dirname font-name) "/" filename)))
+  (let [dirname (font-dirname font-name)
+        chunks  (emitted-chunks (get @emitted-filenames dirname) stem ext)
+        split?  (some some? (keys chunks))]
+    (vec (for [[chunk filename] (sort-by (comp str key) chunks)]
+           (cond-> {:path (str "/app/dist/fonts/" dirname "/" filename)}
+             split? (assoc :unicode-range (unicode-range (or chunk unmarked-chunk))))))))
