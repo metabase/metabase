@@ -2056,7 +2056,8 @@
 (def searchable-namespaces
   "The Collection namespaces search indexes, with the content inside them.
   Kept apart from [[default-allowed-namespaces]]: where content may be saved and what search finds are separate
-  decisions, so a new placement namespace isn't indexed by accident."
+  decisions, so a new placement namespace isn't indexed by accident.
+  The search index version hashes spec source forms, not this value, so a change here needs a manual reindex."
   #{nil :analytics :shared-tenant-collection :tenant-specific})
 
 (defn analytics-collection-ids
