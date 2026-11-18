@@ -1,6 +1,7 @@
 (ns metabase.sync.metadata-sync.receive-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.search.core :as search]
    [metabase.sync.db :as sync.db]
@@ -638,12 +639,14 @@
                       (t2/query ["SELECT table_name, action FROM change_log WHERE id > ?" top])))))
 
 (deftest a-seed-writes-the-change-log-test
-  (mt/with-premium-features #{:change-log}
-    (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
-      (testing "each inserted Table and Field has an entry, as a model insert gives it"
-        (is (=? {["metabase_table" "insert"] 1
-                 ["metabase_field" "insert"] 4}
-                (change-log-entries #(receive/apply-response! receiver-id (one-table-answer receiver-id)))))))))
+  ;; An OSS build writes no change log, even with the feature on, as in `metabase.change-log.events-test`.
+  (when config/ee-available?
+    (mt/with-premium-features #{:change-log}
+      (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+        (testing "each inserted Table and Field has an entry, as a model insert gives it"
+          (is (=? {["metabase_table" "insert"] 1
+                   ["metabase_field" "insert"] 4}
+                  (change-log-entries #(receive/apply-response! receiver-id (one-table-answer receiver-id))))))))))
 
 (deftest a-seed-queues-the-new-tables-for-the-search-index-test
   (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
