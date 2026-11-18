@@ -2,11 +2,15 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
   DataSourceInput,
-  EntityTypeInput,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
@@ -19,8 +23,9 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import S from "../TableAttributes.module.css";
-import { TableSectionGroup } from "../TableSectionGroup";
+import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
+
+import S from "./TableAttributesEditSingle.module.css";
 
 interface Props {
   table: Table;
@@ -137,92 +142,90 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     }
   };
 
-  const handleEntityTypeChange = async (entityType: Table["entity_type"]) => {
-    const { error } = await updateTable({
-      id: table.id,
-      entity_type: entityType,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update entity type`);
-    } else {
-      sendSuccessToast(t`Entity type updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          entity_type: table.entity_type,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const isOwnerSpecified = table.owner_email || table.owner_user_id;
   const readOnly = !table.can_write;
 
   return (
-    <TableSectionGroup title={t`Attributes`}>
-      <div className={S.container}>
-        <UserInput
-          email={table.owner_email}
+    <SidebarSection title={t`Attributes`}>
+      <DetailsTable>
+        <DetailsRow
           label={t`Owner`}
-          userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
-          disabled={readOnly}
-          onEmailChange={handleOwnerEmailChange}
-          onUserIdChange={handleOwnerUserIdChange}
-          className={S.gridLabelInput}
-          unknownUserLabel={t`No owner`}
-          classNames={{
-            input: cx(S.input, !isOwnerSpecified && S.unset),
-            label: S.label,
-          }}
+          fillValue
+          value={
+            <UserInput
+              email={table.owner_email}
+              label={undefined}
+              aria-label={t`Owner`}
+              userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
+              disabled={readOnly}
+              onEmailChange={handleOwnerEmailChange}
+              onUserIdChange={handleOwnerUserIdChange}
+              unknownUserLabel={t`No owner`}
+              classNames={{
+                ...DETAILS_CELL_INPUT_CLASS_NAMES,
+                input: cx(
+                  DETAILS_CELL_INPUT_CLASS_NAMES.input,
+                  !isOwnerSpecified && S.unset,
+                ),
+              }}
+            />
+          }
         />
 
-        <LayerInput
-          value={table.data_layer ?? "hidden"}
-          disabled={readOnly}
-          onChange={handleLayerChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
+        <DetailsRow
+          label={t`Visibility layer`}
+          fillValue
+          value={
+            <LayerInput
+              value={table.data_layer ?? "hidden"}
+              label={undefined}
+              aria-label={t`Visibility layer`}
+              disabled={readOnly}
+              onChange={handleLayerChange}
+              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+            />
+          }
         />
 
-        <EntityTypeInput
-          value={table.entity_type ?? "entity/GenericTable"}
-          disabled={readOnly}
-          onChange={handleEntityTypeChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
-        />
-
-        <DataSourceInput
-          disabled={readOnly || table.data_source === "metabase-transform"}
-          value={table.data_source ?? "unknown"}
-          onChange={handleDataSourceChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
+        <DetailsRow
+          label={t`Source`}
+          fillValue
+          value={
+            <DataSourceInput
+              disabled={readOnly || table.data_source === "metabase-transform"}
+              value={table.data_source ?? "unknown"}
+              label={undefined}
+              aria-label={t`Source`}
+              onChange={handleDataSourceChange}
+              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+            />
+          }
         />
 
         {table.data_source === "metabase-transform" && (
-          <TransformLink table={table} />
+          <DetailsRow
+            label={t`Transform`}
+            value={<TransformLink table={table} />}
+          />
         )}
-      </div>
-    </TableSectionGroup>
+      </DetailsTable>
+    </SidebarSection>
   );
 }
+
 function TransformLink({ table }: { table: Table }) {
   const { transform } = table;
 
   if (!transform) {
     return (
-      <Box
-        c="feedback-negative"
-        className={S.transformLink}
-        fz="sm"
-      >{t`Transform does not exist anymore`}</Box>
+      <Box c="feedback-negative" fz="sm">
+        {t`Transform does not exist anymore`}
+      </Box>
     );
   }
 
   return (
-    <Box className={S.transformLink}>
+    <Box>
       <Box
         component={Link}
         to={Urls.transform(transform.id)}

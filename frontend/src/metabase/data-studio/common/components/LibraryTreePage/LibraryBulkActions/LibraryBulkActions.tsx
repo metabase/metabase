@@ -41,6 +41,8 @@ type LibraryBulkActionsProps = {
     count: number,
   ) => string | undefined;
   onClear: () => void;
+  /** Off when the section has nowhere to move items to */
+  canMove?: boolean;
 };
 
 export function LibraryBulkActions({
@@ -50,6 +52,7 @@ export function LibraryBulkActions({
   defaultCollectionId,
   getTrashMessage,
   onClear,
+  canMove = true,
 }: LibraryBulkActionsProps) {
   const [action, setAction] = useState<BulkAction>();
   const setCollection = useSetCollection();
@@ -140,7 +143,7 @@ export function LibraryBulkActions({
   return (
     <>
       <BulkActionBar opened={count > 0} message={message}>
-        {canWriteAll && (
+        {canWriteAll && canMove && (
           <BulkActionButton onClick={() => setAction("move")}>
             {t`Move`}
           </BulkActionButton>

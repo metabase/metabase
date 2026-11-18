@@ -20,7 +20,9 @@
 (def ^:private timestamp-type   #{:type/DateTime})
 (def ^:private time-type        #{:type/Time})
 (def ^:private date-type        #{:type/Date})
+(def ^:private temporal-type    #{:type/Temporal})
 (def ^:private number-type      #{:type/Number})
+(def ^:private boolean-type     #{:type/Boolean})
 (def ^:private any-type         #{:type/*})
 
 (def ^:private pattern+base-types+semantic-type
@@ -31,7 +33,21 @@
 
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
+  ;; Names an older rule already types keep that exact type, because some consumers compare `semantic_type` with `=`
+  ;; rather than `isa?`. The exceptions are the rules marked as tightened below. Rules for the semantic-layer types
+  ;; therefore sit at the end, where they only type names nothing above matches.
+  ;;
+  ;; Types that need more than a column's own name are not inferred here: key roles that derive from `:type/PK` or
+  ;; `:type/FK` (they need a declared key or its target), pair rules (`:type/TypeDiscriminator`, `:type/HierarchyLevel`,
+  ;; `:type/HierarchyPath`), table-context rules (`:type/EventTimestamp`, `:type/PeriodKey`, `:type/DurableKey`,
+  ;; `:type/Weight`, `:type/DegenerateDimension`), and the facet `:type/CustomProperty`.
   [[#"^id$"                        any-type         :type/PK]
+   ;; loader bookkeeping, before `start` reads `_fivetran_start` as an interval start
+   [#"^_fivetran_deleted$"         boolean-type     :type/SoftDeleteFlag]
+   [#"^_fivetran_active$"          boolean-type     :type/CurrentRowFlag]
+   [#"^(?:_fivetran_synced|_airbyte_(?:extracted|emitted)_at)$" temporal-type :type/LoadTimestamp]
+   [#"^(?:_fivetran_start|dbt_valid_from)$" temporal-type :type/ValidFrom]
+   [#"^(?:_fivetran_end|dbt_valid_to)$"     temporal-type :type/ValidTo]
    [#"^lon$"                       float-type       :type/Longitude]
    [#"^.*_lon$"                    float-type       :type/Longitude]
    [#"^.*_lng$"                    float-type       :type/Longitude]
@@ -62,10 +78,14 @@
    [#"^type$"                      text-type        :type/Category]
    [#"^url$"                       text-type        :type/URL]
    [#"^zip(?:_?)code$"             int-or-text-type :type/ZipCode]
+   ;; tightened: an ID from another system, not the acquisition source
+   [#"^(?:external|source|legacy|remote)_id$|_external_id$" int-or-text-type :type/ExternalID]
    [#"discount"                    number-type      :type/Discount]
    [#"income"                      number-type      :type/Income]
    [#"quantity"                    int-type         :type/Quantity]
    [#"count$"                      int-type         :type/Quantity]
+   ;; tightened: `number` alone or as a suffix is an identifier (invoice_number), not an amount (number_of_items)
+   [#"(?:^|_)number$"              int-type         :type/NaturalKey]
    [#"number"                      int-type         :type/Quantity]
    [#"^num_"                       int-type         :type/Quantity]
    [#"join"                        date-type        :type/JoinDate]
@@ -74,9 +94,10 @@
    [#"create"                      date-type        :type/CreationDate]
    [#"create"                      time-type        :type/CreationTime]
    [#"create"                      timestamp-type   :type/CreationTimestamp]
-   [#"start"                       date-type        :type/CreationDate]
-   [#"start"                       time-type        :type/CreationTime]
-   [#"start"                       timestamp-type   :type/CreationTimestamp]
+   [#"(?:^|_)(?:valid|effective)_(?:from|start)|^effective_date$" temporal-type :type/ValidFrom]
+   [#"(?:^|_)(?:valid|effective)_(?:to|until|end)" temporal-type :type/ValidTo]
+   ;; tightened: an interval start, not the row's creation
+   [#"(?:^|_)start"                temporal-type    :type/StartTimestamp]
    [#"cancel"                      date-type        :type/CancelationDate]
    [#"cancel"                      time-type        :type/CancelationTime]
    [#"cancel"                      timestamp-type   :type/CancelationTimestamp]
@@ -88,9 +109,11 @@
    [#"update"                      timestamp-type   :type/UpdatedTimestamp]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
-   [#"share"                       float-type       :type/Share]
+   ;; tightened: not shared
+   [#"share(?!d)"                  float-type       :type/Share]
    [#"percent"                     float-type       :type/Share]
-   [#"rate$"                       float-type       :type/Share]
+   ;; tightened: exchange_rate is a rate, not a share of a whole
+   [#"rate$"                       float-type       :type/Rate]
    [#"margin"                      number-type      :type/GrossMargin]
    [#"cost"                        number-type      :type/Cost]
    [#"duration"                    number-type      :type/Duration]
@@ -102,7 +125,8 @@
    [#"vendor"                      int-or-text-type :type/Company]
    [#"subscription"                int-or-text-type :type/Subscription]
    [#"score"                       number-type      :type/Score]
-   [#"rating"                      number-type      :type/Score]
+   ;; tightened: not operating_system
+   [#"(?<!ope)rating"              number-type      :type/Score]
    [#"stars"                       number-type      :type/Score]
    [#"description"                 text-type        :type/Description]
    [#"title"                       text-type        :type/Title]
@@ -110,7 +134,48 @@
    [#"birthda(?:te|y)"             date-type        :type/Birthdate]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
    [#"(?:te|y)(?:_?)of(?:_?)birth" date-type        :type/Birthdate]
-   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]
+   ;; semantic-layer types
+   [#"^(?:_fivetran_|_airbyte_|dbt_)" any-type      :type/SystemColumn]
+   [#"^(?:_?loaded_at|synced_at|_etl_loaded_at|ingested_at)$" temporal-type :type/LoadTimestamp]
+   [#"(?:^|_)(?:end|ends|ended|due|expires|expiry|expiration|completed)(?:_|$)" temporal-type :type/EndTimestamp]
+   [#"^last_(?!modified)"          temporal-type    :type/LastActivityTimestamp]
+   ;; a past-tense verb with `_at` is one step of a process (shipped_at), unless it is load or edit bookkeeping
+   [#"^(?!(?:modified|inserted|extracted|ingested|processed|refreshed)_)(?:[a-z]+ed|paid|sent|won|lost)_(?:at|on|date|time)$"
+    temporal-type    :type/MilestoneTimestamp]
+   [#"(?:^|_)(?:time_?zone|tz|utc_offset)$" int-or-text-type :type/TimeZone]
+   [#"(?:^|_)(?:user_agent|browser|os|operating_system)$" text-type :type/UserAgent]
+   [#"(?:^|_)(?:file_?name|file_?path)$" text-type  :type/FilePath]
+   [#"^(?:row_hash|record_hash|_hash|hashdiff)$" text-type :type/RowHash]
+   [#"(?:^|_)(?:hash|checksum|digest|md5|sha\d*)$" text-type :type/Hash]
+   [#"^(?:version|revision|etag|rev)$|_version$" int-or-text-type :type/Version]
+   [#"(?:^|_)(?:unit_price|unit_amount|unit_cost|rate_amount|price_per_unit)$" number-type :type/UnitPrice]
+   [#"^(?:impressions|clicks|views|opens|visits|installs|conversions|sessions|downloads|signups|likes|followers)$"
+    int-type         :type/Count]
+   [#"(?:^|_)(?:bytes|file_size|size_bytes)$|_(?:kb|mb|gb)$" int-type :type/Bytes]
+   [#"(?:^|_)(?:balance|mrr|arr|remaining|on_hand|cumulative|outstanding)(?:_|$)" number-type :type/Balance]
+   [#"^(?:min|max|minimum|maximum)_|_(?:min|max|low|high|floor|ceiling)$" number-type :type/RangeBound]
+   [#"(?:^|_)(?:ctr|cpc|cpm|cpa|roas)$" float-type  :type/Rate]
+   ;; not `state`, which is as often an address as a lifecycle state
+   [#"_status$|(?:^|_)(?:stage|phase|result)$" int-or-text-type :type/Status]
+   [#"(?:^|_)(?:priority|severity|urgency|tier)$" int-or-text-type :type/Priority]
+   [#"(?:^|_)reason$|^reason_"     text-type        :type/Reason]
+   [#"^kind$|_kind$"               text-type        :type/Kind]
+   [#"(?:^|_)(?:medium|utm_medium)$" text-type      :type/Channel]
+   [#"(?:^|_)(?:locale|language|lang)(?:_code)?$" text-type :type/Locale]
+   [#"(?:^|_)colou?r(?:_hex|_code)?$" text-type     :type/Color]
+   [#"(?:^|_)(?:tags|labels|keywords)$" text-type   :type/Tags]
+   [#"currency_code$|_currency$"   text-type        :type/CurrencyCode]
+   [#"(?:^|_)(?:unit|uom)$"        text-type        :type/UnitOfMeasure]
+   [#"(?:^|_)(?:phone|mobile|telephone|fax)(?:_number|_no)?$" text-type :type/Phone]
+   [#"(?:^|_)(?:number|no|code|sku|reference|ref)$" int-or-text-type :type/NaturalKey]
+   [#"^(?:index|idx|array_index)$" int-type         :type/ArrayIndex]
+   [#"(?:^|_)(?:sort_order|display_order|sort_index|position)$" number-type :type/SortOrder]
+   [#"^(?:is_)?(?:deleted|archived|removed|trashed)$" boolean-type :type/SoftDeleteFlag]
+   [#"^(?:is_current|is_latest|current_flag)$" boolean-type :type/CurrentRowFlag]
+   [#"^(?:is_test|livemode|test_mode|is_internal|is_sandbox|is_demo)$" boolean-type :type/TestDataFlag]
+   [#"^(?:is_default|is_primary)$" boolean-type     :type/PrimaryFlag]
+   [#"^(?:is|has)_"                boolean-type     :type/Flag]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -186,7 +251,49 @@
    [(prefix-or-postfix "subscription") :entity/SubscriptionTable]
    [(prefix-or-postfix "company")      :entity/CompanyTable]
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
-   [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
+   [(prefix-or-postfix "vendor")       :entity/CompanyTable]
+   ;; The subjects below match only names no pattern above claims. `account` and `employee` keep
+   ;; `:entity/UserTable` rather than becoming `:entity/OrganizationTable` and `:entity/EmployeeTable`, because
+   ;; data-sensitivity gating and the x-ray templates key on `:entity/UserTable`; likewise `order_lines` stays a
+   ;; transaction table.
+   [#"(?:^|_)ads?(?:_|$)"                    :entity/CampaignTable]
+   [(prefix-or-postfix "campaign")           :entity/CampaignTable]
+   [(prefix-or-postfix "contact")            :entity/ContactTable]
+   [(prefix-or-postfix "lead")               :entity/ContactTable]
+   [(prefix-or-postfix "customer")           :entity/CustomerTable]
+   [(prefix-or-postfix "worker")             :entity/EmployeeTable]
+   [(prefix-or-postfix "staff")              :entity/EmployeeTable]
+   [(prefix-or-postfix "organization")       :entity/OrganizationTable]
+   [(prefix-or-postfix "organisation")       :entity/OrganizationTable]
+   [(prefix-or-postfix "workspace")          :entity/OrganizationTable]
+   [(prefix-or-postfix "team")               :entity/OrganizationTable]
+   [#"^line_?items?|line_?items?$|_lines?$"  :entity/LineItemTable]
+   [(prefix-or-postfix "deal")               :entity/OpportunityTable]
+   [(prefix-or-postfix "opportunity")        :entity/OpportunityTable]
+   [(prefix-or-postfix "opportunities")      :entity/OpportunityTable]
+   [(prefix-or-postfix "pipeline")           :entity/OpportunityTable]
+   [(prefix-or-postfix "ticket")             :entity/TicketTable]
+   [(prefix-or-postfix "case")               :entity/TicketTable]
+   [(prefix-or-postfix "incident")           :entity/TicketTable]
+   [(prefix-or-postfix "issue")              :entity/TicketTable]
+   [(prefix-or-postfix "message")            :entity/MessageTable]
+   [(prefix-or-postfix "email")              :entity/MessageTable]
+   [(prefix-or-postfix "sms")                :entity/MessageTable]
+   [(prefix-or-postfix "call")               :entity/MessageTable]
+   [(prefix-or-postfix "chat")               :entity/MessageTable]
+   [(prefix-or-postfix "notification")       :entity/MessageTable]
+   [(prefix-or-postfix "session")            :entity/SessionTable]
+   [(prefix-or-postfix "project")            :entity/ProjectTable]
+   [(prefix-or-postfix "job")                :entity/ProjectTable]
+   [(prefix-or-postfix "location")           :entity/LocationTable]
+   [(prefix-or-postfix "site")               :entity/LocationTable]
+   [(prefix-or-postfix "store")              :entity/LocationTable]
+   [(prefix-or-postfix "address")            :entity/LocationTable]
+   [(prefix-or-postfix "addresses")          :entity/LocationTable]
+   [(prefix-or-postfix "device")             :entity/DeviceTable]
+   [(prefix-or-postfix "asset")              :entity/DeviceTable]
+   [(prefix-or-postfix "calendar")           :entity/CalendarTable]
+   [#"^(?:dim_)?dates?(?:_dim(?:ension)?)?$" :entity/CalendarTable]])
 
 (mu/defn infer-entity-type-by-name :- analyze.schema/Table
   "Classifier that infers the semantic type of a `table` based on its name."

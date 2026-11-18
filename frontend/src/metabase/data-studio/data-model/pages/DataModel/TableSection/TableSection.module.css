@@ -1,9 +1,5 @@
-.header {
-  z-index: 3;
-}
-
 .box {
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-lg);
   padding: var(--mantine-spacing-lg);
   background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
@@ -11,4 +7,11 @@
 
 .EmptyState {
   padding-bottom: 128px;
+}
+
+/* A segmented control's items at a large button's 40px height, with the
+   control's 4px padding around them */
+.largeSegmentedLabel {
+  display: flex;
+  min-height: 2rem;
 }

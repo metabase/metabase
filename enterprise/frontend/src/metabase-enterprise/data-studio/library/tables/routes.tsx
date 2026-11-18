@@ -15,15 +15,35 @@ import { Route } from "metabase/router";
  * The admin guard stays eager: it has to decide before there is anything to
  * show.
  */
+const publishedDataPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
+  ).then(({ PublishedDataPage }) => ({ Component: PublishedDataPage }));
+
 const tableOverviewPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableOverviewPage"
   ).then(({ TableOverviewPage }) => ({ Component: TableOverviewPage }));
 
+const tableMetadataPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableMetadataPage"
+  ).then(({ TableMetadataPage }) => ({ Component: TableMetadataPage }));
+
+const tablePropertiesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TablePropertiesPage"
+  ).then(({ TablePropertiesPage }) => ({ Component: TablePropertiesPage }));
+
 const tableFieldsPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableFieldsPage"
   ).then(({ TableFieldsPage }) => ({ Component: TableFieldsPage }));
+
+const tableHistoryPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableHistoryPage"
+  ).then(({ TableHistoryPage }) => ({ Component: TableHistoryPage }));
 
 const tableSegmentsPage = () =>
   import(
@@ -99,9 +119,13 @@ const measureDependenciesPage = () =>
 export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="tables">
+      <Route index lazy={publishedDataPage} />
       <Route path=":tableId" lazy={tableOverviewPage} />
+      <Route path=":tableId/metadata" lazy={tableMetadataPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />
+      <Route path=":tableId/properties" lazy={tablePropertiesPage} />
+      <Route path=":tableId/history" lazy={tableHistoryPage} />
       <Route path=":tableId/segments" lazy={tableSegmentsPage} />
       <Route path=":tableId/segments/new" element={<IsAdmin />}>
         <Route index lazy={newSegmentPage} />

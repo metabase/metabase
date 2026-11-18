@@ -21,7 +21,7 @@ export function DataStudioMetricBreadcrumbs({
       {path?.map((collection, index) => (
         <Link
           key={collection.id}
-          to={Urls.dataStudioLibrary({
+          to={Urls.dataStudioMetrics({
             expandedIds: path.slice(1, index + 1).map((c) => c.id),
           })}
         >

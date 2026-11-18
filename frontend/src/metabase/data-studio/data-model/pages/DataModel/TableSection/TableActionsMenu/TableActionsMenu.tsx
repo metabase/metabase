@@ -1,23 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  useDiscardTablesFieldValuesMutation,
-  useRescanTablesFieldValuesMutation,
-  useSyncTablesSchemasMutation,
-} from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import {
-  trackDataStudioTableFieldValuesDiscardStarted,
-  trackDataStudioTableFieldsRescanStarted,
-  trackDataStudioTableSchemaSyncStarted,
-} from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
+
+import { useTableSyncActions } from "./use-table-sync-actions";
 
 interface Props {
   table: Table;
@@ -25,10 +16,11 @@ interface Props {
 
 export function TableActionsMenu({ table }: Props) {
   const [isReplaceOpen, setIsReplaceOpen] = useState(false);
-  const [syncTablesSchemas] = useSyncTablesSchemasMutation();
-  const [rescanTablesFieldValues] = useRescanTablesFieldValuesMutation();
-  const [discardTablesFieldValues] = useDiscardTablesFieldValuesMutation();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const {
+    syncSchema: handleSyncSchema,
+    rescanFieldValues: handleRescan,
+    discardFieldValues: handleDiscard,
+  } = useTableSyncActions(table);
 
   const tableIds = [table.id];
   const showSyncItems = !table.db?.is_attached_dwh;
@@ -38,39 +30,6 @@ export function TableActionsMenu({ table }: Props) {
     schema: table.schema,
     tableIds,
   });
-
-  const handleSyncSchema = async () => {
-    const { error } = await syncTablesSchemas({ table_ids: tableIds });
-    if (error) {
-      sendErrorToast(t`Failed to start sync`);
-      trackDataStudioTableSchemaSyncStarted("failure");
-    } else {
-      sendSuccessToast(t`Sync triggered`);
-      trackDataStudioTableSchemaSyncStarted("success");
-    }
-  };
-
-  const handleRescan = async () => {
-    const { error } = await rescanTablesFieldValues({ table_ids: tableIds });
-    if (error) {
-      sendErrorToast(t`Failed to start scan`);
-      trackDataStudioTableFieldsRescanStarted("failure");
-    } else {
-      sendSuccessToast(t`Scan triggered`);
-      trackDataStudioTableFieldsRescanStarted("success");
-    }
-  };
-
-  const handleDiscard = async () => {
-    const { error } = await discardTablesFieldValues({ table_ids: tableIds });
-    if (error) {
-      sendErrorToast(t`Failed to discard values`);
-      trackDataStudioTableFieldValuesDiscardStarted("failure");
-    } else {
-      sendSuccessToast(t`Discard triggered`);
-      trackDataStudioTableFieldValuesDiscardStarted("success");
-    }
-  };
 
   // Without sync actions and find-and-replace, the menu would hold only
   // "View schema", so render it directly as a button instead of a single-item menu.

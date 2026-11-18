@@ -1,0 +1,259 @@
+import { useState } from "react";
+import { t } from "ttag";
+
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import {
+  BehaviorSection,
+  CoercionStrategyPicker,
+  FormattingSection,
+  MetadataCardVariantProvider,
+} from "metabase/metadata/components";
+import {
+  useFieldCasting,
+  useFieldUpdateHandlers,
+} from "metabase/metadata/hooks";
+import {
+  canCoerceFieldType,
+  getFieldRawName,
+} from "metabase/metadata/utils/field";
+import { Box, Code, Stack, Switch, Tabs } from "metabase/ui";
+import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
+import type { Field, FieldId, Table } from "metabase-types/api";
+
+import { trackMetadataChange } from "../../../analytics";
+import { DetailsEditableText } from "../DetailPanel";
+
+import { ChangesOverTimeSection } from "./ChangesOverTime";
+import { CustomFieldSection } from "./CustomFieldSection";
+import {
+  FieldCorrectionInput,
+  FieldHistoryRoleInput,
+  useIsHistoryAttribute,
+  useIsHistoryTable,
+} from "./FieldHistoryRoleInput";
+import { FieldSemanticsSection } from "./FieldSemanticsSection";
+
+type FieldTab = "details" | "behavior" | "formatting";
+
+const FIELD_TABS: FieldTab[] = ["details", "behavior", "formatting"];
+
+// The last tab picked, so the next field opens on it; resets on reload
+let lastPickedTab: FieldTab = "details";
+
+interface FieldDetailsProps {
+  field: Field;
+  table: Table;
+  getFieldHref: (fieldId: FieldId) => string;
+}
+
+/**
+ * A field's settings in the drawer, in tabs: its details and metadata, and
+ * the shared behavior and formatting.
+ */
+export function FieldDetails({ field, table }: FieldDetailsProps) {
+  const readOnly = !table.can_write;
+  const isHistoryTable = useIsHistoryTable(table);
+  const canChangeOverTime = !isHistoryTable && !isPK(field) && !isFK(field);
+  const isHistoryAttribute = useIsHistoryAttribute(field, table);
+  const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
+    field,
+  });
+  // PROTOTYPE: the tab lives in state, not the URL. Each field remounts this,
+  // so it starts on the last tab picked for any field
+  const [tab, setTab] = useState<FieldTab>(() => lastPickedTab);
+  const saveName = (value: string) => {
+    const name = value.trim();
+    if (name.length > 0 && name !== field.display_name) {
+      handleNameChange(name);
+    }
+  };
+
+  const saveDescription = (value: string) => {
+    const description = value.trim();
+    if (description !== (field.description ?? "")) {
+      handleDescriptionChange(description);
+    }
+  };
+
+  const tabList = (
+    // Bleeds into the panel's padding so the border spans the drawer
+    <Tabs.List mx="-xl" px="xl">
+      <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+      <Tabs.Tab value="behavior">{t`Behavior`}</Tabs.Tab>
+      <Tabs.Tab value="formatting">{t`Formatting`}</Tabs.Tab>
+    </Tabs.List>
+  );
+
+  return (
+    <Tabs
+      value={tab}
+      onChange={(value) => {
+        const next = FIELD_TABS.find((known) => known === value);
+        if (next) {
+          lastPickedTab = next;
+          setTab(next);
+        }
+      }}
+      data-testid="field-section"
+    >
+      <Box mb="xl">{tabList}</Box>
+
+      <Tabs.Panel value="details">
+        <Stack gap="xxl">
+          <SidebarSection title={t`About`}>
+            <DetailsTable>
+              <DetailsRow
+                label={t`Display name`}
+                fillValue
+                value={
+                  <DetailsEditableText
+                    initialValue={field.display_name}
+                    placeholder={t`Give this field a name`}
+                    maxLength={254}
+                    isDisabled={readOnly}
+                    onChange={saveName}
+                    data-testid="field-display-name-input"
+                  />
+                }
+              />
+              <DetailsRow
+                label={t`Raw name`}
+                value={<Code>{getFieldRawName(field)}</Code>}
+              />
+              <DetailsRow
+                label={t`Description`}
+                fillValue
+                value={
+                  <DetailsEditableText
+                    initialValue={field.description}
+                    placeholder={t`No description`}
+                    isMultiline
+                    isOptional
+                    isDisabled={readOnly}
+                    onChange={saveDescription}
+                    data-testid="field-description-input"
+                  />
+                }
+              />
+            </DetailsTable>
+          </SidebarSection>
+          <SidebarSection title={t`Structure`}>
+            <DetailsTable>
+              <DetailsRow
+                label={t`Data type`}
+                value={<Code>{field.database_type}</Code>}
+              />
+              {canCoerceFieldType(field) && (
+                <DetailsRow
+                  label={t`Casting`}
+                  value={
+                    <FieldCastingInput field={field} disabled={readOnly} />
+                  }
+                />
+              )}
+              {isHistoryTable && (
+                <DetailsRow
+                  label={t`History`}
+                  value={
+                    <FieldHistoryRoleInput
+                      field={field}
+                      table={table}
+                      disabled={readOnly}
+                    />
+                  }
+                />
+              )}
+              {isHistoryTable && isHistoryAttribute && (
+                <DetailsRow
+                  label={t`Changes`}
+                  value={
+                    <FieldCorrectionInput
+                      field={field}
+                      table={table}
+                      disabled={readOnly}
+                    />
+                  }
+                />
+              )}
+            </DetailsTable>
+          </SidebarSection>
+          <CustomFieldSection field={field} table={table} />
+          <FieldSemanticsSection field={field} table={table} />
+          {canChangeOverTime && (
+            <ChangesOverTimeSection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
+        </Stack>
+      </Tabs.Panel>
+
+      {/* One section each, so the tab names and frames them: no card */}
+      <Tabs.Panel value="behavior">
+        <MetadataCardVariantProvider value="plain">
+          <BehaviorSection
+            field={field}
+            databaseId={table.db_id}
+            disabled={readOnly}
+            onTrackMetadataChange={trackMetadataChange}
+          />
+        </MetadataCardVariantProvider>
+      </Tabs.Panel>
+
+      <Tabs.Panel value="formatting">
+        <MetadataCardVariantProvider value="plain">
+          <FormattingSection
+            field={field}
+            disabled={readOnly}
+            onTrackMetadataChange={trackMetadataChange}
+          />
+        </MetadataCardVariantProvider>
+      </Tabs.Panel>
+    </Tabs>
+  );
+}
+
+function FieldCastingInput({
+  field,
+  disabled,
+}: {
+  field: Field;
+  disabled: boolean;
+}) {
+  const {
+    isCasting,
+    autoFocusCoercionPicker,
+    isCoercionPickerOpen,
+    setIsCoercionPickerOpen,
+    handleCastingChange,
+    handleCoercionStrategyChange,
+  } = useFieldCasting({ field, onTrackMetadataChange: trackMetadataChange });
+
+  return (
+    <Stack gap="sm" py="xs">
+      <Switch
+        checked={isCasting}
+        disabled={disabled}
+        label={t`Cast to a specific data type`}
+        onChange={handleCastingChange}
+      />
+      {isCasting && (
+        <CoercionStrategyPicker
+          autoFocus={autoFocusCoercionPicker}
+          baseType={field.base_type}
+          disabled={disabled}
+          dropdownOpened={isCoercionPickerOpen}
+          value={field.coercion_strategy ?? undefined}
+          onChange={handleCoercionStrategyChange}
+          onDropdownClose={() => setIsCoercionPickerOpen(false)}
+          onDropdownOpen={() => setIsCoercionPickerOpen(true)}
+        />
+      )}
+    </Stack>
+  );
+}
