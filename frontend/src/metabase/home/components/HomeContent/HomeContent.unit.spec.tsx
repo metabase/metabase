@@ -69,6 +69,13 @@ const setup = async ({
   await waitForLoaderToBeRemoved();
 };
 
+const XRAY_TABLE_CANDIDATES = [
+  createMockTableCandidate({ title: "Orders", url: "/a" }),
+  createMockTableCandidate({ title: "People", url: "/b" }),
+  createMockTableCandidate({ title: "Products", url: "/c" }),
+  createMockTableCandidate({ title: "Reviews", url: "/d" }),
+];
+
 describe("HomeContent", () => {
   beforeEach(() => {
     jest.useFakeTimers({
@@ -176,13 +183,20 @@ describe("HomeContent", () => {
   });
 
   it("should not render x-rays for the installer when there is no question and dashboard if the x-rays feature is disabled", async () => {
+    const database = createMockDatabase({ tables: [createMockTable()] });
+
     await setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
         first_login: "2020-01-10T00:00:00Z",
       }),
-      databases: [createMockDatabase()],
+      databases: [database],
+      candidates: {
+        [database.id]: [
+          createMockDatabaseCandidate({ tables: XRAY_TABLE_CANDIDATES }),
+        ],
+      },
       recentItems: [createMockRecentTableItem()],
       isXrayEnabled: false,
     });
@@ -190,6 +204,56 @@ describe("HomeContent", () => {
     expect(
       screen.queryByText(/Here are some explorations/),
     ).not.toBeInTheDocument();
+  });
+
+  describe("sample database x-rays (metabase#26571)", () => {
+    const XRAY_TEXTS = [
+      /Try out these sample x-rays/,
+      /^A look at/,
+      /^A summary of/,
+      /^A glance at/,
+      /^Some insights about/,
+    ];
+
+    const setupSampleXrays = (isXrayEnabled: boolean) => {
+      const database = createMockDatabase({
+        is_sample: true,
+        tables: [createMockTable()],
+      });
+
+      return setup({
+        user: createMockUser({
+          is_installer: true,
+          has_question_and_dashboard: false,
+          first_login: "2020-01-10T00:00:00Z",
+        }),
+        databases: [database],
+        candidates: {
+          [database.id]: [
+            createMockDatabaseCandidate({
+              tables: XRAY_TABLE_CANDIDATES,
+            }),
+          ],
+        },
+        isXrayEnabled,
+      });
+    };
+
+    it("should render sample x-rays when the x-rays feature is enabled", async () => {
+      await setupSampleXrays(true);
+
+      XRAY_TEXTS.forEach((text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
+      });
+    });
+
+    it("should not render sample x-rays when the x-rays feature is disabled", async () => {
+      await setupSampleXrays(false);
+
+      XRAY_TEXTS.forEach((text) => {
+        expect(screen.queryByText(text)).not.toBeInTheDocument();
+      });
+    });
   });
 
   it("should render nothing if there are no databases", async () => {

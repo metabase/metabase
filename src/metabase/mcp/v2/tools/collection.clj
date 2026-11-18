@@ -9,6 +9,7 @@
   (:require
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
+   [metabase.collections.schema :as collections.schema]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
@@ -118,8 +119,8 @@
     [:maybe [:or
              [:int {:description "Numeric id of the collection to update."}]
              [:string {:description "21-character entity_id of the collection to update."}]]]]
-   [:name {:optional true}
-    [:maybe [:string {:min 1 :description "Required on create; editable on update: display name of the collection."}]]]
+   [:name {:optional true :description "Required on create; editable on update: display name of the collection."}
+    [:maybe ::collections.schema/collection.name]]
    [:description {:optional true}
     [:maybe [:string {:min 1 :description (str "Optional human-readable description. To remove one, name it in "
                                                "`clear` — `clear: [\"description\"]`.")}]]]

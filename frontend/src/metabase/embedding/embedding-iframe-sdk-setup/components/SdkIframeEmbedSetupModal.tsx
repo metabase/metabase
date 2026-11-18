@@ -25,7 +25,7 @@ import {
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { useIsDataAppMissing } from "../hooks/use-is-data-app-missing";
+import { useIsDataAppMissing } from "../data-apps/use-is-data-app-missing";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";

@@ -2,6 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -12,6 +16,20 @@
   [model pk]
   (let [pk-column (first (t2/primary-keys model))]
     (t2/exists? model {:where [:and [:= pk-column pk] [:in pk-column (remote-sync/synced-ids-clause model nil)]]})))
+
+(defn- table-segment-definition
+  "A full query on `table-id` with an always-true filter."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 (deftest synced-models-test
   (testing "content models define which of their rows are synced"
@@ -61,7 +79,7 @@
                    :model/Card       card   {:collection_id (:id synced)}]
       (testing "without remote sync, every row can be written"
         (is (false? (remote-sync/read-only?)))
-        (is (true? (remote-sync/can-write? :model/Card (:id card))))))))
+        (is (true? (mt/with-test-user :crowberto (mi/can-write? (t2/hydrate card :can_write)))))))))
 
 (deftest synced-name-test
   (testing "exported entities are named by their name, and glossary entries by their term"
@@ -81,20 +99,20 @@
                  :model/Collection        unsynced        {:name "Unsynced" :location "/"}
                  :model/Table             synced-table    {:db_id (mt/id) :name "synced_table"}
                  :model/Table             unsynced-table  {:db_id (mt/id) :name "unsynced_table"}
-                 :model/TableUserSettings _               {:table_id      (:id synced-table)
+                 :model/TableUserSettings synced-ts       {:table_id      (:id synced-table)
                                                            :is_published  true
                                                            :collection_id (:id synced)}
-                 :model/TableUserSettings _               {:table_id      (:id unsynced-table)
+                 :model/TableUserSettings unsynced-ts     {:table_id      (:id unsynced-table)
                                                            :is_published  true
                                                            :collection_id (:id unsynced)}
                  :model/Field             synced-field    {:table_id (:id synced-table) :name "SYNCED"}
                  :model/Field             unsynced-field  {:table_id (:id unsynced-table) :name "UNSYNCED"}
-                 :model/FieldUserSettings _               {:field_id (:id synced-field) :display_name "Synced"}
-                 :model/FieldUserSettings _               {:field_id (:id unsynced-field) :display_name "Unsynced"}
-                 :model/Segment           synced-seg      {:table_id (:id synced-table) :name "Synced segment"}
-                 :model/Segment           unsynced-seg    {:table_id (:id unsynced-table) :name "Unsynced segment"}
-                 :model/Measure           synced-measure  {:table_id (:id synced-table) :name "Synced measure"}
-                 :model/Measure           unsynced-measure {:table_id (:id unsynced-table) :name "Unsynced measure"}
+                 :model/FieldUserSettings synced-fs       {:field_id (:id synced-field) :display_name "Synced"}
+                 :model/FieldUserSettings unsynced-fs     {:field_id (:id unsynced-field) :display_name "Unsynced"}
+                 :model/Segment           synced-seg      {:definition (table-segment-definition (:id synced-table)) :name "Synced segment"}
+                 :model/Segment           unsynced-seg    {:definition (table-segment-definition (:id unsynced-table)) :name "Unsynced segment"}
+                 :model/Measure           synced-measure  {:definition (table-measure-definition (:id synced-table)) :name "Synced measure"}
+                 :model/Measure           unsynced-measure {:definition (table-measure-definition (:id unsynced-table)) :name "Unsynced measure"}
                  :model/Document          synced-doc      {:name "Synced" :collection_id (:id synced)}
                  :model/Document          unsynced-doc    {:name "Unsynced" :collection_id (:id unsynced)}
                  :model/Timeline          synced-tl       {:name "Synced" :collection_id (:id synced)}
@@ -120,8 +138,8 @@
                                                            :database_id   (mt/id)
                                                            :dataset_query (mt/native-query {:query "SELECT 1"})}
                  :model/Transform         transform       {}]
-    (doseq [[model synced-pk unsynced-pk] [[:model/TableUserSettings (:id synced-table) (:id unsynced-table)]
-                                           [:model/FieldUserSettings (:id synced-field) (:id unsynced-field)]
+    (doseq [[model synced-pk unsynced-pk] [[:model/TableUserSettings (:id synced-ts) (:id unsynced-ts)]
+                                           [:model/FieldUserSettings (:id synced-fs) (:id unsynced-fs)]
                                            [:model/Segment (:id synced-seg) (:id unsynced-seg)]
                                            [:model/Measure (:id synced-measure) (:id unsynced-measure)]
                                            [:model/Document (:id synced-doc) (:id unsynced-doc)]
@@ -139,14 +157,21 @@
       (testing "the indexes of a transform sync with it"
         (is (synced? :model/TableIndex (:id index)))))
     (when config/ee-available?
-      (mt/with-temp [:model/PythonLibrary library {:path "synced" :source "def synced(): pass"}
-                     :model/DataApp       app     {}
+      (mt/with-temp [:model/DataApp       app     {}
                      :model/TransformTest test    {:transform_id (:id transform)
                                                    :name         "Test"
                                                    :creator_id   (mt/user->id :crowberto)
                                                    :inputs       []
                                                    :expectations []}]
         (testing "Python libraries and data apps are synced, and the tests of a transform sync with it"
-          (is (synced? :model/PythonLibrary (:id library)))
+          (let [{:keys [id source is_default]} (or (t2/select-one :model/PythonLibrary :path "common.py")
+                                                   (t2/insert-returning-instance! :model/PythonLibrary
+                                                                                  {:path "common" :source ""}))]
+            (try
+              (t2/update! :model/PythonLibrary :id id {:source "def synced(): pass"})
+              (is (synced? :model/PythonLibrary id))
+              (finally
+                (t2/update! :model/PythonLibrary :id id {:source source})
+                (t2/update! :model/PythonLibrary :id id {:is_default is_default}))))
           (is (synced? :model/DataApp (:id app)))
           (is (synced? :model/TransformTest (:id test))))))))

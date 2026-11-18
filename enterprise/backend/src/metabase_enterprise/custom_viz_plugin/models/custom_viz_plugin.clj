@@ -5,6 +5,7 @@
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
@@ -48,7 +49,14 @@
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/CustomVizPlugin
+  [_model]
+  {:create :event/custom-viz-plugin-create
+   :update :event/custom-viz-plugin-update
+   :delete :event/custom-viz-plugin-delete})
 
 (def non-blob-columns
   "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
@@ -56,13 +64,13 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(defmethod mi/can-read? :model/CustomVizPlugin
-  ([_instance]   (some? api/*current-user-id*))
-  ([_model _pk]  (some? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some? api/*current-user-id*))))
 
-(defmethod mi/can-write? :model/CustomVizPlugin
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _instance]

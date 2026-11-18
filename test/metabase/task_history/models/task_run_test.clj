@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.lib.core :as lib]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -10,7 +11,9 @@
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -431,3 +434,9 @@
       (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/testing
                   :payload      {}}))))))
+
+(deftest status-must-be-known-test
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-run.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-run.update {:status :abandoned}))
+    (is (= {:status :abandoned} (lib/normalize ::task-history.schema/task-run.update {:status "abandoned"})))))

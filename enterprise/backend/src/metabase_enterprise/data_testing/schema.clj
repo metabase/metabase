@@ -98,7 +98,7 @@
   [:sequential ::input])
 
 (mr/def ::expectation.equals
-  "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
+  "A check that the output of the query under test holds exactly the expected rows, over exactly their columns."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :format)
            :error/fn         (unknown-dispatch :format)}
@@ -207,9 +207,21 @@
   "What a client sends to update a card test. Omitted fields are left unchanged."
   (test-update :card_id ::lib.schema.id/card))
 
+(mr/def ::segment-test.create
+  "What a client sends to create a segment test."
+  (test-create :segment_id ::lib.schema.id/segment))
+
+(mr/def ::segment-test
+  "A saved segment test."
+  (saved-test :segment_id ::lib.schema.id/segment :segment :metabase.segments.schema/segment))
+
+(mr/def ::segment-test.update
+  "What a client sends to update a segment test. Omitted fields are left unchanged."
+  (test-update :segment_id ::lib.schema.id/segment))
+
 (mr/def ::saved-test
   "A saved test of any subject type."
-  [:or ::transform-test ::card-test])
+  [:or ::transform-test ::card-test ::segment-test])
 
 (mr/def ::run-status
   "The persisted lifecycle state of a test run."
@@ -219,7 +231,7 @@
 (mr/def ::test-type
   "The kind of test a run ran. It selects the table that `test_id` points into."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
-   :transform :card])
+   :transform :card :segment])
 
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
@@ -277,6 +289,13 @@
   "A card test as the read endpoints return it, with its newest run."
   [:merge
    ::card-test
+   [:map {:closed true}
+    [:last_run [:maybe ::data-test-run]]]])
+
+(mr/def ::segment-test.response
+  "A segment test as the read endpoints return it, with its newest run."
+  [:merge
+   ::segment-test
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
@@ -343,3 +362,7 @@
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."
   (external-test ::card-test :card_id))
+
+(mr/def ::external-segment-test
+  "A SegmentTest as serialization writes it, with references in place of ids."
+  (external-test ::segment-test :segment_id))

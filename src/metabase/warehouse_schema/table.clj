@@ -14,7 +14,7 @@
 
 (defn- nil-if-unreadable
   [instance]
-  (when (and instance (mi/can-read? instance))
+  (when (and instance (mi/can-read? (t2/hydrate instance :can_read)))
     instance))
 
 (defn present-table
@@ -51,7 +51,7 @@
   Uses can-read? which checks data permissions, metadata management permissions,
   and collection permissions for published tables."
   [table]
-  (mi/can-read? table))
+  (mi/can-read? (t2/hydrate table :can_read)))
 
 (defn sensitive-fields-table-ids
   "IDs of the `tables` whose sensitive fields to list: none unless `include-sensitive-fields?`, and then only those the
@@ -95,9 +95,7 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (warehouse-schema.db/tables ids)
-           _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                                  :table-ids (into #{} (map :id) tables)})
+     (let [tables (t2/hydrate (warehouse-schema.db/tables ids) :can_read)
            tables (filter can-access-table-for-query-metadata? tables)
            sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
            tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
@@ -168,10 +166,7 @@
   [database-id schema-name]
   (or
    (contains? #{:query-builder :query-builder-and-native}
-              (perms/schema-permission-for-user api/*current-user-id*
-                                                :perms/create-queries
-                                                database-id
-                                                schema-name))
+              (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries database-id schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
 (defn browsable-databases-honeysql-filter
@@ -208,8 +203,7 @@
         filter-schemas-by-tables (fn [schemas]
                                    (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)
-                                           _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (filter mi/can-query? tables)
+                                           filtered-tables (filter mi/can-query? (t2/hydrate tables :can_query))
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
@@ -235,10 +229,10 @@
    (let [candidate-tables (if include-hidden?
                             (warehouse-schema.db/active-tables-in-schema db-id schema)
                             (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
-         _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
-                                     (filter mi/can-read? candidate-tables))
+                                     (mi/readable candidate-tables))
+                            can-query? (#(t2/hydrate % :can_query))
                             can-query? (filter mi/can-query?))
          hydration-keys   (cond-> []
                             (premium-features/any-transforms-enabled?)   (conj :transform)

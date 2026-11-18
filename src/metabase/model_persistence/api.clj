@@ -50,9 +50,8 @@
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (model-persistence.db/persisted-database-ids)
         writable-db-ids (when (seq db-ids)
-                          (perms/prime-database-perms-cache {:db-ids db-ids})
                           (->> (model-persistence.db/databases db-ids)
-                               (filter mi/can-write?)
+                               mi/writable
                                (map :id)
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
@@ -162,6 +161,7 @@
   query in place of the model's query."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
+  (workspaces/check-not-in-workspace-mode! "Model persistence")
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [database_id] :as card} (model-persistence.db/card card-id)]
     (api/write-check card)
@@ -185,6 +185,7 @@
   "Refresh the persisted model caching `card-id`."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
+  (workspaces/check-not-in-workspace-mode! "Model persistence")
   (api/let-404 [card           (model-persistence.db/card card-id)
                 persisted-info (model-persistence.db/persisted-info-for-card card-id)]
     (when (not (queries/model? card))
@@ -221,6 +222,7 @@
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (workspaces/check-not-in-workspace-mode! "Model persistence")
   (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))

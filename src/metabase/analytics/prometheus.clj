@@ -415,6 +415,10 @@
                        {:description (str "Number of tokens consumed by the given embedding model and provider. "
                                           "Not all providers track token use.")
                         :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-token-tracking-failures
+                       {:description (str "Number of embedding calls whose token-tracking row failed to save, "
+                                          "so semantic_search_token_tracking undercounts their tokens.")
+                        :labels [:model]})
    (prometheus/counter :metabase-search/semantic-permission-filter-ms
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
@@ -861,6 +865,12 @@
                                             "calls.")
                           ;; 10ms -> 1 minute. Every edge is one time series per instance, so the list is short.
                           :buckets [10 100 1000 10000 60000]})
+   (prometheus/counter :metabase-metabot/sql-reference-checks
+                       {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
+                                          "ran: the caller turned it off, the dialect has none, a table tag, or SQL "
+                                          "that does not compile; the card and snippet check can still have run), "
+                                          "or `failed` (the check threw).")
+                        :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."

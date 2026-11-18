@@ -22,6 +22,8 @@ export interface CollectionEndpoints {
   rootCollection?: Collection;
   trashCollection?: Collection;
   currentUserId?: number;
+  /** Collections only returned by `GET /api/collection/tree`, such as tenant namespaces. */
+  treeOnlyCollections?: Collection[];
 }
 
 export function setupCollectionsEndpoints({
@@ -29,6 +31,7 @@ export function setupCollectionsEndpoints({
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
   currentUserId,
+  treeOnlyCollections = [],
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -66,56 +69,61 @@ export function setupCollectionsEndpoints({
     },
   );
 
-  fetchMock.get("path:/api/collection/tree", (call) => {
-    const url = new URL(call.url);
-    const excludeArchived = url.searchParams.get("exclude-archived") === "true";
+  fetchMock.get(
+    "path:/api/collection/tree",
+    (call) => {
+      const url = new URL(call.url);
+      const excludeArchived =
+        url.searchParams.get("exclude-archived") === "true";
 
-    const excludeOtherUserCollections =
-      url.searchParams.get("exclude-other-user-collections") === "true";
+      const excludeOtherUserCollections =
+        url.searchParams.get("exclude-other-user-collections") === "true";
 
-    // Support both singular "namespace" and plural "namespaces" params
-    const namespace = url.searchParams.get("namespace");
-    const namespaces = url.searchParams.getAll("namespaces");
-    const requestedNamespaces =
-      namespaces.length > 0 ? namespaces : namespace ? [namespace] : null;
+      // Support both singular "namespace" and plural "namespaces" params
+      const namespace = url.searchParams.get("namespace");
+      const namespaces = url.searchParams.getAll("namespaces");
+      const requestedNamespaces =
+        namespaces.length > 0 ? namespaces : namespace ? [namespace] : null;
 
-    return collections.filter((collection) => {
-      // Filter out other users' personal collections if requested
-      // But keep the current user's personal collection
-      if (
-        excludeOtherUserCollections &&
-        typeof collection.personal_owner_id === "number" &&
-        collection.personal_owner_id !== currentUserId
-      ) {
-        return false;
-      }
-
-      // Filter out archived collections, and the trash, if requested
-      if (
-        excludeArchived &&
-        (collection.archived || collection.type === "trash")
-      ) {
-        return false;
-      }
-
-      // Filter by namespace(s) if specified
-      if (requestedNamespaces) {
-        const collectionNamespace = collection.namespace ?? "";
-        if (!requestedNamespaces.includes(collectionNamespace)) {
+      return [...collections, ...treeOnlyCollections].filter((collection) => {
+        // Filter out other users' personal collections if requested
+        // But keep the current user's personal collection
+        if (
+          excludeOtherUserCollections &&
+          typeof collection.personal_owner_id === "number" &&
+          collection.personal_owner_id !== currentUserId
+        ) {
           return false;
         }
-      } else {
-        // By default, exclude tenant collections unless explicitly requested via namespace
-        const isTenantCollection =
-          collection.namespace === "shared-tenant-collection";
-        if (isTenantCollection) {
+
+        // Filter out archived collections, and the trash, if requested
+        if (
+          excludeArchived &&
+          (collection.archived || collection.type === "trash")
+        ) {
           return false;
         }
-      }
 
-      return true;
-    });
-  });
+        // Filter by namespace(s) if specified
+        if (requestedNamespaces) {
+          const collectionNamespace = collection.namespace ?? "";
+          if (!requestedNamespaces.includes(collectionNamespace)) {
+            return false;
+          }
+        } else {
+          // By default, exclude tenant collections unless explicitly requested via namespace
+          const isTenantCollection =
+            collection.namespace === "shared-tenant-collection";
+          if (isTenantCollection) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    },
+    { name: "collection-tree" },
+  );
 }
 
 function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
@@ -429,10 +437,32 @@ export function setupDashboardQuestionCandidatesEndpoint(
   });
 }
 
-export function setupStaleItemsEndpoint(total: number) {
-  fetchMock.get("express:/api/ee/stale/:id", {
-    total,
-  });
+/**
+ * Mocks the stale item count request (`GET /api/ee/stale/:id?limit=0`). When
+ * `collectionId` or `beforeDate` is given, a request for another collection or
+ * cutoff date gets a total of 0.
+ */
+export function setupStaleItemsEndpoint(
+  total: number,
+  {
+    collectionId,
+    beforeDate,
+  }: { collectionId?: CollectionId; beforeDate?: string } = {},
+) {
+  fetchMock.get(
+    "express:/api/ee/stale/:id",
+    ({ url, expressParams }) => {
+      const params = new URL(url).searchParams;
+      const isMatch =
+        (collectionId === undefined ||
+          expressParams?.id === String(collectionId)) &&
+        (beforeDate === undefined ||
+          params.get("before_date") === beforeDate) &&
+        params.get("limit") === "0";
+      return { data: [], total: isMatch ? total : 0, limit: 0, offset: 0 };
+    },
+    { name: "stale-items" },
+  );
 }
 
 export function setupCreateCollectionEndpoint(

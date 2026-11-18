@@ -3,9 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
@@ -42,7 +43,7 @@
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
-                         (collection/visible-collection-filter-clause)]
+                         (perms/visible-collections-filter-clause :timeline.collection_id (api/current-user-info) {:root-namespace nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline
@@ -71,6 +72,11 @@
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
   (t2/update! :model/Timeline :id id changes))
+
+(mu/defn directly-archived-timeline-ids
+  "The ids among `ids` of the Timelines archived on their own rather than along with their Collection."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-set :model/Timeline :id [:in ids] :archived true :archived_directly true))
 
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
