@@ -117,6 +117,7 @@ type SetupOpts = {
   databaseResponse?: Promise<Database>;
   query?: Lib.Query;
   generatedExpressions?: SummaryGeneratedExpression[];
+  pivotRowKeys?: string[];
 };
 
 async function setup({
@@ -128,6 +129,7 @@ async function setup({
     DEFAULT_TEST_QUERY,
   ),
   generatedExpressions,
+  pivotRowKeys: initialPivotRowKeys,
 }: SetupOpts = {}) {
   if (databaseResponse) {
     fetchMock.get(`path:/api/database/${database.id}`, () => databaseResponse, {
@@ -143,6 +145,7 @@ async function setup({
   });
   function Harness({ initialCard }: { initialCard: Card }) {
     const [card, setCard] = useState(initialCard);
+    const [pivotRowKeys, setPivotRowKeys] = useState(initialPivotRowKeys);
     const mode = useSelector(getQueryBuilderMode);
     const question = new Question(card, metadata);
     const query = question.query();
@@ -165,9 +168,16 @@ async function setup({
           <SummarySidebar
             query={query}
             stageIndex={stageIndex}
-            onQueryChange={(nextQuery) => {
+            pivotRowKeys={pivotRowKeys}
+            onQueryChange={(nextQuery, pivotChange) => {
               savedCard = question.setQuery(nextQuery).card();
               setCard(savedCard);
+              if (pivotChange?.type === "show") {
+                setPivotRowKeys(pivotChange.columnSplit.rows);
+              }
+              if (pivotChange?.type === "hide") {
+                setPivotRowKeys(undefined);
+              }
               onQueryChange(nextQuery);
             }}
           />
@@ -215,11 +225,20 @@ async function setup({
   };
 }
 
+const INPUT_NAMES: Record<SummaryWellId, string> = {
+  values: "Add a value by name",
+  columns: "Add a grouping by name",
+  rows: "Add a row by name",
+};
+
 function getInput(wellId: SummaryWellId) {
-  return screen.getByRole("textbox", {
-    name:
-      wellId === "values" ? "Add a value by name" : "Add a grouping by name",
-  });
+  return screen.getByRole("textbox", { name: INPUT_NAMES[wellId] });
+}
+
+function getChipLabels(wellId: SummaryWellId) {
+  return within(screen.getByTestId(`summary-well-${wellId}`))
+    .queryAllByTestId("summary-well-item")
+    .map((chip) => chip.textContent);
 }
 
 function getEditor() {
@@ -657,6 +676,56 @@ describe("summary formula handoff", () => {
     expect(input).toHaveValue("=test");
     expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
     expect(onQueryChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("formulas in Rows", () => {
+  it("adds a formula that is written in the Rows typeahead to Rows", async () => {
+    await setup();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Pivot into rows and columns" }),
+    );
+
+    fireEvent.change(getInput("rows"), { target: { value: "=" } });
+    await screen.findByRole("textbox", { name: "Formula" });
+    expect(
+      within(screen.getByTestId("summary-well-rows")).getByTestId(
+        "summary-well-draft-formula",
+      ),
+    ).toBeInTheDocument();
+    await changeFormula("[Total] * 2");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+
+    expect(getChipLabels("rows")).toEqual(["Total * 2"]);
+    expect(getChipLabels("columns")).toEqual([]);
+    expect(getInput("rows")).toHaveFocus();
+  });
+
+  it("updates the formula of a Rows chip and keeps the chip in Rows", async () => {
+    const { onQueryChange } = await setup({
+      query: FORMULA_QUERY,
+      generatedExpressions: [
+        makeSummaryFormula(FORMULA_QUERY, -1, "Order date"),
+      ].filter(isNotNull),
+      pivotRowKeys: ["Order date"],
+    });
+    expect(getChipLabels("rows")).toEqual(["Order date: Year"]);
+
+    await userEvent.click(getFormulaChip("Order date: Year"));
+    await expectFormula('datetimeAdd([Created At], 1, "day")');
+    await changeFormula('datetimeAdd([Created At], 2, "day")');
+    await userEvent.keyboard("{Enter}");
+    await expectClosed();
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    const [query] = onQueryChange.mock.calls[0];
+    const [expression] = Lib.expressions(query, -1);
+    expect(await format(expression, { query, stageIndex: -1 })).toBe(
+      'datetimeAdd([Created At], 2, "day")',
+    );
+    expect(getChipLabels("rows")).toEqual(["Order date: Year"]);
+    expect(getChipLabels("columns")).toEqual([]);
   });
 });
 

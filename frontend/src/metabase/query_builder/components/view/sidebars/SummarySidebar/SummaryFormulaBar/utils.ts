@@ -6,7 +6,11 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
+import type {
+  SummaryDimensionWellId,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "../types";
 import { getDimensionItems, getValueItems, isFormulaValue } from "../utils";
 
 import type { SummaryFormula, SummaryFormulaClause } from "./types";
@@ -72,6 +76,7 @@ function getValueFormulas(
 function getDimensionFormulas(
   query: Lib.Query,
   stageIndex: number,
+  wellId: SummaryDimensionWellId,
 ): SummaryFormula[] {
   const expressions = Lib.expressions(query, stageIndex);
   return getDimensionItems(query, stageIndex).flatMap(({ expression }) => {
@@ -80,7 +85,7 @@ function getDimensionFormulas(
     }
     return [
       {
-        wellId: "columns",
+        wellId,
         clause: expression,
         index: expressions.findIndex((clause) =>
           Lib.isSameClause(clause, expression),
@@ -101,7 +106,7 @@ export function findSummaryFormula(
   const formulas =
     wellId === "values"
       ? getValueFormulas(query, stageIndex)
-      : getDimensionFormulas(query, stageIndex);
+      : getDimensionFormulas(query, stageIndex, wellId);
   return (
     formulas.find((formula) => Lib.isSameClause(formula.clause, clause)) ?? null
   );
