@@ -1,8 +1,10 @@
-import { Menu, MenuSub } from "@mantine/core";
+import { type MantineThemeComponent, Menu, MenuSub } from "@mantine/core";
 
 import MenuStyles from "./Menu.module.css";
 
-export const menuOverrides = {
+type MenuOverrides = Record<"Menu" | "MenuSub", MantineThemeComponent>;
+
+export const menuOverrides: MenuOverrides = {
   Menu: Menu.extend({
     defaultProps: {
       radius: "xs",
