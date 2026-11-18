@@ -1331,7 +1331,8 @@
                                      {:select [:model :model_id :legacy_input]
                                       :from   [table]
                                       :where  [:and [:= :model model] [:= :model_id (str id)]]})
-                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+        docs  (when row [(:legacy_input (decode-legacy-input row))])]
     (cond
       (nil? row)
       {:type :missing-from-index :details {:table (:table-name index)}}
@@ -1340,11 +1341,11 @@
       ;; Check access control before structural filters so a not-permitted row is reported as such even when a
       ;; query filter would also drop it (matches the appdb engine, where the permission layers come first).
       (cond
-        (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
+        (empty? (filter-read-permitted docs))
         {:type :filtered :details {:excluded-by :permissions}}
 
         ;; Reported under the key the appdb engine gives the same rule, which it applies in its collection clause.
-        (empty? (remove-hidden-analytics-cards search-context [(:legacy_input (decode-legacy-input row))]))
+        (empty? (remove-hidden-analytics-cards search-context docs))
         {:type :filtered :details {:excluded-by :collection-permissions}}
 
         :else
