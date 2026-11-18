@@ -3,6 +3,7 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -37,6 +38,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Segment [_model]
+  {:names [:segment]})
 
 (defmethod events/spec :model/Segment
   [_model]

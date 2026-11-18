@@ -4,6 +4,7 @@
   `metabase.query-processor.middleware.add-remaps`."
   (:require
    [metabase.api.common :as api]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -27,6 +28,9 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Dimension [_model]
+  {:names [:dimension]})
 
 (defmethod events/spec :model/Dimension
   [_model]

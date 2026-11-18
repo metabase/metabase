@@ -1,11 +1,15 @@
 (ns metabase.eid-translation.util
   (:require
-   [malli.core :as mc]
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [malli.error :as me]
    [metabase.batch-processing.core :as grouper]
+   [metabase.config.core :as config]
    [metabase.eid-translation.db :as eid-translation.db]
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
+   [metabase.eid-translation.spec :as eid-translation.spec]
+   [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -14,52 +18,35 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- api-model?
-  [model]
-  (isa? (t2/resolve-model model) :hook/entity-id))
+(def ^:private api-name->model*
+  "The map from each API name to the model that declares it in its [[eid-translation.spec/spec]], built on first use
+  after loading the namespace of every model of this edition, and rebuilt when the methods of the spec change."
+  (memoize/fifo
+   (fn [_spec-methods]
+     (doseq [[model nspace] models.resolution/model->namespace
+             :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+       (t2/resolve-model model))
+     (into {}
+           (for [[model method] (methods eid-translation.spec/spec)
+                 :when          (not= :default model)
+                 api-name       (:names (method model))]
+             [api-name model])))
+   :fifo/threshold 1))
 
-;;; This is no longer calculated dynamically so we don't have to load ~20 model namespaces just to figure out which ones
-;;; derive from `:hook/entity-id` just to generate Malli schemas. -- Cam
-(def ^:private api-name->model
-  "Map of model names used on the API to their corresponding model. A test makes sure this map stays in sync."
-  {:action            :model/Action
-   :card              :model/Card
-   :collection        :model/Collection
-   :dashboard         :model/Dashboard
-   :dashboard-card    :model/DashboardCard
-   :dashboard-tab     :model/DashboardTab
-   :dataset           :model/Card
-   :dimension         :model/Dimension
-   :document          :model/Document
-   :exploration       :model/Exploration
-   :measure           :model/Measure
-   :metric            :model/Card
-   :permissions-group :model/PermissionsGroup
-   :pulse             :model/Pulse
-   :pulse-card        :model/PulseCard
-   :pulse-channel     :model/PulseChannel
-   :segment           :model/Segment
-   :snippet           :model/NativeQuerySnippet
-   :timeline          :model/Timeline
-   :transform         :model/Transform
-   :user              :model/User})
+(defn- api-name->model
+  "The map from each API name to the model whose entity ids it translates."
+  []
+  (api-name->model* (methods eid-translation.spec/spec)))
 
 (defn- ->model
-  "Takes a model keyword or an api-name and returns the corresponding model keyword."
+  "The model whose entity ids `model-or-api-name`, a model with a spec or an API name, translates, or nil."
   [model-or-api-name]
-  (if (api-model? model-or-api-name)
+  (if (eid-translation.spec/spec model-or-api-name)
     model-or-api-name
-    (api-name->model model-or-api-name)))
+    (get (api-name->model) model-or-api-name)))
 
-(def ^:private eid-api-names
-  "Sorted vec of api models that have an entity_id column"
-  (vec (sort (keys api-name->model))))
-
-(def ^:private eid-api-models
-  (vec (sort (vals api-name->model))))
-
-(def ^:private ApiName (into [:enum] eid-api-names))
-(def ^:private ApiModel (into [:enum] eid-api-models))
+(def ^:private ApiNameOrModel
+  [:fn {:error/message "an API name or a model whose entity ids translate"} (comp some? ->model)])
 
 (def ^:private EntityId
   "A Malli schema for an entity id, this is a little more loose because it needs to be fast."
@@ -69,9 +56,10 @@
                      (str "\"" value "\" should be 21 characters long, but it is " (count value)))}
     (fn eid-length-good? [eid] (= 21 (count eid)))]])
 
-(def ^:private ModelToEntityIds
-  "A Malli schema for a map of model names to a sequence of entity ids."
-  (mc/schema [:map-of ApiName [:sequential :string]]))
+(defn- model-to-entity-ids-schema
+  "A Malli schema for a map of API names to a sequence of entity ids."
+  []
+  [:map-of (into [:enum] (sort (keys (api-name->model)))) [:sequential :string]])
 
 ;; -------------------- Entity Id Translation Analytics --------------------
 
@@ -105,29 +93,11 @@
                                                     :string
                                                     [:map [:status eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
-  [api-name :- [:or ApiName ApiModel]
+  [api-name :- ApiNameOrModel
    eids     :- [:sequential :string]]
-  (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (case model
-                           :model/Action             (eid-translation.db/action-ids-by-entity-ids eids)
-                           :model/Card                (eid-translation.db/card-ids-by-entity-ids eids)
-                           :model/Collection           (eid-translation.db/collection-ids-by-entity-ids eids)
-                           :model/Dashboard            (eid-translation.db/dashboard-ids-by-entity-ids eids)
-                           :model/DashboardCard        (eid-translation.db/dashboard-card-ids-by-entity-ids eids)
-                           :model/DashboardTab         (eid-translation.db/dashboard-tab-ids-by-entity-ids eids)
-                           :model/Dimension            (eid-translation.db/dimension-ids-by-entity-ids eids)
-                           :model/Document             (eid-translation.db/document-ids-by-entity-ids eids)
-                           :model/Exploration          (eid-translation.db/exploration-ids-by-entity-ids eids)
-                           :model/Measure              (eid-translation.db/measure-ids-by-entity-ids eids)
-                           :model/PermissionsGroup     (eid-translation.db/permissions-group-ids-by-entity-ids eids)
-                           :model/Pulse                (eid-translation.db/pulse-ids-by-entity-ids eids)
-                           :model/PulseCard            (eid-translation.db/pulse-card-ids-by-entity-ids eids)
-                           :model/PulseChannel         (eid-translation.db/pulse-channel-ids-by-entity-ids eids)
-                           :model/Segment              (eid-translation.db/segment-ids-by-entity-ids eids)
-                           :model/NativeQuerySnippet   (eid-translation.db/native-query-snippet-ids-by-entity-ids eids)
-                           :model/Timeline             (eid-translation.db/timeline-ids-by-entity-ids eids)
-                           :model/Transform            (eid-translation.db/transform-ids-by-entity-ids eids)
-                           :model/User                 (eid-translation.db/user-ids-by-entity-ids eids)))]
+  (let [model   (or (->model api-name)
+                    (throw (ex-info (str "No entity id translation for " api-name) {:api-name api-name})))
+        eid->id (into {} (eid-translation.db/ids-by-entity-ids model eids))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}
@@ -143,11 +113,11 @@
 (defn model->entity-ids->ids
   "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
   [model-key->entity-ids]
-  (when-not (mr/validate ModelToEntityIds model-key->entity-ids)
+  (when-not (mr/validate (model-to-entity-ids-schema) model-key->entity-ids)
     (throw (ex-info "Invalid format." {:explanation (me/humanize
                                                      (me/with-spell-checking
-                                                       (mr/explain ModelToEntityIds model-key->entity-ids)))
-                                       :allowed-models (sort (keys api-name->model))
+                                                       (mr/explain (model-to-entity-ids-schema) model-key->entity-ids)))
+                                       :allowed-models (sort (keys (api-name->model)))
                                        :status-code 400
                                        :response/keys #{:explanation :allowed-models}})))
   (u/prog1 (into {}
@@ -165,7 +135,7 @@
    non-scalar value (e.g. a keyword-keyed map decoded from a JWT claim) out of the query built from
    the return value. A map returned here reaches a Toucan2 value position and is compiled as HoneySQL
    query structure rather than bound as a parameter."
-  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
+  [api-name-or-model :- ApiNameOrModel id :- [:or #_id :int #_entity-id :string]]
   (cond
     (string? id)
     (let [model (->model api-name-or-model)
@@ -189,7 +159,7 @@
   "Translates a single entity_id -> id, throwing a 404 error if not found.
    This is intended for use in API endpoints where a 404 should be returned
    for non-existent entity IDs."
-  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
+  [api-name-or-model :- ApiNameOrModel id :- [:or #_id :int #_entity-id :string]]
   (try
     (->id api-name-or-model id)
     (catch Exception e

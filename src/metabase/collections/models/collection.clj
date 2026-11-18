@@ -14,6 +14,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -333,6 +334,9 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Collection [_model]
+  {:names [:collection]})
 
 (defmethod events/spec :model/Collection
   [_model]

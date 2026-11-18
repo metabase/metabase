@@ -14,6 +14,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
    [metabase.dashboards.staleness :as dashboards.staleness]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -56,6 +57,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Dashboard [_model]
+  {:names [:dashboard]})
 
 (defmethod events/spec :model/Dashboard
   [_model]

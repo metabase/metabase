@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -21,6 +22,9 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod eid-translation/spec :model/Timeline [_model]
+  {:names [:timeline]})
 
 (defmethod events/spec :model/Timeline
   [_model]

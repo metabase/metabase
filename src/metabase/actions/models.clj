@@ -7,6 +7,7 @@
    [metabase.actions.serialization :as actions.serialization]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -40,6 +41,9 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Action [_model]
+  {:names [:action]})
 
 (defmethod events/spec :model/Action
   [_model]

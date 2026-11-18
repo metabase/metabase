@@ -114,6 +114,7 @@
            metabase.actions.types}
    :uses #{analytics
            api
+           api.eid-translation
            collections
            driver
            events
@@ -349,31 +350,17 @@
   api.eid-translation
   {:team "UX West"
    :ns-prefix "metabase.eid-translation"
-   :api #{metabase.eid-translation.api metabase.eid-translation.core metabase.eid-translation.init}
+   :api #{metabase.eid-translation.api
+          metabase.eid-translation.core
+          metabase.eid-translation.init
+          metabase.eid-translation.spec}
    :uses #{api
            api-scope
            batch-processing
+           models
            settings
-           util}
-   :model-imports #{:model/Action
-                    :model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardTab
-                    :model/Dimension
-                    :model/Document
-                    :model/Exploration
-                    :model/Measure
-                    :model/NativeQuerySnippet
-                    :model/PermissionsGroup
-                    :model/Pulse
-                    :model/PulseCard
-                    :model/PulseChannel
-                    :model/Segment
-                    :model/Timeline
-                    :model/Transform
-                    :model/User}}
+           util
+           util.config}}
 
   app-db
   {:team "UX West"
@@ -668,6 +655,7 @@
            metabase.collections.schema}
    :uses #{api
            api-keys
+           api.eid-translation
            app-db
            audit-app
            events
@@ -827,6 +815,7 @@
    :uses #{actions
            analytics
            api
+           api.eid-translation
            app-db
            cache
            change-log
@@ -951,6 +940,7 @@
            metabase.documents.schema}
    :uses #{activity-feed
            api
+           api.eid-translation
            app-db
            audit-app.view-log
            batch-processing
@@ -1123,6 +1113,7 @@
    :uses #{analytics
            analytics.interface
            api
+           api.eid-translation
            app-db
            audit-app.view-log
            collections
@@ -1558,6 +1549,7 @@
    :module-exports #{measures.schema}
    :api  #{metabase.measures.api metabase.measures.init}
    :uses #{api
+           api.eid-translation
            collections
            events
            lib
@@ -1935,6 +1927,7 @@
   {:team "Graphy"
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
+           api.eid-translation
            change-log
            collections
            events
@@ -2071,6 +2064,7 @@
            metabase.permissions.metric
            metabase.permissions.schema}
    :uses #{api
+           api.eid-translation
            app-db
            audit-app
            change-log
@@ -2218,6 +2212,7 @@
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
+           api.eid-translation
            app-db
            change-log
            channel
@@ -2261,6 +2256,7 @@
    :uses #{analytics
            analytics.interface
            api
+           api.eid-translation
            app-db
            audit-app
            audit-app.view-log
@@ -2686,7 +2682,8 @@
    :module-exports #{segments.rest
                      segments.schema}
    :api  #{metabase.segments.init}
-   :uses #{collections
+   :uses #{api.eid-translation
+           collections
            events
            lib
            lib.be
@@ -3137,6 +3134,7 @@
    :api  #{metabase.timeline.api metabase.timeline.core metabase.timeline.schema}
    :uses #{analytics
            api
+           api.eid-translation
            collections
            events
            lib.schema
@@ -3174,6 +3172,7 @@
            metabase.transforms.util}
    :uses #{analytics.interface
            api
+           api.eid-translation
            app-db
            channel
            collections
@@ -3391,6 +3390,7 @@
            metabase.users.settings}
    :uses #{analytics
            api
+           api.eid-translation
            batch-processing
            change-log
            events
@@ -3568,6 +3568,7 @@
           metabase.warehouse-schema.table
           metabase.warehouse-schema.user-settings}
    :uses #{api
+           api.eid-translation
            app-db
            audit-app
            change-log

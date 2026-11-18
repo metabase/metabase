@@ -13,6 +13,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -37,6 +38,9 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/PermissionsGroup [_model]
+  {:names [:permissions-group]})
 
 (defmethod events/spec :model/PermissionsGroup
   [_model]

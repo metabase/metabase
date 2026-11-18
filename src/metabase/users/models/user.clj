@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -40,6 +41,9 @@
   (derive :hook/entity-id)
   (derive :hook/events)
   (derive ::mi/create-policy.superuser))
+
+(defmethod eid-translation/spec :model/User [_model]
+  {:names [:user]})
 
 (defmethod events/spec :model/User
   [_model]

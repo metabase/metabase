@@ -7,6 +7,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.documents.search :as documents.search]
    [metabase.documents.serialization :as documents.serialization]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
@@ -46,6 +47,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Document [_model]
+  {:names [:document]})
 
 (defmethod events/spec :model/Document
   [_model]

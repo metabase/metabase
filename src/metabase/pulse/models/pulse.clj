@@ -24,6 +24,7 @@
    [metabase.api.common :as api]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -53,6 +54,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Pulse [_model]
+  {:names [:pulse]})
 
 (defmethod events/spec :model/Pulse
   [_model]

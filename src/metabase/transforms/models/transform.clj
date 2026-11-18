@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
@@ -44,6 +45,9 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events]]
   (derive :model/Transform trait))
+
+(defmethod eid-translation/spec :model/Transform [_model]
+  {:names [:transform]})
 
 (defmethod events/spec :model/Transform
   [_model]

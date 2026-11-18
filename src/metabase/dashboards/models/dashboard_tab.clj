@@ -6,6 +6,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
@@ -27,6 +28,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/DashboardTab [_model]
+  {:names [:dashboard-tab]})
 
 (defmethod events/spec :model/DashboardTab
   [_model]

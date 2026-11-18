@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
@@ -49,6 +50,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/Exploration [_model]
+  {:names [:exploration]})
 
 (defmethod events/spec :model/Exploration
   [_model]

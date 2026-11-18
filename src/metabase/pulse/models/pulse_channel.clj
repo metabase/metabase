@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.change-log.core :as change-log]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
@@ -70,6 +71,9 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/PulseChannel [_model]
+  {:names [:pulse-channel]})
 
 (defmethod events/spec :model/PulseChannel
   [_model]

@@ -1,6 +1,7 @@
 (ns metabase.pulse.models.pulse-card
   (:require
    [metabase.change-log.core :as change-log]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
@@ -18,6 +19,9 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/PulseCard [_model]
+  {:names [:pulse-card]})
 
 (defmethod events/spec :model/PulseCard
   [_model]

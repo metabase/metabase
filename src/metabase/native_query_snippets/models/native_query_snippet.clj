@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -29,6 +30,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
+
+(defmethod eid-translation/spec :model/NativeQuerySnippet [_model]
+  {:names [:snippet]})
 
 (defmethod events/spec :model/NativeQuerySnippet
   [_model]
