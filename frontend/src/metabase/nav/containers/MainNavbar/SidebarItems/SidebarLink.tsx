@@ -25,6 +25,7 @@ export interface SidebarLinkProps {
   target?: string;
   rel?: string;
   className?: string;
+  "aria-label"?: string;
 }
 
 function isIconPropsObject(
@@ -79,6 +80,7 @@ export function SidebarLink({
   target,
   rel,
   className,
+  "aria-label": ariaLabel,
   ...props
 }: SidebarLinkProps) {
   const content = (
@@ -95,8 +97,6 @@ export function SidebarLink({
       className={cx(S.nodeRoot, { [S.selected]: isSelected }, className)}
       bdrs="xxs"
       pl="md"
-      aria-label={children}
-      aria-selected={isSelected}
       onMouseDown={disableImageDragging}
       {...props}
     >
@@ -113,6 +113,8 @@ export function SidebarLink({
             target={target}
             rel={rel}
             onClick={onClick}
+            aria-label={ariaLabel ?? children}
+            aria-selected={isSelected}
           >
             {content}
           </Flex>
@@ -127,6 +129,8 @@ export function SidebarLink({
             fw={700}
             ta="start"
             onClick={onClick}
+            aria-label={ariaLabel ?? children}
+            aria-selected={isSelected}
           >
             {content}
           </Flex>

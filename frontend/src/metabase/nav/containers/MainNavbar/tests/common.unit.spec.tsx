@@ -42,7 +42,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should be highlighted if selected", async () => {
       await setup({ pathname: "/" });
-      const link = screen.getByRole("listitem", { name: /Home/i });
+      const link = screen.getByRole("link", { name: /Home/i });
       expect(link).toHaveAttribute("aria-selected", "true");
     });
   });
@@ -126,7 +126,7 @@ describe("nav > containers > MainNavbar", () => {
         pathname: "/getting-started",
         user: createMockUser({ is_superuser: true }),
       });
-      const link = screen.getByRole("listitem", {
+      const link = screen.getByRole("link", {
         name: /How to use Metabase/i,
       });
       expect(link).toHaveAttribute("aria-selected", "true");
@@ -136,10 +136,9 @@ describe("nav > containers > MainNavbar", () => {
   describe("browse databases link", () => {
     it("should render", async () => {
       await setup();
-      const listItem = screen.getByRole("listitem", {
+      const link = screen.getByRole("link", {
         name: /Browse databases/i,
       });
-      const link = within(listItem).getByRole("link");
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/browse/databases");
     });
@@ -147,13 +146,13 @@ describe("nav > containers > MainNavbar", () => {
     it("should not render when a user has no data access", async () => {
       await setup({ hasDataAccess: false });
       expect(
-        screen.queryByRole("listitem", { name: /Browse databases/i }),
+        screen.queryByRole("link", { name: /Browse databases/i }),
       ).not.toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {
       await setup({ pathname: "/browse/databases" });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = screen.getByRole("link", {
         name: /Browse databases/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
@@ -161,7 +160,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should be highlighted if child route selected", async () => {
       await setup({ pathname: "/browse/databases/1" });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = screen.getByRole("link", {
         name: /Browse databases/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
@@ -171,10 +170,9 @@ describe("nav > containers > MainNavbar", () => {
   describe("browse models link", () => {
     it("should render when there are models", async () => {
       await setup({ models: [createMockModelResult()] });
-      const listItem = await screen.findByRole("listitem", {
+      const link = await screen.findByRole("link", {
         name: /Browse models/i,
       });
-      const link = await within(listItem).findByRole("link");
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/browse/models");
     });
@@ -182,7 +180,7 @@ describe("nav > containers > MainNavbar", () => {
     it("should render when there are no models", async () => {
       await setup({ models: [] });
       expect(
-        screen.getByRole("listitem", { name: /Browse models/i }),
+        screen.getByRole("link", { name: /Browse models/i }),
       ).toBeInTheDocument();
     });
 
@@ -191,7 +189,7 @@ describe("nav > containers > MainNavbar", () => {
         models: [createMockModelResult()],
         pathname: "/browse/models",
       });
-      const listItem = await screen.findByRole("listitem", {
+      const listItem = await screen.findByRole("link", {
         name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
@@ -224,9 +222,10 @@ describe("nav > containers > MainNavbar", () => {
           pathname,
         });
 
-        expect(
-          screen.getByRole("listitem", { name: "Revenue" }),
-        ).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByRole("link", { name: "Revenue" })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
       },
     );
 
@@ -247,9 +246,10 @@ describe("nav > containers > MainNavbar", () => {
         pathname: "/question/37-question",
       });
 
-      expect(
-        screen.getByRole("listitem", { name: "Question" }),
-      ).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("link", { name: "Question" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     });
   });
 
@@ -707,7 +707,7 @@ describe("nav > containers > MainNavbar", () => {
         user: createMockUser({ is_superuser: true }),
       });
 
-      const listItem = screen.getByRole("listitem", {
+      const listItem = screen.getByRole("link", {
         name: /Other users' personal collections/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
@@ -720,7 +720,7 @@ describe("nav > containers > MainNavbar", () => {
         user: createMockUser({ is_superuser: true }),
       });
 
-      const listItem = screen.getByRole("listitem", {
+      const listItem = screen.getByRole("link", {
         name: /Other users' personal collections/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "false");
