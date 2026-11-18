@@ -1035,12 +1035,12 @@
    `parameter_mappings`."
   #{"unwire_parameter" "patch_dashcard"})
 
-(defn- promote-origins
-  "`origins` after `op`: for each dashcard id, the stored slots each of its current slots stands for.
-   A slot missing from it stands for itself."
+(defn- track-promotions
+  "The origins after `op`: for each dashcard id, the stored slots each of its current slots stands for.
+   A slot missing from them stands for itself."
   [origins state {:keys [op dashcard_id card_id]}]
-  (let [dashcard (some #(when (= dashcard_id (:id %)) %) (:dashcards state))
-        promoted (when (= "replace_card" op) (slot dashcard card_id))]
+  (let [promoted (when (= "replace_card" op)
+                   (slot (find-row state :dashcards dashcard_id) card_id))]
     ;; A promoted series card's connection now shares the dashcard's own slot with the stored card's, but a drop
     ;; asked for before the promotion meant only one of them.
     (cond-> origins
@@ -1057,11 +1057,12 @@
           [parameter-id dashcard-id stored-slot])))
 
 (defn- apply-op-tracking-drops
-  "Runs [[apply-op-at]], and keeps `::asked-drops`, the connections, as [[stored-connections]] gives them, that an op
-   in [[intentional-drop-ops]] removed and no later op restored."
+  "Runs [[apply-op-at]], and keeps `::slot-origins`, as [[track-promotions]] gives them, and `::asked-drops`, the
+   connections, as [[stored-connections]] gives them, that an op in [[intentional-drop-ops]] removed and no later op
+   restored."
   [state idx op]
   (let [origins  (::slot-origins state)
-        origins' (promote-origins origins state op)
+        origins' (track-promotions origins state op)
         before   (stored-connections origins (:dashcards state))
         state'   (assoc (apply-op-at state idx op) ::slot-origins origins')
         after    (stored-connections origins' (:dashcards state'))]
@@ -1070,37 +1071,44 @@
               (cond-> (set/difference (or asked #{}) after)
                 (contains? intentional-drop-ops (:op op)) (set/union (set/difference before after)))))))
 
+(defn- current-slot
+  "Where the stored slot `stored-slot` of `dashcard` is after the ops, given the dashcard's `origins` from
+   [[track-promotions]]: the dashcard's own slot for its stored card or a promoted series card, the series card's id
+   while it is still one, and nil once it is gone."
+  [dashcard origins stored-slot]
+  (cond
+    (contains? (get origins :card #{:card}) stored-slot) :card
+    (= stored-slot (slot dashcard stored-slot))          stored-slot))
+
 (defn- dropped-connections
   "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id :series}`
    maps.
    The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
    A connection counts only when its filter and its dashcard survive, its card is still on the dashcard or was
-   replaced, and it isn't in `asked-drops`, the connections the ops dropped on purpose."
-  [current payload asked-drops]
+   replaced, and the ops didn't drop it on purpose.
+   The `state` is the folded compiler state, read for `::slot-origins` and `::asked-drops`, both keyed by stored slot."
+  [current payload {::keys [slot-origins asked-drops]}]
   (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
         stored-dashcards     (u/index-by :id (:dashcards current))
         saved-dashcards      (u/index-by :id (:dashcards payload))
-        after                (into #{}
-                                   (for [[parameter-id dashcard-id card-id] (connections (:dashcards payload))]
-                                     [parameter-id dashcard-id (slot (saved-dashcards dashcard-id) card-id)]))]
+        kept                 (stored-connections slot-origins (:dashcards payload))]
     (->> (for [[parameter-id dashcard-id card-id] (connections (:dashcards current))
                :let  [dashcard    (saved-dashcards dashcard-id)
                       ;; A stored mapping onto a card the dashcard doesn't show filtered nothing, so it has no slot.
                       stored-slot (slot (stored-dashcards dashcard-id) card-id)
-                      ;; A replaced card leaves the dashcard's own slot to the new card, and `replace_card` can promote
-                      ;; a series card to that slot.
+                      connection  [parameter-id dashcard-id stored-slot]
                       new-slot    (when (and dashcard stored-slot)
-                                    (or (slot dashcard card-id)
-                                        (when (= :card stored-slot) :card)))]
+                                    (current-slot dashcard (get slot-origins dashcard-id) stored-slot))]
                :when (and (surviving-parameter? parameter-id)
                           new-slot
-                          (not (contains? after [parameter-id dashcard-id new-slot]))
-                          (not (contains? asked-drops [parameter-id dashcard-id stored-slot])))]
+                          (not (contains? kept connection))
+                          (not (contains? asked-drops connection)))]
+           ;; A stored card and the series card promoted over it share a slot, so they can report the same row.
            {:parameter_id parameter-id
             :dashcard_id  dashcard-id
             :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
             :series       (not= :card new-slot)})
-         distinct
+         set
          (sort-by (juxt :parameter_id :dashcard_id :card_id))
          vec)))
 
@@ -1131,7 +1139,7 @@
                     (update :dashcards (partial mapv series-ids)))]
     (with-meta payload
                {::effects {:pushed-dashcard-ids  (::pushed state)
-                           :dropped-connections (dropped-connections current payload (::asked-drops state))}})))
+                           :dropped-connections (dropped-connections current payload state)}})))
 
 (defn effects
   "What the ops did beyond the payload [[compile-ops]] returns, read from its metadata.

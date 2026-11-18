@@ -1472,7 +1472,12 @@
   (testing "a promoted series card that was the only one connected is reported"
     (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
            (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 11)]))
-                                [{:op "replace_card" :dashcard_id 7 :card_id 11}])))))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
+  (testing "a promoted series card replaced in turn is reported under the card that replaced it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 11)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}])))))
 
 (deftest dropped-connections-series-test
   (testing "wiring a card replaces its series card's connection to the filter, which is reported"
