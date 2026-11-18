@@ -15,7 +15,6 @@
   list-native-query-snippets
   get-native-query-snippet]
  [metabase.native-query-snippets.models.native-query-snippet
-  add-template-tags
   NativeQuerySnippetName]
  [metabase.native-query-snippets.models.native-query-snippet.permissions
   has-any-native-permissions?])

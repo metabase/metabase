@@ -76,7 +76,7 @@
   [dashboard attrs]
   (if dashboard
     (api/write-check dashboard)
-    (api/create-check :model/Dashboard {:collection_id (:collection_id attrs)})))
+    (api/create-check :model/Dashboard attrs)))
 
 (defn- blank-dashboard
   "The empty dashboard with `attrs` that a create compiles its ops against, before anything is written."

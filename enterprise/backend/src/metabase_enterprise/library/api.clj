@@ -25,7 +25,6 @@
    _query
    _body]
   (api/check-data-studio-access)
-  (api/check-400 (not (collections/library-collection)) "Semantic layer already exists")
   (collections/create-library-collection!))
 
 (defn- add-here-and-below [collection]

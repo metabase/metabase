@@ -38,12 +38,14 @@ import type {
   CollectionId,
   CollectionItem,
   DashboardId,
+  RecentItem,
 } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardTab,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -99,10 +101,12 @@ const setup = async (
     collectionEndpoints,
     createError,
     personalCollectionItems = [],
+    recentSelections = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
     createError?: unknown;
     personalCollectionItems?: CollectionItem[];
+    recentSelections?: RecentItem[];
   } = {},
 ) => {
   const onCreateMock = jest.fn<
@@ -139,7 +143,7 @@ const setup = async (
   setupDatabasesEndpoints([]);
   setupCustomVizPluginListEndpoint();
 
-  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupRecentViewsAndSelectionsEndpoints(recentSelections, ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
     [],
     ["selections", "views"],
@@ -319,6 +323,32 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.displayName()).toBe(EXPECTED_SUGGESTED_NAME);
       expect(newQuestion.description()).toBe(null);
       expect(newQuestion.collectionId()).toBe(1);
+    });
+
+    it("should save into the personal collection, not a recently selected dashboard the user cannot write to", async () => {
+      const { onCreateMock } = await setup(getQuestion(), null, {
+        recentSelections: [
+          createMockRecentCollectionItem({
+            model: "dashboard",
+            id: FOO_DASH_ID,
+            name: FOO_DASH.name,
+            can_write: false,
+            parent_collection: { id: null, name: "Our analytics" },
+          }),
+        ],
+      });
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(BOBBY_TEST_COLLECTION.name),
+      );
+      expect(screen.queryByText(FOO_DASH.name)).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(onCreateMock).toHaveBeenCalledTimes(1));
+      const [newQuestion] = onCreateMock.mock.calls[0];
+      expect(newQuestion.collectionId()).toBe(BOBBY_TEST_COLLECTION.id);
+      expect(newQuestion.dashboardId()).toBeUndefined();
     });
 
     it("should call onCreate correctly with edited form", async () => {

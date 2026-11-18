@@ -5,7 +5,6 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.core :as collection]
    [metabase.data-apps.core :as data-apps]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -170,8 +169,7 @@
       (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-dynamic-fn-redefs [perms/data-app-collection? (constantly false)]
-            (collection/archive-or-unarchive-collection!
-             (t2/select-one :model/Collection :id collection-id) {:archived true})))
+            (t2/update! :model/Collection :id collection-id {:archived true})))
         (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app "groups" (:id group)))
         (is (empty? (access-group-ids app)))
         (is (empty? (t2/select :model/Permissions :group_id (:id group)
@@ -251,9 +249,9 @@
 (deftest remove-group-after-it-becomes-ineligible-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {}
-                   :model/PermissionsGroup group {}]
-      (group-access/add-groups! app [(:id group)])
-      (t2/update! :model/PermissionsGroup :id (:id group) {:is_tenant_group true})
+                   :model/PermissionsGroup group {:is_tenant_group true}]
+      (mt/with-premium-features #{:data-apps :tenants}
+        (group-access/add-groups! app [(:id group)]))
       (mt/user-http-request :rasta :delete 403 (data-apps.tu/app-url app "groups" (:id group)))
       (is (= [(:id group)] (mapv :id (group-access/assigned-groups app))))
       (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app "groups" (:id group)))

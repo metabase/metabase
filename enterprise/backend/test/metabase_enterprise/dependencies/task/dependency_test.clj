@@ -7,7 +7,7 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.hooks :as deps.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -16,7 +16,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -30,6 +30,13 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
 
 (defn- backfill-all-existing-entities!
   []
@@ -348,7 +355,7 @@
           (forget-status! :card card2-id)
           (forget-status! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
-          (dependencies.hooks/after-premium-token-update)
+          (events/publish-event! :event/premium-token-update {})
           (is (every? #(pending? :card %) [card1-id card2-id card3-id]))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
@@ -672,10 +679,10 @@
                                                                         :document {:type "doc"
                                                                                    :content [{:type "paragraph"
                                                                                               :content [{:type "smartLink"
-                                                                                                         :attrs {"entityId" card-id
-                                                                                                                 "model" "card"}}]}
+                                                                                                         :attrs {:entityId card-id
+                                                                                                                 :model "card"}}]}
                                                                                              {:type "cardEmbed"
-                                                                                              :attrs {"id" embedded-card-id}}]}}]
+                                                                                              :attrs {:id embedded-card-id}}]}}]
            (assert-pending :document document-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :document
@@ -691,11 +698,11 @@
            (let [updated-doc (assoc document :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {"entityId" dashboard-id
-                                                                                      "model" "dashboard"}}
+                                                                              :attrs {:entityId dashboard-id
+                                                                                      :model "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {"entityId" products-id
-                                                                                      "model" "table"}}]}]})]
+                                                                              :attrs {:entityId products-id
+                                                                                      :model "table"}}]}]})]
              (t2/update! :model/Document :id document-id updated-doc)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? #{{:from_entity_type :document
@@ -853,7 +860,7 @@
        (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
          (mt/with-temp [:model/Table     {table-id :id}     {:schema "Other", :db_id (mt/id), :name "test_table"}
                         :model/Transform {transform-id :id} {:target target}]
-           (deps.hooks/after-transform-run transform-id table-id)
+           (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
            (is (=? [{:from_entity_type :table
                      :from_entity_id table-id,
                      :to_entity_type :transform,
@@ -879,7 +886,7 @@
                         :model/Transform {transform-id :id} {:target target
                                                              :source source}]
            (testing "initial run"
-             (deps.hooks/after-transform-run transform-id table-id)
+             (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -911,7 +918,7 @@
                         :model/Table     {}                              {:schema "Other", :db_id (mt/id), :name "test_table2"}
                         :model/Transform {transform-id :id} {:target target :source source}]
            (testing "initial run"
-             (deps.hooks/after-transform-run transform-id table-id)
+             (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -938,8 +945,7 @@
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)
            category-field-id (mt/id :products :category)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
-                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition products-id price-field-id 50)}]
          (testing "creating a segment creates dependency to its table"
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
@@ -950,7 +956,9 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (t2/update! :model/Segment :id segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
+           (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -969,8 +977,7 @@
    (fn [_]
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)]
-       (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
-                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}]
+       (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition products-id price-field-id 50)}]
          (testing "creating a card using a segment creates dependencies to both segment and table"
            (deps.test/synchronously-run-dependency-job!)
            (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
@@ -997,8 +1004,7 @@
              orders (lib.metadata/table mp orders-id)
              quantity (lib.metadata/field mp (mt/id :orders :quantity))
              subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
-         (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
-                                                         :definition (-> (lib/query mp orders)
+         (mt/with-temp [:model/Measure {measure-id :id} {:definition (-> (lib/query mp orders)
                                                                          (lib/aggregate (lib/sum quantity)))}]
            (testing "creating a measure creates dependency to its table"
              (assert-pending :measure measure-id)
@@ -1115,12 +1121,10 @@
            orders (lib.metadata/table mp orders-id)
            quantity (lib.metadata/field mp (mt/id :orders :quantity))
            subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
-       (mt/with-temp [:model/Measure {measure1-id :id} {:table_id orders-id
-                                                        :definition (-> (lib/query mp orders)
+       (mt/with-temp [:model/Measure {measure1-id :id} {:definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum quantity)))}]
          (let [mp' (mt/metadata-provider)]
-           (mt/with-temp [:model/Measure {measure2-id :id} {:table_id orders-id
-                                                            :definition (-> (lib/query mp' orders)
+           (mt/with-temp [:model/Measure {measure2-id :id} {:definition (-> (lib/query mp' orders)
                                                                             (lib/aggregate (lib/+ (lib.metadata/measure mp' measure1-id)
                                                                                                   (lib/sum subtotal))))}]
              (testing "creating a measure that references another measure creates dependencies to both"
@@ -1142,8 +1146,7 @@
      (let [orders-id (mt/id :orders)
            orders (lib.metadata/table mp orders-id)
            quantity (lib.metadata/field mp (mt/id :orders :quantity))]
-       (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
-                                                       :definition (-> (lib/query mp orders)
+       (mt/with-temp [:model/Measure {measure-id :id} {:definition (-> (lib/query mp orders)
                                                                        (lib/aggregate (lib/sum quantity)))}]
          (deps.test/synchronously-run-dependency-job!)
          (testing "creating a card using a measure creates dependencies to both measure and table"

@@ -157,6 +157,7 @@
     /block/db/:id/                                  ; disallow queries against this DB unless User has data perms.
     /                                               ; full root perms"
   (:require
+   [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -256,8 +257,31 @@
                                   :read
                                   :read-and-write)))))
 
+(defn- tenant-group-grant-error
+  "The message refusing the grant of `object` to a tenant group, or nil when tenant groups may hold it: no write access to
+  any Collection, and no application permission other than subscriptions."
+  [object]
+  (cond
+    (nil? object)
+    nil
+
+    (and (str/starts-with? object "/collection/") (not (str/ends-with? object "/read/")))
+    (tru "Tenant groups cannot have write access to any collections.")
+
+    (and (str/starts-with? object "/application/")
+         (not= object (permissions.path/application-perms-path :subscription)))
+    (tru "Cannot grant application permission to a tenant group.")))
+
+(defn- check-tenant-group-grant
+  "Throws a 400 when `permission` grants a tenant group what tenant groups cannot hold."
+  [{:keys [group_id object]}]
+  (when-let [error (tenant-group-grant-error object)]
+    (when (get (permissions.db/group-tenant-flags #{group_id}) group_id)
+      (throw (ex-info error {:status-code 400 :group-id group_id :object object})))))
+
 (t2/define-before-insert :model/Permissions
   [permissions]
+  (check-tenant-group-grant permissions)
   (u/prog1 (maybe-break-out-permission-data permissions)
     (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
@@ -268,7 +292,7 @@
 
 (t2/define-before-update :model/Permissions
   [_]
-  (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
+  (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
 
 (t2/define-before-delete :model/Permissions
   [permissions]

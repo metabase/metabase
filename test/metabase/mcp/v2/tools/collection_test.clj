@@ -88,6 +88,13 @@
 ;; `echo-only-keys` helper) lives with the content tool PR — it needs
 ;; `metabase.mcp.v2.tools.content`, which lands later in the stack.
 
+(deftest blank-name-test
+  (testing "a whitespace-only name is refused on create and update by the argument schema"
+    (is (str/starts-with? (tool-error (call-tool! :crowberto {:method "create" :name "   "}))
+                          "Invalid arguments"))
+    (is (str/starts-with? (tool-error (call-tool! :crowberto {:method "update" :id 13371337 :name "   "}))
+                          "Invalid arguments"))))
+
 (deftest create-requires-name-test
   (is (re-find #"\"name\" is required when method is \"create\""
                (tool-error (call-tool! :crowberto {:method "create" :description "no name"})))))

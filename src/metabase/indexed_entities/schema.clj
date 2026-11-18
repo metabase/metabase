@@ -1,17 +1,18 @@
 (ns metabase.indexed-entities.schema
   "Malli schemas for the indexed-entities module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::model-index.pk-ref
   "The `:pk_ref` column of a ModelIndex, decoded."
-  vector?)
+  [:vector [:maybe ::lib.schema.common/open-json]])
 
 (mr/def ::model-index.value-ref
   "The `:value_ref` column of a ModelIndex, decoded."
-  vector?)
+  [:vector [:maybe ::lib.schema.common/open-json]])
 
 (mr/def ::model-index
   "A ModelIndex as selected from the app DB: every column of `:model_index`."

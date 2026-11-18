@@ -44,7 +44,7 @@
            :model/CacheConfig _                  {:model    "database"
                                                   :model_id (mt/id)
                                                   :strategy :duration
-                                                  :config   {:unit    :hours
+                                                  :config   {:unit    "hours"
                                                              :duration 1}}]
           ;; `:cached` is not asserted here — `format-qp-result` strips it from the
           ;; notification result. The regression this test guards against is viz-settings
@@ -105,7 +105,7 @@
            :model/CacheConfig   _             {:model    "database"
                                                :model_id (mt/id)
                                                :strategy :duration
-                                               :config   {:unit :hours :duration 1}}]
+                                               :config   {:unit "hours" :duration 1}}]
           (let [run-sub!         (fn [] (:result (mt/as-admin
                                                    (notification.payload.execute/execute-dashboard-subscription-card
                                                     dashcard []))))

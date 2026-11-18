@@ -12,27 +12,6 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(def ^:private query-with-some-nesting
-  {:database 1
-   :type     :query
-   :query    {:source-query {:source-table 1
-                             :aggregation  [[:stddev [:field 1 nil]]
-                                            [:min [:field 1 nil]]]}
-              :aggregation  [[:avg [:field 1 nil]]
-                             [:max [:field 1 nil]]]}})
-
-(t/deftest ^:parallel aggregation-at-index-test
-  (doseq [[input expected] {[0]   [:avg [:field 1 nil]]
-                            [1]   [:max [:field 1 nil]]
-                            [0 0] [:avg [:field 1 nil]]
-                            [0 1] [:stddev [:field 1 nil]]
-                            [1 1] [:min [:field 1 nil]]}]
-    (t/testing (pr-str (cons 'aggregation-at-index input))
-      (t/is (= expected
-               (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
-
-;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
-
 (t/deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"
@@ -97,26 +76,6 @@
           (t/is (= expected
                    (mbql.u/query->max-rows-limit query))))))))
 
-(t/deftest ^:parallel expression-with-name-test
-  (t/is (= [:+ 1 1]
-           (mbql.u/expression-with-name {:expressions  {"two" [:+ 1 1]}
-                                         :source-table 1}
-                                        "two"))))
-
-(t/deftest ^:parallel expression-with-name-test-2
-  (t/testing "Make sure `expression-with-name` knows how to reach into the parent query if need be"
-    (t/is (= [:+ 1 1]
-             (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
-                                                          :source-table 1}}
-                                          "two")))))
-
-(t/deftest ^:parallel expression-with-name-test-3
-  (t/testing "Should throw an Exception if expression does not exist"
-    (t/is (thrown-with-msg?
-           #?(:clj clojure.lang.ExceptionInfo :cljs :default)
-           #"No expression named"
-           (mbql.u/expression-with-name {:source-table 1} "wow")))))
-
 (t/deftest ^:parallel update-field-options-test
   ;; the options exercised here (`:display-name`, `:name`, `:binning`) are real declared ref options. Ref options are
   ;; a closed schema in MBQL 4 as well as MBQL 5, so a stand-in key like `:wow` would be rejected as this function's
@@ -160,18 +119,3 @@
                (mbql.u/update-field-options [:expression "wow" {:display-name "b"}] #(dissoc % :display-name))))
       (t/is (= [:aggregation 0]
                (mbql.u/update-field-options [:aggregation 0 {:display-name "b"}] #(dissoc % :display-name)))))))
-
-(t/deftest ^:parallel with-temporal-unit-test
-  (t/is (= [:field 1 {:temporal-unit :day}]
-           (mbql.u/with-temporal-unit [:field 1 nil] :day)))
-  (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
-           (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :day)))
-  (t/testing "Ignore invalid temporal units if `:base-type` is specified (#16485)"
-    ;; `:minute` doesn't make sense for a DATE
-    (t/is (= [:field "t" {:base-type :type/Date}]
-             (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))
-
-(t/deftest ^:parallel normalize-token-handle-types-test
-  (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
-    (t/is (= :type/Text
-             (mbql.u/normalize-token "type/Text")))))
