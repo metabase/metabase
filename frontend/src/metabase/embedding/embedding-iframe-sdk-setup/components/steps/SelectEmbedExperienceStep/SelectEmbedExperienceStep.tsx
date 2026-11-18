@@ -5,10 +5,10 @@ import { Box, Stack } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../../../analytics";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { DataAppEnableEmbeddingCard } from "../../../data-apps/DataAppEnableEmbeddingCard";
 import { hasAuthToSelect } from "../../../utils/has-auth-to-select";
 import { hasResourceToSelect } from "../../../utils/has-resource-to-select";
 import { AuthenticationCard } from "../../AuthenticationCard";
-import { DataAppEnableEmbeddingCard } from "../../Common/DataAppEnableEmbeddingCard";
 import { EmbeddingUpsell } from "../../Common/EmbeddingUpsell";
 
 import { ExperienceCard } from "./ExperienceCard";

@@ -1,7 +1,7 @@
 import { Card } from "metabase/ui";
 
-import { useSdkIframeEmbedSetupContext } from "../../context";
-import { EnableModularEmbeddingSection } from "../AuthenticationCard/EnableModularEmbeddingSection";
+import { EnableModularEmbeddingSection } from "../components/AuthenticationCard/EnableModularEmbeddingSection";
+import { useSdkIframeEmbedSetupContext } from "../context";
 
 /**
  * We don't have any auth options for data apps, so enabling modular

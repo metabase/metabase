@@ -1,6 +1,6 @@
 import type { EmbeddedDataApp } from "e2e/support/helpers";
 
-import { visitNewEmbedPage } from "./helpers";
+import { visitNewEmbedPage } from "../embedding/sdk-iframe-embedding-setup/helpers";
 
 const { H } = cy;
 

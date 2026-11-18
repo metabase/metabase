@@ -4,9 +4,9 @@ import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../../../analytics";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { DataAppEnableEmbeddingCard } from "../../../data-apps/DataAppEnableEmbeddingCard";
 import { useSdkIframeEmbedServerSnippet } from "../../../hooks/use-sdk-iframe-embed-server-snippet";
 import { useSdkIframeEmbedSnippet } from "../../../hooks/use-sdk-iframe-embed-snippet";
-import { DataAppEnableEmbeddingCard } from "../../Common/DataAppEnableEmbeddingCard";
 import { SetupSsoAlert } from "../../Common/SetupSsoAlert";
 import { PublishQuestionEmptyState } from "../../GetCode/PublishQuestionEmptyState";
 
