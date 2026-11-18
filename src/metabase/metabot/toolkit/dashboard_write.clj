@@ -137,22 +137,13 @@
                   (dashboards.write/update-dashboard! (:id dash) payload)
                   dash)))))
 
-(defn- with-readability
-  "The `archived` subscriptions from [[dashboards.write/update-dashboard!]], each with `:readable?` saying whether the
-   current user can read it, which decides what a tool may show about it."
-  [archived]
-  (let [readable (into #{}
-                       (comp (filter mi/can-read?) (map :id))
-                       (t2/hydrate (toolkit.db/pulses (into #{} (map :id) archived)) :can_read))]
-    (mapv #(assoc % :readable? (contains? readable (:id %))) archived)))
-
 (defn- save-update!
   "Saves `updates` to `dashboard` and returns `[saved archived]`: the saved dashboard hydrated, and the subscriptions
-   the save archived, each marked by [[with-readability]]."
+   the save archived, as [[dashboards.write/update-dashboard!]] returns them, or nil."
   [dashboard updates]
   (let [saved (dashboards.write/update-dashboard! (u/the-id dashboard) updates)]
     [(hydrated (dissoc saved :archived-subscriptions))
-     (some-> (:archived-subscriptions saved) seq with-readability)]))
+     (seq (:archived-subscriptions saved))]))
 
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns `{:dashboard :effects}`.
@@ -161,7 +152,7 @@
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
    Either way `:effects` is what [[dashboard-ops/effects]] describes, empty when there are no ops.
-   A saved update adds `:archived-subscriptions` to it when the save archived any, as [[save-update!]] marks them.
+   A saved update adds `:archived-subscriptions` to it when the save archived any.
    It checks write permission on the dashboard, or create permission on the collection, first after the ops' shape.
    A dry run skips the save's other permission checks, such as moving to a collection and per-field mapping checks.
    Ops edit the layout and parameters, so `attrs` must not carry `:dashcards`, `:tabs` or `:parameters`.

@@ -3,6 +3,7 @@
   the dashboard they belong to."
   (:require
    [metabase.channel.email.messages :as messages]
+   [metabase.models.interface :as mi]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
    [toucan2.core :as t2]))
@@ -84,12 +85,13 @@
          :disable_links (:disable_links broken-pulse))))))
 
 (defn- channel-recipient-count
-  "How many destinations the PulseChannel `channel` reaches: its user recipients and email addresses for email, and
-   one for a Slack channel or webhook with its destination set."
-  [{:keys [id channel_type details channel_id]}]
-  ;; The same destinations the send task checks before deleting a channel as having no recipients.
+  "How many destinations the PulseChannel `channel` reaches: its active user recipients, from `active-recipients`, a
+   map of channel id to count, and its email addresses for email, and one for a Slack channel or webhook with its
+   destination set."
+  [active-recipients {:keys [id channel_type details channel_id]}]
+  ;; The same destinations the send task delivers to, and checks before deleting a channel as having no recipients.
   (case channel_type
-    :email (+ (count (pulse.db/pulse-channel-recipient-rows id)) (count (:emails details)))
+    :email (+ (get active-recipients id 0) (count (:emails details)))
     :slack (if (seq (:channel details)) 1 0)
     :http  (if channel_id 1 0)
     0))
@@ -99,19 +101,27 @@
    destinations [[channel-recipient-count]] counts.
    Only enabled channels with a destination count."
   [pulse-id]
-  (let [counts (for [channel (pulse.db/enabled-pulse-channels pulse-id)
-                     :let    [n (channel-recipient-count channel)]
-                     :when   (pos? n)]
-                 [(:channel_type channel) n])]
+  (let [channels          (pulse.db/enabled-pulse-channels pulse-id)
+        email-channel-ids (into [] (comp (filter #(= :email (:channel_type %))) (map :id)) channels)
+        active-recipients (if (seq email-channel-ids)
+                            (frequencies (map :pulse_channel_id
+                                              (pulse.db/active-recipients-for-channels email-channel-ids)))
+                            {})
+        counts            (for [channel channels
+                                :let    [n (channel-recipient-count active-recipients channel)]
+                                :when   (pos? n)]
+                            [(:channel_type channel) n])]
     {:channels        (vec (distinct (map first counts)))
      :recipient-count (transduce (map second) + counts)}))
 
 (defn- archived-subscription
   "What a caller may report about `broken-subscription`, from [[broken-subscription-data]], once it is archived:
-   `{:id :creator-name :parameters :channels :recipient-count :already-broken?}`.
+   `{:id :creator-name :parameters :channels :recipient-count :already-broken? :readable?}`.
    The `:parameters` are the missing filters' ids and names.
    The `:channels` and `:recipient-count` are what [[delivery]] describes.
    The `:already-broken?` flag is true when none of the missing filters was on the dashboard before the update.
+   The `:readable?` flag says whether the current user can read the subscription, which decides what a caller may
+   show about it.
    It leaves out the recipients' names and emails and the filter values."
   [original-dashboard-params {:keys [pulse-id bad-parameters pulse-creator]}]
   (merge {:id              pulse-id
@@ -119,7 +129,8 @@
           ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
           :parameters      (mapv #(select-keys % [:id :name]) bad-parameters)
           ;; A filter missing before this update, for example after a revision revert, which doesn't run this handler.
-          :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)}
+          :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)
+          :readable?       (boolean (some-> (pulse.db/pulse-row pulse-id) (t2/hydrate :can_read) mi/can-read?))}
          (delivery pulse-id)))
 
 (defn handle-broken-subscriptions!

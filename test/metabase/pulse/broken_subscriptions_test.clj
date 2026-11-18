@@ -126,9 +126,10 @@
 
 (deftest handle-broken-subscriptions-returns-what-it-archived-test
   (testing "the handler archives each broken subscription and returns what a caller may report about it, counting
-            the destinations of enabled channels"
+            the active destinations of enabled channels"
     (mt/with-fake-inbox
-      (mt/with-temp [:model/Channel             {webhook-id :id}   {:type    :channel/http
+      (mt/with-temp [:model/User                {former-id :id}    {:is_active false}
+                     :model/Channel             {webhook-id :id}   {:type    :channel/http
                                                                     :details {:url         "https://example.com/hook"
                                                                               :auth-method "none"}}
                      :model/Dashboard           {dash-id :id}      {:name       "Sales"
@@ -145,6 +146,9 @@
                                                                     :enabled      true}
                      :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
                                                                     :user_id          (mt/user->id :crowberto)}
+                     ;; A deactivated user gets no email, so isn't counted.
+                     :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                    :user_id          former-id}
                      :model/Pulse               {stale-id :id}     {:name         "Stale filter"
                                                                     :dashboard_id dash-id
                                                                     :creator_id   (mt/user->id :rasta)
@@ -167,15 +171,18 @@
                  :parameters      [{:id "gone", :name "Gone"}]
                  :channels        [:email]
                  :recipient-count 2
-                 :already-broken? false}
+                 :already-broken? false
+                 :readable?       true}
                 {:id              stale-id
                  :creator-name    "Rasta Toucan"
                  :parameters      [{:id "stale", :name "Stale"}]
                  :channels        [:http]
                  :recipient-count 1
-                 :already-broken? true}]
-               (sort-by :id (pulse.broken-subscriptions/handle-broken-subscriptions!
-                             dash-id
-                             {"kept" {:id "kept"}, "gone" {:id "gone"}}))))
+                 :already-broken? true
+                 :readable?       true}]
+               (sort-by :id (mt/with-current-user (mt/user->id :rasta)
+                              (pulse.broken-subscriptions/handle-broken-subscriptions!
+                               dash-id
+                               {"kept" {:id "kept"}, "gone" {:id "gone"}})))))
         (is (= #{removed-id stale-id}
                (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))

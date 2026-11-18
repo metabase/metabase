@@ -446,6 +446,11 @@
   [pulse-id]
   (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
 
+(defn pulse-row
+  "The Pulse with `pulse-id`, archived or not, or nil."
+  [pulse-id]
+  (t2/select-one :model/Pulse :id pulse-id))
+
 (defn enabled-pulse-channels
   "The id, channel type, details, and channel id of the enabled PulseChannels of the Pulse with `pulse-id`."
   [pulse-id]
