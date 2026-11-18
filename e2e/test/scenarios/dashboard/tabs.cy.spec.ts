@@ -45,6 +45,39 @@ describe("scenarios > dashboard > tabs", () => {
     cy.signInAsAdmin();
   });
 
+  it("should create and save a link from the header on the selected second tab", () => {
+    H.createDashboardWithTabs({
+      tabs: [
+        { id: -1, name: "Tab 1" },
+        { id: -2, name: "Tab 2" },
+      ],
+    }).then((dashboard) => {
+      H.visitDashboard(dashboard.id);
+    });
+    H.editDashboard();
+    H.goToTab("Tab 2");
+    H.addLinkWhileEditing("https://metabase.com");
+    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard()
+      .findByDisplayValue("https://metabase.com")
+      .should("be.visible");
+    H.goToTab("Tab 1");
+    H.getDashboardCards().should("have.length", 0);
+    H.goToTab("Tab 2");
+    H.getDashboardCard()
+      .findByDisplayValue("https://metabase.com")
+      .should("be.visible");
+    H.saveDashboard();
+    cy.reload();
+    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard()
+      .findByTestId("custom-view-text-link")
+      .findByRole("link")
+      .should("have.attr", "href", "https://metabase.com");
+  });
+
   it("should handle canceling adding a new tab (#38055, #38278)", () => {
     H.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
