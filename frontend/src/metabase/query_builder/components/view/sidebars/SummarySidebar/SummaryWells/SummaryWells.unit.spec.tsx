@@ -43,12 +43,14 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
+  canPivot?: boolean;
   isPivotMode?: boolean;
   rowKeys?: string[];
 };
 
 function setup({
   spec = SUMMARIZED_QUERY,
+  canPivot = true,
   isPivotMode = false,
   rowKeys = [],
 }: SetupOpts = {}) {
@@ -67,6 +69,7 @@ function setup({
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
       draggedItem={null}
+      canPivot={canPivot}
       isPivotMode={isPivotMode}
       rowItems={rowItems}
       columnItems={columnItems}
@@ -575,6 +578,14 @@ describe("SummaryWells", () => {
 
       expect(onPivotToggle).toHaveBeenCalledTimes(1);
       expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("has no pivot toggle when a pivot table is not possible", () => {
+      setup({ canPivot: false });
+
+      expect(
+        screen.queryByRole("button", { name: "Pivot into rows and columns" }),
+      ).not.toBeInTheDocument();
     });
 
     it("splits the groupings between Columns and Rows", () => {

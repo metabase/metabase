@@ -42,6 +42,17 @@ function getColumnSplitToSync(
   };
 }
 
+/**
+ * Whether the question can show a pivot table of the summary in the stage. The column split is
+ * about the columns of the last stage, so no stage can come after the summary. The database must
+ * support pivot tables. When it is not loaded, the check passes, as for the pivot table itself.
+ */
+export function canPivotSummary(question: Question, stageIndex: number) {
+  const isLastStage =
+    stageIndex === -1 || stageIndex === Lib.stageCount(question.query()) - 1;
+  return isLastStage && (question.database()?.supportsPivots() ?? true);
+}
+
 /** The Rows of the pivot table that the question shows, when it shows one. */
 export function getPivotRowKeys(question: Question): string[] | undefined {
   const columnSplit = question.settings()["pivot_table.column_split"];

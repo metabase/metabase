@@ -146,6 +146,7 @@ const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
 
 type SetupOpts = {
   query?: Lib.Query;
+  canPivot?: boolean;
   pivotRowKeys?: string[];
 };
 
@@ -154,6 +155,7 @@ function setup({
     SAMPLE_PROVIDER,
     DEFAULT_TEST_QUERY,
   ),
+  canPivot,
   pivotRowKeys: initialPivotRowKeys,
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
@@ -166,6 +168,7 @@ function setup({
         <SummarySidebar
           query={query}
           stageIndex={STAGE_INDEX}
+          canPivot={canPivot}
           pivotRowKeys={pivotRowKeys}
           onQueryChange={(nextQuery, pivotChange) => {
             setQuery(nextQuery);
@@ -918,6 +921,40 @@ describe("SummarySidebar", () => {
           screen.queryByTestId("summary-well-rows"),
         ).not.toBeInTheDocument();
         expect(getChipLabels("columns")).toHaveLength(3);
+      });
+    });
+
+    describe("when a pivot table is not possible", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      });
+
+      it("offers no way into the pivot mode", () => {
+        setup({ query, canPivot: false });
+
+        expect(
+          screen.queryByRole("button", { name: "Pivot into rows and columns" }),
+        ).not.toBeInTheDocument();
+
+        startDrag(getFieldDrag(query, "Product", "Category"));
+        expect(screen.queryByText("Create pivot")).not.toBeInTheDocument();
+        endDrag(null);
+      });
+
+      it("shows the Rows of a pivot table question as plain groupings", () => {
+        setup({ query, canPivot: false, pivotRowKeys: ["CREATED_AT"] });
+
+        expect(
+          screen.queryByTestId("summary-well-rows"),
+        ).not.toBeInTheDocument();
+        expect(getWell("columns").getByText("Group by")).toBeInTheDocument();
+        expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
       });
     });
 

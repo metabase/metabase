@@ -7,6 +7,7 @@ import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
 import {
   SummarySidebar,
+  canPivotSummary,
   getPivotRowKeys,
   getSummaryQuestion,
 } from "../../sidebars/SummarySidebar";
@@ -47,6 +48,7 @@ export const StructuredQueryRightSidebar = ({
     .with({ isShowingSummarySidebar: true }, () => (
       <SummarySidebar
         query={query}
+        canPivot={canPivotSummary(question, summaryStageIndex ?? -1)}
         pivotRowKeys={getPivotRowKeys(question)}
         onQueryChange={(nextQuery, pivotChange) =>
           updateQuestion(getSummaryQuestion(question, nextQuery, pivotChange), {
