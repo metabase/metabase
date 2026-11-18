@@ -178,6 +178,8 @@ describe("QuestionActions", () => {
 
       await openActionsMenu();
 
+      // e.g. models in the instance analytics collection (metabase#36228)
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
       expect(
         screen.queryByText("Edit query definition"),
       ).not.toBeInTheDocument();
