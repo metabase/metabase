@@ -73,8 +73,8 @@
   (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
-  "Update an action test. An update that gives the action, the parameter values, the inputs or the expectations is
-  refused, as a new test is, unless the test could run; an update of only the name or description is not."
+  "Update an action test. When the request body holds the action, the parameter values, the inputs or the expectations,
+  the updated test is checked as a new test is checked; an update of only the name or description is not checked."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params

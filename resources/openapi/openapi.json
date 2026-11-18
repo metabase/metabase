@@ -45391,7 +45391,7 @@
         "tags" : [ "/api/ee/action-test" ]
       },
       "put" : {
-        "description" : "Update an action test. An update that gives the action, the parameter values, the inputs or the expectations is\n  refused, as a new test is, unless the test could run; an update of only the name or description is not.",
+        "description" : "Update an action test. When the request body holds the action, the parameter values, the inputs or the expectations,\n  the updated test is checked as a new test is checked; an update of only the name or description is not checked.",
         "operationId" : "put-api-ee-action-test-id",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
