@@ -982,7 +982,8 @@
     (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
       (warehouses-rest.db/delete-destination-databases! id)
-      (database-routing/delete-associated-database-router! id)
+      (request/with-current-user nil
+        (database-routing/delete-associated-database-router! id))
       (warehouses-rest.db/delete-database! id)
       nil))
   api/generic-204-no-content)

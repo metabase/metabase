@@ -1433,16 +1433,18 @@
                         cards-on-first-tab size_x size_y autoplace/default-grid-width)
                        (autoplace/get-position-for-new-dashcard
                         cards-on-first-tab (:display card)))]
-        (queries.db/insert-dashcard! (assoc new-spot
-                                            :dashboard_tab_id (some-> first-tab :id)
-                                            :card_id (:id card)
-                                            :dashboard_id dashboard-id))))))
+        (binding [api/*current-user-id* nil]
+          (queries.db/insert-dashcard! (assoc new-spot
+                                              :dashboard_tab_id (some-> first-tab :id)
+                                              :card_id (:id card)
+                                              :dashboard_id dashboard-id)))))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
-  (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
-  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-    (queries.db/delete-dashcard-series! (set dashcard-ids))))
+  (binding [api/*current-user-id* nil]
+    (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
+    (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
+      (queries.db/delete-dashcard-series! (set dashcard-ids)))))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
@@ -1495,9 +1497,10 @@
                delete-old-dashcards?)
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
-      (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
-      (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-        (queries.db/delete-dashcard-series! ids)))))
+      (binding [api/*current-user-id* nil]
+        (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
+        (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
+          (queries.db/delete-dashcard-series! ids))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]

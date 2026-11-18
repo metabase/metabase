@@ -265,7 +265,8 @@
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
   [model model-ids]
   (when (seq model-ids)
-    (cache.db/delete-cache-configs! model (vec model-ids))))
+    (binding [api/*current-user-id* nil]
+      (cache.db/delete-cache-configs! model (vec model-ids)))))
 
 ;;; ------------------------------------------------- Invalidation -------------------------------------------------
 

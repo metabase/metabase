@@ -72,7 +72,8 @@
 (defn- record-dashcards!
   "Record that the cards of `events`, the DashboardCards added to or removed from one Dashboard, were."
   [[dashboard-id operation] events all-events]
-  (when-let [user-id (and (not (some #(and (= :model/Dashboard (:model %))
+  (when-let [user-id (and (not (some #(get-in % [:context :reverting?]) events))
+                          (not (some #(and (= :model/Dashboard (:model %))
                                            (= :create (:operation %))
                                            (= dashboard-id (:id %)))
                                      all-events))
