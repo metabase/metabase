@@ -1,6 +1,6 @@
 ---
 title: "Installation and operation overview"
-summary: Install, configure, back up, and upgrade your Metabase. Also covers serialization, development instances, the Metabase CLI, and monitoring with Prometheus.
+summary: Install, configure, back up, and upgrade your Metabase, and set up serialization, development instances, the Metabase CLI, and Prometheus monitoring.
 ---
 
 # Installation and operation overview
