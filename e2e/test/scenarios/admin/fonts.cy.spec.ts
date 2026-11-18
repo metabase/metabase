@@ -4,51 +4,14 @@ const { H } = cy;
 // it falls back to when it cannot parse the one the face does declare.
 const EVERY_CODEPOINT = "U+0-10FFFF";
 
-// How the browser writes back the range of the chunk a latin page draws from.
-const LATIN_CHUNK_RANGE_START = "U+20-FF";
+// More than a page of the app requests, so no font request falls out of the
+// buffer before the test reads it.
+const RESOURCE_TIMING_BUFFER_SIZE = 2000;
 
-const charactersOutside = (unicodeRange: string, text: string) => {
-  const ranges = unicodeRange.split(",").map((token) => {
-    const [from, to = from] = token.trim().replace("U+", "").split("-");
-    return { from: parseInt(from, 16), to: parseInt(to, 16) };
-  });
-  const codePoints = Array.from(text, (character) => character.codePointAt(0))
-    .filter((codePoint) => codePoint !== undefined)
-    .filter((codePoint) => codePoint >= 0x20)
-    .filter(
-      (codePoint) =>
-        !ranges.some(({ from, to }) => from <= codePoint && codePoint <= to),
-    );
-  return [...new Set(codePoints)].map(
-    (codePoint) => `U+${codePoint.toString(16).toUpperCase()}`,
-  );
-};
-
-// Everything the page can draw: text nodes, hidden ones included, the text of
-// form fields, and the content of pseudo-elements.
-const drawnText = (win: Window) => {
-  const walker = win.document.createTreeWalker(win.document, 4);
-  const parts: string[] = [];
-  while (walker.nextNode()) {
-    parts.push(walker.currentNode.textContent ?? "");
-  }
-  win.document.querySelectorAll("*").forEach((element) => {
-    parts.push(
-      element.getAttribute("placeholder") ?? "",
-      element.getAttribute("value") ?? "",
-      element.getAttribute("alt") ?? "",
-      win.getComputedStyle(element, "::before").content,
-      win.getComputedStyle(element, "::after").content,
-      win.getComputedStyle(element, "::marker").content,
-    );
-  });
-  return parts.join("");
-};
-
-const bundledFaces = (win: Window) => {
-  const faces: FontFace[] = [];
-  win.document.fonts.forEach((face) => faces.push(face));
-  return faces;
+const declaredRanges = (win: Window) => {
+  const ranges: string[] = [];
+  win.document.fonts.forEach((face) => ranges.push(face.unicodeRange));
+  return ranges;
 };
 
 describe("scenarios > admin > fonts", () => {
@@ -67,7 +30,7 @@ describe("scenarios > admin > fonts", () => {
     H.main().should("be.visible");
 
     cy.window().then((win) => {
-      const ranges = bundledFaces(win).map((face) => face.unicodeRange);
+      const ranges = declaredRanges(win);
 
       expect(ranges, "bundled faces are declared").not.to.be.empty;
       expect(
@@ -77,107 +40,26 @@ describe("scenarios > admin > fonts", () => {
     });
   });
 
-  it("downloads only the latin chunk for a page with no other script", () => {
-    // A canvas measurement downloads a chunk just as rendered text does, and
-    // leaves nothing in the page to find it by.
-    const measuredOnCanvas: string[] = [];
-    const loadedByScript: string[] = [];
-    const everInPage: string[] = [];
-    const fontLoads: string[] = [];
-    const canvasCalls: string[] = [];
+  // This reads the requests and not `FontFace.status`. On a machine that has
+  // the font installed, `local()` satisfies both chunks of a face at once, and
+  // both report `loaded` although nothing was downloaded.
+  it("downloads no script chunk for a page with no other script", () => {
     cy.visit("/", {
-      onBeforeLoad: (win) => {
-        const recordText = (target: object, method: string) => {
-          const original: (...args: unknown[]) => unknown = Reflect.get(
-            target,
-            method,
-          );
-          Reflect.set(
-            target,
-            method,
-            function (this: unknown, ...args: unknown[]) {
-              measuredOnCanvas.push(String(args[0]));
-              canvasCalls.push(
-                `${method} ${JSON.stringify(args[0])} in ${Reflect.get(this ?? {}, "font")}`,
-              );
-              return Reflect.apply(original, this, args);
-            },
-          );
-        };
-        [
-          win.CanvasRenderingContext2D.prototype,
-          win.OffscreenCanvasRenderingContext2D.prototype,
-        ].forEach((context) => {
-          recordText(context, "measureText");
-          recordText(context, "fillText");
-          recordText(context, "strokeText");
-        });
-
-        // Text that is gone again by the time the page settles.
-        new win.MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            const texts = [
-              mutation.target.textContent ?? "",
-              ...Array.from(
-                mutation.addedNodes,
-                (node) => node.textContent ?? "",
-              ),
-            ];
-            everInPage.push(texts.join("").replace(/[ -\u00ff\s]/g, ""));
-          });
-        }).observe(win.document, {
-          subtree: true,
-          childList: true,
-          characterData: true,
-        });
-        win.document.fonts.addEventListener("loading", () => {
-          fontLoads.push(
-            `started at ${Math.round(win.performance.now())}ms, body ${win.document.body?.innerHTML.slice(0, 300)}, canvas calls so far ${canvasCalls.slice(0, 12).join(" ; ")}`,
-          );
-        });
-        win.document.fonts.addEventListener("loadingdone", (event) => {
-          fontLoads.push(
-            `done: ${event.fontfaces.map((face) => `${face.family} ${face.weight} ${face.unicodeRange.slice(0, 7)}`).join(", ")}`,
-          );
-        });
-
-        const caller = () => new Error().stack?.split("\n")[3]?.trim() ?? "";
-        const loadFace = win.FontFace.prototype.load;
-        win.FontFace.prototype.load = function () {
-          loadedByScript.push(`${this.family} ${this.weight} ${caller()}`);
-          return loadFace.call(this);
-        };
-        const loadFont = win.document.fonts.load;
-        win.document.fonts.load = (font, text) => {
-          loadedByScript.push(`${font} "${text ?? ""}" ${caller()}`);
-          return loadFont.call(win.document.fonts, font, text);
-        };
-      },
+      onBeforeLoad: (win) =>
+        win.performance.setResourceTimingBufferSize(
+          RESOURCE_TIMING_BUFFER_SIZE,
+        ),
     });
     H.main().should("be.visible");
 
     cy.window().then((win) =>
       win.document.fonts.ready.then(() => {
-        const downloaded = bundledFaces(win).filter(
-          (face) => face.status === "loaded",
-        );
-        const scriptChunks = downloaded.filter(
-          (face) => !face.unicodeRange.startsWith(LATIN_CHUNK_RANGE_START),
-        );
-        const latinChunk = downloaded.find((face) =>
-          face.unicodeRange.startsWith(LATIN_CHUNK_RANGE_START),
-        );
+        const scriptChunks = win.performance
+          .getEntriesByType("resource")
+          .map((entry) => entry.name)
+          .filter((url) => url.includes("/fonts/") && url.includes(".rest."));
 
-        expect(latinChunk, "the page drew text in a bundled face").to.exist;
-        expect(
-          scriptChunks.map((face) => `${face.family} ${face.weight}`),
-          `script chunks downloaded. Characters outside the latin chunk: ${charactersOutside(
-            latinChunk?.unicodeRange ?? "",
-            drawnText(win) + measuredOnCanvas.join("") + everInPage.join(""),
-          ).join(
-            " ",
-          )}. Faces loaded by a script: ${loadedByScript.join(", ")}. Font loads: ${fontLoads.join(" / ")}`,
-        ).to.deep.equal([]);
+        expect(scriptChunks).to.deep.equal([]);
       }),
     );
   });
