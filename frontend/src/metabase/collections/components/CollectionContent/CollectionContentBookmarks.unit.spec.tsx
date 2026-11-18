@@ -12,6 +12,7 @@ import {
   setupDeleteBookmarkEndpoint,
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
+  setupStatefulBookmarksEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -121,9 +122,14 @@ const getItemBookmark = (item: CollectionItem) =>
 
 interface SetupOpts {
   bookmarks?: Bookmark[];
+  /** Bookmark writes change the list that GET /api/bookmark returns */
+  isBookmarkListStateful?: boolean;
 }
 
-async function setup({ bookmarks = [] }: SetupOpts = {}) {
+async function setup({
+  bookmarks = [],
+  isBookmarkListStateful = false,
+}: SetupOpts = {}) {
   const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
 
   setupCollectionByIdEndpoint({ collections: [COLLECTION] });
@@ -132,7 +138,11 @@ async function setup({ bookmarks = [] }: SetupOpts = {}) {
     collection: COLLECTION,
     collectionItems: COLLECTION_ITEMS,
   });
-  setupBookmarksEndpoints(bookmarks);
+  if (isBookmarkListStateful) {
+    setupStatefulBookmarksEndpoints(bookmarks);
+  } else {
+    setupBookmarksEndpoints(bookmarks);
+  }
   setupDatabasesEndpoints([]);
   setupSearchEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
@@ -353,5 +363,33 @@ describe("CollectionContent bookmarks", () => {
       expect(bookmarkCalls("card", PINNED_METRIC.id, "POST")).toHaveLength(0);
       expect(getBookmarkAddedEvents(trackSimpleEvent)).toEqual([]);
     });
+  });
+
+  it("updates the pinned metric menu after bookmarking it and after removing the bookmark", async () => {
+    await setup({ isBookmarkListStateful: true });
+
+    await openPinnedItemMenu(PINNED_METRIC);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Bookmark/ }),
+    );
+    await waitFor(() =>
+      expect(bookmarkCalls("card", PINNED_METRIC.id, "POST")).toHaveLength(1),
+    );
+
+    await openPinnedItemMenu(PINNED_METRIC);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Remove from bookmarks/ }),
+    );
+    await waitFor(() =>
+      expect(bookmarkCalls("card", PINNED_METRIC.id, "DELETE")).toHaveLength(1),
+    );
+
+    await openPinnedItemMenu(PINNED_METRIC);
+    expect(
+      await screen.findByRole("menuitem", { name: /^Bookmark/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Remove from bookmarks/ }),
+    ).not.toBeInTheDocument();
   });
 });
