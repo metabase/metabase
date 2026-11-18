@@ -14,6 +14,7 @@ import {
 import { act, cleanup, screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -143,7 +144,11 @@ const NATIVE_ORDERS_COLUMNS: DatasetColumn[] = ORDERS_COLUMNS.map((column) =>
     base_type: column.base_type,
     effective_type: column.effective_type,
     source: "native",
-    field_ref: ["field", column.name, { "base-type": column.base_type }],
+    field_ref: [
+      "field",
+      column.name,
+      { "base-type": checkNotNull(column.base_type) },
+    ],
   }),
 );
 
@@ -1069,11 +1074,11 @@ describe("QueryBuilder - model editor", () => {
       expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       expect(getAdhocQueryBodies()).toHaveLength(1);
 
-      act(() => router.navigate(-1));
+      act(() => router.back());
       await assertQueryTabState();
       expect(getAdhocQueryBodies()).toHaveLength(1);
 
-      act(() => router.navigate(-1));
+      act(() => router.back());
       expect(await screen.findByTestId("mini-picker")).toBeInTheDocument();
       expect(screen.getByTestId("editor-tabs-columns")).toBeDisabled();
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
