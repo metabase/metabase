@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, render, screen, within } from "__support__/ui";
 import { Tree } from "metabase/common/components/tree";
 
 const data = [
@@ -93,5 +93,54 @@ describe("Tree", () => {
     // Change selection back to A1 — A should re-expand
     rerender(<Tree data={nestedData} onSelect={jest.fn()} selectedId="A1" />);
     expect(screen.getByText("A1")).toBeInTheDocument();
+  });
+
+  describe("second line", () => {
+    const dataWithEmail = [
+      {
+        id: 1,
+        name: "Dana Analyst",
+        secondaryText: "dana@example.com",
+        icon: "person" as const,
+      },
+      { id: 2, name: "Sam Seller", icon: "person" as const },
+    ];
+
+    it("sets a second line in 12px on its own tight line", () => {
+      render(<Tree data={dataWithEmail} onSelect={jest.fn()} />);
+
+      expect(screen.getByText("dana@example.com")).toHaveStyle({
+        "--text-fz": "var(--mantine-font-size-sm)",
+        "--text-lh": "var(--mantine-line-height-sm)",
+      });
+    });
+
+    it("sets a second line in the secondary text colour, not transparency", () => {
+      render(<Tree data={dataWithEmail} onSelect={jest.fn()} />);
+
+      const email = screen.getByText("dana@example.com");
+      expect(email).toHaveStyle({
+        color: "var(--mantine-color-text-secondary-text)",
+      });
+      expect(email).not.toHaveStyle({ opacity: "0.7" });
+    });
+
+    it("guard: lets a second line take the selected row's colour", () => {
+      render(<Tree data={dataWithEmail} onSelect={jest.fn()} selectedId={1} />);
+
+      expect(screen.getByText("dana@example.com")).toHaveStyle({
+        color: "inherit",
+      });
+    });
+
+    it("guard: adds no second line to a row without secondary text", () => {
+      render(<Tree data={dataWithEmail} onSelect={jest.fn()} />);
+
+      expect(
+        within(
+          screen.getByRole("menuitem", { name: "Sam Seller" }),
+        ).getByTestId("tree-item-name"),
+      ).toHaveTextContent(/^Sam Seller$/);
+    });
   });
 });

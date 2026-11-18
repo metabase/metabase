@@ -180,7 +180,12 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
         <NameContainer data-testid="tree-item-name">
           {name}
           {item.secondaryText && (
-            <Text fz="sm" fw="normal" c="inherit" opacity={0.7} truncate>
+            <Text
+              size="sm"
+              fw="normal"
+              c={isSelected ? "inherit" : "text-secondary"}
+              truncate
+            >
               {item.secondaryText}
             </Text>
           )}
