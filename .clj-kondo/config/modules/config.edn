@@ -4544,12 +4544,15 @@
            startup
            system
            task
+           users
            util
            util.config}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/ConnectionImpersonation
                     :model/DataPermissions
                     :model/Database
+                    :model/DatabaseRouter
+                    :model/PermissionsGroupMembership
                     :model/User}}
 
   enterprise/serialization
