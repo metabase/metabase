@@ -990,6 +990,67 @@ describe("WhyListSidesheet", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("gives the panel the side sheet's 24px inset and a 32px close button, whatever the window's width", async () => {
+    setup({
+      openedItem: { type: "collection", id: SALES_REPORTS_ID },
+      isInPage: true,
+    });
+    const panel = await screen.findByRole("complementary", {
+      name: "Explain access",
+    });
+
+    const closeButton = within(panel).getByRole("button", { name: "Close" });
+    expect(closeButton).toHaveStyle({ width: "2rem", height: "2rem" });
+    // the panel is its header, then its scrolling body; neither has a role or label to find it by
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(panel.firstElementChild).toHaveStyle({
+      paddingInline: "var(--mantine-spacing-xl)",
+      paddingTop: "var(--mantine-spacing-xl)",
+    });
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(panel.lastElementChild).toHaveStyle({
+      paddingInline: "var(--mantine-spacing-xl)",
+      paddingBottom: "var(--mantine-spacing-xl)",
+    });
+  });
+
+  it("pulls a card's rows up by their hover band, so the rows sit 8px under the title and 24px above the card's edge", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+
+    const [openingRows, dataRows, exploringRows] =
+      await screen.findAllByTestId("card-rows");
+
+    for (const rows of [openingRows, dataRows, exploringRows]) {
+      expect(rows).toHaveStyle({
+        marginBlock: "calc(var(--mantine-spacing-sm) * -1)",
+      });
+    }
+    expect(
+      within(openingRows).getByRole("group", { name: /Sales reports/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(dataRows).getByRole("button", { name: /Orders/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(exploringRows).getByRole("group", { name: /Orders/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("pulls the collections' rows up by their hover band too", async () => {
+    setup({
+      openedItem: null,
+      isAllCollections: true,
+      mainCollections: {
+        ...COLLECTIONS,
+        collections: [getCollection("root", "Our analytics", 0, "read")],
+      },
+    });
+
+    expect(await screen.findByTestId("card-rows")).toHaveStyle({
+      marginBlock: "calc(var(--mantine-spacing-sm) * -1)",
+    });
+  });
+
   it("lists on All collections only the collections the page lists, with the person's whole access behind See everything", async () => {
     setup({
       openedItem: null,

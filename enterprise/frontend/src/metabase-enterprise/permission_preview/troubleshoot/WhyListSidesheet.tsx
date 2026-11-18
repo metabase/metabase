@@ -270,13 +270,15 @@ function InPagePanel({
       w="20rem"
       aria-labelledby={titleId}
     >
-      <Flex align="center" justify="space-between" px="lg" pt="lg" pb="md">
+      <Flex align="center" justify="space-between" px="xl" pt="xl" pb="lg">
         <Title id={titleId} order={4}>
           {title}
         </Title>
         <Button
           variant="subtle"
           size="compact-sm"
+          w="2rem"
+          h="2rem"
           c="text-primary"
           aria-label={t`Close`}
           leftSection={<Icon name="close" />}
@@ -284,7 +286,7 @@ function InPagePanel({
         />
       </Flex>
       {/* the scroll container is the content's parent, as in the sheet */}
-      <Box flex={1} mih={0} px="lg" pb="lg" className={S.panelBody}>
+      <Box flex={1} mih={0} px="xl" pb="xl" className={S.panelBody}>
         {children}
       </Box>
     </Flex>
@@ -450,11 +452,11 @@ function ItemCards({
       )}
       {page.blockedCards.length > 0 && (
         <SidesheetCard title={t`Cards that can't load`}>
-          <Box>
+          <CardRows>
             {page.blockedCards.map((card, index) => (
               <BlockedCardRow key={index} card={card} onOpen={onOpen} />
             ))}
-          </Box>
+          </CardRows>
         </SidesheetCard>
       )}
       {page.collection != null && (
@@ -488,10 +490,12 @@ function ItemCards({
             />
           }
         >
-          <ExploreRow
-            targets={page.explore}
-            onOpen={() => onOpenExplore(page.explore)}
-          />
+          <CardRows>
+            <ExploreRow
+              targets={page.explore}
+              onOpen={() => onOpenExplore(page.explore)}
+            />
+          </CardRows>
         </SidesheetCard>
       )}
       {hasMorePermissions && (
@@ -514,6 +518,15 @@ function ItemCards({
         </SidesheetCard>
       )}
     </>
+  );
+}
+
+/** A card's rows, pulled up by their hover band so the gaps you see match the card's: 8px under the title, 24px above the edge. */
+function CardRows({ children }: { children: ReactNode }) {
+  return (
+    <Box my="-sm" data-testid="card-rows">
+      {children}
+    </Box>
   );
 }
 
@@ -579,22 +592,24 @@ function ItemCollectionCard({
         />
       }
     >
-      <AccessRow
-        target={target}
-        label={
-          <Flex align="center" gap="sm" miw={0}>
-            <Text c="text-secondary" style={{ flexShrink: 0 }}>
-              {t`Collection`}
-            </Text>
-            <Tooltip label={target.title}>
-              <Text truncate="end" miw={0}>
-                {target.title}
+      <CardRows>
+        <AccessRow
+          target={target}
+          label={
+            <Flex align="center" gap="sm" miw={0}>
+              <Text c="text-secondary" style={{ flexShrink: 0 }}>
+                {t`Collection`}
               </Text>
-            </Tooltip>
-          </Flex>
-        }
-        onOpen={() => onOpen(target)}
-      />
+              <Tooltip label={target.title}>
+                <Text truncate="end" miw={0}>
+                  {target.title}
+                </Text>
+              </Tooltip>
+            </Flex>
+          }
+          onOpen={() => onOpen(target)}
+        />
+      </CardRows>
     </SidesheetCard>
   );
 }
@@ -643,7 +658,7 @@ function DataRows({
   const tableCount = fullAccess.length;
   const isFolded = tableCount > 1;
   return (
-    <Box>
+    <CardRows>
       {targets
         .filter((target) => !isFolded || !isFullAccess(target))
         .map((target, index) =>
@@ -702,7 +717,7 @@ function DataRows({
           </Box>
         </ToggleRow>
       )}
-    </Box>
+    </CardRows>
   );
 }
 
@@ -903,7 +918,9 @@ function CollectionList({
   }
   return (
     <SidesheetCard title={t`Collections`}>
-      <AccessRows targets={targets} onOpen={onOpen} />
+      <CardRows>
+        <AccessRows targets={targets} onOpen={onOpen} />
+      </CardRows>
     </SidesheetCard>
   );
 }

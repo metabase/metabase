@@ -2,11 +2,11 @@
 .toggleRow {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: calc(100% + 1rem);
-  margin: 0 -0.5rem;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
+  gap: var(--mantine-spacing-sm);
+  width: calc(100% + 2 * var(--mantine-spacing-sm));
+  margin: 0 calc(-1 * var(--mantine-spacing-sm));
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
 }
 
 .toggleRow:hover {
@@ -17,10 +17,10 @@
 .line {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: calc(100% + 1rem);
-  margin: 0 -0.5rem;
-  padding: 0.5rem;
+  gap: var(--mantine-spacing-sm);
+  width: calc(100% + 2 * var(--mantine-spacing-sm));
+  margin: 0 calc(-1 * var(--mantine-spacing-sm));
+  padding: var(--mantine-spacing-sm);
 }
 
 .panel {
