@@ -5,7 +5,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -45,6 +44,8 @@
 (defn- update-binning-strategy [mp query]
   (-> (lib/query mp query)
       binning/update-binning-strategy
+      ;; existing usage -- do not use going forward
+      #_{:clj-kondo/ignore [:deprecated-var]}
       lib/->legacy-MBQL))
 
 (deftest ^:parallel update-binning-strategy-test
@@ -181,17 +182,13 @@
                                      "foo"
                                      {:base-type :type/Float
                                       :binning   {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}]]}}
-                (update-binning-strategy mp (-> query
-                                                lib.convert/->legacy-MBQL
-                                                (assoc-in [:query :source-metadata] card-cols))))))
+                (update-binning-strategy mp query))))
       (testing "with filter"
         (is (=? {:query {:breakout [[:field
                                      "foo"
                                      {:base-type :type/Float
                                       :binning   {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}]]}}
-                (update-binning-strategy mp (-> (lib/filter query (lib/between expr-col 20 40))
-                                                lib.convert/->legacy-MBQL
-                                                (assoc-in [:query :source-metadata] card-cols)))))))))
+                (update-binning-strategy mp (lib/filter query (lib/between expr-col 20 40)))))))))
 
 (deftest ^:parallel update-original-binning-e2e-test
   (testing "#63662"

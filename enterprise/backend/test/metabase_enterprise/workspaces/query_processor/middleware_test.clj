@@ -6,7 +6,6 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -473,8 +472,7 @@
         (let [venues          (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))
               original-schema (:schema venues)
               original-name   (:name venues)
-              venues-query    (lib.convert/->legacy-MBQL
-                               (lib/query (qp.store/metadata-provider) venues))]
+              venues-query    (lib/query (qp.store/metadata-provider) venues)]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query venues-query
                                                     :database_id   (mt/id)}]
             (with-remappings (mt/id) {[original-schema original-name] ["ws_alice" "venues_workspace"]}
@@ -502,12 +500,10 @@
     (mt/with-premium-features #{:workspaces}
       (qp.store/with-metadata-provider (mt/id)
         ;; One card targets a remapped table (VENUES), the other a non-remapped table (CHECKINS).
-        (let [venues-query   (lib.convert/->legacy-MBQL
-                              (lib/query (qp.store/metadata-provider)
-                                         (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues))))
-              checkins-query (lib.convert/->legacy-MBQL
-                              (lib/query (qp.store/metadata-provider)
-                                         (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))]
+        (let [venues-query   (lib/query (qp.store/metadata-provider)
+                                        (lib.metadata/table (qp.store/metadata-provider) (mt/id :venues)))
+              checkins-query (lib/query (qp.store/metadata-provider)
+                                        (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins)))]
           (mt/with-temp [:model/Dashboard {dash-id :id} {}
                          :model/Card {venues-card-id :id} {:dataset_query venues-query
                                                            :database_id   (mt/id)}

@@ -34,9 +34,12 @@
   "Convert an MBQL 5 query to legacy MBQL.
 
   Non-MBQL 5 values and queries that fail conversion are returned unchanged.
-  Use [[->frontend-query]] for frontend links and chart data."
+  Use [[->frontend-query]] for frontend links and chart data.
+
+  DEPRECATED -- Conversion to Legacy MBQL is deprecated and will be removed before the end of 2026, DO NOT use this
+  going forward."
+  {:deprecated "0.66.0"}
   [query]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query)
            ;; `:stages` alone (no `:lib/type`) also counts: a query stripped of its internal `:lib/*` keys is
            ;; still MBQL 5. Guarding on `:lib/type` alone let such a query fall through unconverted, leaking raw
@@ -44,6 +47,8 @@
            ;; (BOT-1604 follow-up).
            (or (:lib/type query) (:stages query)))
     (try
+      ;; existing usage -- do not use going forward
+      #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
       (lib/->legacy-MBQL (query-repair/normalize-query query))
       (catch Exception e
         ;; A ref that [[query-repair/normalize-query]] cannot repoint, such as one of several aggregations in a
@@ -75,6 +80,8 @@
           (catch Exception e
             (log/warn e "Failed to normalize MBQL 5 query for the frontend")
             nil)))
+      ;; existing usage -- do not use going forward
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (->legacy-mbql query)))
 
 (defn- query->url-hash

@@ -536,7 +536,7 @@
 ;;; ===========================================================================
 
 (defn- mp-with-transform [native-sql]
-  (let [query     (lib/->legacy-MBQL (lib/native-query meta/metadata-provider native-sql))
+  (let [query     (lib/native-query meta/metadata-provider native-sql)
         transform {:id     1
                    :name   "tx"
                    :source {:type :query :query query}

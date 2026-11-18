@@ -124,7 +124,7 @@
    f      :- ifn?]
   (if-let [field-ref (parameter-target-field-ref target)]
     (let [new-legacy-ref (-> (f field-ref)
-                             lib.convert/->legacy-MBQL)]
+                             lib.convert/->legacy-MBQL-ref)]
       (case (first target)
         :dimension (let [[tag _ref opts] target]
                      (cond-> [tag new-legacy-ref]

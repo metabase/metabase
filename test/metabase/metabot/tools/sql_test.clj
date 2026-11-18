@@ -159,8 +159,7 @@
           (mt/with-db db
             (let [mp (mt/metadata-provider)
                   query-id "test-edit-q"
-                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT * FROM t")
-                                                                 lib/->legacy-MBQL)}}})
+                  memory   (atom {:state {:queries {query-id (lib/native-query mp "SELECT * FROM t")}}})
                   result   (binding [shared/*memory-atom* memory]
                              (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "edit_sql_query"
                                               {:query_id  query-id
@@ -190,8 +189,7 @@
           (mt/with-db db
             (let [mp (mt/metadata-provider)
                   query-id "test-replace-q"
-                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
-                                                                 lib/->legacy-MBQL)}}})
+                  memory   (atom {:state {:queries {query-id (lib/native-query mp "SELECT 1")}}})
                   result   (binding [shared/*memory-atom* memory]
                              (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) "replace_sql_query"
                                               {:query_id  query-id
@@ -219,7 +217,7 @@
           (mt/with-db db
             (let [mp       (mt/metadata-provider)
                   query-id "test-inline-q"
-                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)]
+                  query    (lib/native-query mp "SELECT * FROM t")]
               (doseq [[tool-name args] [["edit_sql_query" {:edits [{:old_string "SELECT *" :new_string "SELECT id"}]}]
                                         ["replace_sql_query" {:new_query "SELECT id FROM t"}]]
                       :let [run (fn [context]
@@ -257,7 +255,7 @@
           (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
                                              metabot-sql-execution-enabled?   true]
             (let [query-id "test-show-chart-q"
-                  query    (-> (lib/native-query (mt/metadata-provider) "SELECT * FROM t") lib/->legacy-MBQL)
+                  query    (lib/native-query (mt/metadata-provider) "SELECT * FROM t")
                   run      (fn [tool-name tool-names context args & {:keys [client-ids]}]
                              (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
                                                                                        :conversation-id own
@@ -503,6 +501,8 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [profile [:internal :sql]
             query [(lib/native-query (mt/metadata-provider) "SELECT 1")
+                   ;; existing usage -- do not use going forward
+                   #_{:clj-kondo/ignore [:deprecated-var]}
                    (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT 1"))]
             [tool-name args code excerpt]
             [["replace_sql_query" {:new_query ""} ::sql.common/blank-sql "would contain no SQL"]
@@ -1368,8 +1368,7 @@
                                              metabot-sql-execution-enabled?   true]
             (let [query-id  "test-hidden-warning-q"
                   join      " JOIN no_such_account a ON a.id = v.id"
-                  stored    (-> (lib/native-query (mt/metadata-provider) "SELECT v.name FROM venues v")
-                                lib/->legacy-MBQL)
+                  stored    (lib/native-query (mt/metadata-provider) "SELECT v.name FROM venues v")
                   ;; A fresh memory per call: a warning already shown in this turn would not keep the turn open.
                   run       (fn [tool-name context & {:keys [client-ids]}]
                               (binding [shared/*memory-atom*                     (atom {:tool-names      #{"create_sql_query"

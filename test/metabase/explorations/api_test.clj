@@ -194,10 +194,14 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _m1 {:name          "Alpha Metric"
                                       :type          :metric
-                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count))))}
                      :model/Card _m2 {:name          "Beta Metric"
                                       :type          :metric
-                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count))))}]
         (let [response       (mt/user-http-request :rasta :get 200 "exploration/dimensions")
               all-metrics    (:metrics response)
               ;; Scope to this test's own metrics — other tests' temp :metric Cards can be live
@@ -223,10 +227,14 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _m1 {:name          "Revenue"
                                       :type          :metric
-                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count))))}
                      :model/Card _m2 {:name          "Order Count"
                                       :type          :metric
-                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count))))}]
         (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions" :q "reven")]
           (is (= 1 (count (:metrics response))))
           (is (= "Revenue" (:name (first (:metrics response))))))))))
@@ -236,7 +244,9 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card metric {:name          "Sales"
                                          :type          :metric
-                                         :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+                                         :dataset_query (let [mp (mt/metadata-provider)]
+                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                              (lib/aggregate (lib/count))))}]
         (let [hydrated (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               dim-name (some-> hydrated :dimensions first :display_name)]
           (is (some? dim-name) "metric should have at least one hydrated dimension with a display-name")
@@ -250,7 +260,9 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _m {:name          "Hello"
                                      :type          :metric
-                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                          (lib/aggregate (lib/count))))}]
         (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions"
                                              :q "zzz_no_such_thing_zzz")]
           (is (= [] (:metrics response)))
@@ -264,7 +276,9 @@
                        :model/Card _hidden {:name          "Hidden Metric"
                                             :type          :metric
                                             :collection_id (:id collection)
-                                            :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+                                            :dataset_query (let [mp (mt/metadata-provider)]
+                                                             (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                 (lib/aggregate (lib/count))))}]
           (let [response (mt/user-http-request :rasta :get 200 "exploration/dimensions")]
             (is (not-any? #(= "Hidden Metric" (:name %)) (:metrics response)))))))))
 
@@ -273,7 +287,9 @@
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card metric {:name          "Filter target"
                                          :type          :metric
-                                         :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+                                         :dataset_query (let [mp (mt/metadata-provider)]
+                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                              (lib/aggregate (lib/count))))}]
         (let [good-id "11111111-1111-1111-1111-111111111111"
               bad-id  "22222222-2222-2222-2222-222222222222"
               good-mapping {:dimension-id good-id
@@ -304,7 +320,9 @@
 (defn- valid-metric-card [user-id]
   {:type          :metric
    :creator_id    user-id
-   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
+   :dataset_query (let [mp (mt/metadata-provider)]
+                    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                        (lib/aggregate (lib/count))))})
 
 (deftest exploration-create-persists-everything-and-runs-test
   (testing "POST / creates an exploration with one thread, persists selections, and materializes queries"
@@ -517,7 +535,10 @@
     (mt/with-temp [:model/User u {:email "strip@example.com"}
                    :model/Card metric {:type          :metric
                                        :creator_id    (:id u)
-                                       :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))}]
+                                       :dataset_query (let [mp (mt/metadata-provider)]
+                                                        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                            (lib/aggregate (lib/count))
+                                                            (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month))))}]
       (let [dim-fid  (mt/id :products :category)
             temp-fid (mt/id :products :created_at)
             body     {:name       "no time pls"
@@ -565,7 +586,9 @@
 (defn- venues-metric-card [user-id]
   {:type          :metric
    :creator_id    user-id
-   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))})
+   :dataset_query (let [mp (mt/metadata-provider)]
+                    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                        (lib/aggregate (lib/count))))})
 
 (defn- venues-dimension-mappings
   "Wire-shape (snake_case) dimension mappings for HTTP request payloads. `defendpoint` decodes
@@ -594,9 +617,13 @@
     (mt/with-temp [:model/User u {:email "segments@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment internal {:name       "internal"
-                                            :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
+                                            :definition (let [mp (mt/metadata-provider)]
+                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                              (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1))))}
                    :model/Segment premium  {:name       "premium"
-                                            :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
+                                            :definition (let [mp (mt/metadata-provider)]
+                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                              (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4))))}]
       (let [body    {:name       "fan-out"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
                      :dimensions [{:dimension_id (duid "category") :display_name "Category"}
@@ -628,7 +655,9 @@
     (mt/with-temp [:model/User u {:email "seg-scope@example.com"}
                    :model/Card metric (venues-metric-card (:id u))
                    :model/Segment _other {:name       "users-only"
-                                          :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :users))) (lib/filter (lib/not-null (lib.metadata/field mp (mt/id :users :id)))))))}]
+                                          :definition (let [mp (mt/metadata-provider)]
+                                                        (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                            (lib/filter (lib/not-null (lib.metadata/field mp (mt/id :users :id))))))}]
       (let [body    {:name       "scope"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
                      :dimensions [{:dimension_id (duid "category")} {:dimension_id (duid "price")}]}
@@ -647,7 +676,10 @@
   [user-id]
   {:type               :metric
    :creator_id         user-id
-   :dataset_query      (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))
+   :dataset_query      (let [mp (mt/metadata-provider)]
+                         (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month))))
    :dimensions         [{:id                    (duid "prod-created")
                          :display-name          "Created At"
                          :effective-type        :type/DateTime
@@ -765,7 +797,9 @@
     (mt/with-temp [:model/User u {:email "facet-no-seg@example.com"}
                    :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")
                    :model/Segment s {:name       "premium"
-                                     :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50)))))}]
+                                     :definition (let [mp (mt/metadata-provider)]
+                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                       (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50))))}]
       (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
                       :target       ["field" (mt/id :products :category) nil]}]
@@ -789,7 +823,9 @@
     (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment s {:name       "cheap"
-                                     :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
+                                     :definition (let [mp (mt/metadata-provider)]
+                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                       (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1))))}]
       (let [mapping [{:dimension_id (duid "created")
                       ;; a mapping's :table_id is the table of the *target* column (see
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
@@ -1389,10 +1425,9 @@
                    :model/Card venues-metric (venues-metric-card (:id u))
                    :model/Card products-metric {:type          :metric
                                                 :creator_id    (:id u)
-                                                :dataset_query (lib/->legacy-MBQL
-                                                                (let [mp (mt/metadata-provider)]
-                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                                                      (lib/aggregate (lib/count)))))}]
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                                     (lib/aggregate (lib/count))))}]
       (let [body     {:name       "union drill"
                       :metrics    [{:card_id (:id venues-metric) :dimension_mappings (venues-dimension-mappings)}
                                    {:card_id (:id products-metric)
@@ -2151,9 +2186,13 @@
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment _seg-a {:name "alpha"
-                                          :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
+                                          :definition (let [mp (mt/metadata-provider)]
+                                                        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                            (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1))))}
                    :model/Segment _seg-b {:name "beta"
-                                          :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
+                                          :definition (let [mp (mt/metadata-provider)]
+                                                        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                            (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4))))}]
       (let [body {:name "groups"
                   :metrics    [{:card_id (:id metric)
                                 :dimension_mappings (venues-dimension-mappings)}]
@@ -2330,7 +2369,9 @@
       (with-sample-metrics-archived
         (mt/with-temp [:model/Card        _ {:name          "Routed Metric"
                                              :type          :metric
-                                             :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                  (lib/aggregate (lib/count))))}
                        :model/DatabaseRouter _ {:database_id    (mt/id)
                                                 :user_attribute "team"}]
           (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")
@@ -2354,7 +2395,9 @@
                                                             :database_id   (mt/id)
                                                             :display       "table"
                                                             :visualization_settings {}
-                                                            :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}))
+                                                            :dataset_query (let [mp (mt/metadata-provider)]
+                                                                             (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                                 (lib/aggregate (lib/count))))}))
         exploration (first (t2/insert-returning-instances! :model/Exploration
                                                            {:name       "cancel-fixture"
                                                             :creator_id user-id}))
@@ -2425,7 +2468,9 @@
                      :model/Card card {:name          "cancel-perm-fixture"
                                        :type          :metric
                                        :creator_id    (mt/user->id :crowberto)
-                                       :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                                       :dataset_query (let [mp (mt/metadata-provider)]
+                                                        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                            (lib/aggregate (lib/count))))}
                      :model/Exploration exploration {:name          "cancel-perm-fixture"
                                                      :creator_id    (mt/user->id :crowberto)
                                                      :collection_id (:id coll)}
@@ -2588,10 +2633,9 @@
       (mt/with-temp [:model/Collection coll {}
                      :model/Card       metric {:name          "Revenue"
                                                :type          :metric
-                                               :dataset_query (lib/->legacy-MBQL
-                                                               (let [mp (mt/metadata-provider)]
-                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                     (lib/aggregate (lib/count)))))}]
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/aggregate (lib/count))))}]
         (let [common {:creator-id   (mt/user->id :crowberto)
                       :collection-id (:id coll)
                       :card-id      (:id metric)
@@ -2618,10 +2662,9 @@
     (mt/with-temp [:model/Collection coll {}
                    :model/Card       metric {:name          "Number of venues"
                                              :type          :metric
-                                             :dataset_query (lib/->legacy-MBQL
-                                                             (let [mp (mt/metadata-provider)]
-                                                               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                   (lib/aggregate (lib/count)))))}]
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                  (lib/aggregate (lib/count))))}]
       (let [src         (insert-explore-fixture!
                          {:creator-id    (mt/user->id :crowberto)
                           :collection-id (:id coll)
@@ -2661,10 +2704,9 @@
       (mt/with-temp [:model/Collection coll {}
                      :model/Card       metric {:name          "Revenue"
                                                :type          :metric
-                                               :dataset_query (lib/->legacy-MBQL
-                                                               (let [mp (mt/metadata-provider)]
-                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                     (lib/aggregate (lib/count)))))}]
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/aggregate (lib/count))))}]
         (let [prior  {:operator      "="
                       :field_ref     ["field" (mt/id :venues :name) nil]
                       :value         "Texas"
@@ -2702,10 +2744,9 @@
     (mt/with-temp [:model/Collection coll {}
                    :model/Card       metric {:name          "Revenue"
                                              :type          :metric
-                                             :dataset_query (lib/->legacy-MBQL
-                                                             (let [mp (mt/metadata-provider)]
-                                                               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                   (lib/aggregate (lib/count)))))}]
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                  (lib/aggregate (lib/count))))}]
       (let [src (insert-explore-fixture!
                  {:creator-id    (mt/user->id :crowberto)
                   :collection-id (:id coll)
@@ -2737,10 +2778,9 @@
       (mt/with-temp [:model/Collection coll {}
                      :model/Card       metric {:name          "Number of venues"
                                                :type          :metric
-                                               :dataset_query (lib/->legacy-MBQL
-                                                               (let [mp (mt/metadata-provider)]
-                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                     (lib/aggregate (lib/count)))))}]
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/aggregate (lib/count))))}]
         (let [src (insert-explore-fixture!
                    {:creator-id    (mt/user->id :crowberto)
                     :collection-id (:id coll)
@@ -3011,9 +3051,9 @@
                                              :id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                                                    :exploration_query_id %))
                              query-ids)
-            checkins-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
-                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
-                                                (lib/aggregate (lib/count)))))]
+            checkins-q (let [mp (mt/metadata-provider)]
+                         (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                             (lib/aggregate (lib/count))))]
         ;; The first source carries a verified stamp naming an extra table, so only a read of the stamp (not a
         ;; live resolve) puts `products` in the union; the second has no stamp and reads a different table.
         (t2/update! :model/StoredResult :id (:id sr-1)
@@ -3065,9 +3105,9 @@
       (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
             doc     (t2/select-one :model/Document :id document-id)
             ;; Lib rather than the deprecated `mt/mbql-query`; same idiom used elsewhere here.
-            other-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
-                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
-                                             (lib/aggregate (lib/count)))))]
+            other-q (let [mp (mt/metadata-provider)]
+                      (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                          (lib/aggregate (lib/count))))]
         ;; Give the second source a genuinely different query, so "checked the first one" and
         ;; "checked them all" are distinguishable.
         (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})

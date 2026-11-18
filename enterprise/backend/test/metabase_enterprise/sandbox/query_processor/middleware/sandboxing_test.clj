@@ -182,6 +182,8 @@
 (defn- apply-row-level-permissions [query]
   (-> (lib/query (mt/metadata-provider) query)
       (#'sandboxing/apply-sandboxing)
+      ;; existing usage -- do not use going forward
+      #_{:clj-kondo/ignore [:deprecated-var]}
       lib/->legacy-MBQL
       remove-metadata))
 
@@ -1110,6 +1112,7 @@
                                        (get-in (-> drill-thru-query
                                                    qp.preprocess/preprocess
                                                    ;; legacy usage -- don't do things like this going forward
+                                                   #_{:clj-kondo/ignore [:deprecated-var]}
                                                    lib/->legacy-MBQL)
                                                [:query :filter])))))]
                         (testing "As an admin"
@@ -2304,7 +2307,7 @@
     (mt/dataset test-data
       ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
       ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
-      (met/with-gtaps! {:gtaps      {:people {:remappings {:id [:dimension (lib.convert/->legacy-MBQL
+      (met/with-gtaps! {:gtaps      {:people {:remappings {:id [:dimension (lib.convert/->legacy-MBQL-ref
                                                                             (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :people :id))))]}}}
                         :attributes {"id" "1"}}
         (let [mp (mt/metadata-provider)
@@ -2324,7 +2327,7 @@
                              qp/process-query mt/rows ffirst))]
         ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
         ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
-        (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension (lib.convert/->legacy-MBQL
+        (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                 (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}}}
                           :attributes {"uid" "1"}}
           (let [mp              (mt/metadata-provider)
@@ -2358,7 +2361,7 @@
       (mt/with-actions-test-data
         ;; `with-gtaps!` runs the remapping form and body against a temp copy of the DB, so the metadata provider
         ;; and field ids must be resolved *inside* that copy context (not captured beforehand).
-        (met/with-gtaps! {:gtaps      {:products {:remappings {"category" [:dimension (lib.convert/->legacy-MBQL
+        (met/with-gtaps! {:gtaps      {:products {:remappings {"category" [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                        (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :category))))]}}}
                           :attributes {"category" "Gizmo"}}
           (testing "sanity check: the sandbox filters rows to the user's category"

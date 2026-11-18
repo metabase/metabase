@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -122,7 +121,7 @@
 (deftest ^:parallel temporal-bucket-on-native-source-card-test
   (testing "default temporal bucket for a native source card's datetime column resolves to Month (not Minute) via result_metadata (metabase#16671)"
     (let [mp   (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                [(lib.convert/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT CREATED_AT FROM ORDERS"))])
+                [(lib/native-query (mt/metadata-provider) "SELECT CREATED_AT FROM ORDERS")])
           q    (lib/query mp (lib.metadata/card mp 1))
           col  (m/find-first (comp #{"created_at"} u/lower-case-en :name) (lib/breakoutable-columns q))]
       (is (some? col))
@@ -139,7 +138,7 @@
              ["SELECT LONGITUDE FROM PEOPLE" "LONGITUDE" "Bin every 10 degrees"]]]
       (testing (format "%s on %s" strategy-display-name col-name)
         (let [mp    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                     [(lib.convert/->legacy-MBQL (lib/native-query (mt/metadata-provider) sql))])
+                     [(lib/native-query (mt/metadata-provider) sql)])
               q     (lib/query mp (lib.metadata/card mp 1))
               col   (m/find-first (comp #{(u/lower-case-en col-name)} u/lower-case-en :name) (lib/breakoutable-columns q))
               strat (m/find-first (comp #{strategy-display-name} :display-name)
