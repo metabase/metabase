@@ -1090,7 +1090,12 @@ function AccessRow({
       status={
         <StatusButton
           option={option}
-          label={value ?? getWhyValueLabel(target.column, target.cell.value)}
+          label={
+            value ??
+            (target.cell.value === "sandboxed"
+              ? getDataStatusLabel(target)
+              : getWhyValueLabel(target.column, target.cell.value))
+          }
           onClick={onOpen}
         />
       }

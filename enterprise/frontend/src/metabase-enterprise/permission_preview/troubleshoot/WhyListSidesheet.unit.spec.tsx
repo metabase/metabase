@@ -439,6 +439,24 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("names a sandboxed table's status Rows filtered in See everything's Tables, and Can view for the rest", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, ACCOUNTS_ID],
+    });
+    await userEvent.click(
+      await screen.findByText("See everything Sandy Sales can access"),
+    );
+
+    const orders = await findRowStatus("Orders · Sample Database from Sales");
+
+    expect(orders).toHaveTextContent("Rows filtered");
+    expect(orders).not.toHaveTextContent("Row and column security");
+    expect(
+      getRowStatus("Accounts · Sample Database from Sales"),
+    ).toHaveTextContent("Can view");
+  });
+
   it("toggles a row from its name, and opens the table's detail from its status", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
     await screen.findByText("Data in this dashboard");
