@@ -2394,6 +2394,29 @@
                   :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
                   :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
+(deftest card-tile-query-failure-test
+  (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y returns a generic 400 when the query fails"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query    (mt/mbql-query people {:filter [:= $people.id "X"]})
+                                                :enable_embedding true}]
+        (is (= "An error occurred while running the query."
+               (client/client :get 400 (format "embed/tiles/card/%s/1/1/1" (card-token card-id))
+                              :latField (tiles.api-test/encoded-lat-field-ref)
+                              :lonField (tiles.api-test/encoded-lon-field-ref))))))))
+
+(deftest dashcard-tile-query-failure-test
+  (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a generic 400 when the query fails"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (mt/mbql-query people {:filter [:= $people.id "X"]})}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "An error occurred while running the query."
+               (client/client :get 400 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                               (dash-token dashboard-id) dashcard-id card-id)
+                              :latField (tiles.api-test/encoded-lat-field-ref)
+                              :lonField (tiles.api-test/encoded-lon-field-ref))))))))
+
 ;; Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
 ;; Embedded dashboards should apply case-insensitive default options for string operators.
 (deftest embedded-string-parameter-case-sensitivity-regression-test
