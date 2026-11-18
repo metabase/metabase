@@ -8,8 +8,8 @@ type Options = {
 };
 
 /**
- * The path `DataApp` shows: `path` when set, otherwise the first `initialPath` until its app slug changes.
- * Warns when both are set.
+ * The path `DataApp` shows: `path` when set, otherwise the first `initialPath` until it names another valid app.
+ * When `path` is removed, the app stays on the last `path`. Warns when both are set.
  */
 export const useDataAppPath = ({ initialPath, path }: Options): string => {
   const hasConflictingPaths = initialPath !== undefined && path !== undefined;
@@ -22,13 +22,25 @@ export const useDataAppPath = ({ initialPath, path }: Options): string => {
     }
   }, [hasConflictingPaths]);
 
-  const [uncontrolledPath, setUncontrolledPath] = useState(initialPath);
+  const [shownPath, setShownPath] = useState(path ?? initialPath);
 
-  if (getSlug(initialPath) !== getSlug(uncontrolledPath)) {
-    setUncontrolledPath(initialPath);
+  const nextPath =
+    path ?? (isOtherApp(initialPath, shownPath) ? initialPath : shownPath);
+
+  if (nextPath !== shownPath) {
+    setShownPath(nextPath);
   }
 
-  return path ?? uncontrolledPath ?? "";
+  return nextPath ?? "";
+};
+
+const isOtherApp = (
+  initialPath: string | undefined,
+  shownPath: string | undefined,
+) => {
+  const slug = getSlug(initialPath);
+
+  return slug !== undefined && slug !== getSlug(shownPath);
 };
 
 const getSlug = (path: string | undefined) =>

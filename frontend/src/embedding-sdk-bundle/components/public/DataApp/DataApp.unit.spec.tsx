@@ -311,6 +311,41 @@ describe("DataApp", () => {
     );
   });
 
+  it("keeps the iframe when initialPath changes to an invalid route of the same app", () => {
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    rerender(<DataApp initialPath="boba-hq/100%" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("stays on the last path when path is removed", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { iframe, postMessage, rerender } = setup({
+      initialPath: "boba-hq",
+    });
+
+    message(iframe, "metabase.embed.iframeReady");
+
+    rerender(<DataApp initialPath="boba-hq" path="boba-hq/orders/42" />);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      settingsMessage("boba-hq/orders/42"),
+      ORIGIN,
+    );
+    postMessage.mockClear();
+
+    rerender(<DataApp initialPath="boba-hq" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    warn.mockRestore();
+  });
+
   it("uses path and warns when initialPath is also set", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
     const { iframe } = setup({ initialPath: "milk-tea-hq", path: "boba-hq" });
