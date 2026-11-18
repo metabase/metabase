@@ -23,6 +23,11 @@
   [entity-id :- :string]
   (t2/select-one :model/Dashboard :entity_id entity-id))
 
+(mu/defn table-database-id
+  "The Database id of the Table with `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :db_id :model/Table, :id table-id))
+
 (mu/defn insert-audit-logs!
   "Insert the AuditLog `rows` in one statement, in their order, returning the number inserted."
   [rows :- [:sequential [:map {:closed true}

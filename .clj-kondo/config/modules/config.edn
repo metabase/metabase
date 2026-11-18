@@ -409,13 +409,33 @@
            tracing
            util}
    :model-exports #{:model/AuditLog}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/ApiKey
+                    :model/Card
+                    :model/CardTest
+                    :model/Channel
+                    :model/Collection
+                    :model/Comment
+                    :model/CustomVizPlugin
                     :model/Dashboard
+                    :model/DataTestRun
+                    :model/Database
+                    :model/Document
+                    :model/Glossary
                     :model/Notification
                     :model/NotificationHandler
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Pulse
                     :model/QueryExecution
+                    :model/RemoteSyncTask
+                    :model/SecurityAdvisory
+                    :model/Segment
+                    :model/SegmentTest
                     :model/Table
+                    :model/Tenant
+                    :model/Transform
+                    :model/TransformRun
+                    :model/TransformTest
                     :model/User}}
 
   audit-app.view-log
@@ -4124,7 +4144,10 @@
            transforms.base
            transforms.schema
            util}
-   :model-exports #{:model/CardTest :model/SegmentTest :model/TransformTest}
+   :model-exports #{:model/CardTest
+                    :model/DataTestRun
+                    :model/SegmentTest
+                    :model/TransformTest}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -4589,7 +4612,8 @@
                     :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/RemoteSyncTask}}
 
   enterprise/search
   {:team "Metabot"

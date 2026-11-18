@@ -408,14 +408,63 @@
   [topic event]
   (record-manual! topic event))
 
+(def ^:private failure-columns
+  "The columns that the row of a permission failure stores of its object, by model; a model that it leaves out stores
+  none."
+  {:model/ApiKey                     [:name :group :key_prefix :user_id]
+   :model/Card                       [:name :description :database_id :table_id]
+   :model/Channel                    [:id :name :description :type :active]
+   :model/Database                   [:id :name :engine]
+   :model/Table                      [:id :name :db_id]
+   :model/PermissionsGroup           [:id :name :is_tenant_group :magic_group_type]
+   :model/PermissionsGroupMembership [:id :user_id :group_id :is_group_manager]
+   :model/Document                   [:name :collection_id]
+   :model/Comment                    [:target_type :target_id :child_target_id :parent_comment_id]
+   :model/Transform                  [:name :description :target :run_trigger]
+   :model/TransformRun               [:transform_id :status :run_method]
+   :model/Glossary                   [:term]
+   :model/CustomVizPlugin            [:identifier :display_name :status :enabled :bundle_hash]
+   :model/RemoteSyncTask             [:sync_task_type :version]
+   :model/TransformTest              [:transform_id :name :description]
+   :model/CardTest                   [:card_id :name :description]
+   :model/DataTestRun                [:test_type :test_id :status]
+   :model/SegmentTest                [:segment_id :name :description]
+   :model/SecurityAdvisory           [:advisory_id :title :severity :match_status]
+   :model/Tenant                     [:name :slug :is_active :attributes]})
+
+(defn- failure-extras
+  "What the row of a permission failure stores of `object` beside its columns, for the models that store more."
+  [model object]
+  (case model
+    :model/ApiKey       (when (:scope object) {:scope (:scope object)})
+    :model/Card         {:model? (= (keyword (:type object)) :model)}
+    :model/Segment      (let [table-id (:table_id object)]
+                          (assoc (select-keys object [:name :description :revision_message])
+                                 :table_id    table-id
+                                 :database_id (when table-id (audit-app.db/table-database-id table-id))))
+    :model/Transform    {:source (-> (:source object)
+                                     (dissoc :body)
+                                     (update :query #(select-keys % [:database])))}
+    :model/Notification (notification-details object)
+    nil))
+
+(defn- permission-failure-details
+  "The details that the row of a permission failure stores of its `object`."
+  [object]
+  (when (t2/instance? object)
+    (let [model (t2/model object)]
+      (merge (select-keys object (get failure-columns model))
+             (failure-extras model object)))))
+
 (events/derive! ::permission-failure-event ::event)
 (events/derive! :event/write-permission-failure ::permission-failure-event)
 (events/derive! :event/update-permission-failure ::permission-failure-event)
 (events/derive! :event/create-permission-failure ::permission-failure-event)
 
 (methodical/defmethod events/publish-event! ::permission-failure-event
-  [topic event]
-  (record-manual! topic event))
+  [topic {:keys [object] :as event}]
+  (when (premium-features/log-enabled?)
+    (record! topic (assoc event :details (merge (:details event) (permission-failure-details object))))))
 
 (events/derive! ::settings-changed-event ::event)
 (events/derive! :event/setting-update ::settings-changed-event)

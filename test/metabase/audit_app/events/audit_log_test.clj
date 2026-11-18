@@ -757,3 +757,37 @@
                          :details {:id membership-id :user_id user-id :group_id group-id}
                          :topic :group-membership-delete}
                         (mt/latest-audit-log-entry :group-membership-delete membership-id))))))))
+
+(defn- failure-call-count!
+  "The number of app DB queries that publishing the `topic` event of `object` runs."
+  [topic object]
+  (t2/with-call-count [call-count]
+    (events/publish-event! topic {:user-id (mt/user->id :rasta) :object object})
+    (call-count)))
+
+(deftest permission-failure-stores-small-details-test
+  (mt/with-temp [:model/Collection collection {:name "Refused collection"}
+                 :model/Dashboard  dashboard  {:name "Refused dashboard"}
+                 :model/Pulse      pulse      {:name "Refused pulse"}
+                 :model/Card      card      {:name "Refused card"}]
+    (let [baseline (failure-call-count! :event/write-permission-failure collection)]
+      (doseq [[model object topic] [["Dashboard" dashboard :write-permission-failure]
+                                    ["User" (mt/fetch-user :lucky) :update-permission-failure]
+                                    ["Pulse" pulse :write-permission-failure]]]
+        (testing model
+          (is (= baseline (failure-call-count! (keyword "event" (name topic)) object)))
+          (is (= {} (:details (mt/latest-audit-log-entry topic (:id object)))))))
+      (testing "a model that stored columns stores them"
+        (events/publish-event! :event/write-permission-failure {:user-id (mt/user->id :rasta) :object card})
+        (is (= {:name "Refused card" :description nil :database_id (mt/id) :table_id nil :model? false}
+               (:details (mt/latest-audit-log-entry :write-permission-failure (:id card)))))))))
+
+(deftest bookkeeping-updates-record-nothing-test
+  (mt/with-temp [:model/User   {user-id :id}   {}
+                 :model/Pulse  {pulse-id :id}  {:name "Pulse"}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [before (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
+        (t2/update! :model/User :id user-id {:last_login (java.time.OffsetDateTime/now)})
+        (t2/update! :model/Pulse :id pulse-id {:collection_position 1})
+        (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
+        (is (= [] (t2/select :model/AuditLog :id [:> before] :model [:in ["User" "Pulse" "Card"]])))))))
