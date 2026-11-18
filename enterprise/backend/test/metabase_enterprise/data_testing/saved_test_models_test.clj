@@ -28,7 +28,7 @@
    {:model :model/SegmentTest   :test-type :segment   :subject-key :segment_id}
    {:model :model/ActionTest    :test-type :action    :subject-key :action_id}])
 
-(defn- do-with-subject
+(defn- do-with-subject!
   "Call `f` with the id of a new subject of `test-type` that an admin may read and write and Rasta may not read."
   [test-type f]
   (case test-type
@@ -39,7 +39,7 @@
                                  {:keys [action-id]} {}]
                  (f action-id))))
 
-(defn- do-with-each-test-type
+(defn- do-with-each-test-type!
   "Call `f` with each of [[test-types]] and the id of a saved test of a new subject, in a `testing` naming the model.
   Rasta has no collection or data permissions, so may read no subject; transforms are readable."
   [f]
@@ -49,7 +49,7 @@
         (perms.tu/with-no-data-perms-for-all-users!
           (doseq [{:keys [model test-type subject-key] :as spec} test-types]
             (testing model
-              (do-with-subject
+              (do-with-subject!
                test-type
                (fn [subject-id]
                  (mt/with-temp [model {test-id :id} {subject-key subject-id :name "A test"}]
@@ -62,7 +62,7 @@
     (boolean (check (t2/hydrate (t2/select-one model :id test-id) k)))))
 
 (deftest a-test-is-read-and-written-through-its-subject-test
-  (do-with-each-test-type
+  (do-with-each-test-type!
    (fn [{:keys [model test-id]}]
      (testing "an admin may read and write the test"
        (is (true? (hydrated? :crowberto model test-id :can_read mi/can-read?)))
@@ -84,7 +84,7 @@
                      (boolean (mi/can-create? model (dissoc (t2/select-one model :id test-id) :id))))))))))
 
 (deftest only-transform-tests-are-read-only-on-a-read-only-instance-test
-  (do-with-each-test-type
+  (do-with-each-test-type!
    (fn [{:keys [model test-type test-id]}]
      (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-only]
        (let [saved-test  (t2/select-one model :id test-id)
@@ -108,7 +108,7 @@
       (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
         (mt/with-temp [:model/Transform     {transform-id :id} {}
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "A test"}]
-          (with-redefs [transform/transform-deletable? (constantly true)]
+          (mt/with-dynamic-fn-redefs [transform/transform-deletable? (constantly true)]
             (let [saved-test  (t2/select-one :model/TransformTest :id test-id)
                   can-update? (fn [changes]
                                 (mt/with-current-user (mt/user->id :crowberto)
@@ -130,7 +130,7 @@
                   (is (true? (can-update? {:name "Renamed"}))))))))))))
 
 (deftest a-test-is-writable-on-a-read-write-instance-test
-  (do-with-each-test-type
+  (do-with-each-test-type!
    (fn [{:keys [model test-id]}]
      (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-write]
        (testing "control: on a read-write instance an admin may write and rename every kind of test"
@@ -139,7 +139,7 @@
                       (boolean (mi/can-update? (t2/select-one model :id test-id) {:name "Renamed"}))))))))))
 
 (deftest revisions-are-readable-through-their-subject-test
-  (do-with-each-test-type
+  (do-with-each-test-type!
    (fn [{:keys [model subject-key subject-id]}]
      (let [objects [{subject-key subject-id :name "On the subject"}
                     {subject-key Integer/MAX_VALUE :name "On a deleted subject"}]
@@ -151,7 +151,7 @@
        (testing "a user who may not read the subject may read neither"
          (is (= [false false] (readable :rasta))))))))
 
-(defn- published-topics
+(defn- published-topics!
   "The topics `thunk` publishes, in order, with the `:user-id` of each event that has one."
   [thunk]
   (let [published (atom [])]
@@ -168,7 +168,7 @@
             :let [topic   #(keyword "event" (str (name test-type) "-test-" %))
                   creator (mt/user->id :crowberto)]]
       (testing model
-        (do-with-subject
+        (do-with-subject!
          test-type
          (fn [subject-id]
            (let [test-id (atom nil)
@@ -176,7 +176,7 @@
              (try
                (testing "an insert publishes the create event with the creator, an update the update event"
                  (is (= [[(topic "create") creator] [(topic "update")]]
-                        (published-topics
+                        (published-topics!
                          (fn []
                            (reset! test-id (t2/insert-returning-pk! model {subject-key  subject-id
                                                                            :creator_id   creator
@@ -187,12 +187,12 @@
                (reset! run-id (:id (data-testing.run-tracking/start-run! test-type @test-id creator)))
                (testing "a delete publishes the delete event and clears the test id of the test's runs"
                  (is (= [[(topic "delete")]]
-                        (published-topics #(t2/delete! model :id @test-id))))
+                        (published-topics! #(t2/delete! model :id @test-id))))
                  (is (= {:test_type test-type :test_id nil}
                         (t2/select-one [:model/DataTestRun :test_type :test_id] :id @run-id))))
                (testing "while deserializing, no hook publishes"
                  (is (= []
-                        (published-topics
+                        (published-topics!
                          (fn []
                            (binding [mi/*deserializing?* true]
                              (let [id (t2/insert-returning-pk! model {subject-key  subject-id
