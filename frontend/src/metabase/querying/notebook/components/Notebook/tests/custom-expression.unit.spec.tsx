@@ -458,6 +458,54 @@ describe("Notebook > custom aggregation", () => {
       'DistinctIf([ID], [Category] != "Gadget")',
     );
   });
+  it("should not be possible to create cycles in custom aggregations", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              name: "Custom Sum",
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
+            {
+              name: "Custom Sum 2",
+              value: {
+                type: "operator",
+                operator: "+",
+                args: [
+                  { type: "column", name: "Custom Sum" },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    setup({ query });
+
+    // edit the first aggregation, so the cycle depends on the edited index
+    await userEvent.click(
+      within(getStep("step-summarize-0-0")).getByText("Custom Sum"),
+    );
+    const input = await getExpressionInput();
+    expect(input).toHaveValue("Sum([Total])");
+    await userEvent.clear(input);
+    await userEvent.paste("[Custom Sum 2]");
+    await userEvent.tab();
+
+    expect(
+      await screen.findByText(
+        "Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+  });
 });
 
 describe("Notebook > custom aggregation > in a follow up stage", () => {
