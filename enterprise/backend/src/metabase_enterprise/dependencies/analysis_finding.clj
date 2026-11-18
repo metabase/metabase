@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.analysis-finding
   "Analyzes the entities whose AnalysisFindingStatus a write marked stale, recording what each one's query no longer finds."
   (:require
-   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
@@ -17,44 +16,29 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private entity-db-id
-  "The database ID of `entity`."
-  {:arglists '([entity])}
-  t2/model)
-
-(defmethod entity-db-id :default
-  [entity]
-  (:database_id entity))
-
-(defmethod entity-db-id :model/Transform
-  [entity]
-  (or (some-> entity :source :query lib/database-id)
-      ;; non-query transforms (e.g. Python) have no query to read the database from
-      (:source_database_id entity)))
-
-(defmethod entity-db-id :model/Segment
-  [entity]
-  (some-> entity :definition lib/database-id))
+(mu/defn analyzed-types :- [:sequential ::deps.dependency-types/dependency-types]
+  "The entity types whose specs analyze their entities, in order."
+  []
+  (->> (dependencies/type->model)
+       (keep (fn [[entity-type model]]
+               (when (:analysis (dependencies/spec model))
+                 entity-type)))
+       sort
+       vec))
 
 (mu/defn upsert-analysis!
-  "Analyze the Toucan entity `entity` and insert or replace its AnalysisFinding, reusing the caller's metadata provider
-  cache when it has one."
+  "Analyze the Toucan entity `entity` with the `:analysis` of its spec and insert or replace its AnalysisFinding,
+  reusing the caller's metadata provider cache when it has one."
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
   (lib-be/with-metadata-provider-cache
-    (let [model       (t2/model entity)
-          entity-type (dependencies/model-type model)
-          entity-id   (:id entity)]
-      (if-let [db-id (entity-db-id entity)]
-        (let [mp (lib-be/application-database-metadata-provider db-id)
-              results (try (deps.analysis/check-entity mp entity-type entity-id)
-                           (catch Exception e
-                             (log/errorf "Error analyzing entity: %s" (ex-message e))
-                             #{(lib/validation-exception-error (.getMessage e))}))
-              success (empty? results)]
-          (models.analysis-finding/upsert-analysis! entity-type entity-id success results))
-        (models.analysis-finding/upsert-analysis!
-         entity-type entity-id false
-         #{(lib/validation-exception-error "Could not resolve a database for this entity.")})))))
+    (let [model    (t2/model entity)
+          analysis (:analysis (dependencies/spec model))
+          results  (try (analysis entity)
+                        (catch Exception e
+                          (log/errorf "Error analyzing entity: %s" (ex-message e))
+                          #{(lib/validation-exception-error (.getMessage e))}))]
+      (models.analysis-finding/upsert-analysis!
+       (dependencies/model-type model) (:id entity) (empty? results) results))))
 
 (mu/defn- analyze-entity!
   "Analyze `entity`, recording a failure as a failed finding before rethrowing it."
@@ -72,15 +56,11 @@
                          (t2/model entity) (:id entity) (ex-message record-e))))
          (throw e))))
 
-(def analyzable-entities
-  "Entities for which we can compute analysis findings."
-  #{:card :transform :segment})
-
 (mu/defn- remove-deleted-statuses! :- nat-int?
   "Delete the AnalysisFindingStatuses of up to `batch-size` deleted entities of each analyzable type, returning how
   many it deleted."
   [batch-size :- pos-int?]
-  (reduce + (for [entity-type (sort analyzable-entities)
+  (reduce + (for [entity-type (analyzed-types)
                   :let        [ids (dependencies.db/analysis-finding-deleted-entity-ids entity-type batch-size)]]
               (if (seq ids)
                 (dependencies.db/delete-analysis-finding-statuses! entity-type ids)
@@ -100,7 +80,7 @@
               (cond-> taken
                 (seq statuses) (assoc entity-type statuses))))
           {}
-          (sort analyzable-entities)))
+          (analyzed-types)))
 
 (mu/defn analyze-batch! :- nat-int?
   "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is outdated,

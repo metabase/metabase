@@ -3,6 +3,7 @@
   (:require
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.util.log :as log]))
@@ -34,6 +35,35 @@
     (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
                    (:id transform) (-> transform :source :type))
         {})))
+
+(defn- output-name
+  "The name of the output column `column`: its alias, so that `t1.name AS a` and `t2.name AS b` differ, or its name."
+  [column]
+  (or (:lib/desired-column-alias column) (:name column)))
+
+(defn- duplicate-column-errors
+  "The errors of the output columns of `query` that share a name."
+  [query]
+  (->> (dependencies/query-returned-columns query)
+       (group-by output-name)
+       vals
+       (keep #(when (> (count %) 1)
+                (lib/duplicate-column-error (output-name (first %)))))))
+
+(defn analysis
+  "The errors of `transform`: those of its query and of the output columns it duplicates, none for a transform without
+  a query that has a source database, and an error for one without."
+  [transform]
+  (cond
+    (transforms-base.u/query-transform? transform)
+    (let [query (transform-query transform)]
+      (into (dependencies/query-errors query) (duplicate-column-errors query)))
+
+    (:source_database_id transform)
+    #{}
+
+    :else
+    #{(lib/validation-exception-error "Could not resolve a database for this entity.")}))
 
 (defn after-dependencies
   "The tables among the `dependents` of `transform` that are no longer its target: missing ones, and those of another

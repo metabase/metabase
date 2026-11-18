@@ -16,6 +16,11 @@
   [cards]
   (dependencies/with-native-dependencies cards card-query))
 
+(defn analysis
+  "The errors of the query of `card`."
+  [card]
+  (dependencies/query-errors (card-query card)))
+
 (defn dependencies
   "The dependencies of the hydrated `card`: what its query reads, the tables of its dimension mappings, and the cards
   its parameters take their values from."

@@ -12,3 +12,15 @@
   metabase-enterprise.dependencies.native-validation
   [_query]
   {})
+
+(defenterprise native-query-errors
+  "The errors of the fields and tables that the native `query` refers to, none in OSS."
+  metabase-enterprise.dependencies.native-validation
+  [_query]
+  #{})
+
+(defenterprise native-query-returned-columns
+  "The columns that the native `query` returns, none in OSS."
+  metabase-enterprise.dependencies.native-validation
+  [_query]
+  nil)

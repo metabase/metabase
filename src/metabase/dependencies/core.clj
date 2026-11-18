@@ -2,6 +2,7 @@
   "The dependencies spec through which each model says how the dependency graph tracks it, the helpers its functions
   are built with, and the registry of the entities that the specs declare."
   (:require
+   [metabase.dependencies.analysis]
    [metabase.dependencies.calculation]
    [metabase.dependencies.registry]
    [metabase.dependencies.schema]
@@ -9,6 +10,7 @@
    [potemkin :as p]))
 
 (comment
+  metabase.dependencies.analysis/keep-me
   metabase.dependencies.calculation/keep-me
   metabase.dependencies.registry/keep-me
   metabase.dependencies.schema/keep-me
@@ -18,6 +20,9 @@
  [metabase.dependencies.spec
   Spec
   spec]
+ [metabase.dependencies.analysis
+  query-errors
+  query-returned-columns]
  [metabase.dependencies.calculation
   merge-dependencies
   parameters-dependencies

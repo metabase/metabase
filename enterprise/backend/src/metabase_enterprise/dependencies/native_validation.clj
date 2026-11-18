@@ -340,6 +340,18 @@
                    nil))
           (lib/all-template-tags query))))
 
+(defenterprise native-query-errors
+  "The errors of the fields and tables that the native `query` refers to, run by the driver of its database."
+  :feature :none
+  [query]
+  (validate-native-query (:engine (lib.metadata/database query)) query))
+
+(defenterprise native-query-returned-columns
+  "The columns that the native `query` returns, as the driver of its database computes them."
+  :feature :none
+  [query]
+  (native-result-metadata (:engine (lib.metadata/database query)) query))
+
 (defenterprise native-query-dependencies
   "The dependencies of the native-only `query` as `{entity-type #{entity-id}}`, leaving out the tables it names that
   resolve to none."

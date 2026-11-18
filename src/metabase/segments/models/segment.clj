@@ -233,4 +233,5 @@
 (defmethod dependencies/spec :model/Segment [_model]
   {:type :segment
 
-   :dependencies segments.dependencies/dependencies})
+   :dependencies segments.dependencies/dependencies
+   :analysis     segments.dependencies/analysis})

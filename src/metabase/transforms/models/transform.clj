@@ -582,4 +582,5 @@
 
    :hydrate            transforms.dependencies/hydrate
    :dependencies       transforms.dependencies/dependencies
-   :after-dependencies transforms.dependencies/after-dependencies})
+   :after-dependencies transforms.dependencies/after-dependencies
+   :analysis           transforms.dependencies/analysis})

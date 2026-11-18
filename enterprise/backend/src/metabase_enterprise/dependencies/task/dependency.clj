@@ -61,7 +61,7 @@
       (when (seq (models.dependency/new-dependencies entity-type (:id entity) deps))
         (when (= :card entity-type)
           (dependencies.db/mark-result-metadata-statuses-stale! own))
-        (when (contains? deps.analysis-finding/analyzable-entities entity-type)
+        (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
           (dependencies.db/mark-analysis-finding-statuses-stale! own))
         (when (= :snippet entity-type)
           (dependencies.db/mark-analysis-finding-statuses-stale!

@@ -1928,4 +1928,5 @@
   {:type :card
 
    :hydrate      queries.dependencies/hydrate
-   :dependencies queries.dependencies/dependencies})
+   :dependencies queries.dependencies/dependencies
+   :analysis     queries.dependencies/analysis})
