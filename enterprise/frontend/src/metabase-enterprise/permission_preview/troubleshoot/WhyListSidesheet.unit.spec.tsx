@@ -656,7 +656,7 @@ describe("WhyListSidesheet", () => {
     expect(screen.getByText("Explain access")).toBeInTheDocument();
   });
 
-  it("names a tenant user's personal collection, says they curate it, and gives the reason in its detail", async () => {
+  it("names a tenant user's personal collection, says they curate it, and gives the reason under the verdict and in its detail", async () => {
     setup({
       openedItem: { type: "collection", id: PERSONAL_COLLECTION_ID },
       mainCollections: {
@@ -683,6 +683,11 @@ describe("WhyListSidesheet", () => {
     );
     expect(
       screen.getByText("Sandy Sales's personal collection"),
+    ).toBeInTheDocument();
+    expect(
+      within(verdict).getByText(
+        "Everyone has Curate access to their own personal collection, whatever their groups.",
+      ),
     ).toBeInTheDocument();
 
     await userEvent.click(
