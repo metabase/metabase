@@ -2184,6 +2184,24 @@
                                                       :schema schema
                                                       :name   other-existing-name}}))))))))))))
 
+(deftest reject-target-that-is-source-table-as-cycle-test
+  (testing "PUT /api/transform/:id moving the target onto the source table is a cycle, not a name collision"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (with-transforms-api-users! [user]
+              (with-transform-cleanup! [table-name "cycle_source"]
+                (let [schema (get-test-schema)
+                      source (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
+                      {id :id} (mt/user-http-request user :post 200 "transform"
+                                                     {:name   "Cycle Transform"
+                                                      :source {:type :query :query (make-query "Gadget")}
+                                                      :target {:type "table" :schema schema :name table-name}})]
+                  (is (=? #"Cyclic transform definitions detected.*"
+                          (mt/user-http-request user :put 400 (format "transform/%d" id)
+                                                {:target {:type "table" :schema schema :name source}}))))))))))))
+
 (deftest delete-target-then-recreate-same-name-test
   (testing "re-running after DELETE /api/transform/:id/table recreates the same target name"
     (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}

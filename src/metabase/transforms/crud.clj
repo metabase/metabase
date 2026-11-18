@@ -213,11 +213,11 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
+                      (transforms.db/update-transform! id (dissoc body :tag_ids))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    (transforms.db/update-transform! id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
