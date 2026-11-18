@@ -7,9 +7,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.test :as mt])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,9 +36,8 @@
 (defn- refusal!
   "The `:error-type` of the refusal of a run of `action-id` with `parameters`, or nil when it runs."
   [action-id parameters]
-  (try (run-action-test! action-id parameters [(data-testing.test-util/categories-named "Toy" "Food")])
-       nil
-       (catch ExceptionInfo e (:error-type (ex-data e)))))
+  (:error-type (data-testing.test-util/refusal
+                #(run-action-test! action-id parameters [(data-testing.test-util/categories-named "Toy" "Food")]))))
 
 (deftest query-action-runs-on-the-inputs-test
   (mt/test-drivers (drivers)
@@ -109,7 +106,7 @@
    :columns))
 
 (deftest write-columns-are-not-checked-against-inputs-test
-  (testing "premise: the SQL parser reports a syntax error for a write, so the run finds no columns that it reads"
+  (testing "premise: the SQL parser reports a syntax error for a write, so the input-column check finds no columns that the write reads"
     (doseq [sql ["UPDATE categories SET name = 'x' WHERE id = 1"
                  "INSERT INTO categories (id, name) VALUES (1, 'x')"
                  "DELETE FROM categories WHERE id = 1"]]
