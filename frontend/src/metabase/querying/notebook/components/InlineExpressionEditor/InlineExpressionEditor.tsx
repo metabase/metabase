@@ -189,8 +189,8 @@ export function InlineExpressionEditor({
       showPreview(run);
     }
   };
-  // The Preview button and Cmd/Ctrl+Enter show the preview, or hide it when
-  // it shows.
+  // The Preview button shows the preview, or hides it when it shows.
+  // Cmd/Ctrl+Enter shows it, or runs it again.
   const isPreviewShown = previewRun != null;
   const togglePreview = () => {
     if (isPreviewShown) {
@@ -277,7 +277,7 @@ export function InlineExpressionEditor({
     setIsGenerating(false);
   };
 
-  // Cmd/Ctrl+Enter shows or hides the preview, or sends a request to the AI.
+  // Cmd/Ctrl+Enter runs the preview, or sends a request to the AI.
   // Enter in the code saves and keeps the editor open (see saveAndShow), or
   // sends the request, and Shift+Enter starts a new line. The capture phase
   // comes before the keymap of the code editor.
@@ -291,7 +291,7 @@ export function InlineExpressionEditor({
       if (canGenerate) {
         runGenerate();
       } else {
-        togglePreview();
+        runPreview();
       }
       return;
     }
@@ -424,7 +424,7 @@ export function InlineExpressionEditor({
                 icon={<PlayIcon />}
                 label={
                   isPreviewShown
-                    ? t`Hide preview (${PREVIEW_SHORTCUT})`
+                    ? t`Hide preview`
                     : `${getPreviewLabel(expressionMode)} (${PREVIEW_SHORTCUT})`
                 }
                 isPressed={isPreviewShown}
@@ -476,6 +476,8 @@ export function InlineExpressionEditor({
           name={getResultName(expressionMode, previewRun.name ?? name)}
           refreshKey={previewRefreshKey}
           isOutdated={isPreviewOutdated}
+          runLabel={t`Update preview (${PREVIEW_SHORTCUT})`}
+          onRun={runPreview}
         />
       )}
     </Layout>

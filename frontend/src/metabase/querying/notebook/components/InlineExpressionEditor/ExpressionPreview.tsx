@@ -10,11 +10,18 @@ import {
   usePrototypeSetting,
 } from "metabase/prototype";
 import { formatExpressionParts } from "metabase/querying/expressions";
-import { Flex, Icon, Loader, Text } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { AGGREGATION_FUNCTIONS, EXPRESSION_FUNCTIONS } from "metabase-lib";
-import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
+
+import PlayIcon from "../../../components/expressions/Editor/play.svg?component";
 
 import S from "./ExpressionPreview.module.css";
 import { PreviewTable } from "./PreviewTable";
@@ -41,6 +48,9 @@ type ExpressionPreviewProps = {
   refreshKey: number;
   /** True when the text in the editor is not the expression in the preview. */
   isOutdated: boolean;
+  /** The label of the button that runs an outdated preview again. */
+  runLabel: string;
+  onRun: () => void;
 };
 
 /**
@@ -58,6 +68,8 @@ export function ExpressionPreview({
   name,
   refreshKey,
   isOutdated,
+  runLabel,
+  onRun,
 }: ExpressionPreviewProps) {
   // The query is built only for a run. Each valid edit saves the expression,
   // which changes `query`, and a new build of the same query has new ids, so
@@ -260,32 +272,50 @@ export function ExpressionPreview({
       ? getErrorMessage(error ?? data?.error, t`Could not run the preview`)
       : null;
 
+  // While a run loads, the preview keeps the result of the last run.
+  const isLoading = isFetching || (errorMessage == null && sample == null);
+  const result = useMemo<PreviewResult | null>(
+    () =>
+      isLoading
+        ? null
+        : { errorMessage, sample, rawSeries: sampleSeries?.rawSeries },
+    [isLoading, errorMessage, sample, sampleSeries],
+  );
+  const [lastResult, setLastResult] = useState<PreviewResult | null>(null);
+  useEffect(() => {
+    if (result != null) {
+      setLastResult(result);
+    }
+  }, [result]);
+  const shown = result ?? lastResult;
+  const isShownOutdated = shown != null && (isOutdated || isLoading);
+
   return (
     <div
-      className={cx(S.preview, { [S.outdated]: isOutdated && !isFetching })}
+      className={cx(S.preview, { [S.outdated]: isShownOutdated })}
       data-testid="expression-preview"
     >
       <div className={S.body}>
-        {errorMessage != null ? (
-          <Text c="feedback-negative" fz="sm" className={S.message}>
-            {errorMessage}
-          </Text>
-        ) : sample == null ? (
+        {shown == null ? (
           <div className={S.message}>
             <Loader size="sm" />
           </div>
-        ) : sample.rows.length === 0 ? (
+        ) : shown.errorMessage != null ? (
+          <Text c="feedback-negative" fz="sm" className={S.message}>
+            {shown.errorMessage}
+          </Text>
+        ) : shown.sample == null || shown.sample.rows.length === 0 ? (
           <Text c="text-secondary" fz="sm" className={S.message}>
             {t`No rows`}
           </Text>
         ) : (
-          sampleSeries != null && (
+          shown.rawSeries != null && (
             <PreviewTable
-              rawSeries={sampleSeries.rawSeries}
-              cols={sample.cols}
-              rows={sample.rows}
-              hasKey={sample.hasKey}
-              contextCount={sample.contextCount}
+              rawSeries={shown.rawSeries}
+              cols={shown.sample.cols}
+              rows={shown.sample.rows}
+              hasKey={shown.sample.hasKey}
+              contextCount={shown.sample.contextCount}
               renderResult={
                 expressionMode === "filter" ? renderFilterResult : undefined
               }
@@ -293,9 +323,33 @@ export function ExpressionPreview({
           )
         )}
       </div>
+      {isShownOutdated && (
+        <Tooltip label={runLabel} disabled={isLoading}>
+          <ActionIcon
+            className={S.runButton}
+            variant="filled"
+            color="brand"
+            size="lg"
+            radius="xl"
+            aria-label={runLabel}
+            loading={isLoading}
+            // The cursor stays in the code.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onRun}
+          >
+            <PlayIcon />
+          </ActionIcon>
+        </Tooltip>
+      )}
     </div>
   );
 }
+
+type PreviewResult = {
+  errorMessage: string | null;
+  sample: ReturnType<typeof getSample> | null;
+  rawSeries: RawSeries | undefined;
+};
 
 /**
  * The query up to the custom columns with the expression, and the columns
