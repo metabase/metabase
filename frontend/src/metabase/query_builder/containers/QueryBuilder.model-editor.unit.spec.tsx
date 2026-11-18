@@ -1210,6 +1210,18 @@ describe("QueryBuilder - model editor", () => {
         within(description).getByRole("heading", { level: 2, name: "World" }),
       ).toBeInTheDocument();
       expect(within(description).getByText("important").tagName).toBe("STRONG");
+
+      await userEvent.click(within(sidesheet).getByLabelText("Close"));
+      await waitFor(() =>
+        expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument(),
+      );
+      // the collection list then shows the description in a tooltip, which
+      // the BaseItemsTable spec covers
+      expect(
+        within(screen.getByTestId("head-crumbs-container")).getByRole("link", {
+          name: /Our analytics/,
+        }),
+      ).toHaveAttribute("href", "/collection/root");
     });
   });
 
