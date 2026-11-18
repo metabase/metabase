@@ -2,6 +2,7 @@
   "Implements the hooks of `metabase.dependencies.hooks`: a write marks the statuses it makes stale in its own
   transaction, and triggers the background jobs once it commits."
   (:require
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -221,6 +222,18 @@
              (changed? row (disj columns :result_metadata))
              (not (deps.result-metadata/same-output? (:result_metadata (t2/original row)) (:result_metadata row)))))))
 
+(mu/defn- dependencies-changed? :- :boolean
+  "Whether the update of `row` of `model` changes what the dependency job reads, ignoring a card's visualization
+  settings changes that leave its goals' dependencies as they were."
+  [model :- :keyword
+   row   :- Row]
+  (let [columns (dependency-columns model)]
+    (and (changed? row columns)
+         (or (not= :model/Card model)
+             (changed? row (disj columns :visualization_settings))
+             (not= (deps.calculation/goal-deps (:visualization_settings (t2/original row)))
+                   (deps.calculation/goal-deps (:visualization_settings row)))))))
+
 (mu/defn- data-apps-changed? :- :boolean
   "Whether the update of `row` of `model` moves a Card or an Action to another collection, which changes what the data
   apps whose resource collection it leaves or enters depend on."
@@ -243,7 +256,7 @@
    row   :- Row]
   (let [entity-type (deps.dependency-types/model->dependency-type model)
         own         {entity-type #{(:id row)}}
-        dependency? (changed? row (dependency-columns model))
+        dependency? (dependencies-changed? model row)
         analysis?   (changed? row (analysis-columns model))
         output?     (output-changed? model row)
         part?       (changed? row (part-columns model))

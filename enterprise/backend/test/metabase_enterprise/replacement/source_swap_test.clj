@@ -176,6 +176,16 @@
                               :from_entity_type :card :from_entity_id card-id
                               :to_entity_type :card :to_entity_id new-source-id)))))))))
 
+(deftest swap-goal-refs-skips-measure-goal-test
+  (testing "a card swap leaves a measure goal with the old card's id as it is"
+    (let [card-goal    {:id 1 :type "card" :column "count"}
+          measure-goal {:id 1 :type "measure" :column "count"}]
+      (is (= {:gauge.segments [{:min (assoc card-goal :id 2) :max measure-goal :color "red"}]}
+             (#'replacement.source-swap/swap-goal-refs
+              {:gauge.segments [{:min card-goal :max measure-goal :color "red"}]}
+              [:card 1]
+              [:card 2]))))))
+
 (deftest card-swap-source!-dynamic-goal-card-to-table-test
   (testing "swap-source! to a table leaves a dynamic goal, which can't read a table, and its dependency on the old card"
     (mt/with-premium-features #{:dependencies}

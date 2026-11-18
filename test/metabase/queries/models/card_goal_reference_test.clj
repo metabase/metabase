@@ -11,6 +11,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.revisions.core :as revisions]
    [metabase.test :as mt]
@@ -141,6 +142,23 @@
              (mt/with-test-user :rasta
                (card/with-copy-source-card source
                  (is (= 403 (save-card-status (assoc copy-props :document_id document-id)))))))))))))
+
+(deftest document-card-copy-public-check-test
+  (testing "a copy into a document asks whether the document is public only when the copy has goals"
+    (mt/with-temp [:model/Card     {goal-id :id} {:dataset_query (count-query)}
+                   :model/Document {document-id :id} {:name     "Private"
+                                                      :document (documents.test-util/text->prose-mirror-ast "x")}]
+      (doseq [[viz expected] [[{} 0]
+                              [(gauge-viz (card-goal goal-id)) 1]]]
+        (let [calls (atom 0)]
+          (mt/with-temp [:model/Card source {:dataset_query (count-query) :visualization_settings viz}]
+            (mt/with-dynamic-fn-redefs [queries.db/public-document? (fn [_] (swap! calls inc) false)]
+              (mt/with-test-user :rasta
+                (card/with-copy-source-card source
+                  (is (= :no-error (save-card-status {:dataset_query          (count-query)
+                                                      :visualization_settings viz
+                                                      :document_id            document-id})))))))
+          (is (= expected @calls)))))))
 
 (deftest public-document-card-copy-goal-reference-test
   (testing "PUT /api/document/:id re-checks the goals of a card it copies into a public document"

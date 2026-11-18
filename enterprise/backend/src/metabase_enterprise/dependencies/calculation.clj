@@ -97,6 +97,12 @@
                  (and (pos-int? id) (dynamic-goals/goal-entity-types entity-type))))
        (u/group-by (comp keyword first) second conj #{})))
 
+(defn goal-deps
+  "Entities whose value a dynamic goal in `viz-settings` reads. Normalizes first: a row read from the app DB is
+  normalized, while a value from a caller may be raw."
+  [viz-settings]
+  (upstream-deps:dynamic-goals (lib/normalize ::lib.schema.visualization/visualization-settings viz-settings)))
+
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform} :- ::transforms.schema/transform]
   {:table (into #{} (keep :table_id) tables)})
@@ -129,9 +135,7 @@
         base-deps      (merge-with into
                                    (upstream-deps:query query)
                                    (upstream-deps:dimension-mappings dimension-mappings)
-                                   (upstream-deps:dynamic-goals
-                                    (lib/normalize ::lib.schema.visualization/visualization-settings
-                                                   (:visualization_settings card))))
+                                   (goal-deps (:visualization_settings card)))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
               (update deps :card (fnil conj #{}) card-id))
@@ -195,9 +199,7 @@
                                        column-setting-card-ids])
         all-dashboard-ids (into vis-setting-dashboard-ids column-setting-dashboard-ids)
         goal-deps (reduce (fn [deps dashcard]
-                            (merge-with into deps (upstream-deps:dynamic-goals
-                                                   (lib/normalize ::lib.schema.visualization/visualization-settings
-                                                                  (:visualization_settings dashcard)))))
+                            (merge-with into deps (goal-deps (:visualization_settings dashcard))))
                           {}
                           dashcards)]
     (merge-with into
