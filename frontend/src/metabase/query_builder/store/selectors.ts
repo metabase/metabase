@@ -691,9 +691,14 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 
       if (isNewQuestion) {
         const baseline = uiControls.metabotCardBaseline;
+        const current = getMetabotCardBaseline(question);
+        // the query builder also unlocks a display that stops suiting the results
         const isUntouchedMetabotCard =
           baseline != null &&
-          _.isEqual(getMetabotCardBaseline(question), baseline);
+          _.isEqual(
+            current,
+            current.display == null ? _.omit(baseline, "display") : baseline,
+          );
         return rawQuery.length > 0 && !isUntouchedMetabotCard;
       }
 

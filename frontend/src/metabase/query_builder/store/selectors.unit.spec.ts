@@ -614,6 +614,17 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         expect(getShouldShowUnsavedChangesWarning(getState({}))).toBe(false);
       });
 
+      it("does not warn when the query builder unlocks Metabot's display", () => {
+        const state = getBaseState({
+          card: { ...card, display: "table" },
+          uiControls: {
+            queryBuilderMode: "view",
+            metabotCardBaseline: { ...baseline, display: "scalar" },
+          },
+        });
+        expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+      });
+
       it("does not warn when the query builder switches an unlocked display", () => {
         expect(
           getShouldShowUnsavedChangesWarning(getState({ display: "scalar" })),
