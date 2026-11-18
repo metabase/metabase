@@ -11,7 +11,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getSummaryQuestion } from "./pivot-question";
+import { getPivotRowKeys, getSummaryQuestion } from "./pivot-question";
 
 const STAGE_INDEX = -1;
 
@@ -118,5 +118,51 @@ describe("getSummaryQuestion", () => {
 
     expect(nextQuestion.display()).toBe("pivot");
     expect(nextQuestion.displayIsLocked()).toBe(true);
+  });
+});
+
+describe("getPivotRowKeys", () => {
+  const columnSplit = {
+    rows: ["CREATED_AT_2"],
+    columns: ["CREATED_AT"],
+    values: ["count"],
+  };
+
+  it("gives the rows of the column split of a pivot table", () => {
+    const question = createQuestion({
+      display: "pivot",
+      visualization_settings: { "pivot_table.column_split": columnSplit },
+    });
+
+    expect(getPivotRowKeys(question)).toEqual(["CREATED_AT_2"]);
+  });
+
+  it("gives nothing when the question shows another visualization", () => {
+    const question = createQuestion({
+      display: "table",
+      visualization_settings: { "pivot_table.column_split": columnSplit },
+    });
+
+    expect(getPivotRowKeys(question)).toBeUndefined();
+  });
+
+  it("gives nothing for a pivot table without a column split or with one by field reference", () => {
+    expect(
+      getPivotRowKeys(createQuestion({ display: "pivot" })),
+    ).toBeUndefined();
+    expect(
+      getPivotRowKeys(
+        createQuestion({
+          display: "pivot",
+          visualization_settings: {
+            "pivot_table.column_split": {
+              rows: [["field", ORDERS.CREATED_AT, null]],
+              columns: [],
+              values: [],
+            },
+          },
+        }),
+      ),
+    ).toBeUndefined();
   });
 });
