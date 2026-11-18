@@ -1,0 +1,131 @@
+#!/usr/bin/env bb
+;; Prints one tab-separated line per deftest or defspec that a ./bin/test-agent run selected,
+;; or one per FAIL or ERROR report when the test failed:
+;;
+;;   <status>  <test file>  <namespace>/<test name>  <expected and actual, or the exception>  <testing context>
+;;
+;; Status is PASSED, FAILED (an `is` disagreed), ERROR (the test threw) or LOAD_ERROR (the run stopped before any test
+;; ran, usually because a namespace failed to compile). Tests that the run's `:only` did not select are left out.
+;; The last column holds the `testing` strings and message printed above each report,
+;; which tell the cases of one test apart.
+;; A warning goes to stderr when the run's test count differs from the number of tests listed.
+;;
+;;   bb test-agent-summary.bb <test-agent-output> <checkout-root> <test-file> [<test-file> ...]
+;;
+;; Run it from a directory without a bb.edn, or bb resolves the project's dependencies first.
+
+(require '[clojure.java.io :as io]
+         '[clojure.string :as str])
+
+(def max-message-length 300)
+
+(defn- test-names [file]
+  (let [text (slurp file)]
+    {:ns    (second (re-find #"\(ns\s+(?:\^\S+\s+)*([^\s()]+)" text))
+     :tests (map second (re-seq #"\((?:deftest|defspec)\s+(?:\^\S+\s+)*([^\s()]+)" text))}))
+
+(defn- selected-symbols
+  "The namespace and test symbols the run's `:only` selected, read from its `Running tests in [...]` line."
+  [lines]
+  (some->> lines
+           (some #(second (re-find #"^Running tests in \[(.*)\]" %)))
+           (re-seq #"[^\s\[\]]+")
+           set))
+
+(defn- selected? [selection ns-name test-name]
+  (or (nil? selection)
+      (contains? selection ns-name)
+      (contains? selection (str ns-name "/" test-name))))
+
+(defn- truncate [s n]
+  (subs s 0 (min n (count s))))
+
+(defn- labelled-line
+  "The text after `label` on the first line of `lines` that starts with it, or the next non-blank line when that is empty."
+  [lines label]
+  (let [from (drop-while #(not (str/starts-with? (str/trim %) label)) lines)
+        line (str/trim (subs (str/trim (or (first from) label)) (count label)))]
+    (if (str/blank? line)
+      (str/trim (or (first (remove str/blank? (rest from))) ""))
+      line)))
+
+(defn- labelled-value
+  "The value after `label` on the first line of `lines` that starts with it, with the lines that continue it joined by
+  spaces. The value ends at a blank line, a report header or the next `expected:`, `actual:` or `diff:` line."
+  [lines label]
+  (let [[line & more] (drop-while #(not (str/starts-with? (str/trim %) label)) lines)]
+    (-> (str/join " " (cons (subs (str/trim (or line label)) (count label))
+                            (take-while #(not (or (str/blank? %)
+                                                  (re-find #"^(FAIL|ERROR) in " %)
+                                                  (re-find #"^\s*(expected|actual|diff):" %)))
+                                        more)))
+        (str/replace #"\s+" " ")
+        str/trim)))
+
+(defn- failure-lines
+  "Expected and actual values under each FAIL header for `qualified-name`, or the exception under each ERROR,
+  each paired with the `testing` context and message printed between the header and the expected value.
+  The context leaves out the `with temporary ...` strings that `mt/with-temp` adds."
+  [lines qualified-name status]
+  (let [header (re-pattern (str "^(FAIL|ERROR) in " (java.util.regex.Pattern/quote qualified-name) " "))]
+    (for [i    (keep-indexed #(when (re-find header %2) %1) lines)
+          :let [after   (drop (inc i) lines)
+                context (->> after
+                             (take-while #(not (or (re-find #"^(FAIL|ERROR) in " %)
+                                                   (str/starts-with? (str/trim %) "expected:"))))
+                             (map str/trim)
+                             (remove #(or (str/blank? %) (str/starts-with? % "with temporary ")))
+                             (str/join " "))]]
+      [(if (= status "ERROR")
+         (truncate (labelled-line after "actual:") max-message-length)
+         (str "expected: " (truncate (labelled-value after "expected:") max-message-length)
+              " | actual: " (truncate (labelled-value after "actual:") max-message-length)))
+       (truncate context max-message-length)])))
+
+(defn- load-error-line
+  "The two-line report the Clojure CLI prints last, which names the file and line, or else the first line that mentions
+  an error."
+  [lines]
+  (let [lines  (vec lines)
+        report (last (keep-indexed #(when (re-find #"^(Syntax|Execution) error" %2) %1) lines))]
+    (if report
+      (str/join " " (map str/trim (subvec lines report (min (count lines) (+ report 2)))))
+      (or (some #(when (re-find #"Syntax error|Could not locate|Unable to resolve|No such var|Exception" %) (str/trim %))
+                lines)
+          "the run stopped before any test ran"))))
+
+(let [[output-file root & test-files] *command-line-args*]
+  (when (or (nil? root) (empty? test-files))
+    (binding [*out* *err*]
+      (println "usage: test-agent-summary.bb <test-agent-output> <checkout-root> <test-file> [<test-file> ...]")
+      (System/exit 2)))
+  (let [lines     (remove #(str/starts-with? % "Running Changeset:") (str/split-lines (slurp output-file)))
+        selection (selected-symbols lines)
+        ran?      (some #(re-find #"^Running \d+ tests" %) lines)
+        status-of (fn [qualified-name]
+                    (let [header #(re-pattern (str "^" % " in " (java.util.regex.Pattern/quote qualified-name) " "))]
+                      (cond
+                        (not ran?)                                 "LOAD_ERROR"
+                        (some #(re-find (header "ERROR") %) lines) "ERROR"
+                        (some #(re-find (header "FAIL") %) lines)  "FAILED"
+                        :else                                      "PASSED")))]
+    (let [rows (for [file  test-files
+                     :let  [path                        (if (.isAbsolute (io/file file)) (io/file file) (io/file root file))
+                            {ns-name :ns, tests :tests} (test-names path)]
+                     test  tests
+                     :when (selected? selection ns-name test)
+                     :let  [qualified-name (str ns-name "/" test)
+                            status         (status-of qualified-name)]]
+                 (case status
+                   "PASSED"     [[status file qualified-name "" ""]]
+                   "LOAD_ERROR" [[status file qualified-name (load-error-line lines) ""]]
+                   (for [[detail context] (failure-lines lines qualified-name status)]
+                     [status file qualified-name detail context])))
+          ran  (some #(some-> (re-find #"^Ran (\d+) tests in [\d.]+ seconds" %) second parse-long) lines)]
+      (doseq [row (apply concat rows)]
+        (println (str/join "\t" row)))
+      ;; PASSED only means no FAIL or ERROR header names the test, so a selected test that never ran would print it too.
+      (when (and ran (not= ran (count rows)))
+        (binding [*out* *err*]
+          (println (str "warning: the run reports " ran " tests but " (count rows) " are listed above."
+                        " A PASSED line may be a test that never ran.")))))))
