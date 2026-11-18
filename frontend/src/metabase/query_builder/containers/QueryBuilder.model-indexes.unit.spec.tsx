@@ -277,9 +277,7 @@ async function saveChanges() {
   await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
   // the editor closes once the model indexes have been updated
   await waitFor(() =>
-    expect(
-      screen.queryByRole("button", { name: "Save changes" }),
-    ).not.toBeInTheDocument(),
+    expect(screen.queryByTestId("dataset-edit-bar")).not.toBeInTheDocument(),
   );
 }
 
