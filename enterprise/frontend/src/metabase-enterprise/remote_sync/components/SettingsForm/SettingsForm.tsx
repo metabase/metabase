@@ -353,7 +353,7 @@ function SettingsFormBody({
               <Radio
                 value="no"
                 label={t`No`}
-                description={t`Only content from the synced repository will appear. Users won’t be able to save dashboards, documents, or reports.`}
+                description={t`Only content from the synced repository will appear. Users won’t be able to save dashboards, documents, or reports. Existing user generated content will be hidden, not deleted.`}
               />
             </Stack>
           </Radio.Group>
