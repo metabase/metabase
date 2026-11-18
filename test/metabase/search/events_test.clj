@@ -597,10 +597,11 @@
 
 (deftest dependents-interrupt-is-restored-test
   (testing "an interrupt in the capture dependents hook skips the enumeration and keeps the thread interrupted"
-    (is (= {:result nil, :interrupted? true}
-           (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances]
-                                                                    (throw (InterruptedException. "interrupted")))]
-             (outcome-and-interrupt #(#'search.events/capture-dependents [card-delete])))))))
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (is (= {:result nil, :interrupted? true}
+             (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances]
+                                                                      (throw (InterruptedException. "interrupted")))]
+               (outcome-and-interrupt #(#'search.events/capture-dependents [card-delete]))))))))
 
 (deftest reconcile-interrupt-stops-and-is-restored-test
   (testing "an interrupt while reconciling stops the remaining search-models and reaches the caller"
