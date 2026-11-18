@@ -963,7 +963,7 @@
   (testing "a :mysql application DB reads the product name once"
     (doseq [[product expected] {"MariaDB" true, "MySQL" false}]
       (do-with-product-app-db
-       :mysql product false
+       :mysql product nil
        (fn [calls]
          (is (= {:answers [expected expected], :calls 1}
                 {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls (calls)}))))))
@@ -976,18 +976,16 @@
        (is (= 2 (calls))))))
   (testing "other application DB types are never MariaDB, and never connect"
     (do-with-product-app-db
-     :h2 "MariaDB" false
+     :h2 "MariaDB" nil
      (fn [calls]
        (is (= {:answer false, :calls 0}
-              {:answer (mdb.connection/mariadb?), :calls (calls)}))))))
-
-(deftest mariadb?-reads-under-the-lock-test
+              {:answer (mdb.connection/mariadb?), :calls (calls)})))))
   (testing "the product name is read while holding the cell's lock, so concurrent first callers share one read"
-    (let [held?          (atom nil)
-          record-holder! (fn [_]
-                           (reset! held? (Thread/holdsLock (:mariadb? (mdb.connection/current-application-db)))))]
+    (let [held?             (atom nil)
+          record-lock-held! (fn [_]
+                              (reset! held? (Thread/holdsLock (:mariadb? (mdb.connection/current-application-db)))))]
       (do-with-product-app-db
-       :mysql "MariaDB" record-holder!
+       :mysql "MariaDB" record-lock-held!
        (fn [_]
          (mdb.connection/mariadb?)
          (is (true? @held?)))))))
@@ -995,21 +993,21 @@
 (deftest record-mariadb!-test
   (testing "a recorded answer is used without connecting"
     (do-with-product-app-db
-     :mysql "MySQL" false
+     :mysql "MySQL" nil
      (fn [calls]
        (mdb.connection/record-mariadb! true)
        (is (= {:answer true, :calls 0}
               {:answer (mdb.connection/mariadb?), :calls (calls)})))))
   (testing "an answer already read is kept"
     (do-with-product-app-db
-     :mysql "MySQL" false
+     :mysql "MySQL" nil
      (fn [_calls]
        (mdb.connection/mariadb?)
        (mdb.connection/record-mariadb! true)
        (is (false? (mdb.connection/mariadb?))))))
   (testing "a recorded answer is ignored for types other than :mysql"
     (do-with-product-app-db
-     :h2 "MariaDB" false
+     :h2 "MariaDB" nil
      (fn [_calls]
        (mdb.connection/record-mariadb! true)
        (is (false? (mdb.connection/mariadb?)))))))
