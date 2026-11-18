@@ -163,6 +163,8 @@ export type EditorProps = {
    * generate the expression with AI in autocomplete.
    */
   canGenerateFromText?: boolean;
+  /** True when Enter sends the text to the AI. The code then has no syntax colors. */
+  isTextRequest?: boolean;
 };
 
 export type GenerateNow = () => Promise<void>;
@@ -256,6 +258,7 @@ export function Editor(props: EditorProps) {
     askAiRef,
     isAiAvailable,
     canGenerateFromText,
+    isTextRequest,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -872,6 +875,7 @@ export function Editor(props: EditorProps) {
         className={cx(S.wrapper, {
           [S.formatting]: isFormatting,
           [S.textRequest]: textRequest.isLoading,
+          [S.plainText]: isTextRequest,
           [S.inline]: inline,
         })}
       >

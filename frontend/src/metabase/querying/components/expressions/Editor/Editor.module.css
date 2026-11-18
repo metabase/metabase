@@ -12,6 +12,15 @@
     border-bottom: none;
   }
 
+  /* The text reads like a request to the AI, not like code. */
+  &.plainText :global(.cm-content) {
+    color: var(--mb-color-text-primary);
+
+    * {
+      color: inherit !important;
+    }
+  }
+
   /* The text goes to the AI as a request. */
   &.textRequest :global(.cm-content) {
     color: var(--mb-color-text-disabled);

@@ -383,6 +383,7 @@ export function InlineExpressionEditor({
         formatRef={formatRef}
         generateRef={generateRef}
         canGenerateFromText={isAiAvailable && isNewExpression && !readOnly}
+        isTextRequest={canGenerate}
         isAiAvailable={isAiAvailable}
         readOnly={readOnly}
         askAiRef={askAiRef}
