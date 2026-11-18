@@ -110,7 +110,8 @@
         "actions",
         "custom visualizations",
         "CSV uploads",
-        "model persistence"
+        "model persistence",
+        "backend platform (API framework, settings, logging, tracing, events, plugins)"
       ],
       "members": [
         "brybacki",
@@ -250,8 +251,7 @@
         "e2e test infrastructure",
         "frontend build and bundle",
         "release builds and backports",
-        "eng-ci-stats",
-        "backend platform (API framework, settings, logging, tracing, events, plugins)"
+        "eng-ci-stats"
       ],
       "members": [
         "ChrisVandoo",
