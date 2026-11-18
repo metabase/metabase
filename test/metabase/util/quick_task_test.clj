@@ -14,19 +14,12 @@
   {:connection?     (some? t2.conn/*current-connectable*)
    :in-transaction? (mdb/in-transaction?)})
 
-(deftest task-submitted-in-transaction-runs-after-commit-test
+(deftest task-submitted-in-transaction-runs-outside-it-test
   (let [seen (promise)]
     (t2/with-transaction [_conn]
-      (is (nil? (quick-task/submit-task! #(deliver seen (transaction-seen)))))
-      (is (= ::not-yet (deref seen 1000 ::not-yet)) "the task is not submitted before the commit"))
-    (is (= {:connection? false :in-transaction? false} (deref seen 60000 ::timeout)))))
-
-(deftest task-submitted-in-rolled-back-transaction-never-runs-test
-  (let [ran (promise)]
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      (quick-task/submit-task! #(deliver ran true)))
-    @(quick-task/submit-task! (fn [] nil))
-    (is (not (realized? ran)))))
+      (is (some? (quick-task/submit-task! #(deliver seen (transaction-seen)))))
+      (is (= {:connection? false :in-transaction? false} (deref seen 60000 ::timeout))
+          "the task runs on a connection of its own while the transaction is open"))))
 
 (deftest task-submitted-outside-transaction-runs-at-once-test
   (let [fut (quick-task/submit-task! (fn [] :done))]

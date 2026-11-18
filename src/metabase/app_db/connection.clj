@@ -353,6 +353,8 @@
             *open-savepoints*             nil]
     (thunk)))
 
+(quick-task/register-submission-wrapper! ::outside-transaction call-outside-transaction)
+
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still
   open, so any DB writes it makes commit atomically with it, and a throw from it rolls the whole
@@ -392,8 +394,6 @@
         (run-after-commit-callback! thunk))
       nil)
     (thunk)))
-
-(quick-task/register-submission-wrapper! ::after-commit do-after-commit)
 
 (defn- run-after-commit-callbacks! [callbacks]
   (run! run-after-commit-callback! (first (reset-vals! callbacks ::committed))))

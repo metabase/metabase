@@ -67,9 +67,8 @@
    controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
    the timeout, it is cancelled and the executor moves on to the next queued task. This prevents a
    single stuck task from blocking all subsequent tasks. The task conveys the bindings of the submitting thread as
-   the [[register-submission-wrapper!]] wrappers leave them: a task submitted inside a transaction of the app DB is
-   submitted once it commits, outside it, and never when it rolls back. Returns the `Future` of the task, or nil when
-   its submission waits for a commit."
+   the [[register-submission-wrapper!]] wrappers leave them, so a task submitted inside a transaction of the app DB
+   runs outside it, on a connection of its own. Returns the `Future` of the task."
   ^Future [^Callable f]
   {:pre [(some? f)]}
   (let [result (volatile! nil)
