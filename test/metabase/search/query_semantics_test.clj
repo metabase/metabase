@@ -64,7 +64,8 @@
   PostgreSQL is the reference, so each entry is a shortcoming of that app DB, to remove when in-place is fixed there.
   The adapted-query comparisons need no entries: their in-place results are the same on every app DB.
   MySQL and MariaDB collations ignore accents, so `cafe` also finds \"Café sales\" there."
-  {:mysql {"accent-literal" #{:A :B :C}}})
+  {:mysql {"accent-literal"          #{:A :B :C}
+           "unicode-composed-accent" #{:A :B :C :D}}})
 
 (defn- expected-in-place-hits
   [{:keys [id] :as case}]
@@ -96,7 +97,12 @@
           (check-in-place-query! docs query hits))
         (when dialect
           (let [{:keys [query hits]} (fixtures/comparison-spec case comparison dialect)]
-            (check-appdb-query! config docs query hits)))))))
+            (check-appdb-query! config docs query hits)))
+        ;; The report models semantic search's app-db fallback as PostgreSQL.
+        (when-let [{:keys [query fallback]} (and (= dialect :appdb-postgres)
+                                                 (get-in comparison [:alternatives :semantic]))]
+          (testing "semantic fallback"
+            (check-appdb-query! config docs query (set fallback))))))))
 
 (deftest unicode-negation-test
   (when (#{:mysql :postgres} (mdb/db-type))
