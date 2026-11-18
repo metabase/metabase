@@ -9,7 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,17 +17,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-writable
-  "Check that the current user may enter Data Studio, and that remote sync, which syncs every suite, does not keep
-  suites read-only; or throw a 403."
-  []
-  (api/check-data-studio-access)
-  (api/check-403 (not (remote-sync/read-only?))))
-
 (mu/defn- suite-response :- ::data-testing.schema/test-suite.response
-  "The TestSuite with `id` as the current user sees it, or a 404."
+  "The TestSuite with `id` as the current user sees it: a 404 when it does not exist, a 403 when they may not read it."
   [id :- ms/PositiveInt]
-  (first (data-testing.suite/with-members [(api/check-404 (data-testing.db/test-suite id))])))
+  (first (data-testing.suite/with-members [(api/read-check (data-testing.db/test-suite id))])))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/test-suite.response]
   "List the test suites, in name order, with their members.
@@ -36,14 +29,13 @@
   lacks the test; only a `readable` member has `test_id` and `name`."
   []
   (api/check-data-studio-access)
-  (data-testing.suite/with-members (data-testing.db/test-suites)))
+  (data-testing.suite/with-members (mi/readable (data-testing.db/test-suites))))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/test-suite.response
   "Get a test suite with its members. A member's `status` is `readable`, `unreadable` when the caller cannot read its
   test, or `missing` when this instance lacks the test; only a `readable` member has `test_id` and `name`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-data-studio-access)
   (suite-response id))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/test-suite.response
@@ -52,7 +44,7 @@
   [_route-params
    _query-params
    {:keys [members] :as body} :- ::data-testing.schema/test-suite.create]
-  (check-writable)
+  (api/create-check :model/TestSuite body)
   (suite-response (data-testing.db/insert-test-suite! (-> body
                                                           (dissoc :members)
                                                           (assoc :creator_id api/*current-user-id*))
@@ -67,8 +59,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    body :- ::data-testing.schema/test-suite.update]
-  (check-writable)
-  (api/check-404 (data-testing.db/test-suite id))
+  (api/update-check (api/read-check (data-testing.db/test-suite id)) body)
   (data-testing.db/update-test-suite!
    id
    (dissoc body :members)
@@ -81,8 +72,7 @@
   "Delete a test suite. The tests in it are not deleted."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (check-writable)
-  (api/check-404 (data-testing.db/test-suite id))
+  (api/write-check (data-testing.db/test-suite id))
   (data-testing.db/delete-test-suite! id)
   nil)
 
@@ -99,8 +89,7 @@
   otherwise `passed` when every member passed, and `failed` when not."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-data-studio-access)
-  (data-testing.suite-run/run-suite! (api/check-404 (data-testing.db/test-suite id))))
+  (data-testing.suite-run/run-suite! (api/read-check (data-testing.db/test-suite id))))
 
 (api.macros/defendpoint :get "/:id/runs" :- ::data-testing.schema/test-suite-runs.response
   "List the runs of a test suite, newest first. A member's outcome has no `test_id`, `name`, or `result`. It has an
@@ -108,8 +97,7 @@
   caller who cannot read the member's test."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-data-studio-access)
-  (api/check-404 (data-testing.db/test-suite id))
+  (api/read-check (data-testing.db/test-suite id))
   (let [limit  (or (request/limit) 20)
         offset (or (request/offset) 0)]
     {:data   (-> (data-testing.db/suite-runs id limit offset)

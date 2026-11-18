@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -56,6 +57,37 @@
 (defmethod audit-app/model-details :model/TestSuite
   [suite _event-type]
   (select-keys suite [:name :description]))
+
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+(defn- may-change-suites?
+  "Whether the current user may create, change, or delete test suites: they may enter Data Studio, and remote sync, which
+  syncs every suite, does not keep synced content read-only."
+  []
+  (and (api/entitled-data-analyst?)
+       (not (remote-sync/read-only?))))
+
+(defmethod mi/can-create? :model/TestSuite
+  [_model _suite]
+  (may-change-suites?))
+
+(defmethod mi/can-update? :model/TestSuite
+  [suite _changes]
+  (mi/can-write? suite))
+
+;;; -------------------------------------------------- Hydration ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/TestSuite :can_read]
+  "Whether the current user may read each suite: any suite, when they may enter Data Studio."
+  [_model k suites]
+  (let [answer (boolean (api/entitled-data-analyst?))]
+    (mapv #(vary-meta % assoc k answer) suites)))
+
+(methodical/defmethod t2/batched-hydrate [:model/TestSuite :can_write]
+  "Whether the current user may change or delete each suite."
+  [_model k suites]
+  (let [answer (may-change-suites?)]
+    (mapv #(assoc % k answer) suites)))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
