@@ -10,7 +10,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
@@ -361,8 +360,7 @@
                                              (prepare-definition
                                               :segment definition
                                               (mcp.db/table-by-id (:table_id segment)))))]
-        (-> (run-domain-write #(events/with-event-context {:revision-message (:revision_message body)}
-                                 (update-segment! (:id segment) body)))
+        (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
             (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
             common/success-content)))))
@@ -430,8 +428,7 @@
                                              (prepare-definition
                                               :measure definition
                                               (mcp.db/table-by-id (:table_id measure)))))]
-        (-> (run-domain-write #(events/with-event-context {:revision-message (:revision_message body)}
-                                 (update-measure! (:id measure) body)))
+        (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
             (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
             common/success-content)))))

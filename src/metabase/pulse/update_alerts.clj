@@ -72,7 +72,7 @@
   (when (some #(contains? card-updates %) alert-affecting-columns)
     (seq (models.notification/notifications-for-card (:id card)))))
 
-(defn delete-alerts-if-needed!
+(defn notify-alerts-deleted!
   "Tells the recipients of `notifications`, which [[alerts-of-card-being-changed]] read before the update, that the alerts
   were deleted when the change from `old-card` to `new-card` archives the Card or invalidates its alerts, as the Card
   hooks have then deleted them."

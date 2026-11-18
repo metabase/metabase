@@ -49,7 +49,7 @@
     (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "old"}]
       (let [{entry :result events :events} (with-captured-events!
                                              user-id
-                                             #(glossary.core/update-entry! user-id id {:term "NRR" :definition "new"}))]
+                                             #(glossary.core/update-entry! id {:term "NRR" :definition "new"}))]
         (testing "the row is updated and returned"
           (is (=? {:id id :term "NRR" :definition "new"} entry))
           (is (= entry (t2/select-one :model/Glossary :id id))))
@@ -64,12 +64,12 @@
       (is (= {:result nil :events []}
              (with-captured-events!
                user-id
-               #(glossary.core/update-entry! user-id Integer/MAX_VALUE {:term "x" :definition "y"})))))))
+               #(glossary.core/update-entry! Integer/MAX_VALUE {:term "x" :definition "y"})))))))
 
 (deftest delete-entry-test
   (let [user-id (mt/user->id :rasta)]
     (mt/with-temp [:model/Glossary {id :id :as entry} {:term "ARR" :definition "Annual recurring revenue"}]
-      (let [{deleted :result events :events} (with-captured-events! user-id #(glossary.core/delete-entry! user-id id))]
+      (let [{deleted :result events :events} (with-captured-events! user-id #(glossary.core/delete-entry! id))]
         (testing "the row is deleted and returned"
           (is (= entry deleted))
           (is (nil? (t2/select-one :model/Glossary :id id))))
@@ -79,7 +79,7 @@
                  events)))))
     (testing "a missing id returns nil and publishes nothing"
       (is (= {:result nil :events []}
-             (with-captured-events! user-id #(glossary.core/delete-entry! user-id Integer/MAX_VALUE)))))))
+             (with-captured-events! user-id #(glossary.core/delete-entry! Integer/MAX_VALUE)))))))
 
 (deftest entries-test
   (mt/with-temp [:model/Glossary _ {:term "Churn" :definition "Customers lost"}

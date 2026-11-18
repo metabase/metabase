@@ -224,7 +224,7 @@
   nil)
 
 ;; The search index drops a deleted transform after the delete commits, through delete capture (see
-;; [[metabase.search.models]]), so this transaction never writes a search-index row.
+;; [[metabase.search.events]]), so this transaction never writes a search-index row.
 (t2/define-before-delete :model/Transform [transform]
   (delete-transform-tests! (:id transform))
   transform)

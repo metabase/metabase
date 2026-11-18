@@ -222,9 +222,7 @@
     (api/create-check :model/Card card))
   ;; Create the card and stamp its origin in ONE transaction so they cannot desync.
   ;; The stamp is a raw table update — it should not run the Card model's heavy
-  ;; before-update pipeline (query normalization, metadata population). The
-  ;; `:card-create` event is delayed until after the transaction commits so
-  ;; subscribers see the card.
+  ;; before-update pipeline (query normalization, metadata population).
   (let [created (t2/with-transaction [_conn]
                   (u/prog1 (queries/create-card!
                             (-> (select-keys card [:name :description :dataset_query :display

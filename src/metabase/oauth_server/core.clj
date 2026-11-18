@@ -204,9 +204,9 @@
    been deactivated).
 
    The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
-   the model calls `metabase.oauth-server.hooks/after-user-deactivated`, which
+   the model publishes `:event/user-update`, and `metabase.oauth-server.events.revoke-on-deactivation` then
    stamps `revoked_at` on every token, which the store lookup above already filters on. This gate covers
-   the paths that don't go through the model hook — a direct SQL or migration update of `core_user`, a
+   the paths that don't go through the model — a direct SQL or migration update of `core_user`, a
    restored backup — and keeps the invariant local to the one resolver every bearer caller shares (the
    v1 MCP transport dispatches straight on the returned `:user-id` with no re-check of its own). It costs
    one indexed primary-key lookup per bearer request.

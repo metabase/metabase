@@ -19,7 +19,7 @@
   (glossary.db/glossary-entries nil))
 
 (mu/defn create-entry! :- ::glossary.schema/glossary
-  "Insert a glossary entry created by `user-id`. Returns the new entry."
+  "Insert a glossary entry created by `user-id`, returning the new entry."
   [user-id                   :- ::lib.schema.id/user
    {:keys [term definition]} :- ::entry-fields]
   (glossary.db/insert-glossary-entry! {:term       term
@@ -27,20 +27,17 @@
                                        :creator_id user-id}))
 
 (mu/defn update-entry! :- [:maybe ::glossary.schema/glossary]
-  "Set the term and definition of the glossary entry with `id`. Returns the updated entry, or nil when no entry has
-  `id`. The lifecycle event names the bound user."
-  [_user-id                  :- ::lib.schema.id/user
-   id                        :- ms/PositiveInt
+  "Set the term and definition of the glossary entry with `id`, returning the updated entry, or nil when no entry has
+  `id`."
+  [id                        :- ms/PositiveInt
    {:keys [term definition]} :- ::entry-fields]
   (when (glossary.db/glossary-entry id)
     (glossary.db/update-glossary-entry! id term definition)
     (glossary.db/glossary-entry id)))
 
 (mu/defn delete-entry! :- [:maybe ::glossary.schema/glossary]
-  "Delete the glossary entry with `id`. Returns the deleted entry, or nil when no entry has `id`. The lifecycle event
-  names the bound user."
-  [_user-id :- ::lib.schema.id/user
-   id      :- ms/PositiveInt]
+  "Delete the glossary entry with `id`, returning the deleted entry, or nil when no entry has `id`."
+  [id :- ms/PositiveInt]
   (when-let [entry (glossary.db/glossary-entry id)]
     (glossary.db/delete-glossary-entry! id)
     entry))

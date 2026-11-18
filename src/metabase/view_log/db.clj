@@ -10,8 +10,7 @@
    [toucan2.core :as t2]))
 
 (defn- increment-view-counts-of-model!
-  "Increments `model`'s `view_count` per `count->ids`, via a raw update that bypasses Toucan 2 model hooks
-  (specifically the search-index enqueue on after-update)."
+  "Increments `model`'s `view_count` per `count->ids`, via a raw update that publishes no lifecycle event, so the search index is not re-fed."
   [model count->ids]
   #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
   (t2/query {:update (t2/table-name model)
@@ -57,9 +56,8 @@
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
-  `updated_at`, via a raw update that bypasses Toucan 2 model hooks (specifically the search index
-  after-update; the search index can tolerate staleness on this field, catching up on the next re-index cycle or
-  when the dashboard is edited)."
+  `updated_at`, via a raw update that publishes no lifecycle event, so the search index is not re-fed (it tolerates
+  staleness on this field until the next re-index or edit)."
   [dashboard-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
   #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
   (t2/query {:update (t2/table-name :model/Dashboard)

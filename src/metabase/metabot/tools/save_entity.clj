@@ -377,9 +377,7 @@
           ;; Create the card and stamp which conversation + generated chart it came
           ;; from in ONE transaction, so a reloaded conversation can't observe the
           ;; card without its origin. The stamp is a raw table update — it should not
-          ;; run the Card model's heavy before-update pipeline. The `:card-create`
-          ;; event is delayed until after the transaction commits so subscribers see
-          ;; the card.
+          ;; run the Card model's heavy before-update pipeline.
           {:keys [card link destination-name] saved-destination :destination}
           (do-with-save-rejections
            #(t2/with-transaction [_conn]

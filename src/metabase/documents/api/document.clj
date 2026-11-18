@@ -191,12 +191,9 @@
             (t2/hydrate cards-to-copy :can_read))))
 
 (defn copy-document!
-  "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
-  questions saved inside it, and return the new document. `copy-opts` may override `:name` and set
-  `:collection_position`.
-
-  Requires read permission on the source and create permission on the destination collection.
-  "
+  "Copies the document with `from-document-id` into `:collection_id` (nil is the root) along with the questions saved
+  inside it and returns the new document, requiring read permission on the source and create permission on the
+  destination collection."
   [from-document-id {:keys [name collection_id collection_position]}]
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404

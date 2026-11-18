@@ -87,8 +87,8 @@
        (mapv with-api-dimensions)))
 
 (defn write-check-and-update-measure!
-  "Applies `body` to the Measure with `id` after its update check, publishes the update event and returns the hydrated
-  Measure."
+  "Applies `body` to the Measure with `id` after its update check, with `revision_message` as the message of the
+  revision, and returns the hydrated Measure."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
         clean-body (cond-> (u/select-keys-when body

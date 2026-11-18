@@ -55,9 +55,9 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *context*
-  "The context that the events collected within it carry, as `::events.schema/lifecycle` lists its keys: the
-  `:revision-message` of the revisions they cause, or the `[model id]` of the entity whose archive or restore carried
-  their rows, `:archived-with`."
+  "The map of context keys that the events collected within it carry: `:revision-message`, the message of the revisions
+  they cause; `:reverting?`, whether they are the writes of a revert; `:details`, a map the audit log records with them;
+  and `:archived-with`, the `[model id]` of the entity whose archive or restore carried their rows."
   nil)
 
 (quick-task/register-submission-wrapper! ::outside-batch
@@ -237,9 +237,7 @@
   (events.schema/register-lifecycle-topic! topic))
 
 (defn- merge-events
-  "The one event that the `events` of one row amount to, or nil when the row came and went. The insert of a row may
-  collect after the writes its own hooks make, so a creation is told by any of the events, not by the first, and
-  carries the row as its newest update left it."
+  "The one event that the `events` of one row amount to, or nil when the batch both created and deleted the row."
   [events]
   (let [create (first (filter #(= :create (:operation %)) events))
         fst    (first events)
@@ -386,7 +384,7 @@
   (run-batch false thunk))
 
 (defn do-with-write-batch
-  "Run `thunk`, the write of a row, as [[do-with-batched-events]] does, but in the transaction there already is."
+  "Run `thunk`, the write of one statement, as [[do-with-batched-events]] does, but in the transaction there already is."
   [thunk]
   (run-batch true thunk))
 

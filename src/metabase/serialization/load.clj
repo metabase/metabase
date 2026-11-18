@@ -302,8 +302,8 @@
   depends on. `read-batch` is a fn of a batch of keys returning their entities, called a batch at a
   time so that the whole import need not fit in memory. Retries the whole import on a transient DB error. With
   `continue-on-error`, an entity that fails to load is left out and its error returned; otherwise the first failure
-  rolls the whole import back. With `skip-schema-validation`, queries load even when this instance's query schema
-  rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
+  rolls the whole import back. With `skip-schema-validation`, entities are only normalized, not checked against their spec
+  schema, and queries load even when this instance's query schema rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
   [ks read-batch & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
   (let [order (load-order ks read-batch)
         opts  {:create-missing?         true

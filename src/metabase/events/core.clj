@@ -15,8 +15,6 @@
 (p/import-vars
  [metabase.events.batch
   add-to-sink!
-  do-with-batched-events
-  lifecycle-topic
   register-capture!
   register-owned-consumer!
   register-sink!

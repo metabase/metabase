@@ -546,23 +546,13 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
-(defonce ^:private hook-traits
-  (atom []))
-
 (defn prefer-hook-trait!
-  "Order the hooks of `trait` after the timestamp and entity id traits, so they see the row those complete, and a
-  `trait` defined later before the traits defined earlier, which Toucan needs to run the hooks of a model that
-  derives several of them."
+  "Orders the hooks of `trait` after those of the timestamp and entity id traits, so they see the row those complete."
   [trait]
   (doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
     (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
-    (methodical/prefer-method! #'t2.before-update/before-update hook trait))
-  (doseq [other @hook-traits
-          :when (not= other trait)]
-    (methodical/prefer-method! #'t2.before-update/before-update trait other)
-    (methodical/prefer-method! #'t2.after/each-row-fn [:toucan.query-type/insert.* trait] [:toucan.query-type/insert.* other]))
-  (swap! hook-traits conj trait))
+    (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
 
 ;; --- helper fns
 (defn changes-with-pk
@@ -595,7 +585,8 @@
   nil)
 
 (defn rows-changing-archived
-  "The rows `parsed-args`, an UPDATE of `model` with `changes`, will give another value of `:archived`."
+  "The rows of `model` that the UPDATE given by `parsed-args` and `resolved-query` selects and whose `:archived` differs
+  from the one in `changes`."
   [model parsed-args resolved-query changes]
   (filterv #(not= (boolean (:archived %)) (boolean (:archived changes)))
            (t2.pipeline/transduce-query ((map t2.realize/realize) conj)
@@ -610,10 +601,9 @@
       (methodical/is-default-primary-method? t2.after/each-row-fn [query-type model])))
 
 (defmacro define-update-in-transaction
-  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, which Toucan otherwise opens only
-  after them, so a hook that writes other rows commits or rolls back with the UPDATE, and then calls
-  [[after-archived-change]] for the rows whose `:archived` it changed, marking the dependents of everything that
-  cascade writes once."
+  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, and calls [[after-archived-change]]
+  after it for the rows whose `:archived` it changed, with the events of the UPDATE and of the cascade delivered as one
+  batch."
   [model]
   `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
      [rf# query-type# model# parsed-args# resolved-query#]
@@ -714,12 +704,7 @@
       (assoc instance k (can-read? instance)))))
 
 (defmulti can-create?
-  "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
-    `m`.
-
-  Because this method was added YEARS after [[can-read?]] and [[can-write?]], most models do not have an implementation
-  for this method, and instead `POST` API endpoints themselves contain the appropriate permissions logic (ick).
-  Implement this method as you come across models that are missing it."
+  "Whether the current user may create a `model` row with the properties in the map `m`, the question `api/create-check` asks."
   {:added "0.32.0", :arglists '([model m])}
   dispatch-on-model)
 
@@ -731,14 +716,8 @@
          "Please consider adding one. See dox for [[can-create?]] for more details."))))
 
 (defmulti can-update?
-  "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
-   the `changes` map. This is equivalent to checking whether you're allowed to perform
-
-    (toucan2.core/update! model id changes)
-
-  This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
-  most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
-  in the API endpoints themselves. Use this method going forward!"
+  "Whether the current user may apply the `changes` map to `instance`, as `(t2/update! model id changes)` would, the
+  question `api/update-check` asks."
   {:added "0.36.0", :arglists '([instance changes])}
   dispatch-on-model)
 

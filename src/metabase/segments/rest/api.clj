@@ -63,8 +63,8 @@
       (t2/hydrate :creator :definition_description)))
 
 (defn write-check-and-update-segment!
-  "Applies `body` to the Segment with `id` after its update check, publishes the update event and returns the hydrated
-  Segment."
+  "Applies `body` to the Segment with `id` after its update check, with `revision_message` as the message of the
+  revision, and returns the hydrated Segment."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Segment id)
         clean-body (u/select-keys-when body

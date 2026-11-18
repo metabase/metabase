@@ -174,11 +174,9 @@
 
 (mu/defn update-documents-last-viewed-at!
   "Move `last_viewed_at` of each Document in `document-id->timestamp` forward to its timestamp, without touching
-  `updated_at`, returning the number updated (as a one-element sequence -- `t2/query` on an UPDATE, unlike
-  `t2/update!`, does not unwrap it)."
+  `updated_at`, as a raw update rather than `t2/update!`, which would publish `:event/document-update`, returning
+  the number updated as a one-element sequence."
   [document-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
-  ;; A raw update rather than `t2/update!` so Toucan 2 model hooks don't fire: the :model/Document after-update
-  ;; publishes :event/document-update and syncs card collections, side effects that must not re-run on retry.
   (t2/query {:update (t2/table-name :model/Document)
              :set    {:last_viewed_at (into [:case]
                                             (mapcat (fn [[id timestamp]]

@@ -47,7 +47,7 @@
     (api/check-404 tenant)))
 
 (defn create-tenant!
-  "Creates a new tenant, validating its shape and publishing audit events as necessary."
+  "Creates a new tenant, validating its shape, and returns it as the API presents it."
   [tenant]
   (when-not (mr/validate CreateTenantArguments tenant)
     (throw (ex-info "Invalid Tenant"

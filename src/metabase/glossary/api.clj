@@ -47,11 +47,11 @@
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
   (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
-  (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
+  (t2/hydrate (api/check-404 (glossary.core/update-entry! id body)) :creator))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check (glossary.db/glossary-entry id))
-  (api/check-404 (glossary.core/delete-entry! api/*current-user-id* id))
+  (api/check-404 (glossary.core/delete-entry! id))
   api/generic-204-no-content)

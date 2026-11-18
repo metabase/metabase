@@ -35,7 +35,7 @@
 
 (defn- invalidate-batch!
   "Invalidate in one statement the active findings of the entities that `events` archive or delete, and of the archived
-  collections with the subtrees of those archived directly, logging a failure instead of failing the write."
+  collections with the subtrees of those archived directly, logging the error of that statement, which fails the write on Postgres, where an error aborts the transaction."
   [_owner events _all-events]
   (let [invalidations  (keep invalidation events)
         collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)

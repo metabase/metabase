@@ -867,7 +867,7 @@
   before anything is written.
 
   TODO (Bryan 2026-05-20): see the matching TODO on `create-card-from-agent!`. The pre-check stack
-  mirrored here (collection move, run-permissions, cycle detection) is also duplicated against REST's
+  mirrored here (collection move, run-permissions) is also duplicated against REST's
   update-card path; extracting a shared `metabase.queries.*` helper is the larger fix that stops REST
   + agent-api from drifting."
   [card-before-update body {:keys [validate-query!]}]
@@ -903,7 +903,7 @@
         card-updates (api/updates-without-collection-when-archiving card-before-update raw-updates)]
     ;; A move (or archive that retargets the collection) requires write on BOTH the source and the
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
-    ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
+    ;; The update check asks write on both collections.
     (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
@@ -1580,7 +1580,7 @@
         ;; may serve LLM callers better.
         updates      (api/updates-without-collection-when-archiving current-dash updates)
         ;; A move requires write on BOTH source and target collection: the update check asks it, and the
-        ;; collection check refuses an archived target. Mirror the REST endpoint's gate.
+        ;; collection check refuses an archived target.
         _            (api/update-check current-dash updates)
         mutations    (:dashcards body)
         ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes

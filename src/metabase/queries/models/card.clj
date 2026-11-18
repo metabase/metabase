@@ -1772,8 +1772,8 @@
     ;; Fetch the updated Card from the DB
     (let [card (queries.db/card (:id card-before-update))]
       ;;; TODO -- this should be triggered indirectly by `:event/card-update`
-      (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor
-                                      :notifications notifications)
+      (pulse/notify-alerts-deleted! :old-card card-before-update, :new-card card, :actor actor
+                                    :notifications notifications)
       card)))
 
 (defn sole-dashboard-id
