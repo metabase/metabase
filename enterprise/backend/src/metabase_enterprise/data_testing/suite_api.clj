@@ -90,7 +90,8 @@
 
   Each member runs as its own run endpoint would run it, under the same permission rule, and reports its `status`:
   `passed` or `failed` with its `result`; `refused` with the `error` its run endpoint would have returned; `error`
-  when loading its test's subject, checking the caller's permission, or its run failed for another reason; `forbidden`
+  when loading the test's subject or checking the caller's permission threw, or the run threw an error that is not a
+  refusal; `forbidden`
   when the caller may not run it (with no name when the caller cannot read it); `missing` when this instance has no
   such test.
 

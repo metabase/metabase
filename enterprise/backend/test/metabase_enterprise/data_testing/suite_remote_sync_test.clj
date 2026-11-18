@@ -172,49 +172,45 @@
         (testing "on a read-only instance, deleting a test of an unsynced card leaves the suite's members unchanged"
           (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))
 
-(deftest pull-of-a-suite-naming-a-test-twice-is-refused-test
-  (remote-sync.tu/with-repository [url]
-    (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Card      card  {:name "Card"}
-                     :model/CardTest  t     {:card_id (:id card)}
-                     :model/TestSuite suite {:name "Nightly"}]
-        (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
-        (let [{v1 :version} (remote-sync.tu/push! url nil)
-              path          (remote-sync.tu/entity-path! url "main" suite)
-              yaml-text     (remote-sync.tu/read-file! url "main" path)
-              member        (str "- position: 0\n  test_entity_id: " (:entity_id t) "\n  test_type: card\n")]
-          (is (str/includes? yaml-text member) "premise: the file lists the member as the fixture expects")
-          (remote-sync.tu/commit! url "main" {path (str/replace yaml-text member
-                                                                (str member (str/replace member "position: 0" "position: 1")))})
-          (let [result   (try (remote-sync.tu/pull! url v1) (catch Exception e e))
-                messages (str/join "\n" (if (instance? Throwable result)
-                                          (keep ex-message (take-while some? (iterate ex-cause result)))
-                                          [(pr-str result)]))]
-            (testing "a pull of a suite file that names one test twice fails, naming the suite and the test"
-              (is (not= :success (:status result)))
-              (is (str/includes? messages "\"Nightly\" names the same test more than once"))
-              (is (str/includes? messages (str "card test " (:entity_id t)))))
-            (testing "and leaves the suite as it was"
-              (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))
+(defn- pull-messages!
+  "The result of a pull of `url` from `version`, or what it threw, and the messages of that throwable and its causes, or
+  the printed result."
+  [url version]
+  (let [result (try (remote-sync.tu/pull! url version) (catch Exception e e))]
+    [result (str/join "\n" (if (instance? Throwable result)
+                             (keep ex-message (take-while some? (iterate ex-cause result)))
+                             [(pr-str result)]))]))
 
-(deftest pull-of-a-suite-member-without-a-test-type-is-refused-test
-  (remote-sync.tu/with-repository [url]
-    (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Card      card  {:name "Card"}
-                     :model/CardTest  t     {:card_id (:id card)}
-                     :model/TestSuite suite {:name "Nightly"}]
-        (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
-        (let [{v1 :version} (remote-sync.tu/push! url nil)
-              path          (remote-sync.tu/entity-path! url "main" suite)
-              yaml-text     (remote-sync.tu/read-file! url "main" path)]
-          (is (str/includes? yaml-text "  test_type: card\n") "premise: the file lists the member's test type")
-          (remote-sync.tu/commit! url "main" {path (str/replace yaml-text "  test_type: card\n" "")})
-          (let [result   (try (remote-sync.tu/pull! url v1) (catch Exception e e))
-                messages (str/join "\n" (if (instance? Throwable result)
-                                          (keep ex-message (take-while some? (iterate ex-cause result)))
-                                          [(pr-str result)]))]
-            (testing "a pull of a suite file whose member has no test type fails, naming the suite"
-              (is (not= :success (:status result)))
-              (is (str/includes? messages "\"Nightly\" has a member without a test_type or test_entity_id")))
-            (testing "and leaves the suite as it was"
-              (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))
+(deftest pull-of-a-malformed-suite-file-is-refused-test
+  (doseq [[case-name edit expected]
+          [["a file that names one test twice"
+            (fn [yaml member] (str/replace yaml member (str member (str/replace member "position: 0" "position: 1"))))
+            ["\"Nightly\" names the same test more than once" "card test "]]
+           ["a file whose member has no test_type"
+            (fn [yaml _member] (str/replace yaml "  test_type: card\n" ""))
+            ["\"Nightly\" has a member without a test_type or test_entity_id"]]
+           ["a file whose member has no test_entity_id"
+            (fn [yaml _member] (str/replace yaml #"  test_entity_id: \S+\n" ""))
+            ["\"Nightly\" has a member without a test_type or test_entity_id"]]]]
+    (testing case-name
+      (remote-sync.tu/with-repository [url]
+        (remote-sync.tu/with-remote-sync [url :read-write]
+          (mt/with-temp [:model/Card      card  {:name "Card"}
+                         :model/CardTest  t     {:card_id (:id card)}
+                         :model/TestSuite suite {:name "Nightly"}]
+            (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
+            (let [{v1 :version} (remote-sync.tu/push! url nil)
+                  path          (remote-sync.tu/entity-path! url "main" suite)
+                  yaml-text     (remote-sync.tu/read-file! url "main" path)
+                  member        (str "- position: 0\n  test_entity_id: " (:entity_id t) "\n  test_type: card\n")
+                  edited        (edit yaml-text member)]
+              (is (str/includes? yaml-text member) "premise: the file lists the member as the fixture expects")
+              (is (not= yaml-text edited) "premise: the edit changed the file")
+              (remote-sync.tu/commit! url "main" {path edited})
+              (let [[result messages] (pull-messages! url v1)]
+                (testing "fails the pull with a message naming the suite"
+                  (is (not= :success (:status result)))
+                  (doseq [text expected]
+                    (is (str/includes? messages text))))
+                (testing "and leaves the suite as it was"
+                  (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))))

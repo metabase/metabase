@@ -78,13 +78,16 @@
   (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
 
 (defn- call-or-log-failure
-  "Call `thunk` and return its value. If it throws an exception, log it as a failure to `what`, a verb phrase such as
-  \"reap test runs\", and return nil, so that the caller goes on with its other work."
+  "Call `thunk` and return its value. When `thunk` throws, log the throwable as a failure to `what`, a verb phrase such
+  as \"reap test runs\", and return nil, so that the caller goes on with its other work. An `InterruptedException` is
+  rethrown, so that the thread can be stopped."
   [what thunk]
   (try
     (thunk)
-    (catch Exception e
-      (log/warnf e "Failed to %s" what)
+    (catch InterruptedException e
+      (throw e))
+    (catch Throwable t
+      (log/warnf t "Failed to %s" what)
       nil)))
 
 (mu/defn heartbeat-and-reconcile-runs! :- :nil

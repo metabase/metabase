@@ -91,8 +91,8 @@
                            :import (fn [_store _entities values _opts] (mapv keyword values))}}})
 
 (defmethod serialization/before-load :model/TestSuite [_ items]
-  ;; A hand-edited file can name a test twice, or leave a member without its test; refuse it naming the suite, rather
-  ;; than fail on a database constraint.
+  ;; A hand-edited file can name a test twice, or have a member with no test_type or test_entity_id; refuse the file with
+  ;; a message that names the suite, rather than fail on a database constraint.
   (doseq [{{suite-name :name :keys [members]} :entity} items]
     (when (some #(or (nil? (:test_type %)) (nil? (:test_entity_id %))) members)
       (throw (ex-info (tru "Test suite {0} has a member without a test_type or test_entity_id." (pr-str suite-name))

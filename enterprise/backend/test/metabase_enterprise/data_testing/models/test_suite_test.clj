@@ -133,3 +133,25 @@
                  :model/TestSuiteRun {run-id :id}   {:suite_id suite-id :status :passed}]
     (t2/delete! :model/TestSuite :id suite-id)
     (is (=? {:suite_id nil :status :passed} (t2/select-one :model/TestSuiteRun :id run-id)))))
+
+(deftest a-throw-for-test-runs-does-not-stop-the-suite-run-heartbeat-test
+  (mt/with-temp [:model/TestSuite     {suite-id :id}  {}
+                 :model/Transform     {transform-id :id} {}
+                 :model/TransformTest {test-id :id}   {:transform_id transform-id}]
+    ;; The test-run heartbeat runs only while this process owns a test run, so one is started.
+    (let [{run-id :id}      (data-testing.run-tracking/start-suite-run! suite-id nil)
+          {test-run-id :id} (data-testing.run-tracking/start-run! :transform test-id)]
+      (try
+        (doseq [[thrown-name throwable] [["an exception" (ex-info "boom" {})]
+                                         ["an error" (AssertionError. "boom")]]]
+          (testing (str thrown-name " in the test-run heartbeat still lets the suite runs heartbeat")
+            (t2/update! :model/TestSuiteRun :id run-id {:last_heartbeat (minutes-ago 10)})
+            (mt/with-dynamic-fn-redefs [data-testing.run-tracking/heartbeat-runs! (fn [_] (throw throwable))]
+              (data-testing.run-tracking/heartbeat-and-reconcile-runs!))
+            (is (recent? (t2/select-one-fn :last_heartbeat :model/TestSuiteRun :id run-id)))))
+        (testing "an interrupt is not swallowed, so the heartbeat thread can be stopped"
+          (mt/with-dynamic-fn-redefs [data-testing.run-tracking/heartbeat-runs! (fn [_] (throw (InterruptedException.)))]
+            (is (thrown? InterruptedException (data-testing.run-tracking/heartbeat-and-reconcile-runs!)))))
+        (finally
+          (data-testing.run-tracking/finish-suite-run! run-id :error nil)
+          (data-testing.run-tracking/finish-run! test-run-id :error))))))
