@@ -1542,10 +1542,10 @@
                             :inputs       []
                             :expectations card-test-expectations)
                 (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
-            (testing "the file holds the moment"
-              (is (= (t/instant now)
-                     (t/instant (:now (yaml/parse-string
-                                       (slurp (io/file dump-dir "collections" "main" "finance" "revenue" "pinned_card_test.yaml"))))))))
+            (testing "the file holds the moment, in UTC whatever offset it was set with"
+              (is (= "2026-10-13T00:00:00Z"
+                     (:now (yaml/parse-string
+                            (slurp (io/file dump-dir "collections" "main" "finance" "revenue" "pinned_card_test.yaml")))))))
             (ts/with-db dest-db
               (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
               (doseq [[model test-name] [[:model/CardTest "Pinned card test"] [:model/TransformTest "Pinned transform test"]]]

@@ -158,7 +158,7 @@
    :copy      [:entity_id :name :description :inputs :expectations]
    :transform {:card_id    (serialization/fk-transform :model/Card)
                :creator_id serialization/user-transform
-               :now        serialization/date-transform}})
+               :now        data-testing.models/now-transform}})
 
 (defmethod serialization/storage-paths :model/CardTest [_ entities _ctx]
   ;; A card's file can sit in a collection, a dashboard or a document, so its path reads all three.

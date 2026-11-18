@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-testing.models
   (:require
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
@@ -49,6 +50,15 @@
   validated on its way in and normalized on its way out."
   {:in  #(some->> % (lib/normalize ::data-testing.schema/now) (mu/validate-throw ::data-testing.schema/now))
    :out #(some->> % (lib/normalize ::data-testing.schema/now))})
+
+(def now-transform
+  "The serialization transform of a saved test's `now`, written in UTC so that a moment exports as the same text on
+  every app DB."
+  {:export (fn [store batch values opts]
+             (serialization/export-dates store batch
+                                         (mapv #(some-> % t/instant (t/offset-date-time (t/zone-offset 0))) values)
+                                         opts))
+   :import serialization/import-dates})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
@@ -233,7 +243,7 @@
    :copy      [:entity_id :name :description :inputs :expectations]
    :transform {:transform_id (serialization/fk-transform :model/Transform)
                :creator_id   serialization/user-transform
-               :now          serialization/date-transform}})
+               :now          now-transform}})
 
 (defn subject-storage-paths
   "The storage path of each of `tests`, saved tests whose `subject-key` holds the entity id of a row of
