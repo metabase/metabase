@@ -127,6 +127,17 @@
         (is (= (mock-config-with-setting "Parrot Hilton")
                (#'advanced-config.file/config (mock-config-with-setting "{{env config-file-bird-name}}") {:expand-templates? true})))))))
 
+(deftest ^:parallel expand-template-env-var-with-digits-test
+  (testing "env var names with a digit next to a letter resolve to the key environ stores them under"
+    (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env*
+                                                :my-pg2-password  "digit in word"
+                                                :my-pg-2-password "digit as segment")]
+      (are [template expected] (= (mock-config-with-setting expected)
+                                  (#'advanced-config.file/config (mock-config-with-setting template) {:expand-templates? true}))
+        "{{env MY_PG2_PASSWORD}}"  "digit in word"
+        "{{env my-pg2-password}}"  "digit in word"
+        "{{env MY_PG_2_PASSWORD}}" "digit as segment"))))
+
 (deftest ^:parallel expand-template-env-var-values-validation-test
   (testing "(config) should walk the config map and expand {{template}} forms"
     (testing "env var values"

@@ -81,8 +81,8 @@
   ```
 
   Replaces the template with the value of an environment variable. The template consisting of two parts: the word
-  `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after passing the
-  symbol thru [[csk/->kebab-case-keyword]]. This means it is case-insensitive and `lisp-case`/`snake_case`
+  `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after normalizing
+  the symbol the same way environ normalizes names. This means it is case-insensitive and `lisp-case`/`snake_case`
   insensitive, and Java system properties are supported as well, provided you replace dots in their names with slashes
   or underscores. In other words, this works as well:
 
@@ -193,7 +193,10 @@
 
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
-  (get *env* (keyword (u/->kebab-case-en env-var-name))))
+  ;; Match how environ builds its keys: lower case, with `_` and `.` turned into `-`. `/` is turned into `-` too, so
+  ;; `{{env user/dir}}` finds the `user.dir` system property. A camel-snake-kebab conversion would not match: it puts
+  ;; a `-` between a letter and a digit, so `PG2` would look up `:pg-2` instead of `:pg2`.
+  (get *env* (keyword (str/replace (u/lower-case-en (str env-var-name)) #"[_./]" "-"))))
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}
