@@ -96,7 +96,7 @@ export type MetabotCardBaseline = Pick<
 > &
   Partial<Pick<Card, "display">>;
 
-/** A question Metabot is opening; the query builder init of `url` consumes it. */
+/** A question Metabot is opening, read and cleared by the next query builder init. */
 export type PendingMetabotCard = {
   /** `pathname + hash` of the location the init must match. */
   url: string;

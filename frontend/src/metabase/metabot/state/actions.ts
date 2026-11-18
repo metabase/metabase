@@ -522,9 +522,9 @@ const getViewedDashboardId = (): DashboardId | undefined => {
 };
 
 /**
- * Opens a chart or dashboard that Metabot generated. A native card opens as
- * Metabot's SQL, so the query builder does not count it as the user's unsaved
- * work until they change it.
+ * Opens a chart or dashboard that Metabot generated. Marks a card as Metabot's,
+ * so the query builder does not count a native one as the user's unsaved work
+ * until they change it.
  */
 const openGeneratedEntity =
   (entity: GeneratedEntity) => (dispatch: Dispatch) => {
@@ -556,7 +556,7 @@ const openTurnDestination =
     // ad-hoc questions share a pathname and differ in the hash
     const hasUserMoved =
       getRouterUrl() !== startUrl || getIsNavigationPending();
-    const isChartFromDashboard =
+    const isChartWhileOnDashboard =
       destination.type === "generated-entity" &&
       destination.entity.type === "card" &&
       viewedDashboardId != null;
@@ -565,7 +565,7 @@ const openTurnDestination =
       destination.dashboardId === viewedDashboardId;
     const shouldStay =
       hasUserMoved ||
-      isChartFromDashboard ||
+      isChartWhileOnDashboard ||
       isViewingDestination ||
       hasUnsavedChanges();
     if (shouldStay) {

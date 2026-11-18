@@ -483,7 +483,7 @@ async function handleQBInit(
     return;
   }
 
-  // Any init clears it, so a reload or a later page never sees it
+  // Every init clears it; only the matching one uses it
   const pendingMetabotCard = getPendingMetabotCard(getState());
   if (pendingMetabotCard) {
     dispatch(setPendingMetabotCard(null));
