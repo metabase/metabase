@@ -423,6 +423,19 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("names a table's row security Rows filtered in All permissions, as the Data section does", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+    });
+    await userEvent.click(await findAllPermissions());
+
+    const status = await findRowStatus("Orders View data");
+
+    expect(status).toHaveTextContent("Rows filtered");
+    expect(status).not.toHaveTextContent("Row and column security");
+  });
+
   it("folds every permission away, Create queries included, until asked", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },

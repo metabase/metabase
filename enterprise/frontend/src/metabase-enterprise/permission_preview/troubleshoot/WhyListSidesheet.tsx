@@ -1095,7 +1095,11 @@ function PermissionRow({
       status={
         <StatusButton
           option={getPreviewOption(target.column, target.cell.value)}
-          label={getWhyValueLabel(target.column, target.cell.value)}
+          label={
+            target.cell.value === "sandboxed"
+              ? getDataStatusLabel(target)
+              : getWhyValueLabel(target.column, target.cell.value)
+          }
           onClick={onOpen}
         />
       }
