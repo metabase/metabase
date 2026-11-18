@@ -175,12 +175,12 @@
             (is (nil? (get-in part [:dashcard :series-results 0 :result :data :referenced_entities])))))))))
 
 (deftest execute-card-without-goals-runs-no-goal-values-test
-  (testing "a card that draws no dynamic goal doesn't ask for goal values"
+  (testing "a card that draws no dynamic goal runs no goal source"
     (mt/with-temp [:model/Card {card-id :id} {:display                :gauge
                                               :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
                                               :visualization_settings {:gauge.segments [{:min 0 :max 500 :color "#84BB4C"}]}}]
       (let [calls (atom 0)]
-        (mt/with-dynamic-fn-redefs [dynamic-goals/chart-goal-values (fn [& _] (swap! calls inc) {})]
+        (mt/with-dynamic-fn-redefs [dynamic-goals/run-source (fn [& _] (swap! calls inc) {:status "completed"})]
           (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
             (check-result-structure (:result part))
             (is (not (contains? (get-in part [:result :data]) :referenced_entities)))))
