@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.data-testing.runner-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
@@ -58,6 +59,8 @@
 (def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
 
 (deftest definition-is-one-closed-schema-test
+  (testing "the runner's definition names the subject namespace's schema, rather than a copy of it"
+    (is (= ::data-testing.subject/definition (mc/form (mc/deref (mr/schema ::data-testing.runner/definition))))))
   (let [definition {:inputs [] :expectations [] :parameters {"id" 1}}]
     (doseq [schema [::data-testing.runner/definition ::data-testing.subject/definition]]
       (testing (str schema " admits the inputs, expectations and parameters of a test")
