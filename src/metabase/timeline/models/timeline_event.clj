@@ -1,40 +1,58 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------------ Setup -------------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/TimelineEvent  [_model] :timeline_event)
 
 (doto :model/TimelineEvent
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
-;;;; schemas
+(defmethod events/spec :model/TimelineEvent
+  [_model]
+  {:create :event/timeline-event-create
+   :update :event/timeline-event-update
+   :delete :event/timeline-event-delete})
 
 (def default-icon
   "The default icon for Timeline and TimelineEvents."
   "star")
 
-(def Icon
-  "Schema for Timeline and TimelineEvents `icon`"
-  ;; using "mail" icon is deprecated, but we keep it for backwards compatibility
-  [:enum default-icon "cake" "mail" "mail_at" "warning" "bell" "cloud"
-   "info" "note" "event"])
+(defn valid-timezone?
+  "Whether `timezone` names a time zone."
+  [timezone]
+  (try
+    (boolean (java.time.ZoneId/of timezone java.time.ZoneId/SHORT_IDS))
+    (catch java.time.DateTimeException _
+      false)))
+
+(def Timezone
+  "Schema for the `timezone` of a TimelineEvent a request writes: a string naming a time zone."
+  (mu/with-api-error-message
+   [:and :string [:fn valid-timezone?]]
+   (deferred-tru "Invalid Timeline event timezone.")))
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
   Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
   with an API call. An API call is indicated by having no source key in the `timeline-event` request."
   [:enum "collections" "question" "dashboard"])
-
-;;;; transforms
 
 (t2/define-after-select :model/TimelineEvent
   [timeline-event]
@@ -43,19 +61,62 @@
   (update timeline-event :icon (fn [icon]
                                  (if (= icon "balloons") default-icon icon))))
 
-;;;; permissions
+;;; ------------------------------------------------------ Hooks -------------------------------------------------------
 
-(defmethod mi/perms-objects-set :model/TimelineEvent
-  [event read-or-write]
-  (let [timeline (or (:timeline event)
-                     (timeline.db/timeline (:timeline_id event)))]
-    (mi/perms-objects-set timeline read-or-write)))
+(t2/define-before-insert :model/TimelineEvent
+  [row]
+  (cond-> row
+    (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
+
+(t2/define-before-update :model/TimelineEvent
+  [event]
+  (let [changes (t2/changes event)]
+    (when (contains? changes :creator_id)
+      (throw (ex-info (tru "You cannot change the creator of a Timeline event.") {:status-code 400})))
+    event))
+
+;;; --------------------------------------------------- Permissions ----------------------------------------------------
+
+(defn- timeline-permissions
+  "Whether the current user passes `check`, `mi/can-read?` or `mi/can-write?`, on the Timeline of each of `events`, by
+  Timeline id, the Timelines hydrated with `k` together."
+  [k check events]
+  (run! #(when % (api/check-500 (contains? % :timeline_id) "No :timeline_id is set for a TimelineEvent.")) events)
+  (let [ids (into [] (comp (remove nil?) (keep :timeline_id) (distinct)) events)]
+    (if (seq ids)
+      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-id ids)) k))
+      {})))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_read]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-read? events)]
+    (for [event events]
+      (when event
+        (vary-meta event assoc :can_read (boolean (get permissions (:timeline_id event))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_write]
+  [_model k events]
+  (let [permissions (timeline-permissions k mi/can-write? events)]
+    (for [event events]
+      (when event
+        (assoc event :can_write (boolean (get permissions (:timeline_id event))))))))
+
+(defn- timeline-of
+  "The Timeline with `timeline-id`, or a 404 when there is none."
+  [timeline-id]
+  (api/check-404 (when timeline-id (timeline.db/timeline timeline-id))))
 
 (defmethod mi/can-create? :model/TimelineEvent
-  [_ {:keys [timeline]}]
-  (mi/can-create? :model/Timeline {:collection_id (:collection_id timeline)}))
+  [_model {timeline-id :timeline_id}]
+  (mi/can-create? :model/Timeline {:collection_id (:collection_id (timeline-of timeline-id))}))
 
-;;;; hydration
+(defmethod mi/can-update? :model/TimelineEvent
+  [event changes]
+  (and (mi/can-write? event)
+       (or (not (api/column-will-change? (:timeline_id event) (get changes :timeline_id ::api/not-provided)))
+           (mi/can-write? (t2/hydrate (timeline-of (:timeline_id changes)) :can_write)))))
+
+;;; ---------------------------------------------------- Hydration -----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :timeline]
   [_model k events]
@@ -97,18 +158,19 @@
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
-;;;; model
+;;; -------------------------------------------------- Serialization ---------------------------------------------------
 
-;;;; serialization
+(defmethod serialization/spec :model/TimelineEvent [_]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
+   :parent    {:model :model/Timeline :key :timeline_id :order (juxt :name :entity_id)}
+   :transform {:timeline_id serialization/import-only-transform
+               :creator_id serialization/user-transform
+               :timestamp  serialization/date-transform}
+   :defaults  {:archived false}})
 
-(defmethod serdes/generate-path "TimelineEvent" [_ event]
-  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
-   (serdes/infer-self-path "TimelineEvent" event)])
+;;; --------------------------------------------------- Remote sync ----------------------------------------------------
 
-(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
-   :skip      []
-   :transform {:creator_id  (serdes/fk :model/User)
-               :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}
-   :defaults {:archived false}})
+(defmethod remote-sync/spec :model/TimelineEvent
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timeline-events-clause})

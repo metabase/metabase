@@ -13,11 +13,11 @@
          (recovery-hints/recovery-hint {:error :ambiguous-field}))))
 
 (deftest ^:parallel cross-database-hint-test
-  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "A query can only reference saved questions, models, metrics, measures and segments "
-                  "from its own database. Use one from that database, or change the source to a table "
-                  "in the referenced item's database.")
+      (is (= (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, "
+                  "in a notebook query or in SQL. Tell the user that you can't combine data from these two databases "
+                  "in one query, and say what you can do instead.")
              (recovery-hints/recovery-hint {:error error}))))))
 
 (deftest ^:parallel ambiguous-database-name-hint-test

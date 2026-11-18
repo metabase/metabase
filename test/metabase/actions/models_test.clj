@@ -12,12 +12,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -219,16 +220,90 @@
                                                         :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
                                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
           (is (= model-db-id (:database_id (action/select-action :id action-id))))))
-      (testing "update! re-derives :database_id from the query"
+      (testing "update! refuses a :database_id without its query"
         (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
                                                        {:type          :query
                                                         :name          "derive db update"
                                                         :model_id      model-id
                                                         :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
               existing  (action/select-action :id action-id)]
-          ;; a :database_id-only update can't repoint the action away from the query's database
-          (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its query"
+                                (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)))
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
+
+(deftest query-action-query-must-be-native-test
+  (let [mp     (mt/metadata-provider)
+        mbql   (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+        native (lib/native-query mp "UPDATE categories SET name = 'x' WHERE id = 1")]
+    (testing "the QueryAction schema takes a native query on a database and refuses an MBQL one"
+      (is (mr/validate ::actions.schema/query-action.update {:dataset_query native}))
+      (is (not (mr/validate ::actions.schema/query-action.update {:dataset_query mbql}))))
+    (testing "the Action create request schema needs a native query for a query action"
+      (is (not (mr/validate ::actions.schema/action.create-request
+                            {:type :query, :name "Checked", :dataset_query mbql})))
+      (is (not (mr/validate ::actions.schema/action.create-request {:type :query, :name "Checked"})))
+      (is (mr/validate ::actions.schema/action.create-request
+                       {:type :query, :name "Checked", :dataset_query native})))))
+
+(defn- insert-bare-action!
+  "Insert the Action row of `action-type`, without a model, a collection or its details, and return its id."
+  [action-type]
+  (t2/insert-returning-pk! :model/Action {:name       "Bare"
+                                          :type       action-type
+                                          :creator_id (mt/user->id :crowberto)}))
+
+(deftest action-type-is-query-or-implicit-test
+  (testing "the Action schema takes a query or an implicit action only"
+    (is (not (mr/validate ::actions.schema/action.for-insert {:type :http, :name "Bare"})))
+    (is (not (mr/validate ::actions.schema/action.for-update {:type :http})))
+    (is (mr/validate ::actions.schema/action.for-update {:type :implicit}))))
+
+(deftest query-action-database-is-derived-test
+  (testing "the database of a query action is the one of its query, however it is written"
+    (mt/with-model-cleanup [:model/Action]
+      (let [action-id (insert-bare-action! :query)
+            mp        (mt/metadata-provider)]
+        (t2/insert! :model/QueryAction {:action_id     action-id
+                                        :database_id   Integer/MAX_VALUE
+                                        :dataset_query (lib/native-query mp "UPDATE categories SET name = 'x'")})
+        (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id action-id)))
+        (testing "and can't be changed without its query"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its query"
+                                (t2/update! :model/QueryAction :action_id action-id {:database_id Integer/MAX_VALUE})))
+          (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id action-id))))
+        (testing "while a new query sets it"
+          (t2/update! :model/QueryAction :action_id action-id
+                      {:database_id   Integer/MAX_VALUE
+                       :dataset_query (lib/native-query mp "UPDATE categories SET name = 'y'")})
+          (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id action-id))))))))
+
+(deftest action-details-match-action-type-test
+  (testing "an action has the details of its type, however they are written"
+    (mt/with-model-cleanup [:model/Action]
+      (let [query-id    (insert-bare-action! :query)
+            implicit-id (insert-bare-action! :implicit)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"have to match its type"
+                              (t2/insert! :model/ImplicitAction {:action_id query-id, :kind "row/create", :table_id (mt/id :venues)})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"have to match its type"
+                              (t2/insert! :model/QueryAction {:action_id     implicit-id
+                                                              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")})))
+        (is (not (t2/exists? :model/ImplicitAction :action_id query-id)))
+        (is (not (t2/exists? :model/QueryAction :action_id implicit-id)))))))
+
+(deftest implicit-action-kind-test
+  (testing "the ImplicitAction schema takes a row create, update or delete"
+    (is (not (mr/validate ::actions.schema/implicit-action.update {:kind :row/upsert})))
+    (is (mr/validate ::actions.schema/implicit-action.update {:kind :row/create}))))
+
+(deftest actions-written-together-test
+  (testing "several actions inserted or updated in one statement are checked each"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-model-cleanup [:model/Action]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action without a model can only go in"
+                              (t2/insert! :model/Action [{:name "Root", :type :query, :creator_id (mt/user->id :crowberto)}
+                                                         {:name "Elsewhere", :type :query, :collection_id coll-id
+                                                          :creator_id (mt/user->id :crowberto)}])))
+        (is (not (t2/exists? :model/Action :name "Root")))))))
 
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -263,11 +338,11 @@
                                           :table_id      (mt/id :categories)}))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
-            (is (true? (mi/can-write? elsewhere)))
+            (is (true? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (true? (mi/can-create? :model/Action (action-in app-id))))
             (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
           (mt/with-test-user :rasta
-            (is (false? (mi/can-write? elsewhere)))
+            (is (false? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (false? (mi/can-create? :model/Action (action-in app-id))))
             (is (false? (mi/can-update? elsewhere {:collection_id app-id})))))))))
 
@@ -453,17 +528,25 @@
                             (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})))
       (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))))
 
-(deftest load-moves-action-to-another-model-test
-  (testing "a serdes load can move an action to another model, as exports from before the model was fixed can hold such a move"
+(deftest model-update-moves-action-to-another-model-test
+  (testing "a model update can move an action to another model, as SerDes loads of exports from before the model was fixed do"
     (mt/with-temp [:model/Collection {other-coll :id} {}
                    :model/Card       {other-id :id}   {:type :model :dataset_query (table-query :categories)
                                                        :collection_id other-coll}]
       (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
-        (binding [mi/*deserializing?* true]
-          (t2/update! :model/Action :id action-id {:model_id other-id :collection_id other-coll}))
+        (t2/update! :model/Action :id action-id {:model_id other-id :collection_id other-coll})
         (is (= {:model_id other-id :collection_id other-coll}
                (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
+
+(deftest action-update-cannot-change-model-test
+  (testing "the update function refuses to move an action to another model"
+    (mt/with-temp [:model/Card {other-id :id} {:type :model :dataset_query (table-query :categories)}]
+      (mt/with-actions [{model-id :id}      {:type :model :dataset_query (table-query :categories)}
+                        {:keys [action-id]} {:type :query}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model can't be changed"
+                              (action/update! {:id action-id :model_id other-id} (action/select-action :id action-id))))
+        (is (= model-id (t2/select-one-fn :model_id :model/Action :id action-id)))))))
 
 (deftest switching-to-implicit-checks-the-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -650,35 +733,46 @@
 (deftest load-skips-http-actions-test
   (testing "HTTP actions from older exports are skipped on load"
     (let [entity-id (u/generate-nano-id)]
-      (serdes/load-one! {:type        "http"
-                         :name        "Old HTTP action"
-                         :entity_id   entity-id
-                         :serdes/meta [{:model "Action" :id entity-id}]}
-                        nil)
+      (serialization/load :model/Action [{:type        "http"
+                                          :name        "Old HTTP action"
+                                          :entity_id   entity-id
+                                          :serdes/meta [{:model "Action"}]}])
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
 
 (deftest load-table-action-without-its-table-test
-  (testing "a table action doesn't depend on its table for serdes, and loading it makes a stub of a table that isn't there"
+  (testing "table action doesn't depend on its table for serdes, and loading it makes stub of table that isn't there"
     (mt/with-model-cleanup [:model/Action :model/Table]
       (let [action-id (action/insert! {:type :implicit :name "On categories" :kind :row/create
                                        :table_id (mt/id :categories) :creator_id (mt/user->id :crowberto)})
             entity-id (u/generate-nano-id)
-            exported  (-> (u/rfirst (serdes/extract-all "Action" {:filter-column :id :filter-ids [action-id]}))
-                          (assoc :entity_id entity-id :serdes/meta [{:model "Action" :id entity-id :label "copy"}])
+            exported  (-> (u/rfirst (serialization/export :model/Action (t2/select :model/Action :id action-id)))
+                          (assoc :entity_id entity-id)
                           (assoc-in [:implicit 0 :table_id] [(:name (mt/db)) "PUBLIC" "NOT_SYNCED_YET"]))]
-        (is (= #{} (set (filter #(= "Table" (:model (last %))) (serdes/deserialization-dependencies exported)))))
-        (serdes/load-one! exported nil)
+        (is (= #{} (set (filter #(= :model/Table (first %)) (first (serialization/import-dependencies :model/Action [exported]))))))
+        (serialization/load :model/Action [exported])
         (let [table-id (t2/select-one-fn :table_id :model/ImplicitAction
                                          :action_id (t2/select-one-pk :model/Action :entity_id entity-id))]
           (is (= "NOT_SYNCED_YET" (t2/select-one-fn :name :model/Table :id table-id))))))))
 
 (deftest storage-path-test
-  (testing "actions without a model in the data actions root or namespace are stored in the data_actions folder"
+  (testing "actions without model in data actions root or namespace are stored in data_actions folder"
     (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
                    :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
       (let [folder-label (fn [action]
-                           (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
+                           (:label (second (first (serialization/batch-storage-paths
+                                                   [(assoc action :serdes/meta [{:model "Action"}])])))))]
         (is (= "data_actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
         (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
-        (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
+        (is (= "data_apps" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))
+
+(deftest ^:parallel query-action-import-dependencies-test
+  (testing "query action depends on what its query uses, whether its exported type is keyword or string"
+    (let [card-eid (apply str (repeat 21 \d))]
+      (doseq [action-type [:query "query"]]
+        (testing (pr-str action-type)
+          (is (contains? (first (serialization/import-dependencies
+                                 :model/Action
+                                 [{:type  action-type
+                                   :query [{:dataset_query {:source-card card-eid}}]}]))
+                         [:model/Card card-eid])))))))

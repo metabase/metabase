@@ -113,6 +113,11 @@
            (tools.error/classify (ex-info "a plain failure" {:status-code 500}))))
     (is (= {:class :unrecoverable :code :internal}
            (tools.error/classify (RuntimeException. "boom")))))
+  (testing "a JVM error and an interrupt get codes of their own"
+    (is (= {:class :unrecoverable :code :jvm-error}
+           (tools.error/classify (StackOverflowError.))))
+    (is (= {:class :unrecoverable :code :interrupted}
+           (tools.error/classify (InterruptedException.)))))
   (testing "classify reads the top-level exception only — wrapping a declared error demotes it,
            which is the safe direction"
     (let [declared (is (thrown? clojure.lang.ExceptionInfo (test-custom-status! {:id 1})))]

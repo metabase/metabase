@@ -75,6 +75,16 @@ describe("ChartSettingInputNumber", () => {
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
+  // for consistency with Mantine's NumberInput
+  // (see https://github.com/metabase/metabase/pull/86158)
+  it("allows comma as a decimal separator", async () => {
+    const { input, onChange } = setup();
+
+    await type({ input, value: "1,23" });
+    expect(input).toHaveDisplayValue("1.23");
+    expect(onChange).toHaveBeenCalledWith(1.23);
+  });
+
   it("allows scientific notation", async () => {
     const { input, onChange } = setup();
 
@@ -214,24 +224,19 @@ describe("ChartSettingInputNumber", () => {
     await type({ input, value: "asdf" });
     expect(input).toHaveDisplayValue("");
     expect(onChange).not.toHaveBeenCalled();
-
-    // Inputs with `e` that are not valid scientific notation
-    type({ input, value: "e123" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
-
-    type({ input, value: "e123e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
-
-    type({ input, value: "1e23e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
-
-    type({ input, value: "e1e23e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
   });
+
+  it.each(["e123", "e123e", "1e23e", "e1e23e"])(
+    "marks %s, which is not valid scientific notation, as invalid",
+    async (value) => {
+      const { input, onChange } = setup();
+
+      await type({ input, value });
+      expect(input).toHaveDisplayValue(value);
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(onChange).toHaveBeenLastCalledWith(undefined);
+    },
+  );
 
   it("renders the `value` prop on load", () => {
     const { input } = setup({ value: 123 });

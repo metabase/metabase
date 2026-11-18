@@ -5,7 +5,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
@@ -14,6 +13,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -42,7 +42,9 @@
 
 (defmethod model-details :model/ApiKey
   [entity _event-type]
-  (select-keys entity [:name :group :key_prefix :user_id]))
+  ;; only scoped keys carry a scope, so an auditor can tell a narrow key from a whole-API key
+  (cond-> (select-keys entity [:name :group :key_prefix :user_id])
+    (:scope entity) (assoc :scope (:scope entity))))
 
 (defmethod model-details :model/Card
   [{card-type :type, :as card} _event-type]
@@ -179,11 +181,12 @@
 (defn- stringify-keys
   "Recursively turns the keyword keys of maps nested inside `x` into strings, keeping their namespaces."
   [x]
-  (walk/postwalk #(cond-> % (map? %) (update-keys (fn [k] (cond-> k (keyword? k) u/qualified-name)))) x))
+  (match/replace-all x
+    #'map? (update-keys &match #(cond-> % (keyword? %) u/qualified-name))))
 
 (def ^:private AuditedInstance
   "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."
-  [:map {:closed false, ::mr/deliberately-open true, :description "an audited entity"}])
+  [:map {:closed false, :description "an audited entity"}])
 
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
@@ -222,39 +225,25 @@
                                    (prepare-update-event-data object-details previous-details)
                                    object-details)))})))
 
-(mu/defn record-event!
-  "Records an event in the Audit Log.
-
-  `topic` is a keyword representing the type of event being recorded, e.g. `:dashboard-create`. If the keyword is
-  namespaced (e.g. `:event/dashboard-create`) the namespace is stripped before the event is recorded.
-
-  `params` is a map that can optionally include the following fields:
-  - `:object`: the object the event is acting on, e.g. a `Card` instance
-  - `:previous-object`: the previous version of the object, for update events
-  - `:user-id`: the user ID that initiated the event (defaults: `api/*current-user-id*`)
-  - `:model`: the name of the model the event is acting on, e.g. `:model/Card` or \"Card\" (default: model of `:object`)
-  - `:model-id`: the ID of the model the event is acting on (default: ID of `:object`)
-  - `:details`: a map of arbitrary details relevant to the event, which is recorded as-is (default: {})
-
-  `:object` and `:previous-object` both have `model-details` called on them to determine which fields should be audited,
-  then they are added to `:details` before the event is recorded. `:previous-object` is only included if any audited fields
-  were updated.
-
-  Under certain conditions this function does _not_ insert anything into the audit log.
-  - If nothing is logged, returns nil
-  - Otherwise, returns the audit logged row."
+(mu/defn audit-row :- [:maybe :map]
+  "The Audit Log row that [[record-rows!]] inserts for `topic` and `params`, or nil when it would insert none."
   [topic :- :keyword
    params :- ::event-params]
   (when (premium-features/log-enabled?)
-    (span/with-span!
-      {:name       "record-event!"
-       :attributes (cond-> {}
-                     (:model-id params) (assoc :model/id (:model-id params))
-                     (:user-id params) (assoc :user/id (:user-id params))
-                     (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
-      (let [{:keys [user-id model-name model-id details unqualified-topic]}
-            (construct-event topic params api/*current-user-id*)]
-        (audit-app.db/insert-audit-log! unqualified-topic details model-name model-id user-id)))))
+    (let [{:keys [user-id model-name model-id details unqualified-topic]}
+          (construct-event topic params api/*current-user-id*)]
+      {:topic    unqualified-topic
+       :details  details
+       :model    model-name
+       :model_id model-id
+       :user_id  user-id})))
+
+(defn record-rows!
+  "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."
+  [rows]
+  (when (seq rows)
+    (span/with-span! {:name "record-rows!" :attributes {:audit/rows (count rows)}}
+      (audit-app.db/insert-audit-logs! rows))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

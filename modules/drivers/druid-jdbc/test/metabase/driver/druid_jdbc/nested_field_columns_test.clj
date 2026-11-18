@@ -11,6 +11,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -143,7 +144,7 @@
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                          (assoc (get-field) :json_unfolding v)))
+                                                                          {:json_unfolding v}))
                     set-json-unfolding-for-db! (fn [v]
                                                  (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -159,9 +160,8 @@
                             and json unfolding is already enabled for the DB"
                   (set-json-unfolding-for-field! false)
                   (set-json-unfolding-for-db! true)
-                  (set-json-unfolding-for-field! true)
-                  ;; Wait for the sync to finish
-                  (Thread/sleep 500)
+                  (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
+                    (set-json-unfolding-for-field! true))
                   (is (seq (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled for the DB"
                   (set-json-unfolding-for-db! true)
@@ -190,7 +190,7 @@
                   get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                   set-json-unfolding-for-field! (fn [v]
                                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                        (assoc field :json_unfolding v)))
+                                                                        {:json_unfolding v}))
                   set-json-unfolding-for-db! (fn [v]
                                                (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))

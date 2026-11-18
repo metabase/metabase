@@ -7,11 +7,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -19,18 +18,17 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- user-table
-  "The Table with `table-id` as users see it. A bare `t2/select :model/Table` shows what sync wrote."
+  "The Table with `table-id`."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (defn- user-tables
-  "The Tables with `table-ids` as users see it, ordered by `order-by`."
+  "The Tables with `table-ids`, ordered by `order-by`."
   [table-ids order-by]
-  (t2/select :model/Table :id [:in table-ids] {:from     [(warehouse-schema-overlay/table-query)]
-                                               :order-by [order-by]}))
+  (t2/select :model/Table :id [:in table-ids] {:order-by [order-by]}))
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
   (get (user-table table-id) column))
 
@@ -465,8 +463,7 @@
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
           (mt/with-current-user (mt/user->id :crowberto)
-            (collection/archive-or-unarchive-collection!
-             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+            (t2/update! :model/Collection :id coll-a {:archived true}))
           (testing "Table X (in the archived collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"

@@ -82,6 +82,7 @@ liability it usually is.
 - [ ] Separate `deftest` forms for distinct test cases
 - [ ] Pure tests marked `^:parallel`
 - [ ] Test names end in `-test` or `-test-<number>`
+- [ ] Test queries, fixtures included, built with `lib/` (`lib/query`, `lib/native-query`), never hand-written maps
 
 ### Modules
 
@@ -89,6 +90,16 @@ liability it usually is.
 - [ ] API endpoints in `<module>.api` namespaces
 - [ ] Public API in `<module>.core` with Potemkin
 - [ ] No cheating module linters with `:clj-kondo/ignore [:metabase/modules]`
+
+### Models
+
+See the `backend-model-rules` skill.
+
+- [ ] A rule every writer must obey is in a hook, so a writer that calls no endpoint still obeys it
+- [ ] Hooks read no current user and do not depend on who the writer is
+- [ ] Derived columns are computed in hooks and absent from request schemas
+- [ ] Per-user rules are in `:can_read` / `:can_write` hydrations, `mi/can-create?` or `mi/can-update?`
+- [ ] Uniqueness rules have a unique index
 
 ### REST API
 

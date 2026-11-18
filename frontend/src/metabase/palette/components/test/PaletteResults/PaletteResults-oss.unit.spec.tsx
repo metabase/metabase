@@ -136,8 +136,8 @@ describe("PaletteResults", () => {
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
-    await waitFor(async () => {
-      expect(await screen.findByText("Results")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Results")).toBeInTheDocument();
     });
 
     expect(
@@ -195,6 +195,40 @@ describe("PaletteResults", () => {
     const option = await screen.findByRole("option", { name: "Link Test" });
     expect(option).toHaveTextContent("Data app");
     expect(option).not.toHaveTextContent("Shorebirds");
+  });
+
+  it("should label a dashboard question search result with its dashboard, not its collection", async () => {
+    setup({
+      query: "Total",
+      searchItems: [
+        createMockSearchResult({
+          id: 8,
+          model: "card",
+          name: "Total Orders Dashboard Question",
+          collection: createMockCollection({ name: "Shorebirds" }),
+          dashboard: {
+            id: 5,
+            name: "Orders in a dashboard",
+            moderation_status: null,
+          },
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", {
+      name: "Total Orders Dashboard Question",
+    });
+    expect(option).toHaveTextContent("Orders in a dashboard");
+    expect(option).not.toHaveTextContent("Shorebirds");
+
+    const paletteSearchRequests = fetchMock.callHistory
+      .calls("path:/api/search")
+      .map((call) => new URL(call.url).searchParams)
+      .filter((params) => params.get("q") === "Total");
+    expect(paletteSearchRequests.length).toBeGreaterThan(0);
+    paletteSearchRequests.forEach((params) =>
+      expect(params.get("include_dashboard_questions")).toBe("true"),
+    );
   });
 
   it("should display collections that search results are from", async () => {

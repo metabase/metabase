@@ -11,8 +11,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -42,14 +42,16 @@
   [:fn
    {:error/fn  (fn [_ _]
                  (i18n/tru "invalid value for prefix"))
-    :api/regex #"[A-Za-z]+"}
+    :api/regex   #"[A-Za-z]+"
+    :json-schema {:type "string"}}
    (fn [prefix]
      (some #(not-empty (automagic-dashboards.dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))])
 
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
    [:fn
-    {:api/regex #"[A-Za-z]+"}
+    {:api/regex   #"[A-Za-z]+"
+     :json-schema {:type "string"}}
     (fn [dashboard-template]
       (some (fn [toplevel]
               (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template
@@ -85,7 +87,8 @@
    ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
    ;; `+` and `/`... accept either for now I guess
    {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
-    :error/fn  (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
+    :error/fn    (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))
+    :json-schema {:type "string"}}
    decode-base64-json])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -195,12 +198,12 @@
     :api/regex #"(?:[A-Za-z0-9\-._~=]|%[0-9A-Fa-f]{2})+"}])
 
 (def ^:private ComparisonEntity
-  (let [entity-types [:adhoc :segment :table]]
+  (let [entity-types [:adhoc :question :segment :table]]
     (mu/with-api-error-message
      (into [:enum
             {:api/regex (u.regex/re-or (map name entity-types))}]
            entity-types)
-     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""))))
+     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""))))
 
 (defn- coerce-show
   "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."
@@ -232,9 +235,10 @@
 
 (defn- dashboard-metadata [dashboard]
   (letfn [(normalize-card [card]
-            (-> card
-                (m/update-existing :dataset_query lib-be/normalize-query)
-                (dissoc :id)))
+            (->> (-> card
+                     (m/update-existing :dataset_query lib-be/normalize-query)
+                     (dissoc :id))
+                 (lib/normalize ::queries.schema/card)))
           (normalize-series [series]
             (map normalize-card series))
           (normalize-dashcard [{:keys [card], :as dashcard}]
@@ -265,8 +269,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
-      (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
+    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table :can_read)]
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]
         {:linked-table-id table_id

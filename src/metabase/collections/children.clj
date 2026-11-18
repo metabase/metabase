@@ -30,6 +30,7 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.schema :as revisions.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.upload.core :as upload]
@@ -37,7 +38,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -127,14 +127,13 @@
                 [:= :namespace nil])
               (when (seq namespaces)
                 [:in :namespace namespaces])]
-             (collection/visible-collection-filter-clause
-              :id
-              {:include-archived-items    (if archived
-                                            :only
-                                            :exclude)
-               :include-trash-collection? true
-               :permission-level          :read
-               :archive-operation-id      nil})]
+             (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items    (if archived
+                                                                                                                           :only
+                                                                                                                           :exclude)
+                                                                                              :include-trash-collection? true
+                                                                                              :permission-level          :read
+                                                                                              :archive-operation-id      nil
+                                                                                              :root-namespace            nil})]
      ;; Order NULL collection types first so that audit collections are last
      :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                 [[[:case
@@ -329,6 +328,31 @@
                          (update :archived_directly api/bit->boolean)))
                    :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)))
 
+(defn- visible-items-options
+  "The `perms/visible-collections-filter-clause` options of a listing of Collection items, of the trash when
+  `archived?`, a nil collection id standing for the root Collection of the `:root-namespace` option."
+  [archived? {:keys [root-namespace]}]
+  {:include-archived-items    :all
+   :permission-level          (if archived? :write :read)
+   :include-trash-collection? (boolean archived?)
+   :root-namespace            root-namespace})
+
+(defn- visible-items-clause
+  "The where-clause keeping the items whose Collection, by `collection-id-field`, the current user sees in this listing:
+  the Collections they can read, or write when listing the trash, the trash then included, a nil collection id standing
+  for the root Collection of the `:root-namespace` option, which they only have to read in either listing."
+  [collection-id-field archived? options]
+  (let [clause (fn [permission-level]
+                 (perms/visible-collections-filter-clause collection-id-field
+                                                          (api/current-user-info)
+                                                          (assoc (visible-items-options archived? options)
+                                                                 :permission-level permission-level)))]
+    (if archived?
+      [:or
+       [:and [:= collection-id-field nil] (clause :read)]
+       [:and [:not= collection-id-field nil] (clause :write)]]
+      (clause :read))))
+
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state created-by-id show-exploration-documents?]}]
   (-> {:select [:document.id
@@ -347,11 +371,11 @@
        :from [[:document :document]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :document.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Document")]]
+                                   [:= :r.model (h2x/literal "Document")]
+                                   (revisions.sql/newest-revision-clause :r "Document" :document.id)]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
-               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
+               (visible-items-clause :document.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
@@ -378,37 +402,43 @@
                     (update :archived_directly api/bit->boolean)))
               :can_write :can_restore :can_delete))
 
-(def ^:private exploration-recent-edits-subquery
-  ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
-  ;; revisions of its Summary Document. `rn = 1` picks the winner.
-  ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
-  ;; the attached Document, so "Last edited" must reflect both sources.
-  ^:allow-subquery
-  {:select [:exploration_id
-            :timestamp
-            :user_id
-            [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
-                                                     :order-by     [[:timestamp :desc]]}]] :rn]]
-   :from   [[^:allow-subquery {:union-all
-                               [^:allow-subquery
-                                {:select [[:r.model_id :exploration_id]
-                                          [:r.timestamp :timestamp]
-                                          [:r.user_id   :user_id]]
-                                 :from   [[:revision :r]]
-                                 :where  [:and
-                                          [:= :r.model (h2x/literal "Exploration")]
-                                          [:= :r.most_recent true]]}
-                                ^:allow-subquery
-                                {:select [[:d.exploration_id :exploration_id]
-                                          [:r.timestamp      :timestamp]
-                                          [:r.user_id        :user_id]]
-                                 :from   [[:revision :r]]
-                                 :join   [[:document :d] [:= :d.id :r.model_id]]
-                                 :where  [:and
-                                          [:= :r.model (h2x/literal "Document")]
-                                          [:= :r.most_recent true]
-                                          [:not= :d.exploration_id nil]]}]}
-             :all_edits]]})
+(defn- exploration-recent-edits-subquery
+  "The latest edit of each exploration listed under `collection`, taking the newest of the revisions of the Exploration
+  itself and of its Summary Document, whose edits \"Last edited\" must reflect."
+  [collection]
+  (let [listed? (fn [alias]
+                  (if (collection/is-trash? collection)
+                    [:= (keyword (str alias ".archived_directly")) true]
+                    [:= (keyword (str alias ".collection_id")) (:id collection)]))]
+    ^:allow-subquery
+    {:select [:exploration_id
+              :timestamp
+              :user_id
+              [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
+                                                       :order-by     [[:timestamp :desc]]}]] :rn]]
+     :from   [[^:allow-subquery {:union-all
+                                 [^:allow-subquery
+                                  {:select [[:e.id        :exploration_id]
+                                            [:r.timestamp :timestamp]
+                                            [:r.user_id   :user_id]]
+                                   :from   [[:exploration :e]]
+                                   :join   [[:revision :r] [:and
+                                                            [:= :r.model_id :e.id]
+                                                            [:= :r.model (h2x/literal "Exploration")]
+                                                            (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
+                                   :where  (listed? "e")}
+                                  ^:allow-subquery
+                                  {:select [[:d.exploration_id :exploration_id]
+                                            [:r.timestamp      :timestamp]
+                                            [:r.user_id        :user_id]]
+                                   :from   [[:document :d]]
+                                   :join   [[:exploration :e] [:= :e.id :d.exploration_id]
+                                            [:revision :r] [:and
+                                                            [:= :r.model_id :d.id]
+                                                            [:= :r.model (h2x/literal "Document")]
+                                                            (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
+                                   :where  (listed? "e")}]}
+               :all_edits]]}))
 
 (defmethod collection-children-query :exploration
   [_ collection {:keys [archived? pinned-state]}]
@@ -427,13 +457,13 @@
                 [:ere.timestamp :last_edit_timestamp]
                 [(h2x/literal "exploration") :model]]
        :from [[:exploration :exploration]]
-       :left-join [[exploration-recent-edits-subquery :ere]
+       :left-join [[(exploration-recent-edits-subquery collection) :ere]
                    [:and
                     [:= :ere.exploration_id :exploration.id]
                     [:= :ere.rn [:inline 1]]]
                    [:core_user :u] [:= :u.id :ere.user_id]]
        :where [:and
-               (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
+               (visible-items-clause :exploration.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
                  [:= :exploration.archived_directly true]
                  [:and
@@ -466,7 +496,7 @@
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id :namespace
-            :collection_preview :dataset_query :table_id :query_type :is_upload :collection_namespace)))
+            :dataset_query :table_id :query_type :is_upload :collection_namespace)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -520,7 +550,7 @@
   (for [row rows]
     (-> (dissoc row
                 :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
-                :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
+                :dataset_query :table_id :query_type :is_upload :namespace)
         (update :archived api/bit->boolean)
         (update :archived_directly api/bit->boolean)
         (assoc :collection_namespace (some-> (:namespace collection) name)))))
@@ -530,20 +560,20 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)))
+            :dataset_query :table_id :query_type :is_upload :namespace)))
 
 (defmethod post-process-collection-children :snippet
   [_ _options _collection rows]
   (for [row rows]
     (-> (dissoc row
                 :description :collection_position :display :authority_level
-                :moderated_status :icon :personal_owner_id :collection_preview
+                :moderated_status :icon :personal_owner_id
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (assoc :collection_namespace "snippets"))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions? created-by-id]}]
   (-> {:select    (cond->
-                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
                     :dashboard_id
                     :last_used_at
                     :c.collection_id
@@ -566,15 +596,15 @@
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Card")]]
+                                   [:= :r.model (h2x/literal "Card")]
+                                   (revisions.sql/newest-revision-clause :r "Card" :c.id)]
                    [:moderation_review :mr] [:and
                                              [:= :mr.moderated_item_id :c.id]
                                              [:= :mr.most_recent true]
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
+                   (visible-items-clause :c.collection_id archived? {:root-namespace nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -622,7 +652,6 @@
       ;; pad, and out of the response body.
       (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
-      (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
@@ -686,11 +715,11 @@
                                              [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
                    [:revision :r] [:and
                                    [:= :r.model_id :d.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Dashboard")]]
+                                   [:= :r.model (h2x/literal "Dashboard")]
+                                   (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
+                   (visible-items-clause :d.collection_id archived? {:root-namespace nil})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -713,15 +742,15 @@
       (assoc :is_tenant_dashboard (collection/shared-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
-      (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
+      (dissoc :display :authority_level :icon :personal_owner_id
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
   (->> rows
        collections.util/annotate-dashboards
-       (map (partial post-process-dashboard parent-collection))))
+       (map (partial post-process-dashboard parent-collection))
+       (#(t2/hydrate % :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
@@ -737,7 +766,7 @@
   (-> (assoc
        (collection/effective-children-query
         collection
-        {:cte-name :visible_collection_ids}
+        (visible-items-options archived? {:root-namespace collection-namespace})
         [:and
          (collection-types-clause collection-types)
          (when-not include-library?
@@ -790,21 +819,17 @@
             [:t.db_id :database_id]
             [[:!= :t.archived_at nil] :archived]
             [(h2x/literal "table") :model]]
-   :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+   :from   [[(t2/table-name :model/Table) :t]]
    :where  [:and
             [:= :t.is_published true]
             (poison-when-pinned-clause pinned-state)
-            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
-            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
-            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
-            (perms/visible-table-filter-subquery-clause
+            (visible-items-clause :t.collection_id archived? {:root-namespace nil})
+            (perms/visible-tables-filter-clause
              :t.id
-             {:user-id       api/*current-user-id*
-              :is-superuser? api/*is-superuser?*}
+             (api/current-user-info)
              {:perms/view-data      :unrestricted
               :perms/create-queries :query-builder}
-             {:include-published-via-collection? true})
+             {:active-only? false, :include-published-via-collection? true})
             [:= :t.collection_id (:id collection)]
             (if archived?
               [:!= :t.archived_at nil]
@@ -813,9 +838,7 @@
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll nil
-                                                            (collection/visible-collection-filter-clause
-                                                             :id
-                                                             {:include-archived-items :all}))
+                                                            (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items :all :root-namespace nil}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 
@@ -894,19 +917,23 @@
               ;; when fetching root collection, we might have personal collection
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
-    (for [row (annotate-collections parent-collection rows options)]
-      (let [type-value (:type row)]
-        (-> (t2/instance :model/Collection row)
-            collection/maybe-localize-system-collection-name
-            collection/maybe-localize-tenant-collection-name
-            collection/maybe-mark-collection-as-library-root
-            (update :archived api/bit->boolean)
-            (update :is_remote_synced api/bit->boolean)
-            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
-            (dissoc :collection_position :display :moderated_status :icon
-                    :collection_preview :dataset_query :table_id :query_type :is_upload)
-            (assoc :type type-value)
-            update-personal-collection)))))
+    (let [rows        (annotate-collections parent-collection rows options)
+          collections (for [row rows]
+                        (-> (t2/instance :model/Collection row)
+                            collection/maybe-localize-system-collection-name
+                            collection/maybe-localize-tenant-collection-name
+                            collection/maybe-mark-collection-as-library-root
+                            (update :archived api/bit->boolean)
+                            (update :is_remote_synced api/bit->boolean)))]
+      (map (fn [row collection]
+             (-> collection
+                 (dissoc :collection_position :display :moderated_status :icon
+                         :dataset_query :table_id :query_type :is_upload)
+                 (assoc :type (:type row))
+                 update-personal-collection))
+           rows
+           (t2/hydrate collections :can_write :effective_location :can_restore :can_delete
+                       :is_shared_tenant_collection)))))
 
 (defmethod post-process-collection-children :table
   [_ {:keys [models]} _collection rows]
@@ -998,7 +1025,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+  [:id :name :description :entity_id :display :dataset_query
    :collection_id
    [:dashboard_id :integer]
    [:archived_directly :boolean]
@@ -1111,7 +1138,7 @@
       0))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info archived? search-text] :as options}]
+  [collection models {:keys [sort-info search-text] :as options}]
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
         models        (sort (map keyword models))
         queries       (for [model models
@@ -1125,13 +1152,8 @@
                         (-> query
                             (update select-clause-type add-missing-columns all-select-columns)
                             (update select-clause-type add-model-ranking model)))
-        viz-config    {:include-archived-items    :all
-                       :archive-operation-id      nil
-                       :permission-level          (if archived? :write :read)
-                       :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
-        rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               :select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
+        rows-query    (cond-> {:select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                                :order-by sql-order}
                         search-clause
@@ -1213,7 +1235,7 @@
   reported: they are not a filterable type."
   [collection                      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models                 :- [:maybe [:set :keyword]]
-   {:keys [archived?] :as options} :- CollectionChildrenOptions]
+   options                         :- CollectionChildrenOptions]
   (let [candidates (filterable-models collection restrict-models)
         options    (-> options
                        (dissoc :models :search-text)
@@ -1222,14 +1244,9 @@
     ;; repeats the same EXISTS probes; a separately cached request could avoid that work.
     (if (empty? candidates)
       {:available_models []}
-      (let [viz-config {:include-archived-items    :all
-                        :archive-operation-id      nil
-                        :permission-level          (if archived? :write :read)
-                        :include-trash-collection? archived?}
-            row        (first
+      (let [row        (first
                         (collections.db/collection-filter-metadata-rows
-                         {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                          :select (vec
+                         {:select (vec
                                    (for [model candidates]
                                      [[:exists (-> (collection-children-query model collection options)
                                                    (vary-meta assoc :allow-subquery true))]
@@ -1248,7 +1265,7 @@
   because you might not be able to see the top-level collections
   but be able to see, children of those invisible top-level collections."
   [root-collection model-set]
-  (if (mi/can-read? root-collection)
+  (if (mi/can-read? (t2/hydrate root-collection :can_read))
     model-set
     (if (or (empty? model-set) (contains? model-set :collection))
       #{:collection}

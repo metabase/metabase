@@ -113,6 +113,24 @@ describe("InfoText", () => {
       );
     });
 
+    it("shows a link to the dashboard for a dashboard question", async () => {
+      await setup({
+        model: "card",
+        resultProps: {
+          dashboard: {
+            id: 5,
+            name: "Orders in a dashboard",
+            moderation_status: null,
+          },
+        },
+      });
+
+      expect(
+        screen.getByRole("link", { name: /Orders in a dashboard/ }),
+      ).toHaveAttribute("href", "/dashboard/5-orders-in-a-dashboard");
+      expect(screen.queryByText("Collection Name")).not.toBeInTheDocument();
+    });
+
     it("shows collection info for a collection", async () => {
       await setup({
         model: "collection",
@@ -215,6 +233,21 @@ describe("InfoText", () => {
 
       expect(screen.getByTestId("revision-history-text")).toHaveTextContent(
         `Updated ${LAST_EDITED_DURATION} by ${MOCK_OTHER_USER.common_name}`,
+      );
+    });
+
+    it("should show 'you' as the last editor when the current user last edited the item", async () => {
+      await setup({
+        resultProps: {
+          last_editor_id: MOCK_USER.id,
+          last_editor_common_name: MOCK_USER.common_name,
+          creator_id: MOCK_OTHER_USER.id,
+          creator_common_name: MOCK_OTHER_USER.common_name,
+        },
+      });
+
+      expect(screen.getByTestId("revision-history-text")).toHaveTextContent(
+        `Updated ${LAST_EDITED_DURATION} by you`,
       );
     });
 

@@ -12,7 +12,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn library-root-collections
@@ -30,8 +29,7 @@
   authoritative."
   []
   (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:from [(warehouse-schema-overlay/table-query)]
-                        :where [:and
+                       {:where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]
                                  [:= :data_authority "authoritative"]]]}))
@@ -66,10 +64,11 @@
   (t2/select [:collection :id :location] :id [:in collection-ids]))
 
 (mu/defn instances
-  "The instances of `model` with `ids`."
-  [model :- :keyword
-   ids   :- [:sequential ms/PositiveInt]]
-  (t2/select model :id [:in ids]))
+  "The instances of `modelable` with `ids`.
+  A modelable is a model, or a vector of a model and the columns to select."
+  [modelable :- [:or :keyword [:cat :keyword [:+ :keyword]]]
+   ids       :- [:sequential ms/PositiveInt]]
+  (t2/select modelable :id [:in ids]))
 
 (defn- search-doc-select
   [{:keys [id model]}]

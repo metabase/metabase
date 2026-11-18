@@ -92,8 +92,13 @@
   [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
-(defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
-(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
+(doseq [feature [:jdbc/statements
+                 :jdbc/set-query-timeout
+                 :jdbc/set-max-rows
+                 :mbql-5-native-query-execution]]
+  (defmethod driver/database-supports? [:sql-jdbc feature]
+    [_driver _feature _db]
+    true))
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
@@ -445,3 +450,9 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+(defmethod driver/workspace-isolation-details :sql-jdbc
+  [_driver _database workspace]
+  {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+   :database_details {:user     (driver.u/workspace-isolation-user-name workspace)
+                      :password (driver.u/random-workspace-password)}})

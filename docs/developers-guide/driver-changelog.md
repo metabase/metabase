@@ -1,10 +1,16 @@
 ---
 title: Driver interface changelog
+summary: Changes to the Metabase driver interface, listed by release.
 ---
 
 # Driver Interface Changelog
 
 ## Metabase 0.66.0
+
+- Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
+  a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
+  query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
+  Return false for a driver where a capped query breaks the transaction it runs in.
 
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
@@ -13,6 +19,26 @@ title: Driver interface changelog
 
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
+
+- The admin connection removed in 0.65.0 is back, for workspace provisioning:
+  `metabase.driver.connection/with-admin-connection`, `metabase.driver.connection/database-admin-details`, the
+  `:admin` connection type, `metabase.driver.common/admin-connection-option` and
+  `metabase.driver.util/fields-hidden-for-admin-connection`, and a Database's `:admin_details`.
+
+- Added new driver feature flag `:mbql-5-native-query-execution`, which signifies that the driver's implementations of
+  `metabase.driver/execute-reducible-query`, `metabase.driver/execute-write-query!`, and
+  `metabase.driver/query->remark` expect native MBQL queries in the MBQL 5 shape rather than the legacy MBQL shape.
+  This is more performant, since we don't need to convert MBQL 5 queries back to legacy queries just to execute them.
+
+  In 66, this defaults to `false` for non-JDBC drivers, and `true` for drivers deriving from `:sql-jdbc`; in a future
+  release it will change to `true` and in 69 or later it will be removed entirely as all drivers will be expected to
+  execute MBQL 5 native queries directly.
+
+  See notes in `metabase.driver/execute-reducible-query`'s docstring on the differences between the two shapes.
+
+- Various legacy MBQL utility functions that were deprecated in 57 have been removed from `driver-api`:
+  `aggregation-at-index`, `assoc-field-options`, `expression-with-name`, `field-options`, `normalize-token`,
+  `query->source-table-id`, and `update-field-options`.
 
 ## Metabase 0.65.3
 
@@ -58,9 +84,9 @@ title: Driver interface changelog
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-- `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
-  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
-  in the docstring of this method.
+- New driver features `:stage-ctes` and `:stage-ctes/nested`. These let drivers opt in to compiling multi-stage queries
+  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
+  comment for these features in `metabase.driver/features`.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.
@@ -1415,15 +1441,4 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 ## Older versions
 
-Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
-table below:
-
-| Version | Wiki page                                                                                             |
-| ------- | ----------------------------------------------------------------------------------------------------- |
-| 0.41.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.41.0-for-Metabase-driver-authors) |
-| 0.40.0  | No changes.                                                                                           |
-| 0.39.0  | No changes.                                                                                           |
-| 0.38.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.38.0-for-Metabase-driver-authors) |
-| 0.37.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.37.0-for-Metabase-driver-authors) |
-| 0.36.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.36.0-for-Metabase-driver-authors) |
-| 0.35.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) |
+Changes before 0.42.0 were tracked in the GitHub wiki, which is no longer available.

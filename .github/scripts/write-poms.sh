@@ -10,6 +10,6 @@ function pom() {
 
 pom .
 
-for k in $(ls modules/drivers/); do
-    test -d "modules/drivers/$k" && pom "modules/drivers/$k"
+for dir in modules/drivers/*; do
+    test -d "$dir" && pom "$dir"
 done

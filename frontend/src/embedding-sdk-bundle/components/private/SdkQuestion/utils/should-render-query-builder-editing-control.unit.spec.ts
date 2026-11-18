@@ -41,11 +41,14 @@ describe("shouldRenderQueryBuilderEditingControl", () => {
     const metadataWithoutOrders = createMockMetadata({
       databases: [databaseWithoutOrders],
     });
-    const notEditableQuery = Lib.fromJsQueryAndMetadata(metadataWithoutOrders, {
-      database: databaseWithoutOrders.id,
-      type: "query",
-      query: { "source-table": ORDERS_ID },
-    });
+    const notEditableQuery = Lib.fromJsQueryAndMetadata(
+      metadataWithoutOrders,
+      Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
+    );
     const notEditableQuestion = Question.create({
       metadata: metadataWithoutOrders,
     }).setQuery(notEditableQuery);

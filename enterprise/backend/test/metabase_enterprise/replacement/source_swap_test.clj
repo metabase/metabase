@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -157,7 +157,7 @@
         (let [mp    (mt/metadata-provider)
               query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
           (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
-                                                              :source {:type "query" :query query}
+                                                              :source {:type :query :query query}
                                                               :target {:database (mt/id) :type "table" :name "out"}}]
             (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
             (replacement.source-swap/swap-source! [:transform transform-id]
@@ -167,21 +167,20 @@
                    (get-in (t2/select-one :model/Transform :id transform-id)
                            [:source :query :stages 0 :source-table])))))))))
 
-(deftest transform-swap-source!-broken-query-test
-  (testing "swap-source! should not crash on a transform with a broken query"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-test-user :rasta
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
-                                                              :source {:type  "query"
-                                                                       :query (lib/native-query mp "SELECT 1")}
-                                                              :target {:database (mt/id) :type "table" :name "out"}}]
-            (t2/query-one {:update :transform
-                           :set    {:source "{\"type\":\"query\",\"query\":{}}"}
-                           :where  [:= :id transform-id]})
-            (is (nil? (replacement.source-swap/swap-source! [:transform transform-id]
-                                                            [:table (mt/id :orders)]
-                                                            [:table (mt/id :reviews)])))))))))
+(deftest transform-swap-source!-publishes-audit-event-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/with-test-user :rasta
+      (let [mp     (mt/metadata-provider)
+            query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            topics (atom [])]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                            :source {:type :query :query query}
+                                                            :target {:database (mt/id) :type "table" :name "out"}}]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+            (replacement.source-swap/swap-source! [:transform transform-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)]))
+          (is (some #{[:event/transform-update transform-id]} @topics)))))))
 
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 
@@ -192,8 +191,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (replacement.source-swap/swap-source! [:segment segment-id]
                                                   [:table (mt/id :orders)]
@@ -210,8 +208,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (t2/query-one {:update :segment
                            :set    {:definition "{}"}
                            :where  [:= :id segment-id]})
@@ -228,8 +225,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (replacement.source-swap/swap-source! [:measure measure-id]
@@ -247,8 +243,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/count)))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (t2/query-one {:update :measure
                            :set    {:definition "{}"}
@@ -367,10 +362,10 @@
    :parameterMapping
    {(json/encode target)
     {:id     (json/encode target)
-     :source {:type :column
+     :source {:type "column"
               :id   "ID"
               :name "ID"}
-     :target {:type      :dimension
+     :target {:type      "dimension"
               :id        (json/encode target)
               :dimension target}}}})
 
@@ -396,7 +391,7 @@
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)])
             (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard :id dashcard-id))
-                  viz-key (keyword (json/encode target))]
+                  viz-key (json/encode target)]
               (is (=? {:click_behavior
                        {:targetId target-card-id
                         :parameterMapping
@@ -443,8 +438,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/segment-create {:object (t2/select-one :model/Segment :id segment-id)
@@ -472,8 +466,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (mt/with-model-cleanup [:model/Dependency]
@@ -502,7 +495,7 @@
         (let [mp    (mt/metadata-provider)
               query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
           (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
-                                                              :source {:type "query" :query query}
+                                                              :source {:type :query :query query}
                                                               :target {:database (mt/id) :type "table" :name "out"}}]
             (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
             (mt/with-model-cleanup [:model/Dependency]

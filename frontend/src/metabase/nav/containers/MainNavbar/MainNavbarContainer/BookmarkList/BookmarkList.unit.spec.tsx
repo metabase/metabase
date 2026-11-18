@@ -1,7 +1,9 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { times } from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDeleteBookmarkEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -92,6 +94,116 @@ describe("BookmarkList", () => {
     ).toBeInTheDocument();
   });
 
+  describe("keyboard navigation (#85912)", () => {
+    const LONG_NAME = "A bookmark with a name long enough to be truncated";
+
+    it("only stops on each bookmark's link and remove button", async () => {
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={createBookmarks(2)} />,
+      );
+
+      const [firstRemoveButton, secondRemoveButton] = screen.getAllByRole(
+        "button",
+        { name: "Remove bookmark" },
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      expect(screen.getByRole("link", { name: /Bookmark 1/ })).toHaveFocus();
+      await userEvent.tab();
+      expect(firstRemoveButton).toHaveFocus();
+      await userEvent.tab();
+      expect(screen.getByRole("link", { name: /Bookmark 2/ })).toHaveFocus();
+      await userEvent.tab();
+      expect(secondRemoveButton).toHaveFocus();
+    });
+
+    it("shows the full name of a long bookmark when its link has focus", async () => {
+      renderWithProviders(
+        <BookmarkList
+          {...mockProps}
+          bookmarks={[createMockBookmark({ name: LONG_NAME })]}
+        />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(LONG_NAME);
+      expect(screen.getByRole("link")).not.toHaveAttribute("aria-describedby");
+    });
+
+    it("shows the remove button's tooltip when it has focus", async () => {
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={createBookmarks(1)} />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      await userEvent.tab();
+
+      expect(
+        screen.getByRole("button", { name: "Remove bookmark" }),
+      ).toHaveFocus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Remove bookmark",
+      );
+    });
+
+    it("moves focus to the next bookmark when one is removed with the keyboard", async () => {
+      const bookmarks = createBookmarks(2);
+      setupDeleteBookmarkEndpoint(bookmarks[0]);
+      const { rerender } = renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={bookmarks} />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.keyboard("{Enter}");
+
+      const nextLink = screen.getByRole("link", { name: /Bookmark 2/ });
+      expect(nextLink).toHaveFocus();
+
+      rerender(<BookmarkList {...mockProps} bookmarks={[bookmarks[1]]} />);
+
+      expect(nextLink).toHaveFocus();
+    });
+
+    it("moves focus to the previous bookmark when the last one is removed with the keyboard", async () => {
+      const bookmarks = createBookmarks(2);
+      setupDeleteBookmarkEndpoint(bookmarks[1]);
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={bookmarks} />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.keyboard("{Enter}");
+
+      expect(screen.getByRole("link", { name: /Bookmark 1/ })).toHaveFocus();
+    });
+
+    it("doesn't move focus to another bookmark when one is removed with the mouse", async () => {
+      const bookmarks = createBookmarks(2);
+      setupDeleteBookmarkEndpoint(bookmarks[0]);
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={bookmarks} />,
+      );
+
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "Remove bookmark" })[0],
+      );
+
+      expect(
+        screen.getByRole("link", { name: /Bookmark 2/ }),
+      ).not.toHaveFocus();
+    });
+  });
+
   describe("collection bookmark icons (enterprise)", () => {
     it.each([
       {
@@ -118,11 +230,8 @@ describe("BookmarkList", () => {
           { storeInitialState: enterpriseState },
         );
 
-        const row = screen.getByText(name).closest("a");
-        expect(
-          // Unjustified type cast. FIXME
-          within(row as HTMLElement).getByLabelText(`${icon} icon`),
-        ).toBeInTheDocument();
+        const row = screen.getByRole("link", { name: new RegExp(name) });
+        expect(within(row).getByLabelText(`${icon} icon`)).toBeInTheDocument();
       },
     );
   });

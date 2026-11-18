@@ -10,6 +10,8 @@
    [[metabase.driver.sql-jdbc]] for more details."
   (:refer-clojure :exclude [mapv empty?])
   (:require
+   ;; loaded for the `ManyToManyChannel` class used in `::execute-reducible-query.context`
+   [clojure.core.async.impl.channels]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -29,7 +31,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? mapv]]
-   [potemkin :as p]))
+   [potemkin :as p])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
 
@@ -542,8 +546,8 @@
 
   Concrete mapping:
   - 1-level (`SELECT * FROM t`):           `[]`            — Mongo
-  - 1-level over a catalog (`SELECT * FROM t`, but consumers need a catalog
-    name to route across DBs): `[:db]` — MySQL.
+  - 1-level over a catalog (`SELECT * FROM t`, but workspace remap and other
+    consumers need a catalog name to route across DBs): `[:db]` — MySQL.
     The compiled SQL is still bare; this slot tells consumers MySQL has a
     meaningful database identifier (= JDBC `TABLE_CAT`) above the table.
   - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Redshift, ClickHouse, H2, Oracle
@@ -551,7 +555,7 @@
     (Snowflake `db.schema.table`; SQL Server `db.schema.table`; BigQuery
     `project.dataset.table`).
 
-  Used by table remapping to decide:
+  Used by workspace table remapping to decide:
   - which columns to populate when storing a `:model/TableRemapping` row
   - which AST positions to match against during query rewriting
 
@@ -677,8 +681,56 @@
 
 (defmethod extra-info ::driver [_] nil)
 
+(mr/def ::execute-reducible-query.context
+  [:map
+   {:closed true}
+   [:canceled-chan (lib.schema.common/instance-of-class ManyToManyChannel)]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata.cols
+  [:sequential
+   [:map
+    [:name          string?] ; allowed to be a blank string :(
+    ;; can be `nil` when the driver has no base type for the database type, e.g. H2's `NULL`
+    [:base_type     [:maybe ::lib.schema.common/base-type]]
+    [:database_type ::lib.schema.common/non-blank-string]]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata
+  [:map
+   [:cols ::execute-reducible-query.respond-fn.results-metadata.cols]])
+
+(mr/def ::execute-reducible-query.respond-fn.rows
+  [:or
+   (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+   [:fn {:error/message "sequential?"} sequential?]])
+
+(mr/def ::execute-reducible-query.respond-fn
+  [:=>
+   [:cat ::execute-reducible-query.respond-fn.results-metadata ::execute-reducible-query.respond-fn.rows]
+   ;; return value is ignored
+   :any])
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66):
+
+    {:stages             [{:lib/type :mbql.stage/native
+                           :native   \"SELECT * FROM table WHERE id = ?\"
+                           :params   [1]}]
+     :qp/original-stages <original MBQL stages if this was compiled from MBQL>
+     :info               ...}
+
+  Otherwise `query` is in a Legacy MBQL shape:
+
+    {:native {:query  \"SELECT * FROM table WHERE id = ?\"
+              :params [1]}
+     :query  <original legacy MBQL 'inner query' if this was compiled from MBQL>
+     :info   ...}
+
+  Note that in 69 or later `query` will always be in an MBQL 5 shape as legacy shapes will be unsupported.
+
+  `context` is a map that matches the shape of `::execute-reducible-query.context`.
 
   Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
@@ -1060,6 +1112,12 @@
     ;; Thrift transport on the server side, causing subsequent statement close() to throw).
     :jdbc/set-query-timeout
     ;;
+    ;; May [[query-on-connection]] cap a query's rows with `Statement.setMaxRows`? Defaults to true. False for Redshift:
+    ;; in a data-test run there, a capped query left the transaction aborted, and the next statement failed with "current
+    ;; transaction is aborted". What triggers it is unknown; the same sequence passes in other tests. Without the flag,
+    ;; [[query-on-connection]] streams the result and stops reading at the cap. Only [[query-on-connection]] consults it.
+    :jdbc/set-max-rows
+    ;;
     ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
     :describe-default-expr
     ;;
@@ -1069,6 +1127,9 @@
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
     :describe-is-generated
     ;;
+    ;; Does this driver support the workspace feature
+    :workspace
+    ;;
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference
@@ -1077,7 +1138,34 @@
     ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
     ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
     ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
-    :native-pivot-tables})
+    :native-pivot-tables
+    ;;
+    ;; Does this driver support compiling multi-stage queries to CTEs instead of nested subselects?
+    ;; The driver should support putting a CTE at the start of a statement, or after `CREATE TABLE`
+    ;; or `INSERT INTO`, or the driver should change these statements so they are valid
+    ;; (e.g. `driver/compile-insert :sqlserver`). See also `:stage-ctes/nested`.
+    :stage-ctes
+    ;;
+    ;; Does this driver support CTEs inside another query, e.g. in the body of another CTE or in a subquery?
+    ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
+    ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
+    ;; this has the same value as `:stage-ctes`.
+    :stage-ctes/nested
+    ;;
+    ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
+    ;;
+    ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
+    ;; MBQL shape? Default `false` This only affects the shape of arguments passed to
+    ;; [[execute-reducible-query]]. See driver changelog for more notes on the differences between the shapes.
+    ;;
+    :mbql-5-native-query-execution})
+
+(mr/def ::feature
+  "Valid driver feature keyword: one of [[features]], or a namespace-qualified keyword, which [[database-supports?]]
+  accepts without it being listed there (allowed since tests define them for various purposes)."
+  [:or
+   (into [:enum {:error/message "valid driver feature"}] (sort features))
+   qualified-keyword?])
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1105,8 +1193,11 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports?
-  :default [_driver _feature _] false)
+(mu/defmethod database-supports? :default
+  [_driver   :- :keyword
+   _feature  :- ::feature
+   _database :- [:maybe :map]]
+  false)
 
 (doseq [[feature supported?] {:convert-timezone                       false
                               :basic-aggregations                     true
@@ -1124,7 +1215,8 @@
                               :test/uuids-in-create-table-statements  true
                               :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false}]
+                              :metadata/table-writable-check          false
+                              :workspace                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1138,6 +1230,11 @@
 (defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
   [driver _feature database]
   (database-supports? driver :regex database))
+
+;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
+(defmethod database-supports? [::driver :stage-ctes/nested]
+  [driver _feature database]
+  (database-supports? driver :stage-ctes database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -1429,9 +1526,10 @@
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
   unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
 
-  Implementations should normalize `:details` and `:write-data-details` (each if present), since
-  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]] in a
-  write context. Un-normalized fields in the overlay map can leak through to the merged result. See [[metabase.driver.connection]] for more
+  Implementations should normalize `:details`, `:write-data-details`, and `:admin-details` (each if present),
+  since `:write-data-details` and `:admin-details` are merged on top of `:details` by
+  [[metabase.driver.connection/effective-details]] under their respective contexts. Un-normalized fields in
+  the overlay maps can leak through to the merged result. See [[metabase.driver.connection]] for more
   information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
@@ -1480,7 +1578,11 @@
 
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
-  Drivers that support `:actions/custom` must implement this method."
+  Drivers that support `:actions/custom` must implement this method.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66), otherwise the query is in Legacy MBQL shape. See docstring
+  for [[execute-reducible-query]] for more information."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -2198,6 +2300,109 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti workspace-isolation-details
+  "Compute the isolation resource descriptors for `workspace` without touching the
+   warehouse. Returns a map with:
+
+   - :schema           - The name of the isolated schema/database to create
+   - :database_details - Connection details (user, password, etc.) for the isolated user
+
+   Names are deterministic (workspace id + instance slug), but generated credentials
+   are random per call — callers must compute this once, merge it into the workspace
+   map they pass to [[init-workspace-isolation!]]/[[grant-workspace-read-access!]]/
+   [[destroy-workspace-isolation!]], and persist `:database_details` themselves.
+   Computing details before init is what makes cleanup of a partially-failed init
+   possible: destroy can run with the same map even when init never returned.
+
+   Implementations must be pure computation — no warehouse connections or mutations.
+   Reading the database's connection details (e.g. for a bound catalog) is fine;
+   callers bind [[metabase.driver.connection/with-admin-connection]] so those resolve
+   against the `:admin-details` overlay when configured."
+  {:added "0.64.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti init-workspace-isolation!
+  "Initialize database isolation for a workspace. Creates an isolated schema/database,
+   user credentials, and grants appropriate permissions for the workspace to operate
+   within its own namespace.
+
+   `workspace` must already carry `:schema` and `:database_details` — the output of
+   [[workspace-isolation-details]] merged over the workspace map. Implementations
+   create resources with exactly those identifiers/credentials and must not generate
+   names or passwords themselves.
+
+   Implementations should:
+   - Create the `:schema` isolated schema or database for the workspace
+   - Create the `:database_details` user, with credentials that can only access that schema
+   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+
+   The return value is unspecified; callers should persist the precomputed details,
+   not anything returned from here.
+
+   An implementation may throw `ex-info` with `:workspace/cleanup? false` in its data
+   when the failed init left nothing behind, or when it refused a user that was
+   already there, which may belong to another parent. The caller must not run
+   [[destroy-workspace-isolation!]] for this workspace after that error. The
+   `:status-code` in the error is the driver's.
+
+   This is an enterprise feature. Drivers must also return true for
+   (database-supports? driver :workspace database) to indicate support.
+
+   Callers are expected to bind [[metabase.driver.connection/with-admin-connection]]
+   around this call so connections resolve against the database's `:admin-details`
+   overlay when configured. The default `dispatching-provisioner` in
+   `metabase-enterprise.workspaces.provisioning` does this; do not rely on
+   default connection details from inside impls."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti destroy-workspace-isolation!
+  "Destroy all database resources created for workspace isolation.
+   This includes dropping schemas/databases, users, roles, and any other
+   resources created by init-workspace-isolation!.
+
+   `workspace` carries `:schema` and `:database_details` — either the persisted
+   values from provisioning, or freshly computed via [[workspace-isolation-details]]
+   when nothing was persisted (crashed init). Implementations read identifiers from
+   the map rather than recomputing them, and must not rely on `:password` matching
+   what's on the warehouse (a recomputed password never does).
+
+   Should be called when deleting a workspace. Implementations should be
+   idempotent - calling on an already-destroyed workspace should not error.
+
+   Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
+   bind [[metabase.driver.connection/with-admin-connection]] before invoking."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti grant-workspace-read-access!
+  "Grant read access on the workspace's input namespaces to the workspace's isolated
+   user/role. `input` is a sequence of `{:db ?, :schema ?}` maps
+   identifying the namespaces to grant access to. Granularity is per-namespace
+   (schema-wide / database-wide); per-table grants are not supported.
+
+   Slot semantics by driver:
+
+   - 2-slot schema-having (Postgres, Redshift, ClickHouse): read `:schema`,
+     ignore `:db` (connection-bound).
+   - 3-slot (Snowflake, SQL Server, BigQuery): read `:db` + `:schema`. `:db`
+     falls back to the connection's bound db when absent.
+   - schema-less (MySQL): read `:db`; the `qualified-name-components` is `[]`
+     and the database name lives in the `:db` slot.
+
+   Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
+   bind [[metabase.driver.connection/with-admin-connection]] before invoking."
+  {:added "0.59.0" :arglists '([driver database workspace input])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
 (defmulti validate-impersonated-query
   "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."

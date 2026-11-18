@@ -20,7 +20,7 @@
 (defn- query-transform-payload
   [table-name]
   {:name   "Test Transform"
-   :source {:type  "query"
+   :source {:type  :query
             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
    :target {:type   "table"
             :schema (get-test-schema)
@@ -29,7 +29,7 @@
 (defn- python-transform-map
   [table-name]
   {:name   "Python Transform"
-   :source {:type            "python"
+   :source {:type            :python
             :body            "print('hello world')"
             :source-tables   []
             :source-database (mt/id)}
@@ -351,13 +351,13 @@
     (mt/with-premium-features #{:transforms-basic}
       ;; Translated names alphabetically: "daily" < "hourly" < "monthly" < "weekly"
       (mt/with-temp [:model/TransformTag {tag-daily-id :id}
-                     {:name "daily" :built_in_type "daily"}
+                     {:name "built-in-daily-fixture" :built_in_type "daily"}
                      :model/TransformTag {tag-hourly-id :id}
-                     {:name "hourly" :built_in_type "hourly"}
+                     {:name "built-in-hourly-fixture" :built_in_type "hourly"}
                      :model/TransformTag {tag-monthly-id :id}
-                     {:name "monthly" :built_in_type "monthly"}
+                     {:name "built-in-monthly-fixture" :built_in_type "monthly"}
                      :model/TransformTag {tag-weekly-id :id}
-                     {:name "weekly" :built_in_type "weekly"}
+                     {:name "built-in-weekly-fixture" :built_in_type "weekly"}
                      :model/Transform {transform-daily-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-daily-id
                                                      :tag_id       tag-daily-id

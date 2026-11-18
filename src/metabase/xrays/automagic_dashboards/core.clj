@@ -143,7 +143,6 @@
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
@@ -153,7 +152,6 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.types.core :as types]
@@ -163,6 +161,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
@@ -355,16 +354,13 @@
 
 (defn- instantiate-metadata
   [x context available-metrics bindings]
-  (-> (walk/postwalk
-       (fn [form]
-         (if (i18n/localized-string? form)
-           (let [s     (str form)
-                 new-s (fill-templates :string context bindings s)]
-             (if (not= new-s s)
-               (capitalize-first new-s)
-               s))
-           form))
-       x)
+  (-> (match/replace-all x
+        #'i18n/localized-string?
+        (let [s     (str &match)
+              new-s (fill-templates :string context bindings s)]
+          (if (not= new-s s)
+            (capitalize-first new-s)
+            s)))
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
 (mu/defn- singular-cell-dimension-field-ids :- [:maybe [:set [:or :string ::lib.schema.id/field]]]
@@ -401,11 +397,11 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (let [fields (field/with-targets
-                 (xrays.db/active-fk-fields-for-table (u/the-id table)))]
-    (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
+  (let [fields   (field/with-targets
+                   (xrays.db/active-fk-fields-for-table (u/the-id table)))
+        readable (into #{} (map :id) (mi/readable (into [] (keep :target) fields)))]
     (for [{:keys [id target]} fields
-          :when (some-> target mi/can-read?)]
+          :when (contains? readable (:id target))]
       (-> target field/table (assoc :link id)))))
 
 (defn- source->db [source]
@@ -548,7 +544,7 @@
     (->> available-dimensions
          vals
          (mapcat :matches)
-         (filter mi/can-read?)
+         mi/readable
          filters/interesting-fields
          (map ->related-entity)
          (hash-map :drilldown-fields))))
@@ -940,11 +936,8 @@
   ([database schema]
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])
          tables              (load-tables-with-enhanced-table-stats (u/the-id database) schema)]
-     ;; the readable check below runs once per table, so load their permissions in one go
-     (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                     :table-ids (into #{} (map :id) tables)})
      (->> tables
-          (filter mi/can-read?)
+          mi/readable
           (map (fn [table]
                  (let [root      (->root table)
                        {:keys [dashboard-template-name]

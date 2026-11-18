@@ -173,7 +173,12 @@
       :model/CustomVizPlugin
       :model/ContentDiagnosticsFinding
       :model/TransformTest
-      :model/TransformTestRun])))
+      :model/CardTest
+      :model/SegmentTest
+      :model/DataTestRun
+      :model/Workspace
+      :model/WorkspaceDatabase
+      :model/TableRemapping])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -412,12 +417,9 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
     :model/ImplicitAction
-    :model/FieldUserSettings
-    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue
-    :model/OsiAiContext
     ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
     :model/TransformRunCancelation})
 

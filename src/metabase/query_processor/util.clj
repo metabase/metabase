@@ -37,7 +37,10 @@
     :as query} :- ::qp.schema/any-query]
   {:user-id      executed-by
    :query-type   (if (:lib/type query)
-                   (case (keyword (:lib/type (lib/query-stage query -1)))
+                   ;; a query compiled from MBQL reaches the driver as a single native stage plus
+                   ;; `:qp/original-stages`, see [[metabase.query-processor.execute]]
+                   (case (keyword (:lib/type (or (last (:qp/original-stages query))
+                                                 (lib/query-stage query -1))))
                      :mbql.stage/mbql   "MBQL"
                      :mbql.stage/native "native")
                    (case (keyword (:type query))
@@ -78,19 +81,22 @@
 
   'Hey, this is a 20 character query! What's it talking about, error at position 120?'
   This gets fixed, but in a spooky-action-at-a-distance way, in
-  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`"
+  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`
+
+  `query` will be MBQL 5 if the driver supports `:mbql-5-native-query-execution`, otherwise `query` will be Legacy MBQL."
   {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod query->remark :default
-  [_ query]
+  [_driver query]
   (default-query->remark query))
 
-;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
 (mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
-  keyword."
+  keyword.
+
+  DEPRECATED: use [[metabase.lib.core/normalize]] to normalize various things to the appropriate Lib schema."
   [token :- [:or :keyword :string]]
   (-> (name token)
       u/lower-case-en

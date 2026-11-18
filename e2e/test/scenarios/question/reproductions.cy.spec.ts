@@ -4,7 +4,7 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import type { Filter, LocalFieldReference } from "metabase-types/api";
+import type { LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -160,7 +160,7 @@ describe("issue 39487", () => {
     H.popover().button("Update filter").should("be.visible").click();
   });
 
-  function createTimeSeriesQuestionWithFilter(filter: Filter) {
+  function createTimeSeriesQuestionWithFilter(filter: unknown) {
     H.createQuestion(
       {
         query: {

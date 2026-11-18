@@ -5,7 +5,6 @@ creator_id: test@metabase.com
 display: table
 archived: false
 collection_id: null
-collection_preview: true
 collection_position: null
 query_type: query
 database_id: Test Database

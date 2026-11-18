@@ -32,8 +32,8 @@
                      :updated_at some?}
                     (mt/user-http-request :lucky :get 200 "ee/transforms-python/library/common"))))
           (testing "rejects invalid paths"
-            (is (= "Invalid library path. Only 'common' is currently supported."
-                   (mt/user-http-request :lucky :get 400 "ee/transforms-python/library/invalid-path")))))))))
+            (is (=? {:errors {:path "Invalid library path. Only 'common' is currently supported."}}
+                    (mt/user-http-request :lucky :get 400 "ee/transforms-python/library/invalid-path")))))))))
 
 (deftest put-library-path-test
   (testing "PUT /api/ee/transforms-python/library/:path"
@@ -84,9 +84,9 @@
                    (t2/select-one-fn :source :model/PythonLibrary)))
             (is (= 1 (t2/count :model/PythonLibrary)) "Should not create duplicate records"))
           (testing "rejects invalid paths"
-            (is (= "Invalid library path. Only 'common' is currently supported."
-                   (mt/user-http-request :lucky :put 400 "ee/transforms-python/library/invalid-path"
-                                         {:source "def test(): pass"})))))))))
+            (is (=? {:errors {:path "Invalid library path. Only 'common' is currently supported."}}
+                    (mt/user-http-request :lucky :put 400 "ee/transforms-python/library/invalid-path"
+                                          {:source "def test(): pass"})))))))))
 
 (deftest test-run-test
   (mt/with-premium-features #{:transforms-basic :transforms-python}

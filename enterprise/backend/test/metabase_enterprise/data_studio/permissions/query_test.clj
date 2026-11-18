@@ -5,7 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* *is-superuser?*]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
@@ -39,22 +40,24 @@
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/User       {user-id :id}       {}
                      :model/Collection {collection-id :id} {:type "library-data"}]
-        (try
-          (schema.table-user-settings/upsert-user-settings (t2/select-one :model/Table :id (mt/id :venues))
-                                                           {:is_published  true
-                                                            :collection_id collection-id})
-          (let [all-users (perms/all-users-group)]
-            (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
-            (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
-            (if grant?
-              (perms/grant-collection-read-permissions! all-users collection-id)
-              (perms/revoke-collection-permissions!     all-users collection-id))
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data      :unrestricted)
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
-          (f user-id collection-id)
-          (finally
-            (schema.table-user-settings/unset-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
-                                                             [:is_published :collection_id])))))))
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) (select-keys (t2/select-one :model/Table :id (mt/id :venues))
+                                                                           [:is_published :collection_id])
+          (try
+            (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+                                                                    {:is_published  true
+                                                                     :collection_id collection-id})
+            (let [all-users (perms/all-users-group)]
+              (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
+              (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+              (if grant?
+                (perms/grant-collection-read-permissions! all-users collection-id)
+                (perms/revoke-collection-permissions!     all-users collection-id))
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data      :unrestricted)
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
+            (f user-id collection-id)
+            (finally
+              (schema.table-user-settings/unset-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+                                                                     [:is_published :collection_id]))))))))
 
 (deftest published-table-test
   (testing "Published tables grant query access via collection permissions only with library enabled\n"
@@ -88,17 +91,12 @@
                       ;; Revoke from both groups since user is in All Users automatically
                       (perms/revoke-collection-permissions! group-id collection-id)
                       (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
-                  (binding [*current-user-id*              user-id
-                            *current-user-permissions-set* (delay (if collection-readable?
-                                                                    #{(perms/collection-read-path collection-id)}
-                                                                    #{}))]
-                    (perms/disable-perms-cache
-                      ;; Query is only runnable when: library enabled AND collection readable AND table published AND view-data unrestricted
-                      (is (= (and (contains? features :library)
-                                  collection-readable?
-                                  table-is-published?
-                                  (not= view-data :blocked))
-                             (query-perms/can-run-query? mbql-query))))))))))))))
+                  (mt/with-current-user user-id
+                    (is (= (and (contains? features :library)
+                                collection-readable?
+                                table-is-published?
+                                (not= view-data :blocked))
+                           (query-perms/can-run-query? mbql-query)))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (mt/with-premium-features #{:library}
@@ -119,18 +117,15 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :blocked)
-              (perms/disable-perms-cache
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
-                          *is-superuser?*                false]
-                  (testing "Should grant create-queries via collection permissions"
-                    (is (= :query-builder
-                           (perms/table-permission-for-user user-id :perms/create-queries (mt/id) (mt/id :venues)))
-                        "Collection permissions should grant query-builder permission"))
-                  (testing "Should NOT grant view-data via collection permissions"
-                    (is (= :blocked
-                           (perms/table-permission-for-user user-id :perms/view-data (mt/id) (mt/id :venues)))
-                        "Collection permissions should NOT grant view-data permission")))))))))))
+              (mt/with-current-user user-id
+                (testing "Should grant create-queries via collection permissions"
+                  (is (= :query-builder
+                         (get (perms/table-permissions-for-user (perms/user-info user-id) :perms/create-queries {(mt/id :venues) (mt/id)}) (mt/id :venues)))
+                      "Collection permissions should grant query-builder permission"))
+                (testing "Should NOT grant view-data via collection permissions"
+                  (is (= :blocked
+                         (get (perms/table-permissions-for-user (perms/user-info user-id) :perms/view-data {(mt/id :venues) (mt/id)}) (mt/id :venues)))
+                      "Collection permissions should NOT grant view-data permission"))))))))))
 
 (deftest published-table-grants-database-access-test
   (testing "POST /api/dataset in EE: published table access GRANTS database access"
@@ -167,11 +162,17 @@
                                                                               :condition    [:= $category_id &Cat.$categories.id]}]
                                                                     :limit  1})))))))))
 
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
 (deftest published-table-segment-and-metric-resolve-under-collection-only-perms-test
   (do-with-published-venues! {}
                              (fn [user-id _collection-id]
-                               (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                                               :definition (:query (mt/mbql-query venues {:filter [:> $price 2]}))}
+                               (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 2)}
                                               :model/Card    {metric-id :id}  {:type          :metric
                                                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                                  (testing "a query referencing a :segment on the published table resolves"

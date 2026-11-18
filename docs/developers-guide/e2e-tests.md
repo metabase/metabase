@@ -1,5 +1,6 @@
 ---
 title: End-to-end tests with Cypress
+summary: Write and run Cypress end-to-end tests for Metabase, with tips for avoiding the common gotchas.
 ---
 
 # End-to-end tests with Cypress

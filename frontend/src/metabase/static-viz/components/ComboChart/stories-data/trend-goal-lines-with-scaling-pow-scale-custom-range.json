@@ -25,7 +25,6 @@
         "graph.dimensions": ["CREATED_AT"],
         "graph.y_axis.min": -1
       },
-      "collection_preview": true,
       "entity_id": "-rwpIscIGbmCF5f-v24nH",
       "archived_directly": false,
       "display": "line",

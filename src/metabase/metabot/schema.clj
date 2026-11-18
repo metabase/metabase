@@ -7,6 +7,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.metabot.query-repair :as query-repair]
    [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -63,11 +64,19 @@
    [:name :string]
    [:type {:optional true} [:maybe (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"})]]])
 
+(mr/def ::row-value.object
+  "An object cell value in a chart series, forwarded as it arrived."
+  [:map {:closed false, :description "an object cell value"}])
+
+(mr/def ::references
+  "The references a client attaches to a Metabot request, forwarded as they arrived."
+  [:map {:closed false, :description "Metabot request references"}])
+
 (mr/def ::row-value
   "One cell value in a chart series. The `object` arm is never read by this code -- it's forwarded to the
   interestingness stats/repr code as-is -- so it's opaque rather than typed. Mirrors
   `metabase.metabot.context/RowValueSchema`."
-  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+  [:maybe [:or :string number? :boolean ::row-value.object]])
 
 (mr/def ::chart-data
   "One pre-materialized table of raw chart data (columns + rows). Mirrors
@@ -381,7 +390,7 @@
 (mr/def ::metabot-prompt.update
   "What an update (or insert) of a MetabotPrompt accepts: every column of `:metabot_prompt` except `id`, all optional."
   [:map {:closed true}
-   [:model      {:optional true} [:maybe [:or :keyword :string]]]
+   [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id  {:optional true} [:maybe :string]]
    [:prompt     {:optional true} [:maybe :string]]
@@ -420,3 +429,20 @@
    [:message_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_id   {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-metabot
+  "A Metabot as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::metabot [:name :description :entity_id :use_verified_content :collection_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:prompts {:optional true} [:maybe [:sequential [:ref ::external-metabot-prompt]]]]]]])
+
+(mr/def ::external-metabot-prompt
+  "A MetabotPrompt as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::metabot-prompt [:entity_id :prompt :model :card_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

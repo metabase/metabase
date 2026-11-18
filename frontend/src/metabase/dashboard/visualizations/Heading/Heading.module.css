@@ -1,0 +1,41 @@
+.root {
+  padding-left: var(--mantine-spacing-md);
+  padding-right: var(--mantine-spacing-md);
+  border: 1px solid transparent;
+  /* the dashcard clips at this radius, a smaller one gets its corners cut */
+  border-radius: var(--mantine-radius-md);
+}
+
+/* the dashcard turns pointer events off while the layout is being edited */
+.root,
+.root * {
+  pointer-events: auto;
+}
+
+/* compensates the border while editing or when nothing has been entered */
+.borderAdjusted {
+  padding-left: calc(var(--mantine-spacing-md) - 1px);
+}
+
+.empty {
+  border-color: var(--mb-color-core-brand);
+  color: var(--mb-color-text-disabled);
+}
+
+.content {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.editing {
+  cursor: text;
+}
+
+.input {
+  height: inherit;
+  min-height: unset;
+  border: none;
+  outline: none;
+  background: none;
+  resize: none;
+}

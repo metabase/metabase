@@ -7,6 +7,8 @@ const INVALID_DATE_WARNING = "INVALID_DATE_WARNING";
 const UNAGGREGATED_DATA_WARNING = "UNAGGREGATED_DATA_WARNING";
 const UNAGGREGATED_DATA_WARNING_PIE = "UNAGGREGATED_DATA_WARNING_PIE";
 const UNAGGREGATED_DATA_WARNING_MAP = "UNAGGREGATED_DATA_WARNING_MAP";
+const UNAGGREGATED_DATA_WARNING_TABLE_PIVOT =
+  "UNAGGREGATED_DATA_WARNING_TABLE_PIVOT";
 const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
 const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
 const PIE_NEGATIVES = "PIE_NEGATIVES";
@@ -18,6 +20,7 @@ type VisualizationWarningKey =
   | typeof UNAGGREGATED_DATA_WARNING
   | typeof UNAGGREGATED_DATA_WARNING_PIE
   | typeof UNAGGREGATED_DATA_WARNING_MAP
+  | typeof UNAGGREGATED_DATA_WARNING_TABLE_PIVOT
   | typeof UNEXPECTED_QUERY_TIMEZONE
   | typeof MULTIPLE_TIMEZONES
   | typeof PIE_NEGATIVES
@@ -81,6 +84,16 @@ export function unaggregatedDataWarningMap(
   return {
     key: UNAGGREGATED_DATA_WARNING_MAP,
     text: t`${fields} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed.`,
+  };
+}
+
+export function unaggregatedDataWarningTablePivot(
+  rowColumn: DatasetColumn,
+  pivotColumn: DatasetColumn,
+): VisualizationWarning {
+  return {
+    key: UNAGGREGATED_DATA_WARNING_TABLE_PIVOT,
+    text: t`Some combinations of "${rowColumn.display_name}" and "${pivotColumn.display_name}" appear in more than one row. Each of those cells shows only the value from the last of these rows.`,
   };
 }
 

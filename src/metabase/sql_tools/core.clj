@@ -73,7 +73,8 @@
   replace-names-impl
   referenced-tables-raw-impl
   simple-query?-impl
-  add-into-clause-impl])
+  add-into-clause-impl
+  add-insert-clause-impl])
 
 (defn parser-backend
   "Get current value of sql-tools-parser-backend."
@@ -144,7 +145,7 @@
 
    SECURITY: Replacement values are injected into the SQL AST as identifier names
    without sanitization. Callers MUST ensure replacement values are system-generated
-   (e.g., database metadata). Never pass
+   (e.g., workspace isolation schema names, database metadata). Never pass
    user-controlled input as replacement values."
   ([driver :- [:maybe :keyword]
     sql-string :- :string
@@ -174,6 +175,7 @@
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
+  Used by Workspaces to determine if automatic checkpoints can be inserted.
 
   Returns a map with:
   - `:is_simple` - boolean indicating if query is simple
@@ -184,8 +186,9 @@
       (interface/simple-query?-impl parser sql-string))))
 
 (mu/defn add-into-clause :- :string
-  "Rewrite a SELECT into a SQL Server `SELECT ... INTO` statement, wrapping each base table in a
-  self-UNION subquery so the created table doesn't inherit a source column's IDENTITY property.
+  "Rewrite a SELECT, or a set operation (UNION, INTERSECT, EXCEPT) whose first query is a SELECT, into a SQL Server
+  `SELECT ... INTO` statement, wrapping each base table in a self-UNION subquery so the created table doesn't inherit a
+  source column's IDENTITY property. A set operation takes the INTO in its first SELECT.
 
   Transforms: 'SELECT * FROM products'
   Into:       'SELECT * INTO \"TABLE\" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'
@@ -206,6 +209,21 @@
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
 
+(mu/defn add-insert-clause :- :string
+  "Make an INSERT INTO statement that inserts the result of `sql`, a SELECT, into `table-name`. If `sql` has a `WITH`
+  clause, the `WITH` clause goes before `INSERT INTO`.
+
+  Transforms: 'WITH c AS (SELECT 1 AS x) SELECT x FROM c'
+  Into:       'WITH c AS (SELECT 1 AS x) INSERT INTO \"TABLE\" SELECT x FROM c'
+
+  Used by SQL Server compile-insert, because SQL Server does not allow `INSERT INTO ... WITH`."
+  [driver :- :keyword
+   sql :- :string
+   table-name :- :string]
+  (let [parser (sql-tools.settings/current-parser-backend)]
+    (metrics/with-operation-timing [parser "add-insert-clause"]
+      (interface/add-insert-clause-impl parser driver sql table-name))))
+
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
   Returns {:table table-id} or {:transform transform-id}, or nil."
@@ -217,6 +235,12 @@
   See [[metabase.sql-tools.common/resolve-field]] for details."
   [driver mp col-spec]
   (common/resolve-field driver mp col-spec))
+
+(defn field-candidates
+  "Every candidate column for `col-spec`, a `:single-column` field reference; [[resolve-field]] picks the first.
+  See [[metabase.sql-tools.common/field-candidates]] for details."
+  [driver mp col-spec]
+  (common/field-candidates driver mp col-spec))
 
 (def ^:private TranspilationResult
   [:map
@@ -274,9 +298,9 @@
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:session-function`, `:sql-executing-function`, `:dynamic-function-call`, `:executable-comment`,
-  `:bare-dash-comment`, `:backslash-quote`, `:unicode-identifier`, `:large-literal-list`, `:too-long` and
-  `:unparseable`.
+  `:session-function`, `:external-table`, `:sql-executing-function`, `:dynamic-function-call`,
+  `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:lone-carriage-return`, `:unicode-identifier`,
+  `:large-literal-list`, `:too-long` and `:unparseable`.
   For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
   function's name."
   [driver :- :keyword

@@ -98,6 +98,7 @@
   env-var-name
   env-var-source
   env-var-value
+  exportable-settings
   export?
   get
   get-raw-value
@@ -113,6 +114,7 @@
   resolve-setting
   set!
   set-many!
+  set-string!
   set-value-of-type!
   setting-env-map-name
   string->boolean
@@ -120,8 +122,10 @@
   user-facing-value
   user-readable-values-map
   uuid-nonce-base
+  validate-driver-feature-for-db
   validate-settings-formatting!
-  validate-settable-for-db!
+  validate-settable
+  validate-settable-for-db
   writable-settings]
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms

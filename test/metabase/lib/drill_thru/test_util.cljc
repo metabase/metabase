@@ -3,7 +3,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [is testing]]
-   [clojure.walk :as walk]
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -20,7 +19,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -77,7 +77,7 @@
 
 (mr/def ::expectation
   "A `=?` expectation: partial maps, predicates, and regexes matched against a real drill or query."
-  [:schema {::mr/deliberately-open true, :description "a =? expectation pattern"} :any])
+  [:or :metabase.util.malli/value fn? [:fn {:error/message "a regex"} #?(:clj #(instance? java.util.regex.Pattern %) :cljs regexp?)]])
 
 (def ^:private DrillArgs
   [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal ::lib.schema.metadata/column]]])
@@ -389,13 +389,9 @@
 (def ^:private ReturnsDrillTestCase
   (test-case-schema :drill-type :expected))
 
-(defn- drop-uuids [form]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
-                 form))
-
 (defn- clean-expected-query [form]
   (-> form
-      drop-uuids
+      (match/replace-all {:lib/uuid _} (dissoc &match :lib/uuid))
       (dissoc :lib/metadata)))
 
 (defn- clean-expected-query-on-drill [form query-kind]

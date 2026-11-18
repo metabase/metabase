@@ -1,0 +1,39 @@
+html {
+  height: 100%; /* ensure the entire page will fill the window */
+  width: 100%;
+}
+
+@media print and (orientation: portrait) {
+  html {
+    width: 8.5in;
+  }
+}
+
+@media print and (orientation: landscape) {
+  html {
+    width: 11in;
+  }
+}
+
+body {
+  font-family: var(--mb-default-font-family);
+  font-weight: 400;
+  font-style: normal;
+  color: var(--mb-color-text-primary);
+  margin: 0;
+  height: 100%; /* ensure the entire page will fill the window */
+  display: flex;
+  flex-direction: column;
+  background-color: var(--mb-color-background_page-secondary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile Safari sets the opacity of disabled inputs/textareas to 0.4 which we don't want */
+/* https://github.com/metabase/metabase/issues/49170 */
+@supports (-webkit-touch-callout: none) {
+  textarea:disabled,
+  input:disabled {
+    opacity: 1;
+  }
+}

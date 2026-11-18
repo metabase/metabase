@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -355,8 +356,6 @@
                                                       :authority_level "official"
                                                       ;; :archived = true
                                                       :archived true
-                                                      ;; :type = "collection"
-                                                      :type "collection"
                                                       ;; :model_created_at = yesterday
                                                       :created_at yesterday}]
         (is (=? (index-entity
@@ -444,18 +443,14 @@
   (search.tu/with-temp-index-table
     (let [segment-name (mt/random-name)
           yesterday    (t/- (now) (t/days 1))]
-      (mt/with-temp [:model/Database   {db-id :id}      {}
-                     :model/Table      {table-id :id}   {:db_id db-id}
-                     :model/Segment    {segment-id :id} {:name       segment-name
-                                                         ;; :table_id = table-id
-                                                         :table_id   table-id
-                                                         ;; :model_updated_at = yesterday
-                                                         :updated_at yesterday}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:name       segment-name
+                                                      ;; :model_updated_at = yesterday
+                                                      :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "segment"
                   :model_id         (str segment-id)
                   :name             segment-name
-                  :database_id      db-id
+                  :database_id      (mt/id)
                   :model_updated_at yesterday})
                 (ingest-then-fetch! "segment" segment-name)))))))
 
@@ -552,7 +547,7 @@
   ;; Note that these refer to the table names, not the search-model names.
   {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
    "model_index"        #{"model_index_value"}
-   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment" "transform"}
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
@@ -579,7 +574,7 @@
 (deftest auto-refresh-test
   (when (search/supports-index?)
     (with-temp-index-version "auto-refresh-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [active-before (search.index/active-table)
             active-after  (search.index/gen-table-name)
@@ -600,7 +595,7 @@
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
     (with-temp-index-version "pending-timeout-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [active-table (search.index/active-table)
             pending-old  (search.index/gen-table-name)
@@ -628,7 +623,7 @@
 (deftest failed-reindex-drops-orphaned-tables-test
   (when (search/supports-index?)
     (with-temp-index-version "orphan-cleanup-test"
-      (reset! @#'search.index/next-sync-at nil)
+      (mc/swap! (search.index/indexes-handle) assoc :next-sync-at nil)
       (search.index/reset-index!)
       (let [orphan (search.index/gen-table-name)]
         (search.index/create-table! orphan)

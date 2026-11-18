@@ -1,5 +1,6 @@
 ---
 title: "Models"
+summary: Curate data from one or more tables into a reusable starting point for new questions, with your own column metadata. Consider transforms as an alternative.
 redirect_from:
   - /docs/latest/data-modeling/models
   - /docs/latest/users-guide/models
@@ -54,6 +55,8 @@ Models you create are automatically [pinned to the current collection](../../exp
 
 ### Create a model from a saved question
 
+You can only turn a question saved to a [collection](../../exploration-and-organization/collections.md) into a model. If the question is saved to a dashboard, [move the question to a collection](../../questions/introduction.md#moving-questions-from-collections-to-dashboards-and-vice-versa) first.
+
 1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
@@ -101,7 +104,7 @@ You can specify whether a column should appear in the table view, or just in a d
 - Table and detail views
 - Detail views only
 
-### Display as
+### Display as text, link, or image
 
 - Text
 - Link (it's a URL people should be able to click on)

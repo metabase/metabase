@@ -3,10 +3,14 @@ import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
+import {
+  setupEmbedDashboardEndpoints,
+  setupPublicDashboardEndpoint,
+} from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { defer } from "metabase/utils/promise";
@@ -21,15 +25,19 @@ import {
   createMockDashboardCard,
   createMockDashboardTab,
   createMockDatabase,
+  createMockDataset,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
 
+const MOCK_UUID = "00000000-0000-4000-8000-000000000000";
+
 const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
 
 registerStaticVisualizations();
+registerDashboardVisualizations();
 
 export type SetupOpts = {
   hash?: Record<string, string>;
@@ -40,6 +48,12 @@ export type SetupOpts = {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   /** Holds the dashboard request until `releaseDashboardRequest` is called. */
   holdDashboardRequest?: boolean;
+  /** Dashcards added to the first tab, next to its question card. */
+  extraDashcards?: DashboardCard[];
+  /** Renders the static embed (`/embed/dashboard/:token`) or the public link (`/public/dashboard/:uuid`). */
+  accessType?: "embed" | "public";
+  /** Shows the "Powered by Metabase" footer. The mock settings hide it by default. */
+  hasEmbedBranding?: boolean;
 };
 
 export async function setup(
@@ -51,10 +65,16 @@ export async function setup(
     dashboardTitle,
     enterprisePlugins,
     holdDashboardRequest = false,
+    extraDashcards = [],
+    accessType = "embed",
+    hasEmbedBranding,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
-  mockSettings({
+  const settings = mockSettings({
     "token-features": tokenFeatures,
+    ...(hasEmbedBranding !== undefined && {
+      "hide-embed-branding?": !hasEmbedBranding,
+    }),
   });
   setupDatabasesEndpoints([createMockDatabase()]);
 
@@ -84,6 +104,13 @@ export async function setup(
     );
   });
 
+  dashcards.push(
+    ...extraDashcards.map((dashcard) => ({
+      ...dashcard,
+      dashboard_tab_id: tabs[0]?.id,
+    })),
+  );
+
   const dashboard = createMockDashboard({
     id: 1,
     name: dashboardTitle,
@@ -101,8 +128,18 @@ export async function setup(
     );
   }
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
+  setupPublicDashboardEndpoint(MOCK_UUID, dashboard);
+  dashcards.forEach(({ id, card_id }) => {
+    fetchMock.get(
+      `path:/api/public/dashboard/${MOCK_UUID}/dashcard/${id}/card/${card_id}`,
+      createMockDataset(),
+    );
+  });
 
-  const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
+  const pathname =
+    accessType === "public"
+      ? `/public/dashboard/${MOCK_UUID}`
+      : `/embed/dashboard/${MOCK_TOKEN}`;
   const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;
   const href = `${pathname}${queryString}${hashString}`;
 
@@ -111,12 +148,20 @@ export async function setup(
   window.history.replaceState({}, "", href);
 
   const view = renderWithProviders(
-    <Route
-      path="embed/dashboard/:token"
-      element={<PublicOrEmbeddedDashboardPage />}
-    />,
+    <>
+      <Route
+        path="embed/dashboard/:token"
+        element={<PublicOrEmbeddedDashboardPage />}
+      />
+      <Route
+        path="public/dashboard/:uuid"
+        element={<PublicOrEmbeddedDashboardPage />}
+      />
+    </>,
     {
-      storeInitialState: createMockState(),
+      storeInitialState: createMockState(
+        hasEmbedBranding !== undefined ? { settings } : {},
+      ),
       withRouter: true,
       initialRoute: href,
     },

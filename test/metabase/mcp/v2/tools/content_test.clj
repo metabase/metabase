@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -19,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -111,14 +111,13 @@
             (is (= "metric" (:type row))))))
       (testing "measure"
         (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                                :table_id   (mt/id :venues)
                                                 :creator_id (mt/user->id :rasta)
                                                 :definition (measure-definition (lib/count))}]
           (let [row (content-one {:items [{:type "measure" :id id}]})]
             (is (nil? (:error row)))
             (is (= "M1" (:name row))))))
       (testing "segment"
-        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues) :definition {}}]
+        (mt/with-temp [:model/Segment {id :id} {:name "S1"}]
           (let [row (content-one {:items [{:type "segment" :id id}]})]
             (is (nil? (:error row)))
             (is (= "S1" (:name row))))))
@@ -313,6 +312,56 @@
             (testing "and so is an unreadable series entry"
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
+(deftest get-content-dashboard-layout-redacts-unreadable-series-card-test
+  ;; The frontend keys `series_settings` by card name, alone or with a column or breakout value after it, and the
+  ;; series card's filter mapping carries its field ids.
+  (testing "BOT-2561: the layout include names an unreadable series card nowhere and keeps no mapping to it"
+    (mt/with-temp [:model/Collection    {open-id :id}       {}
+                   :model/Collection    {locked-id :id}     {}
+                   :model/Dashboard     {dash-id :id}       {:collection_id open-id
+                                                             :parameters    [{:id   "p"
+                                                                              :name "P"
+                                                                              :slug "p"
+                                                                              :type "category"}]}
+                   :model/Card          {open-card :id}     {:name "Open", :collection_id open-id}
+                   :model/Card          {hidden-series :id} {:name "SECRET Series", :collection_id locked-id}
+                   :model/DashboardCard {dc-id :id}         {:dashboard_id           dash-id
+                                                             :card_id                open-card
+                                                             :row                    0
+                                                             :col                    0
+                                                             :visualization_settings
+                                                             {:series_settings {"Open"                 {:color "#111"}
+                                                                                "SECRET Series"        {:color "#222"}
+                                                                                "SECRET Series: Count" {:color "#333"}}}
+                                                             :parameter_mappings
+                                                             [{:parameter_id "p"
+                                                               :card_id      open-card
+                                                               :target       [:dimension [:field (mt/id :venues :price) nil]]}
+                                                              {:parameter_id "p"
+                                                               :card_id      hidden-series
+                                                               :target       [:dimension [:field (mt/id :venues :name) nil]]}]}
+                   :model/DashboardCardSeries _             {:dashboardcard_id dc-id
+                                                             :card_id          hidden-series
+                                                             :position         0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (let [read-dashboard  #(content-one {:items   [{:type "dashboard", :id dash-id}]
+                                             :include ["layout" "parameters"]})
+              layout-dashcard (fn [row] (some #(when (= dc-id (:id %)) %) (:dashcards (:layout row))))]
+          (testing "an admin sees the series card's settings and mapping"
+            (mt/with-test-user :crowberto
+              (let [dc (layout-dashcard (read-dashboard))]
+                (is (str/includes? (json/encode dc) "SECRET Series"))
+                (is (= #{open-card hidden-series} (set (map :card_id (:parameter_mappings dc))))))))
+          (mt/with-test-user :rasta
+            (let [row (read-dashboard)
+                  dc  (layout-dashcard row)]
+              (is (some? dc))
+              (is (not (str/includes? (json/encode row) "SECRET Series"))
+                  "checked on the whole response, so a leak through another include fails too")
+              (is (= [open-card] (map :card_id (:parameter_mappings dc))))
+              (testing "the series settings go whole, since composite keys also name the card"
+                (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))
+
 (defn- link-card-settings
   "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the
    cached entity name the frontend writes alongside the reference."
@@ -481,7 +530,7 @@
             so this pins that get_content still applies it."
     (mt/with-temp [:model/Collection   {locked-id :id} {}
                    :model/Card         {card-id :id}   {:name "Sub Card"}
-                   :model/Dashboard    {dash-id :id}   {}
+                   :model/Dashboard    {dash-id :id}   {:collection_id locked-id}
                    :model/Pulse        {pulse-id :id}  {:name          "Private Weekly"
                                                         :dashboard_id  dash-id
                                                         :collection_id locked-id
@@ -516,10 +565,8 @@
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"
                                                   :source {:type  :query
-                                                           :query {:database (mt/id)
-                                                                   :type     "query"
-                                                                   :query    {:source-table (mt/id :venues)}}}
-                                                  :target {:type   :table
+                                                           :query (venues-query)}
+                                                  :target {:type   "table"
                                                            :schema (t2/select-one-fn :schema :model/Table
                                                                                      :id (mt/id :venues))
                                                            :name   "t1_out"}}]
@@ -697,13 +744,13 @@
    paragraph has its own id (nested blocks carry no span of their own), an empty paragraph
    (zero-width span), and a closing paragraph."
   {:type    "doc"
-   :content [{:type    "paragraph" :attrs {"_id" "para-1"}
+   :content [{:type    "paragraph" :attrs {:_id "para-1"}
               :content [{:type "text" :text "First paragraph."}]}
-             {:type    "blockquote" :attrs {"_id" "quote-1"}
-              :content [{:type    "paragraph" :attrs {"_id" "quote-para"}
+             {:type    "blockquote" :attrs {:_id "quote-1"}
+              :content [{:type    "paragraph" :attrs {:_id "quote-para"}
                          :content [{:type "text" :text "Quoted text."}]}]}
-             {:type "paragraph" :attrs {"_id" "empty-1"}}
-             {:type    "paragraph" :attrs {"_id" "para-2"}
+             {:type "paragraph" :attrs {:_id "empty-1"}}
+             {:type    "paragraph" :attrs {:_id "para-2"}
               :content [{:type "text" :text "Last paragraph."}]}]})
 
 (deftest get-content-document-comments-include-test
@@ -773,18 +820,18 @@
    block nested inside one has to resolve its anchor past them; the paragraph inside the list item
    is the block with no span of its own — the list re-renders it with a `- ` prefix."
   {:type    "doc"
-   :content [{:type    "resizeNode" :attrs {"height" 442 "minHeight" 280}
-              :content [{:type    "flexContainer" :attrs {"columnWidths" [60 40]}
-                         :content [{:type    "supportingText" :attrs {"_id" "support-1"}
-                                    :content [{:type    "bulletList" :attrs {"_id" "list-1"}
+   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
+              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
+                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
+                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
                                                :content [{:type    "listItem"
-                                                          :content [{:type    "paragraph" :attrs {"_id" "list-para"}
+                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
                                                                      :content [{:type "text"
                                                                                 :text "Nested in a list."}]}]}]}]}
-                                   {:type    "supportingText" :attrs {"_id" "support-2"}
-                                    :content [{:type    "paragraph" :attrs {"_id" "support-para"}
+                                   {:type    "supportingText" :attrs {:_id "support-2"}
+                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
                                                :content [{:type "text" :text "Beside it."}]}]}]}]}
-             {:type "paragraph" :attrs {"_id" "tail"} :content [{:type "text" :text "Tail."}]}]})
+             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
 
 (deftest get-content-document-comments-inside-a-layout-container-test
   (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
@@ -884,9 +931,9 @@
                                               :attrs   {:level 1 :_id "h-1"}
                                               :content [{:type "text" :text "Q3 revenue"}]}
                                              {:type  "mysteryBlock"
-                                              :attrs {"_id" "m-1"}}
+                                              :attrs {:_id "m-1"}}
                                              {:type  "cardEmbed"
-                                              :attrs {"id" 118 "_id" "c-1"}}]}
+                                              :attrs {:id 118 :_id "c-1"}}]}
                     :content_type "application/json+vnd.prose-mirror"}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "document" :id doc-id}]})]
@@ -1010,7 +1057,6 @@
             nil, so a broken exporter looks exactly like a type that has nothing to export."
     (testing "measure — the aggregation clause"
       (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                              :table_id   (mt/id :venues)
                                               :creator_id (mt/user->id :rasta)
                                               :definition (measure-definition (lib/count))}]
         (mt/with-test-user :crowberto
@@ -1021,8 +1067,9 @@
                 "and carries the stored aggregation")))))
     (testing "segment — the filter clauses"
       (mt/with-temp [:model/Segment {id :id} {:name       "S1"
-                                              :table_id   (mt/id :venues)
-                                              :definition {:filter [:= [:field-id (mt/id :venues :price)] 2]}}]
+                                              :definition (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 2))))}]
         (mt/with-test-user :crowberto
           (let [row (content-one {:items [{:type "segment" :id id}] :include ["definition"]})]
             (is (nil? (:error row)))
@@ -1172,7 +1219,7 @@
    field ref under a freshly minted clause uuid each time, so the uuids differ between two reads
    that agree on everything that identifies the column."
   [pair]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid)) pair))
+  (match/replace-all pair #'map? (dissoc &match :lib/uuid)))
 
 (deftest get-content-dimensions-match-the-rest-endpoint-test
   (testing "GHY-4140: the `dimensions` include documents itself as returning the same
@@ -1223,7 +1270,6 @@
               (is (= rest mcp)))))))
     (testing "a measure"
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "M1"
-                                                      :table_id   (mt/id :venues)
                                                       :creator_id (mt/user->id :crowberto)
                                                       :definition (measure-definition (lib/count))}]
         ;; Seed first so the generated dimension ids are persisted and both reads reconcile against

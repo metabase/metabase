@@ -42,7 +42,7 @@
                                          :display-name "Category"
                                          :id           "_category_"
                                          :type         "dimension"
-                                         :dimension    [:field (u/the-id field-or-id) nil]
+                                         :field-id     (u/the-id field-or-id)
                                          :widget-type  "category"
                                          :default      "Widget"}}}})
 

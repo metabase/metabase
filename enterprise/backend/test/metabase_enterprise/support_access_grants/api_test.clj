@@ -23,12 +23,30 @@
                                          {:ticket_number "SUPPORT-12345"
                                           :grant_duration_minutes 240})]
       (is (some? response))
+      (is (not (contains? response :token)))
       (is (= (mt/user->id :crowberto) (:user_id response)))
       (is (= "SUPPORT-12345" (:ticket_number response)))
       (is (some? (:grant_start_timestamp response)))
       (is (some? (:grant_end_timestamp response)))
       (is (nil? (:revoked_at response)))
       (is (nil? (:revoked_by_user_id response))))))
+
+(deftest create-grant-with-default-form-values-test
+  (mt/with-model-cleanup [:model/SupportAccessGrantLog]
+    (let [response (mt/user-http-request :crowberto :post 200 "ee/support-access-grant"
+                                         {:grant_duration_minutes 5760
+                                          :ticket_number nil
+                                          :notes nil})
+          stored (t2/select-one :model/SupportAccessGrantLog :id (:id response))]
+      (is (some? (:id response)))
+      (is (nil? (:ticket_number response)))
+      (is (nil? (:notes response)))
+      (is (some? stored))
+      (is (nil? (:ticket_number stored)))
+      (is (nil? (:notes stored)))
+      (when stored
+        (is (= 5760 (t/as (t/duration (:grant_start_timestamp stored)
+                                      (:grant_end_timestamp stored)) :minutes)))))))
 
 (deftest create-grant-fails-for-non-admin-test
   (is (= "You don't have permissions to do that."

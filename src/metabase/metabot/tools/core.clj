@@ -15,12 +15,13 @@
   to …\"}` convention: a failure is thrown, so forgetting to handle one cannot silently hand the
   model a sentence nobody wrote.
 
-  Everything a tool does about a failure is written at the call site, and the default — doing
-  nothing — is that the failure ends the turn:
+  Everything a tool does about a failure is written at the call site. A failure it does nothing
+  about is undeclared: the model learns only that the call failed, and the agent loop decides
+  whether the turn goes on. What a tool can do instead:
 
   - *relay a foreign error*: a converter ([[with-entity]], [[with-pipeline-errors]]) turns one known
     shape into a declared recoverable error. A shape a converter does not recognise passes through
-    unchanged and is therefore unrecoverable.
+    unchanged and is therefore undeclared.
   - *do one thing per item*: implement [[BatchedTool]] as well, and let [[handle]] delegate to
     [[handle-each]]. A declared recoverable error then becomes that item's contribution instead of
     ending the turn.
@@ -120,7 +121,14 @@
    [:args         :any]
    [:scope                  {:optional true} [:maybe :string]]
    [:metabot/capabilities   {:optional true} [:maybe [:set :keyword]]]
-   [:metabot/title-fn       {:optional true} [:maybe fn?]]])
+   [:metabot/title-fn       {:optional true} [:maybe fn?]]
+   ;; Set by a tool that saves something. A failure it did not declare may have come after the save,
+   ;; so `metabase.metabot.tools.runtime/invoke` ends the turn instead of letting the model try again.
+   [:metabot/writes?        {:optional true} [:maybe :boolean]]
+   ;; Set by a tool whose call changes state that other calls read, such as a stored query. In one model response,
+   ;; `metabase.metabot.self.core/tool-executor-xf` starts its call once the calls before it have finished, and the
+   ;; calls after it once it has finished.
+   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.
@@ -129,11 +137,16 @@
   than in a separate key. `:structured-output` is not a success signal and is not a second copy of
   the output: include it only when a named consumer reads it (the agent loop's query and chart memory
   and its markdown link buffer, `metabase.metabot.used-tables`, the document API's chart draft,
-  `metabase.metabot.agent.user-context`, and EE analytics persistence)."
+  `metabase.metabot.agent.user-context`, and EE analytics persistence).
+
+  `:non-terminal?` keeps the turn open after a successful call to a tool that would end it, so the model can act on
+  what the output asks it to check. It has no effect on the turn's last step
+  (`metabase.metabot.agent.core/terminal-tool-call?`)."
   [:map {:closed true}
    [:output            ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]])
+   [:data-parts        {:optional true} [:sequential DataPart]]
+   [:non-terminal?     {:optional true} :boolean]])
 
 (mr/def ::entry
   "One item's contribution, as [[compose]] sees it.
@@ -424,7 +437,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (and (not (contains? (ex-data e) tools.error/error-key))
+      (if (and (not (tools.error/declared? e))
                (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
@@ -471,6 +484,11 @@
       (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
+          ;; Its payload and recovery steps are more specific than anything below would rebuild. A declared
+          ;; not-found carries a 404, and a declared recoverable carries `:agent-error?`, so both would match.
+          (tools.error/declared? e)
+          (throw e)
+
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
@@ -495,7 +513,8 @@
     (with-pipeline-errors
       (construct/execute-representations-query query))
 
-  Three cases:
+  Four cases:
+  - a declared tool error passes through unchanged, so a nested `with-entity` keeps the entity it names;
   - an `:agent-error?` exception whose ex-data carries an `:error` code declared in
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;

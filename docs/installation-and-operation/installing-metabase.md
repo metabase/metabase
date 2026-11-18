@@ -1,5 +1,6 @@
 ---
 title: Installing Metabase
+summary: Pick how to run Metabase, from Metabase Cloud to Docker, a JAR file, or an air-gapped deployment.
 redirect_from:
   - /docs/latest/operations-guide/installing-metabase
 ---

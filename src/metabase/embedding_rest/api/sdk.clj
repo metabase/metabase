@@ -16,5 +16,5 @@
   is null when the host app page URL has no hostname."
   []
   (->> (embedding-rest.db/sdk-react-18-hosts-last-seen-after (embedding.sdk-react-18/last-seen-cutoff) max-hosts)
-       (filter mi/can-read?)
+       mi/readable
        (map #(update % :host not-empty))))

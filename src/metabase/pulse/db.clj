@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util.malli :as mu]
@@ -13,6 +14,18 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id [:auto/param card-id]))
+
+(mu/defn cards
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -95,6 +108,11 @@
   "The id of the Pulse with `pulse-id` if it exists, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one-pk :model/Pulse :id pulse-id))
+
+(mu/defn pulse-id-of-channel
+  "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
+  [pulse-channel-id :- ms/PositiveInt]
+  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
 
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
@@ -220,10 +238,8 @@
   (t2/update! :model/Pulse {:dashboard_id dashboard-id} (assoc changes :updated_at :updated_at)))
 
 (mu/defn pulse-cards-for-pulses
-  "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
-  archived Cards unless `include-archived?`."
-  [pulse-ids         :- [:sequential ::lib.schema.id/pulse]
-   include-archived? :- :boolean]
+  "The non-archived Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
   (t2/select
    :model/Card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
@@ -234,7 +250,7 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:in :p.id pulse-ids]
-                (when-not include-archived? [:= :c.archived false])]
+                [:= :c.archived false]]
     :order-by [[:pc.position :asc]]}))
 
 (mu/defn pulse-card-refs
@@ -398,7 +414,10 @@
   running model hooks."
   [channel-id :- ms/PositiveInt
    user-ids   :- [:set ::lib.schema.id/user]]
-  (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids]))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`."
