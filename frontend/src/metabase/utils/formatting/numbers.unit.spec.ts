@@ -409,6 +409,44 @@ describe("formatNumber with scale (multiply function)", () => {
   });
 });
 
+describe("formatNumber with duration style", () => {
+  it("formats value as duration", () => {
+    expect(formatNumber(72, { number_style: "duration" })).toBe("0:01:12");
+    expect(
+      formatNumber(BigInt(72_000), {
+        number_style: "duration",
+        duration_unit: "millisecond",
+        duration_style: "narrow",
+      }),
+    ).toBe("1m 12s");
+  });
+
+  it("applies scale before reading value in duration unit", () => {
+    expect(formatNumber(1.2, { number_style: "duration", scale: 60 })).toBe(
+      "0:01:12",
+    );
+  });
+
+  it("ignores decimals and compact", () => {
+    expect(
+      formatNumber(3723.25, {
+        number_style: "duration",
+        decimals: 3,
+        compact: true,
+      }),
+    ).toBe("1:02:03");
+  });
+
+  it("wraps negative duration in parentheses when requested", () => {
+    expect(
+      formatNumber(-72, {
+        number_style: "duration",
+        negativeInParentheses: true,
+      }),
+    ).toBe("(0:01:12)");
+  });
+});
+
 describe("formatPercent", () => {
   it("formats percent with two decimals", () => {
     expect(formatPercent(0.12245)).toBe("12.25 %");
@@ -437,6 +475,12 @@ describe("numberFormatterForOptions caching", () => {
 
     expect(eur).not.toBe(usd);
     expect(usd.format(1)).not.toBe(eur.format(1));
+  });
+
+  it("builds decimal formatter for styles Intl does not support", () => {
+    expect(
+      numberFormatterForOptions({ number_style: "duration" }).format(1234.5),
+    ).toBe("1,234.5");
   });
 
   it("should evict the oldest formatter once the cache is full", async () => {

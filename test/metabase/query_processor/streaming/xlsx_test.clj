@@ -447,13 +447,14 @@
        (parse-fn sheet)))))
 
 (defn- xlsx-export
-  [ordered-cols viz-settings rows & {:keys [parse-fn pivot-export-options]}]
+  [ordered-cols viz-settings rows & {:keys [parse-fn pivot-export-options format-rows?]}]
   (with-open [bos (ByteArrayOutputStream.)
               os  (BufferedOutputStream. bos)]
     (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
-      (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols
-                                           :pivot? (some? pivot-export-options)
-                                           :pivot-export-options pivot-export-options}}
+      (qp.si/begin! results-writer {:data (cond-> {:ordered-cols ordered-cols
+                                                   :pivot? (some? pivot-export-options)
+                                                   :pivot-export-options pivot-export-options}
+                                            (some? format-rows?) (assoc :format-rows? format-rows?))}
                     viz-settings)
       (doall (map-indexed
               (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
@@ -592,6 +593,58 @@
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Incorrect title"}
                                                           {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
                                []))))))
+
+(deftest duration-format-string-test
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (are [settings expected] (= expected (format-string (assoc settings ::mb.viz/number-style "duration")))
+      {}                                                      "[h]:mm:ss"
+      {::mb.viz/duration-precision "minute"}                 "[h]:mm"
+      {::mb.viz/duration-precision "millisecond"}            "[h]:mm:ss.000"
+      {::mb.viz/duration-style "narrow"}                      "[h]\"h \"m\"m \"s\"s\""
+      {::mb.viz/duration-style     "narrow"
+       ::mb.viz/duration-precision "minute"}                 "[h]\"h \"m\"m\""
+      {::mb.viz/duration-style     "narrow"
+       ::mb.viz/duration-precision "millisecond"}            "[h]\"h \"m\"m \"s.000\"s\""
+      {::mb.viz/prefix "~" ::mb.viz/suffix " total"}          "\"~\"[h]:mm:ss\" total\"")))
+
+(deftest duration-settings-on-other-number-styles-test
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "leftover duration settings do not change format of other number styles"
+      (is (= (format-string {::mb.viz/number-style "decimal"})
+             (format-string {::mb.viz/number-style       "decimal"
+                             ::mb.viz/duration-unit      "hour"
+                             ::mb.viz/duration-style     "narrow"
+                             ::mb.viz/duration-precision "minute"}))))))
+
+(deftest duration-export-test
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (let [cols     [{:id 0, :name "Col"}]
+          settings (fn [col-settings]
+                     {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
+                                                (assoc col-settings ::mb.viz/number-style "duration")}})]
+      (testing "values are exported as Excel time with duration format"
+        (is (= [[#inst "1899-12-31T00:01:12.000-00:00"] ["[h]:mm:ss"]]
+               [(second (xlsx-export cols (settings {}) [[72]]))
+                (second (xlsx-export cols (settings {}) [[72]] :parse-fn parse-format-strings))])))
+      (testing "scale and duration unit are applied before conversion to days"
+        (is (= [#inst "1899-12-31T00:01:12.000-00:00"]
+               (second (xlsx-export cols
+                                    (settings {::mb.viz/scale         60
+                                               ::mb.viz/duration-unit "millisecond"})
+                                    [[1200]])))))
+      (testing "value is rounded to precision, as in app"
+        (is (= [#inst "1899-12-31T01:00:00.000-00:00"]
+               (second (xlsx-export cols (settings {::mb.viz/duration-precision "minute"}) [[3599.5]])))))
+      (testing "negative values are exported as text, since Excel cannot show negative times"
+        (is (= [["-0:01:12"] ["-1m 12s"]]
+               [(second (xlsx-export cols (settings {}) [[-72]]))
+                (second (xlsx-export cols (settings {::mb.viz/duration-style "narrow"}) [[-72]]))])))
+      (testing "prefix and suffix are added to negative values written as text"
+        (is (= ["about -0:01:12 total"]
+               (second (xlsx-export cols (settings {::mb.viz/prefix "about ", ::mb.viz/suffix " total"}) [[-72]])))))
+      (testing "values stay in duration unit when rows are not formatted"
+        (is (= [72.0]
+               (second (xlsx-export cols (settings {}) [[72]] :format-rows? false))))))))
 
 (deftest ^:parallel scale-test
   (testing "scale is applied to data prior to export"

@@ -1,8 +1,23 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog, type UserRouteConfig } from "fetch-mock";
 
-import type { CardQueryMetadata, ParameterValues } from "metabase-types/api";
+import type {
+  CardQueryMetadata,
+  Dataset,
+  ParameterValues,
+} from "metabase-types/api";
 import type { MockDatasetOpts } from "metabase-types/api/mocks";
 import { createMockDataset } from "metabase-types/api/mocks";
+
+type AdhocQueryResponse = Dataset | Response;
+
+export function setupAdhocQueryEndpoint(
+  response:
+    | AdhocQueryResponse
+    | ((call: CallLog) => AdhocQueryResponse | Promise<AdhocQueryResponse>),
+  options?: UserRouteConfig,
+) {
+  fetchMock.post("path:/api/dataset", response, options);
+}
 
 export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
   fetchMock.post(`path:/api/dataset/query_metadata`, metadata, {
