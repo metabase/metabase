@@ -16,4 +16,8 @@
         (testing "a write that changes what the driver does not depend on does not"
           (reset! notified [])
           (t2/update! :model/Database :id id {:name "renamed"})
+          (is (empty? @notified)))
+        (testing "a write of the schema that a workspace writes to does not"
+          (t2/update! :model/Database :id id {:settings (assoc (t2/select-one-fn :settings :model/Database :id id)
+                                                               :database-workspace-schema "ws_schema")})
           (is (empty? @notified)))))))

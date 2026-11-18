@@ -16,10 +16,11 @@
 
 (defn- connection-state
   "What of `database` the resources of its driver depend on, which leaves out the settings that do not change what
-  they serve (metabase#27877)."
+  they serve (metabase#27877), the schema a workspace writes to being read at the use of the Database."
   [database]
   (-> (perf/select-keys database [:engine :details :settings])
-      (cond-> (map? (:settings database)) (m/dissoc-in [:settings :database-enable-actions]))
+      (cond-> (map? (:settings database)) (-> (m/dissoc-in [:settings :database-enable-actions])
+                                              (m/dissoc-in [:settings :database-workspace-schema])))
       (update :settings perf/not-empty)))
 
 (methodical/defmethod events/publish-event! ::event
