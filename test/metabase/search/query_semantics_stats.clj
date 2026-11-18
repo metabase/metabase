@@ -1,6 +1,5 @@
 (ns metabase.search.query-semantics-stats
   "Result-set statistics for the shared search semantics corpus.
-
   These compare fixture membership, not ranking or production query frequency."
   (:require
    [clojure.set :as set]
@@ -8,7 +7,7 @@
 
 (def engines
   "The engines compared in each corpus case.
-  Semantic search is scored twice: its vector arm alone, and what it returns once it falls back to app-db."
+  Semantic search has two views: its vector arm alone, and its combined results with the app-db fallback."
   [:in-place :appdb-h2 :appdb-mysql :appdb-postgres :semantic-only :semantic-with-fallback])
 
 (def goal-kinds

@@ -7,6 +7,7 @@
    [metabase.search.query-semantics-stats :as stats]))
 
 (deftest ^:parallel result-set-relation-test
+  ;; Equal sets, containment in either direction, and overlapping sets.
   (are [expected left right] (= expected (stats/relation left right))
     :equal         #{}      #{}
     :equal         #{:A :B} #{:B :A}
@@ -32,19 +33,21 @@
     0  [1 1 1 1 1 1]   [#{} #{:A} #{:B} #{:C} #{:D} #{:E}]))
 
 (deftest ^:parallel conforming-engines-test
+  ;; Every engine, selected engines, and no engines return the correct set.
   (are [expected hits] (= expected (stats/conforming-engines #{:A} (zipmap stats/engines hits)))
-    stats/engines                               [#{:A} #{:A} #{:A} #{:A}    #{:A} #{:A}]
-    [:appdb-h2 :appdb-mysql :semantic-only]       [#{}   #{:A} #{:A} #{:A :B} #{:A} #{:A :B}]
-    []                                          [#{}   #{:B} #{:B} #{:A :B} #{}   #{:B}]))
+    stats/engines                         [#{:A} #{:A} #{:A} #{:A}    #{:A} #{:A}]
+    [:appdb-h2 :appdb-mysql :semantic-only] [#{}   #{:A} #{:A} #{:A :B} #{:A} #{:A :B}]
+    []                                   [#{}   #{:B} #{:B} #{:A :B} #{}   #{:B}]))
 
 (deftest ^:parallel correct-score-test
+  ;; Empty sets, missing and extra hits, and disjoint sets.
   (are [expected correct hits] (= expected (stats/score correct hits))
-    {:precision 1, :recall 1, :f1 1}   #{}      #{}
-    {:precision 0, :recall 0, :f1 0}   #{:A}    #{}
-    {:precision 0, :recall 0, :f1 0}   #{}      #{:A}
-    {:precision 1, :recall 1/2, :f1 2/3} #{:A :B} #{:A}
-    {:precision 1/2, :recall 1, :f1 2/3} #{:A}    #{:A :B}
-    {:precision 0, :recall 0, :f1 0}   #{:A}    #{:B}))
+    {:precision 1,   :recall 1,   :f1 1}   #{}      #{}
+    {:precision 0,   :recall 0,   :f1 0}   #{:A}    #{}
+    {:precision 0,   :recall 0,   :f1 0}   #{}      #{:A}
+    {:precision 1,   :recall 1/2, :f1 2/3} #{:A :B} #{:A}
+    {:precision 1/2, :recall 1,   :f1 2/3} #{:A}    #{:A :B}
+    {:precision 0,   :recall 0,   :f1 0}   #{:A}    #{:B}))
 
 (deftest ^:parallel translation-row-scores-test
   (let [scenario {:id          "case"
