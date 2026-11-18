@@ -130,7 +130,8 @@
                                        :model/Segment     "Segment"
                                        :model/Transform   "Transform"}
                                 config/ee-available? (assoc :model/TransformTest "Transform test"
-                                                            :model/CardTest      "Card test"))]
+                                                            :model/CardTest      "Card test"
+                                                            :model/SegmentTest   "Segment test"))]
       ;; `push-revision!` calls `serialize-instance`, which has no default: a model with revisions has a method.
       (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
              (set (keys model->display-name))))

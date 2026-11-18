@@ -15,12 +15,12 @@
 (def ^:private revisioned-models
   "The models whose rows have Revisions."
   #{:model/Card :model/CardTest :model/Dashboard :model/Document :model/Exploration :model/Measure
-    :model/Segment :model/Transform :model/TransformTest})
+    :model/Segment :model/SegmentTest :model/Transform :model/TransformTest})
 
 (def ^:private creator-recorded
   "The models whose saved tests record their creator as the author of the creation Revision when a user writes it, and
   whose reversion writes a Revision of its own update."
-  #{:model/CardTest :model/TransformTest})
+  #{:model/CardTest :model/SegmentTest :model/TransformTest})
 
 (def ^:private ignored-columns
   "For each model, the columns whose update alone is not a change to record."

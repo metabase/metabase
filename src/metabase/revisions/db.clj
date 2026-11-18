@@ -16,6 +16,14 @@
    id    :- ms/PositiveInt]
   (t2/select-one model :id id))
 
+(mu/defn entities-by-ids
+  "The `model` rows with `ids`. See [[entity]] for why `model` is generic."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
+
 (mu/defn raw-row
   "The `model` row with `id` read straight from its table, or nil. See [[entity]] for why `model` is generic."
   [model :- :keyword

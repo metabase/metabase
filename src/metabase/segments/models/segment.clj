@@ -112,6 +112,17 @@
            (definition-writable? (:definition changes)))
        (sandboxes-allow-segment-update? segment changes)))
 
+(defenterprise delete-segment-tests!
+  "Delete the tests of the segment `segment-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.segment-test
+  [_segment-id]
+  nil)
+
+(t2/define-before-delete :model/Segment
+  [{:keys [id] :as segment}]
+  (delete-segment-tests! id)
+  segment)
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]

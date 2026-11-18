@@ -441,6 +441,14 @@
        :inputs       []
        :expectations []}))
 
+   :model/SegmentTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Segment Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
    :model/DataTestRun
    (fn [_]
      {:test_type      :transform

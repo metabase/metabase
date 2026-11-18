@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
-   [metabase.revisions.models.revision.diff :refer [diff-strings*]]
+   [metabase.revisions.models.revision.diff :as revision.diff :refer [diff-strings*]]
    [metabase.segments.schema]
    [metabase.transforms.schema]
    [metabase.util :as u]
@@ -82,20 +82,27 @@
   (diff-strings* (name model) o1 o2 names))
 
 (mr/def ::names
-  "The names of the Collections and Dashboards the current user can read, by id, for revision descriptions."
+  "The names of the Collections, Dashboards and data-test subjects the current user can read, by id, for revision
+  descriptions. `:subject-names` is keyed by model, then id."
   [:map {:closed true}
    [:collection-names [:map-of pos-int? :string]]
-   [:dashboard-names  [:map-of pos-int? :string]]])
+   [:dashboard-names  [:map-of pos-int? :string]]
+   [:subject-names    [:map-of :keyword [:map-of pos-int? :string]]]])
 
 (mu/defn readable-names :- ::names
-  "The names of the Collections and Dashboards that the revision `objects` reference and the current user can read,
-  loaded and checked together."
+  "The names of the Collections, Dashboards and data-test subjects that the revision `objects` reference and the
+  current user can read, loaded and checked together."
   [objects :- [:sequential [:fn {:error/message "a revision object"} map?]]]
   (let [ids   (fn [k] (into [] (comp (keep k) (filter pos-int?) (distinct)) objects))
         names (fn [rows]
                 (into {} (map (juxt :id :name)) (mi/readable rows)))]
     {:collection-names (names (revisions.db/collections-by-ids (ids :collection_id)))
-     :dashboard-names  (names (revisions.db/dashboards-by-ids (ids :dashboard_id)))}))
+     :dashboard-names  (names (revisions.db/dashboards-by-ids (ids :dashboard_id)))
+     :subject-names    (into {}
+                             (keep (fn [[k model]]
+                                     (when-let [subject-ids (not-empty (ids k))]
+                                       [model (names (revisions.db/entities-by-ids model subject-ids))])))
+                             revision.diff/data-test-subject-models)}))
 
 (defmulti revision-readable?
   "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller

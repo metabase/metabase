@@ -452,6 +452,9 @@
 (events/derive! :event/card-test-create ::lifecycle-event)
 (events/derive! :event/card-test-update ::lifecycle-event)
 (events/derive! :event/card-test-delete ::lifecycle-event)
+(events/derive! :event/segment-test-create ::lifecycle-event)
+(events/derive! :event/segment-test-update ::lifecycle-event)
+(events/derive! :event/segment-test-delete ::lifecycle-event)
 (events/derive! :event/transform-create ::transform-event)
 (events/derive! :event/update-transform ::transform-event)
 (events/derive! :event/transform-update ::transform-event)
@@ -473,7 +476,7 @@
 
 (def ^:private creator-recorded-topics
   "The creation topics of the saved tests, recorded as their creator when a user writes them."
-  #{:event/transform-test-create :event/card-test-create})
+  #{:event/transform-test-create :event/card-test-create :event/segment-test-create})
 
 (defn- record-saved-test-lifecycle!
   [topic {:keys [object user-id] :as event}]
@@ -499,6 +502,19 @@
 (events/derive! :event/card-test-run-timeout ::card-test-event)
 
 (methodical/defmethod events/publish-event! ::card-test-event
+  [topic event]
+  (if (events/isa? topic ::lifecycle-event)
+    (record-saved-test-lifecycle! topic event)
+    (record! topic event)))
+
+(events/derive! ::segment-test-event ::event)
+(events/derive! :event/segment-test-create ::segment-test-event)
+(events/derive! :event/segment-test-update ::segment-test-event)
+(events/derive! :event/segment-test-delete ::segment-test-event)
+(events/derive! :event/segment-test-run-start ::segment-test-event)
+(events/derive! :event/segment-test-run-timeout ::segment-test-event)
+
+(methodical/defmethod events/publish-event! ::segment-test-event
   [topic event]
   (if (events/isa? topic ::lifecycle-event)
     (record-saved-test-lifecycle! topic event)
