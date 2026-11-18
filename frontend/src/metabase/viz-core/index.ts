@@ -248,7 +248,6 @@ export {
   getReferencedEntities,
   getSegmentColor,
   getUnansweredGoalEntities,
-  hasUnresolvedGoalReferences,
   isDynamicGoalSetting,
   needsAnswer,
   needsGraphGoalResolution,

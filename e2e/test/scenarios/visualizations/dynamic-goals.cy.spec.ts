@@ -149,7 +149,11 @@ describe("scenarios > visualizations > dynamic goals", () => {
       .should("contain.text", "400");
     assertGoalLineValue("400");
     cy.get<CardId>("@singleColumnSourceId").then((id) => {
-      assertAnswered("@goalValues", { id, column: "TARGET", value: 400 });
+      assertAnsweredByFallbackFetch("@goalValues", {
+        id,
+        column: "TARGET",
+        value: 400,
+      });
     });
 
     cy.log("The goal line follows the viz type");
@@ -248,7 +252,11 @@ describe("scenarios > visualizations > dynamic goals", () => {
       Color(rangeColor).rgb().string(),
     );
     cy.get<CardId>("@metricSourceId").then((id) => {
-      assertAnswered("@goalValues", { id, column: "count", value: 18760 });
+      assertAnsweredByFallbackFetch("@goalValues", {
+        id,
+        column: "count",
+        value: 18760,
+      });
     });
 
     cy.log(
@@ -285,7 +293,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     pickGoalSource(MEASURE_SOURCE.name);
     H.queryBuilderMain().findByText("Goal 100").should("be.visible");
     cy.get<MeasureId>("@measureSourceId").then((id) => {
-      assertAnswered("@goalValues", {
+      assertAnsweredByFallbackFetch("@goalValues", {
         type: "measure",
         id,
         column: "max",
@@ -705,13 +713,33 @@ function assertGoalLineValue(value: string) {
   H.tooltip().should("contain.text", value);
 }
 
-function assertAnswered(
+function assertAnswered(alias: string, reference: AnsweredReference) {
+  assertAnsweredBy(
+    alias,
+    reference,
+    (request, entity) => !requestsEveryColumn(request, entity),
+  );
+}
+
+// a goal picked in the query builder is answered by the fallback fetch: the chart does not run again
+function assertAnsweredByFallbackFetch(
+  alias: string,
+  reference: AnsweredReference,
+) {
+  assertAnsweredBy(alias, reference, requestsEveryColumn);
+}
+
+function assertAnsweredBy(
   alias: string,
   { type = "card", id, column, value }: AnsweredReference,
+  isAnsweringRequest: (
+    request: Interception["request"],
+    entity: { type: ReferencedEntityType; id: CardId | MeasureId },
+  ) => boolean,
 ) {
   cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
     const answers = interceptions
-      .filter(({ request }) => !requestsEveryColumn(request, { type, id }))
+      .filter(({ request }) => isAnsweringRequest(request, { type, id }))
       .flatMap(({ response }) => response?.body?.[type]?.[id] ?? []);
     const isAnswered = answers.some(
       (answer) =>

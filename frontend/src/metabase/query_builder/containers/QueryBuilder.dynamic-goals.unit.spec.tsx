@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupGoalValuesEndpoint } from "__support__/server-mocks";
-import { act, screen, waitFor } from "__support__/ui";
+import { act, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -98,44 +98,20 @@ describe("QueryBuilder > dynamic goals", () => {
     ]);
   });
 
-  describe("saved question when a new goal source is picked", () => {
-    it("runs the question as an ad-hoc query, next to the goal values of the new source", async () => {
-      const { pickNewGoalSource } = await setup({
-        database: createSampleDatabase({ auto_run_queries: true }),
-      });
-      expect(getDatasetCalls()).toHaveLength(0);
-
-      await pickNewGoalSource();
-
-      expect(await screen.findByText("Goal 300")).toBeInTheDocument();
-      await waitFor(() => expect(getDatasetCalls()).toHaveLength(1));
-      expect(await getDatasetBodies()).toEqual([
-        // the re-run of the question, which turned ad-hoc with the settings change
-        expect.not.objectContaining({ referenced_entities: expect.anything() }),
-      ]);
-      expect(await getGoalValuesBodies()).toEqual(
-        expect.arrayContaining([
-          { sources: [{ type: "card", id: 10, columns: ["goal"] }] },
-        ]),
-      );
-      expect(getCardQueryCalls()).toHaveLength(1);
+  it("answers a newly picked goal source with only its goal values, without running the question again", async () => {
+    const { pickNewGoalSource } = await setup({
+      database: createSampleDatabase({ auto_run_queries: true }),
     });
 
-    it("answers the new goal source with only its goal values when the database does not auto-run queries", async () => {
-      const { pickNewGoalSource } = await setup({
-        database: createSampleDatabase({ auto_run_queries: false }),
-      });
+    await pickNewGoalSource();
 
-      await pickNewGoalSource();
-
-      expect(await screen.findByText("Goal 300")).toBeInTheDocument();
-      expect(getDatasetCalls()).toHaveLength(0);
-      expect(await getGoalValuesBodies()).toEqual([
-        { sources: [{ type: "card", id: 9, columns: ["goal"] }] },
-        { sources: [{ type: "card", id: 10 }] },
-      ]);
-      expect(getCardQueryCalls()).toHaveLength(1);
-    });
+    expect(await screen.findByText("Goal 300")).toBeInTheDocument();
+    expect(await getGoalValuesBodies()).toEqual([
+      { sources: [{ type: "card", id: 9, columns: ["goal"] }] },
+      { sources: [{ type: "card", id: 10 }] },
+    ]);
+    expect(getCardQueryCalls()).toHaveLength(1);
+    expect(getDatasetCalls()).toHaveLength(0);
   });
 });
 
@@ -145,10 +121,6 @@ function getCardQueryCalls() {
 
 function getDatasetCalls() {
   return fetchMock.callHistory.calls("path:/api/dataset");
-}
-
-function getDatasetBodies(): Promise<unknown[]> {
-  return getRequestBodies("path:/api/dataset");
 }
 
 function getGoalValuesBodies(): Promise<unknown[]> {

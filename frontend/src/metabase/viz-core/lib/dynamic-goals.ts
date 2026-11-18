@@ -433,24 +433,6 @@ export function getReferencedEntities(card: GoalCard): ReferencedEntity[] {
   }));
 }
 
-function hasGoalReferencesWhere(
-  card: GoalCard,
-  data: GoalData | undefined,
-  predicate: (resolved: GoalValueResult) => boolean,
-): boolean {
-  return getGoalForeignColumnRefs(card).some(
-    (ref) => data == null || predicate(resolveGoalValue(data, ref)),
-  );
-}
-
-// Includes failed references so a user action in the query builder retries them.
-export function hasUnresolvedGoalReferences(
-  card: GoalCard,
-  data: GoalData | undefined,
-): boolean {
-  return hasGoalReferencesWhere(card, data, isUnresolved);
-}
-
 // Missing columns are worth re-running for - failed queries would just fail again.
 export function needsAnswer(resolved: GoalValueResult): boolean {
   return (
@@ -461,9 +443,4 @@ export function needsAnswer(resolved: GoalValueResult): boolean {
 // The result has no answer for the referenced entity.
 function isUnanswered(resolved: GoalValueResult): boolean {
   return resolved.isUnanswered === true;
-}
-
-// Unanswered, or answered with an error.
-function isUnresolved(resolved: GoalValueResult): boolean {
-  return isUnanswered(resolved) || resolved.error != null;
 }

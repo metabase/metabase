@@ -23,7 +23,6 @@ import {
   getNumericGoalValue,
   getReferencedEntities,
   getUnansweredGoalEntities,
-  hasUnresolvedGoalReferences,
   isDynamicGoalSetting,
   needsGraphGoalResolution,
   resolveGoalSegments,
@@ -938,75 +937,6 @@ describe("getUnansweredGoalEntities", () => {
   });
 });
 
-describe("hasUnresolvedGoalReferences", () => {
-  const gauge: GoalCard = {
-    display: "gauge",
-    visualization_settings: {
-      "gauge.segments": [
-        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
-      ],
-    },
-  };
-  const baseData = createMockDatasetData({
-    cols: [createMockColumn({ name: "value" })],
-    rows: [[50]],
-  });
-
-  it("ignores references on a display without dynamic goals", () => {
-    const card: GoalCard = {
-      display: "table",
-      visualization_settings: {
-        "gauge.segments": [
-          {
-            min: 0,
-            max: { type: "card", id: 9, column: "goal" },
-            color: "red",
-          },
-        ],
-      },
-    };
-
-    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
-  });
-
-  it("is true without any result data", () => {
-    expect(hasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
-  });
-
-  it("is true for a failed reference, so it gets retried", () => {
-    const data = createMockDatasetData({
-      ...baseData,
-      referenced_entities: createMockFailedReferencedEntitiesResults(),
-    });
-
-    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
-  });
-
-  it("is true when the referenced column is missing from the entity's answer", () => {
-    const data = createMockDatasetData({
-      ...baseData,
-      referenced_entities: createMockReferencedEntitiesResults({
-        column: "other",
-        value: 1,
-      }),
-    });
-
-    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
-  });
-
-  it("is false when every reference resolved", () => {
-    const data = createMockDatasetData({
-      ...baseData,
-      referenced_entities: createMockReferencedEntitiesResults({
-        column: "goal",
-        value: 250,
-      }),
-    });
-
-    expect(hasUnresolvedGoalReferences(gauge, data)).toBe(false);
-  });
-});
-
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
     expect(isDynamicGoalSetting("area", "graph.goal_value")).toBe(true);
@@ -1043,7 +973,6 @@ describe("dynamic goal settings per display", () => {
     };
 
     expect(getReferencedEntities(card)).toEqual([]);
-    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
   });
 });
 
@@ -1055,21 +984,6 @@ describe.each(DYNAMIC_GOAL_DISPLAYS)("%s chart goal value", (display) => {
       "graph.goal_value": { type: "card", id: 9, column: "goal" },
     },
   };
-  const baseData = createMockDatasetData({
-    cols: [createMockColumn({ name: "count" })],
-    rows: [[50]],
-  });
-  const answeredData = createMockDatasetData({
-    ...baseData,
-    referenced_entities: createMockReferencedEntitiesResults({
-      column: "goal",
-      value: 250,
-    }),
-  });
-  const failedData = createMockDatasetData({
-    ...baseData,
-    referenced_entities: createMockFailedReferencedEntitiesResults(),
-  });
 
   it("asks the query for the entity a foreign goal value references", () => {
     expect(getReferencedEntities(card)).toEqual([
@@ -1090,13 +1004,6 @@ describe.each(DYNAMIC_GOAL_DISPLAYS)("%s chart goal value", (display) => {
         visualization_settings: { "graph.goal_value": "count" },
       }),
     ).toEqual([]);
-  });
-
-  it("has unresolved references until the data answers them successfully", () => {
-    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(true);
-    expect(hasUnresolvedGoalReferences(card, baseData)).toBe(true);
-    expect(hasUnresolvedGoalReferences(card, answeredData)).toBe(false);
-    expect(hasUnresolvedGoalReferences(card, failedData)).toBe(true);
   });
 });
 
