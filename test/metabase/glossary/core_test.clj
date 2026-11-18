@@ -56,7 +56,7 @@
         (testing "exactly one update event is published with the new and previous entries"
           (is (= 1 (count events)))
           (is (=? {:topic :event/glossary-update
-                   :event {:object          entry
+                   :event {:object          (dissoc entry :updated_at)
                            :previous-object {:id id :term "ARR" :definition "old"}
                            :user-id         user-id}}
                   (first events))))))
