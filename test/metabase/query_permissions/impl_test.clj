@@ -438,7 +438,7 @@
                (query-perms/required-perms-for-query query)))))))
 
 (deftest ^:parallel query->resolved-source-ids-test
-  (testing "table-sourced queries behave like query->source-table-ids"
+  (testing "table-sourced queries resolve to their source table"
     (is (= #{(mt/id :venues)}
            (:table-ids (query-perms/query->resolved-source-ids (mt/mbql-query venues))))))
   (testing "card-sourced queries resolve to the card's underlying source table"

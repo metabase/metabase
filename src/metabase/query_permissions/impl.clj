@@ -166,13 +166,6 @@
   [query :- ::query]
   (stages-source-ids (:stages (->mbql5 query)) nil false))
 
-(mu/defn query->source-table-ids
-  "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
-  only table ID information is needed. "
-  [query :- ::query]
-  (when (seq query)
-    (:table-ids (query->source-ids query))))
-
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).

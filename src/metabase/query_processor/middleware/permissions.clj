@@ -45,7 +45,8 @@
   needing to cache permissions for inactive tables."
   [{database-id :database, :as outer-query}]
   (qp.store/with-metadata-provider database-id
-    (let [table-ids (query-perms/query->source-table-ids outer-query)]
+    ;; `:table-ids` has the sandboxed Tables as well as the `:source-table`s, all of which the permissions check looks up
+    (let [table-ids (:table-ids (query-perms/query->source-ids outer-query))]
       (doseq [table-id table-ids]
         (let [table (lib.metadata.protocols/table (qp.store/metadata-provider) table-id)]
           (when-not (:active table)
