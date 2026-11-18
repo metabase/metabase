@@ -6,7 +6,11 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
+import type {
+  SummaryDimensionWellId,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "../types";
 import { getDimensionItems, getValueItems, isFormulaValue } from "../utils";
 
 import type { SummaryFormula } from "./types";
@@ -73,6 +77,7 @@ function getValueFormulas(
 function getDimensionFormulas(
   query: Lib.Query,
   stageIndex: number,
+  wellId: SummaryDimensionWellId,
 ): SummaryFormula[] {
   const expressionUuids = Lib.expressions(query, stageIndex).map(
     Lib.clauseUuid,
@@ -84,7 +89,7 @@ function getDimensionFormulas(
     const uuid = Lib.clauseUuid(expression);
     return [
       {
-        wellId: "columns",
+        wellId,
         clause: expression,
         uuid,
         index: expressionUuids.indexOf(uuid),
@@ -104,7 +109,7 @@ export function findSummaryFormula(
   const formulas =
     wellId === "values"
       ? getValueFormulas(query, stageIndex)
-      : getDimensionFormulas(query, stageIndex);
+      : getDimensionFormulas(query, stageIndex, wellId);
   return formulas.find((formula) => formula.uuid === uuid) ?? null;
 }
 
