@@ -4,7 +4,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const advanceServerClockBy = (milliseconds) =>
+const advanceServerClockBy = (milliseconds: number) =>
   cy.request("POST", "/api/testing/set-time", { "add-ms": milliseconds });
 
 describe("search > recently viewed", () => {
@@ -145,7 +145,11 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 });
 
-const assertRecentlyViewedItem = (index, title, type) => {
+const assertRecentlyViewedItem = (
+  index: number,
+  title: string,
+  type: string,
+) => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")
     .eq(index)

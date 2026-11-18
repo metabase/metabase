@@ -50,7 +50,8 @@ const typeFilters = [
   },
 ];
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID }: { ORDERS_ID: number; PRODUCTS_ID: number } =
+  SAMPLE_DATABASE;
 
 const NORMAL_USER_TEST_QUESTION = {
   name: "Robert's Super Duper Reviews",
@@ -94,7 +95,6 @@ describe("scenarios > search", () => {
             description: "Set orders quantity to the same value",
             type: "query",
             model_id: id,
-            database_id: SAMPLE_DB_ID,
             dataset_query: {
               database: SAMPLE_DB_ID,
               native: {
@@ -118,7 +118,7 @@ describe("scenarios > search", () => {
           { wrapId: true, idAlias: "modelId" },
         );
 
-        cy.get("@modelId").then((modelId) => {
+        cy.get<number>("@modelId").then((modelId) => {
           createModelIndex({
             modelId,
             pkName: "ID",
@@ -188,7 +188,8 @@ describe("scenarios > search", () => {
             const uniqueResults = new Set(
               $results.toArray().map((el) => {
                 const label = el.getAttribute("aria-label");
-                return label.split(" ").slice(-1)[0];
+                expect(label).to.be.a("string");
+                return label?.split(" ").slice(-1)[0];
               }),
             );
             expect(uniqueResults.size).to.be.greaterThan(1);
@@ -374,7 +375,7 @@ describe("scenarios > search", () => {
       });
 
       it("should allow non-admin users to see users and filter by created_by", () => {
-        ["normal", "sandboxed"].forEach((userType) => {
+        (["normal", "sandboxed"] as const).forEach((userType) => {
           cy.signIn(userType);
           cy.intercept("GET", "/api/search?q=*").as(`${userType}Search`);
           cy.visit("/");
@@ -446,7 +447,7 @@ describe("scenarios > search", () => {
       });
 
       it("should allow non-admin users to see users and filter by last_edited_by", () => {
-        ["normal", "sandboxed"].forEach((userType) => {
+        (["normal", "sandboxed"] as const).forEach((userType) => {
           cy.signIn(userType);
           cy.intercept("GET", "/api/search?q=*").as(`${userType}Search`);
           cy.visit("/");
@@ -866,7 +867,7 @@ describe("scenarios > search", () => {
 });
 
 function expectSearchResultItemNameContent(
-  { itemNames },
+  { itemNames }: { itemNames: string[] },
   { strict } = { strict: true },
 ) {
   cy.findAllByTestId("search-result-item-name").then(($searchResultLabel) => {

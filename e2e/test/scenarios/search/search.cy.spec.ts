@@ -6,7 +6,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PEOPLE_ID }: { ORDERS_ID: number; PEOPLE_ID: number } =
+  SAMPLE_DATABASE;
 
 const visitEmbeddingWithSearch = (url = "/") => {
   H.visitFullAppEmbeddingUrl({
@@ -223,7 +224,7 @@ describe("issue 28788", () => {
 
     const questionDetails = {
       name: `28788-${LONG_STRING}`,
-      type: "model",
+      type: "model" as const,
       description: LONG_STRING,
       query: {
         "source-table": PEOPLE_ID,
