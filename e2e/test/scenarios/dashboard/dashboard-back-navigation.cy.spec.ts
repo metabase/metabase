@@ -414,7 +414,7 @@ const createDashboardWithSlowCard = () => {
           name: "sleep",
           "display-name": "sleep",
           type: "number",
-          default: 0,
+          default: "0",
         },
       },
     },
