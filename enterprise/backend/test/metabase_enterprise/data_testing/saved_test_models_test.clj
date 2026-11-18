@@ -41,7 +41,7 @@
 
 (defn- do-with-each-test-type!
   "Call `f` with each of [[test-types]] and the id of a saved test of a new subject, in a `testing` naming the model.
-  Rasta has no collection or data permissions, so may read no subject; transforms are readable."
+  Rasta has no collection or data permissions and is not a data analyst, so may read no subject."
   [f]
   (mt/with-premium-features #{:transforms-basic :transforms-testing}
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
