@@ -1131,10 +1131,7 @@
            metabase.events.impl
            metabase.events.init}
    :uses #{app-db models util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Pulse
+   :model-imports #{:model/Collection
                     :model/SecurityAdvisory
                     :model/Table
                     :model/User}}
@@ -1497,7 +1494,6 @@
            comments
            dashboards
            documents
-           events
            glossary
            lib
            lib.agent-lib
@@ -2368,8 +2364,7 @@
            revisions
            search
            util}
-   :model-imports #{:model/Action
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
                     :model/Dashboard
