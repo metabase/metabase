@@ -34,6 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -1099,6 +1100,23 @@
                    (set (:values (t2/select-one :model/FieldValues
                                                 :field_id category-field-id
                                                 :type :full)))))))))))
+
+(deftest run-distinct-batch-project-id-override-test
+  (testing "The batched field values query qualifies tables with the project-id of the database (#86111)"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :bigquery-cloud-sdk
+                                                  :details {:project-id                  "data-project"
+                                                            :project-id-from-credentials "creds-project"}}
+                     :model/Table    table       {:db_id db-id :schema "my_dataset" :name "my_table"}
+                     :model/Field    field       {:table_id (:id table) :name "category" :base_type :type/Text}]
+        (let [captured-sql (atom nil)]
+          (binding [bigquery/*process-native* (fn [_respond _database sql _params _cancel-chan]
+                                                (reset! captured-sql sql)
+                                                (throw (Exception. "Done.")))]
+            (try
+              (distinct-batch/run-distinct-batch table [field])
+              (catch Exception _)))
+          (is (str/includes? (str @captured-sql) "`data-project.my_dataset.my_table`")))))))
 
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"

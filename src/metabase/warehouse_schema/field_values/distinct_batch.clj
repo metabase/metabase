@@ -35,6 +35,7 @@
    [clojure.string :as str]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -137,25 +138,27 @@
   Does NOT swallow exceptions — callers wrap with `metabase.sync.util/with-error-handling`
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
-  (let [db-id          (:db_id table)
-        driver         (:engine (warehouse-schema.db/database db-id))
-        fields         (vec fields)
-        hsql           (build-union driver table fields)
-        [sql & params] (sql.qp/format-honeysql driver hsql)
-        result         (qp/process-query
-                        {:database db-id
-                         :type     :native
-                         :native   {:query sql, :params (vec params)}})
-        rows           (-> result :data :rows)]
-    (reduce (fn [acc [arm-idx value-str]]
-              ;; Arms are tagged by ordinal rather than by name: the name is warehouse-controlled and has no
-              ;; business being in the query text as a literal, and ordinals also keep two
-              ;; identically-named fields in the same batch from collapsing into one.
-              (if-let [field (get fields (decode-arm-idx arm-idx))]
-                (let [v (decode-value (:base_type field) value-str)]
-                  (-> acc
-                      (update-in [(:id field) :values] (fnil conj []) v)
-                      (update-in [(:id field) :raw-count] (fnil inc 0))))
-                acc))
-            (into {} (map (fn [f] [(:id f) {:values [] :raw-count 0}])) fields)
-            rows)))
+  (let [db-id (:db_id table)]
+    ;; Bind the metadata provider before we compile, so drivers can read the database (e.g. BigQuery's project-id).
+    (qp.store/with-metadata-provider db-id
+      (let [driver         (:engine (warehouse-schema.db/database db-id))
+            fields         (vec fields)
+            hsql           (build-union driver table fields)
+            [sql & params] (sql.qp/format-honeysql driver hsql)
+            result         (qp/process-query
+                            {:database db-id
+                             :type     :native
+                             :native   {:query sql, :params (vec params)}})
+            rows           (-> result :data :rows)]
+        (reduce (fn [acc [arm-idx value-str]]
+                  ;; Arms are tagged by ordinal rather than by name: the name is warehouse-controlled and has no
+                  ;; business being in the query text as a literal, and ordinals also keep two
+                  ;; identically-named fields in the same batch from collapsing into one.
+                  (if-let [field (get fields (decode-arm-idx arm-idx))]
+                    (let [v (decode-value (:base_type field) value-str)]
+                      (-> acc
+                          (update-in [(:id field) :values] (fnil conj []) v)
+                          (update-in [(:id field) :raw-count] (fnil inc 0))))
+                    acc))
+                (into {} (map (fn [f] [(:id f) {:values [] :raw-count 0}])) fields)
+                rows)))))
