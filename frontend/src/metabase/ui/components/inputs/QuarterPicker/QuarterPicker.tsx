@@ -12,7 +12,17 @@ import dayjs from "dayjs";
 // eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
 import advancedFormat from "dayjs/plugin/advancedFormat";
 // eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import isoWeek from "dayjs/plugin/isoWeek";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
 import quarterOfYear from "dayjs/plugin/quarterOfYear";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import timezone from "dayjs/plugin/timezone";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import utc from "dayjs/plugin/utc";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import weekOfYear from "dayjs/plugin/weekOfYear";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import weekYear from "dayjs/plugin/weekYear";
 import { type Ref, forwardRef } from "react";
 import { c } from "ttag";
 
@@ -101,6 +111,17 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
 function registerDayjsPlugins() {
   // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
   dayjs.extend(quarterOfYear);
+  // Custom formats can use advancedFormat's week, week-year, and time-zone tokens.
+  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
+  dayjs.extend(weekOfYear);
+  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
+  dayjs.extend(weekYear);
+  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
+  dayjs.extend(isoWeek);
+  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
+  dayjs.extend(utc);
+  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
+  dayjs.extend(timezone);
   // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
   dayjs.extend(advancedFormat);
 }
