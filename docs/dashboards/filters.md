@@ -313,7 +313,17 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 
    - **From connected fields:** Use the values from the field the filter is connected to.
    - **From another model or question:** Pick a model or question (built with either the query builder or SQL), then set the **Column to supply the values** that the filter should pass along. You can also set a **Column to supply the labels** to show friendly labels in the dropdown while still filtering on the underlying values. For example, you could filter on product ID while showing the product's title so people can search for products by name or ID.
-   - **Custom list:** Enter each value on its own line.
+   - **Custom list:** Enter each value on its own line. To show a display label in the dropdown in place of the value, add a comma after the value, then the label. If a value or label contains a comma, wrap it in double quotes. For example:
+
+     ```
+     Active
+     CA,California
+     "Smith, Jane"
+     42,"Gadgets, Widgets, and Gizmos"
+     "Doe, John","John Doe (Sales)"
+     ```
+
+     In this example, the filter passes along `CA` when people pick "California".
 
 ![Selectable values](./images/selectable-values.png)
 
