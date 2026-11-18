@@ -14,6 +14,13 @@ Run a [supported version](https://www.metabase.com/version-support) and [upgrade
 - **Pro and Enterprise:** Enable [Security Center](./security-center.md) notifications.
 - **Open Source:** Monitor [Metabase security advisories](https://github.com/metabase/metabase/security/advisories) and [releases](https://github.com/metabase/metabase/releases).
 
+## Mitigate Java4Shell (CVE-2026-114938)
+
+To temporarily mitigate Java4Shell (CVE-2026-114938) on self-hosted Metabase, append `-XX:-UseBASE64Intrinsics` to your existing JVM options and restart Metabase:
+
+- **Docker:** For containerized deployments using the official Metabase Docker image, set it in the `JAVA_OPTS` environment variable. For example, `JAVA_OPTS=-XX:-UseBASE64Intrinsics`.
+- **JAR:** For a standalone JAR, set the `JAVA_TOOL_OPTIONS` environment variable, or directly add `-XX:-UseBASE64Intrinsics` to the arguments of the `java` command that starts Metabase, or update Java to a build that fixes the vulnerability.
+
 ## Protect secrets and data at rest
 
 - Generate two secret keys by running `openssl rand -base64 32` twice: one for `MB_ENCRYPTION_SECRET_KEY`, and one for `MB_SESSION_SECRET_KEY`. Store both values in a secrets manager and use the same pair on every Metabase node.
