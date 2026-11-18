@@ -73,19 +73,21 @@
   (filterv #(str/includes? % ";") sent))
 
 (defn- run-card-test!
-  "Saves a native card of `card-sql` on the Database `db-id` and a test of it with one SQL input standing in for
-  `public.orders` and one `empty` expectation, and runs the test as crowberto."
-  [db-id input-sql expectation-sql]
-  (mt/with-temp [:model/Card     {card-id :id} {:dataset_query (lib/native-query
-                                                                (lib-be/application-database-metadata-provider db-id)
-                                                                card-sql)}
-                 :model/CardTest {test-id :id} {:card_id      card-id
-                                                :inputs       [{:table orders :format :sql :sql input-sql}]
-                                                :expectations [{:type :empty :name "check" :sql expectation-sql}]}]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (data-testing.runner/run-test! :card
-                                     (t2/select-one :model/Card :id card-id)
-                                     (t2/select-one :model/CardTest :id test-id)))))
+  "Saves a native card of `sql`, [[card-sql]] by default, on the Database `db-id` and a test of it with one SQL input
+  standing in for `public.orders` and one `empty` expectation, and runs the test as crowberto."
+  ([db-id input-sql expectation-sql]
+   (run-card-test! db-id card-sql input-sql expectation-sql))
+  ([db-id sql input-sql expectation-sql]
+   (mt/with-temp [:model/Card     {card-id :id} {:dataset_query (lib/native-query
+                                                                 (lib-be/application-database-metadata-provider db-id)
+                                                                 sql)}
+                  :model/CardTest {test-id :id} {:card_id      card-id
+                                                 :inputs       [{:table orders :format :sql :sql input-sql}]
+                                                 :expectations [{:type :empty :name "check" :sql expectation-sql}]}]
+     (binding [api/*current-user-id* (mt/user->id :crowberto)]
+       (data-testing.runner/run-test! :card
+                                      (t2/select-one :model/Card :id card-id)
+                                      (t2/select-one :model/CardTest :id test-id))))))
 
 (deftest data-test-sends-only-single-statements-to-the-warehouse-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
@@ -169,3 +171,26 @@
                           (:sent (with-recorder #(create-and-run-as-rasta!
                                                   card-id (str "SELECT 1 AS id; " escape-sql)
                                                   "RESET ROLE; SELECT * FROM {{output}} WHERE 1 = 0"))))))))))))))
+
+(deftest data-test-sends-the-checked-statement-test
+  (mt/with-premium-features #{:transforms-testing :transforms-basic}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (testing "the run sends input SQL as the statement check rebuilt it"
+         (let [{:keys [result sent]} (with-recorder #(run-card-test! db-id "SELECT 1 AS id -- one"
+                                                                     "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (= :passed (:status result)) (pr-str result))
+           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id /\* one \*/$" %) sent) (pr-str sent))))
+       (testing "input SQL whose rebuild Postgres reads as more than one statement is refused or never sent"
+         (is (= [] (more-than-one-statement
+                    (:sent (with-recorder #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
+                                                           "SELECT * FROM {{output}} WHERE 1 = 0")))))))
+       (testing "input SQL whose CTE writes is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
+                                                                     "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
+           (is (= [] sent))))
+       (testing "the card's own SQL of more than one statement is refused or never sent"
+         (is (= [] (more-than-one-statement
+                    (:sent (with-recorder #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
+                                                           "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0")))))))))))

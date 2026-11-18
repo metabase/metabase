@@ -2,6 +2,7 @@
   "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
   and the required expectation. Pure — no warehouse."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as errors]
@@ -228,3 +229,68 @@
                                        :inputs       [(assoc (events-input "id") :table {:schema "public" :name "Events"})]
                                        :columns-read #{{:schema "public" :name "Events" :column "id"}
                                                        {:schema "public" :name "events" :column "CreatedAt"}}))))))
+
+;;; ------------------------------------------------ Single SELECT ------------------------------------------------
+
+(defn- single-select
+  "What [[validator/ensure-single-select]] returns for `sql` on `driver`, or its refusal with `:reason`."
+  [driver sql source]
+  (driver/the-initialized-driver driver)
+  (try
+    (validator/ensure-single-select driver sql source)
+    (catch ExceptionInfo e
+      (data-testing.test-util/refusal #(throw e) :reason))))
+
+(deftest ensure-single-select-test
+  (testing "a single SELECT comes back as SQLGlot rebuilt it, the string a run executes"
+    (is (= "SELECT 1 AS id /* one */"
+           (single-select :postgres "SELECT 1 AS id -- one" nil))))
+  (testing "a second statement is refused, naming the SQL's source"
+    (is (= {:error-type ::errors/not-a-single-select
+            :message    (str "The SQL of input public.orders must be one SELECT statement, with nothing the SQL check "
+                             "refuses: no second statement, nothing that writes or locks, no SQL hidden from the parser, "
+                             "and no function that changes the session or runs SQL text.")
+            :reason     "multiple-statements"}
+           (single-select :postgres "SELECT 1 AS id; RESET ROLE" [:input {:schema "public" :name "orders"}]))))
+  (testing "a single statement that is not a SELECT is refused"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :message    #"^The SQL of the query under test must be one SELECT statement.*"}
+            (single-select :postgres "DELETE FROM orders" nil))))
+  (testing "a SELECT whose rebuild Postgres reads as two statements is refused"
+    (is (= {:error-type ::errors/not-a-single-select
+            :reason     "backslash-quote"}
+           (select-keys (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
+                                       [:expectation "check"])
+                        [:error-type :reason]))))
+  (testing "a SELECT whose CTE writes is refused"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :reason     "writes-or-locks"}
+            (single-select :postgres "WITH d AS (DELETE FROM orders RETURNING id) SELECT id FROM d" nil))))
+  (testing "a SELECT calling a function that changes the session is refused"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :reason     "session-function"}
+            (single-select :postgres "SELECT set_config('role', 'postgres', false)" nil))))
+  (testing "SQL that does not parse is refused, naming its source"
+    (is (=? {:error-type ::errors/unparseable-source
+             :message    #"(?s)^The SQL of expectation \"check\" could not be parsed: .*"}
+            (single-select :postgres "SELECT (" [:expectation "check"]))))
+  (testing "SQL holding a list too long to parse whole is refused, not run unchecked"
+    (is (=? {:error-type ::errors/uncheckable-sql}
+            (single-select :postgres
+                           (str "SELECT 1 AS id WHERE 1 IN (" (str/join ", " (range 3000)) ")")
+                           nil))))
+  (testing "a driver with no SQLGlot dialect"
+    (testing "runs a single SELECT as written"
+      (is (= "SELECT 1 AS id -- one"
+             (single-select :h2 "SELECT 1 AS id -- one" nil))))
+    (testing "is refused a second statement"
+      (is (=? {:error-type ::errors/not-a-single-select}
+              (single-select :h2 "SELECT 1 AS id; DROP TABLE orders" nil))))))
+
+(deftest validate-refuses-expectation-sql-of-more-than-one-statement-test
+  (testing "control: an expectation of one SELECT is accepted"
+    (is (nil? (refusal (assoc complete-test :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}])))))
+  (testing "an expectation of two statements is refused as it is authored"
+    (is (= ::errors/not-a-single-select
+           (refusal (assoc complete-test :expectations [{:type :empty :name "none"
+                                                         :sql  "SELECT * FROM PEOPLE; DROP TABLE PEOPLE"}]))))))

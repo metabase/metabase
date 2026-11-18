@@ -70,6 +70,7 @@
    [:driver       :keyword]
    [:database     ::lib.schema.metadata/database]
    [:input->table [:map-of ::data-testing.schema/input :string]]
+   [:input->query [:map-of ::data-testing.schema/input ::data-testing.compile/compiled-query]]
    [:output-table :string]
    [:labels       ::labels]
    [:replacements ::data-testing.compile/table-replacements]
@@ -226,16 +227,25 @@
                 {}))
         (throw e)))))
 
+(mu/defn- input-query :- ::data-testing.compile/compiled-query
+  "The query that fills the temp table of `input`. The SQL of an input of SQL is as
+  [[data-testing.validator/ensure-single-select]] returns it."
+  [driver :- :keyword
+   input  :- ::data-testing.schema/input]
+  (cond-> (data-testing.compile/compile-input driver input)
+    (= :sql (:format input))
+    (update :query #(data-testing.validator/ensure-single-select driver % [:input (:table input)]))))
+
 (mu/defn- create-inputs! :- :nil
-  "Materialize each input of `input->table` as its temp table on `conn`."
+  "Materialize each input of `input->table` as its temp table on `conn`, filled by its query in `input->query`."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    input->table :- [:map-of ::data-testing.schema/input :string]
+   input->query :- [:map-of ::data-testing.schema/input ::data-testing.compile/compiled-query]
    labels       :- ::labels]
   (doseq [[input table] input->table]
     (try
-      (data-testing.executor/create-temp-table!
-       driver conn table (data-testing.compile/compile-input driver input))
+      (data-testing.executor/create-temp-table! driver conn table (input->query input))
       (catch Exception e
         (rethrow-remapped e ::data-testing.errors/setup-failed
                           (tru "Could not create the test input for {0}:"
@@ -301,8 +311,8 @@
   against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
   message renders them as.
 
-  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a test the validator
-  rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
+  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, SQL of the query under
+  test or of an input that is not one SELECT, a test the validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
   discarding it."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
@@ -316,7 +326,9 @@
         output-table   (driver/temp-table-name driver)
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
-        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)]
+        rewritten      (-> (data-testing.compile/rewrite-query driver compiled replacements)
+                           (update :query #(data-testing.validator/ensure-single-select driver % nil)))
+        input->query   (into {} (map (fn [input] [input (input-query driver input)])) inputs)]
     (data-testing.validator/validate
      driver
      {:inputs              inputs
@@ -332,6 +344,7 @@
     {:driver       driver
      :database     database
      :input->table input->table
+     :input->query input->query
      :output-table output-table
      :labels       (table-labels output-label input->table output-table)
      :replacements replacements
@@ -360,7 +373,7 @@
   [subject-type                                             :- ::data-testing.subject/subject-type
    subject                                                  :- ::data-testing.subject/subject
    {test-id :id :keys [inputs expectations] :as _saved-test} :- ::data-testing.schema/saved-test]
-  (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
+  (let [{:keys [driver database input->table input->query output-table labels replacements output-token compiled]}
         (validated-plan subject-type subject inputs expectations)
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
@@ -370,7 +383,7 @@
              driver database
              (fn [conn]
                (try
-                 (create-inputs! driver conn input->table labels)
+                 (create-inputs! driver conn input->table input->query labels)
                  (create-output! driver conn output-table compiled labels)
                  (let [results (check-expectations driver conn
                                                    {:driver driver
