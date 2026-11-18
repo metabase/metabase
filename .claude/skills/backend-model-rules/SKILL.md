@@ -25,27 +25,14 @@ the user-facing ones. Put a rule every writer must obey in a hook and a rule onl
 
 A rule is an invariant only if every stored row satisfies it and no sanctioned writer needs an exception. If stored
 rows break it, a data migration fixes them first (rename duplicates, rewrite a legacy shape) or the rule is a request
-check on the write path: stored rows, e2e fixtures and SerDes import of old content must keep working. If a sanctioned
-writer must be exempt (remote-sync pull on a read-only instance, the audit loader), the rule is a permission check.
+check on the write path. If a sanctioned writer must be exempt (remote-sync pull on a read-only instance, the audit
+loader), the rule is a permission check.
 
 ## Hooks
 
 Stock Toucan hooks, one per model and operation (a second definition replaces the first): `t2/define-before-insert`,
 `t2/define-before-update`, `t2/define-before-delete`, and `t2/define-after-insert` / `t2/define-after-update` for work
 that needs the row as stored.
-
-```clojure
-(t2/define-before-update :model/Segment
-  [{:keys [id definition] :as segment}]
-  (let [changes (t2/changes segment)]
-    (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
-    (when (contains? changes :definition)
-      (check-definition definition)
-      (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
-    (cond-> segment
-      (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
-```
 
 - Checks first, a flat list of `(when ...)` throwing `(ex-info (tru "...") {:status-code 400})`; then derivations;
   then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row is written. A
@@ -107,38 +94,48 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 (or `api/create-check` with the whole new row, not only its collection), write, return the hydrated row.
 
 - A write through the model (`t2/insert!`, `t2/update!`, `t2/delete!` on `:model/X`, with or without a where clause) is
-  complete wherever it is called, also from a plain function in `<module>/db.clj`: the model's hooks enforce the rules
-  and `:hook/events` publishes the lifecycle event. A shared write function is a convenience, not a requirement.
+  complete wherever it is called, also from a plain function in `<module>/db.clj`: the hooks enforce the rules and
+  `:hook/events` publishes the lifecycle events. A shared write function is a convenience, not a requirement.
 - A statement that bypasses the model (`t2/query` with hand-written SQL, a write against a table-name keyword) runs
   no hooks and publishes nothing; do not write that way.
 - The caller's job: the per-user check at every user-facing writer (REST, MCP and Metabot tools, Agent API, bulk,
   revert, copy; a bulk endpoint hydrates `:can_write` once); `events/with-batched-events` around a write of several rows
   of one aggregate, so its reactions happen once per owner (nothing on a throw; nested batches join); and
-  `(events/with-event-context {:revision-message m} ...)` for the records the write causes.
-- Nobody publishes a lifecycle event by hand: a model that publishes derives `:hook/events` and implements
-  `events/spec` with its full topic keywords, and publishes them for every write, in its transaction. A moment that is a column change
-  (public link, publish) is derived by its consumer with `u.events/changed?`; only a moment that is no row write
-  (login, read, sync begin, transform run, user invited) is published by hand.
+  `events/with-event-context` for what the write's records need.
+- Nobody publishes a lifecycle event by hand. A model that publishes derives `:hook/events` and implements `events/spec`,
+  `{operation topic}` with full keywords, which may omit an operation; every write then publishes in its transaction.
+  The topic is named after the model (`:event/pulse-update`); the audit consumer chooses the topic it stores. A moment
+  that is a column change (public link, publish) is derived by its consumer with `u.events/changed?`; only a moment that
+  is no row write (login, read, sync begin, transform run, user invited) is published by hand.
 
 ## Events
 
 - The payload is `{:object <after> :previous-object <before> :user-id <current user or nil> :context {...}}`
   (`::events.schema/lifecycle`): a create has `:object` only, a delete `:previous-object` only. Compare columns with
   `u.events/changed?`, `changed-any?` and `changed-keys` (`metabase.util.events`): a merged batch has no "changes".
-- `events/register-capture!` (a DELETE's events, after its before-delete hooks) and `register-statement-capture!` (its
-  rows, before them) run once per statement to read rows `ON DELETE CASCADE` removes, for the handler's `:captures`. The
-  change log and the search index list their models by tag and derive `:hook/events` on them.
+- `events/with-event-context` keys: `:revision-message` (message of the revisions), `:reverting?` (a revert's writes),
+  `:details` (a map the audit row of some models takes), `:archived-with` (`[model id]` of the archive that carried the row).
 - A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
-  call per owner per batch. Work that needs committed rows goes in `mdb/do-after-commit`.
+  call per owner per batch (`{:last? true}` runs it after the others). A sink (`events/register-sink!`,
+  `events/add-to-sink!`) collects items such as audit rows and flushes them once at the end of the batch.
+- `events/register-capture!` (a DELETE's events, after its before-delete hooks) and `register-statement-capture!` (its
+  rows, before them) run once per DELETE statement to read rows `ON DELETE CASCADE` removes, for the handler's `:captures`.
+- Delivery runs in the write's transaction, so a consumer that throws fails the write. Work that needs committed rows
+  goes in `mdb/do-after-commit`; effects that leave the transaction run after it (the explicit initial sync of the
+  database API, `quick-task`s).
 - Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
-  runs for every writer; a writer calls what only it starts (the database API, `sync/start-initial-sync!`). Records
-  (revision, audit row) need a non-nil `:user-id`; archive cascade writes carry `:archived-with [model id]` in context.
+  runs for every writer; a writer calls what only it starts (`sync/start-initial-sync!`). Records (revision, audit
+  row) need a non-nil `:user-id`, and archive-carried writes (`:archived-with`) record nothing.
 - A user's update of an audited model always records an audit row; only a consumer's `ignored-columns` (`{:default #{..}
   :model/X #{..}}` in its `events.clj`, plus a comparator when membership is not enough) and archive-carried writes do
   not. A write the product makes in a user's request is no user action: list its columns there, or bind
   `api/*current-user-id*` to nil.
+- The SerDes import validates every entity against its spec `:schema` (the strict write variant of the entity schema);
+  `serialization-skip-schema-validation` only normalizes. An import started by a user records as that user's edits.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
+- Entity schemas have a strict write variant (closed, what a caller may set) and a tolerant stored-row variant (what
+  `after-select` returns, including legacy shapes); the request schema and the SerDes spec use the write variant.
 
 ## Archiving
 
@@ -149,10 +146,10 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
   `(assoc row :archived_directly (mi/archived-directly row parent-archived?))`; `parent-archived?` is a function of no
   arguments returning whether the parent is archived (its Collection, `collection/archived?`; for a Card also its
   Dashboard or Document, for a Document also its Exploration). A cause given in the changes is kept; a restore is false.
-- The parent is written first and the followers after it, in the same transaction: a model with followers declares
-  `(mi/define-update-in-transaction :model/X)` and a `(defmethod mi/after-archived-change :model/X [model rows changes])`
-  that writes them through their models, one statement per kind. The followers then find their parent archived and
-  derive their cause from it.
+- The parent is written first and the followers after it, in the same transaction and one event batch: a model with
+  followers declares `(mi/define-update-in-transaction :model/X)` and a
+  `(defmethod mi/after-archived-change :model/X [model rows changes])` that writes them through their models, one
+  statement per kind. The followers find their parent archived and derive their cause from it.
 - Collection archives its subtree in a fixed number of statements and does not cascade again when it inherits an
   archive. Dashboard carries its dashboard questions, Document its cards, Timeline its events (only on its own archive).
 - A live row cannot be inserted or moved into an archived parent (`collection/check-collection-not-archived`).
@@ -163,7 +160,7 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 
 ## Lay out a model file
 
-Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup`, `Hooks`, `Permissions`,
+Banners `;;; ---- Hooks ----`, centred in a line of about 120 columns, in this order: `Model setup`, `Hooks`, `Permissions`,
 `Hydration`, `Writes`, `Revisions`, `Serialization`, `Remote sync`, `Search`.
 
 ## Tests
