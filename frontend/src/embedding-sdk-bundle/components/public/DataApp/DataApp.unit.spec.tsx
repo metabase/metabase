@@ -1,5 +1,5 @@
-jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
-  ...jest.requireActual("embedding-sdk-bundle/analytics/snowplow"),
+jest.mock("embedding-sdk-bundle/analytics/event", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/analytics/event"),
   trackSdkSimpleEvent: jest.fn(),
 }));
 
@@ -12,7 +12,7 @@ import {
 import type { ReactElement, ReactNode } from "react";
 
 import { renderWithProviders } from "__support__/ui";
-import { trackSdkSimpleEvent } from "embedding-sdk-bundle/analytics/snowplow";
+import { trackSdkSimpleEvent } from "embedding-sdk-bundle/analytics/event";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
