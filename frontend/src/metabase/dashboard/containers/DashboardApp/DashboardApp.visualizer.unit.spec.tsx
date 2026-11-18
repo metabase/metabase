@@ -30,6 +30,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   resetMockExplicitSize,
@@ -45,6 +46,7 @@ import { GOAL_LINE_DASH, TREND_LINE_WIDTH } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { SimpleEventSchema } from "metabase-types/analytics";
 import type {
   Card,
   CardId,
@@ -3305,6 +3307,198 @@ describe("DashboardApp > visualizer", () => {
           .find((row) => within(row).queryByText(TAX_OVER_TOTAL.name) != null),
       );
       expect(within(addedSeriesRow).getByText("5.2%")).toBeInTheDocument();
+    });
+  });
+
+  describe("analytics events", () => {
+    const visualizerEvent = (
+      event: string,
+      eventDetail?: string,
+    ): SimpleEventSchema => ({
+      event,
+      ...(eventDetail ? { event_detail: eventDetail } : {}),
+      triggered_from: "visualizer-modal",
+    });
+
+    it("should track each visualizer action once, in order", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const getVisualizerEvents = () =>
+        trackSimpleEvent.mock.calls
+          .map(([event]) => event)
+          .filter(({ event }) => event.startsWith("visualize"));
+      const expectedEvents: SimpleEventSchema[] = [];
+      const expectNewEvent = async (event: SimpleEventSchema) => {
+        expectedEvents.push(event);
+        await waitFor(() =>
+          expect(getVisualizerEvents()).toEqual(expectedEvents),
+        );
+      };
+
+      await setup({ dashcards: [] });
+      await editDashboard();
+
+      let modal = await openVisualizerFromQuestionsSidebar(
+        ORDERS_BY_CREATED_AT.name,
+      );
+      await expectNewEvent({
+        event: "visualize_another_way_clicked",
+        triggered_from: "question-list",
+      });
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Add more data" }),
+      );
+      await expectNewEvent(visualizerEvent("visualizer_add_more_data_clicked"));
+
+      await addDataset(PRODUCTS_BY_CREATED_AT.name);
+      await expectNewEvent(
+        visualizerEvent(
+          "visualizer_data_changed",
+          "visualizer_datasource_added",
+        ),
+      );
+
+      const productsItem = getItemWithText(
+        within(within(modal).getByTestId("datasets-list")).getAllByTestId(
+          "swap-dataset-button",
+        ),
+        PRODUCTS_BY_CREATED_AT.name,
+      );
+      await userEvent.click(productsItem);
+      await waitFor(() =>
+        expect(productsItem).toHaveAttribute("aria-pressed", "false"),
+      );
+      await expectNewEvent(
+        visualizerEvent(
+          "visualizer_data_changed",
+          "visualizer_datasource_removed",
+        ),
+      );
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Done" }),
+      );
+      await expectNewEvent(visualizerEvent("visualizer_show_columns_clicked"));
+
+      const ordersCount = () =>
+        getColumnListItem(
+          getDataSourceItem(ORDERS_BY_CREATED_AT.name),
+          "Count",
+        );
+      await userEvent.click(within(ordersCount()).getByLabelText("Remove"));
+      await expectNewEvent(
+        visualizerEvent("visualizer_data_changed", "visualizer_column_removed"),
+      );
+      expect(getWellItems("vertical-well")).toEqual([]);
+
+      await userEvent.click(ordersCount());
+      await expectNewEvent(
+        visualizerEvent("visualizer_data_changed", "visualizer_column_added"),
+      );
+      expect(getWellItems("vertical-well")).toEqual(["Count"]);
+
+      await userEvent.click(
+        within(modal).getByTestId("visualizer-settings-button"),
+      );
+      await expectNewEvent(visualizerEvent("visualizer_settings_clicked"));
+
+      await userEvent.click(
+        within(within(modal).getByTestId("viz-picker-main")).getByTestId(
+          "area",
+        ),
+      );
+      await expectNewEvent(
+        visualizerEvent(
+          "visualizer_data_changed",
+          "visualizer_viz_type_changed",
+        ),
+      );
+
+      await saveVisualizer("Add to dashboard");
+      await expectNewEvent(visualizerEvent("visualizer_save_clicked"));
+
+      const newDashcard = await findDashcardByTitle(ORDERS_BY_CREATED_AT.name);
+      await userEvent.click(
+        await within(newDashcard).findByLabelText("Edit visualization"),
+      );
+      modal = await findVisualizerModal();
+
+      await userEvent.click(
+        within(modal).getByTestId("visualizer-view-as-table-button"),
+      );
+      await expectNewEvent(visualizerEvent("visualizer_view_as_table_clicked"));
+      await userEvent.click(
+        within(
+          await screen.findByTestId("visualizer-tabular-preview-modal"),
+        ).getByLabelText("Close"),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("visualizer-tabular-preview-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(
+        within(within(modal).getByTestId("viz-picker-main")).getByTestId("bar"),
+      );
+      await expectNewEvent(
+        visualizerEvent(
+          "visualizer_data_changed",
+          "visualizer_viz_type_changed",
+        ),
+      );
+
+      const openDataSourceActions = async () => {
+        await userEvent.click(
+          within(getDataSourceItem(ORDERS_BY_CREATED_AT.name)).getByLabelText(
+            "Datasource actions",
+          ),
+        );
+        return screen.findByTestId("datasource-actions-dropdown");
+      };
+
+      await userEvent.click(
+        within(await openDataSourceActions()).getByLabelText(
+          "Reset data source",
+        ),
+      );
+      await expectNewEvent(
+        visualizerEvent(
+          "visualizer_data_changed",
+          "visualizer_datasource_reset",
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          within(
+            within(modal).getByTestId("viz-picker-main"),
+          ).getByDisplayValue("line"),
+        ).toBeChecked(),
+      );
+
+      await userEvent.click(
+        within(await openDataSourceActions()).getByLabelText(
+          "Remove data source",
+        ),
+      );
+      await expectNewEvent(
+        visualizerEvent(
+          "visualizer_data_changed",
+          "visualizer_datasource_removed",
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          within(
+            screen.getByTestId("visualizer-data-importer"),
+          ).queryAllByTestId("data-source-list-item"),
+        ).toHaveLength(0),
+      );
+
+      await userEvent.click(
+        within(modal).getByTestId("visualizer-close-button"),
+      );
+      await expectNewEvent(visualizerEvent("visualizer_close_clicked"));
     });
   });
 });
