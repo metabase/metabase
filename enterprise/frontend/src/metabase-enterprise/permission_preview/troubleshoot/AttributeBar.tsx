@@ -57,17 +57,14 @@ export function AttributeBar({
   }
   // nothing beside the label until they load
   const label = !isLoading && (
-    <Text
-      size="sm"
-      c="text-secondary"
-    >{t`User attributes used by rules:`}</Text>
+    <Text c="text-secondary">{t`User attributes used by rules:`}</Text>
   );
 
   return (
-    <Stack gap="xs">
+    <Stack gap="sm">
       {isLabelOnOwnRow && label}
       <Group
-        gap="xs"
+        gap="sm"
         aria-label={t`User attributes used by rules`}
         role="toolbar"
         wrap="wrap"
@@ -130,7 +127,7 @@ function AttributeChip({
         {/* a chip, not a link: bordered, the same on every page */}
         <UnstyledButton
           px="sm"
-          py="xxs"
+          h="1.5rem"
           maw="100%"
           bg={
             isOverridden
@@ -141,23 +138,19 @@ function AttributeChip({
           style={CHIP_BORDER}
           onClick={() => setIsOpened((opened) => !opened)}
         >
-          <Group gap="xxs" wrap="nowrap">
-            <Text fw="bold" size="sm" c="inherit">
+          <Group gap="xxs" wrap="nowrap" h="100%">
+            <Text fw="bold" c="inherit">
               {attribute.attribute}
             </Text>
-            <Text size="sm" c="inherit" truncate>
+            <Text c="inherit" truncate>
               {value === "" ? t`No value` : value}
             </Text>
             {principalType === "group" && groupMemberCount != null && (
-              <Text
-                size="sm"
-                c="text-secondary"
-                style={{ whiteSpace: "nowrap" }}
-              >
+              <Text c="text-secondary" style={{ whiteSpace: "nowrap" }}>
                 {`· ${getMemberShare(attribute, value, groupMemberCount)}`}
               </Text>
             )}
-            <Icon name="chevrondown" size={10} c="text-secondary" />
+            <Icon name="chevrondown" size={12} ml="xxs" c="text-secondary" />
           </Group>
         </UnstyledButton>
       </Popover.Target>
@@ -226,17 +219,17 @@ export function AttributeTag({ attribute, value }: AttributeTagProps) {
       gap="xxs"
       wrap="nowrap"
       px="sm"
-      py="xxs"
+      h="1.5rem"
       maw="100%"
       miw={0}
       bg="background_page-primary"
       c="text-primary"
       style={CHIP_BORDER}
     >
-      <Text fw="bold" size="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
+      <Text fw="bold" c="inherit" style={{ whiteSpace: "nowrap" }}>
         {attribute}
       </Text>
-      <Text size="sm" c="inherit" truncate>
+      <Text c="inherit" truncate>
         {value}
       </Text>
     </Group>

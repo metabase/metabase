@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import type { AffectingAttribute, PrincipalType } from "../api";
 
-import { AttributeBar } from "./AttributeBar";
+import { AttributeBar, AttributeTag } from "./AttributeBar";
 
 const CATEGORY: AffectingAttribute = {
   attribute: "category",
@@ -120,11 +120,84 @@ describe("AttributeBar", () => {
       /^categoryGizmo$/,
     );
   });
+
+  it("sets the label and the chip text in the filter pill's 14px", () => {
+    setup({ attributes: [CATEGORY] });
+
+    const fontSize = "--text-fz: var(--mantine-font-size-md)";
+    expect(screen.getByText("User attributes used by rules:")).toHaveStyle(
+      fontSize,
+    );
+    expect(screen.getByText("category")).toHaveStyle(fontSize);
+    expect(screen.getByText("category")).toHaveStyle("font-weight: bold");
+    expect(screen.getByText("Gizmo")).toHaveStyle(fontSize);
+  });
+
+  it("sets a group's member count in 14px too", () => {
+    setup({
+      attributes: [
+        { ...CATEGORY, member_values: [{ value: "Gizmo", count: 2 }] },
+      ],
+      principalType: "group",
+      groupMemberCount: 7,
+    });
+
+    expect(screen.getByText("· 2 of 7 members")).toHaveStyle(
+      "--text-fz: var(--mantine-font-size-md)",
+    );
+  });
+
+  it("makes the chip 24px tall", () => {
+    setup({ attributes: [CATEGORY] });
+
+    expect(screen.getByRole("button", { name: /category/ })).toHaveStyle({
+      height: "1.5rem",
+    });
+  });
+
+  it("puts 8px between the chips", () => {
+    setup({ attributes: [CATEGORY] });
+
+    expect(
+      screen.getByRole("toolbar", { name: "User attributes used by rules" }),
+    ).toHaveStyle("--group-gap: var(--mantine-spacing-sm)");
+  });
+
+  it("puts a 12px chevron 8px from the value", () => {
+    setup({ attributes: [CATEGORY] });
+
+    const chevron = within(
+      screen.getByRole("button", { name: /category/ }),
+    ).getByRole("img", { name: /chevron/ });
+    expect(chevron).toHaveAttribute("width", "12");
+    expect(chevron).toHaveStyle("margin-left: var(--mantine-spacing-xxs)");
+  });
+
+  it("guard: opens the value picker from the chip", async () => {
+    setup({ attributes: [CATEGORY] });
+
+    await userEvent.click(screen.getByRole("button", { name: /category/ }));
+
+    expect(
+      await screen.findByRole("listbox", { name: "Values of category" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("AttributeTag", () => {
+  it("sets the attribute and its value in 14px, like the attribute bar's chip", () => {
+    renderWithProviders(<AttributeTag attribute="category" value="Gizmo" />);
+
+    const fontSize = "--text-fz: var(--mantine-font-size-md)";
+    expect(screen.getByText("category")).toHaveStyle(fontSize);
+    expect(screen.getByText("Gizmo")).toHaveStyle(fontSize);
+  });
 });
 
 type SetupOpts = {
   attributes: AffectingAttribute[];
   isLoading?: boolean;
+  isLabelOnOwnRow?: boolean;
   principalType?: PrincipalType;
   groupMemberCount?: number;
 };
@@ -132,6 +205,7 @@ type SetupOpts = {
 function setup({
   attributes,
   isLoading = false,
+  isLabelOnOwnRow,
   principalType = "user",
   groupMemberCount,
 }: SetupOpts) {
@@ -141,6 +215,7 @@ function setup({
       whoName="Sandy Sales"
       attributes={attributes}
       isLoading={isLoading}
+      isLabelOnOwnRow={isLabelOnOwnRow}
       pickedValues={{}}
       groupMemberCount={groupMemberCount}
       onPick={jest.fn()}
