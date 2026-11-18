@@ -35,7 +35,7 @@
 
 (mr/def ::generic-row
   "A row of arbitrary shape, whatever the caller-supplied `spec` describes; not fixed by this namespace."
-  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "shape depends on the caller-supplied spec"}]])
+  [:maybe [:map {:closed false, :description "shape depends on the caller-supplied spec"}]])
 
 (mr/def ::Spec
   [:schema {:registry {::spec [:map {:closed true}

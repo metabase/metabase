@@ -520,13 +520,15 @@
           (spit temp-file "secret-from-the-metabase-host\n")
           (jdbc/execute! spec "DROP TABLE IF EXISTS local_infile_loot")
           (jdbc/execute! spec "CREATE TABLE local_infile_loot (line TEXT)")
-          (qp.store/with-metadata-provider (mt/id)
-            (is (thrown? clojure.lang.ExceptionInfo
-                         (driver/execute-write-query!
-                          driver/*driver*
-                          {:type   :native
-                           :native {:query (format "LOAD DATA LOCAL INFILE '%s' INTO TABLE local_infile_loot"
-                                                   (.getAbsolutePath temp-file))}}))))
+          (let [query (lib/native-query
+                       (mt/metadata-provider)
+                       (format "LOAD DATA LOCAL INFILE '%s' INTO TABLE local_infile_loot"
+                               (.getAbsolutePath temp-file)))]
+            ;; TODO (Cam 2026-11-16) change this to `thrown-with-msg?` so we make sure we're actually failing for
+            ;; the reasons we expect and not just a schema error or something dumb
+            (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (driver/execute-write-query! driver/*driver* query))))
           (is (= [] (jdbc/query spec "SELECT * FROM local_infile_loot"))
               "nothing from the Metabase host made it into the warehouse")
           (finally

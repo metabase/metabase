@@ -865,6 +865,12 @@
                                             "calls.")
                           ;; 10ms -> 1 minute. Every edge is one time series per instance, so the list is short.
                           :buckets [10 100 1000 10000 60000]})
+   (prometheus/counter :metabase-metabot/sql-reference-checks
+                       {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
+                                          "ran: the caller turned it off, the dialect has none, a table tag, or SQL "
+                                          "that does not compile; the card and snippet check can still have run), "
+                                          "or `failed` (the check threw).")
+                        :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."

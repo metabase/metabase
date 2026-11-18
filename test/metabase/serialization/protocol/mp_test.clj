@@ -584,36 +584,15 @@
 (deftest ^:parallel import-fk-measure-happy-path-test
   (testing "resolves a measure's entity_id to its numeric id when the measure's table is in the same database"
     (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
-                   {:name "Test Measure"
-                    :table_id (mt/id :orders)
-                    :definition {:lib/type :mbql/query
-                                 :database (mt/id)
-                                 :stages [{:lib/type :mbql.stage/mbql
-                                           :source-table (mt/id :orders)
-                                           :aggregation [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+                   {:name "Test Measure"}]
       (let [mp (lib-be/application-database-metadata-provider (mt/id))
             ir (import-store mp)]
         (is (= measure-id (import-pk ir :model/Measure measure-eid)))))))
 
 (deftest ^:parallel import-fk-segment-happy-path-test
   (testing "resolves a segment's entity_id to its numeric id when the segment's table is in the same database"
-    (let [mp        (lib-be/application-database-metadata-provider (mt/id))
-          ;; Look up the field id via lib metadata rather than `(mt/id :orders :total)` —
-          ;; mp_test's fixture set syncs tables but not fields eagerly.
-          orders-id (mt/id :orders)
-          total-id  (-> (filter #(= "TOTAL" (:name %))
-                                (lib.metadata.protocols/fields mp orders-id))
-                        first :id)]
-      (mt/with-temp [:model/Segment {segment-id :id segment-eid :entity_id}
-                     {:name "Test Segment"
-                      :table_id orders-id
-                      :definition {:lib/type :mbql/query
-                                   :database (mt/id)
-                                   :stages [{:lib/type :mbql.stage/mbql
-                                             :source-table orders-id
-                                             :filters [[:> {:lib/uuid (str (random-uuid))}
-                                                        [:field {:lib/uuid (str (random-uuid))} total-id]
-                                                        100]]}]}}]
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+      (mt/with-temp [:model/Segment {segment-id :id segment-eid :entity_id} {:name "Test Segment"}]
         (let [ir (import-store mp)]
           (is (= segment-id (import-pk ir :model/Segment segment-eid))))))))
 
@@ -647,34 +626,15 @@
 (deftest ^:parallel export-fk-measure-happy-path-test
   (testing "exports a measure's numeric id back to its entity_id"
     (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
-                   {:name "Round-trip Measure"
-                    :table_id (mt/id :orders)
-                    :definition {:lib/type :mbql/query
-                                 :database (mt/id)
-                                 :stages [{:lib/type :mbql.stage/mbql
-                                           :source-table (mt/id :orders)
-                                           :aggregation [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+                   {:name "Round-trip Measure"}]
       (let [mp (lib-be/application-database-metadata-provider (mt/id))
             er (export-store mp)]
         (is (= measure-eid (export-eid er :model/Measure measure-id)))))))
 
 (deftest ^:parallel export-fk-segment-happy-path-test
   (testing "exports a segment's numeric id back to its entity_id"
-    (let [mp        (lib-be/application-database-metadata-provider (mt/id))
-          orders-id (mt/id :orders)
-          total-id  (-> (filter #(= "TOTAL" (:name %))
-                                (lib.metadata.protocols/fields mp orders-id))
-                        first :id)]
-      (mt/with-temp [:model/Segment {segment-id :id segment-eid :entity_id}
-                     {:name "Round-trip Segment"
-                      :table_id orders-id
-                      :definition {:lib/type :mbql/query
-                                   :database (mt/id)
-                                   :stages [{:lib/type :mbql.stage/mbql
-                                             :source-table orders-id
-                                             :filters [[:> {:lib/uuid (str (random-uuid))}
-                                                        [:field {:lib/uuid (str (random-uuid))} total-id]
-                                                        0]]}]}}]
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+      (mt/with-temp [:model/Segment {segment-id :id segment-eid :entity_id} {:name "Round-trip Segment"}]
         (let [er (export-store mp)]
           (is (= segment-eid (export-eid er :model/Segment segment-id))))))))
 

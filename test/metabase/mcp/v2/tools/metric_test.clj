@@ -154,6 +154,15 @@
                                                      :definition (count-definition)}))
                             "Invalid arguments")))))
 
+(deftest ^:parallel blank-name-test
+  (testing "a whitespace-only name is refused on create and update by the argument schema"
+    (is (str/starts-with? (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                                  {:method "create" :name "   " :definition (count-definition)}))
+                          "Invalid arguments"))
+    (is (str/starts-with? (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                                  {:method "update" :id 13371337 :name "   "}))
+                          "Invalid arguments"))))
+
 (deftest ^:parallel create-required-args-test
   (testing "GHY-4146: `name` is enforced at create with a teaching error naming it"
     (is (= "\"name\" is required when method is \"create\"."

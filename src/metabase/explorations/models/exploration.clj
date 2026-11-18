@@ -1,8 +1,8 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
@@ -46,36 +46,58 @@
 (doto :model/Exploration
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/events))
 
-(defn- check-can-read-keys
-  "Throws unless `exploration` has the columns its `:can_read` and `:can_write` hydrations read."
-  [exploration]
-  (api/check-500 (contains? exploration :collection_id) "No :collection_id is set for an Exploration."))
+(defmethod events/spec :model/Exploration
+  [_model]
+  {:create :event/exploration-create
+   :update :event/exploration-update
+   :delete :event/exploration-delete})
+
+(defmethod mi/after-archived-change :model/Exploration
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (events/with-event-context {:archived-with [:model/Exploration id]}
+      (if (:archived changes)
+        (explorations.db/archive-summary-documents! id)
+        (explorations.db/unarchive-summary-documents! id)))))
+
+(t2/define-before-insert :model/Exploration
+  [{:keys [archived collection_id] :as exploration}]
+  (collection/check-collection-not-archived archived collection_id)
+  exploration)
+
+(t2/define-before-update :model/Exploration
+  [{:keys [archived collection_id] :as exploration}]
+  (let [changes (t2/changes exploration)]
+    (when (contains? changes :collection_id)
+      (collection/check-collection-not-archived archived collection_id))
+    (cond-> exploration
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
+
+(mi/define-update-in-transaction :model/Exploration)
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
   "Whether the current user reads each of `explorations`, as the content of its Collection."
   [_model _k explorations]
-  (run! #(when % (check-can-read-keys %)) explorations)
-  (let [readable (collection/content-readable-collection-ids (map :collection_id (remove nil? explorations))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [exploration explorations]
-      (when exploration
-        (vary-meta exploration assoc :can_read (contains? readable (:collection_id exploration)))))))
+  (collection/hydrate-content-can-read :model/Exploration explorations {:audit-rules? false}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :can_write]
   "Whether the current user writes each of `explorations`, as the content of its Collection."
   [_model _k explorations]
-  (run! #(when % (check-can-read-keys %)) explorations)
-  (let [writable (collection/content-writable-collection-ids (map :collection_id (remove nil? explorations))
-                                                             {:root-namespace nil, :audit-rules? false})]
-    (for [exploration explorations]
-      (when exploration
-        (assoc exploration :can_write (contains? writable (:collection_id exploration)))))))
+  (collection/hydrate-content-can-write :model/Exploration explorations {:audit-rules? false}))
 
 (defmethod mi/can-create? :model/Exploration
   [_model {collection-id :collection_id}]
   (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(defmethod mi/can-update? :model/Exploration
+  [exploration changes]
+  (boolean
+   (and (mi/can-write? exploration)
+        (mi/archive-followers-updatable? exploration changes :model/Document
+                                         (partial explorations.db/summary-documents-following (:id exploration))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
