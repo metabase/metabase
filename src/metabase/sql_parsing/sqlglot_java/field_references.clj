@@ -103,9 +103,8 @@
     (cond
       table-match
       (if return-table-matches?
-        [{:col {:type        "custom_field"
-                :alias       column-name
-                :used_fields (vec (:returned_fields table-match))}}]
+        [{:col {:type  "custom_field"
+                :alias column-name}}]
         [])
 
       source-column
@@ -273,11 +272,11 @@
       [{:col field}]
       [])
 
-    ;; a function, CASE, arithmetic and the rest compute a field from the ones they use
+    ;; A function, CASE, arithmetic and the rest compute a field. It does not list the fields it reads: those are in
+    ;; the query's used fields, and a copy in each field that reads it grows with each level.
     :else
-    [{:col {:type        "custom_field"
-            :alias       (not-empty (ast/node-alias expr))
-            :used_fields (vec (cols (find-used-fields expr sources withs)))}}]))
+    [{:col {:type  "custom_field"
+            :alias (not-empty (ast/node-alias expr))}}]))
 
 (defn- unknown-columns-source
   "A table function's source: its columns are unknown."

@@ -76,12 +76,8 @@
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
                                 {:type :single-column :column "status" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
-             :returned-fields [{:type :custom-field :alias "with_tax"
-                                :used-fields #{{:type :single-column :column "total" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}
-                               {:type :custom-field :alias nil
-                                :used-fields #{{:type :single-column :column "status" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+             :returned-fields [{:type :custom-field :alias "with_tax"}
+                               {:type :custom-field :alias nil}]
              :errors          #{}}}
 
   {:name     "a CASE is one custom field that uses every column it reads"
@@ -93,13 +89,7 @@
                                  :source-columns [[{:type :all-columns :table {:table "users"}}]]}
                                 {:type :single-column :column "email" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "users"}}]]}}
-             :returned-fields [{:type :custom-field :alias "contact"
-                                :used-fields #{{:type :single-column :column "total" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}
-                                               {:type :single-column :column "name" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}
-                                               {:type :single-column :column "email" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "users"}}]]}}}]
+             :returned-fields [{:type :custom-field :alias "contact"}]
              :errors          #{}}}
 
   {:name     "aggregates are custom fields, and a GROUP BY column can be the select column or the table column"
@@ -110,19 +100,13 @@
                                 {:type :single-column :column "total" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
                                 {:type :single-column :column "user_id" :alias nil
-                                 :source-columns [[{:type :custom-field :alias "n"
-                                                    :used-fields #{}}
-                                                   {:type :custom-field :alias "sum_total"
-                                                    :used-fields #{{:type :single-column :column "total" :alias nil
-                                                                    :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                                 :source-columns [[{:type :custom-field :alias "n"}
+                                                   {:type :custom-field :alias "sum_total"}]
                                                   [{:type :all-columns :table {:table "orders"}}]]}}
              :returned-fields [{:type :single-column :column "user_id" :alias nil
                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
-                               {:type :custom-field :alias "n"
-                                :used-fields #{}}
-                               {:type :custom-field :alias "sum_total"
-                                :used-fields #{{:type :single-column :column "total" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                               {:type :custom-field :alias "n"}
+                               {:type :custom-field :alias "sum_total"}]
              :errors          #{}}}
 
   {:name     "a window function is a custom field that uses its partition and order columns"
@@ -136,21 +120,15 @@
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
              :returned-fields [{:type :single-column :column "id" :alias nil
                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
-                               {:type :custom-field :alias "rn"
-                                :used-fields #{{:type :single-column :column "user_id" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
-                                               {:type :single-column :column "created_at" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                               {:type :custom-field :alias "rn"}]
              :errors          #{}}}
 
   {:name     "literals are custom fields that use no columns"
    :dialect  "postgres"
    :sql      "SELECT 1 AS one, 'x' AS tag FROM orders"
    :expected {:used-fields     #{}
-             :returned-fields [{:type :custom-field :alias "one"
-                                :used-fields #{}}
-                               {:type :custom-field :alias "tag"
-                                :used-fields #{}}]
+             :returned-fields [{:type :custom-field :alias "one"}
+                               {:type :custom-field :alias "tag"}]
              :errors          #{}}}
 
   {:name     "columns returned through a CTE are traced to the table, and its WHERE column is used"
@@ -173,21 +151,15 @@
    :sql      "WITH agg AS (SELECT user_id, SUM(total) AS spend FROM orders GROUP BY user_id) SELECT user_id, spend FROM agg"
    :expected {:used-fields     #{{:type :single-column :column "user_id" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
-                                {:type :custom-field :alias "spend"
-                                 :used-fields #{{:type :single-column :column "total" :alias nil
-                                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}
+                                {:type :custom-field :alias "spend"}
                                 {:type :single-column :column "total" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
                                 {:type :single-column :column "user_id" :alias nil
-                                 :source-columns [[{:type :custom-field :alias "spend"
-                                                    :used-fields #{{:type :single-column :column "total" :alias nil
-                                                                    :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                                 :source-columns [[{:type :custom-field :alias "spend"}]
                                                   [{:type :all-columns :table {:table "orders"}}]]}}
              :returned-fields [{:type :single-column :column "user_id" :alias nil
                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
-                               {:type :custom-field :alias "spend"
-                                :used-fields #{{:type :single-column :column "total" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}]
+                               {:type :custom-field :alias "spend"}]
              :errors          #{}}}
 
   {:name     "a star over a CTE returns the CTE columns"
@@ -281,9 +253,7 @@
                                                 {:type :single-column :column "id" :alias nil
                                                  :source-columns [[{:type :all-columns :table {:table "refunds"}}]]}]}
                                {:type :composite-field :alias "dbl"
-                                :member-fields [{:type :custom-field :alias "dbl"
-                                                 :used-fields #{{:type :single-column :column "total" :alias nil
-                                                                 :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}}
+                                :member-fields [{:type :custom-field :alias "dbl"}
                                                 {:type :single-column :column "refund_amount" :alias nil
                                                  :source-columns [[{:type :all-columns :table {:table "refunds"}}]]}]}]
              :errors          #{}}}
@@ -300,14 +270,12 @@
   {:name     "an aggregate in nested subqueries is traced to the outer column"
    :dialect  "postgres"
    :sql      "SELECT outer_q.n FROM (SELECT COUNT(*) AS n FROM (SELECT id FROM orders WHERE total > 0) inner_q) outer_q"
-   :expected {:used-fields     #{{:type :custom-field :alias "n"
-                                 :used-fields #{}}
+   :expected {:used-fields     #{{:type :custom-field :alias "n"}
                                 {:type :single-column :column "id" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}
                                 {:type :single-column :column "total" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "orders"}}]]}}
-             :returned-fields [{:type :custom-field :alias "n"
-                                :used-fields #{}}]
+             :returned-fields [{:type :custom-field :alias "n"}]
              :errors          #{}}}
 
   {:name     "a snowflake variant path is a custom field that uses the variant column"
@@ -317,9 +285,7 @@
                                  :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}
                                 {:type :single-column :column "id" :alias nil
                                  :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}}
-             :returned-fields [{:type :custom-field :alias "extracted"
-                                :used-fields #{{:type :single-column :column "v" :alias nil
-                                                :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}}}
+             :returned-fields [{:type :custom-field :alias "extracted"}
                                {:type :single-column :column "id" :alias nil
                                 :source-columns [[{:type :all-columns :table {:table "raw_events"}}]]}]
              :errors          #{}}}

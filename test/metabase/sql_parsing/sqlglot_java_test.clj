@@ -32,7 +32,7 @@
       (let [fields (protocol/field-references java-parser "postgres" "SELECT total * 1.08 AS gross FROM orders")]
         (is (= "custom_field" (get-in fields [:returned_fields 0 :type])))
         (is (= "gross" (get-in fields [:returned_fields 0 :alias])))
-        (is (= "total" (get-in fields [:returned_fields 0 :used_fields 0 :column]))))
+        (is (= ["total"] (map :column (:used_fields fields)))))
       (is (= "SELECT id FROM archived_orders"
              (protocol/replace-names java-parser "postgres" "SELECT id FROM orders"
                                      {:tables [[{:table "orders"} "archived_orders"]]})))
