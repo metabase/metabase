@@ -8,12 +8,10 @@
   "The details to store for the Database Router `row` of the write `event`: whether it enables or disables the routing
   of its Database and by which user attribute."
   [row {:keys [operation]}]
-  (merge (if (= :delete operation)
-           {:db_routing :disabled}
-           {:db_routing        :enabled
-            :routing_attribute (:user_attribute row)})
-         {:previous {}
-          :new      {}}))
+  (if (= :delete operation)
+    {:db_routing :disabled}
+    {:db_routing        :enabled
+     :routing_attribute (:user_attribute row)}))
 
 (defn subject
   "The `[model id]` under which the row of the Database Router `event` is recorded: its Database."

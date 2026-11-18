@@ -724,7 +724,7 @@
            (testing "creating a router is recorded as an update of its database"
              (is (= {:model_id db-id
                      :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "enabled" :routing_attribute "tenant" :previous {} :new {}}
+                     :details  {:db_routing "enabled" :routing_attribute "tenant"}
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))
@@ -732,7 +732,7 @@
              (t2/delete! :model/DatabaseRouter :id router-id)
              (is (= {:model_id db-id
                      :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "disabled" :previous {} :new {}}
+                     :details  {:db_routing "disabled"}
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))))))))
