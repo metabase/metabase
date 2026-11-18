@@ -11,7 +11,7 @@
   (testing "lib/metadata keys are stripped from the realized notification payload"
     (notification.tu/with-card-notification
       [notification {}]
-      (let [payload (notification/notification-payload notification)]
-        (is true) ;; To prevent warnings about 0 assertions in a successful test.
-        (match/match-all payload
-          {:lib/metadata _} (is false (str "No :lib/metadata should survive in the notification payload " &match)))))))
+      (let [payload (notification/notification-payload notification)
+            wrong (match/match-all payload {:lib/metadata _} &match)]
+        (is (empty? wrong)
+            (str "No :lib/metadata should survive in the notification payload " wrong))))))
