@@ -5,6 +5,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.events.batch :as events.batch]
    [metabase.events.core :as events]
    [metabase.events.models.events-test-timeline :as events-test-timeline]
    [metabase.events.test-util :as events.tu]
@@ -370,3 +371,12 @@
         (is (not (t2/exists? ::events-test-timeline/Timeline :name [:in ["batch-test-first" "batch-test-again"]]))))
       (finally
         (events.tu/unregister! ::endless)))))
+
+(deftest delete-statement-after-batch-ended-leaves-no-batch-test
+  (testing "a DELETE statement that outlives the batch it started in, as when another thread ends it, recreates nothing"
+    (t2/with-transaction [_conn]
+      (let [state (mdb/transaction-state)]
+        (events/with-batched-events
+          (events.batch/do-with-delete-statement ::events-test-timeline/Timeline :id (constantly [])
+                                                 #(swap! state dissoc :metabase.events.batch/batch))
+          (is (not (contains? @state :metabase.events.batch/batch))))))))

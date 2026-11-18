@@ -81,9 +81,13 @@
 
 (defn- swap-batch!
   "Apply `f` and `args` to the batch held in `state`, returning the transaction state before and after, as
-  `swap-vals!` does."
+  `swap-vals!` does, and leaving `state` as it is when the batch has ended, as another thread that shares the
+  transaction can end it."
   [state f & args]
-  (swap-vals! state #(apply update % ::batch f args)))
+  (swap-vals! state (fn [s]
+                      (if (contains? s ::batch)
+                        (apply update s ::batch f args)
+                        s))))
 
 (defonce ^:private owned-consumers
   (atom {}))
