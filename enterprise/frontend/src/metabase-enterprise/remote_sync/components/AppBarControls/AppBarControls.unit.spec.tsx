@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { RemoteSyncDirtyItem, RemoteSyncType } from "metabase-types/api";
 import {
   createMockRemoteSyncDirtyItem,
@@ -86,18 +86,22 @@ describe("AppBarControls", () => {
 
   it("disables pulling and pushing when there is nothing to pull or push", async () => {
     setup();
-    await openSyncMenu();
+    const menu = await openSyncMenu();
 
+    // Both items are disabled while their status loads, so wait for it first.
+    await waitFor(() => expect(wasCalled("is-dirty")).toBe(true));
+    expect(wasCalled("has-remote-changes")).toBe(true);
     await waitFor(() =>
       expect(
-        screen.getByRole("menuitem", { name: /Pull changes/ }),
-      ).toBeDisabled(),
+        within(menu).queryByTestId("loading-indicator"),
+      ).not.toBeInTheDocument(),
     );
-    await waitFor(() =>
-      expect(
-        screen.getByRole("menuitem", { name: /Push changes/ }),
-      ).toBeDisabled(),
-    );
+    expect(
+      screen.getByRole("menuitem", { name: /Pull changes/ }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("menuitem", { name: /Push changes/ }),
+    ).toBeDisabled();
   });
 
   it("enables pulling and pushing when there are changes", async () => {

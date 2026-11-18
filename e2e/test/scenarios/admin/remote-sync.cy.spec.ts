@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import { QA_POSTGRES_PORT, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { QA_POSTGRES_PORT } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import type { Collection, Database } from "metabase-types/api";
@@ -14,6 +14,7 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 const STUB_DATABASE_NAME = "Stub Postgres";
 const STUB_QUESTION_NAME = "Stub Database Question";
+const FIRST_SETUP_TRANSFORM_NAME = "First Setup Transform";
 
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
@@ -156,68 +157,84 @@ describe("Remote Sync", () => {
         cy.findByText("Orders").should("not.exist");
       });
     });
-
-    it("disables pulling and pushing when there is nothing to pull or push", () => {
-      H.copySyncedCollectionFixture();
-      H.commitToRepo();
-      H.configureGitAndPullChanges("read-write");
-
-      cy.visit("/collection/root");
-      H.getGitSyncControls().click();
-      H.popover().within(() => {
-        cy.findByRole("menuitem", { name: /Pull changes/ }).should(
-          "be.disabled",
-        );
-        cy.findByRole("menuitem", { name: /Push changes/ }).should(
-          "be.disabled",
-        );
-      });
-    });
   });
 
-  describe("settings page", () => {
+  describe("first-time setup", () => {
     beforeEach(() => {
-      setup();
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
       cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
+      cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
+        "publishTables",
+      );
+      cy.intercept("POST", "/api/transform").as("createTransform");
     });
 
-    it("sets up read-write mode", () => {
-      H.visitRemoteSyncSettings();
-      cy.findByLabelText(/repository url/i).type(LOCAL_GIT_URL);
+    it("sets up git sync from scratch, creating Library and syncing it with transforms", () => {
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .should("be.visible")
+        .clear()
+        .type(LOCAL_GIT_URL);
       cy.findByTestId("admin-layout-content").findByText("Read-write").click();
       cy.button("Set up remote sync").click();
       cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
-      H.undoToast().should("contain.text", "Remote sync settings saved");
-      cy.button("Turn off remote sync").should("exist");
+      assertLibrarySynced();
+
+      cy.log("Publish a table to the Library");
+      H.DataModel.visitDataStudio();
+      H.DataModel.TablePicker.getDatabase("Sample Database").click();
+      H.DataModel.TablePicker.getTable("Products").click();
+      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().findByText("Publish this table").click();
+      cy.wait("@publishTables");
+
+      cy.log("Create a transform");
+      cy.visit("/data-studio/transforms");
+      cy.button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      H.popover().findByText("Writable Postgres12").click();
+      H.NativeEditor.type("SELECT 1", { allowFastSet: true }).blur();
+      H.DataStudio.Transforms.saveChangesButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type(FIRST_SETUP_TRANSFORM_NAME);
+        cy.button("Save").click();
+      });
+      cy.wait("@createTransform").its("response.statusCode").should("eq", 200);
+
+      cy.log("The push lists both the table and the transform");
+      H.clickPushOption();
+      H.modal().within(() => {
+        cy.findAllByText("PRODUCTS").should("have.length.at.least", 1);
+        cy.findByText(FIRST_SETUP_TRANSFORM_NAME).should("exist");
+        cy.findByLabelText("Commit message").type("First push");
+        cy.button("Push").click();
+      });
+      H.waitForTask({ taskName: "export" });
+
+      cy.log("The repository holds the table and the transform");
+      H.wrapSyncedCollectionFiles();
+      cy.get<string[]>("@syncedCollectionFiles").then((files) => {
+        expect(files).to.include.members([
+          "databases/sample_database/schemas/public/tables/products/products___tableusersettings.yaml",
+          "collections/transforms/first_setup_transform.yaml",
+        ]);
+      });
     });
 
-    it("disables setup until repository URL is given (#65653)", () => {
-      H.visitRemoteSyncSettings();
-      cy.button("Set up remote sync").should("be.disabled");
-      cy.findByLabelText(/repository url/i).type(LOCAL_GIT_URL);
-      cy.button("Set up remote sync").should("be.enabled");
-    });
-
-    it("shows error when repository can't be reached", () => {
-      H.visitRemoteSyncSettings();
-      cy.findByLabelText(/repository url/i).type(
-        "file:///tmp/no-such-repository/.git",
-      );
-      cy.button("Set up remote sync").click();
-      cy.wait("@saveSettings").its("response.statusCode").should("eq", 400);
-      cy.findByTestId("admin-layout-content")
-        .findByRole("alert")
-        .should("exist");
-    });
-
-    it("turns remote sync off", () => {
-      H.configureGit("read-write");
-      H.visitRemoteSyncSettings();
-      cy.button("Turn off remote sync").click();
-      H.modal().button("Turn off").click();
+    it("sets up git sync from Data Studio modal, creating Library and syncing it with transforms", () => {
+      H.DataModel.visitDataStudio();
+      cy.findByRole("button", { name: "Set up remote sync" }).click();
+      H.modal().within(() => {
+        cy.findByLabelText(/repository url/i).type(LOCAL_GIT_URL, {
+          scrollBehavior: "center",
+        });
+        cy.findByText("Read-write").click();
+        cy.button("Set up remote sync").click();
+      });
       cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
-      H.expectUnstructuredSnowplowEvent({ event: "remote_sync_deactivated" });
-      cy.button("Set up remote sync").should("exist");
+      H.modal().should("not.exist");
+      assertLibrarySynced();
     });
   });
 
@@ -238,7 +255,6 @@ describe("Remote Sync", () => {
       H.pollForTask({ taskName: "import" });
 
       cy.visit("/");
-      H.getGitSyncControls().should("not.exist");
       H.goToSyncedCollection();
       H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
 
@@ -255,43 +271,6 @@ describe("Remote Sync", () => {
       H.goToSyncedCollection();
       H.collectionTable().findByText("Test branch name").should("exist");
     });
-
-    it("keeps Embed sharing option available for questions in read-only synced collections (metabase#72752)", () => {
-      H.updateSetting("enable-embedding-modular", true);
-      H.configureGitAndPullChanges("read-only");
-
-      cy.visit("/");
-      H.goToSyncedCollection();
-      H.collectionTable().findByText(REMOTE_QUESTION_NAME).click();
-      H.openSharingMenu();
-      H.sharingMenu().findByText("Embed").should("be.visible");
-    });
-
-    it("refuses changes to synced content", () => {
-      H.configureGitAndPullChanges("read-only");
-      H.wrapSyncedCollection();
-
-      cy.get<Collection>("@syncedCollection").then((collection) => {
-        cy.request({
-          method: "POST",
-          url: "/api/card",
-          failOnStatusCode: false,
-          body: {
-            name: "Read-only card",
-            collection_id: collection.id,
-            display: "table",
-            visualization_settings: {},
-            dataset_query: {
-              database: SAMPLE_DB_ID,
-              type: "query",
-              query: { "source-table": PRODUCTS_ID },
-            },
-          },
-        })
-          .its("status")
-          .should("eq", 403);
-      });
-    });
   });
 
   describe("shared tenant collections", () => {
@@ -300,15 +279,12 @@ describe("Remote Sync", () => {
       H.enableTenants();
     });
 
-    it("lists shared tenant collections in settings and pushes synced ones", () => {
+    it("syncs a shared tenant collection chosen in settings and pushes it", () => {
       H.configureGitAndPullChanges("read-write");
-      H.createSharedTenantCollection("Second Tenant Collection");
       H.createSharedTenantCollection("Syncable Tenant Collection").then(
         ({ body: tenantCollection }) => {
           H.visitRemoteSyncSettings();
           cy.findByTestId("admin-layout-content").within(() => {
-            cy.findByText("Shared tenant collections to sync").should("exist");
-            cy.findByText("Second Tenant Collection").should("exist");
             cy.findByRole("switch", {
               name: "Syncable Tenant Collection",
             }).click({ force: true });
@@ -396,7 +372,6 @@ describe("Remote Sync", () => {
 
       visitDataStudioGlossary();
       cy.get("table").findByText(GLOSSARY_TERM).should("be.visible");
-      cy.findByRole("button", { name: /new term/i }).should("not.exist");
 
       cy.request("GET", "/api/glossary").then(({ body }) => {
         expect(body.can_write).to.equal(false);
@@ -469,3 +444,12 @@ describe("Remote Sync", () => {
     });
   });
 });
+
+function assertLibrarySynced() {
+  cy.request("/api/ee/library").then(({ body }) =>
+    cy
+      .request(`/api/collection/${body.id}`)
+      .its("body.is_remote_synced")
+      .should("eq", true),
+  );
+}

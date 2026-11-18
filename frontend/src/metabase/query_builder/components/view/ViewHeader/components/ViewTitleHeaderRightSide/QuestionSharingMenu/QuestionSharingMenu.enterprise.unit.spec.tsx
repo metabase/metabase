@@ -89,6 +89,25 @@ describe("QuestionSharingMenu > Enterprise", () => {
   });
 
   describe("admins", () => {
+    it("keeps the Embed option for a question in a read-only remote-synced collection (metabase#72752)", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isEmbeddingEnabled: true,
+        isEnterprise: true,
+        question: {
+          can_write: false,
+          collection: createMockCollection({
+            id: 199,
+            name: "Test Synced Collection",
+            is_remote_synced: true,
+          }),
+        },
+      });
+      await openMenu();
+
+      expect(screen.getByRole("button", { name: /Embed/ })).toBeInTheDocument();
+    });
+
     it("should not allow sharing instance analytics question", async () => {
       await setupQuestionSharingMenu({
         isAdmin: true,
