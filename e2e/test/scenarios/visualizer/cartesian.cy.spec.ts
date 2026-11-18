@@ -2,6 +2,7 @@ const { H } = cy;
 
 import {
   ORDERS_COUNT_BY_CREATED_AT,
+  PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CREATED_AT,
 } from "e2e/support/test-visualizer-data";
@@ -67,6 +68,43 @@ describe("scenarios > visualizer > cartesian", () => {
       H.chartLegendItem(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       H.chartLegendItem(PRODUCTS_AVERAGE_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
+    });
+  });
+
+  // The Jest tests mock the pivot query results: the pivot-grouping column
+  // and the subtotal rows that the card query of a pivot card returns
+  it("should build a chart from a pivot table (VIZ-668, VIZ-947)", () => {
+    H.createQuestion(PIVOT_TABLE_CARD);
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+    });
+
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(PIVOT_TABLE_CARD.name);
+
+    H.modal().within(() => {
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Count").should("exist");
+      H.dataSource(PIVOT_TABLE_CARD.name)
+        .findByText("pivot-grouping")
+        .should("not.exist");
+      H.assertDataSourceColumnSelected(PIVOT_TABLE_CARD.name, "Count");
+      H.assertDataSourceColumnSelected(
+        PIVOT_TABLE_CARD.name,
+        "Created At: Year",
+      );
+      H.assertDataSourceColumnSelected(
+        PIVOT_TABLE_CARD.name,
+        "Average of Quantity",
+        false,
+      );
+
+      // a series for each category, and one for the subtotal rows
+      H.selectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Product → Category",
+      );
+      H.chartLegendItems().should("have.length", 5);
     });
   });
 });
