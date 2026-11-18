@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupDashboardQueryMetadataEndpoint,
   setupDashboardsEndpoints,
@@ -11,18 +12,26 @@ import type { StoreSeedState } from "__support__/state";
 import {
   createMockDashboardState,
   createMockSettingsState,
+  createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { waitFor } from "__support__/ui";
+import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
+import { DashboardClickAction } from "metabase/dashboard/click-behavior/DashboardClickAction";
+import { useClickBehaviorData } from "metabase/dashboard/hooks/use-click-behavior-data";
 import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Dashboard, NormalizedQueryParameter } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type {
+  Dashboard,
+  NormalizedQueryParameter,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -390,6 +399,155 @@ describe("fetchDashboard", () => {
     );
 
     expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+  });
+
+  it("loads no click behavior link targets for a static embedded dashboard", async () => {
+    const token = "header.payload.signature";
+    const dashboard = createMockDashboard({
+      id: token,
+      dashcards: [
+        createMockDashboardCard({
+          id: 1,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "dashboard",
+              targetId: 2,
+              parameterMapping: {},
+            },
+          },
+        }),
+        createMockDashboardCard({
+          id: 2,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "question",
+              targetId: 3,
+              parameterMapping: {},
+            },
+          },
+        }),
+      ],
+    });
+    fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+
+    const store = setup({
+      dashboard: createMockDashboardState({
+        linkTargets: {
+          dashboards: { 2: createMockDashboard({ id: 2 }) },
+          questions: { 3: createMockCard({ id: 3 }) },
+        },
+      }),
+    });
+
+    const result = await store.dispatch(
+      fetchDashboard({ dashId: token, queryParams: {}, options: {} }),
+    );
+
+    expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+    expect(store.getState().dashboard.linkTargets).toEqual({
+      dashboards: {},
+      questions: {},
+    });
+  });
+
+  it("leaves no click action for dashboard and question links on a static embedded dashboard", async () => {
+    const token = "header.payload.signature";
+    const linkTo = (
+      linkType: "dashboard" | "question",
+      targetId: number,
+    ): VisualizationSettings => ({
+      click_behavior: {
+        type: "link",
+        linkType,
+        targetId,
+        parameterMapping: {},
+      },
+    });
+    // The embed API returns numeric ids, like the backend does.
+    const dashboard = createMockDashboard({
+      id: 42,
+      dashcards: [
+        createMockDashboardCard({
+          id: 1,
+          dashboard_id: 42,
+          card_id: 11,
+          card: createMockCard({ id: 11, display: "line" }),
+          visualization_settings: linkTo("dashboard", 2),
+        }),
+        createMockDashboardCard({
+          id: 2,
+          dashboard_id: 42,
+          card_id: 12,
+          card: createMockCard({ id: 12, display: "line" }),
+          visualization_settings: linkTo("question", 3),
+        }),
+      ],
+    });
+    const embedQueryPath = (dashcardId: number, cardId: number) =>
+      `path:/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}`;
+    const dashboardQueryRoute =
+      "express:/api/dashboard/:id/dashcard/:dashcardId/card/:cardId/query";
+    fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+    const dataset = createMockDataset({
+      data: { rows: [["Example"]] },
+      row_count: 1,
+    });
+    fetchMock.get(embedQueryPath(1, 11), dataset);
+    fetchMock.get(embedQueryPath(2, 12), dataset);
+    fetchMock.post(dashboardQueryRoute, dataset);
+    const store = setup({
+      dashboard: createMockDashboardState({
+        linkTargets: {
+          dashboards: { 2: createMockDashboard({ id: 2 }) },
+          questions: { 3: createMockCard({ id: 3 }) },
+        },
+      }),
+    });
+    await store.dispatch(
+      fetchDashboard({ dashId: token, queryParams: {}, options: {} }),
+    );
+
+    for (const dashcardId of [1, 2]) {
+      const dashcard = store.getState().dashboard.dashcards[dashcardId];
+      if (!isQuestionDashCard(dashcard)) {
+        throw new Error("Expected a question dashcard");
+      }
+      const result = await store
+        .dispatch(
+          fetchCardDataAction({ card: dashcard.card, dashcard, options: {} }),
+        )
+        .unwrap();
+      expect(result).toMatchObject({ result: dataset });
+    }
+    expect(fetchMock.callHistory.called(embedQueryPath(1, 11))).toBe(true);
+    expect(fetchMock.callHistory.called(embedQueryPath(2, 12))).toBe(true);
+    expect(fetchMock.callHistory.called(dashboardQueryRoute)).toBe(false);
+
+    const getClickActions = (dashcardId: number) => {
+      const { result } = renderHookWithProviders(
+        () => useClickBehaviorData({ dashcardId }),
+        {
+          storeInitialState: createMockState({
+            dashboard: store.getState().dashboard,
+          }),
+        },
+      );
+      const settings = checkNotNull(
+        dashboard.dashcards.find(({ id }) => id === dashcardId),
+      ).visualization_settings;
+      return DashboardClickAction({
+        question: new Question(createMockCard(), createMockMetadata()),
+        clicked: {
+          settings,
+          extraData: result.current.getExtraDataForClick({ settings }),
+        },
+      });
+    };
+
+    expect(getClickActions(1)).toEqual([]);
+    expect(getClickActions(2)).toEqual([]);
   });
 
   it("uses a prefetched dashboard instead of re-fetching it", async () => {
