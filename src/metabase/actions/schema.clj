@@ -108,7 +108,7 @@
          (= "native" (some-> (:type query) name)))))
 
 (mr/def ::query-action.native-dataset-query
-  "A native query that names its Database, the `:dataset_query` a request that creates a QueryAction must give."
+  "A native query that names its Database, the `:dataset_query` every write of a QueryAction gives."
   [:and
    ::lib-be.schema/maybe-legacy-query
    [:fn {:error/message "an action's query must be a native query on a database"}
@@ -192,12 +192,14 @@
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
                          request?    :- :boolean]
   (let [query-entries (cond->> query-action-entries
-                        request?                (remove (comp #{:database_id} first))
+                        request?                     (remove (comp #{:database_id} first))
+                        (not= schema-type :select)   (map (fn [[k opts schema]]
+                                                            (if (= k :dataset_query)
+                                                              [k opts ::query-action.native-dataset-query]
+                                                              [k opts schema])))
                         (and request? (= schema-type :insert))
                         (map (fn [[k opts schema]]
-                               (if (= k :dataset_query)
-                                 [k (dissoc opts :optional) ::query-action.native-dataset-query]
-                                 [k opts schema]))))]
+                               (if (= k :dataset_query) [k (dissoc opts :optional) schema] [k opts schema]))))]
     [:merge
      (action-columns schema-type request?)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -262,7 +264,7 @@
   [:map {:closed true}
    [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} ::query-action.dataset-query]
+   [:dataset_query {:optional true} ::query-action.native-dataset-query]
    [:legacy_query  {:optional true} [:maybe :string]]])
 
 (mr/def ::execution.row-diff
