@@ -60,8 +60,8 @@
 
 (methodical/defmethod t2.pipeline/build :before [:toucan.query-type/delete.* :hook/events :default]
   "Run the captures of the rows of a DELETE once for the statement, after its before-delete hooks and before it runs."
-  [_query-type model _parsed-args resolved-query]
-  (events.batch/capture-deletes! (model-of model))
+  [_query-type _model _parsed-args resolved-query]
+  (events.batch/capture-deletes!)
   resolved-query)
 
 (defmacro ^:private define-write-batch
@@ -79,7 +79,7 @@
   (events.batch/do-with-write-batch
    (fn []
      (let [model* (model-of model)]
-       (events.batch/capture-statement!
+       (events.batch/do-with-delete-statement
         model*
         (first (t2/primary-keys model*))
         (fn [columns]
@@ -87,7 +87,7 @@
                                        :toucan.query-type/select.instances
                                        model*
                                        (assoc (dissoc parsed-args :queryable) :columns columns)
-                                       resolved-query))))
-     (next-method rf query-type model parsed-args resolved-query))))
+                                       resolved-query))
+        #(next-method rf query-type model parsed-args resolved-query))))))
 
 (mi/prefer-hook-trait! :hook/events)

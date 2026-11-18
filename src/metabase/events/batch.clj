@@ -66,9 +66,10 @@
                                              (thunk))))
 
 (def ^:private empty-batch
-  "The batch before anything is collected: `{:events [collected-event ...], :pending [delete-event ...], :captures
-  {[model id] {consumer-key value}}, :sinks {sink-key [item ...]}}`."
-  {:events [] :pending [] :captures {} :sinks {}})
+  "The batch before anything is collected: `{:events [collected-event ...], :statements [open-statement ...],
+  :next-statement n, :pending {statement [delete-event ...]}, :captures {statement {consumer-key value}}, :sinks
+  {sink-key [item ...]}}`, where a statement is the number of a DELETE statement, whose captures go with its deletes."
+  {:events [] :statements [] :next-statement 0 :pending {} :captures {} :sinks {}})
 
 (defn- batch-state
   "The transaction state of the app DB holding, under `::batch`, the batch that the writes of this thread join, or nil
@@ -167,21 +168,22 @@
                   [consumer-key value])))
         @capturers))
 
-(defn- carrier
-  "The `[model id]` of the delete event that carries the captures of `events`."
-  [events]
-  ((juxt :model :id) (peek events)))
+(defn- open-statement
+  "The number of the innermost DELETE statement that `batch` runs, or nil."
+  [batch]
+  (peek (:statements batch)))
 
-(mu/defn capture-deletes!
-  "Run the captures over the deletes of rows of `model` that the batch collected since the last call, before the
-  DELETE statement that removes those rows runs."
-  [model :- :keyword]
+(defn capture-deletes!
+  "Run the captures over the deletes of rows that the innermost DELETE statement of the batch collected, before that
+  statement runs."
+  []
   (when-let [state (batch-state)]
-    (let [[old _] (swap-batch! state update :pending #(filterv (fn [event] (not= model (:model event))) %))
-          events  (filterv #(= model (:model %)) (:pending (::batch old)))]
+    (let [statement (open-statement (::batch @state))
+          [old _]   (swap-batch! state update :pending dissoc statement)
+          events    (get-in old [::batch :pending statement])]
       (when (seq events)
         (when-let [captured (not-empty (capture events))]
-          (swap-batch! state update-in [:captures (carrier events)] merge captured))))))
+          (swap-batch! state update-in [:captures statement] merge captured))))))
 
 (mu/defn register-statement-capture!
   "Have `capture`, a function of a model and of `select-rows`, called once per DELETE statement of that model, in its
@@ -193,23 +195,38 @@
   (swap! statement-capturers assoc consumer-key capture)
   nil)
 
-(mu/defn capture-statement!
-  "Run the statement captures of a DELETE of `model`, whose primary key is `pk`, with `select-rows`, a function of
-  columns selecting them from the rows the statement matches, before the before-delete hooks of the model run."
+(defn- run-statement-captures
+  "The values that the statement captures give for a DELETE of `model`, whose primary key is `pk`, with `select-rows`,
+  by consumer key."
+  [model pk select-rows]
+  (let [select (fn [columns]
+                 (select-rows (vec (distinct (cons pk columns)))))]
+    (into {}
+          (keep (fn [[consumer-key capture]]
+                  (when-some [value (capture model select)]
+                    [consumer-key value])))
+          @statement-capturers)))
+
+(mu/defn do-with-delete-statement
+  "Run `thunk`, a DELETE statement of `model`, whose primary key is `pk`, as one statement of the batch, so that its
+  captures go with the deletes it collects: the statement captures run first, with `select-rows`, a function of columns
+  selecting them from the rows the statement matches, before the before-delete hooks of the model."
   [model       :- :keyword
    pk          :- :keyword
-   select-rows :- ifn?]
-  (when-let [state (and (lifecycle-topic model :delete) (batch-state))]
-    (let [selected (atom nil)
-          select   (fn [columns]
-                     (reset! selected (select-rows (vec (distinct (cons pk columns))))))
-          captured (into {}
-                         (keep (fn [[consumer-key capture]]
-                                 (when-some [value (capture model select)]
-                                   [consumer-key value])))
-                         @statement-capturers)]
-      (when-let [carrier-id (and (seq captured) (get (last @selected) pk))]
-        (swap-batch! state update-in [:captures [model carrier-id]] merge captured)))))
+   select-rows :- ifn?
+   thunk       :- ifn?]
+  (if-let [state (and (lifecycle-topic model :delete) (batch-state))]
+    (let [[_ new] (swap-batch! state #(-> %
+                                          (update :statements conj (:next-statement %))
+                                          (update :next-statement inc)))
+          statement (open-statement (::batch new))]
+      (try
+        (when-let [captured (not-empty (run-statement-captures model pk select-rows))]
+          (swap-batch! state update-in [:captures statement] merge captured))
+        (thunk)
+        (finally
+          (swap-batch! state update :statements #(filterv (fn [s] (not= statement s)) %)))))
+    (thunk)))
 
 (defn- ensure-topic!
   [topic]
@@ -249,7 +266,7 @@
   [events]
   (let [order   (distinct (map (juxt :model :id) events))
         by-row  (group-by (juxt :model :id) events)]
-    (into [] (keep #(merge-events (vec (get by-row %)))) order)))
+    (into [] (keep #(some-> (merge-events (vec (get by-row %))) (dissoc :statement))) order)))
 
 (defn- payload
   [{:keys [object previous-object user-id context]}]
@@ -258,15 +275,26 @@
     previous-object (assoc :previous-object previous-object)
     (seq context)   (assoc :context context)))
 
+(defn- statement-rows
+  "The `[model id]`s of the rows that each DELETE statement deleted, by statement, from the collected `events`."
+  [events]
+  (reduce (fn [rows {:keys [statement model id]}]
+            (cond-> rows
+              statement (update statement (fnil conj []) [model id])))
+          {}
+          events))
+
 (defn- attach-captures
-  "`events` with `captures`, `{[model id] {consumer-key value}}`, attached to the delivered delete of that row."
-  [events captures]
+  "The compacted `events` with `captures`, `{statement {consumer-key value}}`, attached to a delivered delete of a row
+  that the statement deleted, by `rows`, `{statement [[model id] ...]}`; a statement none of whose deletes is
+  delivered, for each of its rows came and went in the batch, has its captures dropped."
+  [events captures rows]
   (let [carriers (into {}
                        (keep-indexed (fn [i {:keys [operation model id]}]
                                        (when (= :delete operation) [[model id] i])))
                        events)]
-    (reduce-kv (fn [events k captured]
-                 (if-let [i (carriers k)]
+    (reduce-kv (fn [events statement captured]
+                 (if-let [i (some carriers (get rows statement))]
                    (update-in events [i :captures] merge captured)
                    events))
                events
@@ -274,7 +302,7 @@
 
 (defn- deliver!
   [events captures]
-  (let [events (attach-captures (compact events) captures)]
+  (let [events (attach-captures (compact events) captures (statement-rows events))]
     (doseq [event events]
       (@publisher (lifecycle-topic (:model event) (:operation event)) (payload event)))
     (doseq [{:keys [owner handle]} (sort-by :last? (vals @owned-consumers))
@@ -308,8 +336,11 @@
           delete? (= :delete (:operation event))]
       (ensure-topic! topic)
       (if-let [state (batch-state)]
-        (swap-batch! state #(cond-> (update % :events conj event)
-                              delete? (update :pending conj event)))
+        (swap-batch! state (fn [batch]
+                             (let [statement (when delete? (open-statement batch))
+                                   event     (cond-> event statement (assoc :statement statement))]
+                               (cond-> (update batch :events conj event)
+                                 statement (update-in [:pending statement] (fnil conj []) event)))))
         (deliver! [(cond-> event delete? (assoc :captures (capture [event])))] {})))))
 
 (defn- run-batch

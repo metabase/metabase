@@ -266,3 +266,58 @@
         (is (= ["task"] (map (comp :name :object :event) @received)))
         (finally
           (t2/delete! :model/EventsTestTimeline :name "task"))))))
+
+(deftest statement-captures-survive-carrier-created-in-batch-test
+  (testing "the captures of a DELETE reach a delivered delete when one of its rows was created in the same batch"
+    (let [deletes (atom [])]
+      (events/register-capture! ::statement-rows
+                                (fn [deleted]
+                                  (when (= :model/EventsTestTimeline (:model (first deleted)))
+                                    {:ids (sort (map :id deleted))})))
+      (events/register-statement-capture! ::statement-rows
+                                          (fn [model _select]
+                                            (when (= :model/EventsTestTimeline model)
+                                              {:statement true})))
+      (events/register-owned-consumer! ::statement-rows
+                                       (fn [{:keys [model operation]}]
+                                         (when (and (= :model/EventsTestTimeline model) (= :delete operation)) :deletes))
+                                       (fn [_owner events _all]
+                                         (swap! deletes into events)))
+      (try
+        (with-timeline-cleanup
+          (let [old   (t2/insert-returning-pk! :model/EventsTestTimeline (row "batch-test-old"))
+                fresh (events/with-batched-events
+                        (let [fresh (t2/insert-returning-pk! :model/EventsTestTimeline (row "batch-test-fresh"))]
+                          (t2/delete! :model/EventsTestTimeline :id [:in [old fresh]])
+                          fresh))]
+            (is (= [old] (map :id @deletes)))
+            (is (= {::statement-rows {:ids (sort [old fresh])}}
+                   (select-keys (:captures (first @deletes)) [::statement-rows])))))
+        (finally
+          (events/register-capture! ::statement-rows (constantly nil))
+          (events/register-statement-capture! ::statement-rows (constantly nil))
+          (events/register-owned-consumer! ::statement-rows (constantly nil) (constantly nil)))))))
+
+(defn- logged-by
+  "The `[table row-id action]`s that the change log records while `thunk` runs."
+  [thunk]
+  (let [top (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:change_log]})) 0)]
+    (thunk)
+    (mapv (juxt :table_name :row_id :action)
+          (t2/query {:select [:table_name :row_id :action] :from [:change_log] :where [:> :id top] :order-by [:id]}))))
+
+(deftest cascade-capture-kept-when-carrier-created-in-batch-test
+  (testing "a multi-row delete whose last row was created in the same batch still logs the cascades of the others"
+    (mt/with-premium-features #{:change-log}
+      (mt/with-temp [:model/Database          db  {}
+                     :model/Table             t   {:db_id (:id db)}
+                     :model/Field             f1  {:table_id (:id t) :name "a"}
+                     :model/FieldUserSettings fus {:field_id (:id f1) :semantic_type :type/Email :semantic_type_set true}]
+        (let [logged (set (logged-by #(events/with-batched-events
+                                        (t2/insert! :model/Field {:table_id      (:id t)
+                                                                  :name          "z"
+                                                                  :base_type     :type/Text
+                                                                  :database_type "TEXT"})
+                                        (t2/delete! :model/Field :table_id (:id t)))))]
+          (is (contains? logged ["metabase_field" (:id f1) "delete"]))
+          (is (contains? logged ["metabase_field_user_settings" (:id fus) "delete"])))))))
