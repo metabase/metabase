@@ -70,7 +70,7 @@
 
 (def UnsignedToken
   "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
-  [:map {:closed false, ::mr/deliberately-open true, :description "embedding JWT claims"}
+  [:map {:closed false, :description "embedding JWT claims"}
    [:resource          {:optional true} [:map {:closed true}
                                          [:question  {:optional true} ResourceId]
                                          [:dashboard {:optional true} ResourceId]]]

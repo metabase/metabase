@@ -7,11 +7,15 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/TransformJobTransformTag [_model] :transform_job_transform_tag)
 
 (doto :model/TransformJobTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+;;; ------------------------------------------------ Serialization -------------------------------------------------
 
 (defmethod serialization/spec :model/TransformJobTransformTag [_]
   {:schema    ::transforms.schema/external-transform-job-transform-tag

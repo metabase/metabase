@@ -1,0 +1,28 @@
+## A dashcard's series were ordered by a position that only the code replacing them wholesale kept distinct. The first
+## changeset renumbers the series of a dashcard that share a position, keeping their order. The second one makes the
+## database enforce the rule.
+
+databaseChangeLog:
+  - changeSet:
+      id: dcs8w3
+      author: ranquild
+      comment: Renumber the series of a dashcard that share a position
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.RenumberDuplicateDashboardCardSeriesPositions
+      rollback:
+
+  - changeSet:
+      id: dcs5n7
+      author: ranquild
+      comment: Add a unique index on dashboardcard_series.position and dashboardcard_id
+      changes:
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_position_dashboardcard_id
+            unique: true
+            columns:
+              - column:
+                  name: position
+              - column:
+                  name: dashboardcard_id

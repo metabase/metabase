@@ -3526,3 +3526,41 @@
       (is (nil? (:error outcome)))
       (is (str/includes? body "tool-output-available") body)
       (is (= "output-available" (:state (first (filter #(= "tool-failer" (:type %)) stored))))))))
+
+(deftest tool-event-reports-repairs-test
+  (let [tool-events (fn [result]
+                      (snowplow-test/with-fake-snowplow-collector
+                        (transduce (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
+                                                                #{"failer"})
+                                   (constantly nil)
+                                   [(tool-output-part result)])
+                        ;; The collector may also hold a `new_instance_created`, as in the test above.
+                        (->> (snowplow-test/pop-event-data-and-user-id!)
+                             (filter #(= "agent_used_tool" (get-in % [:data "event"])))
+                             (mapv #(get-in % [:data "event_details"])))))]
+    (testing "a call with a repaired query reports the names of the passes"
+      (is (= [{"tool_name" "failer" "step" 2 "repairs" ["rewrite-operator-name-aliases" "swap-between-bounds"]}]
+             (tool-events {:output            "ok"
+                           :structured-output {:query-id "q1"
+                                               :repairs  ["rewrite-operator-name-aliases" "swap-between-bounds"]}}))))
+    (testing "a call whose query needed no repair reports an empty list, the denominator of a share"
+      (is (= [{"tool_name" "failer" "step" 2 "repairs" []}]
+             (tool-events {:output "ok" :structured-output {:query-id "q1" :repairs []}}))))
+    (testing "a tool that runs no repair reports no key"
+      (is (= [{"tool_name" "failer" "step" 2}]
+             (tool-events {:output "ok" :structured-output {:query-id "q1"}})))
+      (is (= [{"tool_name" "failer" "step" 2}]
+             (tool-events {:output "ok"}))))
+    (testing "a failed call reports no key"
+      (let [events (tool-events (failed-outcome "failer" #(tools.error/throw-recoverable!
+                                                           :metabase.metabot.tools.recoverable.common/not-found
+                                                           {:kind :table :id 7})))]
+        (is (=? [{"tool_name" "failer" "error_class" "recoverable"}] events))
+        (is (not (contains? (first events) "repairs")))))
+    (testing "the list stays on the instance side of the model and of the stored conversation"
+      (let [result {:output "ok" :structured-output {:query-id "q1" :repairs ["swap-between-bounds"]}}
+            part   (tool-output-part result)
+            stored (#'persistence/internal-parts->storable
+                    [{:type :tool-input :id "c1" :function "failer" :arguments {}} part])]
+        (is (not (str/includes? (apply str (into [] (self.core/parts->aisdk-sse-xf) [part])) "swap-between-bounds")))
+        (is (not (str/includes? (pr-str stored) "swap-between-bounds")))))))

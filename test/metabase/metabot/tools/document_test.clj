@@ -20,6 +20,7 @@
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.validation :as sql.validation]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -29,15 +30,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- invoke-document-tool-with-memory-atom
+  "Call `tool-name` from the Documents profile through the runtime, with `memory-atom` holding the agent's memory."
+  [tool-name args memory-atom]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (let [entries (agent-tools/->entries (:tools (profiles/get-profile :document-generate-content))
+                                         memory-atom nil :document-generate-content)]
+      ((get-in entries [tool-name :fn]) args))))
+
 (defn- invoke-document-tool
   "Call `tool-name` from the Documents profile through the runtime, with `memory` as the agent's memory."
   ([tool-name args]
    (invoke-document-tool tool-name args {}))
   ([tool-name args memory]
-   (binding [scope/*current-user-scope* api-scope/unrestricted]
-     (let [entries (agent-tools/->entries (:tools (profiles/get-profile :document-generate-content))
-                                          (atom memory) nil :document-generate-content)]
-       ((get-in entries [tool-name :fn]) args)))))
+   (invoke-document-tool-with-memory-atom tool-name args (atom memory))))
 
 (defn- mentions
   "Agent memory in which the user `@`-mentioned `references`."
@@ -230,6 +236,29 @@
           (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
           (is (not (str/includes? output "this edit did not change"))))))))
 
+(deftest document-construct-sql-chart-reference-test
+  (testing "a reference to a card that does not exist gets the SQL tools' recoverable error, and no draft"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [result (invoke-document-tool "document_construct_sql_chart"
+                                         (assoc sql-chart-args
+                                                :database_id (mt/id)
+                                                :sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")))]
+        (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+        (is (nil? (:structured-output result)))))))
+
+(deftest document-construct-sql-chart-skips-table-check-test
+  (testing "a table that does not exist records no reference warning, because the tool does not show warnings"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _] nil)]
+          (let [memory-atom (atom {})
+                result      (invoke-document-tool-with-memory-atom
+                             "document_construct_sql_chart"
+                             (assoc sql-chart-args :database_id (mt/id) :sql "SELECT * FROM no_such_account")
+                             memory-atom)]
+            (is (nil? (:error result)))
+            (is (empty? (::sql.validation/shown-reference-warnings @memory-atom)))))))))
+
 (deftest document-construct-sql-chart-blank-sql-test
   (testing "blank SQL gets the SQL tools' recovery step instead of a draft"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -409,6 +438,29 @@
             (is (=? {:database (mt/id)
                      :stages [{:source-card (:id model)}]}
                     (:dataset_query structured)))))))))
+
+(deftest document-construct-model-chart-repairs-test
+  (testing "the chart draft keeps the repair passes of its query, so the `agent_used_tool` event reports them"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card model {:type          :model
+                                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (let [repairs (fn [stage]
+                          (let [query  {:lib/type "mbql/query"
+                                        :stages   [(merge {:lib/type    "mbql.stage/mbql"
+                                                           :source-card (:entity_id model)
+                                                           :aggregation [["count" {}]]
+                                                           :breakout    [["field" {:temporal-unit "month"} "CREATED_AT"]]}
+                                                          stage)]}
+                                result (invoke-document-tool "document_construct_model_chart"
+                                                             (assoc model-chart-args :query query))]
+                            (is (nil? (:error result)))
+                            (get-in result [:structured-output :repairs])))]
+            (is (= ["rewrite-operator-name-aliases"]
+                   (repairs {:filters [["gte" {} ["field" {} "TOTAL"] 10]]})))
+            (is (= []
+                   (repairs {}))
+                "no reported pass changed the query")))))))
 
 (deftest document-construct-model-chart-metric-as-source-card-test
   (testing "a metric in `source-card` is a failed call that names the source to use, not a chart"

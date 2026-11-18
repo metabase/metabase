@@ -223,12 +223,11 @@
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (t2/query-one {:delete-from :metabase_fieldvalues
-                 :where      [:in :field_id
-                              ^:allow-subquery {:select     [:f.id]
-                                                :from       [[:metabase_field :f]]
-                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                :where      [:= :t.db_id database-id]}]}))
+  (t2/delete! :model/FieldValues
+              :field_id [:in ^:allow-subquery {:select     [:f.id]
+                                               :from       [[:metabase_field :f]]
+                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                               :where      [:= :t.db_id [:auto/param database-id]]}]))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."

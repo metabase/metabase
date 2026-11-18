@@ -90,7 +90,7 @@
    [:json_query                  {:optional true} [:maybe query-like]]
    ;; the entry shape is enforced where it is built ([[metabase.lib.schema/sandboxing.details.entry]]) and on the way
    ;; into the app DB ([[metabase.queries.schema/query-execution.update]]); this row schema only passes it through
-   [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
+   [:sandbox_details             {:optional true} [:maybe [:sequential :map]]]])
 
 (def ^:private id+timestamp
   [:map {:closed true}

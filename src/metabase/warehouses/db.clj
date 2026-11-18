@@ -13,6 +13,13 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :router_database_id :model/Database :id database-id))
 
+(mu/defn router-database-ids :- [:map-of ::lib.schema.id/database ::lib.schema.id/database]
+  "A map from the id of each destination among the Databases with `database-ids` to the id of its router."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-fn->fn :id :router_database_id :model/Database
+                    :id [:in database-ids]
+                    :router_database_id [:not= nil]))
+
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
@@ -46,8 +53,8 @@
 
 (mu/defn set-database-provider-name!
   "Set the provider name of the Database with `database-id`, returning the number updated."
-  [database-id    :- ::lib.schema.id/database
-   provider-name  :- :string]
+  [database-id   :- ::lib.schema.id/database
+   provider-name :- [:maybe :string]]
   (t2/update! :model/Database :id database-id {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
@@ -88,6 +95,8 @@
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
                                                            :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
                                  [:in :table_id table-ids-query]
@@ -119,6 +128,8 @@
   deleted."
   [database-id :- ::lib.schema.id/database
    card-ids    :- [:sequential ::lib.schema.id/card]]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (first (t2/query {:delete-from (t2/table-name :model/Card)
                     :where       [:and
                                   [:= :database_id database-id]
