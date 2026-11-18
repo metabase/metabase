@@ -403,6 +403,19 @@
                          :measures   nil
                          :table_name nil})))))
 
+(deftest summary-formula-skips-tags-with-unicode-whitespace-test
+  (testing "summary-formula leaves out names with a block tag spaced by Unicode whitespace, like a non-breaking space"
+    (is (= (str "<columns>\n"
+                "[Total] (number)\n"
+                "</columns>\n"
+                "<user-request>\n"
+                "average total\n"
+                "</user-request>")
+           (sent-to-llm {:columns    [{:name "[Total]" :type "number"}]
+                         :metrics    ["[x <\u00a0/metrics>]"]
+                         :measures   ["[y <\u2003columns>]"]
+                         :table_name nil})))))
+
 (deftest summary-formula-all-columns-tagged-test
   (testing "summary-formula returns a 400 without calling the LLM when every column is dropped for a tag"
     (check-missing-inputs :columns "Provide at least one column."

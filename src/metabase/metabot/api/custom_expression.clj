@@ -170,7 +170,7 @@
   "Match an opening or closing tag of any block in the user message, or the start of one, in any case and with any whitespace or attributes."
   ;; The possessive quantifiers never backtrack and `[^<>]` stops at the next `<`, so matching takes time linear in
   ;; the length of the input.
-  #"(?i)<\s*+/?\s*+(?:table-name|columns|metrics|user-request)(?![\w-])(?:[^<>]*+>)?")
+  #"(?iU)<\s*+/?\s*+(?:table-name|columns|metrics|user-request)(?![\w-])(?:[^<>]*+>)?")
 
 (defn- find-tag
   "Return the first tag of a user message block in `s`, or nil."
