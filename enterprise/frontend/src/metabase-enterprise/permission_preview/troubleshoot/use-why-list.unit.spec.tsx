@@ -351,8 +351,6 @@ describe("useWhyList", () => {
           verdict: {
             kind: "allowed",
             text: "Sandy Sales can curate this collection.",
-            reason:
-              "Everyone has Curate access to their own personal collection, whatever their groups.",
           },
           target: {
             title: "Sandy Sales's personal collection",

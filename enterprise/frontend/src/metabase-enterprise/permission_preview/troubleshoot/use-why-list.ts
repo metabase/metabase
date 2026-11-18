@@ -29,7 +29,7 @@ export type WhyVerdict = {
   text: string;
   /** The group the access comes from, shown on its own line under the sentence. */
   group?: string;
-  /** Why the verdict holds, shown with it: why an item doesn't open, or what gives a collection access with no group. */
+  /** Why an item doesn't open, shown with the verdict so the answer leads with it. */
   reason?: string;
 };
 
@@ -396,7 +396,6 @@ function getCollectionVerdict(
         ? t`${who} can curate this collection.`
         : t`${who} can view this collection.`,
     group,
-    reason: target?.cell.note ?? undefined,
   };
 }
 

@@ -983,9 +983,6 @@ function Verdict({
         {verdict.group != null && (
           <Text c="text-secondary">{t`from ${verdict.group}`}</Text>
         )}
-        {verdict.reason != null && (
-          <Text c="text-secondary">{verdict.reason}</Text>
-        )}
       </Box>
       {status}
     </Flex>
