@@ -23,19 +23,6 @@ export const germanFieldValues: NonEmpty<DictionaryArray> = [
   },
 ];
 
-export const frenchNames: NonEmpty<DictionaryArray> = [
-  { locale: "fr", msgid: "Francesca Gleason", msgstr: "Glacia Froskeon" },
-  { locale: "fr", msgid: "Francesca Hammes", msgstr: "Hammera Francite" },
-  { locale: "fr", msgid: "Francesco Grant", msgstr: "Granto Francello" },
-  { locale: "fr", msgid: "Francisco Robel", msgstr: "Robux Ciscoray" },
-  { locale: "fr", msgid: "Franco O'Reilly", msgstr: "O'Reilux Francor" },
-];
-
-export const frenchBooleanTranslations: NonEmpty<DictionaryArray> = [
-  { locale: "fr", msgid: "true", msgstr: "vrai" },
-  { locale: "fr", msgid: "false", msgstr: "faux" },
-];
-
 export const portugueseFieldNames: DictionaryArray = [
   { locale: "pt-BR", msgid: "Title", msgstr: "Título" },
   { locale: "pt-BR", msgid: "Vendor", msgstr: "Fornecedor" },
@@ -57,8 +44,6 @@ export const nonAsciiFieldNames: DictionaryArray = [
   { locale: "zh-TW", msgid: "Title", msgstr: "标题" },
   { locale: "en", msgid: "Butterfly", msgstr: "🦋" },
 ];
-
-export const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
 
 export const multipleInvalidLocales = clone(germanFieldNames);
 multipleInvalidLocales[0].locale = "ze";
