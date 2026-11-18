@@ -84,11 +84,7 @@
 (defn- refusal!
   "The `:error-type` of the refusal of a test of the write `sql` with `params`, or nil when it is not refused."
   [sql params inputs expectations]
-  (try
-    (run-write! sql params inputs expectations)
-    nil
-    (catch ExceptionInfo e
-      (:error-type (ex-data e)))))
+  (:error-type (data-testing.test-util/refusal #(run-write! sql params inputs expectations))))
 
 (defn- refund-1
   "The UPDATE of the people table that sets `name` to the first parameter where `id` is the second. Every test passes
@@ -210,19 +206,15 @@
         (is (re-find #"has no output" (ex-message e)))))))
 
 (defn- validation-refusal!
-  "The refusal [[data-testing.runner/validate-test]] gives a test of the write `sql` with `params`, as its `:error-type`
-  and message, or nil when it is not refused."
+  "The `:error-type` and message of the refusal [[data-testing.runner/validate-test]] throws for a test of the write
+  `sql` with `params`, or nil when it throws none."
   [sql params]
   (do-with-write-subject!
    sql params
    (fn [card _asked]
-     (try
-       (data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
-                                                      :expectations [(reading refunded-only-1)]})
-       nil
-       (catch ExceptionInfo e
-         {:error-type (:error-type (ex-data e))
-          :message    (ex-message e)})))))
+     (data-testing.test-util/refusal
+      #(data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
+                                                      :expectations [(reading refunded-only-1)]})))))
 
 (deftest write-returning-rows-is-refused-test
   (mt/test-drivers (drivers-that-write)
@@ -255,19 +247,28 @@
          (is (= [{"id" 1 "status" "refunded"}] (asked))))))))
 
 (defn- fail-to-write!
-  "Run a saved test of a write that the warehouse rejects: it sets a column the people table does not have."
+  "Run a saved test of a write that the warehouse rejects: it reads a column of the people table, qualified by the
+  table's name, that the table does not have. Postgres and MySQL both name the table in the error."
   []
-  (run-write! (str "UPDATE " (qualified :people) " SET no_such_column = ? WHERE id = ?") ["x" 1]
-              [(people-rows)] [(reading refunded-only-1)]))
+  (let [people (qualified :people)]
+    (run-write! (str "UPDATE " people " SET name = ? WHERE " people ".no_such_column = ?") ["x" 1]
+                [(people-rows)] [(reading refunded-only-1)])))
 
 (deftest failed-write-is-refused-naming-the-input-test
   (mt/test-drivers (drivers-that-write)
     (testing "a write the warehouse rejects is refused as a failed query, naming the input, not its temp table"
-      (let [e (try (fail-to-write!)
-                   nil
-                   (catch ExceptionInfo e e))]
-        (is (= ::data-testing.errors/query-failed (:error-type (ex-data e))))
-        (is (str/includes? (str (ex-message e)) (qualified :people)))))))
+      (let [created     (atom [])
+            orig-create (mt/original-fn #'data-testing.executor/create-temp-table!)
+            {:keys [error-type message]}
+            (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
+                                                                                   (swap! created conj table)
+                                                                                   (orig-create driver conn table query))]
+              (data-testing.test-util/refusal fail-to-write!))
+            [temp-table] @created]
+        (is (= ::data-testing.errors/query-failed error-type))
+        (is (str/includes? (str message) (qualified :people)))
+        (is (string? temp-table))
+        (is (not (str/includes? (u/lower-case-en (str message)) (u/lower-case-en temp-table))))))))
 
 (deftest temp-tables-are-dropped-after-a-failed-write-test
   (mt/test-drivers (drivers-that-write)
@@ -283,9 +284,7 @@
                                                                              (orig-drop driver conn table))]
         (testing "premise: the write is refused as a failed query"
           (is (= ::data-testing.errors/query-failed
-                 (try (fail-to-write!)
-                      nil
-                      (catch ExceptionInfo e (:error-type (ex-data e)))))))
+                 (:error-type (data-testing.test-util/refusal fail-to-write!)))))
         (testing "the run drops the temp table of its one input, and nothing else"
           (is (= 1 (count @created)))
           (is (= (set @created) (set @dropped))))))))
@@ -317,5 +316,5 @@
                               [(reading {:type :empty
                                          :name "the write saw the setting on"
                                          :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
-        (testing "the setting is back off for queries after the run"
+        (testing "a run leaves the setting as it found it"
           (is (= "off" (string-setting db-id))))))))
