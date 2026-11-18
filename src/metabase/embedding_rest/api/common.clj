@@ -11,6 +11,8 @@
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
@@ -448,12 +450,26 @@
 ;;; endpoints cannot forget them. (For preview_embed this also means the preview shows what the published embed will
 ;;; show, rather than routing via the previewing admin's own user attribute.)
 
+(mr/def ::query-options
+  "Extra options the embed card routes pass through to the card query."
+  [:map {:closed true}
+   [:qp          {:optional true} [:maybe ifn?]]
+   [:constraints {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:middleware  {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]])
+
+(mr/def ::card-context-options
+  [:map {:closed true}
+   [:export-format {:optional true} [:maybe :keyword]]
+   [:qp            {:optional true} [:maybe ifn?]]
+   [:constraints   {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:options       {:optional true} [:maybe ::query-options]]])
+
 (mu/defn process-query-for-card-context
   "Run the query of a [[card-context]] with additional query `options`. Runs with database routing off (see above).
   Returns a `StreamingResponse`."
   [{:keys [card parameters]} :- ::card-context
    & {:keys [export-format qp constraints options]
-      :or   {qp qp.card/process-query-for-card-default-qp}}]
+      :or   {qp qp.card/process-query-for-card-default-qp}} :- [:maybe ::card-context-options]]
   (database-routing/with-anonymous-router-access
     (m/mapply api.public/process-query-for-card-with-id
               card export-format parameters
@@ -560,13 +576,20 @@
     :json :embedded-json-download
     :embedded-dashboard))
 
+(mr/def ::dashcard-context-options
+  [:map {:closed true}
+   [:export-format {:optional true} [:maybe :keyword]]
+   [:middleware    {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+   [:constraints   {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:qp            {:optional true} [:maybe ifn?]]])
+
 (mu/defn process-query-for-dashcard-context
   "Run the query of a [[dashcard-context]]. Runs with database routing off (see the comment above
   [[process-query-for-card-context]]). Returns a `StreamingResponse`."
   [{:keys [dashboard dashcard card parameters]} :- ::dashcard-context
    & {:keys [export-format middleware constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp          qp.card/process-query-for-card-default-qp}}]
+             qp          qp.card/process-query-for-card-default-qp}} :- [:maybe ::dashcard-context-options]]
   (database-routing/with-anonymous-router-access
     (api.public/process-query-for-dashcard
      :dashboard     dashboard
