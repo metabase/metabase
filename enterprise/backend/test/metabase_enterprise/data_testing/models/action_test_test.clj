@@ -36,7 +36,7 @@
       (testing "the newest run of the test, not a run of a card test with the same id"
         (is (= action-run (-> (t2/hydrate action-test :last_run) :last_run :id)))))))
 
-(deftest deleting-a-model-clears-the-test-id-of-its-action-tests-runs-test
+(deftest deleting-an-action-or-its-model-clears-the-test-id-of-its-action-tests-runs-test
   (doseq [[description delete!] [["deleting the action"
                                   (fn [_coll-id _model-id action-id] (t2/delete! :model/Action :id action-id))]
                                  ["deleting the model, not archived"

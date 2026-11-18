@@ -63,7 +63,8 @@
   their real names.
 
   Only query actions can be tested, on a database with actions enabled. The action's SQL must be one INSERT, UPDATE or
-  DELETE statement, and an `equals` expectation is refused: an action has no output to compare."
+  DELETE statement, with no RETURNING clause and no call of a function the write check refuses, such as `nextval`. An
+  `equals` expectation is refused: an action has no output to compare."
   [_route-params
    _query-params
    {:keys [action_id] :as body} :- ::data-testing.schema/action-test.create]
@@ -72,8 +73,8 @@
   (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
-  "Update an action test. An update that changes the action, the parameter values, the inputs or the expectations is
-  checked as a new test is; an update of only the name or description is not."
+  "Update an action test. An update that gives the action, the parameter values, the inputs or the expectations is
+  refused, as a new test is, unless the test could run; an update of only the name or description is not."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -99,9 +100,11 @@
   "Run an action test. Needs read access to the test, permission to run the action's query with the test's parameter
   values, and native query access to the database of that query.
   The action's SQL runs on the test's temp tables, in a transaction that is rolled back, so the tables the SQL names do
-  not change. The rollback does not undo a change made outside the transaction, such as an advanced sequence or the
-  work of a function that commits on a connection of its own. The run is recorded in the test's run history and in
-  the audit log as an action-test run, not as an execution of the action.
+  not change. The rollback does not undo what is not transactional or not on the run's connection, such as an advanced
+  sequence or the work of a function that commits on a connection of its own. The run refuses the functions the write
+  check knows to do this, such as `nextval` and `setval`; one it does not know passes. A persisted model that the
+  action's SQL includes runs as its query, not from its cache table. The run is recorded in the test's run history and
+  in the audit log as an action-test run, not as an execution of the action.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.

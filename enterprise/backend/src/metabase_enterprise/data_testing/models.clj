@@ -106,7 +106,8 @@
 ;;; ------------------------------------------------- Saved tests --------------------------------------------------
 
 (mr/def ::saved-test-spec
-  "How a test of a saved-test model reaches its subject."
+  "What the methods shared by every saved-test model need to know about one model: its test type, how a test reaches
+  its subject, who may save a test, and its remote-sync rule."
   [:map {:closed true}
    [:test-type
     {:description "The test type its runs record."}
@@ -125,13 +126,14 @@
     ifn?]
    [:remote-sync-guard?
     {:optional    true
-     :description (str "True when, on a read-only remote-sync instance, nobody may write the test and no update may "
-                       "change a column that remote sync exports, whatever the subject allows.")}
+     :description (str "True when, on a read-only remote-sync instance, the test's `:can_write` is false for every "
+                       "user and no update may change a column that remote sync exports, whatever the subject allows. "
+                       "Creating a test is left to `:can-save?`.")}
     :boolean]])
 
 (defmulti saved-test-spec
-  "How a test of the saved-test `model` reaches its subject, as a `::saved-test-spec`. The methods that every
-  saved-test model shares (hydration, permissions, revisions, hooks) read it."
+  "The `::saved-test-spec` of the saved-test `model`. The methods that every saved-test model shares (hydration,
+  permissions, revisions, hooks) read it."
   {:arglists '([model])}
   keyword)
 
@@ -211,9 +213,10 @@
 
 (t2/define-before-delete ::saved-test [saved-test]
   ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a database cascade from
-  ;; the subject's table or database, say) leaves the runs' test id naming no test; such runs are never listed or shown
-  ;; as `last_run`.
+  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips this hook leaves the runs' test id
+  ;; naming no test: a test that goes by database cascade, with a Dashboard or Document and its cards, or a Table and
+  ;; its segments, or a Database delete, which deletes cards by raw SQL. Such runs are never listed or shown as
+  ;; `last_run`.
   (let [test-type (:test-type (saved-test-spec (t2/model saved-test)))]
     (data-testing.db/clear-test-id-of-runs! test-type (:id saved-test))
     (when-not mi/*deserializing?*

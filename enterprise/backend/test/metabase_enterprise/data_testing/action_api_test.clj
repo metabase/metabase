@@ -31,9 +31,10 @@
   {:action_id action-id :name "My test" :parameters parameters :inputs (inputs) :expectations (expectations)})
 
 (defn- do-with-action!
-  "Call `f` with the id of a query action of a model in the collection `collection-id` (nil for the root), on a private
+  "Call `f` with the id of an action of a model in the collection `collection-id` (nil for the root), on a private
   copy of the Postgres test data with actions enabled, so that a run that wrongly commits leaves the shared test data
-  alone. `action-fn`, called on the copy, returns what is merged into the default query action."
+  alone. `action-fn`, called on the copy, returns what is merged into the default query action, which can make it
+  another kind of action."
   ([collection-id f]
    (do-with-action! collection-id (constantly {}) f))
   ([collection-id action-fn f]
@@ -260,7 +261,7 @@
                     (let [listed (set (map :id (mt/user-http-request :lucky :get 200 "ee/action-test")))]
                       (is (contains? listed test-id))
                       (is (not (contains? listed hidden-test-id)))))
-                  (testing "the list of one action's tests is empty for an action the user cannot read"
+                  (testing "the list of one action's tests holds them for a readable action and is empty for an unreadable one"
                     (is (= [test-id] (map :id (mt/user-http-request :lucky :get 200 "ee/action-test" :action-id action-id))))
                     (is (= [] (mt/user-http-request :lucky :get 200 "ee/action-test" :action-id hidden-action-id))))
                   (testing "the run history without a test id holds the runs of readable tests, and only those"

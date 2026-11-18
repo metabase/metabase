@@ -32,7 +32,7 @@
    {:model :model/ActionTest    :test-type :action    :subject-key :action_id}])
 
 (defn- do-with-subject!
-  "Call `f` with the id of a new subject of `test-type` that an admin may read and write and Rasta may not read."
+  "Call `f` with the id of a new subject of `test-type` that an admin may read and write."
   [test-type f]
   (case test-type
     :transform (mt/with-temp [:model/Transform {id :id} {}] (f id))
