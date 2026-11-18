@@ -198,8 +198,7 @@ saved later when it is ready."
             (let [current-query (queries.db/card-dataset-query id)]
               (if (= (:dataset_query card) current-query)
                 (do
-                  (request/with-current-user nil
-                    (queries.db/update-card! id {:result_metadata metadata}))
+                  (queries.db/update-card! id {:result_metadata metadata})
                   (log/infof "Metadata updated asynchronously for card %s" id))
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e
@@ -242,8 +241,7 @@ saved later when it is ready."
           :when (untyped-metadata? (:result_metadata card))
           :let  [metadata (infer-metadata-with-model-overrides (:dataset_query card) card)]
           :when (and metadata (not (untyped-metadata? metadata)))]
-    (request/with-current-user nil
-      (queries.db/update-card! (:id card) {:result_metadata metadata}))
+    (queries.db/update-card! (:id card) {:result_metadata metadata})
     (log/infof "Inferred the untyped result metadata of model Card %d" (:id card))))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.

@@ -3478,6 +3478,7 @@
    :uses #{util.classloader util.config}
    :model-imports #{:model/Dashboard
                     :model/Database
+                    :model/Measure
                     :model/Transform
                     :model/User}}
 

@@ -12,7 +12,6 @@
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.metrics.transforms :as metrics.transforms]
-   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -94,12 +93,6 @@
   {:arglists '([entity dimensions dimension-mappings])}
   (fn [entity _dimensions _dimension-mappings] (:lib/type entity)))
 
-(defn- save-synced-dimensions!
-  "Persist the dimensions that a sync computed, as the product and not as the user whose read caused it."
-  [entity dimensions dimension-mappings]
-  (request/with-current-user nil
-    (save-dimensions! entity dimensions dimension-mappings)))
-
 (defmulti dimensions-initialized?
   "Whether an entity's dimensions have been initialized in durable storage."
   {:arglists '([entity])}
@@ -128,7 +121,7 @@
   [entity old-dims old-mappings new-dims new-mappings]
   (when (or (lib-metric/dimensions-changed? old-dims new-dims)
             (lib-metric/mappings-changed? old-mappings new-mappings))
-    (save-synced-dimensions! entity new-dims new-mappings)))
+    (save-dimensions! entity new-dims new-mappings)))
 
 (defn- sync-measure-dimensions!
   "Measures are fully synced on every load: recompute from the visible columns and reconcile with the
@@ -259,10 +252,10 @@
   (when (seq computed-pairs)
     (let [{:keys [dimensions dimension-mappings]}
           (lib-metric/reconcile-dimensions-and-mappings (metric-seed-pairs computed-pairs) nil nil)]
-      (save-synced-dimensions! entity
-                               (lib-metric/extract-persisted-dimensions
-                                dimensions)
-                               dimension-mappings))))
+      (save-dimensions! entity
+                        (lib-metric/extract-persisted-dimensions
+                         dimensions)
+                        dimension-mappings))))
 
 (defn- refresh-metric-dimensions!
   "A v2 metric that already has curated dimensions: the stored dimensions/mappings are authoritative
@@ -341,9 +334,9 @@
             (refresh-metric-dimensions! entity computed-pairs persisted-dims persisted-mappings)
             (if (nil? persisted-dims)
               (seed-metric-dimensions! entity computed-pairs)
-              (save-synced-dimensions! entity
-                                       (lib-metric/extract-persisted-dimensions persisted-dims)
-                                       persisted-mappings))))))))
+              (save-dimensions! entity
+                                (lib-metric/extract-persisted-dimensions persisted-dims)
+                                persisted-mappings))))))))
 
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."

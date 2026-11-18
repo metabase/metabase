@@ -20,7 +20,6 @@
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -108,8 +107,7 @@
                           parameter-independent?))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
-        (request/with-current-user nil
-          (query-processor.db/set-card-result-metadata! card-id actual-metadata))))
+        (query-processor.db/set-card-result-metadata! card-id actual-metadata)))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

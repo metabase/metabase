@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -323,3 +324,7 @@
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
                                                   :definition (measure-definition (lib/count))}))))))
+
+(deftest serialization-skips-computed-dimensions-test
+  (testing "the dimensions of a measure are recomputed whenever it is read, so serialization carries none"
+    (is (every? (set (:skip (serialization/spec :model/Measure))) [:dimensions :dimension_mappings]))))
