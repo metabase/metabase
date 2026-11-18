@@ -166,12 +166,11 @@ Most clients ask for all of them. A scope never grants more than your Metabase p
 
 ### MCP requests run with your Metabase permissions
 
-The MCP server runs every request with the Metabase permissions of the person who signed in. Your [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md) apply to every tool call, so a client can't see or query anything that you couldn't in Metabase yourself.
+The MCP server runs every request with the Metabase permissions of the person who signed in. The MCP server applies Metabase's  [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md) every tool call, so an AI client can only see or query what the person using it can see and query in Metabase itself.
 
-Two other controls can narrow what a client can do, but neither one grants access beyond your data and collection permissions. You approve [permission scopes](#permission-scopes) for each client on the consent page when you connect. [MCP tools access](./usage-controls.md#mcp-tools-access), on Pro and Enterprise plans, lets admins limit which tools each group can use.
+On Pro and Enterprise plans, admins can further restrict which MCP functionality is available to each group by configuring [MCP tools access](./usage-controls.md#mcp-tools-access). Permissions for MCP tools access are independent of data and collection permissions (like impersonation or row-level security) - so for example, you can have a group with data permissions that allow SQL queries, but MCP access that forbids it, in which case people in this group will be able to run SQL in Metabase but not through MCP. MCP tools access can only limit access and can't grant additional access beyond what's specified by data and collection permissions.
 
-> If you use [impersonation](../permissions/impersonation.md) to control access with database roles, queries that the MCP server runs, from both query builder tools and raw SQL, run under the person's database role, just like queries run in Metabase.
-
+When first connecting the AI client to the MCP server, people will be asked to approve [permission scopes](#permission-scopes). Here, "permissions" refers to OAuth scopes, not Metabase permissions. Oauth scopes control what the agent is allowed do _in theory_, but they don't grant additional access beyond what's already configured in Metabase.
 ### Using the MCP server when embedding Metabase
 
 {% include plans-blockquote.html feature="Headless access with JWT" %}
