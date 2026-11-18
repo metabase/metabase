@@ -81,8 +81,9 @@ export function FormulaEditor(props: FormulaEditorProps) {
         </Tooltip>
         <Tooltip label={t`${submitLabel} (Enter)`}>
           <ActionIcon
-            className={cx(S.formulaBarAction, S.formulaBarCommit)}
+            className={S.formulaBarAction}
             variant="subtle"
+            color="positive"
             aria-label={submitLabel}
             disabled={!hasFormula}
             onClick={handleSubmit}
