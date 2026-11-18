@@ -84,6 +84,29 @@ describe("ExpressionWidget > help text", () => {
       await screen.findByTestId("expression-helper-popover-structure"),
     ).toHaveTextContent("Average(column)");
   });
+
+  it("should show the example of Offset in a custom aggregation (metabase#55940)", async () => {
+    await setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+      expressionMode: "aggregation",
+      database: createSampleDatabase({
+        features: [...COMMON_DATABASE_FEATURES, "window-functions/offset"],
+      }),
+    });
+
+    await typeText("Offset()");
+    await pressKey("ArrowLeft");
+
+    expect(
+      await screen.findByTestId("expression-helper-popover-structure"),
+    ).toHaveTextContent("Offset(expression, rowOffset)");
+    await waitForHelpTextExample();
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(
+      "Offset(Sum([Total]), -1)",
+    );
+  });
 });
 
 describe("ExpressionWidget > help text > multi-line", () => {
