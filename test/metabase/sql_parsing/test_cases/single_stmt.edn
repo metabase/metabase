@@ -122,6 +122,20 @@
    :stmt-type  "read"
    :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
 
+  ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt
+  ;; literal as ending one quote later than SQLGlot did, under either setting.
+  {:name       "a confined write whose rebuilt E'' string moves a quote, so text the parser read as a string runs as SQL, is refused"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET note = E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ WHERE id = 1"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  {:name       "a confined write whose rebuilt E'' string never ends is refused"
+   :dialect    "postgres"
+   :sql        "UPDATE orders SET note = E'a\\\\' WHERE id = 1"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
   {:name       "a quote doubled inside a literal is one statement under either setting"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = 'it''s'"

@@ -184,6 +184,15 @@
     (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "lo_unlink"}
            (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1")))))
 
+(deftest write-whose-rebuild-reads-differently-is-refused-test
+  (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
+    (is (= "UPDATE t SET name = e'it''s' WHERE id = 1"
+           (write-refusal "UPDATE t SET name = E'it\\'s' WHERE id = 1"))))
+  (testing "a write whose rebuilt E'' string ends one quote later, running `setval` that the parser read as text, is refused"
+    (is (= {:error-type ::errors/not-a-single-write :reason "rebuild-differs" :detail "write-function"}
+           (write-refusal (str "UPDATE t SET name = E'\\\\' || $q$' || (SELECT setval($z$s$z$, 1))::text --$q$"
+                               " WHERE id = 1"))))))
+
 ;;; ------------------------------------------------ Missing input columns ------------------------------------------------
 
 (def ^:private people-test
