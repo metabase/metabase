@@ -143,7 +143,7 @@
   [dashboard updates]
   (let [saved (dashboards.write/update-dashboard! (u/the-id dashboard) updates)]
     [(hydrated saved)
-     (seq (dashboards.write/archived-subscriptions saved))]))
+     (dashboards.write/archived-subscriptions saved)]))
 
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns `{:dashboard :effects}`.

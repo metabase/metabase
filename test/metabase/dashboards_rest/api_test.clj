@@ -5075,7 +5075,7 @@
                                                       :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
         (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:parameters []})]
           (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
-          (is (not-any? #(str/includes? (name %) "archived-subscriptions") (keys response))))))))
+          (is (not-any? #(re-find #"archived.subscriptions" (name %)) (keys response))))))))
 
 (deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"

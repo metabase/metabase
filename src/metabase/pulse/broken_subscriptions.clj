@@ -117,20 +117,23 @@
 (defn- archived-subscription
   "What a caller may report about `broken-subscription`, from [[broken-subscription-data]], once it is archived:
    `{:id :creator-name :parameters :channels :recipient-count :already-broken? :readable?}`.
-   The `:parameters` are the missing filters' ids and names.
+   The `:parameters` are the ids and names of the missing filters the update removed, or of every missing filter when
+   it removed none.
    The `:channels` and `:recipient-count` are what [[delivery]] describes.
-   The `:already-broken?` flag is true when none of the missing filters was on the dashboard before the update.
+   The `:already-broken?` flag is true when the update removed none of the missing filters.
    The `:readable?` flag says whether the current user can read the subscription, from `readable-ids`.
    An unreadable one leaves out `:creator-name`, `:channels` and `:recipient-count`.
    It always leaves out the recipients' names and emails and the filter values."
   [original-dashboard-params readable-ids {:keys [pulse-id bad-parameters pulse-creator]}]
-  (let [readable? (contains? readable-ids pulse-id)]
+  (let [readable?       (contains? readable-ids pulse-id)
+        ;; A filter can be missing from before this update, for example after a revision revert, which doesn't run
+        ;; this handler. Listing it with the ones the update removed would blame the update for it.
+        removed         (filterv #(contains? original-dashboard-params (:id %)) bad-parameters)
+        already-broken? (empty? removed)]
     (cond-> {:id              pulse-id
              ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
-             :parameters      (mapv #(select-keys % [:id :name]) bad-parameters)
-             ;; A filter missing before this update, for example after a revision revert, which doesn't run this
-             ;; handler.
-             :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)
+             :parameters      (mapv #(select-keys % [:id :name]) (if already-broken? bad-parameters removed))
+             :already-broken? already-broken?
              :readable?       readable?}
       readable? (merge {:creator-name (:common_name pulse-creator)} (delivery pulse-id)))))
 

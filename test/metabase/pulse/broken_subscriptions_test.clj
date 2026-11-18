@@ -165,7 +165,15 @@
                                                                     :enabled      false}
                      :model/PulseChannel        _                  {:channel_type :http
                                                                     :pulse_id     removed-id
-                                                                    :enabled      true}]
+                                                                    :enabled      true}
+                     ;; Missing one filter from before the update and one the update removed.
+                     :model/Pulse               {mixed-id :id}     {:name         "Mixed"
+                                                                    :dashboard_id dash-id
+                                                                    :creator_id   (mt/user->id :rasta)
+                                                                    :parameters   [{:id "stale", :name "Stale"
+                                                                                    :value ["x"]}
+                                                                                   {:id "gone", :name "Gone"
+                                                                                    :value ["y"]}]}]
         (is (= [{:id              removed-id
                  :creator-name    "Rasta Toucan"
                  :parameters      [{:id "gone", :name "Gone"}]
@@ -179,12 +187,19 @@
                  :channels        [:http]
                  :recipient-count 1
                  :already-broken? true
+                 :readable?       true}
+                {:id              mixed-id
+                 :creator-name    "Rasta Toucan"
+                 :parameters      [{:id "gone", :name "Gone"}]
+                 :channels        []
+                 :recipient-count 0
+                 :already-broken? false
                  :readable?       true}]
                (sort-by :id (mt/with-current-user (mt/user->id :rasta)
                               (pulse.broken-subscriptions/handle-broken-subscriptions!
                                dash-id
                                {"kept" {:id "kept"}, "gone" {:id "gone"}})))))
-        (is (= #{removed-id stale-id}
+        (is (= #{removed-id stale-id mixed-id}
                (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))
 
 (deftest ^:parallel unreadable-archived-subscription-test
