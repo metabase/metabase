@@ -324,6 +324,7 @@
            metabase.api-keys.usage}
    :uses #{api
            app-db
+           audit-app
            events
            lib.schema
            models
@@ -399,44 +400,22 @@
    :uses #{api
            app-db
            events
-           lib
            lib.schema
            models
            premium-features
-           pulse
            settings
            task
            task.history
            tracing
            util}
    :model-exports #{:model/AuditLog}
-   :model-imports #{:model/ApiKey
-                    :model/CacheConfig
-                    :model/Card
-                    :model/Channel
-                    :model/Collection
-                    :model/Comment
-                    :model/CustomVizPlugin
+   :model-imports #{:model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/Database
-                    :model/Document
-                    :model/Glossary
-                    :model/Measure
                     :model/Notification
                     :model/NotificationHandler
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
                     :model/Pulse
-                    :model/PulseCard
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
                     :model/QueryExecution
-                    :model/RemoteSyncTask
-                    :model/Segment
                     :model/Table
-                    :model/Transform
-                    :model/TransformRun
                     :model/User}}
 
   audit-app.view-log
@@ -521,6 +500,7 @@
            metabase.cache.init}
    :uses #{api
            app-db
+           audit-app
            events
            lib.schema
            models
@@ -567,6 +547,7 @@
            api
            app-db
            appearance
+           audit-app
            collections
            dashboards
            driver
@@ -725,6 +706,7 @@
    :uses #{analytics
            api
            app-db
+           audit-app
            channel
            events
            lib
@@ -820,6 +802,7 @@
            api
            api.eid-translation
            app-db
+           audit-app
            cache
            change-log
            collections
@@ -946,6 +929,7 @@
            api
            api.eid-translation
            app-db
+           audit-app
            audit-app.view-log
            batch-processing
            collections
@@ -1227,6 +1211,7 @@
            metabase.glossary.schema}
    :uses #{api
            app-db
+           audit-app
            events
            lib.schema
            models
@@ -1558,6 +1543,7 @@
    :uses #{api
            api.eid-translation
            app-db
+           audit-app
            collections
            events
            lib
@@ -2224,6 +2210,7 @@
    :uses #{api
            api.eid-translation
            app-db
+           audit-app
            change-log
            channel
            collections
@@ -3191,6 +3178,7 @@
            api
            api.eid-translation
            app-db
+           audit-app
            channel
            collections
            database-routing
@@ -3411,6 +3399,7 @@
            api
            api.eid-translation
            app-db
+           audit-app
            batch-processing
            change-log
            events
@@ -4023,6 +4012,7 @@
    :uses #{api
            api-scope
            app-db
+           audit-app
            events
            lib.schema
            models
@@ -4149,6 +4139,7 @@
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
            app-db
+           audit-app
            driver
            events
            lib.metadata
@@ -4598,8 +4589,7 @@
                     :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
-                    :model/User}
-   :model-exports #{:model/RemoteSyncTask}}
+                    :model/User}}
 
   enterprise/search
   {:team "Metabot"
@@ -4689,7 +4679,6 @@
            analytics.interface
            api
            app-db
-           audit-app
            channel
            driver
            events

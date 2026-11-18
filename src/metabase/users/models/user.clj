@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
@@ -15,6 +16,7 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.users.audit :as users.audit]
    [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -51,6 +53,17 @@
   {:create :event/user-create
    :update :event/user-update
    :delete :event/user-delete})
+
+(defmethod audit/spec :model/User [_model]
+  {:track          [:first_name :last_name :email :sso_source :tenant_id]
+   :track-redacted [:date_joined :deactivated_with_tenant :is_data_analyst :is_datasetnewb :is_superuser
+                    :jwt_attributes :locale :login_attributes :type]
+   :skip           [:deactivated_at :entity_id :is_active :is_qbnewb :last_login :password :password_salt
+                    :reset_token :reset_triggered :settings]
+   :details        users.audit/details
+   :topics         {:update users.audit/update-topic}
+   :moments        [{:topic :user-reactivated, :when users.audit/reactivated?}
+                    {:topic :user-deactivated, :when users.audit/deactivated?}]})
 
 (defmethod change-log/spec :model/User [_model]
   {:track [:email :first_name :last_name :password :password_salt :date_joined :last_login :is_superuser :is_active

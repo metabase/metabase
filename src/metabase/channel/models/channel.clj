@@ -4,6 +4,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
    [metabase.events.core :as events]
@@ -38,6 +39,13 @@
   {:create :event/channel-create
    :update :event/channel-update
    :delete :event/channel-delete})
+
+(defmethod audit/spec :model/Channel [_model]
+  {:track          [:id :name :description :type :active]
+   :track-redacted [:details]
+   :skip           []
+   :topics         {:create :channel-create
+                    :update :channel-update}})
 
 (defmethod app-db-copy/spec :model/Channel [_model]
   {:skip? false})

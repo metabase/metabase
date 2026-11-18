@@ -21,11 +21,11 @@
   is-parent-collection-audit?
   memoized-select-audit-entity]
  [metabase.audit-app.models.audit-log
-  model-details
   model-name]
  [metabase.audit-app.settings
   analytics-dev-mode
   last-analytics-checksum
   last-analytics-checksum!]
  [metabase.audit-app.spec
+  skipped-columns
   spec])

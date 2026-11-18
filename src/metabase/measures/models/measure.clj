@@ -3,6 +3,7 @@
    exactly one aggregation expression."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -52,6 +53,12 @@
   {:create :event/measure-create
    :update :event/measure-update
    :delete :event/measure-delete})
+
+(defmethod audit/spec :model/Measure [_model]
+  {:track          []
+   :track-redacted [:archived :creator_id :definition :description :name :table_id]
+   :skip           [:dimension_mappings :dimensions :entity_id]
+   :changes?       false})
 
 (defmethod revisions/spec :model/Measure [_model]
   {:track        [:name :description :definition :archived :table_id]

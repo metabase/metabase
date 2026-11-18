@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.events.audit-log]
+   [metabase.audit-app.spec :as audit.spec]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -70,13 +71,12 @@
 (defn- ignored-columns-of
   "The columns that the audit log ignores for `model` from its list, and the counters and computed columns that the revision spec of `model` skips."
   [model]
-  (let [audit-list @#'metabase.audit-app.events.audit-log/ignored-columns]
-    {:audit     (into (:default audit-list) (get audit-list model))
-     :revisions (into #{}
-                      (filter #{:view_count :last_used_at :last_viewed_at :cache_invalidated_at :collection_position
-                                :entity_id :position :last_checkpoint_value :target_table_id :table_dependencies
-                                :dimensions :dimension_mappings})
-                      (:skip (revisions.spec/spec model)))}))
+  {:audit     (audit.spec/skipped-columns model)
+   :revisions (into #{}
+                    (filter #{:view_count :last_used_at :last_viewed_at :cache_invalidated_at :collection_position
+                              :entity_id :position :last_checkpoint_value :target_table_id :table_dependencies
+                              :dimensions :dimension_mappings})
+                    (:skip (revisions.spec/spec model)))})
 
 (deftest ignored-columns-record-nothing-test
   (testing "an update of only a column that a consumer ignores is recorded by none of the consumers that ignore it"

@@ -3,7 +3,7 @@
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
@@ -34,16 +34,19 @@
    :update :event/tenant-update
    :delete :event/tenant-delete})
 
+(defmethod audit/spec :model/Tenant [_model]
+  {:track          [:name :slug :is_active :attributes]
+   :track-redacted [:tenant_collection_id]
+   :skip           []
+   :topics         {:create :tenant-create
+                    :update :tenant-update}})
+
 (defmethod change-log/spec :model/Tenant [_model]
   {:track [:name :slug :is_active :attributes :tenant_collection_id]
    :skip  []})
 
 (defmethod app-db-copy/spec :model/Tenant [_model]
   {:skip? false})
-
-(defmethod audit-app/model-details :model/Tenant
-  [entity _event-type]
-  (select-keys entity [:name :slug :is_active :attributes]))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

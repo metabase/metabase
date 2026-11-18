@@ -8,16 +8,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn cards
-  "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
-  [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
-  (t2/select :model/Card :id [:in card-ids]))
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
-
 (mu/defn audit-log-topic-exists?
   "Whether an AuditLog entry with `topic` exists."
   [topic :- [:or :keyword :string]]
@@ -32,21 +22,6 @@
   "The Dashboard with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/Dashboard :entity_id entity-id))
-
-(mu/defn card-name-and-description
-  "The name and description of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :name :description], :id card-id))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn insert-audit-logs!
   "Insert the AuditLog `rows` in one statement, in their order, returning the number inserted."
@@ -82,13 +57,6 @@
   (t2/query-one {:delete-from table
                  :where [:<= time-column cutoff]
                  :limit batch-size}))
-
-(mu/defn pulse-ids-of-channels
-  "A map of the id of each PulseChannel of `channel-ids` to the id of its Pulse."
-  [channel-ids :- [:set ms/PositiveInt]]
-  (if (seq channel-ids)
-    (t2/select-pk->fn :pulse_id :model/PulseChannel :id [:in channel-ids])
-    {}))
 
 (mu/defn parent-ids
   "The ids that the `parent-key` column of the `model` rows with `ids` holds, by id."

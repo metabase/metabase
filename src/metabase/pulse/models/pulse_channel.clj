@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -81,6 +82,13 @@
   {:create :event/pulse-channel-create
    :update :event/pulse-channel-update
    :delete :event/pulse-channel-delete})
+
+(defmethod audit/spec :model/PulseChannel [_model]
+  {:track          []
+   :track-redacted [:channel_id :channel_type :details :enabled :pulse_id :schedule_day :schedule_frame
+                    :schedule_hour :schedule_type]
+   :skip           [:entity_id]
+   :parent         {:model :model/Pulse, :key :pulse_id}})
 
 (defmethod change-log/spec :model/PulseChannel [_model]
   {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled

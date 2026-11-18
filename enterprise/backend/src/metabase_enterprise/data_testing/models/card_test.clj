@@ -6,7 +6,7 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -34,6 +34,13 @@
    :update :event/card-test-update
    :delete :event/card-test-delete})
 
+(defmethod audit/spec :model/CardTest [_model]
+  {:track          [:card_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]
+   :changes?       false
+   :creator        :creator_id})
+
 (defmethod app-db-copy/spec :model/CardTest [_model]
   {:skip? false})
 
@@ -49,10 +56,6 @@
   "Add the newest run, or nil, to each card test."
   [_model _k card-tests]
   (data-testing.models/with-last-runs :card card-tests))
-
-(defmethod audit-app/model-details :model/CardTest
-  [card-test _event-type]
-  (select-keys card-test [:card_id :name :description]))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

@@ -35,132 +35,6 @@
   {:topic   mi/transform-keyword
    :details mi/transform-json})
 
-(defmulti model-details
-  "Returns a map with data about an entity that should be included in the `details` column of the Audit Log."
-  {:arglists '([entity event-type])}
-  mi/dispatch-on-model)
-
-(defmethod model-details :default
-  [_entity _event-type]
-  {})
-
-(defmethod model-details :model/ApiKey
-  [entity _event-type]
-  ;; only scoped keys carry a scope, so an auditor can tell a narrow key from a whole-API key
-  (cond-> (select-keys entity [:name :group :key_prefix :user_id])
-    (:scope entity) (assoc :scope (:scope entity))))
-
-(defmethod model-details :model/Card
-  [{card-type :type, :as card} _event-type]
-  (merge (select-keys card [:name :description :database_id :table_id])
-         ;; Use `model` instead of `dataset` to mirror product terminology
-         {:model? (= (keyword card-type) :model)}))
-
-(defmethod model-details :model/Channel
-  [channel _event-type]
-  (select-keys channel [:id :name :description :type :active]))
-
-(defmethod model-details :model/Dashboard
-  [dashboard event-type]
-  (case event-type
-    (:dashboard-create :dashboard-delete :dashboard-read)
-    (select-keys dashboard [:description :name])
-
-    (:dashboard-add-cards :dashboard-remove-cards)
-    (-> (select-keys dashboard [:description :name :parameters :dashcards])
-        (update :dashcards (fn [dashcards]
-                             (for [{:keys [id card_id]} dashcards]
-                               (-> (audit-app.db/card-name-and-description card_id)
-                                   (assoc :id id)
-                                   (assoc :card_id card_id))))))
-
-    {}))
-
-(defmethod model-details :model/Database
-  [database _event-type]
-  (select-keys database [:id :name :engine]))
-
-(defmethod model-details :model/Table
-  [table _event-type]
-  (select-keys table [:id :name :db_id]))
-
-(defmethod model-details :model/User
-  [entity event-type]
-  (case event-type
-    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships :tenant_id])
-    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships :tenant_id])
-    :password-reset-initiated  (select-keys entity [:token])
-    :password-reset-successful (select-keys entity [:token])
-    {}))
-
-(defmethod model-details :model/PermissionsGroup
-  [permissions-group _event-type]
-  (select-keys permissions-group [:id :name :is_tenant_group :magic_group_type]))
-
-(defmethod model-details :model/PermissionsGroupMembership
-  [membership _event-type]
-  (select-keys membership [:id :user_id :group_id :is_group_manager]))
-
-(defmethod model-details :model/Notification
-  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
-  (merge
-   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
-   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
-    :handlers      (map (fn [handler]
-                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
-                                              handler)
-                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details])
-                                                   (:recipients handler))}))
-                        handlers)}))
-
-(defmethod model-details :model/Segment
-  [metric _event-type]
-  (let [table-id (:table_id metric)
-        db-id    (when table-id
-                   (audit-app.db/table-database-id table-id))]
-    (assoc
-     (select-keys metric [:name :description :revision_message])
-     :table_id    table-id
-     :database_id db-id)))
-
-(defmethod model-details :model/Document
-  [document _event-type]
-  (select-keys document [:name :collection_id]))
-
-(defmethod model-details :model/Comment
-  [comment _event-type]
-  (select-keys comment [:target_type :target_id :child_target_id :parent_comment_id]))
-
-(defmethod model-details :model/Transform
-  [{:keys [source] :as transform} _event-type]
-  (merge (select-keys transform [:name :description :target :run_trigger])
-         {:source
-          (-> source
-              (dissoc :body)
-              (update :query #(select-keys % [:database])))}))
-
-(defmethod model-details :model/TransformRun
-  [transform-run _event-type]
-  (select-keys transform-run [:transform_id :status :run_method]))
-
-(defmethod model-details :model/Glossary
-  [glossary _event-type]
-  (select-keys glossary [:term]))
-
-(defmethod model-details :model/CustomVizPlugin
-  [plugin _event-type]
-  (select-keys plugin [:identifier :display_name :status :enabled :bundle_hash]))
-
-(defmethod model-details :model/RemoteSyncTask
-  [task _event-type]
-  (select-keys task [:sync_task_type :version]))
-
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
 
@@ -189,18 +63,16 @@
     #'map? (update-keys &match #(cond-> % (keyword? %) u/qualified-name))))
 
 (def ^:private AuditedInstance
-  "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."
+  "An audited object of any model, which names the model and the id of the row that its event is about."
   [:map {:closed false, :description "an audited entity"}])
 
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
                         [:object           {:optional true} [:maybe AuditedInstance]]
-                        [:previous-object  {:optional true} [:maybe AuditedInstance]]
                         [:user-id          {:optional true} [:maybe pos-int?]]
                         [:model            {:optional true} [:maybe [:or :keyword :string]]]
                         [:model-id         {:optional true} [:maybe pos-int?]]
-                        [:details          {:optional true} [:maybe ms/AuditLogDetails]]
-                        [:details-changed? {:optional true} [:maybe :boolean]]])
+                        [:details          {:optional true} [:maybe ms/AuditLogDetails]]])
 
 (mu/defn construct-event
   :- [:map
@@ -213,21 +85,12 @@
   ([topic :- :keyword
     params :- ::event-params
     current-user-id :- [:maybe pos-int?]]
-   (let [unqualified-topic (keyword (name topic))
-         object            (:object params)
-         previous-object   (:previous-object params)
-         object-details    (model-details object unqualified-topic)
-         previous-details  (model-details previous-object unqualified-topic)]
-     {:unqualified-topic unqualified-topic
+   (let [object (:object params)]
+     {:unqualified-topic (keyword (name topic))
       :user-id           (or (:user-id params) current-user-id)
       :model-name        (model-name (or (:model params) object))
       :model-id          (or (:model-id params) (u/id object))
-      :details           (stringify-keys
-                          (merge {}
-                                 (:details params)
-                                 (if (not-empty previous-object)
-                                   (update-details object-details previous-details)
-                                   object-details)))})))
+      :details           (stringify-keys (merge {} (:details params)))})))
 
 (mu/defn audit-row :- [:maybe :map]
   "The Audit Log row that [[record-rows!]] inserts for `topic` and `params`, or nil when it would insert none."

@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
@@ -48,6 +49,11 @@
   {:create :event/group-create
    :update :event/group-update
    :delete :event/group-delete})
+
+(defmethod audit/spec :model/PermissionsGroup [_model]
+  {:track          [:id :name :is_tenant_group :magic_group_type]
+   :track-redacted []
+   :skip           [:entity_id]})
 
 (defmethod change-log/spec :model/PermissionsGroup [_model]
   {:track [:name :entity_id :magic_group_type :is_tenant_group]

@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
@@ -25,6 +26,11 @@
   {:create :event/glossary-create
    :update :event/glossary-update
    :delete :event/glossary-delete})
+
+(defmethod audit/spec :model/Glossary [_model]
+  {:track          [:term]
+   :track-redacted [:creator_id :definition]
+   :skip           [:entity_id]})
 
 (defmethod app-db-copy/spec :model/Glossary [_model]
   {:skip? false})

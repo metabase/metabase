@@ -5,6 +5,7 @@
    [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -57,6 +58,11 @@
   {:create :event/custom-viz-plugin-create
    :update :event/custom-viz-plugin-update
    :delete :event/custom-viz-plugin-delete})
+
+(defmethod audit/spec :model/CustomVizPlugin [_model]
+  {:track          [:identifier :display_name :status :enabled :bundle_hash]
+   :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
+   :skip           []})
 
 (defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
   {:skip? false})

@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,10 +12,6 @@
 
 (defmethod app-db-copy/spec :model/DataTestRun [_model]
   {:skip? false})
-
-(defmethod audit-app/model-details :model/DataTestRun
-  [data-test-run _event-type]
-  (select-keys data-test-run [:test_type :test_id :status]))
 
 (t2/deftransforms :model/DataTestRun
   {:status    mi/transform-keyword

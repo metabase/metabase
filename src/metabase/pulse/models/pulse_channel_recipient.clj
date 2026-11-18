@@ -1,6 +1,7 @@
 (ns metabase.pulse.models.pulse-channel-recipient
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
@@ -19,6 +20,12 @@
   {:create :event/pulse-channel-recipient-create
    :update :event/pulse-channel-recipient-update
    :delete :event/pulse-channel-recipient-delete})
+
+(defmethod audit/spec :model/PulseChannelRecipient [_model]
+  {:track          []
+   :track-redacted [:pulse_channel_id :user_id]
+   :skip           []
+   :parent         {:model :model/PulseChannel, :key :pulse_channel_id}})
 
 (defmethod change-log/spec :model/PulseChannelRecipient [_model]
   {:track [:pulse_channel_id :user_id]

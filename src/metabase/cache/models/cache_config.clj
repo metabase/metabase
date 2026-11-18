@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -38,6 +39,16 @@
   {:create :event/cache-config-create
    :update :event/cache-config-update
    :delete :event/cache-config-delete})
+
+(defmethod audit/spec :model/CacheConfig [_model]
+  {:track            []
+   :track-redacted   [:config :invalidated_at :model :model_id :next_run_at :refresh_automatically :state :strategy]
+   :skip             []
+   :changes?         false
+   :context-details? true
+   :topics           {:create :cache-config-update
+                      :update :cache-config-update
+                      :delete :cache-config-update}})
 
 (defmethod app-db-copy/spec :model/CacheConfig [_model]
   {:skip? true})

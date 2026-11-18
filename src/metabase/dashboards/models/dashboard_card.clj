@@ -4,7 +4,9 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.audit :as dashboards.audit]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
@@ -44,6 +46,17 @@
   {:create :event/dashboard-card-create
    :update :event/dashboard-card-update
    :delete :event/dashboard-card-delete})
+
+(defmethod audit/spec :model/DashboardCard [_model]
+  {:track          []
+   :track-redacted [:action_id :card_id :col :dashboard_id :dashboard_tab_id :inline_parameters :parameter_mappings
+                    :row :size_x :size_y :visualization_settings]
+   :skip           [:entity_id]
+   :parent         {:model   :model/Dashboard
+                    :key     :dashboard_id
+                    :topics  {:create :dashboard-add-cards
+                              :delete :dashboard-remove-cards}
+                    :details dashboards.audit/cards-details}})
 
 (defn- snapshot-series
   "The `snapshots` of the DashboardCard `rows`, each with the ids of the Cards of its series."

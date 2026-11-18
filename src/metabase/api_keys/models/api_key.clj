@@ -6,12 +6,14 @@
    [java-time.api :as t]
    [malli.error :as me]
    [malli.util :as mut]
+   [metabase.api-keys.audit :as api-keys.audit]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -59,6 +61,15 @@
   {:create :event/api-key-create
    :update :event/api-key-update
    :delete :event/api-key-delete})
+
+(defmethod audit/spec :model/ApiKey [_model]
+  {:track          [:name :key_prefix :user_id]
+   :track-redacted [:creator_id :key :scope :updated_by_id]
+   :skip           [:last_used_at]
+   :details        api-keys.audit/details
+   :topics         {:create :api-key-create
+                    :update api-keys.audit/update-topic
+                    :delete :api-key-delete}})
 
 (defmethod app-db-copy/spec :model/ApiKey [_model]
   {:skip? false})

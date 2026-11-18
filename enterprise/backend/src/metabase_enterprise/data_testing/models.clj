@@ -4,7 +4,7 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -39,6 +39,13 @@
    :update :event/transform-test-update
    :delete :event/transform-test-delete})
 
+(defmethod audit/spec :model/TransformTest [_model]
+  {:track          [:transform_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]
+   :changes?       false
+   :creator        :creator_id})
+
 (defmethod app-db-copy/spec :model/TransformTest [_model]
   {:skip? false})
 
@@ -72,10 +79,6 @@
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
   (with-last-runs :transform transform-tests))
-
-(defmethod audit-app/model-details :model/TransformTest
-  [transform-test _event-type]
-  (select-keys transform-test [:transform_id :name :description]))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

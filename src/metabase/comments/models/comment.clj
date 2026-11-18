@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.channel.urls :as channel.urls]
+   [metabase.comments.audit :as comments.audit]
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
@@ -25,6 +27,15 @@
   {:create :event/comment-create
    :update :event/comment-update
    :delete :event/comment-delete})
+
+(defmethod audit/spec :model/Comment [_model]
+  {:track          [:target_type :target_id :child_target_id :parent_comment_id]
+   :track-redacted [:content :content_html :context :creator_id :deleted_at :is_resolved]
+   :skip           []
+   :changes?       false
+   :topics         {:create :comment-create
+                    :update comments.audit/update-topic
+                    :delete :comment-delete}})
 
 (defmethod app-db-copy/spec :model/Comment [_model]
   {:skip? false})

@@ -2,7 +2,9 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.audit :as documents.audit]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -57,6 +59,16 @@
   {:create :event/document-create
    :update :event/document-update
    :delete :event/document-delete})
+
+(defmethod audit/spec :model/Document [_model]
+  {:track          [:name :collection_id]
+   :track-redacted [:archived :archived_directly :content_type :creator_id :document :exploration_id :is_placeholder
+                    :made_public_by_id :public_uuid :public_uuid_prefix]
+   :skip           [:collection_position :entity_id :last_viewed_at :view_count]
+   :changes?       false
+   :topics         {:create documents.audit/create-topic
+                    :update documents.audit/update-topic
+                    :delete documents.audit/delete-topic}})
 
 (defmethod revisions/spec :model/Document [_model]
   {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]

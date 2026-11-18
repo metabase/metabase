@@ -23,6 +23,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
@@ -33,6 +34,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.pulse.audit :as pulse.audit]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
@@ -64,6 +66,17 @@
   {:create :event/pulse-create
    :update :event/pulse-update
    :delete :event/pulse-delete})
+
+(defmethod audit/spec :model/Pulse [_model]
+  {:track          []
+   :track-redacted [:alert_above_goal :alert_condition :alert_first_only :archived :archived_directly :collection_id
+                    :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
+   :skip           [:collection_position :entity_id]
+   :changes?       false
+   :details        pulse.audit/details
+   :subject        pulse.audit/subject
+   :topics         {:create pulse.audit/create-topic
+                    :update pulse.audit/update-topic}})
 
 (defmethod change-log/spec :model/Pulse [_model]
   {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id

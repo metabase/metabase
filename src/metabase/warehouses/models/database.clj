@@ -89,6 +89,16 @@
    :update :event/database-update
    :delete :event/database-delete})
 
+(defmethod audit/spec :model/Database [_model]
+  {:track            [:id :name :engine]
+   :track-redacted   [:admin_details :auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :creator_id
+                      :default_schema :description :details :initial_sync_error :is_attached_dwh :is_audit
+                      :is_full_sync :is_on_demand :is_sample :is_stub :metadata_sync_schedule :points_of_interest
+                      :provider_name :refingerprint :router_database_id :settings :uploads_enabled
+                      :uploads_schema_name :uploads_table_prefix :write_data_details]
+   :skip             [:dbms_version :initial_sync_status :timezone]
+   :context-details? true})
+
 (defmethod change-log/spec :model/Database [_model]
   {:track [:name :description :details :engine :is_sample :is_full_sync :points_of_interest :caveats
            :metadata_sync_schedule :cache_field_values_schedule :timezone :is_on_demand :auto_run_queries

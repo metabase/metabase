@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -22,6 +23,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.audit :as transforms.audit]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema :as transforms.schema]
@@ -55,6 +57,17 @@
   {:create :event/transform-create
    :update :event/transform-update
    :delete :event/transform-delete})
+
+(defmethod audit/spec :model/Transform [_model]
+  {:track          [:name :description :target]
+   :track-redacted [:collection_id :creator_id :owner_email :owner_user_id :source :source_database_id :source_type
+                    :target_db_id]
+   :skip           [:entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :changes?       false
+   :details        transforms.audit/details
+   :topics         {:create :transform-create
+                    :update :update-transform
+                    :delete :transform-delete}})
 
 (defmethod revisions/spec :model/Transform [_model]
   {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type

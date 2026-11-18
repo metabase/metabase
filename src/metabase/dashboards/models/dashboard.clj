@@ -4,10 +4,12 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.audit :as dashboards.audit]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -69,6 +71,17 @@
   {:create :event/dashboard-create
    :update :event/dashboard-update
    :delete :event/dashboard-delete})
+
+(defmethod audit/spec :model/Dashboard [_model]
+  {:track          [:name :description]
+   :track-redacted [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_id :creator_id
+                    :embedding_params :embedding_type :enable_embedding :initially_published_at :made_public_by_id
+                    :parameters :points_of_interest :public_uuid :public_uuid_prefix :show_in_getting_started :width]
+   :skip           [:collection_position :entity_id :last_viewed_at :position :view_count]
+   :topics         {:create :dashboard-create
+                    :delete :dashboard-delete}
+   :moments        [{:topic :dashboard-public-link-created, :when dashboards.audit/public-link-created?}
+                    {:topic :dashboard-public-link-deleted, :when dashboards.audit/public-link-deleted?}]})
 
 (defmethod change-log/spec :model/Dashboard [_model]
   {:track [:name :description :creator_id :parameters :points_of_interest :caveats :show_in_getting_started

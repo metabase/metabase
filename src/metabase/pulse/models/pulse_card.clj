@@ -1,6 +1,7 @@
 (ns metabase.pulse.models.pulse-card
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -29,6 +30,13 @@
   {:create :event/pulse-card-create
    :update :event/pulse-card-update
    :delete :event/pulse-card-delete})
+
+(defmethod audit/spec :model/PulseCard [_model]
+  {:track          []
+   :track-redacted [:card_id :dashboard_card_id :format_rows :include_csv :include_xls :pivot_results :position
+                    :pulse_id]
+   :skip           [:entity_id]
+   :parent         {:model :model/Pulse, :key :pulse_id}})
 
 (defmethod change-log/spec :model/PulseCard [_model]
   {:track [:pulse_id :card_id :position :include_csv :include_xls :dashboard_card_id :entity_id :format_rows

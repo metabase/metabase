@@ -33,6 +33,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
+   [metabase.queries.audit :as queries.audit]
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
@@ -152,6 +153,23 @@
   {:create :event/card-create
    :update :event/card-update
    :delete :event/card-delete})
+
+(defmethod audit/spec :model/Card [_model]
+  {:track          [:name :description :database_id :table_id]
+   :track-redacted [:archived :archived_directly :cache_ttl :card_schema :collection_id :creator_id :dashboard_id
+                    :dataset_query :dataset_query_metrics_v2_migration_backup :dimension_mappings :dimensions :display
+                    :document_id :embedding_params :embedding_type :enable_embedding :initially_published_at
+                    :legacy_query :made_public_by_id :metabase_version :metabot_chart_id :metabot_conversation_id
+                    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :query_type :result_metadata
+                    :source_card_id :type :visualization_settings]
+   :skip           [:cache_invalidated_at :collection_position :entity_id :last_used_at :view_count]
+   :details        queries.audit/details
+   :same?          {:result_metadata queries.revisions/same-result-metadata?}
+   :topics         {:create :card-create
+                    :update queries.audit/update-topic
+                    :delete :card-delete}
+   :moments        [{:topic :card-public-link-created, :when queries.audit/public-link-created?}
+                    {:topic :card-public-link-deleted, :when queries.audit/public-link-deleted?}]})
 
 (defmethod change-log/spec :model/Card [_model]
   {:track [:name :description :display :dataset_query :visualization_settings :creator_id :database_id :table_id

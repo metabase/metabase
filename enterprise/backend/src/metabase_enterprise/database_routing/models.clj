@@ -1,8 +1,10 @@
 (ns metabase-enterprise.database-routing.models
   (:require
+   [metabase-enterprise.database-routing.audit :as database-routing.audit]
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -25,6 +27,17 @@
   {:create :event/database-router-create
    :update :event/database-router-update
    :delete :event/database-router-delete})
+
+(defmethod audit/spec :model/DatabaseRouter [_model]
+  {:track          []
+   :track-redacted [:database_id :user_attribute]
+   :skip           []
+   :changes?       false
+   :details        database-routing.audit/details
+   :subject        database-routing.audit/subject
+   :topics         {:create :database-update
+                    :update :database-update
+                    :delete :database-update}})
 
 (defmethod app-db-copy/spec :model/DatabaseRouter [_model]
   {:skip? true})

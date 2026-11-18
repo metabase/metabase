@@ -19,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
+   [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -110,6 +111,21 @@
   {:create :event/table-create
    :update :event/table-update
    :delete :event/table-delete})
+
+(defmethod audit/spec :model/Table [_model]
+  {:track          [:id :name :db_id]
+   :track-redacted [:active :archived_at :caveats :collection_id :data_authority :data_layer :data_source
+                    :database_require_filter :deactivated_at :description :display_name :entity_type
+                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate :is_published
+                    :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
+                    :show_in_getting_started :transform_id :transform_target :unique_table_helper
+                    :visibility_type]
+   :skip           [:view_count]
+   :topics         {}
+   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
+                     :details warehouse-schema.audit/moment-details}
+                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
+                     :details warehouse-schema.audit/moment-details}]})
 
 (defmethod change-log/spec :model/Table [_model]
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
