@@ -534,18 +534,21 @@
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
+(def ^:private ^:dynamic *in-test-transaction?*
+  "True inside [[driver/do-with-test-connection]], where the data test's statements share one transaction."
+  false)
+
 (defn set-parameters!
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
   ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
   ;; ask when there are parameters that could outnumber the placeholders.
-  ;; Nor inside an explicit transaction: on Postgres and Redshift the describe runs on the server, and a failed describe
+  ;; Nor in a data test's transaction: on Postgres and Redshift the describe runs on the server, and a failed describe
   ;; aborts the transaction, so the statement's own execution would report "current transaction is aborted" instead of
   ;; its error.
   (when (and (seq params)
-             (try (.getAutoCommit (.getConnection ^PreparedStatement stmt))
-                  (catch Throwable _ true))
+             (not *in-test-transaction?*)
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
                      (catch Throwable _ (count params)))
                 (count params)))
@@ -1053,7 +1056,8 @@
    (fn [^Connection conn]
      (.setAutoCommit conn false)
      (try
-       (f conn)
+       (binding [*in-test-transaction?* true]
+         (f conn))
        (finally
          ;; Neither may throw past the body's own exception, and the connection goes back to the pool either way:
          ;; leaving it inside a transaction hands the next borrower a session that answers every statement with
