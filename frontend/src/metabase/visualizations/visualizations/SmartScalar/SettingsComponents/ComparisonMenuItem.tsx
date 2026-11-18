@@ -3,12 +3,12 @@ import cx from "classnames";
 import type { MenuItemProps } from "metabase/ui";
 import { Menu } from "metabase/ui";
 
-import S from "./MenuItem.module.css";
+import S from "./ComparisonMenuItem.module.css";
 
-type MenuItemStyledProps = MenuItemProps &
+type ComparisonMenuItemProps = MenuItemProps &
   React.HTMLAttributes<HTMLButtonElement>;
 
-export const MenuItemStyled = (props: MenuItemStyledProps) => {
+export const ComparisonMenuItem = (props: ComparisonMenuItemProps) => {
   const isSelected = props["aria-selected"];
 
   return (
