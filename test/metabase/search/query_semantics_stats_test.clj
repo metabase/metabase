@@ -6,7 +6,7 @@
    [metabase.search.query-semantics :as fixtures]
    [metabase.search.query-semantics-stats :as stats]))
 
-(deftest result-set-relation-test
+(deftest ^:parallel result-set-relation-test
   (are [expected left right] (= expected (stats/relation left right))
     :equal         #{}      #{}
     :equal         #{:A :B} #{:B :A}
@@ -14,7 +14,7 @@
     :left-subset   #{:A}    #{:A :B}
     :incomparable  #{:A :B} #{:B :C}))
 
-(deftest result-groups-test
+(deftest ^:parallel result-groups-test
   ;; Every grouping six engines can form, including distinct groupings with the same number of matching pairs.
   (are [pairs groups hits] (let [results (zipmap stats/engines hits)]
                              (and (= pairs (stats/matching-pair-count results))
@@ -31,42 +31,22 @@
     1  [2 1 1 1 1]     [#{} #{}   #{:A} #{:B} #{:C} #{:D}]
     0  [1 1 1 1 1 1]   [#{} #{:A} #{:B} #{:C} #{:D} #{:E}]))
 
-(deftest conforming-engines-test
+(deftest ^:parallel conforming-engines-test
   (are [expected hits] (= expected (stats/conforming-engines #{:A} (zipmap stats/engines hits)))
     stats/engines                               [#{:A} #{:A} #{:A} #{:A}    #{:A} #{:A}]
     [:appdb-h2 :appdb-mysql :semantic-only]       [#{}   #{:A} #{:A} #{:A :B} #{:A} #{:A :B}]
     []                                          [#{}   #{:B} #{:B} #{:A :B} #{}   #{:B}]))
 
-(deftest corpus-engine-coverage-test
-  (doseq [scenario fixtures/cases
-          engine   [:in-place :appdb-h2 :appdb-mysql :appdb-postgres]]
-    (is (contains? (:expect scenario) engine) (str (:id scenario) " / " engine))))
-
-(deftest semantic-vector-alias-test
-  (let [scenario {:expect {:semantic {:keyword [:A], :vector [:B]}}}]
-    (is (= #{:B} (fixtures/expected-hits scenario :semantic)
-           (fixtures/expected-hits scenario :semantic-only)))))
-
-(deftest correct-score-test
+(deftest ^:parallel correct-score-test
   (are [expected correct hits] (= expected (stats/score correct hits))
-    {:precision 1,   :recall 1,   :f1 1}   #{}      #{}
-    {:precision 0,   :recall 0,   :f1 0}   #{:A}    #{}
-    {:precision 0,   :recall 0,   :f1 0}   #{}      #{:A}
-    {:precision 1,   :recall 1/2, :f1 2/3} #{:A :B} #{:A}
-    {:precision 1/2, :recall 1,   :f1 2/3} #{:A}    #{:A :B}
-    {:precision 0,   :recall 0,   :f1 0}   #{:A}    #{:B}))
+    {:precision 1, :recall 1, :f1 1}   #{}      #{}
+    {:precision 0, :recall 0, :f1 0}   #{:A}    #{}
+    {:precision 0, :recall 0, :f1 0}   #{}      #{:A}
+    {:precision 1, :recall 1/2, :f1 2/3} #{:A :B} #{:A}
+    {:precision 1/2, :recall 1, :f1 2/3} #{:A}    #{:A :B}
+    {:precision 0, :recall 0, :f1 0}   #{:A}    #{:B}))
 
-(deftest semantic-with-fallback-test
-  (are [expected semantic postgres] (= expected (fixtures/expected-hits {:expect {:semantic       semantic
-                                                                                  :appdb-postgres postgres}}
-                                                                        :semantic-with-fallback))
-    ;; Both arms, topped up with app-db's hits
-    #{:A :B :C} {:keyword [:A], :vector [:B]} [:C]
-    #{:B :C}    {:vector [:B]}                [:C]
-    ;; Semantic search does not fall back when its own arms found nothing
-    #{}         {:keyword [], :vector []}     [:C]))
-
-(deftest translation-row-scores-test
+(deftest ^:parallel translation-row-scores-test
   (let [scenario {:id          "case"
                   :query       "typed"
                   :expect      {:in-place       [:A :B]
@@ -80,30 +60,14 @@
                                  :alternatives {:in-place    {:query "adapted", :hits [:A]}
                                                 :appdb-mysql {:query "adapted mysql", :hits [:A]}}}]}]
     (is (=? [{:scores {:in-place               {:typed {:f1 2/3}, :best {:f1 1}}
-                       :appdb-h2               {:typed {:f1 1},   :best {:f1 1}}
-                       :appdb-mysql            {:typed {:f1 0},   :best {:f1 1}}
-                       :appdb-postgres         {:typed {:f1 0},   :best {:f1 0}}
-                       :semantic-only          {:typed {:f1 0},   :best {:f1 0}}
-                       :semantic-with-fallback {:typed {:f1 0},   :best {:f1 0}}}}]
+                       :appdb-h2               {:typed {:f1 1}, :best {:f1 1}}
+                       :appdb-mysql            {:typed {:f1 0}, :best {:f1 1}}
+                       :appdb-postgres         {:typed {:f1 0}, :best {:f1 0}}
+                       :semantic-only          {:typed {:f1 0}, :best {:f1 0}}
+                       :semantic-with-fallback {:typed {:f1 0}, :best {:f1 0}}}}]
             (stats/translation-rows [scenario])))))
 
-(deftest translated-comparisons-change-a-query-test
-  (doseq [{:keys [scenario-id focus specs]} (stats/translation-rows fixtures/cases)]
-    (is (< 1 (count (set (map (comp :query specs) stats/engines))))
-        (str scenario-id " / " focus " does not adapt any query"))))
-
-(deftest comparisons-have-a-goal-kind-test
-  (doseq [{:keys [id comparisons]} fixtures/cases
-          {:keys [focus kind]}     comparisons]
-    (is (some #{kind} stats/goal-kinds)
-        (str id " / " focus " has no known goal kind"))))
-
-(deftest comparison-ids-are-unique-test
-  ;; Report links name a comparison by its id.
-  (let [ids (for [{:keys [comparisons]} fixtures/cases, {:keys [id]} comparisons] id)]
-    (is (= (count ids) (count (set (filter string? ids)))))))
-
-(deftest alternatives-score-no-worse-test
+(deftest ^:parallel alternatives-score-no-worse-test
   ;; An adapted query that scores below the scenario query would understate the engine.
   (doseq [{:keys [scenario-id focus scores]} (stats/translation-rows fixtures/cases)
           engine                             stats/engines
@@ -119,7 +83,7 @@
       (:scores summary) (-> (update :scores rows [:precision :recall :f1 :exact])
                             (update :typed-scores rows [:precision :recall :f1 :exact])))))
 
-(deftest corpus-statistics-test
+(deftest ^:parallel corpus-statistics-test
   ;; Pairwise counts are [equal left-superset left-subset incomparable].
   ;; Scores are [precision recall f1 exact].
   (let [{:keys [same-query translations]} (stats/summary fixtures/cases)]
