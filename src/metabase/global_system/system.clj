@@ -334,11 +334,25 @@
                                       (dep/depend g k placeholder)
                                       (dep/immediate-dependencies graph k)))
                             (dep/graph)
-                            relevant)]
+                            relevant)
+        ;; A running component ranks by its start position, which stands in for the dependencies nobody declared.
+        ;; A component that is not running ranks by the latest-started running component it leads to, so the path to the
+        ;; component the start order wants stopped first opens first.
+        ;; The key breaks ties, so the order never depends on how the graph library treats equal nodes.
+        rank        (into {}
+                          (map (fn [k]
+                                 [k [(if (contains? running k)
+                                       (position k)
+                                       (transduce (comp (filter running) (map position))
+                                                  max
+                                                  -1
+                                                  (dep/transitive-dependencies graph k)))
+                                     (str k)]]))
+                          relevant)]
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
-    ;; greatest position last
+    ;; greatest rank last; the placeholder has no rank, and nil compares below every rank
     (keep #(get-in running [% :handle])
-          (reverse (dep/topo-sort #(compare (position %1 -1) (position %2 -1)) sortable)))))
+          (reverse (dep/topo-sort #(compare (rank %1) (rank %2)) sortable)))))
 
 (defn- close-admission!
   "Refuse every later start."

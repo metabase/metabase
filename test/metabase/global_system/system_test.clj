@@ -786,6 +786,31 @@
         (finally
           (cleanup! handles))))))
 
+(deftest ^:synchronized halt-order-through-components-that-are-not-running-test
+  (testing "a path through components that are not running opens toward the latest-started component it leads to"
+    (let [a1      (system/mutable-component-handle ::paths-a1 (constantly nil))
+          a2      (system/mutable-component-handle ::paths-a2 (constantly nil))
+          b1      (system/mutable-component-handle ::paths-b1 (constantly nil))
+          b2      (system/mutable-component-handle ::paths-b2 (constantly nil))
+          handles [a1 a2 b1 b2]]
+      (try
+        ;; each a uses a b that started after it, through a component that is not running
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (constantly nil)))
+        ;; both wirings, so the result holds whichever way the two middle components' names or hashes order
+        (is (= {:straight [a2 b2 a1 b1]
+                :crossed  [a2 b2 a1 b1]}
+               {:straight (filterv (set handles) (halt-order {::paths-a1 #{::paths-m1}
+                                                              ::paths-a2 #{::paths-m2}
+                                                              ::paths-m1 #{::paths-b1}
+                                                              ::paths-m2 #{::paths-b2}}))
+                :crossed  (filterv (set handles) (halt-order {::paths-a1 #{::paths-m2}
+                                                              ::paths-a2 #{::paths-m1}
+                                                              ::paths-m2 #{::paths-b1}
+                                                              ::paths-m1 #{::paths-b2}}))}))
+        (finally
+          (cleanup! handles))))))
+
 (deftest dependency-cycle-test
   (testing "dependencies that form a cycle are refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"
