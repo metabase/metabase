@@ -1065,7 +1065,6 @@
            data-apps
            lib
            lib.be
-           lib.schema
            queries
            query-processor
            request
@@ -1143,7 +1142,6 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/EmbeddingSdkReact18Host
                     :model/EmbeddingTheme}}
 
