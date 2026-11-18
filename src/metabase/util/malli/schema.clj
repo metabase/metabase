@@ -4,13 +4,10 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]
    [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -20,16 +17,10 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 (defn- stringify-keys
-  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces -- and, when `recursive?`, the
-  keys of every map nested inside it too. Request decoding keywordizes every JSON object key; this undoes that for the
-  objects we do not type."
-  ([x]
-   (stringify-keys x false))
-  ([x recursive?]
-   (if recursive?
-     (match/replace-all x #'map? (stringify-keys &match))
-     (cond-> x
-       (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))))
+  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces."
+  [x]
+  (cond-> x
+    (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 ;;;
@@ -211,17 +202,11 @@
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
 (defn- open-map
-  "A map whose keys are deliberately not ours to declare. The marker property is what lets
-  [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."
+  "A map whose keys are not ours to declare, which the API passes through as it arrived."
   [description]
   (mu/with-api-error-message
-   [:map {:closed false, ::mr/deliberately-open true, :description description}]
+   [:map {:closed false, :description description}]
    (deferred-tru "Value must be a map.")))
-
-(def DatabaseDetails
-  "Connection details for a Database. The keys are the driver's `connection-properties`, so they differ per driver and
-  are not knowable here."
-  (open-map "database connection details"))
 
 (defn- open-json
   "A JSON value whose objects are deliberately open maps: a scalar, a sequence of such values, or an open map."
@@ -289,60 +274,19 @@
   "The attributes of a tenant, whose keys are defined by the admin."
   (open-map "tenant attributes"))
 
-(def DatabaseSettings
-  "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
-  schema. Not for any other bag of settings."
-  (open-map "database settings"))
-
 (def UserSettings
   "A User's `:settings`: user-local settings, whose keys are owned by the settings registry rather than by this
   schema. Not for any other bag of settings."
   (open-map "user settings"))
 
 (defn string-keyed-map
-  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema`.
-  Normalizing stringifies its keys -- a request on its way in, or a keywordized JSON column read back from the
-  application database -- so the value looks the way it did on the wire and nothing can quietly start reading it by
-  keyword. Only the keys of the map itself, unless `recursive?`, which stringifies the keys of every map nested inside
-  it as well. Dispatching on `map?` keeps a value that is not a map out of the `:map-of`, whose request-decoding strip
-  step would otherwise throw on it instead of leaving it to validation."
-  ([value-schema]
-   (string-keyed-map value-schema false))
-  ([value-schema recursive?]
-   (mu/with-api-error-message
-    [:multi {:dispatch map?}
-     [true  [:map-of {:decode/normalize {:enter #(stringify-keys % recursive?)}} :string value-schema]]
-     [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
-    (deferred-tru "Value must be a map."))))
-
-(def OpaqueJSONObject
-  "A JSON object this code stores, echoes back or forwards as it arrived, and never reads by key: a
-  [[string-keyed-map]] of anything, stringified all the way down. Under no circumstances may its keys be keywords: a
-  map this code builds and reads by keyword is not opaque and gets a schema of its own. The marker property is what
-  lets [[metabase.api.macros.defendpoint.closed-schemas]] accept the `:any`."
-  (mu/with (string-keyed-map :any true) {::mr/deliberately-open true}))
-
-(defn string-keyed-object
-  "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an
-  [[OpaqueJSONObject]] whose `entries` declare, with string keys, the keys this code reads and their types.
-
-    (string-keyed-object [\"id\" :int] [\"label\" {:optional true} [:maybe :string]])
-
-  Every key of the object is a string, the declared ones included, so the map never mixes keyword and string keys and
-  code reads the declared keys the same way it would any other: `(get attrs \"id\")`. Decoding stringifies the keys of
-  the object itself first of all -- a request on its way in, or a keywordized JSON column read back from the
-  application database -- so the declared entries, their defaults included, are found under their string keys; the
-  values of the undeclared keys are stringified all the way down, the declared ones only as their schemas say. Prefer a
-  fully typed map when the keys are known: this is for objects another party owns, like an editor's node attributes."
-  [& entries]
-  (doseq [[k] entries]
-    (assert (string? k) (str "string-keyed-object keys must be strings, got: " (pr-str k))))
-  (into [:map
-         {:decode/string    {:enter stringify-keys}
-          :decode/json      {:enter stringify-keys}
-          :decode/normalize {:enter stringify-keys}}
-         [::mc/default OpaqueJSONObject]]
-        entries))
+  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema` whose keys normalizing stringifies."
+  [value-schema]
+  (mu/with-api-error-message
+   [:multi {:dispatch map?}
+    [true  [:map-of {:decode/normalize {:enter stringify-keys}} :string value-schema]]
+    [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
+   (deferred-tru "Value must be a map.")))
 
 (def Email
   "Schema for a valid email string."

@@ -2,13 +2,14 @@
   (:require
    [medley.core :as m]
    [metabase.content-verification.db :as content-verification.db]
+   [metabase.content-verification.schema :as content-verification.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  [:enum "card" :card "dashboard" :dashboard])
+  ::content-verification.schema/moderation-review.item-type)
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"

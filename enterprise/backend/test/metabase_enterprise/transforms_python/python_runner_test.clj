@@ -374,10 +374,12 @@
 (deftest transform-function-with-library-test
   (testing "transform function can use libraries"
     (mt/test-drivers #{:postgres}
-      (mt/with-temp [:model/PythonLibrary _ {:path   "circle"
-                                             :source "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"}
-                     :model/PythonLibrary _ {:path   "utils"
-                                             :source "def format_currency(amount):\n    return f\"${amount:,.2f}\""}]
+      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+                                                     (when (and (= k :path)
+                                                                (= v :source)
+                                                                (= model :model/PythonLibrary))
+                                                       {"circle.py" "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"
+                                                        "utils.py"  "def format_currency(amount):\n    return f\"${amount:,.2f}\""}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "from circle import calculate_circle_area\n"
                                   "from utils import format_currency\n"

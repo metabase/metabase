@@ -5,6 +5,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -95,7 +96,11 @@
                 (binding [copy/*copy-h2-database-details* true]
                   (load-from-h2/load-from-h2! h2-fixture-db-file))
                 (t2/insert! :model/Setting {:key "rotate-test-plaintext-setting", :value "unencrypted value"})
-                (t2/insert! :model/Setting {:key "settings-last-updated", :value original-timestamp})
+                (t2/insert! :setting {:key            "settings-last-updated"
+                                      :value          original-timestamp
+                                      :value_with_aad (encryption/maybe-encrypt
+                                                       original-timestamp
+                                                       {:aad (mdb.setting/setting-aad "settings-last-updated")})})
                 (let [u (first (t2/insert-returning-instances! :model/User {:email        "nobody@nowhere.com"
                                                                             :first_name   "No"
                                                                             :last_name    "Body"

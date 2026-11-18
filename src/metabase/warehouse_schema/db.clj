@@ -144,6 +144,26 @@
   (t2/update! :model/Field {:fk_target_field_id field-id :semantic_type :type/FK} {:semantic_type nil})
   (t2/update! :model/Field {:fk_target_field_id field-id} {:fk_target_field_id nil}))
 
+(mu/defn field-database-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/database]
+  "The ::warehouses.schema/database ID of each ::warehouse-schema.schema/field in `field-ids`, by Field id."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (into {}
+          (map (juxt :id :db_id))
+          (t2/query {:select [:f.id :t.db_id]
+                     :from   [[(t2/table-name :model/Field) :f]]
+                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                     :where  [:in :f.id (vec field-ids)]}))
+    {}))
+
+(mu/defn set-nested-fields-active!
+  "Set the active flag of the Fields of the ::warehouse-schema.schema/table with `table-id` whose NFC path matches the
+  SQL LIKE `nfc-path-pattern`, returning the number updated."
+  [table-id         :- ::lib.schema.id/table
+   nfc-path-pattern :- :string
+   active?          :- :boolean]
+  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+
 (mu/defn delete-child-fields!
   "Delete the Fields nested under the ::warehouse-schema.schema/field with `parent-id`, returning the number deleted."
   [parent-id :- ms/PositiveInt]
@@ -249,6 +269,13 @@
   (if (seq field-ids)
     (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
     0))
+
+(mu/defn unset-user-settings-fk-target!
+  "Unset the user-set FK target of the ::warehouse-schema.schema/field with `field-id` in its settings, returning the
+  number updated."
+  [field-id :- ::lib.schema.id/field]
+  (t2/update! :model/FieldUserSettings {:field_id field-id, :fk_target_field_id [:not= nil]}
+              {:fk_target_field_id nil, :fk_target_field_id_set false}))
 
 (mu/defn clear-user-settings-fk-targets-to-field!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
@@ -373,6 +400,25 @@
   "The Dimension of the ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Dimension :field_id field-id))
+
+(mu/defn rename-dimension-for-field!
+  "Set the name of the Dimension of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
+  [field-id       :- ::lib.schema.id/field
+   dimension-name :- :string]
+  (t2/update! :model/Dimension {:field_id field-id} {:name dimension-name}))
+
+(mu/defn delete-dimensions-of-type-for-field!
+  "Delete the `dimension-type` Dimensions of the ::warehouse-schema.schema/field with `field-id`, returning the number
+  deleted."
+  [field-id       :- ::lib.schema.id/field
+   dimension-type :- [:enum :internal :external]]
+  (t2/delete! :model/Dimension :field_id field-id :type dimension-type))
+
+(mu/defn delete-dimensions-reading-field!
+  "Delete the Dimensions whose values come from the ::warehouse-schema.schema/field with `field-id`, returning the
+  number deleted."
+  [field-id :- ::lib.schema.id/field]
+  (t2/delete! :model/Dimension :human_readable_field_id field-id))
 
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."

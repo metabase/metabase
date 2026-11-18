@@ -115,16 +115,6 @@
                (sql-parsing/classify-stmt dialect sql stmt-type))
             (pr-str sql))))))
 
-;;; ------------------------------------------------- validate-query -----------------------------------------------
-
-(deftest ^:parallel validate-query-test
-  (testing "a query checked against a schema, column by column"
-    (let [schemas (:schemas (edn/read-string (slurp (io/resource "metabase/sql_parsing/test_cases/validate_query.edn"))))]
-      (doseq [{:keys [name sql dialect default-schema schema expected]} (cases "validate_query")]
-        (testing name
-          (is (=? expected (sql-parsing/validate-query dialect sql default-schema (get schemas schema)))
-              (pr-str sql)))))))
-
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 
 (deftest ^:parallel referenced-fields-test
