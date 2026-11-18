@@ -16,7 +16,6 @@
    [metabase.driver.postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -34,7 +33,7 @@
   (:import
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
@@ -51,15 +50,16 @@
   ;; `DefaultJavaSSLFactory` checks the certificate chain against the JVM's trust store; pgjdbc's default factory
   ;; expects a root certificate file in ~/.postgresql instead. `verify-full` also checks the hostname. Through an SSH
   ;; tunnel, pgjdbc would check it against localhost, so check only the chain there.
-  ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
-  ;; for CREATE TABLE and INSERT. Single attach mode attaches only the connected database instead of the whole
-  ;; MotherDuck workspace, which avoids a background attach fan-out of every database in the account. See
-  ;; https://motherduck.com/docs/sql-reference/postgres-endpoint/
+  ;; The startup options enable Metabase compatibility, including Postgres-style array serialization. They also turn
+  ;; on Postgres command tags for every statement: without them, the endpoint answers UPDATE, DELETE, ALTER, DROP and
+  ;; SET, among others, with a result set, which pgjdbc's `executeUpdate` rejects. Single attach mode attaches only the
+  ;; connected database instead of the whole MotherDuck workspace, which avoids a background attach fan-out of every
+  ;; database in the account. See https://motherduck.com/docs/sql-reference/postgres-endpoint/
   ;; The endpoint ignores the user name and the form has no field for it; send the one MotherDuck's docs use.
   (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true, :user "postgres"))
       (assoc :sslmode    (if tunnel-enabled "verify-ca" "verify-full")
              :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
-             :options    "--compatibility-mode=metabase --attach_mode=single")))
+             :options    "--compatibility-mode=metabase --return_pg_command_tags=true --attach_mode=single")))
 
 ;;; Resetting the current database at checkout
 ;;;
@@ -77,10 +77,10 @@
 ;;;
 ;;; 2. `USE` as c3p0's `preferredTestQuery`. c3p0 already makes one round trip at each checkout to test the connection,
 ;;;    so the reset would come free. But c3p0's `DefaultConnectionTester` runs the test query with `executeQuery`, which
-;;;    pgjdbc rejects unless the statement returns exactly one result set. The endpoint happens to return an empty one
-;;;    for `USE` today. We have asked MotherDuck to stop returning result sets for statements like this (QUE-1012). If
-;;;    they do, every checkout test fails, c3p0 discards every connection, and the database is unusable. Batching
-;;;    `USE ...; SELECT 1` doesn't help: `executeQuery` rejects two result sets today and zero first results later.
+;;;    pgjdbc rejects unless the statement returns exactly one result set. With `return_pg_command_tags`, `USE` returns
+;;;    a command tag and no result set, so every checkout test would fail, c3p0 would discard every connection, and the
+;;;    database would be unusable. Batching `USE ...; SELECT 1` doesn't help: `executeQuery` rejects a statement whose
+;;;    first result isn't a result set.
 ;;;
 ;;; 3. A custom connection tester, below. It runs the `USE` with `Statement.execute`, which accepts any result, as the
 ;;;    checkout test. The reset costs no round trip beyond the test c3p0 makes anyway, and it doesn't depend on what the
@@ -551,10 +551,9 @@
 ;;; every database in the account, and that function reads them all before filtering on `current_database()`. That
 ;;; error doesn't say whether a rerun will succeed, but rerunning a read is harmless.
 ;;;
-;;; Only the two read-side execute methods retry, and `rename-tables!*`, which rolls its transaction back and reruns all
-;;; of it. Other writes go through `execute-write-statement!`, which doesn't retry, so a retry can never apply a write
-;;; twice. Sync reads go through `execute-prepared-statement!`, so they retry too, except where they read JDBC's
-;;; `DatabaseMetaData`.
+;;; Only the two read-side execute methods retry. Write queries, transforms, actions and uploads use `executeUpdate` or
+;;; `executeBatch` directly, so a retry can never apply a write twice. Sync reads go through
+;;; `execute-prepared-statement!`, so they retry too, except where they read JDBC's `DatabaseMetaData`.
 
 (def ^:private retryable-error-message
   ;; The endpoint reports every error with SQLState `XXUUU` and no error code, so the message is the only way to tell
@@ -612,23 +611,6 @@
   [driver stmt sql]
   (let [postgres-method (get-method sql-jdbc.execute/execute-statement! :postgres)]
     (execute-with-retry stmt #(postgres-method driver stmt sql))))
-
-;; The endpoint answers UPDATE, DELETE, ALTER, DROP, TRUNCATE, COMMENT, SET and ANALYZE with a result set instead of a
-;; command tag, and pgjdbc's `executeUpdate` rejects a result set. `execute` accepts either. For UPDATE and DELETE the
-;; result set's one cell is the row count; for the DDL statements it's empty, and they affect no rows anyway.
-;; CREATE TABLE, CREATE TABLE AS and INSERT return proper command tags, so `getUpdateCount` is accurate for them.
-(defmethod sql-jdbc.execute/execute-write-statement! :motherduck
-  [_driver ^Statement stmt ^String sql]
-  (if-not (if (instance? PreparedStatement stmt)
-            (.execute ^PreparedStatement stmt)
-            (.execute stmt sql))
-    (.getUpdateCount stmt)
-    (with-open [rs (.getResultSet stmt)]
-      (let [cell (when (and (= 1 (.getColumnCount (.getMetaData rs))) (.next rs))
-                   (.getObject rs 1))]
-        (if (instance? Number cell)
-          (long cell)
-          0)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Transforms                                                    |
@@ -783,56 +765,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Driver-managed table DDL                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; The endpoint returns a result set for DROP TABLE, even in Metabase compatibility mode.
-;; Use Statement.execute to accept it. The inherited executeUpdate path rejects result sets.
-;; Qualify the name like the :sql-jdbc method does: a plain `keyword` would let HoneySQL rewrite `-` to `_` in the
-;; schema part, dropping a table in a different schema.
-(defmethod driver/drop-table! :motherduck
-  [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (sql-jdbc.quoting/dot-qualified table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver db-id {:write? true}
-     (fn [^Connection conn]
-       (with-open [stmt (.createStatement conn)]
-         (.execute stmt ^String sql))))))
-
-;; The inherited Postgres method runs the renames with `executeBatch`, which rejects the result set the endpoint
-;; answers each ALTER with. Run them one at a time instead, in a transaction: DDL is transactional on the endpoint,
-;; so readers see either all of the old tables or all of the new ones. The endpoint takes one ALTER per statement.
-;; A retryable error aborts the transaction, so the retry rolls it back and reruns every rename, not just the one
-;; that failed.
-(defmethod driver/rename-tables!* :motherduck
-  [driver db-id sorted-rename-map]
-  (let [sqls (perf/mapv (fn [[from-table to-table]]
-                          ;; `dot-qualified`, as in `drop-table!` above: a plain keyword would rewrite `-` to `_` in
-                          ;; the schema.
-                          (first (sql/format {:alter-table  (sql-jdbc.quoting/dot-qualified from-table)
-                                              :rename-table (keyword (name to-table))}
-                                             :quoted  true
-                                             :dialect (sql.qp/quote-style driver))))
-                        sorted-rename-map)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver db-id {:write? true}
-     (fn [^Connection conn]
-       (.setAutoCommit conn false)
-       (try
-         (with-open [stmt (.createStatement conn)]
-           (execute-with-retry stmt (fn []
-                                      (doseq [sql sqls]
-                                        (sql-jdbc.execute/execute-write-statement! driver stmt sql))
-                                      (.commit conn))))
-         (catch Throwable e
-           (try
-             (.rollback conn)
-             (catch Throwable rollback-error
-               (.addSuppressed e rollback-error)))
-           (throw e))
-         (finally
-           (.setAutoCommit conn true)))))
-    nil))
 
 ;; The endpoint does not support Postgres COPY FROM STDIN. Use SQL-JDBC's batched INSERTs.
 (defmethod driver/insert-into! :motherduck

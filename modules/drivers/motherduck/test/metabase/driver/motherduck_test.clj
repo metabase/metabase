@@ -249,47 +249,6 @@
         (is (identical? rs (sql-jdbc.execute/execute-statement! :motherduck stmt "SELECT 1")))
         (is (= 2 @attempts))))))
 
-(defn- result-set-of
-  "A stand-in `ResultSet` with one column and the rows in `cells`."
-  [cells]
-  (let [remaining (atom cells)
-        current   (atom nil)]
-    (reify ResultSet
-      (^ResultSetMetaData getMetaData [_]
-        (reify ResultSetMetaData
-          (getColumnCount [_] 1)))
-      (^boolean next [_]
-        (let [[cell & more] @remaining]
-          (reset! current cell)
-          (reset! remaining more)
-          (some? cell)))
-      (^Object getObject [_ ^int _i] @current)
-      (close [_]))))
-
-(defn- answering-statement
-  "A stand-in `PreparedStatement` whose `execute` returns `rs` when given one, and otherwise reports `update-count`."
-  [rs update-count]
-  (reify PreparedStatement
-    (^boolean execute [_] (some? rs))
-    (^int getUpdateCount [_] (if rs -1 update-count))
-    (^ResultSet getResultSet [_] rs)))
-
-;; Not ^:parallel: kondo counts `execute-write-statement!` as destructive, though these statements are stand-ins.
-(deftest execute-write-statement-test
-  (testing "a statement with a command tag reports its row count"
-    (is (= 3 (sql-jdbc.execute/execute-write-statement! :motherduck (answering-statement nil 3) "CREATE TABLE t AS ..."))))
-  (testing "a statement answered with a one-cell result set, as UPDATE and DELETE are, reports that cell"
-    (is (= 1 (sql-jdbc.execute/execute-write-statement! :motherduck (answering-statement (result-set-of [1]) -1) "UPDATE ..."))))
-  (testing "a statement answered with an empty result set, as DROP and ANALYZE are, reports no rows"
-    (is (= 0 (sql-jdbc.execute/execute-write-statement! :motherduck (answering-statement (result-set-of []) -1) "DROP TABLE t"))))
-  (testing "a plain Statement runs the SQL it's given"
-    (let [ran  (atom nil)
-          stmt (reify Statement
-                 (^boolean execute [_ ^String sql] (reset! ran sql) false)
-                 (^int getUpdateCount [_] 2))]
-      (is (= 2 (sql-jdbc.execute/execute-write-statement! :motherduck stmt "INSERT INTO t VALUES (1), (2)")))
-      (is (= "INSERT INTO t VALUES (1), (2)" @ran)))))
-
 (deftest ^:parallel compile-transform-test
   (is (= ["CREATE OR REPLACE TABLE \"main\".\"out\" AS SELECT x FROM src WHERE y = ?" [5]]
          (driver/compile-transform :motherduck {:query        {:query "SELECT x FROM src WHERE y = ?", :params [5]}
@@ -415,6 +374,27 @@
                :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"}
               (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true)))))))
 
+(deftest command-tags-test
+  (mt/test-driver :motherduck
+    (testing "every write statement returns a Postgres command tag, which `executeUpdate` needs, not a result set"
+      (let [table (str "command_tags_" (mt/random-name))
+            sql   (fn [fmt] (format fmt (str \" table \")))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :motherduck (mt/id) {:write? true}
+         (fn [^Connection conn]
+           (with-open [stmt (.createStatement conn)]
+             (try
+               (is (= [0 3 2 1 0 0]
+                      (mapv #(.executeUpdate stmt ^String (sql %))
+                            ["CREATE TABLE %s (id INTEGER, x INTEGER)"
+                             "INSERT INTO %s VALUES (1, 1), (2, 2), (3, 3)"
+                             "UPDATE %s SET x = 0 WHERE id < 3"
+                             "DELETE FROM %s WHERE id = 3"
+                             "ALTER TABLE %s ADD COLUMN y INTEGER"
+                             "COMMENT ON TABLE %s IS 'command tags'"])))
+               (finally
+                 (is (= 0 (.executeUpdate stmt ^String (sql "DROP TABLE IF EXISTS %s")))))))))))))
+
 (deftest ^:parallel connection-form-test
   (let [field-names (into #{}
                           (comp (mapcat #(:fields % [%])) ; host and port are in a group
@@ -529,8 +509,8 @@
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
 
-;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it, which it does today
-;; but may stop doing (QUE-1012). A mock connection stands in for both behaviors.
+;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it. It returns none with
+;; `return_pg_command_tags`, and an empty one without. A mock connection stands in for both behaviors.
 (defn- mock-connection
   "A Connection opened on `catalog` whose statements record their SQL in `executed`, then return `result-set?` or
   throw `error`."
@@ -605,7 +585,6 @@
    :motherduck spec {:write? true}
    (fn [^Connection conn]
      (with-open [stmt (.createStatement conn)]
-       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
        (doseq [^String statement statements]
          (.execute stmt statement))))))
 
@@ -663,7 +642,6 @@
     (fn [^Connection conn]
       (doseq [^String sql statements]
         (with-open [stmt (.createStatement conn)]
-          ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
           (.execute stmt sql))))))
 
 ;; The endpoint's information_schema.table_constraints and key_column_usage list every database in the account. A
