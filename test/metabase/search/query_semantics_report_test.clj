@@ -169,7 +169,15 @@
          (report/render "<script>__REPORT_DATA__</script>" "{\"query\":\"</script>\"}"))))
 
 (deftest ^:parallel missing-placeholder-test
-  (is (= {:type :missing-placeholder} (problem-data #(report/render "<html></html>" "{}")))))
+  (is (= {:type :missing-placeholder, :placeholder "__REPORT_DATA__"}
+         (problem-data #(report/render "<html></html>" "{}"))))
+  (is (= {:type :missing-placeholder, :placeholder "__REPORT_MODEL__"}
+         (problem-data #(report/render "__REPORT_DATA__" "{}" "code")))))
+
+(deftest ^:parallel embedded-model-test
+  (is (= "<script>{}</script><script type=module>export const score = 1;</script>"
+         (report/render "<script>__REPORT_DATA__</script><script type=module>__REPORT_MODEL__</script>"
+                        "{}" "export const score = 1;"))))
 
 (deftest ^:parallel problem-message-test
   ;; Each row checks the facts carried by one diagnostic type.
@@ -193,7 +201,7 @@
            [{:type :missing-vector, :input "query: alpha"} ["query: alpha" "freeze!"]]
            [{:type :invalid-vector, :input "query: alpha", :reason :length} ["query: alpha" "length"]]
            [{:type :vector-hits, :input "alpha"} ["alpha" "distances"]]
-           [{:type :missing-placeholder} ["__REPORT_DATA__"]]]]
+           [{:type :missing-placeholder, :placeholder "__REPORT_DATA__"} ["__REPORT_DATA__"]]]]
     (doseq [fragment fragments]
       (is (str/includes? (report/message problem) fragment)))))
 
