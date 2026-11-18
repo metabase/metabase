@@ -481,10 +481,6 @@ function createOrdersQueryWithSegments() {
   return { query, database };
 }
 
-function queryHelpTextHeader() {
-  return screen.queryByTestId("expression-helper-popover-structure");
-}
-
 function findHelpTextHeader() {
   return screen.findByTestId("expression-helper-popover-structure");
 }
