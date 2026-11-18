@@ -47,6 +47,7 @@ import { FIXED_METABOT_ENTITY_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
+  type MetabotConversationState,
   type MetabotState,
   fixedMetabotAgentIds,
   getMetabotState,
@@ -69,6 +70,19 @@ const agentIn = (state: MetabotState, agentId: MetabotAgentId) =>
 
 const convoIn = (state: MetabotState, conversationId: string) =>
   checkNotNull(state.conversations[conversationId]);
+
+/** Returns a copy of `state` with `overrides` applied to an existing conversation. */
+export const updateTestConversation = (
+  state: MetabotState,
+  conversationId: string,
+  overrides: Partial<MetabotConversationState>,
+): MetabotState => ({
+  ...state,
+  conversations: {
+    ...state.conversations,
+    [conversationId]: { ...convoIn(state, conversationId), ...overrides },
+  },
+});
 
 export const conversationIdForAgent = (
   store: MetabotStoreLike,
@@ -189,6 +203,9 @@ export const enterChatMessage = async (message: string, send = true) => {
   if (send) {
     await userEvent.type(await input(), "{Enter}");
   }
+  // The editor picks up these DOM changes through a MutationObserver, which
+  // React cannot see as part of this call, so flush the state it sets.
+  await waitFor(() => {});
 };
 export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");

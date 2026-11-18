@@ -6,13 +6,17 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (t2/select :model/Card :id [:in card-ids]))
+
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn audit-log-topic-exists?
   "Whether an AuditLog entry with `topic` exists."
@@ -37,21 +41,22 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table, :id table-id))
 
-(mu/defn insert-audit-log!
-  "Insert an AuditLog entry."
-  [topic      :- :keyword
-   details    :- [:maybe ::audit-app.schema/audit-log.details]
-   model-name :- [:maybe :string]
-   model-id   :- [:maybe ms/PositiveInt]
-   user-id    :- [:maybe ::lib.schema.id/user]]
-  (t2/insert! :model/AuditLog
-              :topic    topic
-              :details  details
-              :model    model-name
-              :model_id model-id
-              :user_id  user-id))
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id [:auto/param database-id]))
+
+(mu/defn insert-audit-logs!
+  "Insert the AuditLog `rows` in one statement, in their order, returning the number inserted."
+  [rows :- [:sequential [:map {:closed true}
+                         [:topic    :keyword]
+                         [:details  [:maybe ::audit-app.schema/audit-log.details]]
+                         [:model    [:maybe :string]]
+                         [:model_id [:maybe ms/PositiveInt]]
+                         [:user_id  [:maybe ::lib.schema.id/user]]]]]
+  (t2/insert! :model/AuditLog rows))
 
 (mu/defn delete-oldest-by-id-subquery!
   "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`, lowest ids first."
@@ -77,3 +82,10 @@
   (t2/query-one {:delete-from table
                  :where [:<= time-column cutoff]
                  :limit batch-size}))
+
+(mu/defn pulse-ids-of-channels
+  "A map of the id of each PulseChannel of `channel-ids` to the id of its Pulse."
+  [channel-ids :- [:set ms/PositiveInt]]
+  (if (seq channel-ids)
+    (t2/select-pk->fn :pulse_id :model/PulseChannel :id [:in channel-ids])
+    {}))

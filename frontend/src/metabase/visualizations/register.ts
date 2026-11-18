@@ -13,6 +13,7 @@ import {
   type ChartSettingColorRangeProps,
   type ComputedVisualizationSettings,
   type SettingsExtra,
+  loadVisualizationComponents,
   registerSettingWidgets,
   registerVisualization,
   setComputedSettingsTransform,
@@ -56,6 +57,7 @@ import { FUNNEL_CHART_DEFINITION } from "./visualizations/Funnel/definition";
 import { GAUGE_CHART_DEFINITION } from "./visualizations/Gauge/definition";
 import { LINE_CHART_DEFINITION } from "./visualizations/LineChart/definition";
 import { LIST_DEFINITION } from "./visualizations/List/definition";
+import { MapRegionWidget } from "./visualizations/Map/MapRegionWidget";
 import { MAP_VIZ_DEFINITION } from "./visualizations/Map/definition";
 import { OBJECT_DETAIL_DEFINITION } from "./visualizations/ObjectDetail/definition";
 import { DimensionsWidget } from "./visualizations/PieChart/DimensionsWidget";
@@ -217,6 +219,7 @@ function registerVisualizationSettingWidgets() {
     tableColumns: ChartSettingTableColumns,
     nestedColumns: chartSettingNestedSettings(ChartNestedSettingColumns),
     nestedSeries: chartSettingNestedSettings(ChartNestedSettingSeries),
+    mapRegion: MapRegionWidget,
     pieDimensions: DimensionsWidget,
     pieSliceName: SliceNameWidget,
     smartScalarComparison: SmartScalarComparisonWidget,
@@ -250,9 +253,26 @@ function registerSdkAwareBehaviors() {
   );
 }
 
+declare global {
+  interface Window {
+    METABASE_LOAD_ALL_VISUALIZATIONS?: boolean;
+  }
+}
+
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
   registerJsxFormatting();
   registerSdkAwareBehaviors();
+
+  // Charts render through a `lazy` boundary that suspends on first render. A
+  // test that freezes the clock strands that boundary on its fallback, because
+  // React 19 schedules the lazy retry on a timer the fake clock never advances.
+  // When a spec opts in, load every chart up front so no boundary suspends.
+  if (
+    typeof window !== "undefined" &&
+    window.METABASE_LOAD_ALL_VISUALIZATIONS
+  ) {
+    loadVisualizationComponents();
+  }
 }

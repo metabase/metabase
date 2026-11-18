@@ -1,5 +1,6 @@
 ---
 title: Oracle
+summary: Connect Metabase to Oracle, including supported versions, adding the Oracle JDBC driver, Oracle Cloud Autonomous Database, and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/oracle
 ---
@@ -7,6 +8,8 @@ redirect_from:
 # Oracle
 
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
+
+If you're running the Open Source edition of Metabase, you'll need to [add the Oracle JDBC driver](#downloading-the-oracle-jdbc-driver-jar) before you can connect to Oracle.
 
 ## Supported versions
 
@@ -42,7 +45,7 @@ Optional TNS alias.
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
@@ -94,7 +97,7 @@ certificate chain. Refer to the
 [Oracle documentation](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html) on using `keytool` to manage key and truststore files, importing certificates, etc.
 
 For more information on setting up a truststore for AWS RDS Oracle instances, see the
-[instructions provided by Amazon](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.Oracle.Options.SSL.html#Appendix.Oracle.Options.SSL.JDBC).
+[instructions provided by Amazon](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.Oracle.Options.SSL.JDBC.html).
 
 If you need to connect to other databases using SSL, instead of creating a new truststore, you'll probably want to add the RDS CA to your existing truststore file (likely called `cacerts`).
 
@@ -104,6 +107,8 @@ If you need to connect to other databases using SSL, instead of creating a new t
 - **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions before 19](https://endoflife.date/oracle-database).
 
 ## Downloading the Oracle JDBC Driver JAR
+
+Only the Open Source edition of Metabase needs this step. Because of licensing restrictions, Metabase can't include the Oracle JDBC driver in the Open Source edition, so you'll need to download the driver and add it to Metabase as a plugin. Pro and Enterprise editions of Metabase, as well as all Metabase Cloud plans, include the Oracle JDBC driver, so you can skip this step.
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 

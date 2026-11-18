@@ -1,26 +1,41 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
-   [metabase.dashboards.schema]
-   [metabase.models.serialization :as serdes]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.core :as events]
+   [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------------ Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
-;; Serialization
+(defmethod events/spec :model/DashboardCardSeries
+  [_model]
+  {:create :event/dashboard-card-series-create
+   :update :event/dashboard-card-series-update
+   :delete :event/dashboard-card-series-delete})
 
-(defmethod serdes/generate-path "DashboardCardSeries" [_ _] nil)
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-;; TODO: this is not used atm as `DashboardCard` has custom :export/:import defined; see comment there
-;; to be implemented.
-(defmethod serdes/make-spec "DashboardCardSeries" [_model-name _opts]
-  ;; We did not have `position` in serialization before, it was inferred from the order, but we're trying to keep
-  ;; code more generic right now - so it's carried over as data rather than implied.
-  {:copy      [:position]
-   :skip      []
-   :transform {:dashboardcard_id (serdes/parent-ref)
-               :card_id          (serdes/fk :model/Card)}})
+(t2/define-before-update :model/DashboardCardSeries
+  [series]
+  (let [changes (t2/changes series)]
+    (when (contains? changes :dashboardcard_id)
+      (throw (ex-info (tru "You cannot move a series to another dashboard card.") {:status-code 400})))
+    series))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serialization/spec :model/DashboardCardSeries [_]
+  {:schema    ::dashboards.schema/external-dashboard-card-series
+   :identity  [:dashboardcard_id :position]
+   :copy      [:position]
+   :parent    {:model :model/DashboardCard :key :dashboardcard_id :order :position}
+   :transform {:dashboardcard_id serialization/import-only-transform
+               :card_id (serialization/fk-transform :model/Card)}})

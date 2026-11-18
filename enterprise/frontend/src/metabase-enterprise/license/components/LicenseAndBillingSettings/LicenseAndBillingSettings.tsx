@@ -126,7 +126,12 @@ export const LicenseAndBillingSettings = () => {
   return (
     <SettingsPageWrapper title={t`License`}>
       <SettingsSection>
-        <Stack data-testid="license-and-billing-content" gap="xxl" maw="40rem">
+        <Stack
+          data-testid="license-and-billing-content"
+          gap="xxl"
+          maw="40rem"
+          align="start"
+        >
           <BillingInfo
             isStoreManagedBilling={isStoreManagedBilling}
             hasToken={hasToken}

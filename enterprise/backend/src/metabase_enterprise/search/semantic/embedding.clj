@@ -327,12 +327,18 @@
 (defn embedder-circuit-untrusted?
   "Whether the breaker is enabled and not closed -- i.e. open or half-open, so it doesn't yet trust the
   embedding service (open short-circuits calls; half-open is on a single trial).
-  False when the breaker is disabled or the provider has no circuit endpoint."
+  False when the breaker is disabled or the provider has no circuit endpoint.
+  True when resolving the endpoint throws, so a misconfigured embedder counts as untrusted, not as an error.
+  An `InterruptedException` still propagates."
   []
   (boolean
    (and (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)
-        (when-let [state (embedder-circuit-state)]
-          (not= :closed state)))))
+        (try
+          (when-let [state (embedder-circuit-state)]
+            (not= :closed state))
+          (catch InterruptedException e
+            (throw e))
+          (catch Exception _ true)))))
 
 (def ^:private request-specific-statuses
   "HTTP statuses caused by a particular input, rather than the embedding service as a whole."
@@ -572,47 +578,71 @@
                     (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
-  "Return the embedding endpoint config, or throw if no base URL is configured.
+  "Return the embedding endpoint config as `{:endpoint :api-key :instance-token? :network-policy-floor}`.
+  Throw an ex-info with an `:error-code` when the settings cannot be used together.
+  Its message names the settings to change and never their values.
 
-  `:instance-token?` says the request authenticates with the instance token rather than with an API key of its own.
-  The token is deployment credential, not a setting anyone can enter, so it only travels to an endpoint the
-  deployment chose: `ee-embedding-service-base-url` earns it from the environment, not from the app DB.
-
-  A base URL the environment supplies is deployment-controlled in the same way: its `:allow-private` policy floor
-  admits private addresses but still blocks loopback and link-local."
+  The `:instance-token?` flag says the request authenticates with the instance token, not its own API key.
+  The instance token only goes to an endpoint the environment chose, never to a URL stored in the app DB.
+  A base URL from the environment also gets the `:allow-private` policy floor.
+  That floor admits private addresses but still blocks loopback and link-local."
   []
-  ;; the floor and the token are granted per source, not per setting: a settings manager can write the stored
-  ;; ee-embedding-service-base-url through the generic settings API, while a value the environment supplies bypasses
-  ;; the vetting setter and is trusted instead
-  (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        (let [env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
-              api-key  (semantic-settings/ee-embedding-service-api-key)]
-          (when-not (or env-url? (not-empty api-key))
-            (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
-                                 "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
-                                 " to use the instance token, or configure "
-                                 (setting/env-var-name :ee-embedding-service-api-key) ".")
-                            {:settings ["ee-embedding-service-base-url"
+  ;; Trust follows where each value came from.
+  ;; A settings manager can store ee-embedding-service-base-url through the generic settings API.
+  ;; An environment value comes from the deployment and skips the vetting setter.
+  (let [base-url (not-empty (semantic-settings/ee-embedding-service-base-url))
+        ;; A whitespace-only environment URL still overrides the stored one, and normalizes to nil.
+        ;; Checking base-url first keeps it from counting as an environment URL.
+        env-url? (boolean (and base-url (setting/env-var-value :ee-embedding-service-base-url)))
+        env-key? (some? (setting/env-var-value :ee-embedding-service-api-key))]
+    ;; A key from the deployment only goes to a URL from the deployment.
+    ;; This holds even when the URL was saved through the API before the key was set.
+    (when (and env-key? (not env-url?))
+      (throw (ex-info (str "Set " (setting/env-var-name :ee-embedding-service-base-url)
+                           " alongside " (setting/env-var-name :ee-embedding-service-api-key)
+                           "; an environment API key is only sent to an embedding service URL"
+                           " from the environment.")
+                      {:error-code :embedding-environment-key-requires-environment-url
+                       :settings   ["ee-embedding-service-base-url"
+                                    "ee-embedding-service-api-key"]})))
+    (if base-url
+      (let [api-key (semantic-settings/ee-embedding-service-api-key)]
+        (when-not (or env-url? (not-empty api-key))
+          (throw (ex-info (str "The embedding service base URL is set in the application database"
+                               " and has no API key. Set " (setting/env-var-name :ee-embedding-service-base-url)
+                               " to use the instance token, or configure an API key"
+                               " in the application database.")
+                          {:error-code :embedding-database-url-requires-api-key
+                           :settings   ["ee-embedding-service-base-url"
                                         "ee-embedding-service-api-key"]})))
-          (cond-> {:endpoint        (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
-                                         "/v1/embeddings")
-                   :api-key         api-key
-                   :instance-token? env-url?}
-            env-url? (assoc :network-policy-floor :allow-private)))
-
-        (string? (not-empty (llm.settings/ai-service-base-url)))
-        (cond-> {:endpoint        (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
+        (cond-> {:endpoint        (str (trim-trailing-slashes base-url) "/v1/embeddings")
+                 :api-key         api-key
+                 :instance-token? env-url?}
+          env-url? (assoc :network-policy-floor :allow-private)))
+      (if-let [ai-service-url (not-empty (llm.settings/ai-service-base-url))]
+        (cond-> {:endpoint        (str (trim-trailing-slashes ai-service-url) "/v1/embeddings")
                  :instance-token? true}
-          (setting/env-var-value :ai-service-base-url)
-          (assoc :network-policy-floor :allow-private))
-
-        :else
+          (setting/env-var-value :ai-service-base-url) (assoc :network-policy-floor :allow-private))
         (throw (ex-info "Embedding service and ai service base URLs are not configured"
-                        {:settings ["ee-embedding-service-base-url"
-                                    "ai-service-base-url"]}))))
+                        {:error-code :embedding-service-url-not-configured
+                         :settings   ["ee-embedding-service-base-url"
+                                      "ai-service-base-url"]}))))))
 
 (defmethod embedder-circuit-endpoint "ai-service" [_]
   (:endpoint (embedding-service-resolve-config!)))
+
+(defn- ai-service-readiness
+  "Return `{:ready? true}` when [[embedding-service-resolve-config!]] accepts the current settings.
+  Otherwise return `{:ready? false}` with the refusal's `:message`, and any `:error-code` as `:reason`."
+  [_]
+  (try
+    (embedding-service-resolve-config!)
+    {:ready? true}
+    (catch clojure.lang.ExceptionInfo e
+      (let [reason (:error-code (ex-data e))]
+        (cond-> {:ready?  false
+                 :message (ex-message e)}
+          reason (assoc :reason reason))))))
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
@@ -691,9 +721,7 @@
     (embeddings.provider/register-provider!
      "ai-service"
      {:embedding-spi-version spi-version
-      :readiness             (fn [_]
-                               {:ready? (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
-                                                     (not-empty (llm.settings/ai-service-base-url))))})
+      :readiness             ai-service-readiness
       :resolve-model         legacy
       :embed-texts           ai-service-get-embeddings-batch})
     (embeddings.provider/register-provider!

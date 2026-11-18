@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -11,9 +12,10 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.schema :as ms]))
+   [toucan2.core :as t2]))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
@@ -26,9 +28,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/library/:path"
+(api.macros/defendpoint :get ["/library/:path" :path #"[^/]+"]
   "Get the Python library for user modules."
-  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map {:closed true} [:path ::transforms-python.schema/python-library.request-path]]
    _query-params]
   (get-python-library-by-path path))
 
@@ -36,14 +38,15 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/library/:path"
+(api.macros/defendpoint :put ["/library/:path" :path #"[^/]+"]
   "Update the Python library source code for user modules."
-  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map {:closed true} [:path ::transforms-python.schema/python-library.request-path]]
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
-  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
+  (api/check-403 (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))
+  (api/check-403 (not (remote-sync/read-only?)))
   (python-library/update-python-library-source! path (:source body)))
 
 (api.macros/defendpoint :post "/test-run"
@@ -71,9 +74,10 @@
   (let [table-ids (map :table_id source_tables)
         db-ids    (transforms-python.db/table-database-ids table-ids)]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
-    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))
-    (doseq [table-id table-ids]
-      (api/check-403 (mi/can-query? :model/Table table-id))))
+    (api/check-403 (perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) (first db-ids)))
+    (let [tables (t2/hydrate (transforms-python.db/tables (vec table-ids)) :can_query)]
+      (api/check-403 (= (count tables) (count (distinct table-ids))))
+      (api/check-403 (every? mi/can-query? tables))))
   ;; NOTE: we do not test database support, as there is no write target.
   (let [result (python-runner/execute-and-read-output!
                 {:code            code

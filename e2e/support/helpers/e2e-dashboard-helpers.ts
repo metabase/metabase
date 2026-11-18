@@ -601,7 +601,7 @@ export function getLinkCardDetails({
   size_x = 4,
   size_y = 1,
   url = "https://metabase.com",
-} = {}) {
+} = {}): Partial<VirtualDashboardCard> {
   return {
     id,
     card_id: null,

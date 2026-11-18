@@ -20,7 +20,6 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
     optional,
     options,
     type,
-    field,
     nullable,
     ...props
   }: FormTextareaWidgetProps,
@@ -30,7 +29,6 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
 
   return (
     <FormField
-      mb="lg"
       title={title}
       actions={actions}
       description={description}

@@ -1,8 +1,12 @@
 (ns metabase.glossary.models.glossary
   (:require
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
-   [metabase.glossary.schema]
-   [metabase.models.serialization :as serdes]
+   [metabase.glossary.schema :as glossary.schema]
+   [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -11,8 +15,55 @@
 
 (doto :model/Glossary
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod events/spec :model/Glossary
+  [_model]
+  {:create :event/glossary-create
+   :update :event/glossary-update
+   :delete :event/glossary-delete})
+
+(def GlossaryEntry
+  "Schema for a glossary entry."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:term       ::glossary.schema/glossary.term]
+   [:definition ::glossary.schema/glossary.definition]])
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn- glossary-writable?
+  "Whether the current user can write glossary entries: a superuser or an entitled data analyst, on an instance that is
+  not remote-sync read-only."
+  []
+  (boolean (and (api/entitled-data-analyst?) (not (remote-sync/read-only?)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Glossary :can_read]
+  "Whether the current user can read each of `entries`, which every user can."
+  [_model k entries]
+  (for [entry entries]
+    (when entry
+      (vary-meta entry assoc k true))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Glossary :can_write]
+  "Whether the current user can write each of `entries`, answered once for the whole list."
+  [_model k entries]
+  (let [writable (glossary-writable?)]
+    (for [entry entries]
+      (when entry
+        (assoc entry k writable)))))
+
+(defmethod mi/can-create? :model/Glossary
+  [_model _entry]
+  (glossary-writable?))
+
+(defmethod mi/can-update? :model/Glossary
+  [entry _changes]
+  (mi/can-write? entry))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Glossary :creator]
   "Add creator (user) to a glossary entry"
@@ -24,40 +75,21 @@
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))
 
-(def GlossaryEntry
-  "Schema for a glossary entry."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:term       ms/NonBlankString]
-   [:definition ms/NonBlankString]])
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-;;; ---------------------- Serialization ----------------------------
+(defmethod serialization/spec :model/Glossary [_]
+  {:schema    ::glossary.schema/external-glossary
+   :copy      [:entity_id :term :definition]
+   :transform {:creator_id serialization/user-transform}})
 
-(defmethod serdes/load-find-local "Glossary"
-  [path]
-  ;; Files exported before `entity_id` existed are keyed by term, and a term can itself be 21 nano-id characters,
-  ;; so try both lookups rather than discriminating on shape.
-  (let [{:keys [id]} (last path)]
-    (or (serdes/lookup-by-id :model/Glossary id)
-        (glossary.db/glossary-entry-by-term id))))
+(defmethod serialization/storage-paths :model/Glossary [_ entities _]
+  (mapv (fn [item]
+          [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
+        entities))
 
-(defmethod serdes/load-one! "Glossary"
-  [ingested maybe-local]
-  ;; `term` is unique, so a file whose entity_id matches no local row is matched on its term instead: two instances
-  ;; can each create the same term under different entity_ids. That local row is updated in place (same primary
-  ;; key) and adopts the file's entity_id and definition; its own entity_id is discarded, nothing references it.
-  ;; A term-keyed file (exported before entity_id existed) gets a throwaway entity_id from the loader, so the local
-  ;; row keeps its identity in that case.
-  (let [local       (or maybe-local (glossary.db/glossary-entry-by-term (:term ingested)))
-        term-keyed? (not= (-> ingested serdes/path last :id) (:entity_id ingested))]
-    (serdes/default-load-one! (cond-> ingested
-                                (and local term-keyed?) (assoc :entity_id (:entity_id local)))
-                              local)))
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
-(defmethod serdes/make-spec "Glossary" [_model-name _opts]
-  {:copy      [:entity_id :term :definition]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)}})
-
-(defmethod serdes/storage-path "Glossary" [item _]
-  [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
+(defmethod remote-sync/spec :model/Glossary
+  [_model]
+  {:name         :term
+   :synced-items glossary.db/synced-glossary-items})

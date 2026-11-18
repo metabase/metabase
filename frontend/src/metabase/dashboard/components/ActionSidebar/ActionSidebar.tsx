@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { FormField } from "metabase/common/components/FormField/FormField";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import ActionViz from "metabase/dashboard/components/ActionViz";
@@ -17,6 +17,7 @@ import {
   Divider,
   Ellipsified,
   Flex,
+  Input,
   Modal,
   Stack,
   Title,
@@ -101,13 +102,7 @@ export function ActionSidebar() {
             />
           </Form>
         </FormProvider>
-        <Box>
-          <FormField.LabelContainer
-            orientation="vertical"
-            hasDescription={false}
-          >
-            <FormField.Label hasError={false}>{t`Action`}</FormField.Label>
-          </FormField.LabelContainer>
+        <Input.Wrapper label={t`Action`}>
           {!dashcard.action ? (
             <Button
               variant="filled"
@@ -125,7 +120,7 @@ export function ActionSidebar() {
               >{t`Change action`}</Button>
             </Flex>
           )}
-        </Box>
+        </Input.Wrapper>
 
         <Modal.Root
           opened={actionModalOpened}

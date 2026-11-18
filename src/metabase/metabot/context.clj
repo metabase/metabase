@@ -5,6 +5,8 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
+   [metabase.embedding.util :as embedding.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -120,7 +122,7 @@
 (def ^:private RowValueSchema
   "One cell value in a chart series, matching the frontend's `RowValue`. The `object` arm is never read by this
   code -- it's forwarded to the interestingness stats/repr code as-is -- so it's opaque rather than typed."
-  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+  [:maybe [:or :string number? :boolean ::metabot.schema/row-value.object]])
 
 (def ^:private SeriesConfigSchema
   "One series of a chart, pre-materialized by the frontend for `analyze_chart`."
@@ -206,7 +208,9 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The open tab, sent with a dashboard
+   [:tab_id          {:optional true} [:maybe :int]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
@@ -264,7 +268,23 @@
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
    [:research_plan              {:optional true} [:maybe ::research-plan]]
-   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]])
+   [:references                 {:optional true} [:maybe ::metabot.schema/references]]
+   ;; The agent-streaming API overwrites this from the request's client header (see [[host-app-request?]]),
+   ;; so a value sent by the client has no effect.
+   [:in_host_app                {:optional true} [:maybe :boolean]]])
+
+(defn host-app-request?
+  "True when `request` comes from a surface that renders Metabot inside the customer's own application —
+  the React SDK, modular embedding, or a data app — so none of Metabase's own pages (SQL editor,
+  dashboard builder, search) surround it. A full-app iframe embed is *not* a host app: it carries the
+  `embedding-iframe-full-app` client header and shows the whole Metabase UI. (A data-app session is
+  confined to the `data-apps:base` scope and `/agent-streaming` declares no scope, so today it gets a 403
+  before this runs; the branch is here so the rule stays true if that changes. `mcp-apps` has no Metabot
+  today; if it gets one it belongs on this list, since an MCP client shows no Metabase UI either.)"
+  [request]
+  (boolean (and request
+                (or (embedding.util/is-modular-embedding-request? request)
+                    (data-apps/data-app-header? request)))))
 
 (defn- query-for-sql-parsing
   "Return the native query in a viewing-context item, or nil."

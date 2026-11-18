@@ -36,7 +36,3 @@ export function setupPerformanceEndpoints(cacheConfigs: CacheConfig[]) {
     return {};
   });
 }
-
-export function setupPerformanceEndpointsError() {
-  fetchMock.get("path:/api/cache", 500);
-}

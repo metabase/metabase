@@ -1,5 +1,6 @@
 ---
 title: "Metabase config file template"
+summary: A commented example config file you can copy and adapt to configure Metabase on launch.
 ---
 
 # Metabase config file template
@@ -163,7 +164,7 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help-premium
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
@@ -268,7 +269,7 @@ config:
     metabot-limit-unit: tokens
     metabot-name: Metabot
     metabot-nlq-system-prompt: ''
-    metabot-query-execution-enabled: false
+    metabot-query-execution-enabled: true
     metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
     metabot-show-illustrations: true
@@ -293,6 +294,7 @@ config:
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
+    pivot-max-result-rows: 200000
     premium-embedding-token: null
     query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
@@ -304,11 +306,9 @@ config:
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
-    remote-sync-check-changes-cache-ttl-seconds: 60
     remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null
-    remote-sync-transforms: false
     remote-sync-type: read-only
     remote-sync-url: null
     report-timezone: null
@@ -388,4 +388,5 @@ config:
     use-native-pivot-tables: false
     use-tenants: false
     user-visibility: all
+    workspaces-enabled: false
 ```

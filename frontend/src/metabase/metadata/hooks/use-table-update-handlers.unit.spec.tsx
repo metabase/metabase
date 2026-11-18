@@ -2,12 +2,12 @@ import fetchMock from "fetch-mock";
 
 import { setupTableEndpoints } from "__support__/server-mocks";
 import {
+  act,
   renderHookWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   createOrdersIdField,
   createOrdersQuantityField,
@@ -43,8 +43,10 @@ describe("useTableUpdateHandlers", () => {
       response: { status: 500 },
     });
 
-    await result.current.handleCustomFieldOrderChange(
-      (ORDERS_TABLE.fields ?? []).map(getRawTableFieldId).reverse(),
+    await act(() =>
+      result.current.handleCustomFieldOrderChange(
+        (ORDERS_TABLE.fields ?? []).map((field) => field.id).reverse(),
+      ),
     );
 
     await waitFor(() => {

@@ -1,7 +1,10 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { isRootCollection } from "metabase/common/collections/utils";
+import {
+  isRootCollection,
+  isTransformsCollection,
+} from "metabase/common/collections/utils";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_LIBRARY,
@@ -26,31 +29,42 @@ type CollectionRowMenuProps = {
   collection: Collection;
   onOpenModal: (modal: CollectionRowModalState) => void;
   customArchiveMessage?: string;
+  /** Offers a "Delete" item when the caller lets the user delete this collection. */
+  onDelete?: (collection: Collection) => void;
 };
 
 export function CollectionRowMenu({
   collection,
   onOpenModal,
   customArchiveMessage,
+  onDelete,
 }: CollectionRowMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  const showPermissionsOption =
-    isAdmin &&
-    (PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled) &&
-    collection.namespace !== "transforms";
+  const hasPermissionsModal = match(collection.namespace)
+    .with("data-actions", () => true)
+    .with("transforms", () => false)
+    .with("snippets", () => PLUGIN_SNIPPET_FOLDERS.isEnabled)
+    .otherwise(() => PLUGIN_LIBRARY.isEnabled);
+  const showPermissionsOption = isAdmin && hasPermissionsModal;
 
   const isRoot = isRootCollection(collection);
-
-  if (!collection.can_write || remoteSyncReadOnly) {
-    return null;
-  }
+  const canEdit = collection.can_write && !remoteSyncReadOnly;
+  // a transforms folder is deleted, never archived: the API refuses to archive it
+  const canArchive = !isTransformsCollection(collection);
 
   if (collection.archived) {
-    return <UnarchiveCollectionButton collection={collection} />;
+    return canEdit ? (
+      <UnarchiveCollectionButton collection={collection} />
+    ) : null;
+  }
+
+  const showEditOptions = canEdit && !isRoot;
+  if (!showEditOptions && !showPermissionsOption) {
+    return null;
   }
 
   const optionsLabel = match(collection.namespace)
@@ -76,7 +90,7 @@ export function CollectionRowMenu({
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
-          {!isRoot && (
+          {showEditOptions && (
             <Menu.Item
               leftSection={<Icon name="pencil" />}
               onClick={() => onOpenModal({ type: "edit", collection })}
@@ -92,7 +106,16 @@ export function CollectionRowMenu({
               {t`Change permissions`}
             </Menu.Item>
           )}
-          {!isRoot && (
+          {showEditOptions && onDelete != null && (
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              onClick={() => onDelete(collection)}
+              c="feedback-negative"
+            >
+              {t`Delete`}
+            </Menu.Item>
+          )}
+          {showEditOptions && canArchive && (
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={() =>

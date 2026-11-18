@@ -1,4 +1,4 @@
-import { buildAutoReleaseSkipMessage } from "./slack";
+import { buildAutoReleaseSkipMessage, formatJobResults } from "./slack";
 
 describe("buildAutoReleaseSkipMessage", () => {
   const baseArgs = {
@@ -8,13 +8,17 @@ describe("buildAutoReleaseSkipMessage", () => {
     repo: "metabase",
   };
 
-  const runLink = "<https://github.com/metabase/metabase/actions/runs/12345|workflow run>";
+  const runLink =
+    "<https://github.com/metabase/metabase/actions/runs/12345|workflow run>";
 
   describe("patch", () => {
     const patchArgs = { ...baseArgs, kind: "patch" as const };
 
     it("uses a failure emoji for no-green-commit", () => {
-      const message = buildAutoReleaseSkipMessage({ ...patchArgs, reason: "no-green-commit" });
+      const message = buildAutoReleaseSkipMessage({
+        ...patchArgs,
+        reason: "no-green-commit",
+      });
 
       expect(message).toContain(":x:");
       expect(message).toContain("Auto-patch");
@@ -24,7 +28,10 @@ describe("buildAutoReleaseSkipMessage", () => {
     });
 
     it("uses a failure emoji for no-next-version (patch can't fall back to manual)", () => {
-      const message = buildAutoReleaseSkipMessage({ ...patchArgs, reason: "no-next-version" });
+      const message = buildAutoReleaseSkipMessage({
+        ...patchArgs,
+        reason: "no-next-version",
+      });
 
       expect(message).toContain(":x:");
       expect(message).toContain("Auto-patch");
@@ -33,7 +40,10 @@ describe("buildAutoReleaseSkipMessage", () => {
     });
 
     it("uses an info emoji (not a failure emoji) for already-released", () => {
-      const message = buildAutoReleaseSkipMessage({ ...patchArgs, reason: "already-released" });
+      const message = buildAutoReleaseSkipMessage({
+        ...patchArgs,
+        reason: "already-released",
+      });
 
       expect(message).toContain(":information_source:");
       expect(message).not.toContain(":x:");
@@ -47,7 +57,10 @@ describe("buildAutoReleaseSkipMessage", () => {
     const minorArgs = { ...baseArgs, kind: "minor" as const };
 
     it("uses a failure emoji for no-green-commit", () => {
-      const message = buildAutoReleaseSkipMessage({ ...minorArgs, reason: "no-green-commit" });
+      const message = buildAutoReleaseSkipMessage({
+        ...minorArgs,
+        reason: "no-green-commit",
+      });
 
       expect(message).toContain(":x:");
       expect(message).toContain("Auto-minor");
@@ -57,7 +70,10 @@ describe("buildAutoReleaseSkipMessage", () => {
     });
 
     it("uses an info emoji for no-next-version (gold release happens manually)", () => {
-      const message = buildAutoReleaseSkipMessage({ ...minorArgs, reason: "no-next-version" });
+      const message = buildAutoReleaseSkipMessage({
+        ...minorArgs,
+        reason: "no-next-version",
+      });
 
       expect(message).toContain(":information_source:");
       expect(message).not.toContain(":x:");
@@ -67,7 +83,10 @@ describe("buildAutoReleaseSkipMessage", () => {
     });
 
     it("uses an info emoji (not a failure emoji) for already-released", () => {
-      const message = buildAutoReleaseSkipMessage({ ...minorArgs, reason: "already-released" });
+      const message = buildAutoReleaseSkipMessage({
+        ...minorArgs,
+        reason: "already-released",
+      });
 
       expect(message).toContain(":information_source:");
       expect(message).not.toContain(":x:");
@@ -87,5 +106,44 @@ describe("buildAutoReleaseSkipMessage", () => {
 
     expect(message).toContain("v53");
     expect(message).not.toContain("v54");
+  });
+});
+
+describe("formatJobResults", () => {
+  it("lists failed and cancelled jobs", () => {
+    const needs = JSON.stringify({
+      "check-version": { result: "success", outputs: {} },
+      "push-tags": { result: "failure", outputs: {} },
+      "containerize-ee": { result: "cancelled", outputs: {} },
+      "add-extra-tags": { result: "failure", outputs: {} },
+      "publish-version-info": { result: "skipped", outputs: {} },
+    });
+
+    expect(formatJobResults(needs)).toBe(
+      "Failed: `push-tags`, `add-extra-tags`. Cancelled: `containerize-ee`",
+    );
+  });
+
+  it("lists only failed jobs when none are cancelled", () => {
+    const needs = JSON.stringify({
+      "copy-to-s3": { result: "failure" },
+      "push-git-tags": { result: "success" },
+    });
+
+    expect(formatJobResults(needs)).toBe("Failed: `copy-to-s3`");
+  });
+
+  it("returns an empty string when no job failed or was cancelled", () => {
+    expect(formatJobResults(JSON.stringify({ a: { result: "success" } }))).toBe(
+      "",
+    );
+    expect(formatJobResults("{}")).toBe("");
+  });
+
+  it("returns an empty string for missing or invalid input", () => {
+    expect(formatJobResults()).toBe("");
+    expect(formatJobResults("")).toBe("");
+    expect(formatJobResults("not json")).toBe("");
+    expect(formatJobResults("null")).toBe("");
   });
 });

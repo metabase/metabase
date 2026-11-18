@@ -12,7 +12,6 @@ import {
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import {
@@ -52,10 +51,34 @@ type RemappingPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
+type FkRemappingFieldSelectProps = {
+  error?: boolean;
+  fieldName?: string;
+  disabled?: boolean;
+};
+
+const FkRemappingFieldSelect = ({
+  error,
+  fieldName,
+  disabled,
+}: FkRemappingFieldSelectProps) => (
+  <Select
+    data={[{ label: fieldName ?? t`Choose a field`, value: "choose-a-field" }]}
+    dropdownOpened={false}
+    error={error}
+    placeholder={t`Choose a field`}
+    disabled={disabled}
+    value="choose-a-field"
+    w="100%"
+    onClick={(event) => event.preventDefault()}
+  />
+);
+
 export const RemappingPicker = ({
   database,
   field,
   comboboxProps,
+  disabled,
   onTrackMetadataChange,
   ...props
 }: RemappingPicker) => {
@@ -67,7 +90,7 @@ export const RemappingPicker = ({
   const [isChoosingDisplayValue, setIsChoosingDisplayValue] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
@@ -257,6 +280,7 @@ export const RemappingPicker = ({
         onDropdownOpen={() => setIsChoosingDisplayValue(true)}
         onDropdownClose={() => setIsChoosingDisplayValue(false)}
         onChange={handleDisplayValueChange}
+        disabled={disabled}
         {...props}
       />
 
@@ -266,17 +290,24 @@ export const RemappingPicker = ({
             <SubInputIllustration />
           </Flex>
 
+          {fkTargetTable && disabled && (
+            <FkRemappingFieldSelect
+              fieldName={fkRemappingField?.display_name}
+              disabled
+            />
+          )}
+
           {/**
            * FieldDataSelector won't work correctly when databases are present
            * but fkTargetTable is not. It would go to "schema" step of DataSelector
            * which does not exist in FieldDataSelector, hence this conditional render.
            */}
-          {fkTargetTable && (
+          {fkTargetTable && !disabled && (
             <FieldDataSelector
               databases={[database]}
               isInitiallyOpen={isChoosingInitialFkTarget}
               selectedDatabaseId={database.id}
-              selectedFieldId={fkRemappingField?.id}
+              selectedFieldId={fkRemappingField ? fkRemappingFieldId : null}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
               tables={[fkTargetTable]}
@@ -284,20 +315,9 @@ export const RemappingPicker = ({
               // come from there rather than from the store.
               fields={fkTargetTable.fields ?? []}
               triggerElement={
-                <Select
-                  data={[
-                    {
-                      label:
-                        fkRemappingField?.display_name ?? t`Choose a field`,
-                      value: "choose-a-field",
-                    },
-                  ]}
-                  dropdownOpened={false}
+                <FkRemappingFieldSelect
                   error={isFkTargetTouched && !fkRemappingField}
-                  placeholder={t`Choose a field`}
-                  value="choose-a-field"
-                  w="100%"
-                  onClick={(event) => event.preventDefault()}
+                  fieldName={fkRemappingField?.display_name}
                 />
               }
               onClose={() => {
@@ -327,16 +347,18 @@ export const RemappingPicker = ({
                 onClose={() => setIsCustomMappingOpen(false)}
               />
 
-              <Group mt="sm">
-                <Button
-                  size="compact-md"
-                  variant="transparent"
-                  disabled={isLoadingFieldValues}
-                  onClick={() => setIsCustomMappingOpen(true)}
-                >
-                  {t`Edit mapping`}
-                </Button>
-              </Group>
+              {!disabled && (
+                <Group mt="sm">
+                  <Button
+                    size="compact-md"
+                    variant="transparent"
+                    disabled={isLoadingFieldValues}
+                    onClick={() => setIsCustomMappingOpen(true)}
+                  >
+                    {t`Edit mapping`}
+                  </Button>
+                </Group>
+              )}
 
               {hasChanged && <NamingTip mt="lg" />}
             </>

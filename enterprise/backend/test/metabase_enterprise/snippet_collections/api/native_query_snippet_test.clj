@@ -1,10 +1,10 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -109,7 +109,7 @@
               (doseq [dest-collection [dest root-collection]]
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
-                          (t2/update! :model/NativeQuerySnippet (:id snippet) {:collection_id (:id source-collection)})
+                          (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:collection_id (:id source-collection)})
                           (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (:id snippet))
                                                                {:collection_id (:id dest-collection)})]
                             (cond
@@ -184,20 +184,19 @@
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))
 
 (deftest snippet-folder-read-only-remote-sync-test
-  (testing "A snippet folder (Collection in the snippets namespace) in a remote-synced collection cannot be edited under read-only remote sync"
-    (mt/with-premium-features #{:snippet-collections}
+  (testing "A snippet folder synced with the Library cannot be edited under read-only remote sync"
+    (mt/with-premium-features #{:snippet-collections :remote-sync}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Collection folder {:name             "Snippet Folder"
-                                                 :namespace        "snippets"
-                                                 :is_remote_synced true}]
-          (testing "read-only remote sync blocks writes to the snippet folder"
-            (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-only]
-              (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
-                  "snippet folder in a remote-synced collection should not be writable when remote-sync-type is read-only")))
-          (testing "read-write remote sync allows writes to the snippet folder"
-            (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-write]
-              (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
-                  "snippet folder should be writable when remote-sync-type is read-write"))))))))
+        (collections.tu/with-library-synced
+          (mt/with-temp [:model/Collection folder {:name "Snippet Folder" :namespace "snippets"}]
+            (testing "read-only remote sync blocks writes to the snippet folder"
+              (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                                 remote-sync-type :read-only]
+                (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id folder)) :can_write))))))
+            (testing "read-write remote sync allows writes to the snippet folder"
+              (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                                 remote-sync-type :read-write]
+                (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id folder)) :can_write))))))))))))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"
@@ -218,3 +217,23 @@
               (is (true? (can-see-snippet?)))
               (perms/revoke-collection-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?))))))))))
+
+(deftest archive-snippet-folder-needs-curate-test
+  (testing "PUT /api/collection/:id archives and restores a snippet folder, with its snippets, for a user who curates it
+            without native query access"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection         folder  {:namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id folder) :content "1" :name (mt/random-name)}]
+            (testing "a user who only reads the folder is refused"
+              (perms/grant-collection-read-permissions! (perms-group/all-users) folder)
+              (mt/user-http-request :rasta :put 403 (str "collection/" (:id folder)) {:archived true})
+              (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet)))))
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) folder)
+            (mt/user-http-request :rasta :put 200 (str "collection/" (:id folder)) {:archived true})
+            (is (true? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
+            (mt/user-http-request :rasta :put 200 (str "collection/" (:id folder)) {:archived false})
+            (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
+            (testing "archiving the snippet itself still needs native query access, as before"
+              (mt/user-http-request :rasta :put 403 (str "native-query-snippet/" (:id snippet)) {:archived true}))))))))

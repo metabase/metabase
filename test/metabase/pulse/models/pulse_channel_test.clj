@@ -2,68 +2,21 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;; Test out our predicate functions
-
-(deftest day-of-week?-test
-  (doseq [[x expected] {nil   false
-                        []    false
-                        {}    false
-                        "abc" false
-                        "mon" true
-                        :mon  false}]
-    (testing x
-      (is (= expected
-             (pulse-channel/day-of-week? x))))))
-
-(deftest hour-of-day?-test
-  (doseq [[x expected] {nil   false
-                        500   false
-                        -12   false
-                        8.5   false
-                        "abc" false
-                        11    true
-                        0     true
-                        23    true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/hour-of-day? x))))))
-
-(deftest schedule-type?-test
-  (doseq [[x expected] {nil     false
-                        "abc"   false
-                        123     false
-                        "daily" false
-                        :hourly true
-                        :daily  true
-                        :weekly true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/schedule-type? x))))))
-
-(deftest schedule-frame?-test
-  (doseq [[x expected] {nil     false
-                        "abc"   false
-                        123     false
-                        "first" false
-                        :first  true
-                        :mid    true
-                        :last   true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/schedule-frame? x))))))
-
-(deftest valid-schedule?-test
+(deftest schedule-fits-type?-test
   (doseq [[group args->expected] {"nil"
                                   {[nil nil nil nil]  false
                                    [:foo nil nil nil] false}
@@ -96,21 +49,9 @@
                                    [:monthly 12 "fri" :last]  true}}
           [args expected]        args->expected]
     (testing group
-      (testing (cons 'valid-schedule? args)
+      (testing (cons 'schedule-fits-type? args)
         (is (= expected
-               (apply pulse-channel/valid-schedule? args)))))))
-
-(deftest channel-type?-test
-  (doseq [[x expected] {nil     false
-                        "abc"   false
-                        123     false
-                        :sms    false
-                        "email" false
-                        :email  true
-                        :slack  true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/channel-type? x))))))
+               (pulse.schema/schedule-fits-type? (zipmap [:schedule_type :schedule_hour :schedule_day :schedule_frame] args))))))))
 
 (deftest supports-recipients?-test
   (doseq [[x expected] {nil    false
@@ -399,18 +340,18 @@
         (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
                (send-pulse-triggers pulse-id))))
       (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
-        (t2/update! :model/PulseChannel pc-id daily-at-7pm)
+        (t2/update! :model/PulseChannel :id pc-id daily-at-7pm)
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))
       (testing "disable PC will delete its trigger"
-        (t2/update! :model/PulseChannel pc-id {:enabled false})
+        (t2/update! :model/PulseChannel :id pc-id {:enabled false})
         (is (empty? (send-pulse-triggers pulse-id))))
       (testing "reenable PC will add its trigger"
-        (t2/update! :model/PulseChannel pc-id {:enabled true})
+        (t2/update! :model/PulseChannel :id pc-id {:enabled true})
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))
       (testing "remove the trigger if PC is deleted"
-        (t2/delete! :model/PulseChannel pc-id)
+        (t2/delete! :model/PulseChannel :id pc-id)
         (is (empty? (send-pulse-triggers pulse-id)))))))
 
 (deftest e2e-multiple-pcs-test
@@ -428,7 +369,7 @@
                                                                 daily-at-6pm)]
           (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                   (send-pulse-triggers pulse-id)))
-          (t2/delete! :model/PulseChannel pc-id-2)
+          (t2/delete! :model/PulseChannel :id pc-id-2)
           (testing "deleting channel-2 should remove the id, but keep the existing trigger"
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
                     (send-pulse-triggers pulse-id))))))
@@ -439,11 +380,94 @@
           (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                   (send-pulse-triggers pulse-id)))
           (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
-            (t2/update! :model/PulseChannel pc-id-2 daily-at-7pm)
+            (t2/update! :model/PulseChannel :id pc-id-2 daily-at-7pm)
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
                       (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
                     (send-pulse-triggers pulse-id))))
           (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
-            (t2/update! :model/PulseChannel pc-id-2 daily-at-6pm)
+            (t2/update! :model/PulseChannel :id pc-id-2 daily-at-6pm)
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                     (send-pulse-triggers pulse-id)))))))))
+
+(defn- status-code
+  "The `:status-code` of the exception `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(defn- channel-row
+  "A PulseChannel row with every schedule column, nil unless `overrides` sets it."
+  [overrides]
+  (merge {:channel_type :email :schedule_type :daily :schedule_hour 8 :schedule_day nil :schedule_frame nil} overrides))
+
+(deftest ^:parallel channel-schema-test
+  (doseq [[testing-name overrides] {"channel type that does not exist"       {:channel_type :sms}
+                                    "schedule type that does not exist"      {:schedule_type :yearly}
+                                    "hour past end of day"                   {:schedule_type :daily, :schedule_hour 24}
+                                    "details with key no channel has"        {:details {:bogus true}}
+                                    "details with emails that is not a list" {:details {:emails "a@example.com"}}}]
+    (testing testing-name
+      (is (not (mr/validate ::pulse.schema/pulse-channel.update (channel-row overrides)))))))
+
+(defn normalize-status
+  "The status code of the exception normalizing `row` with `schema` throws, or nil."
+  [schema row]
+  (try
+    (lib/normalize schema row {:throw? true})
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(deftest ^:parallel channel-schedule-rule-test
+  (doseq [[testing-name overrides] {"daily schedule without hour"    {:schedule_type :daily, :schedule_hour nil}
+                                    "weekly schedule without day"    {:schedule_type :weekly, :schedule_hour 8}
+                                    "monthly schedule without frame" {:schedule_type :monthly, :schedule_hour 8}
+                                    "mid-month schedule with day"    {:schedule_type :monthly, :schedule_hour 8
+                                                                      :schedule_frame :mid, :schedule_day "mon"}}]
+    (testing testing-name
+      (is (= 400 (normalize-status ::pulse.schema/pulse-channel.update (channel-row overrides))))))
+  (testing "schedules that are valid"
+    (doseq [overrides [{:schedule_type :hourly, :schedule_hour nil}
+                       {:schedule_type :daily, :schedule_hour 0}
+                       {:schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}
+                       {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :mid}
+                       {:schedule_type :monthly, :schedule_hour 8, :schedule_frame :last, :schedule_day "fri"}
+                       {:channel_type "slack", :schedule_type "hourly", :details {:channel "#general"}}]]
+      (testing (pr-str overrides)
+        (is (nil? (normalize-status ::pulse.schema/pulse-channel.update (channel-row overrides)))))))
+  (testing "body without every schedule column leaves combination to hook"
+    (is (nil? (normalize-status ::pulse.schema/pulse-channel.update {:schedule_type :weekly})))))
+
+(deftest update-rules-test
+  (mt/with-temp [:model/Pulse        {pulse-id :id}   {}
+                 :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
+    (doseq [[testing-name changes] {"schedule type that does not exist" {:schedule_type :yearly}
+                                    "hour past end of day"              {:schedule_hour 24}
+                                    "schedule type that needs day"      {:schedule_type :weekly}
+                                    "monthly schedule without frame"    {:schedule_type :monthly}}]
+      (testing testing-name
+        (is (= 400 (status-code #(t2/update! :model/PulseChannel :id channel-id changes))))
+        (is (=? {:channel_type :email, :schedule_type :daily, :schedule_hour 15}
+                (t2/select-one :model/PulseChannel :id channel-id)))))
+    (testing "changes that leave a valid channel"
+      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:schedule_type :weekly, :schedule_day "mon"})))
+      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:schedule_hour 7})))
+      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:details {:emails ["a@example.com"]}})))
+      (is (=? {:schedule_type :weekly, :schedule_day "mon", :schedule_hour 7}
+              (t2/select-one :model/PulseChannel :id channel-id))))))
+
+(deftest invalid-update-leaves-triggers-alone-test
+  (with-send-pulse-setup!
+    (mt/with-temp [:model/Pulse        {pulse-id :id}  {}
+                   :model/PulseChannel _               (merge {:pulse_id pulse-id :channel_type :email} daily-at-6pm)
+                   :model/PulseChannel {weekly-id :id} {:pulse_id pulse-id, :channel_type :slack
+                                                        :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]
+      (let [triggers (send-pulse-triggers pulse-id)]
+        (testing "an UPDATE that makes the weekly channel invalid"
+          (is (= 400 (status-code #(t2/update! :model/PulseChannel :id weekly-id
+                                               {:schedule_type :monthly, :schedule_frame :mid}))))
+          (testing "moves no trigger"
+            (is (= triggers (send-pulse-triggers pulse-id)))))))))

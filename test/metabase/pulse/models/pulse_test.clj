@@ -8,9 +8,11 @@
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -52,6 +54,7 @@
    :dashboard_id        nil
    :skip_if_empty       false
    :archived            false
+   :archived_directly   false
    :parameters          []
    :disable_links       false})
 
@@ -59,8 +62,7 @@
   (testing "this should cover all the basic Pulse attributes"
     (mt/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
                    :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
-                                                         :details  {:other  "stuff"
-                                                                    :emails ["foo@bar.com"]}}
+                                                         :details  {:emails ["user@example.com"]}}
                    :model/Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! :model/PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! :model/PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
@@ -85,8 +87,7 @@
                                    {:schedule_type :daily
                                     :schedule_hour 15
                                     :channel_type  :email
-                                    :details       {:other "stuff"}
-                                    :recipients    [{:email "foo@bar.com"}
+                                    :recipients    [{:email "user@example.com"}
                                                     (dissoc (user-details :rasta) :is_superuser :is_qbnewb :is_data_analyst)]})]})
              (-> (dissoc (models.pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login :tenant_id)
@@ -165,17 +166,18 @@
     (mt/with-temp [:model/Card card {:name "Test Card"}]
       (mt/with-model-cleanup [:model/Pulse]
         (mt/with-premium-features #{:audit-app}
-          (let [pulse (models.pulse/create-pulse! [(models.pulse/card->ref card)]
-                                                  [{:channel_type  :email
-                                                    :schedule_type :daily
-                                                    :schedule_hour 18
-                                                    :enabled       true
-                                                    :recipients    [{:email "foo@bar.com"}]}]
-                                                  {:name          "pulse-name"
-                                                   :creator_id    (mt/user->id :rasta)
-                                                   :skip_if_empty false})]
-            (is (= {:topic    :subscription-create
-                    :user_id  nil
+          (let [pulse (mt/with-current-user (mt/user->id :rasta)
+                        (models.pulse/create-pulse! [(models.pulse/card->ref card)]
+                                                    [{:channel_type  :email
+                                                      :schedule_type :daily
+                                                      :schedule_hour 18
+                                                      :enabled       true
+                                                      :recipients    [{:email "foo@bar.com"}]}]
+                                                    {:name          "pulse-name"
+                                                     :creator_id    (mt/user->id :rasta)
+                                                     :skip_if_empty false}))]
+            (is (= {:topic    :pulse-create
+                    :user_id  (mt/user->id :rasta)
                     :model    "Pulse"
                     :model_id (u/the-id pulse)
                     :details  {:archived     false
@@ -185,7 +187,7 @@
                                :channel      ["email"],
                                :schedule     ["daily"],
                                :recipients   [[{:email "foo@bar.com"}]]}}
-                   (mt/latest-audit-log-entry :subscription-create (u/the-id pulse))))))))))
+                   (mt/latest-audit-log-entry :pulse-create (u/the-id pulse))))))))))
 
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"
@@ -258,18 +260,19 @@
                                           :recipients    [{:email "foo@bar.com"}
                                                           (dissoc (user-details :crowberto) :is_superuser :is_qbnewb :tenant_id :is_data_analyst)]})]})
              (mt/derecordize
-              (update-pulse-then-select! {:id            (u/the-id pulse)
-                                          :name          "We like to party"
-                                          :cards         (map models.pulse/card->ref [card-2 card-1])
-                                          :channels      [{:channel_type  :email
-                                                           :schedule_type :daily
-                                                           :schedule_hour 18
-                                                           :enabled       true
-                                                           :recipients    [{:email "foo@bar.com"}
-                                                                           {:id (mt/user->id :crowberto)}]}]
-                                          :skip_if_empty false}))))
+              (mt/with-current-user (mt/user->id :rasta)
+                (update-pulse-then-select! {:id            (u/the-id pulse)
+                                            :name          "We like to party"
+                                            :cards         (map models.pulse/card->ref [card-2 card-1])
+                                            :channels      [{:channel_type  :email
+                                                             :schedule_type :daily
+                                                             :schedule_hour 18
+                                                             :enabled       true
+                                                             :recipients    [{:email "foo@bar.com"}
+                                                                             {:id (mt/user->id :crowberto)}]}]
+                                            :skip_if_empty false})))))
       (is (= {:topic    :subscription-update
-              :user_id  nil
+              :user_id  (mt/user->id :rasta)
               :model    "Pulse"
               :model_id (u/the-id pulse)
               :details  {:archived     false
@@ -292,9 +295,9 @@
                    :model/Dashboard  {dashboard-id :id} {}
                    :model/Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
       (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
-                            (t2/update! :model/Pulse pulse-id {:collection_id (inc collection-id)})))
+                            (t2/update! :model/Pulse :id pulse-id {:collection_id (inc collection-id)})))
       (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
-                            (t2/update! :model/Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
+                            (t2/update! :model/Pulse :id pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
@@ -322,7 +325,7 @@
         (do-with-objects
          (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
-             (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+             (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
@@ -334,10 +337,10 @@
                           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
-               (is (pos? (t2/update! :model/User user-id {:is_active false})))
+               (is (pos? (t2/update! :model/User :id user-id {:is_active false})))
                (is (not (archived?))))
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
-               (is (t2/update! :model/User user-2-id {:is_active false}))
+               (is (t2/update! :model/User :id user-2-id {:is_active false}))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (t2/exists? :model/PulseChannel :id pulse-channel-id)))
@@ -350,7 +353,7 @@
                           :model/PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
                           :model/PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
-               (is (t2/update! :model/User user-id {:is_active false})))
+               (is (t2/update! :model/User :id user-id {:is_active false})))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to a Slack channel"
@@ -360,16 +363,16 @@
                                                  :details      {:channel "#general"}
                                                  :pulse_id     pulse-id}]
              (testing "make the User inactive"
-               (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+               (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-channel-id]}]
-             (t2/update! :model/PulseChannel pulse-channel-id {:details {:emails ["foo@bar.com"]}})
+             (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
-               (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+               (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?)))))))
         (testing "emails on a different channel\n"
@@ -379,7 +382,7 @@
                                                    :details      {:emails ["foo@bar.com"]}
                                                    :pulse_id     pulse-id}]
                (testing "make the User inactive"
-                 (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+                 (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
 
@@ -392,18 +395,92 @@
       (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
              (pulse-channel-test/send-pulse-triggers pulse-id)))
       (testing "archived pulse will disable pulse channels and remove triggers"
-        (t2/update! :model/Pulse pulse-id {:archived true})
-        (is (false? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+        (t2/update! :model/Pulse :id pulse-id {:archived true})
+        (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
       (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-        (t2/update! :model/Pulse pulse-id {:archived false})
-        (is (true? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+        (t2/update! :model/Pulse :id pulse-id {:archived false})
+        (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
         (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                (pulse-channel-test/send-pulse-triggers pulse-id))))
       (testing "delete pulse will remove pulse channels and triggers"
-        (t2/delete! :model/Pulse pulse-id)
-        (is (false? (t2/exists? :model/PulseChannel pc-id)))
+        (t2/delete! :model/Pulse :id pulse-id)
+        (is (false? (t2/exists? :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
+
+(defn- status-code
+  "The `:status-code` of the exception `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(defn- insert-pulse!
+  "Insert a Pulse made of the defaults of one and `overrides`, and return its id."
+  [overrides]
+  (t2/insert-returning-pk! :model/Pulse (merge (mt/with-temp-defaults :model/Pulse) overrides)))
+
+(deftest dashboard-subscription-collection-is-derived-on-insert-test
+  (mt/with-temp [:model/Collection {collection-id :id}       {}
+                 :model/Collection {other-collection-id :id} {}
+                 :model/Dashboard  {dashboard-id :id}        {:collection_id collection-id}
+                 :model/Dashboard  {other-dashboard-id :id}  {:collection_id other-collection-id}]
+    (mt/with-model-cleanup [:model/Pulse]
+      (testing "a dashboard subscription goes in the collection of its dashboard, whatever the row names"
+        (let [pulse-id (insert-pulse! {:dashboard_id dashboard-id :collection_id other-collection-id})]
+          (is (= collection-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id)))))
+      (testing "one INSERT of several dashboard subscriptions files each with its own dashboard"
+        (let [ids (t2/insert-returning-pks! :model/Pulse
+                                            [(merge (mt/with-temp-defaults :model/Pulse) {:dashboard_id dashboard-id})
+                                             (merge (mt/with-temp-defaults :model/Pulse) {:dashboard_id other-dashboard-id})])]
+          (is (= [collection-id other-collection-id]
+                 (mapv #(t2/select-one-fn :collection_id :model/Pulse :id %) ids)))))
+      (testing "a pulse without a dashboard keeps the collection of the row"
+        (let [pulse-id (insert-pulse! {:collection_id other-collection-id})]
+          (is (= other-collection-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))))
+
+(deftest ^:parallel dashboard-subscription-schema-test
+  (let [row (fn [overrides]
+              (merge {:dashboard_id 1 :collection_position nil :alert_condition nil
+                      :alert_first_only nil :alert_above_goal nil}
+                     overrides))]
+    (testing "dashboard subscription has none of the columns of an alert, or a collection position"
+      (doseq [overrides [{:alert_condition "rows"}
+                         {:alert_first_only false}
+                         {:alert_above_goal true}
+                         {:collection_position 1}]]
+        (testing (pr-str overrides)
+          (is (= 400 (pulse-channel-test/normalize-status ::pulse.schema/pulse.update (row overrides)))))))
+    (testing "columns of an alert and collection position are fine without dashboard"
+      (is (nil? (pulse-channel-test/normalize-status
+                 ::pulse.schema/pulse.update
+                 (row {:dashboard_id nil :alert_condition "rows" :alert_first_only false :collection_position 1})))))
+    (testing "body with only some of the columns passes"
+      (is (nil? (pulse-channel-test/normalize-status ::pulse.schema/pulse.update
+                                                     {:dashboard_id 1 :alert_condition "rows"}))))))
+
+(deftest dashboard-subscription-update-shape-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+    (mt/with-model-cleanup [:model/Pulse]
+      (testing "update cannot give dashboard subscription the columns of an alert or collection position"
+        (let [pulse-id (insert-pulse! {:dashboard_id dashboard-id})]
+          (doseq [changes [{:alert_condition "rows"}
+                           {:alert_first_only false}
+                           {:alert_above_goal true}
+                           {:collection_position 1}]]
+            (testing (pr-str changes)
+              (is (= 400 (status-code #(t2/update! :model/Pulse :id pulse-id changes))))))
+          (is (=? {:alert_condition nil :collection_position nil}
+                  (t2/select-one :model/Pulse :id pulse-id)))
+          (testing "while name goes through"
+            (is (= 1 (t2/update! :model/Pulse :id pulse-id {:name "Renamed"})))))))))
+
+(deftest ^:parallel pulse-parameters-schema-test
+  (testing "parameters are sequence of maps with id"
+    (is (not (mr/validate ::pulse.schema/pulse.update {:parameters [{:value 1}]})))
+    (is (mr/validate ::pulse.schema/pulse.update {:parameters [{:id "abc" :value 1}]}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |
@@ -445,7 +522,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Pulse card-id {:collection_id collection-id})))))))
+             (t2/update! :model/Pulse :id card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -473,29 +550,44 @@
   (with-dashboard-subscription-in-collection! [_ collection dashboard subscription]
     (testing "An admin has read and write access to any dashboard subscription"
       (binding [api/*is-superuser?* true]
-        (is (mi/can-read? subscription))
-        (is (mi/can-write? subscription))))
+        (is (mi/can-read? (t2/hydrate subscription :can_read)))
+        (is (mi/can-write? (t2/hydrate subscription :can_write)))))
+    (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
     (mt/with-current-user (mt/user->id :rasta)
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
-        (testing "A non-admin has read and write access to a subscription they created"
-          (is (mi/can-read? subscription))
-          (is (mi/can-write? subscription)))
-        (testing "A non-admin has read-only access to a subscription they are a recipient of"
-          ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
-          (mt/with-temp [:model/Pulse                subscription            {:collection_id (u/the-id collection)
-                                                                              :dashboard_id  (u/the-id dashboard)
-                                                                              :creator_id    (mt/user->id :crowberto)}
-                         :model/PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
-                         :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id
-                                                                              :user_id (mt/user->id :rasta)}]
-            (is (mi/can-read? subscription))
-            (is (not (mi/can-write? subscription)))))
-        (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
-          (mt/with-temp [:model/Pulse subscription {:collection_id (u/the-id collection)
-                                                    :dashboard_id  (u/the-id dashboard)
-                                                    :creator_id    (mt/user->id :crowberto)}]
-            (is (not (mi/can-read? subscription)))
-            (is (not (mi/can-write? subscription)))))))))
+      (testing "A non-admin has read and write access to a subscription they created"
+        (is (mi/can-read? (t2/hydrate subscription :can_read)))
+        (is (mi/can-write? (t2/hydrate subscription :can_write))))
+      (testing "A non-admin has read-only access to a subscription they are a recipient of"
+        ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
+        (mt/with-temp [:model/Pulse                subscription            {:collection_id (u/the-id collection)
+                                                                            :dashboard_id  (u/the-id dashboard)
+                                                                            :creator_id    (mt/user->id :crowberto)}
+                       :model/PulseChannel          {pulse-channel-id :id} {:pulse_id (u/the-id subscription)}
+                       :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id
+                                                                            :user_id (mt/user->id :rasta)}]
+          (is (mi/can-read? (t2/hydrate subscription :can_read)))
+          (is (not (mi/can-write? (t2/hydrate subscription :can_write))))))
+      (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
+        (mt/with-temp [:model/Pulse subscription {:collection_id (u/the-id collection)
+                                                  :dashboard_id  (u/the-id dashboard)
+                                                  :creator_id    (mt/user->id :crowberto)}]
+          (is (not (mi/can-read? (t2/hydrate subscription :can_read))))
+          (is (not (mi/can-write? (t2/hydrate subscription :can_write)))))))))
+
+(deftest update-permissions-test
+  (with-dashboard-subscription-in-collection! [_ collection _ subscription]
+    (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+    (testing "the creator may update their dashboard subscription"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (mi/can-update? (t2/hydrate subscription :can_write) {:name "Renamed"}))))
+    (testing "an admin may update any dashboard subscription"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (mi/can-update? (t2/hydrate subscription :can_write) {:name "Renamed"}))))
+    (testing "another user may not"
+      (mt/with-current-user (mt/user->id :lucky)
+        (is (not (mi/can-update? (t2/hydrate subscription :can_write) {:name "Renamed"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                              (api/update-check subscription {:name "Renamed"})))))))
 
 (deftest create-permissions-test
   (when config/ee-available?

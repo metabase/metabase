@@ -5,10 +5,16 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn- diff-strings
+  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  [model o1 o2]
+  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
 
 (deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
@@ -75,7 +81,7 @@
 (deftest ^:parallel diff-dashboards-str-test
   (testing "update general info ---"
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Dashboard x y)))
+                           (u/build-sentence (diff-strings :model/Dashboard x y)))
       {:name        "Diff Test"
        :description nil
        :cards       []}
@@ -137,7 +143,7 @@
 (deftest ^:parallel diff-dashboards-str-update-cards-test
   (testing "update cards ---"
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Dashboard x y)))
+                           (u/build-sentence (diff-strings :model/Dashboard x y)))
       {:cards [{:id 1} {:id 2}]}
       {:cards [{:id 1} {:id 2} {:id 3}]}
       "added a card."
@@ -159,15 +165,15 @@
            repositions an existing card (metabase#6884)"
     (is (= "added a card."
            (u/build-sentence
-            (revision/diff-strings :model/Dashboard
-                                   {:cards [{:id 1 :row 0 :col 0}]}
-                                   {:cards [{:id 1 :row 4 :col 0} {:id 2 :row 0 :col 0}]}))))))
+            (diff-strings :model/Dashboard
+                          {:cards [{:id 1 :row 0 :col 0}]}
+                          {:cards [{:id 1 :row 4 :col 0} {:id 2 :row 0 :col 0}]}))))))
 
 (deftest diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
            (u/build-sentence
-            (revision/diff-strings
+            (diff-strings
              :model/Dashboard
              {:name "Apple"}
              {:name          "Apple"
@@ -177,7 +183,7 @@
       (mt/with-test-user :crowberto
         (is (= "moved this Dashboard to New collection."
                (u/build-sentence
-                (revision/diff-strings
+                (diff-strings
                  :model/Dashboard
                  {:name "Apple"}
                  {:name          "Apple"
@@ -188,7 +194,7 @@
       (mt/with-test-user :crowberto
         (is (= "moved this Dashboard from Old collection to New collection."
                (u/build-sentence
-                (revision/diff-strings
+                (diff-strings
                  :model/Dashboard
                  {:name          "Apple"
                   :collection_id coll-id-1}
@@ -198,7 +204,7 @@
 (deftest ^:parallel diff-dashboards-str-update-tabs-test
   (testing "update tabs"
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Dashboard x y)))
+                           (u/build-sentence (diff-strings :model/Dashboard x y)))
       {:tabs [{:id 0 :name "First tab" :position 0}]}
       {:tabs [{:id 0 :name "First tab" :position 0}
               {:id 1 :name "Second tab" :position 1}]}
@@ -244,7 +250,8 @@
                                                             :type "category"}]}
          :model/Collection       coll      {:name "A collection"}]
         (mt/with-temporary-setting-values [enable-public-sharing true]
-          (let [columns    (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+          (let [columns    (disj (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+                                 :archived_directly)
                 update-col (fn [col value]
                              (cond
                                (= col :collection_id)              (:id coll)
@@ -257,6 +264,7 @@
                                (= col :embedding_params)           {:category_name "locked"}
                                (= col :embedding_type)             "static-legacy"
                                (= col :public_uuid)                (str (random-uuid))
+                               (= col :width)                      "full"
                                (int? value)                        (inc value)
                                (boolean? value)                    (not value)
                                (string? value)                     (str value "_changed")))]
@@ -265,7 +273,7 @@
                     changes {col (update-col col (get dashboard col))}]
                 (clean-revisions-for-dashboard (:id dashboard))
                 ;; do the update
-                (t2/update! :model/Dashboard (:id dashboard) changes)
+                (t2/update! :model/Dashboard :id (:id dashboard) changes)
                 (create-dashboard-revision! (:id dashboard) false)
                 (testing (format "we should track when %s changes" col)
                   (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))
@@ -275,7 +283,7 @@
                 (when-not (#{:made_public_by_id :archived_directly} col)
                   (testing (format "we should have a revision description for %s" col)
                     (is (some? (u/build-sentence
-                                (revision/diff-strings
+                                (diff-strings
                                  :model/Dashboard
                                  before
                                  changes))))))))))))))
@@ -312,7 +320,7 @@
           (doseq [col columns]
             (clean-revisions-for-dashboard (:id dashboard))
             ;; do the update
-            (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
+            (t2/update! :model/DashboardCard :id (:id dashcard) {col (update-col col (get dashcard col))})
             (create-dashboard-revision! (:id dashboard) false)
             (testing (format "we should track when %s changes" col)
               (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
@@ -337,7 +345,7 @@
           (doseq [col columns]
             (clean-revisions-for-dashboard (:id dashboard))
             ;; do the update
-            (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
+            (t2/update! :model/DashboardTab :id (:id dashtab) {col (update-col col (get dashtab col))})
             (create-dashboard-revision! (:id dashboard) false)
             (testing (format "we should track when %s changes" col)
               (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
@@ -396,7 +404,7 @@
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
-        (t2/update! :model/Dashboard dashboard-id
+        (t2/update! :model/Dashboard :id dashboard-id
                     {:name               "Revert Test"
                      :auto_apply_filters false
                      :description        "something"})
@@ -440,7 +448,7 @@
 (defn- create-dashboard-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Dashboard :id dash-id)
     :entity       :model/Dashboard
     :id           dash-id
@@ -505,7 +513,7 @@
                                                                                 :dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
         ;; 2. update a tab name
-        (t2/update! :model/DashboardTab tab-1-id {:name "Tab 1 with new name"})
+        (t2/update! :model/DashboardTab :id tab-1-id {:name "Tab 1 with new name"})
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-1-id :name "Tab 1 with new name" :position 0}
@@ -531,8 +539,8 @@
                                                                                 :dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
         ;; 2. delete the 1st tab and re-position the second tab
-        (t2/delete! :model/DashboardTab tab-1-id)
-        (t2/update! :model/DashboardTab tab-2-id {:position 0})
+        (t2/delete! :model/DashboardTab :id tab-1-id)
+        (t2/update! :model/DashboardTab :id tab-2-id {:position 0})
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
@@ -593,14 +601,14 @@
                                          :col              0
                                          :size_x           4
                                          :size_y           4}])
-      (t2/delete! :model/DashboardCard card-2-tab-1)
-      (t2/update! :model/DashboardCard card-1-tab-1 {:row 10 :col 10})
+      (t2/delete! :model/DashboardCard :id card-2-tab-1)
+      (t2/update! :model/DashboardCard :id card-1-tab-1 {:row 10 :col 10})
       ;; 2.b: delete tab 2
-      (t2/delete! :model/DashboardTab tab-2-id)
+      (t2/delete! :model/DashboardTab :id tab-2-id)
       ;; 2.c: create a new tab with 1 card
-      (let [new-tab-id (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
-                                                                      :position     1
-                                                                      :dashboard_id dashboard-id})]
+      (let [[new-tab-id] (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+                                                                        :position     1
+                                                                        :dashboard_id dashboard-id})]
         (t2/insert! :model/DashboardCard {:dashboard_id     dashboard-id
                                           :dashboard_tab_id new-tab-id
                                           :row              0
@@ -615,7 +623,7 @@
         (testing "and position of first card is (0,0)"
           (is (=? {:row 0
                    :col 0}
-                  (t2/select-one :model/DashboardCard card-1-tab-1)))))
+                  (t2/select-one :model/DashboardCard :id card-1-tab-1)))))
       (testing "tab \"Tab 2\" is restored"
         (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
           (is (= 1 (:position new-tab-2)))
@@ -665,7 +673,7 @@
     ;; 2. delete all the dashcards
     (t2/delete! :model/DashboardCard :dashboard_id dashboard-id)
     (create-dashboard-revision! dashboard-id false)
-    (t2/delete! :model/Card will-be-deleted-card)
+    (t2/delete! :model/Card :id will-be-deleted-card)
     (t2/update! :model/Card :id will-be-archived-card {:archived true})
     (testing "revert should not include archived or deleted card ids (#34884)"
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
@@ -685,7 +693,7 @@
       ;; 0. create initial dashboard revision
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add two parameters - one with a card that will be deleted, one with a card that stays
-      (t2/update! :model/Dashboard dashboard-id
+      (t2/update! :model/Dashboard :id dashboard-id
                   {:parameters [{:id                    "deleted-source"
                                  :name                  "Filter with deleted source"
                                  :slug                  "deleted_source"
@@ -706,10 +714,10 @@
                                  :type "category"}]})
       (create-dashboard-revision! dashboard-id false)
       ;; 2. remove the parameters (simulating user changing the filter settings)
-      (t2/update! :model/Dashboard dashboard-id {:parameters []})
+      (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
       (create-dashboard-revision! dashboard-id false)
       ;; 3. delete one card and archive another scenario - here we just delete
-      (t2/delete! :model/Card value-source-card)
+      (t2/delete! :model/Card :id value-source-card)
       ;; 4. revert to the revision that had parameters referencing the now-deleted card
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (let [reverted-params (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
@@ -737,7 +745,7 @@
       ;; 0. create initial dashboard revision
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add a parameter with a card source
-      (t2/update! :model/Dashboard dashboard-id
+      (t2/update! :model/Dashboard :id dashboard-id
                   {:parameters [{:id                    "archived-source"
                                  :name                  "Filter with archived source"
                                  :slug                  "archived_source"
@@ -747,10 +755,10 @@
                                                          :value_field [:field 1 nil]}}]})
       (create-dashboard-revision! dashboard-id false)
       ;; 2. remove the parameters
-      (t2/update! :model/Dashboard dashboard-id {:parameters []})
+      (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
       (create-dashboard-revision! dashboard-id false)
       ;; 3. archive the card
-      (t2/update! :model/Card will-be-archived-card {:archived true})
+      (t2/update! :model/Card :id will-be-archived-card {:archived true})
       ;; 4. revert to the revision that had parameters referencing the now-archived card
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (let [reverted-params (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]

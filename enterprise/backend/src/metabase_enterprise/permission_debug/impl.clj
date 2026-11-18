@@ -13,14 +13,14 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
-   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,7 +49,7 @@
   "Arguments for the Debugger function. The model type being operated on is inferred by the requested action type"
   [:map
    [:user-id pos-int?]
-   [:model-id :string]
+   [:model-id pos-int?]
    [:action-type ActionType]])
 
 (defmulti debug-permissions
@@ -82,22 +82,20 @@
 
 (mu/defmethod debug-permissions ::is-superuser :- DebuggerSchema
   [{:keys [action-type model-id]} :- DebuggerArguments]
-  ()
   {:decision    "allow"
    :model-type  (case (namespace action-type)
                   "card" "card")
-   :model-id    model-id
+   :model-id    (str model-id)
    :segment     #{}
    :message     [(tru "Superuser is allowed full access")]
    :data        {}
    :suggestions {}})
 
 (defn- user-can-read?
-  "Reset the bound permissions to run a can read check for a specific user"
-  [model pk user-id]
-  (binding [api/*current-user-id* user-id
-            api/*current-user-permissions-set* (delay (perms/user-permissions-set user-id))]
-    (mi/can-read? model pk)))
+  "Whether the User with `user-id` can read the Card with `card-id`, checked as that User."
+  [card-id user-id]
+  (request/with-current-user user-id
+    (boolean (some-> (permission-debug.db/card card-id) (t2/hydrate :can_read) mi/can-read?))))
 
 (mu/defn- merge-permission-check :- DebuggerSchema
   "Merges n permissions responses with right most wins semantics. model-type and model-id must match across
@@ -143,10 +141,10 @@
 
 (mu/defmethod debug-permissions :card/read :- DebuggerSchema
   [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
-  (let [can-read? (user-can-read? :model/Card (Integer/parseInt model-id) user-id)]
+  (let [can-read? (user-can-read? model-id user-id)]
     {:decision    (if can-read? "allow" "denied")
      :model-type  "card"
-     :model-id    model-id
+     :model-id    (str model-id)
      :segment     #{}
      :message     [(if can-read?
                      (tru "User has permission to read this card")
@@ -199,15 +197,14 @@
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/read))
-   (let [card-id (Integer/parseInt model-id)
-         card (permission-debug.db/card card-id)
+   (let [card (permission-debug.db/card model-id)
          blocked-by-group (check-table-permissions user-id card
                                                    {:perms/view-data :blocked}
                                                    {:perms/view-data :legacy-no-self-service})]
      {:decision    (if (seq blocked-by-group) "denied" "allow")
       :segment     #{}
       :model-type  "card"
-      :model-id    model-id
+      :model-id    (str model-id)
       :message     [(if (seq blocked-by-group)
                       (tru "User does not have permission to query this card")
                       (tru "User has permission to query this card"))]
@@ -219,8 +216,7 @@
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/query))
-   (let [card-id (Integer/parseInt model-id)
-         card (permission-debug.db/card card-id)
+   (let [card (permission-debug.db/card model-id)
          limited-by-group (check-table-permissions user-id card
                                                    {:perms/download-results :ten-thousand-rows}
                                                    {:perms/download-results :one-million-rows})
@@ -232,7 +228,7 @@
                      (seq limited-by-group) "limited"
                      :else "allow")
       :model-type  "card"
-      :model-id    model-id
+      :model-id    (str model-id)
       :segment     #{}
       :message     [(cond
                       (seq blocked-by-group) (tru "User does not have permission to download data from this card")

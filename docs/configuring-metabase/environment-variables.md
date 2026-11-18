@@ -1,5 +1,6 @@
 ---
 title: Environment variables
+summary: Every environment variable you can use to configure Metabase. Environment variables take precedence over settings in the admin panel.
 redirect_from:
   - /docs/latest/operations-guide/environment-variables
 ---
@@ -488,6 +489,17 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DEPRECATED_AGENT_API_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.66.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+
+Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
+
 ### `MB_DISABLE_AUTO_SYNC`
 
 - Type: boolean
@@ -891,7 +903,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help/premium`
+- Default: `https://www.metabase.com/help-premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -959,6 +971,29 @@ Maximum number of fields per database to score for dimension interestingness in 
   in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
   `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
   NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
+
+### `MB_ISOLATED_ORIGIN`
+
+- Type: string
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+A second address for this Metabase, such as https://example-isolated.com, that the browser keeps apart from the session: it never sends the session cookie there. Metabase serves data apps from it, so a data app reaches Metabase only through the page that shows it.
+
+Point this address at the same Metabase. The browser never sends the session cookie to it, so Metabase
+  serves content there that must stay apart from the session. Data apps run on it, and every request they make to
+  Metabase goes through the page that shows them. The address must meet these requirements:
+
+  - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
+  - Its host name differs from the site URL's host name. A different port isn't enough.
+  - It uses https when the site URL does.
+  - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
+
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
+  domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
+  `SameSite` is `lax` or `strict`.
 
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
@@ -1939,7 +1974,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 ### `MB_METABOT_QUERY_EXECUTION_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `true`
 - [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
@@ -2166,6 +2201,17 @@ cron syntax string to schedule refreshing persisted models.
 
 Allow persisting models into the source database.
 
+### `MB_PIVOT_MAX_RESULT_ROWS`
+
+- Type: integer
+- Default: `200000`
+- [Exported as](../installation-and-operation/serialization.md): `pivot-max-result-rows`.
+- [Configuration file name](./config-file.md): `pivot-max-result-rows`
+
+Maximum number of rows a pivot query can return. Overrides MB_AGGREGATED_QUERY_ROW_LIMIT for pivot queries.
+
+Applies to pivot queries only. When MB_USE_NATIVE_PIVOT_TABLES is on and the driver supports native pivots, this is a hard cap on the number of rows a pivot query returns. Otherwise it only approximates the cap, and larger pivots can exceed it. Must be less than 1048575.
+
 ### `MB_PREMIUM_EMBEDDING_TOKEN`
 
 - Type: string
@@ -2229,83 +2275,83 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+Whether a read-only instance pulls changes from the repository on a schedule.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+How often, in minutes, a read-only instance that pulls automatically checks the repository for changes.
 
 ### `MB_REMOTE_SYNC_BRANCH`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-branch`
 
-The remote branch to sync with, e.g. `main`.
-
-### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
-
-- Type: integer
-- Default: `60`
-- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
-
-Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+The branch of the repository to sync with, such as `main`.
 
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `60`
 - [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
 
-Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
+How long, in seconds, remote sync waits for the git repository to respond.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
+How long, in milliseconds, a remote sync task can go without a sign that it is still running before Metabase ends it.
 
 ### `MB_REMOTE_SYNC_TOKEN`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-token`
 
-An Authorization Bearer token allowing access to the git repo over HTTP.
-
-### `MB_REMOTE_SYNC_TRANSFORMS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-transforms`
-
-Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+An access token for the git repository, such as a personal access token.
 
 ### `MB_REMOTE_SYNC_TYPE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
 - Default: `read-only`
 - [Configuration file name](./config-file.md): `remote-sync-type`
 
-Git synchronization type - :read-write or :read-only.
+Whether this instance pushes synced content to the repository (read-write) or only pulls it (read-only).
 
 ### `MB_REMOTE_SYNC_URL`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
+The URL of the git repository to sync with, such as `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -3103,6 +3149,14 @@ Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
 
 Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
+
+### `MB_WORKSPACES_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `workspaces-enabled`
+
+Whether this instance is a workspace. A transform on a database that has a `database-workspace-schema` writes to that schema instead of to its production table, and later reads of the production table read the workspace copy. A transform on a database that has no `database-workspace-schema` is refused. Not the per-database switch that a parent uses to offer workspaces (`database-enable-workspaces`). Turning this setting off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping (the record that sends reads to the workspace copy). Unsetting `MB_WORKSPACES_ENABLED` does not. While `MB_WORKSPACES_ENABLED` is set, a write of the other value is refused, a `config.yml` that sets the other value stops Metabase from starting, and `PUT /api/database/:id` and `POST /api/ee/workspace-instance/current` refuse to change a database's `database-workspace-schema`.
 
 ## Other environment variables
 

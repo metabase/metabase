@@ -33,6 +33,8 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
@@ -103,7 +105,7 @@
    [:metabase.query-processor.util.add-alias-info/join-alias->escaped
     {:optional true}
     [:map-of [:ref ::join/alias] :string]]
-   [:metabase.driver.sql.query-processor/cte-level {:optional true} nat-int?]])
+   [:metabase.driver.sql.query-processor/cte-name {:optional true} :string]])
 
 (mr/def ::stage.native
   [:and
@@ -127,9 +129,8 @@
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
      [:native {:optional true} [:or
                                 :string
-                                [:schema {::mr/deliberately-open true
-                                          :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
-                                 :some]]]
+                                [:schema {:description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
+                                 [:ref ::common/driver-native-form]]]]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
@@ -435,7 +436,8 @@
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
-           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+           :json-schema   {}}
    [:mbql.stage/native [:fn {:error/message "Initial native stage"} map?]]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
@@ -443,10 +445,9 @@
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
-           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
-   [:mbql.stage/native [:fn
-                        {:error/message "Native stages are only allowed as the first stage of a query or join."}
-                        (constantly false)]]
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+           :json-schema   {}}
+   [:mbql.stage/native (mu/never {:error/message "Native stages are only allowed as the first stage of a query or join."})]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
                         (complement (some-fn :source-table :source-card))]]])
@@ -664,9 +665,8 @@
   "A driver's native query: a native query document, or a form in the driver's own shape such as a keyword-keyed map decoded from a JSON request."
   [:or
    ::native-query-document-value
-   [:schema {::mr/deliberately-open true
-             :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
-    :some]])
+   [:schema {:description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
+    [:ref ::common/driver-native-form]]])
 
 (mr/def ::compiled-native-query
   "A native query compiled from this query by [[metabase.query-processor.compile]], ready to hand to the driver.
@@ -676,8 +676,7 @@
   Deliberately NOT closed: drivers add their own keys, e.g. Mongo adds `:collection`, `:projections` and `:mbql?`
   (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
   compiled form is the native stage itself, carrying every key a `::stage.native` has."
-  [:map {::mr/deliberately-open true
-         :description "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage"}
+  [:map {:description "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage"}
    [:query  ::driver-native-query]
    [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
 
@@ -728,13 +727,17 @@
    [:pivot_measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:show_row_totals    {:optional true} [:maybe :boolean]]
    [:show_column_totals {:optional true} [:maybe :boolean]]
-   [:viz-settings {:optional true} [:maybe [:ref ::common/visualization-settings]]]
+   [:viz-settings {:optional true} [:maybe [:ref ::lib.schema.visualization/visualization-settings]]]
    [:user-parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib.convert/converted? {:optional true} :boolean]
    [:qp/compiled        {:optional true} [:ref ::compiled-native-query]]
    [:qp/compiled-inline {:optional true} [:ref ::compiled-native-query]]
+   ;; the MBQL stages a native-only query was compiled from, added by [[metabase.query-processor.execute]] when it
+   ;; hands a compiled query to a driver that supports `:mbql-5-native-query-execution`
+   [:qp/original-stages {:optional true} [:ref ::stages]]
    [:qp/source-card-id {:optional true} [:ref ::id/card]]
    [:qp/skip-result-metadata-persistence {:optional true} :boolean]
+   [:qp/non-default-parameterized?       {:optional true} :boolean]
    [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
    [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]
@@ -789,28 +792,21 @@
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"
      :type         ":type is not allowed in MBQL 5, use :lib/type instead."})])
 
+(def external-registry
+  "[[id/external-registry]], plus the clauses that change shape when their ids do, for a local registry that describes a
+  schema as serialization writes it."
+  (merge id/external-registry
+         {;; this spec has a :multi clause that assumes field IDs
+          ;; must be integers. the 3 in the assoc-in call refers to
+          ;; the :multi and the 2 refers to :dispatch-type/integer;
+          ;; if those get moved, this will need to change
+          :mbql.clause/field (assoc-in (mr/schema :mbql.clause/field)
+                                       [3 2 0] :dispatch-type/sequential)
+          ::common/options   ::common/external-options}))
+
 (mr/def ::external-query
   "Schema for \"External MBQL\" 5 query."
-  [:schema {:registry {::id/database :string
-                       ::id/card :string
-                       ::id/segment :string
-                       ::id/measure :string
-                       ::id/snippet :string
-                       ::id/schema [:or nil? :string]
-                       ::id/table [:cat ::id/database ::id/schema :string]
-                       ::id/field [:cat ::id/database ::id/schema :string [:+ :string]]
-                       ;; this spec has a :multi clause that assumes field IDs
-                       ;; must be integers. the 3 in the assoc-in call refers to
-                       ;; the :multi and the 2 refers to :dispatch-type/integer;
-                       ;; if those get moved, this will need to change
-                       :mbql.clause/field (assoc-in (mr/schema :mbql.clause/field)
-                                                    [3 2 0] :dispatch-type/sequential)
-                       ;; similarly we need to get rid of the :lib/uuid key of
-                       ::common/options (update (mr/schema ::common/options) 2
-                                                (fn [map-form]
-                                                  (into []
-                                                        (remove #(and (vector? %) (= :lib/uuid (first %))))
-                                                        map-form)))}}
+  [:schema {:registry external-registry}
    [:ref ::query]])
 
 (defn native-only-query?

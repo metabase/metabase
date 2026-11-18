@@ -43,7 +43,6 @@ function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
     : undefined;
 
   return renderHookWithProviders(() => useEmbeddingThemeEditor(themeId), {
-    withUndos: true,
     withRouter: true,
     storeInitialState,
   });
@@ -60,11 +59,13 @@ describe("useEmbeddingThemeEditor", () => {
 
     expect(result.current.isLoading).toBe(true);
 
+    // The theme is copied into the editor state in an effect, after the
+    // request has stopped loading.
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.currentTheme?.name).toBe("My theme");
     });
 
-    expect(result.current.currentTheme?.name).toBe("My theme");
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.currentTheme?.settings.colors?.brand).toBe("#509EE3");
     expect(result.current.isDirty).toBe(false);
   });
@@ -490,7 +491,7 @@ describe("useEmbeddingThemeEditor", () => {
         expect(result.current.currentTheme).not.toBeNull();
       });
 
-      const saved = await result.current.handleSave();
+      const saved = await act(() => result.current.handleSave());
 
       expect(saved?.id).toBe(42);
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(

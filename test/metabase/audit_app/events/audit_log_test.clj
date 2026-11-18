@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -68,7 +69,8 @@
           (mt/with-test-user :rasta
             (let [old-card (assoc card :name "Old Name", :type :question)]
               (is (= {:object card :previous-object old-card :user-id (mt/user->id :rasta)}
-                     (events/publish-event! :event/card-update {:object card :previous-object old-card :user-id (mt/user->id :rasta)})))
+                     (events/publish-event! :event/card-update {:object card :previous-object old-card
+                                                                :user-id (mt/user->id :rasta)})))
               (is (partial=
                    {:topic    :card-update
                     :user_id  (mt/user->id :rasta)
@@ -123,50 +125,44 @@
             :details  {:name "My Cool Dashboard", :description nil}}
            (mt/latest-audit-log-entry "dashboard-delete" (:id dashboard)))))))
 
+(defn- dashcard-details
+  [dashboard card dashcard]
+  {:name        (:name dashboard)
+   :description nil
+   :dashcards   [{:description (:description card)
+                  :name        (:name card)
+                  :id          (:id dashcard)
+                  :card_id     (:id card)}]})
+
 (deftest dashboard-add-cards-event-test
   (testing :dashboard-add-cards
-    (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
-                   :model/Card          card {}
-                   :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (let [event {:object    dashboard
-                   :dashcards [dashcard]
-                   :user-id   (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/dashboard-add-cards event)))
-        (is (partial=
-             {:topic    :dashboard-add-cards
-              :user_id  (mt/user->id :rasta)
-              :model    "Dashboard"
-              :model_id (:id dashboard)
-              :details  {:name        "My Cool Dashboard"
-                         :description nil
-                         :dashcards   [{:description (:description card)
-                                        :name        (:name card)
-                                        :id          (:id dashcard)
-                                        :card_id     (:id card)}]}}
-             (mt/latest-audit-log-entry "dashboard-add-cards" (:id dashboard))))))))
+    (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}
+                   :model/Card      card {}]
+      (mt/with-test-user :rasta
+        (let [dashcard (t2/insert-returning-instance! :model/DashboardCard {:dashboard_id (:id dashboard)
+                                                                            :card_id      (:id card)
+                                                                            :row 0 :col 0 :size_x 4 :size_y 4})]
+          (is (partial=
+               {:topic    :dashboard-add-cards
+                :user_id  (mt/user->id :rasta)
+                :model    "Dashboard"
+                :model_id (:id dashboard)
+                :details  (dashcard-details dashboard card dashcard)}
+               (mt/latest-audit-log-entry "dashboard-add-cards" (:id dashboard)))))))))
 
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
     (mt/with-temp [:model/Dashboard     dashboard {:name "My Cool Dashboard"}
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
-      (let [event {:object    dashboard
-                   :dashcards [dashcard]
-                   :user-id   (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/dashboard-remove-cards event)))
+      (mt/with-test-user :rasta
+        (t2/delete! :model/DashboardCard :id (:id dashcard))
         (is (partial=
-             {:topic       :dashboard-remove-cards
-              :user_id     (mt/user->id :rasta)
-              :model       "Dashboard"
-              :model_id    (:id dashboard)
-              :details     {:name        "My Cool Dashboard"
-                            :description nil
-                            :dashcards   [{:description (:description card)
-                                           :name        (:name card)
-                                           :id          (:id dashcard)
-                                           :card_id     (:id card)}]}}
+             {:topic    :dashboard-remove-cards
+              :user_id  (mt/user->id :rasta)
+              :model    "Dashboard"
+              :model_id (:id dashboard)
+              :details  (dashcard-details dashboard card dashcard)}
              (mt/latest-audit-log-entry "dashboard-remove-cards" (:id dashboard))))))))
 
 (deftest install-event-test
@@ -179,86 +175,6 @@
             :model_id    nil
             :details     {}}
            (mt/latest-audit-log-entry "install")))))
-
-(deftest subscription-events-test
-  (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
-                 :model/Pulse          pulse {:archived     false
-                                              :name         "name"
-                                              :dashboard_id dashboard-id
-                                              :parameters   ()}]
-    (let [recipients [{:email "test@metabase.com"}
-                      {:id    (mt/user->id :rasta)
-                       :email "rasta@metabase.com"}]
-          pulse      (assoc pulse
-                            :channels [{:channel_type  :email
-                                        :schedule_type :daily
-                                        :recipients    recipients}])]
-      (testing :subscription-update
-        (is (= {:object pulse :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/subscription-update {:object pulse :user-id (mt/user->id :rasta)})))
-        (is (= {:topic       :subscription-update
-                :user_id     (mt/user->id :rasta)
-                :model       "Pulse"
-                :model_id    (:id pulse)
-                :details     {:archived     false
-                              :name         "name"
-                              :dashboard_id dashboard-id
-                              :parameters   []
-                              :channel      ["email"]
-                              :schedule     ["daily"]
-                              :recipients   [recipients]}}
-               (mt/latest-audit-log-entry "subscription-update" (:id pulse)))))
-      (testing :subscription-create
-        (is (= {:object pulse :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/subscription-create {:object pulse :user-id (mt/user->id :rasta)})))
-        (is (= {:topic       :subscription-create
-                :user_id     (mt/user->id :rasta)
-                :model       "Pulse"
-                :model_id    (:id pulse)
-                :details     {:archived     false
-                              :name         "name"
-                              :dashboard_id dashboard-id
-                              :parameters   []
-                              :channel      ["email"]
-                              :schedule     ["daily"]
-                              :recipients   [recipients]}}
-               (mt/latest-audit-log-entry "subscription-create" (:id pulse))))))))
-
-(deftest alert-events-test
-  (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
-                 :model/Card           card {:name "card-name"}
-                 :model/Pulse          pulse {:archived     false
-                                              :name         "name"
-                                              :dashboard_id dashboard-id
-                                              :parameters   ()}]
-    (let [pulse (-> pulse
-                    (assoc :card card)
-                    (assoc :channels [{:channel_type  :email
-                                       :schedule_type :daily
-                                       :recipients    [{:email "test@metabase.com"}
-                                                       {:id    (mt/user->id :rasta)
-                                                        :email "rasta@metabase.com"}]}
-                                      {:channel_type  :slack
-                                       :schedule_type :hourly
-                                       :recipients    [{:id (mt/user->id :rasta)}]}]))]
-      (testing :alert-update
-        (is (= {:object pulse :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/alert-update {:object pulse :user-id (mt/user->id :rasta)})))
-        (is (= {:topic       :alert-update
-                :user_id     (mt/user->id :rasta)
-                :model       "Card"
-                :model_id    (:id pulse)
-                :details     {:archived   false
-                              :name       "card-name"
-                              :card_id    (:id card)
-                              :parameters []
-                              :channel    ["email" "slack"]
-                              :schedule   ["daily" "hourly"]
-                              :recipients [[{:email "test@metabase.com"}
-                                            {:id    (mt/user->id :rasta)
-                                             :email "rasta@metabase.com"}]
-                                           [{:id (mt/user->id :rasta)}]]}}
-               (mt/latest-audit-log-entry "alert-update" (:id pulse))))))))
 
 (deftest subscription-unsubscribe-event-test
   (testing :subscription-unsubscribe
@@ -346,9 +262,9 @@
 (deftest segment-update-event-test
   (testing :segment-update
     (mt/with-temp [:model/Segment segment]
-      (let [event (-> {:object segment}
-                      (assoc :revision-message "update this mofo")
-                      (assoc :user-id (mt/user->id :rasta)))]
+      (let [event {:object  segment
+                   :context {:revision-message "update this mofo"}
+                   :user-id (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/segment-update event)))
         (is (= {:topic       :segment-update
@@ -365,9 +281,9 @@
 (deftest segment-delete-event-test
   (testing :segment-delete
     (mt/with-temp [:model/Segment segment]
-      (let [event (assoc {:object segment}
-                         :revision-message "deleted"
-                         :user-id (mt/user->id :rasta))]
+      (let [event {:object  segment
+                   :context {:revision-message "deleted"}
+                   :user-id (mt/user->id :rasta)}]
         (is (= event
                (events/publish-event! :event/segment-delete event)))
         (is (= {:topic       :segment-delete
@@ -416,8 +332,9 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (let [user   (mt/fetch-user :lucky)
-            event {:object          user
-                   :previous-object (assoc user :last_name "Charms")}]
+            event {:object          (assoc user :last_name "Pigeon")
+                   :previous-object (assoc user :last_name "Charms")
+                   :user-id         (mt/user->id :rasta)}]
         (is (= event (events/publish-event! :event/user-update event)))
         (is (partial=
              {:model_id (mt/user->id :lucky)
@@ -427,32 +344,6 @@
               :topic    :user-update
               :model    "User"}
              (mt/latest-audit-log-entry :user-update (mt/user->id :lucky))))))))
-
-(deftest user-deactivated-event-test
-  (testing :event/user-deactivated
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [user (mt/fetch-user :lucky)]
-        (is (= {:object user}
-               (events/publish-event! :event/user-deactivated {:object user})))
-        (is (= {:model_id (mt/user->id :lucky)
-                :user_id  (mt/user->id :rasta)
-                :details  {}
-                :topic    :user-deactivated
-                :model    "User"}
-               (mt/latest-audit-log-entry :user-deactivated (mt/user->id :lucky))))))))
-
-(deftest user-reactivated-event-test
-  (testing :event/user-reactivated
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [user (mt/fetch-user :lucky)]
-        (is (= {:object user}
-               (events/publish-event! :event/user-reactivated {:object user})))
-        (is (= {:model_id (mt/user->id :lucky)
-                :user_id  (mt/user->id :rasta)
-                :details  {}
-                :topic    :user-reactivated
-                :model    "User"}
-               (mt/latest-audit-log-entry :user-reactivated (mt/user->id :lucky))))))))
 
 (deftest password-reset-initiated-event-test
   (testing :event/password-reset-initiated
@@ -480,12 +371,23 @@
                 :model    "User"}
                (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))
 
+(deftest password-changed-event-test
+  (testing :event/password-changed
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [user (mt/fetch-user :rasta)]
+        (is (= {:object user :user-id (mt/user->id :crowberto)}
+               (events/publish-event! :event/password-changed {:object user :user-id (mt/user->id :crowberto)})))
+        (is (= {:model_id (mt/user->id :rasta)
+                :user_id  (mt/user->id :crowberto)
+                :details  {}
+                :topic    :password-changed
+                :model    "User"}
+               (mt/latest-audit-log-entry :password-changed (mt/user->id :rasta))))))))
+
 (deftest create-channel-event-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-temp [:model/Channel channel notification.tu/default-can-connect-channel]
       (testing :event/channel-create
-        (is (= {:object channel}
-               (events/publish-event! :event/channel-create {:object channel})))
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:id          (:id channel)
@@ -497,10 +399,7 @@
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))
       (testing :event/channel-update
-        (events/publish-event! :event/channel-update {:object          (assoc channel
-                                                                              :details {:new-detail true}
-                                                                              :name "New Name")
-                                                      :previous-object channel})
+        (t2/update! :model/Channel :id (:id channel) {:name "New Name"})
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:previous {:name "Test channel"}
@@ -535,8 +434,8 @@
      (mt/with-temp [:model/Document document {:name "Test Document"
                                               :collection_id nil}]
        (testing :event/document-create
-         (is (= {:object document}
-                (events/publish-event! :event/document-create {:object document})))
+         (is (= {:object document :user-id (mt/user->id :rasta)}
+                (events/publish-event! :event/document-create {:object document :user-id (mt/user->id :rasta)})))
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:name "Test Document"
@@ -547,19 +446,21 @@
        (testing :event/document-update
          (let [updated-doc (assoc document :name "Updated Document")]
            (is (= {:object updated-doc
-                   :previous-object document}
+                   :previous-object document
+                   :user-id (mt/user->id :rasta)}
                   (events/publish-event! :event/document-update {:object updated-doc
-                                                                 :previous-object document})))
+                                                                 :previous-object document
+                                                                 :user-id (mt/user->id :rasta)})))
            (is (= {:model_id (:id document)
                    :user_id (mt/user->id :rasta)
-                   :details {:previous {:name "Test Document"}
-                             :new {:name "Updated Document"}}
+                   :details {:name "Updated Document"
+                             :collection_id nil}
                    :topic :document-update
                    :model "Document"}
                   (mt/latest-audit-log-entry :document-update (:id document))))))
        (testing :event/document-delete
-         (is (= {:object document}
-                (events/publish-event! :event/document-delete {:object document})))
+         (is (= {:object document :user-id (mt/user->id :rasta)}
+                (events/publish-event! :event/document-delete {:object document :user-id (mt/user->id :rasta)})))
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:name "Test Document"
@@ -571,12 +472,10 @@
 (deftest comment-events-test
   (mt/when-ee-evailable
    (mt/with-current-user (mt/user->id :rasta)
-     (mt/with-temp [:model/Document {doc-id :id}     {}
-                    :model/Comment  comment {:target_id doc-id
-                                             :content   {:type "doc", :content []}}]
+     (mt/with-temp [:model/Document {doc-id :id} {}
+                    :model/Comment  comment      {:target_id doc-id
+                                                  :content   {:type "doc", :content []}}]
        (testing :event/comment-create
-         (is (= {:object comment}
-                (events/publish-event! :event/comment-create {:object comment})))
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
                  :details {:target_id doc-id
@@ -587,20 +486,15 @@
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-create (:id comment)))))
        (testing :event/comment-update
-         (let [updated-comment (assoc comment :content "Updated comment")]
-           (is (= {:object updated-comment
-                   :previous-object comment}
-                  (events/publish-event! :event/comment-update {:object updated-comment
-                                                                :previous-object comment})))
-           (is (=? {:model_id (:id comment)
-                    :user_id (mt/user->id :rasta)
-                    :details {}
-                    :topic :comment-update
-                    :model "Comment"}
-                   (mt/latest-audit-log-entry :comment-update (:id comment))))))
+         (t2/update! :model/Comment :id (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+         (is (=? {:model_id (:id comment)
+                  :user_id (mt/user->id :rasta)
+                  :details {}
+                  :topic :comment-update
+                  :model "Comment"}
+                 (mt/latest-audit-log-entry :comment-update (:id comment)))))
        (testing :event/comment-delete
-         (is (= {:object comment}
-                (events/publish-event! :event/comment-delete {:object comment})))
+         (t2/delete! :model/Comment :id (:id comment))
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
                  :details {:target_type "document"
@@ -617,8 +511,6 @@
      (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                 :description "Test description"}]
        (testing :event/transform-create
-         (is (= {:object transform}
-                (events/publish-event! :event/transform-create {:object transform})))
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
@@ -627,26 +519,21 @@
                :topic :transform-create
                :model "Transform"}
               (mt/latest-audit-log-entry :transform-create (:id transform)))))
-       (testing :event/update-transform
-         (let [updated-transform (assoc transform :name "Updated Transform")]
-           (is (= {:object updated-transform
-                   :previous-object transform}
-                  (events/publish-event! :event/update-transform {:object updated-transform
-                                                                  :previous-object transform})))
-           (is (= {:model_id (:id transform)
-                   :user_id (mt/user->id :rasta)
-                   :details {:previous {:name "Test Transform"}
-                             :new {:name "Updated Transform"}}
-                   :topic :update-transform
-                   :model "Transform"}
-                  (mt/latest-audit-log-entry :update-transform (:id transform))))))
-       (testing :event/transform-delete
-         (is (= {:object transform}
-                (events/publish-event! :event/transform-delete {:object transform})))
+       (testing :event/transform-update
+         (t2/update! :model/Transform :id (:id transform) {:name "Updated Transform"})
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
-               :details {:name "Test Transform"
+               :details {:name "Updated Transform"}
+               :topic :update-transform
+               :model "Transform"}
+              (mt/latest-audit-log-entry :update-transform (:id transform)))))
+       (testing :event/transform-delete
+         (t2/delete! :model/Transform :id (:id transform))
+         (is (partial=
+              {:model_id (:id transform)
+               :user_id (mt/user->id :rasta)
+               :details {:name "Updated Transform"
                          :description "Test description"}
                :topic :transform-delete
                :model "Transform"}
@@ -656,8 +543,6 @@
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-temp [:model/Glossary glossary {:term "Test Term" :definition "Definition"}]
       (testing :event/glossary-create
-        (is (= {:object glossary}
-               (events/publish-event! :event/glossary-create {:object glossary})))
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
                 :details {:term "Test Term"}
@@ -665,24 +550,19 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
       (testing :event/glossary-update
-        (let [updated-glossary (assoc glossary :term "Updated Term")]
-          (is (= {:object updated-glossary
-                  :previous-object glossary}
-                 (events/publish-event! :event/glossary-update {:object updated-glossary
-                                                                :previous-object glossary})))
-          (is (= {:model_id (:id glossary)
-                  :user_id (mt/user->id :rasta)
-                  :details {:previous {:term "Test Term"}
-                            :new {:term "Updated Term"}}
-                  :topic :glossary-update
-                  :model "Glossary"}
-                 (mt/latest-audit-log-entry :glossary-update (:id glossary))))))
-      (testing :event/glossary-delete
-        (is (= {:object glossary}
-               (events/publish-event! :event/glossary-delete {:object glossary})))
+        (t2/update! :model/Glossary :id (:id glossary) {:term "Updated Term"})
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
-                :details {:term "Test Term"}
+                :details {:previous {:term "Test Term"}
+                          :new {:term "Updated Term"}}
+                :topic :glossary-update
+                :model "Glossary"}
+               (mt/latest-audit-log-entry :glossary-update (:id glossary)))))
+      (testing :event/glossary-delete
+        (t2/delete! :model/Glossary :id (:id glossary))
+        (is (= {:model_id (:id glossary)
+                :user_id (mt/user->id :rasta)
+                :details {:term "Updated Term"}
                 :topic :glossary-delete
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))
@@ -698,8 +578,8 @@
                        :started_at (t/offset-date-time 2025 9 30 14 0 0)
                        :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
          (testing "event published with re-fetched task after version is set"
-           (t2/update! :model/RemoteSyncTask task-id {:version "abc123"})
-           (let [completed-task (t2/select-one :model/RemoteSyncTask task-id)]
+           (t2/update! :model/RemoteSyncTask :id task-id {:version "abc123"})
+           (let [completed-task (t2/select-one :model/RemoteSyncTask :id task-id)]
              (events/publish-event! :event/remote-sync-import
                                     {:object completed-task
                                      :details {:branch "main"}
@@ -804,28 +684,58 @@
                :model_id 123}
               (mt/latest-audit-log-entry :table-data-edit)))))))
 
-(deftest table-publish-event-test
-  (testing ":event/table-publish event"
-    (mt/with-temp [:model/Table table {:name "My Cool Table"}]
-      (is (= {:object table :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/table-publish {:object table :user-id (mt/user->id :rasta)})))
-      (is (=?
-           {:topic    :table-publish
-            :user_id  (mt/user->id :rasta)
-            :model    "Table"
-            :model_id (:id table)
-            :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
-           (mt/latest-audit-log-entry "table-publish" (:id table)))))))
+(deftest batch-of-audited-writes-is-one-insert-test
+  (testing "the audit rows of a batch of writes by a user are inserted by one statement, in the order of the writes"
+    (mt/with-temp [:model/Card {a :id} {:name "A"}
+                   :model/Card {b :id} {:name "B"}
+                   :model/Card {c :id} {:name "C"}]
+      (let [inserts (atom 0)
+            before  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
+        (mt/with-dynamic-fn-redefs [audit-app.db/insert-audit-logs! (let [f (mt/original-fn #'audit-app.db/insert-audit-logs!)]
+                                                                      (fn [rows] (swap! inserts inc) (f rows)))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (events/with-batched-events
+              (t2/update! :model/Card :id b {:name "B2"})
+              (t2/update! :model/Card :id c {:name "C2"})
+              (t2/update! :model/Card :id a {:name "A2"}))))
+        (is (= 1 @inserts))
+        (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
+               (mapv (juxt :topic :model_id)
+                     (t2/query {:select   [:topic :model_id]
+                                :from     [:audit_log]
+                                :where    [:and [:> :id before] [:in :model_id [a b c]] [:= :model "Card"]]
+                                :order-by [[:id :asc]]}))))))))
 
-(deftest table-unpublish-event-test
-  (testing ":event/table-unpublish event"
-    (mt/with-temp [:model/Table table {:name "My Cool Table"}]
-      (is (= {:object table :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/table-unpublish {:object table :user-id (mt/user->id :rasta)})))
-      (is (=?
-           {:topic    :table-unpublish
-            :user_id  (mt/user->id :rasta)
-            :model    "Table"
-            :model_id (:id table)
-            :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
-           (mt/latest-audit-log-entry "table-unpublish" (:id table)))))))
+(deftest user-activation-is-recorded-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (t2/update! :model/User :id user-id {:is_active false})
+      (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-deactivated :model "User"}
+             (mt/latest-audit-log-entry :user-deactivated user-id)))
+      (t2/update! :model/User :id user-id {:is_active true})
+      (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-reactivated :model "User"}
+             (mt/latest-audit-log-entry :user-reactivated user-id))))))
+
+(deftest table-publication-is-recorded-test
+  (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
+        (t2/update! :model/Table :id (:id table) {:is_published published?})
+        (is (=? {:topic    topic
+                 :user_id  (mt/user->id :rasta)
+                 :model    "Table"
+                 :model_id (:id table)
+                 :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
+                (mt/latest-audit-log-entry topic (:id table))))))))
+
+(deftest public-links-are-recorded-test
+  (mt/with-temp [:model/Card      {card-id :id}      {}
+                 :model/Dashboard {dashboard-id :id} {}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[model id prefix] [[:model/Card card-id "card"] [:model/Dashboard dashboard-id "dashboard"]]]
+        (t2/update! model :id id {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :rasta)})
+        (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-created")) id))
+            "created")
+        (t2/update! model :id id {:public_uuid nil :made_public_by_id nil})
+        (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-deleted")) id))
+            "deleted")))))

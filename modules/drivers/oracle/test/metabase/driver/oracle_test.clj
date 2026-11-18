@@ -129,6 +129,12 @@
                               {:host "tcps://evil.example.com", :sid "ORCL"}]
                              ["a host carrying descriptor syntax"
                               {:host "h)(PORT=1521))(ADDRESS=(HOST=evil", :sid "ORCL", :ssl true}]
+                             ["a host list with a URL in it"
+                              {:host "h1,config-https://evil.example.com/c", :sid "ORCL"}]
+                             ["a host list with descriptor syntax in it"
+                              {:host "h1,h2)(PORT=1521))(ADDRESS=(HOST=evil", :sid "ORCL", :ssl true}]
+                             ["a host list with an empty entry"
+                              {:host "h1,,h2", :sid "ORCL"}]
                              ["a SID that closes the CONNECT_DATA clause and adds an address"
                               {:host "h", :sid "x))(ADDRESS=(PROTOCOL=tcp)(HOST=evil)(PORT=80)", :ssl true}]
                              ["a service name that closes the CONNECT_DATA clause and adds an address"
@@ -164,6 +170,8 @@
                              ["an IPv4 literal" {:host "10.0.0.4", :sid "ORCL"}]
                              ["an IPv6 literal" {:host "[2001:db8::1]", :sid "ORCL"}]
                              ["an underscore in the hostname" {:host "my_db.internal", :sid "ORCL"}]
+                             ["a comma-separated list of hosts"
+                              {:host "db1.example.com, 10.0.0.4,[2001:db8::1]", :service-name "svc"}]
                              ["a missing host"  {:sid "ORCL"}]
                              ["a blank host"    {:host "", :sid "ORCL"}]
                              ["a qualified service name"
@@ -190,6 +198,18 @@
                (:subname (sql-jdbc.conn/connection-details->spec
                           :oracle
                           {:host "h", :port "1521", :sid "ORCL", :ssl true}))))))
+    (testing "a list of hosts"
+      (testing "keeps the hosts in order, without the spaces around the commas"
+        (is (= "@db1,db2:1521/svc"
+               (:subname (sql-jdbc.conn/connection-details->spec
+                          :oracle
+                          {:host "db1 , db2", :port 1521, :service-name "svc"})))))
+      (testing "gives one SSL address for each host, in order"
+        (is (= (str "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=db1)(PORT=2484))"
+                    "(ADDRESS=(PROTOCOL=tcps)(HOST=db2)(PORT=2484))(CONNECT_DATA=(SERVICE_NAME=svc)))")
+               (:subname (sql-jdbc.conn/connection-details->spec
+                          :oracle
+                          {:host "db1,db2", :port 2484, :service-name "svc", :ssl true}))))))
     (testing "a blank detail names nowhere, so the defaults apply rather than an empty string reaching the descriptor"
       (is (= "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))"
              (mu/disable-enforcement
@@ -378,10 +398,19 @@
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
 
+(deftest host-list-failover-test
+  (mt/test-driver :oracle
+    (testing "a host list connects through the next host when the first host does not resolve"
+      (let [details (update (:details (mt/db)) :host #(str "db-down.invalid," %))]
+        (is (driver/can-connect? :oracle details))
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:details details}
+          (is (= [[1M]]
+                 (mt/rows (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1 FROM dual"))))))))))
+
 (deftest timezone-id-test
   (mt/test-driver :oracle
     (is (= (t/zone-id "Z")
-           (-> (driver/db-default-timezone :oracle (mt/db))
+           (-> (driver/db-default-timezone :oracle (lib.metadata/database (mt/metadata-provider)))
                t/zone-id
                .normalized)))))
 
@@ -417,51 +446,53 @@
   (testing "Don't try to generate queries with SELECT (...) AS source, Oracle hates `AS`"
     ;; TODO -- seems WACK that we actually have to create objects for this to work and can't just stick them in the QP
     ;; store.
-    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      {:database {:id     1
-                                                  :name   "db"
-                                                  :engine :oracle}
-                                       :tables   [{:id     1
-                                                   :db-id  1
-                                                   :schema "public"
-                                                   :name   "table"}]
-                                       :fields   [{:id            1
-                                                   :table-id      1
-                                                   :name          "field"
-                                                   :display-name  "Field"
-                                                   :database-type "char"
-                                                   :base-type     :type/Text}]})
-      (let [hsql (sql.qp/mbql->honeysql :oracle
-                                        {:database 1
-                                         :type     :query
-                                         :query {:source-query {:source-table 1
-                                                                :expressions  {"s" [:substring [:field 1 nil] 2]}
-                                                                :fields       [[:field 1 nil]
-                                                                               [:expression "s"]]}
-                                                 :fields       [[:field "s" {:base-type :type/Text}]]
-                                                 :limit        3}})]
-        (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
-          (is (= [["SELECT"
-                   "  *"
-                   "FROM"
-                   "  ("
-                   "    SELECT"
-                   "      \"__mb_source\".\"s\" \"s\""
-                   "    FROM"
-                   "      ("
-                   "        SELECT"
-                   "          \"public\".\"table\".\"field\" \"field\","
-                   "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
-                   "        FROM"
-                   "          \"public\".\"table\""
-                   "      ) \"__mb_source\""
-                   "  )"
-                   "WHERE"
-                   "  rownum <= 3"]]
-                 (-> (sql.qp/format-honeysql :oracle hsql)
-                     vec
-                     (update 0 (partial driver/prettify-native-form :oracle))
-                     (update 0 str/split-lines)))))))))
+    (let [mp    (lib.tu/mock-metadata-provider
+                 {:database {:id     1
+                             :name   "db"
+                             :engine :oracle}
+                  :tables   [{:id     1
+                              :db-id  1
+                              :schema "public"
+                              :name   "table"}]
+                  :fields   [{:id            1
+                              :table-id      1
+                              :name          "field"
+                              :display-name  "Field"
+                              :database-type "char"
+                              :base-type     :type/Text}]})
+          query (as-> (lib/query mp (lib.metadata/table mp 1)) query
+                  (lib/expression query "s" (lib/expression-clause :substring [(lib.metadata/field mp 1) 2] nil))
+                  (lib/with-fields query [(lib.metadata/field mp 1)
+                                          (lib/expression-ref query "s")])
+                  (lib/append-stage query)
+                  (lib/with-fields query [(lib.tu.notebook/find-col-with-spec
+                                           query (lib/fieldable-columns query) {} {:display-name "s"})])
+                  (lib/limit query 3))]
+      (qp.store/with-metadata-provider mp
+        (let [hsql (sql.qp/mbql->honeysql :oracle query)]
+          (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
+            (is (= [["WITH \"__mb_stage_0\" AS ("
+                     "  SELECT"
+                     "    \"public\".\"table\".\"field\" \"field\","
+                     "    SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
+                     "  FROM"
+                     "    \"public\".\"table\""
+                     ")"
+                     "SELECT"
+                     "  *"
+                     "FROM"
+                     "  ("
+                     "    SELECT"
+                     "      \"__mb_source\".\"s\" \"s\""
+                     "    FROM"
+                     "      \"__mb_stage_0\" \"__mb_source\""
+                     "  )"
+                     "WHERE"
+                     "  rownum <= 3"]]
+                   (-> (sql.qp/format-honeysql :oracle hsql)
+                       vec
+                       (update 0 (partial driver/prettify-native-form :oracle))
+                       (update 0 str/split-lines))))))))))
 
 (deftest return-clobs-as-text-test
   (mt/test-driver :oracle
@@ -483,7 +514,7 @@
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
               (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
-                (sync/sync-database! (mt/db) {:scan :schema}))
+                (sync/sync-database! (mt/id) {:scan :schema}))
               (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
                     id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
                 (testing "The CLOB is synced as a text field"
@@ -610,7 +641,7 @@
                                                            :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
-                        (sync/sync-database! database {:scan :schema})
+                        (sync/sync-database! (:id database) {:scan :schema})
                         ;; should be four tables from test-data
                         (is (= 8 (t2/count :model/Table :db_id (u/the-id database) :name [:like "test_data%"])))
                         (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
@@ -684,7 +715,7 @@
             sql        (format "SELECT CAST(TIMESTAMP '%s' AS TIMESTAMP WITH LOCAL TIME ZONE) AS timestamp_tz FROM dual" test-date)
             query      (-> (mt/native-query {:query sql})
                            (assoc-in [:middleware :format-rows?] false))
-            spec       #(sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            spec       #(sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             old-format (-> (jdbc/query (spec) "SELECT value FROM NLS_SESSION_PARAMETERS WHERE PARAMETER = 'NLS_TIMESTAMP_TZ_FORMAT'")
                            ffirst
                            val)
@@ -854,7 +885,7 @@
 (deftest table-privileges-test
   (mt/test-driver :oracle
     (testing "`current-user-table-privileges` returns correct structure and privileges"
-      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
         (is (seq privileges) "Should return at least one table")
         (doseq [priv privileges]

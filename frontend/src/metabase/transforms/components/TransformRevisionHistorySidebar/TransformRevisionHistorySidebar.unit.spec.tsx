@@ -1,13 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupTransformRevisionsEndpoint,
+  setupEntityRevisionsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type { Revision, Transform } from "metabase-types/api";
@@ -62,7 +63,7 @@ function setup({
   const onClose = jest.fn();
   const currentUser = mockUser;
 
-  setupTransformRevisionsEndpoint(transform.id, revisions);
+  setupEntityRevisionsEndpoint("transform", transform.id, revisions);
   setupUsersEndpoints([currentUser]);
 
   const state = createMockState({
@@ -131,6 +132,6 @@ describe("TransformRevisionHistorySidebar", () => {
     const closeButton = screen.getByRole("button", { name: /close/i });
     await userEvent.click(closeButton);
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 });

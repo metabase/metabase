@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { FormikHelpers } from "formik";
 import { useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
@@ -199,7 +200,7 @@ export const WebhookForm = ({
   }, [error]);
 
   const docsUrl = useSelector((state) =>
-    getDocsUrl(state, { page: "questions/sharing/alerts" }),
+    getDocsUrl(state, { page: "questions/alerts" }),
   );
 
   const handleTest = async (

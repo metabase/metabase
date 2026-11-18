@@ -10,6 +10,10 @@
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   ;; Side-effects: registers BigQuery driver multimethods for workspace
+   ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
+   ;; `destroy-workspace-isolation!`).
+   [metabase.driver.bigquery-cloud-sdk.workspaces]
    [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
@@ -23,8 +27,10 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -34,6 +40,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.auth.oauth2 ImpersonatedCredentials GoogleCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -92,27 +99,68 @@
   "Where `ServiceAccountCredentials` exchanges the signed JWT when the credentials JSON names no `token_uri`."
   "https://oauth2.googleapis.com/token")
 
-(defn- service-account-token-uri
-  "The URI [[bigquery.common/service-account-json->service-account-credential]] will POST a signed assertion to.
-  `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the credentials JSON, so this is a destination
-  chosen by whoever supplied the credentials rather than a fixed Google endpoint."
-  [service-account-json]
-  (or (when-not (str/blank? service-account-json)
-        (perf/not-empty (get (json/decode service-account-json) "token_uri")))
-      default-token-uri))
+(defn- json-urls
+  "Every string that looks like an HTTP(S) URL anywhere inside decoded JSON `x`."
+  [x]
+  (into [] (filter #(and (string? %) (re-find #"(?i)^https?://" %))) (tree-seq coll? seq x)))
+
+(defn- credential-urls
+  "The URLs the credentials in `details` make Metabase connect to while authenticating."
+  [{:keys [service-account-json credential-config-json] :as details}]
+  (case (:auth-mode details)
+    ;; `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the key, so where the signed assertion gets
+    ;; POSTed is a destination chosen by whoever supplied the credentials rather than a fixed Google endpoint.
+    ("service-account" nil) [(or (perf/not-empty (get (json/decode service-account-json)
+                                                      "token_uri"))
+                                 default-token-uri)]
+    ;; A credential configuration file is URLs all the way down: the token exchange endpoint, the service account
+    ;; impersonation endpoint, and often the place the subject token is fetched from (e.g. a cloud metadata server).
+    ;; Every one of them was chosen by whoever supplied the file, so report them all rather than a known subset.
+    "credential-config" (json-urls (json/decode credential-config-json))
+    ;; Application Default Credentials come from the Metabase server's own environment, not from `details`.
+    "application-default" []))
 
 (defmethod driver/connection-hosts :bigquery-cloud-sdk
-  [_driver {:keys [host service-account-json]}]
-  (driver/hosts-from-details
-   {:api-host   (if (str/blank? host) default-api-host host)
-    :token-host (service-account-token-uri service-account-json)}
-   [:api-host :token-host]))
+  [_driver {:keys [host] :as details}]
+  (into (driver/hosts-from-details {:api-host (if (str/blank? host) default-api-host host)} [:api-host])
+        (keep u.http/->hostname)
+        (credential-urls details)))
+
+(defn- maybe-scope-creds [{:keys [auth-mode credential-config-json] :as details}]
+  ;; A service account key needs scopes. Credentials the environment hands out, like the GCE/GKE metadata
+  ;; server's, can come with scopes of their own, and then the library asks us not to add any.
+  ;; If the WIF config sets scopes of its own, trust the admin's choice; skip .createScoped.
+  (let [^GoogleCredentials base-creds (bigquery.common/database-details->credentials details)
+        config-scopes (if (= "credential-config" auth-mode)
+                        (:scope (json/decode credential-config-json))
+                        [])]
+    (when-not (and (seq config-scopes)
+                   (= bigquery-scopes (filter (set bigquery-scopes) config-scopes)))
+      (log/warn "BigQuery credential config does not contain needed scopes"
+                {:scopes config-scopes}))
+    (if (or (perf/empty? config-scopes) (.createScopedRequired base-creds))
+      (.createScoped base-creds bigquery-scopes)
+      base-creds)))
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
-        creds        (.createScoped base-creds bigquery-scopes)
+  (let [base-creds   (bigquery.common/database-details->credentials details)
+        ;; Check if we should impersonate a different service account
+        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
+        ;; so the 1-hour lifetime is just the initial token validity period.
+        ;; Each query creates a fresh client, and the credentials handle refresh internally.
+        impersonating? (some? (:impersonate-service-account details))
+        final-creds  (if impersonating?
+                       (let [target-sa (:impersonate-service-account details)]
+                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
+                         (ImpersonatedCredentials/create
+                          (.createScoped base-creds bigquery-scopes)
+                          target-sa
+                          nil  ;; delegates (not needed)
+                          (java.util.ArrayList. bigquery-scopes)
+                          3600))  ;; 1 hour token lifetime
+                       (maybe-scope-creds details))
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -121,22 +169,31 @@
         universe-domain (or (:universe-domain details)
                             (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
                             (System/getProperty "google.cloud.universe_domain"))
-        read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
-                              (.setReadTimeout read-timeout-ms)
+                              (.setReadTimeout driver.settings/*query-timeout-ms*)
                               (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
-                       (.setCredentials creds)
+                       (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
+    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
+    ;; from the impersonation target SA, not from a key file), so the Google SDK
+    ;; would throw "A project ID is required for this service but could not be
+    ;; determined from the builder or the environment" when building the client.
+    ;; Fall back to the base SA's project id, which is what every non-impersonated
+    ;; call site is implicitly relying on through `getOptions.getProjectId`.
+    (when impersonating?
+      (when-let [pid (or (:project-id details)
+                         (.getProjectId base-creds))]
+        (.setProjectId bq-bldr ^String pid)))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
     (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
       ;; Jobs are created and billed in this project; queried tables can live elsewhere.
       (.setProjectId bq-bldr billing-project-id))
-    (.. bq-bldr build getService)))
+    (-> bq-bldr .build .getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |
@@ -306,19 +363,34 @@
                                      :where [:and
                                              [:= :o.table_name :t.table_name]
                                              [:= :o.option_name "require_partition_filter"]]}
-                                    :require_partition_filter]]
+                                    :require_partition_filter]
+                                   ;; TABLE_OPTIONS stores the description as a GoogleSQL string literal, e.g. `"it's \"x\""`.
+                                   ;; That is not always valid JSON (control characters come out as `\xHH`), but the STRING
+                                   ;; overload of JSON_VALUE decodes BigQuery's escapes, and returns NULL rather than throwing
+                                   ;; on anything it can't parse. (BigQuery rejects `SAFE.JSON_VALUE` on a STRING argument.)
+                                   [{:select [[[:json_value :o.option_value]]]
+                                     :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
+                                     :where [:and
+                                             [:= :o.table_name :t.table_name]
+                                             [:= :o.option_name "description"]]}
+                                    :description]]
                           :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
-        table-info (fn [dataset-id {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
-                     {:schema dataset-id
-                      :name table-name
-                      :database_require_filter
-                      (boolean (and
-                                ;; Materialized views can be partitioned, and whether the view require a filter or not is based
-                                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                                ;; thus we can't know whether the view require a filter or not.
-                                ;; Maybe this is something we can do once we can parse sql
-                                (= "BASE TABLE" table-type)
-                                require-partition-filter))})]
+        table-info (fn [dataset-id {table-name :table_name
+                                    table-type :table_type
+                                    require-partition-filter :require_partition_filter
+                                    description :description}]
+                     (cond-> {:schema dataset-id
+                              :name table-name
+                              :database_require_filter
+                              (boolean (and
+                                        ;; Materialized views can be partitioned, and whether the view require a filter or not is based
+                                        ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                                        ;; thus we can't know whether the view require a filter or not.
+                                        ;; Maybe this is something we can do once we can parse sql
+                                        (= "BASE TABLE" table-type)
+                                        require-partition-filter))}
+                       (not (str/blank? description))
+                       (assoc :description description)))]
     (->> (list-datasets details :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
@@ -416,16 +488,17 @@
 (defn- column-field-path-row->nested-col
   "Map a `COLUMN_FIELD_PATHS` row to a nested-column map (later keyed by its `:nfc-path`), or `nil` for a top-level
   (non-nested) field."
-  [dataset-id {data-type :data_type field-path-str :field_path table-name :table_name}]
+  [dataset-id {data-type :data_type field-path-str :field_path table-name :table_name description :description}]
   (let [field-path                (str/split field-path-str #"\.")
         [database-type base-type] (raw-type->database+base-type data-type)]
     (when-let [nfc-path (perf/not-empty (pop field-path))]
-      {:name          (peek field-path)
-       :table-name    table-name
-       :table-schema  dataset-id
-       :database-type database-type
-       :base-type     base-type
-       :nfc-path      nfc-path})))
+      (cond-> {:name          (peek field-path)
+               :table-name    table-name
+               :table-schema  dataset-id
+               :database-type database-type
+               :base-type     base-type
+               :nfc-path      nfc-path}
+        (not (str/blank? description)) (assoc :field-comment description)))))
 
 (defn- nested-rows->table-lookup
   "Build a single table's nested-column lookup `{nfc-path [cols]}` from that table's `COLUMN_FIELD_PATHS` rows.
@@ -455,18 +528,20 @@
      (fn [{column-name :column_name
            data-type :data_type
            database-position :ordinal_position
-           partitioned? :partitioned}]
+           partitioned? :partitioned
+           description :description}]
        (let [database-position (or (some-> database-position dec) max-position)
              [database-type base-type] (raw-type->database+base-type data-type)]
          (cond-> [(maybe-add-nested-fields
                    nested-column-lookup
-                   {:name column-name
-                    :table-name table-name
-                    :table-schema dataset-id
-                    :database-type database-type
-                    :base-type base-type
-                    :database-partitioned partitioned?
-                    :database-position database-position}
+                   (cond-> {:name column-name
+                            :table-name table-name
+                            :table-schema dataset-id
+                            :database-type database-type
+                            :base-type base-type
+                            :database-partitioned partitioned?
+                            :database-position database-position}
+                     (not (str/blank? description)) (assoc :field-comment description))
                    nil
                    database-position)]
            ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
@@ -482,9 +557,10 @@
 
 (defn- describe-dataset-table
   "Build the field descriptions for a single table from its joined `COLUMNS`/`COLUMN_FIELD_PATHS` rows (see
-  [[describe-dataset-fields-reducible]]). Each top-level column appears once per nested leaf, or once with a `nil`
-  `:field_path` when it has none, so de-dup the columns by `:column_name` and build the nested-field lookup from
-  the rows that carry a `:field_path` (whose leaf type is in `:nested_data_type`)."
+  [[describe-dataset-fields-reducible]]). Each top-level column appears once per field path -- its own entry
+  (`:field_path` = `:column_name`) plus one per nested field -- or once with a `nil` `:field_path` when it has none, so
+  de-dup the columns by `:column_name`, take each column's `:description` from its own entry, and build the
+  nested-field lookup from the rows that carry a `:field_path` (whose type is in `:nested_data_type`)."
   [dataset-id table-rows]
   (let [table-name    (:table_name (first table-rows))
         nested-lookup (nested-rows->table-lookup
@@ -492,10 +568,19 @@
                        (eduction (filter :field_path)
                                  (map #(assoc % :data_type (:nested_data_type %)))
                                  table-rows))
+        ;; the row kept by the de-dup below may belong to a nested field, so look up the column's own description
+        descriptions  (into {}
+                            (keep (fn [{column-name :column_name field-path :field_path description :description}]
+                                    (when (= column-name field-path)
+                                      [column-name description])))
+                            table-rows)
         ;; de-dup by `:column_name`, not `:ordinal_position`: BigQuery reports a NULL `ordinal_position` for
         ;; pseudo-columns (e.g. `_PARTITIONTIME`), and a table can carry more than one, so keying on position would
         ;; collapse distinct columns into one.
-        columns       (into [] (m/distinct-by :column_name) table-rows)]
+        columns       (into []
+                            (comp (m/distinct-by :column_name)
+                                  (map #(assoc % :description (get descriptions (:column_name %)))))
+                            table-rows)]
     (sort-by (juxt :table-name :database-position :name)
              (describe-dataset-rows nested-lookup dataset-id table-name columns))))
 
@@ -511,9 +596,10 @@
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
-  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (nested
-  STRUCT leaves) on `(table_name, column_name)`. A non-nested column yields one row with a `nil` `:field_path`; a STRUCT
-  column yields one row per nested leaf. Ordering by `table_name` keeps each table's rows contiguous, so we consume the
+  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (every
+  field path, which is also where descriptions live) on `(table_name, column_name)`. A column yields one row for its own
+  entry plus one per nested STRUCT field, or a single row with a `nil` `:field_path` when it has no entry (e.g.
+  pseudo-columns). Ordering by `table_name` keeps each table's rows contiguous, so we consume the
   live result with a `partition-by` transducer and reconstruct one table at a time (see [[describe-dataset-table]]) --
   never realizing more than a single table's rows. This matters for wide and/or deeply-nested datasets (e.g.
   GA4/Firebase exports, or schemas with thousands of columns per table) where realizing a whole batch's columns would
@@ -532,15 +618,15 @@
                                             [:c.ordinal_position :ordinal_position]
                                             [[:= :c.is_partitioning_column "YES"] :partitioned]
                                             [[:substr :p.data_type 1 max-data-type-length] :nested_data_type]
-                                            [:p.field_path :field_path]]
+                                            [:p.field_path :field_path]
+                                            ;; `COLUMNS` has no description column, so a top-level column's comes from
+                                            ;; its own `COLUMN_FIELD_PATHS` entry (field_path = column_name)
+                                            [:p.description :description]]
                                 :from      [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                                 :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :p]
                                             [:and
                                              [:= :c.table_name :p.table_name]
-                                             [:= :c.column_name :p.column_name]
-                                             ;; only nested leaves -- the top-level entry (field_path = column_name) has
-                                             ;; no `.` and is described from the `COLUMNS` side
-                                             [:> [:strpos :p.field_path "."] 0]]]
+                                             [:= :c.column_name :p.column_name]]]
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e
@@ -755,7 +841,7 @@
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
-  (let [database (driver-api/table->database table)
+  (let [database (driver.u/lib-database (:db_id table))
         bq-table (get-table database dataset-id table-name)]
     (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
                ;; We couldn't easily test if the following two can show up as
@@ -1066,13 +1152,16 @@
             (thunk)
             (throw e)))))))
 
-(defmethod driver/execute-reducible-query :bigquery-cloud-sdk
-  [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
+(mu/defmethod driver/execute-reducible-query :bigquery-cloud-sdk
+  [_driver                                              :- :keyword
+   {[{sql :native, params :params}] :stages, :as query} :- ::lib.schema/native-only-query
+   _context                                             :- ::driver/execute-reducible-query.context
+   respond                                              :- ::driver/execute-reducible-query.respond-fn]
   (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
-                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query))
+                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk query))
                   sql)]
         (*process-native* respond database sql params (driver-api/canceled-chan))))))
 
@@ -1095,6 +1184,7 @@
                               ;; clustering is the only index-equivalent, inlined as CLUSTER BY (no standalone DDL)
                               :index/fetch                      true
                               :index/inline-create              true
+                              :mbql-5-native-query-execution    true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
                               :native-pivot-tables              true
@@ -1111,6 +1201,7 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.
                               ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
@@ -1118,7 +1209,10 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
-                              :transforms/testing               false}]
+                              :transforms/testing               false
+                              ;; Workspace isolation using service account impersonation
+                              ;; Tearing down workspaces is not working right currently
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1183,8 +1277,8 @@
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
 ;; This normalize is a legacy migration (OAuth -> service-account, dataset-id -> filters); it
-;; runs only against `:details` because the overlay maps (`:write-data-details`, `:admin-details`)
-;; never carry these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
+;; runs only against `:details` because the overlay map (`:write-data-details`)
+;; never carries these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
 ;; specific to the primary details.
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_driver database]
@@ -1364,14 +1458,14 @@
   (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
         cluster   (clustering-clause indexes)
         sql       (if cluster (str base " " cluster) base)
-        database  (bigquery.db/database database-id)
+        database  (driver.u/lib-database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql       (driver/compile-drop-table driver table-name)
-        database  (bigquery.db/database database-id)
+        database  (driver.u/lib-database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
@@ -1426,7 +1520,7 @@
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
   ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
-  (let [database   (bigquery.db/database db-id)
+  (let [database   (driver.u/lib-database db-id)
         col-kws    (perf/mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request
@@ -1487,6 +1581,8 @@
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
   ;; Check if dataset exists using the BigQuery API before trying to create.
+  ;; This is important for workspace isolation where the impersonated SA has
+  ;; access to an existing isolated dataset but cannot create new datasets.
   (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
         project-id (bigquery.common/get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
@@ -1508,6 +1604,16 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; BigQuery workspace isolation uses service account impersonation instead of SQL GRANT statements.
+;;; Each workspace gets its own service account (created automatically) with table-level read permissions.
+;;;
+;;; Required GCP setup for the main service account:
+;;; - Roles: `roles/bigquery.admin`, `roles/iam.serviceAccountAdmin`, `roles/resourcemanager.projectIamAdmin`
+;;; - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`, `cloudresourcemanager.googleapis.com`
 
 (defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
   "metabot/prompts/dialects/bigquery.md")

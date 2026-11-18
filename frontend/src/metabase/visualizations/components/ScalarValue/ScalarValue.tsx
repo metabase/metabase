@@ -39,31 +39,32 @@ interface ScalarValueProps {
   disableHover?: boolean;
 }
 
-export const ScalarValue = ({
-  value,
-  fontSize,
-  color = "inherit",
-  disableHover,
-}: ScalarValueProps) => {
-  const {
-    other: { number: numberTheme },
-  } = useMantineTheme();
+export const ScalarValue = forwardRef<HTMLHeadingElement, ScalarValueProps>(
+  function ScalarValue(
+    { value, fontSize, color = "inherit", disableHover },
+    ref,
+  ) {
+    const {
+      other: { number: numberTheme },
+    } = useMantineTheme();
 
-  return (
-    <Box
-      component="h1"
-      className={cx(
-        DashboardS.ScalarValue,
-        S.value,
-        !disableHover && S.hoverable,
-      )}
-      fz={numberTheme?.value?.fontSize ?? fontSize}
-      lh={numberTheme?.value?.lineHeight ?? 1}
-      data-testid="scalar-value"
-      // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
-      style={{ "--scalar-value-color": color }}
-    >
-      {value ?? t`null`}
-    </Box>
-  );
-};
+    return (
+      <Box
+        component="h1"
+        ref={ref}
+        className={cx(
+          DashboardS.ScalarValue,
+          S.value,
+          !disableHover && S.hoverable,
+        )}
+        fz={numberTheme?.value?.fontSize ?? fontSize}
+        lh={numberTheme?.value?.lineHeight ?? 1}
+        data-testid="scalar-value"
+        // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
+        style={{ "--scalar-value-color": color }}
+      >
+        {value ?? t`null`}
+      </Box>
+    );
+  },
+);

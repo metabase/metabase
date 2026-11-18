@@ -39,7 +39,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     tabIndex,
   });
 
-  const localRef = useRef(null);
+  const localRef = useRef<ReactCodeMirrorRef>(null);
   const mergedRef = useMergedRef(localRef, ref);
 
   useHighlightRanges(localRef, highlightRanges);

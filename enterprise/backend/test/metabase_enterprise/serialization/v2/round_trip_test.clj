@@ -26,20 +26,20 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as load]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
-   [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml])
+   [metabase.util.match :as match]
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.file Files Path StandardCopyOption)
@@ -58,6 +58,9 @@
     ;; instance-specific build version, no longer serialized (GHY-4013). Legacy baseline fixtures still
     ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
     :metabase_version
+    ;; sync state, no longer serialized; legacy baseline fixtures still carry it
+    :dbms_version
+    :initial_sync_status
     ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
     ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
     ;; load set :verified-result-metadata? on Card updates, which is not straightforward.
@@ -75,27 +78,11 @@
        (map (partial strip-base-path dir))
        (into (sorted-set))))
 
-(def ^:private slug-id-prefix-re
-  #"#\d+([- ])")
-
-(defn- replace-entropy
-  [s]
-  ;; Template tag slugs have the form `#1-my-card-name`, and their default display names `#1 My Card Name`, where `1`
-  ;; is the record ID. Record IDs depend on import order which is non-deterministic. Replace them with a deterministic
-  ;; placeholder.
-  (str/replace s slug-id-prefix-re "#<some-id>$1"))
-
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
-  (walk/postwalk
-   (fn [x]
-     (cond
-       (map? x) (reduce dissoc x ignored-fields)
-       (string? x) (replace-entropy x)
-       (keyword? x) (keyword (replace-entropy (u/qualified-name x)))
-       :else x))
-   (yaml/parse-string (slurp file))))
+  (match/replace-all (yaml/parse-string (slurp file))
+    #'map? (reduce dissoc &match ignored-fields)))
 
 (defn non-empty-diff [diff]
   (when (some identity diff)
@@ -113,12 +100,9 @@
   "Perform a round-trip of loading an existing serialization, then serializing it again."
   [input-dir output-dir]
   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-    (serdes/with-cache
-      (load/load-metabase! (ingest/ingest-yaml input-dir))))
-  ;; Use a separate cache to make sure there is no cross-contamination.
-  (serdes/with-cache
-    (-> (extract/extract {:include-field-values true :include-metabot true})
-        (storage/store! (storage.files/file-writer output-dir)))))
+    (load/load-metabase! (ingest/ingest-yaml input-dir)))
+  (-> (extract/extract {:include-field-values true :include-metabot true})
+      (storage/store! (storage.files/file-writer output-dir))))
 
 (defn- delete-dir-contents! [^File dir]
   (when (and dir (.exists dir))
@@ -143,19 +127,15 @@
 
 (def source-dir-path (strip-base-path (File. (System/getProperty "user.dir")) source-dir))
 
-(def ^:private internal-model?
-  #{"Schema"})
-
 (def ^:private covered-by-dedicated-round-trip-test?
   "Models that have full export/import coverage in their own round-trip test and so don't need a
   fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
-  metabase-enterprise.serialization.v2.osi-ai-context-test. TransformTest is covered by
-  transform-test-round-trip-test and transform-test-expectations-round-trip-test in
-  metabase-enterprise.serialization.v2.e2e-test, and DataApp by
-  metabase-enterprise.data-apps.serialization-test; both stay out of the baseline until
+  metabase-enterprise.serialization.v2.osi-ai-context-test. TransformTest, CardTest and SegmentTest are covered by
+  their round-trip tests in metabase-enterprise.serialization.v2.e2e-test, and DataApp by
+  metabase-enterprise.data-apps.serialization-test; these stay out of the baseline until
   @metabase/representations publishes a schema for them — the baseline is validated against that
   package, which refuses a model it does not know."
-  #{"DataApp" "OsiAiContext" "TransformTest"})
+  #{:model/CardTest :model/DataApp :model/OsiAiContext :model/SegmentTest :model/TransformTest})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
@@ -166,11 +146,11 @@
 (deftest baseline-completeness-test
   (let [ingestable (ingest/ingest-yaml source-dir)
         resources  (ingest/ingest-list ingestable)
-        baselined  (into #{} (map :model) (apply concat resources))
+        baselined  (into #{} (map first) resources)
         necessary? (set serdes.models/exported-models)]
     (doseq [m serdes.models/exported-models :when (not (covered-by-dedicated-round-trip-test? m))]
       (is (baselined m) (format "We need to add %s entries to %s" m source-dir-path)))
-    (doseq [b baselined :when (not (internal-model? b))]
+    (doseq [b baselined]
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))
 
 (deftest baseline-comparison-test
@@ -190,6 +170,15 @@
               (is (empty? missing-files)))
             (testing "No files have been added"
               (is (empty? added-files)))
+            (testing "every file of every model this version exports passes the import check of its model"
+              (let [ingestion (ingest/ingest-yaml output-dir)
+                    ks        (vec (ingest/ingest-list ingestion))]
+                (is (empty? (set/difference (into #{} (remove covered-by-dedicated-round-trip-test?)
+                                                  serdes.models/exported-models)
+                                            (into #{} (map first) ks))))
+                (doseq [[[model :as k] entity] (map vector ks (ingest/ingest-many ingestion ks))]
+                  (testing (pr-str k)
+                    (is (map? (serialization/check-entity model (serialization/external-entity model entity))))))))
             (testing "File contents\n"
               (doseq [file source-files
                       :let [ref-file (io/file source-dir file)
@@ -206,6 +195,35 @@
               (log/warn "Mismatching files have been written to /dev/serialization_deltas"))))
         (finally
           (delete-dir-contents! output-dir))))))
+
+(deftest baseline-imports-twice-test
+  (search.tu/with-index-disabled
+    (mt/with-empty-h2-app-db!
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (load/load-metabase! (ingest/ingest-yaml source-dir))
+        (testing "the Python transform, whose source names no database, keeps the one of the file"
+          (is (some? (t2/select-one-fn :source_database_id :model/Transform :entity_id "g2cRYwopfoL1BW9Y4n3wb"))))
+        (testing "the Python library of any path is imported"
+          (is (= #{"common.py" "shared.py"} (set (t2/select-fn-vec :path :model/PythonLibrary)))))
+        (testing "importing the same files again changes nothing"
+          (let [transforms (t2/select-fn-set :source_database_id :model/Transform)]
+            (load/load-metabase! (ingest/ingest-yaml source-dir))
+            (is (= transforms (t2/select-fn-set :source_database_id :model/Transform)))
+            (is (= 2 (t2/count :model/PythonLibrary)))))))))
+
+(deftest baseline-imports-over-local-tag-of-same-name-test
+  (search.tu/with-index-disabled
+    (mt/with-empty-h2-app-db!
+      (let [local-id (t2/insert-returning-pk! :model/TransformTag {:name "nightly-refresh"})
+            names    #(t2/select-fn-vec :name :model/TransformTag :name [:like "nightly-refresh%"] {:order-by [:id]})]
+        (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+          (load/load-metabase! (ingest/ingest-yaml source-dir))
+          (testing "the incoming tag takes a free name and the local one keeps its own"
+            (is (= ["nightly-refresh" "nightly-refresh (2)"] (names)))
+            (is (= "nightly-refresh" (t2/select-one-fn :name :model/TransformTag :id local-id))))
+          (testing "importing the same files again keeps the name the tag got"
+            (load/load-metabase! (ingest/ingest-yaml source-dir))
+            (is (= ["nightly-refresh" "nightly-refresh (2)"] (names)))))))))
 
 (defn- update-baseline!
   "Run this if you've examined the output of [[directory-comparison-test]], and are happy to accept the changes."

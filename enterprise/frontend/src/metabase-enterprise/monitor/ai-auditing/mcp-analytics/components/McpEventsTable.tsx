@@ -7,6 +7,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import {
   Box,
   Flex,
@@ -33,8 +34,6 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
-
-export const EVENTS_PAGE_SIZE = 25;
 
 const DEFAULT_SORTING: SortingOptions<McpEventSortColumn> = {
   sort_column: "created_at",
@@ -224,11 +223,7 @@ function McpEventsTableInner({
     ],
   );
 
-  const { data, isFetching, error } = useMcpEventsQuery(
-    query,
-    page,
-    EVENTS_PAGE_SIZE,
-  );
+  const { data, isFetching, error } = useMcpEventsQuery(query, page, PAGE_SIZE);
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
@@ -313,9 +308,13 @@ function McpEventsTableInner({
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
-            <LoadingOverlay visible={isFetching} />
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
             <TreeTable
               instance={treeTableInstance}
+              static
               hierarchical={false}
               ariaLabel={t`Tool calls`}
               emptyState={<MonitorEmptyState label={t`No tool calls found`} />}
@@ -329,7 +328,7 @@ function McpEventsTableInner({
         <Flex justify="flex-end">
           <PaginationControls
             page={page}
-            pageSize={EVENTS_PAGE_SIZE}
+            pageSize={PAGE_SIZE}
             itemsLength={rows.length}
             total={total}
             showTotal

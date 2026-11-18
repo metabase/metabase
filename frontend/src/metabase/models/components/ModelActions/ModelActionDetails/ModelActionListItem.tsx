@@ -7,9 +7,9 @@ import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteMod
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { ActionIcon, Box, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import S from "./ModelActionListItem.module.css";
@@ -40,7 +40,8 @@ interface QueryActionCardContentProps {
 }
 
 function QueryActionCardContent({ action }: QueryActionCardContentProps) {
-  const question = Question.create({ dataset_query: action.dataset_query });
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const question = buildQuestion({ dataset_query: action.dataset_query });
   if (!question.isNative()) {
     return (
       <CodeBlock>
@@ -68,8 +69,8 @@ interface ModelActionListItemProps {
   actionUrl: string;
   canRun: boolean;
   canEdit: boolean;
-  canArchive: boolean;
-  onArchive: (action: WritebackAction) => void;
+  canDelete: boolean;
+  onDelete: (action: WritebackAction) => void;
 }
 
 export function ModelActionListItem({
@@ -77,8 +78,8 @@ export function ModelActionListItem({
   actionUrl,
   canRun,
   canEdit,
-  canArchive,
-  onArchive,
+  canDelete,
+  onDelete,
 }: ModelActionListItemProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -87,13 +88,14 @@ export function ModelActionListItem({
     { open: openExecuteModal, close: closeExecuteModal },
   ] = useDisclosure(false);
 
-  const handleArchive = useCallback(() => {
+  const handleDelete = useCallback(() => {
     askConfirmation({
-      title: t`Archive ${action.name}?`,
-      confirmButtonText: t`Archive`,
-      onConfirm: () => onArchive(action),
+      title: t`Delete ${action.name}?`,
+      message: t`Dashboard buttons and public forms that use this action will be removed.`,
+      confirmButtonText: t`Delete`,
+      onConfirm: () => onDelete(action),
     });
-  }, [action, askConfirmation, onArchive]);
+  }, [action, askConfirmation, onDelete]);
 
   return (
     <>
@@ -139,12 +141,12 @@ export function ModelActionListItem({
             >
               {canEdit ? t`Edit` : t`View`}
             </Menu.Item>
-            {canArchive && (
+            {canDelete && (
               <Menu.Item
-                leftSection={<Icon name="archive" aria-hidden />}
-                onClick={handleArchive}
+                leftSection={<Icon name="trash" aria-hidden />}
+                onClick={handleDelete}
               >
-                {t`Archive`}
+                {t`Delete`}
               </Menu.Item>
             )}
           </Menu.Dropdown>

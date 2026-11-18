@@ -370,7 +370,6 @@
         _        (add-load/from-script user-script)
         ;; Query for users by email pattern
         user-ids (t2/select-pks-vec :model/User :email [:like (str "%@" email-domain)])]
-
     ;; Create group memberships - assign each user to some groups
     ;; User i gets assigned to groups where (mod i num-groups) matches certain patterns
     (println "  Assigning users to groups...")
@@ -385,7 +384,6 @@
                :group_id (nth group-ids group-idx)}]))]
       (when (seq membership-script)
         (add-load/from-script membership-script)))
-
     (let [elapsed-ms (u/since-ms timer)]
       (println (format "Created %d users with memberships in %.2f seconds" n (/ elapsed-ms 1000.0))))
     user-ids))
@@ -587,7 +585,6 @@
   (request/with-current-user user-id
     (search.impl/search-context
      {:current-user-id       api/*current-user-id*
-      :current-user-perms    @api/*current-user-permissions-set*
       :is-superuser?         api/*is-superuser?*
       :is-data-analyst       api/*is-data-analyst?*
       :is-impersonated-user? (perms-util/impersonated-user?)
@@ -648,13 +645,11 @@
      (println (format "\nRunning search benchmark for: \"%s\" (user-id: %d)" search-string user-id))
      (println (format "  Warmup iterations: %d" warmup))
      (println (format "  Benchmark iterations: %d" iterations))
-
      ;; Warmup
      (when (pos? warmup)
        (println "  Warming up...")
        (dotimes [_ warmup]
          (search! search-string :user-id user-id :models models)))
-
      ;; Benchmark
      (println "  Running benchmark...")
      (let [results (vec (for [i (range iterations)]
@@ -718,7 +713,6 @@
    (println (format "  Permission Groups: %d" num-groups))
    (println (format "  Users: %d" num-users))
    (println (format "  Iterations per query: %d" iterations))
-
    (let [test-env (create-test-environment! {:num-tables num-tables
                                              :num-groups num-groups
                                              :num-users  num-users
@@ -1061,7 +1055,6 @@
                    (search.ingestion/searchable-documents)))
 
          results (remove nil? [layer1 layer1b layer2 layer3 layer4 layer4b layer5])]
-
      (println "\n\n============================================================")
      (println "  COMPARISON")
      (println "============================================================")

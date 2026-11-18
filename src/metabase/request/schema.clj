@@ -12,13 +12,12 @@
    [:is-data-analyst?   {:optional true} :boolean]
    [:user-locale        {:optional true} [:maybe string?]]
    [:is-group-manager?  {:optional true} :boolean]
-   [:permissions-set    {:optional true} [:set :string]]
-   [:auth-provider      {:optional true} [:maybe :string]]
    [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
    [:data-app-scoped?     {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
+   [:embedding/auth-method {:optional true} :string]
    ;; only API-key auth resolves these two: `:api-key-id` identifies the key itself (for per-key usage analytics),
    ;; and `:api-key-creator-id` is the real human who created the key (distinct from `:metabase-user-id`, the key's
    ;; own synthetic service-account user) — both read off the same auth query rather than looked up again later.
@@ -104,6 +103,7 @@
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]
+   [:metabase.server.middleware.isolated-origin/isolated-origin? {:optional true} :boolean]
    [:accept                  {:optional true} [:maybe :string]]
    [:redirect-strategy       {:optional true} [:maybe :keyword]]
    [:method                  {:optional true} [:maybe :keyword]]

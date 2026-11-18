@@ -1,10 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Outlet } from "metabase/router";
-import { Card, Center } from "metabase/ui";
+import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { ActionDependenciesContent } from "../../components/ActionDependenciesContent";
 import { ActionHeader } from "../../components/ActionHeader";
 import { useRouteAction } from "../../hooks/use-route-action";
 
@@ -22,16 +21,10 @@ export function ActionDependenciesPage() {
   return (
     <PageContainer data-testid="action-dependencies">
       <ActionHeader action={action} />
-      <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
-        value={{
-          baseUrl: Urls.dataStudioActionDependencies(action.id),
-          defaultEntry: { id: action.id, type: "action" },
-        }}
-      >
-        <Card p={0} withBorder flex={1}>
-          <Outlet />
-        </Card>
-      </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
+      <ActionDependenciesContent
+        action={action}
+        baseUrl={Urls.dataStudioActionDependencies(action.id)}
+      />
     </PageContainer>
   );
 }

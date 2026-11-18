@@ -259,17 +259,17 @@ export const getRoutes = (
             </Route>
 
             <Route path="" lazy={peopleListing}>
-              {modalRoute("new", NewUserModal, { noWrap: true })}
+              {modalRoute("new", NewUserModal)}
               {PLUGIN_TENANTS.userStrategyRoute}
             </Route>
 
             <Route path=":userId" lazy={peopleListing}>
               <Route index element={redirect("/admin/people")} />
-              {modalRoute("edit", EditUserModal, { noWrap: true })}
-              {modalRoute("success", UserSuccessModal, { noWrap: true })}
-              {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
-              {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
-              {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
+              {modalRoute("edit", EditUserModal)}
+              {modalRoute("success", UserSuccessModal)}
+              {modalRoute("reset", UserPasswordResetModal)}
+              {modalRoute("deactivate", UserActivationModal)}
+              {modalRoute("reactivate", UserActivationModal)}
               {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
                 <Fragment key={index}>{getRoutes()}</Fragment>
               ))}

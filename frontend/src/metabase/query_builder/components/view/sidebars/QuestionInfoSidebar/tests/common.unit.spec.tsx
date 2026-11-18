@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupDashboardEndpoints } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { screen, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -9,6 +11,7 @@ import type { BaseEntityId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
+  createMockDashboard,
   createMockModerationReview,
   createMockSettings,
   createMockTokenFeatures,
@@ -19,6 +22,12 @@ import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 import { setup } from "./setup";
 
 const DESCRIPTION = "abc";
+// Longer than the Sidesheet exit transition, so a closing sheet would be gone
+const SIDESHEET_EXIT_WAIT_MS = 300;
+
+const PRODUCTS_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+});
 
 describe("QuestionInfoSidebar", () => {
   describe("description", () => {
@@ -61,50 +70,62 @@ describe("QuestionInfoSidebar", () => {
     });
   });
 
-  describe("tabs", () => {
-    describe("for non-admins", () => {
-      it("should show tabs for Overview, History, Relationships", async () => {
-        setup({});
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(3);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-        ]);
-      });
+  describe("sections", () => {
+    it("shows one column of sections instead of tabs", async () => {
+      await setup({});
+
+      expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      ["Description", "Details", "Linked tables", "History"].forEach(
+        (title) => {
+          expect(screen.getByText(title)).toBeInTheDocument();
+        },
+      );
     });
 
-    describe("for admins", () => {
-      it("should show tabs for Overview, Relationships, History, and Insights", async () => {
-        setup({
-          user: { is_superuser: true },
-          settings: createMockSettings({
-            "token-features": createMockTokenFeatures({
-              audit_app: false,
-            }),
-          }),
-        });
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(4);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-          "Insights",
-        ]);
+    it("shows no Insights action for non-admins", async () => {
+      await setup({});
 
-        const insightsTab = screen.getByText("Insights");
-        await userEvent.click(insightsTab);
-        expect(
-          await screen.findByText(/See who.s doing what, when/),
-        ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Insights" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Insights" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the usage analytics upsell for admins, and Escape closes only the upsell", async () => {
+      await setup({
+        user: { is_superuser: true },
+        settings: createMockSettings({
+          "token-features": createMockTokenFeatures({
+            audit_app: false,
+          }),
+        }),
       });
+
+      await userEvent.click(screen.getByRole("button", { name: "Insights" }));
+
+      expect(
+        await screen.findByText(/See who.s doing what, when/),
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/See who.s doing what, when/),
+        ).not.toBeInTheDocument(),
+      );
+      await act(
+        () =>
+          new Promise((resolve) => setTimeout(resolve, SIDESHEET_EXIT_WAIT_MS)),
+      );
+      expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
     });
   });
 
   describe("question details", () => {
-    it("should show last edited", () => {
+    it("should show last edited", async () => {
       const card = createMockCard({
         name: "Question",
         "last-edit-info": {
@@ -115,12 +136,12 @@ describe("QuestionInfoSidebar", () => {
           id: 19,
         },
       });
-      setup({ card });
+      await setup({ card });
       expect(screen.getByText("April 11, 2024")).toBeInTheDocument();
       expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
     });
 
-    it("should show creation information", () => {
+    it("should show creation information", async () => {
       const card = createMockCard({
         name: "Question",
         creator: createMockUserInfo({
@@ -132,29 +153,77 @@ describe("QuestionInfoSidebar", () => {
         }),
         created_at: "2024-04-13T00:00:00Z",
       });
-      setup({ card });
+      await setup({ card });
       expect(screen.getByText("April 13, 2024")).toBeInTheDocument();
       expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
     });
 
-    it("should show save location", () => {
+    it("should show save location", async () => {
       const card = createMockCard({
         name: "Question",
         collection: createMockCollection({ name: "My Big Collection" }),
       });
-      setup({ card });
+      await setup({ card });
 
       expect(screen.getByText("My Big Collection")).toBeInTheDocument();
     });
 
-    it("should show correct link for root collection", () => {
+    it("should link a dashboard question to its dashboard without fetching it", async () => {
+      const dashboard = { id: 5, name: "My Dashboard" };
+      const card = createMockCard({
+        name: "Question",
+        dashboard_id: dashboard.id,
+        dashboard,
+        collection: createMockCollection({ name: "My Big Collection" }),
+      });
+      await setup({ card });
+
+      expect(screen.getByText("My Dashboard")).toHaveAttribute(
+        "href",
+        Urls.dashboard(dashboard),
+      );
+      expect(screen.queryByText("My Big Collection")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/dashboard/5")).toBe(false);
+    });
+
+    it("should fetch the dashboard when the card does not carry it", async () => {
+      const dashboard = createMockDashboard({ id: 5, name: "My Dashboard" });
+      setupDashboardEndpoints(dashboard);
+      const { dashboard: _hydrated, ...card } = createMockCard({
+        name: "Question",
+        dashboard_id: dashboard.id,
+        collection: createMockCollection({ name: "My Big Collection" }),
+      });
+      await setup({ card });
+
+      expect(await screen.findByText("My Dashboard")).toHaveAttribute(
+        "href",
+        Urls.dashboard(dashboard),
+      );
+    });
+
+    it("should fall back to the collection when the dashboard request fails", async () => {
+      fetchMock.get("path:/api/dashboard/5", 404);
+      const card = createMockCard({
+        name: "Question",
+        dashboard_id: 5,
+        dashboard: null,
+        collection: createMockCollection({ name: "My Big Collection" }),
+      });
+      await setup({ card });
+
+      expect(await screen.findByText("My Big Collection")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    });
+
+    it("should show correct link for root collection", async () => {
       const card = createMockCard({
         name: "Question",
         // @ts-expect-error - ye olde null root collection bugbear
         collection: createMockCollection({ id: null, name: "Our analytics" }),
         collection_id: null,
       });
-      setup({ card });
+      await setup({ card });
 
       expect(screen.getByText("Our analytics")).toHaveAttribute(
         "href",
@@ -162,54 +231,59 @@ describe("QuestionInfoSidebar", () => {
       );
     });
 
-    it("should show source information", () => {
+    it("should show source information", async () => {
       const card = createMockCard({
         name: "Question",
+        dataset_query: PRODUCTS_QUERY,
       });
-      setup({ card });
+      await setup({ card });
 
       expect(screen.getByText("Sample Database")).toBeInTheDocument();
       expect(screen.getByText("/")).toBeInTheDocument();
       expect(screen.getByText("Products")).toBeInTheDocument();
     });
 
-    it("should not show entity id", () => {
+    it("should not show entity id", async () => {
       const card = createMockCard({
         name: "Question",
         // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as BaseEntityId,
       });
-      setup({ card });
+      await setup({ card });
 
-      expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+      expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
+      expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
     });
 
-    it("should show if a public link is enabled", () => {
+    it("should show if a public link is enabled", async () => {
       const card = createMockCard({
         name: "Question",
         public_uuid: "watch-me-please",
       });
-      setup({ card });
+      await setup({ card });
 
-      expect(screen.getByLabelText("globe icon")).toBeInTheDocument();
+      expect(screen.getByText("Visibility")).toBeInTheDocument();
       expect(screen.getByText("Shared publicly")).toBeInTheDocument();
-      expect(screen.getByLabelText("link icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Public link" }),
+      ).toBeInTheDocument();
     });
 
-    it("should show if a embedding is enabled", () => {
+    it("should show if a embedding is enabled", async () => {
       const card = createMockCard({
         name: "Question",
         enable_embedding: true,
       });
-      setup({ card });
+      await setup({ card });
 
-      expect(screen.getByLabelText("embed icon")).toBeInTheDocument();
+      expect(screen.getByText("Visibility")).toBeInTheDocument();
       expect(screen.getByText("Embedded")).toBeInTheDocument();
     });
 
     it("should show fields", async () => {
       const card = createMockCard({
         name: "Question",
+        dataset_query: PRODUCTS_QUERY,
       });
       await setup({ card });
 
@@ -256,7 +330,9 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
-      expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Actions" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -272,7 +348,7 @@ describe("QuestionInfoSidebar", () => {
     });
   });
 
-  describe("relationships", () => {
+  describe("linked tables", () => {
     it("should show joined tables for a model (metabase#57469)", async () => {
       const query = getJoinedQuery();
       const card = createMockCard({
@@ -280,7 +356,8 @@ describe("QuestionInfoSidebar", () => {
         dataset_query: Lib.toJsQuery(query),
       });
       await setup({ card });
-      await userEvent.click(screen.getByRole("tab", { name: "Relationships" }));
+
+      expect(screen.getByText("Linked tables")).toBeInTheDocument();
       expect(screen.getByText("Products")).toBeInTheDocument();
     });
   });

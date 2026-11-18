@@ -1,16 +1,27 @@
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
 import {
-  createMockImplicitQueryAction,
-  createMockNativeDatasetQuery,
-} from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createOrdersIdField,
+  createOrdersTable,
+  createOrdersTotalField,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
+  getActionDisplayType,
   getActionItems,
   getDefaultFieldSettings,
   getDefaultFormSettings,
   isValidImplicitDeleteAction,
   isValidImplicitUpdateAction,
   sortActionParams,
+  supportsImplicitActions,
 } from "./utils";
 
 const createParameter = (options?: any) => {
@@ -52,6 +63,10 @@ describe("sortActionParams", () => {
     expect(sortedParams[2].id).toEqual("c");
   });
 });
+
+const NATIVE_DATASET_QUERY = Lib.toLegacyQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+);
 
 const ACTIONS_ENABLED_DB_ID = 10;
 
@@ -163,7 +178,7 @@ describe("isValidImplicitDeleteAction", () => {
       isValidImplicitDeleteAction({
         ...implicitDeleteAction,
         type: "query",
-        dataset_query: createMockNativeDatasetQuery(),
+        dataset_query: NATIVE_DATASET_QUERY,
       }),
     ).toBe(false);
   });
@@ -190,8 +205,98 @@ describe("isValidImplicitUpdateAction", () => {
       isValidImplicitUpdateAction({
         ...implicitUpdateAction,
         type: "query",
-        dataset_query: createMockNativeDatasetQuery(),
+        dataset_query: NATIVE_DATASET_QUERY,
       }),
     ).toBe(false);
+  });
+});
+
+describe("getActionDisplayType", () => {
+  it("uses the given display type first", () => {
+    expect(
+      getActionDisplayType("button", {
+        visualization_settings: { type: "form" },
+      }),
+    ).toBe("button");
+  });
+
+  it("falls back to the action's display type", () => {
+    expect(
+      getActionDisplayType(undefined, {
+        visualization_settings: { type: "form" },
+      }),
+    ).toBe("form");
+  });
+
+  it("defaults to a button when neither sets it", () => {
+    expect(getActionDisplayType(undefined, undefined)).toBe("button");
+    expect(getActionDisplayType(undefined, {})).toBe("button");
+  });
+});
+
+describe("supportsImplicitActions", () => {
+  const ORDERS_SOURCE = { type: "table", id: ORDERS_ID } as const;
+
+  it("should support raw table query with single primary key", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: ORDERS_SOURCE }],
+    });
+    expect(supportsImplicitActions(query)).toBe(true);
+  });
+
+  it("should not support query with aggregations", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: ORDERS_SOURCE,
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    });
+    expect(supportsImplicitActions(query)).toBe(false);
+  });
+
+  it("should not support query with expressions", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: ORDERS_SOURCE,
+          expressions: [
+            { name: "Total copy", value: { type: "column", name: "TOTAL" } },
+          ],
+        },
+      ],
+    });
+    expect(supportsImplicitActions(query)).toBe(false);
+  });
+
+  it("should not support native query", () => {
+    const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM ORDERS",
+    });
+    expect(supportsImplicitActions(query)).toBe(false);
+  });
+
+  it("should not support table without primary key", () => {
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            tables: [
+              createOrdersTable({
+                fields: [
+                  createOrdersIdField({ semantic_type: "type/Integer" }),
+                  createOrdersTotalField(),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    });
+    const query = Lib.createTestQuery(provider, {
+      stages: [{ source: ORDERS_SOURCE }],
+    });
+    expect(supportsImplicitActions(query)).toBe(false);
   });
 });

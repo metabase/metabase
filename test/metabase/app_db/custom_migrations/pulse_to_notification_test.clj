@@ -8,7 +8,6 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- sort-handlers
@@ -24,7 +23,7 @@
 
 (defn migrate-alert!
   [scheduler pulse-id]
-  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse pulse-id))
+  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse :id pulse-id))
        (map :id)
        (map (partial t2/select-one :model/Notification))
        (map models.notification/hydrate-notification)
@@ -67,7 +66,7 @@
                         alert-prop)
                  [{:card_id  card-id
                    :position 0}]
-                 (map #(merge schedule-daily-6-am {:details "{}"} %) pcs+recipients)))
+                 (map #(merge schedule-daily-6-am {:details {}} %) pcs+recipients)))
 
 (deftest migrate-alert-test
   (testing "basic alert migration"
@@ -76,7 +75,7 @@
         (testing "has one subscription, one email handler with one recipient"
           (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                      :recipients  [{:user_id (mt/user->id :rasta)}]}])
-                alert    (t2/select-one :model/Pulse alert-id)
+                alert    (t2/select-one :model/Pulse :id alert-id)
                 alert-triggers (pulse-channel-test/send-pulse-triggers alert-id)
                 notification (first (migrate-alert! (task/scheduler) alert-id))]
             (testing "sanity check that there is a trigger for the alert to begin with"
@@ -123,11 +122,11 @@
                                                       :details {:url "https://example.com/hook", :auth-method "none"}}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                    :enabled      true
-                                                   :details      (json/encode {:emails ["ngoc@metabase.com"]})
+                                                   :details      {:emails ["ngoc@metabase.com"]}
                                                    :recipients   [{:user_id (mt/user->id :rasta)}]}
                                                   {:channel_type "slack"
                                                    :enabled      true
-                                                   :details      (json/encode {:channel "#test-channel"})}
+                                                   :details      {:channel "#test-channel"}}
                                                   {:channel_type "http"
                                                    :enabled      true
                                                    :channel_id   channel-id}

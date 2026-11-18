@@ -118,15 +118,26 @@
   `(mt/with-dynamic-fn-redefs [qp.pivot/pivot-outcome-comparator qp.pivot/pivot-cols-equivalent?]
      ~@body))
 
-(defmacro with-multi-query-pivot!
-  "Force `run-pivot-query` to use the multi-query path inside `body` (by toggling
-  `use-native-pivot-tables` off), and disable parity checking. Use for tests that assert multi-query-
-  specific behavior (per-subquery row cap, subquery skipping, etc.) whose semantics don't translate to
-  the single-query paths.
+(defn do-with-pivot-flow-pinned!
+  "Pin `run-pivot-query` to one flow by toggling `use-native-pivot-tables` to `single?`."
+  [single? thunk]
+  (mt/with-temporary-setting-values [use-native-pivot-tables single?]
+    ;; disable parity checking so the other flows does't run alongside for comparison
+    (binding [qp.pivot/*check-pivot-parity?* false]
+      (thunk))))
 
-  Not thread-safe — do not use inside `^:parallel` tests; the site-wide setting toggle races other
-  fixtures. The trailing `!` marks this side effect."
+(defmacro with-multi-query-pivot!
+  "Force `run-pivot-query` to use the multi-query path inside `body`.
+
+  Use for tests that assert multi-query-specific behavior (per-subquery row cap, subquery skipping, etc.) whose
+  semantics don't translate to the single-query paths."
   [& body]
-  `(mt/with-temporary-setting-values [use-native-pivot-tables false]
-     (binding [qp.pivot/*check-pivot-parity?* false]
-       ~@body)))
+  `(do-with-pivot-flow-pinned! false (fn [] ~@body)))
+
+(defmacro with-single-query-pivot!
+  "Force `run-pivot-query` to use the single-query (native) path inside `body`.
+
+  Use for tests that assert single-query-specific behavior (`:max-results` cap, rollups-first ordering, etc.) whose
+  semantics don't translate to the multi-query path."
+  [& body]
+  `(do-with-pivot-flow-pinned! true (fn [] ~@body)))

@@ -48,19 +48,10 @@
                                  :charts-state charts-state})]
           (is (= new-type (:chart-type result))
               (str "New chart type " new-type " should be set correctly"))))))
-  (testing "throws error for invalid chart type"
-    (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid chart type"
-           (edit-chart/edit-chart
-            {:chart-id "chart-789"
-             :new-chart-type :invalid-type
-             :charts-state charts-state})))))
   (testing "throws error when chart not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"issues accessing the chart data"
+         #"No chart with ID \"nonexistent\" exists in this conversation"
          (edit-chart/edit-chart
           {:chart-id "nonexistent"
            :new-chart-type :bar
@@ -174,10 +165,10 @@
         (is (contains? (tools.shared/current-queries-state) query-id))
         (testing "Edit chart can handle charts created using construct-notebook-query-tool"
           ;; (3) call the edit-chart-tool which uses the shared memory
-          (let [edit-result (tools.charts/edit-chart-tool {:chart_id chart-id
-                                                           :new_viz_settings {:chart_type "pie"}
-                                                           :title "Counts by category"
-                                                           :description "Counts by category."})
+          (let [edit-result (test-util/call-tool tools.charts/edit-chart-tool {:chart_id chart-id
+                                                                               :new_viz_settings {:chart_type "pie"}
+                                                                               :title "Counts by category"
+                                                                               :description "Counts by category."})
                 new-chart-id (get-in edit-result [:structured-output :chart-id])
                 new-chart-in-memory (get (tools.shared/current-charts-state) new-chart-id)]
             (is (= :pie

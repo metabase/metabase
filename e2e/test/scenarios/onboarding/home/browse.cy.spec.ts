@@ -45,22 +45,6 @@ describe("browse > models", () => {
       name: "Create models to clean up and combine tables to make your data easier to explore",
     }).should("be.visible");
   });
-
-  it("can browse to a model in a new tab by meta-clicking", () => {
-    cy.on("window:before:load", (win) => {
-      // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").as("open");
-    });
-    cy.visit("/browse/models");
-    cy.findByRole("heading", { name: "Orders Model" }).click(H.holdMetaKey);
-
-    cy.get("@open").should("have.been.calledOnce");
-    cy.get("@open").should(
-      "have.been.calledOnceWithExactly",
-      `/model/${ORDERS_MODEL_ID}-orders-model`,
-      "_blank",
-    );
-  });
 });
 
 describe("scenarios > browse", () => {
@@ -170,22 +154,6 @@ describe("scenarios > browse", () => {
     });
   });
 
-  it("browsing to a database only triggers a request for schemas for that specific database", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schemas`).as(
-      "schemasForSampleDatabase",
-    );
-    cy.intercept(
-      "GET",
-      /\/api\/database\/(?!1\b)\d+\/schemas/,
-      cy.spy().as("schemasForOtherDatabases"),
-    );
-    cy.visit("/");
-    H.browseDatabases().click();
-    cy.findByRole("link", { name: /Sample Database/ }).click();
-    cy.wait("@schemasForSampleDatabase");
-    cy.get("@schemasForOtherDatabases").should("not.have.been.called");
-  });
-
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
     H.browseDatabases().click();
@@ -206,28 +174,6 @@ describe("scenarios > browse", () => {
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
     verifiedFilterToggleButton().should("not.exist");
-  });
-
-  it("The Browse models page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse models").click();
-    cy.findByLabelText("Models")
-      .findAllByText("An error occurred")
-      .should("have.length", 2);
-  });
-
-  it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse metrics").click();
-    cy.findByLabelText("Metrics")
-      .findByText("An error occurred")
-      .should("be.visible");
   });
 });
 

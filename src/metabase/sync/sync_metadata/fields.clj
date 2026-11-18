@@ -41,6 +41,7 @@
   (:require
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -51,7 +52,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as table]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -94,11 +94,12 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-       ;; Re-fetch our metadata because there might be some things that have changed after calling
-       ;; `sync-instances`
-       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))))
+    (events/with-batched-events
+      (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+         ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+         ;; Re-fetch our metadata because there might be some things that have changed after calling
+         ;; `sync-instances`
+         (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
@@ -151,7 +152,16 @@
                                                                          table)]
                                                        (sync-and-update! database table all-metadata))
                                                      (catch Exception e
-                                                       (log/error (ex-message e))
+                                                       ;; an unreachable warehouse fails every table: abort the step
+                                                       (when (sync-util/transient-exception? e)
+                                                         (throw e))
+                                                       ;; a missing grant or FDW user mapping is for the customer to
+                                                       ;; fix, not a Metabase bug
+                                                       (if (sync-util/customer-environment-exception? e)
+                                                         (log/warnf "Error syncing Fields for %s: %s"
+                                                                    (sync-util/name-for-logging table) (ex-message e))
+                                                         (log/errorf e "Error syncing Fields for %s: %s"
+                                                                     (sync-util/name-for-logging table) (ex-message e)))
                                                        0))
                                                    0)]
                                      {:total-fields   (count table-metadata)
@@ -175,7 +185,7 @@
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
   ([table :- i/TableInstance]
-   (sync-fields-for-table! (table/database table) table))
+   (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]

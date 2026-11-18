@@ -5,6 +5,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.indexes.schema :as indexes.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -138,7 +139,7 @@
 (mu/defn fetch-warehouse-indexes :- [:sequential :map]
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`. Throws when the
   warehouse can't be read, so an empty result always means no indexes."
-  [database   :- :metabase.warehouses.schema/database
+  [database   :- ::lib.schema.metadata/database
    schema     :- [:maybe :string]
    table-name :- :string]
   (vec (driver/fetch-table-indexes (:engine database) database schema table-name)))

@@ -1,6 +1,7 @@
 (ns metabase.lib.query.test-spec
   (:refer-clojure :exclude [mapv name])
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -137,6 +138,13 @@
        (or (= strategy :default)
            (== (strategy binning) (strategy mbql)))))
 
+(defn- binning-error-message [{:keys [strategy num-bins]} binning-strategies]
+  (let [supported-counts (keep (comp :num-bins :mbql) binning-strategies)]
+    (if (and (= strategy :num-bins) (seq supported-counts))
+      (str "Unsupported bin count " num-bins ". Supported counts for this field are "
+           (str/join ", " (butlast supported-counts)) ", and " (last supported-counts) ".")
+      "No binning strategy found")))
+
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -145,7 +153,8 @@
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
         matches (filterv (partial matches-binning? binning) binning-strategies)]
     (case (count matches)
-      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :binning binning}))
+      0 (throw (ex-info (binning-error-message binning binning-strategies)
+                        {:binning-strategies binning-strategies :binning binning}))
       1 (first matches)
       (throw (ex-info "Multiple binning strategies found" {:matches matches :binning binning})))))
 
@@ -206,7 +215,11 @@
     :operator {:lib/type :mbql/expression-parts
                :operator (:operator expression-spec)
                :options {}
-               :args (mapv #(expression-spec->expression-parts query stage-number % available-columns)
+               :args (into []
+                           (mapcat (fn [{arg-type :type, value :value, :as arg}]
+                                     (if (and (= arg-type :literal) (sequential? value))
+                                       value
+                                       [(expression-spec->expression-parts query stage-number arg available-columns)])))
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean
@@ -393,7 +406,7 @@
 
 (mr/def ::raw-spec
   "A test query spec as callers write it, possibly with string or camelCase keys and without defaults, before parsing."
-  [:map {:closed false, ::mr/deliberately-open true, :description "an unparsed test query spec"}])
+  [:map {:closed false, :description "an unparsed test query spec"}])
 
 (def parse-query-spec
   "Parser for query-spec."
@@ -414,25 +427,10 @@
         query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
-(mu/defn- field-id->field-ref :- :mbql.clause/field
-  [query    :- ::lib.schema/query
-   field-id :- pos-int?]
-  (->> field-id
-       (lib.metadata/field query)
-       lib.ref/ref))
-
-(mu/defn- adjust-template-tag
-  [query :- ::lib.schema/query
-   spec  :- ::lib.schema.test-spec/test-template-tag-spec]
-  (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
-
-(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tags
-  [query                  :- ::lib.schema/query
-   inferred-template-tags :- ::lib.schema.template-tag/template-tags
-   template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (let [spec-tags              (for [spec template-tags-spec]
-                                 (adjust-template-tag query spec))
-        inferred-tag-name->tag (into {} (map (juxt :name identity)) inferred-template-tags)
+(mu/defn- merge-template-tags :- ::lib.schema.template-tag/template-tags
+  [inferred-template-tags :- ::lib.schema.template-tag/template-tags
+   spec-tags              :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
+  (let [inferred-tag-name->tag (into {} (map (juxt :name identity)) inferred-template-tags)
         spec-tag-name->tag     (into {} (map (juxt :name identity)) spec-tags)
         tag-names              (into []
                                      (comp cat
@@ -451,7 +449,7 @@
    template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
   (let [inferred-template-tags (or (lib.native/template-tags query) [])]
     (->> template-tags-spec
-         (adjust-template-tags query inferred-template-tags)
+         (merge-template-tags inferred-template-tags)
          (lib.native/with-template-tags query))))
 
 (def ^:private parse-native-query-spec

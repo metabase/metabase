@@ -9,6 +9,8 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
+The MCP server is available on every Metabase plan. Some controls, like [MCP tools access](./usage-controls.md#mcp-tools-access) and [MCP analytics](#mcp-analytics), require a [Pro or Enterprise plan](https://www.metabase.com/pricing).
+
 ## Connect a client to your Metabase MCP server's URL
 
 Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
@@ -160,9 +162,47 @@ The consent page lists the permission scopes the client is asking for. Each [too
 - `agent:sql:run`: write and run raw SQL on your connected databases.
 - `agent:delivery:write`: create alerts and subscriptions that email or Slack your data. Creating one also needs `agent:query:run`, since it runs a query when it fires.
 
-The consent page may also list `agent:resource:read` (shown as **Read MCP resources**). No tool needs it; it covers the server's own reference material: the list of fields your agent can ask `get_content` to return for each content type.
-
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
+
+## MCP requests run with your Metabase permissions
+
+The MCP server runs every request with the Metabase permissions of the person who signed in. In particular, the MCP server applies Metabase's [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md) to every tool call, so an AI client can only see or query what the person using it can see and query in Metabase itself.
+
+On Pro and Enterprise plans, admins can further restrict which MCP functionality is available to each group by configuring [MCP tools access](./usage-controls.md#mcp-tools-access). Permissions for MCP tools access are independent of data and collection permissions (like impersonation or row-level security) - so for example, you can have a group with data permissions that allow SQL queries, but MCP access that forbids it, in which case people in this group will be able to run SQL in Metabase but not through MCP. MCP tools access can only limit access and can't grant additional access beyond what's specified by data, collection, notification, and other permissions.
+
+When first connecting the AI client to the MCP server, people will be asked to approve [permission scopes](#permission-scopes). Here, "permissions" refers to OAuth scopes, not Metabase permissions. Oauth scopes control what the agent is allowed do _in theory_, but they don't grant additional access beyond what's already configured in Metabase.
+### Using the MCP server when embedding Metabase
+
+{% include plans-blockquote.html feature="Headless access with JWT" %}
+
+An agent in your app can use your embedded Metabase's MCP server on behalf of the person signed in to your app.
+
+Your backend [signs a JWT](../people-and-groups/authenticating-with-jwt.md) for the person (as it would for SSO) and posts the JWT to the token endpoint. There's no browser sign-in or consent page.
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt}
+```
+
+Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server. The JWT also needs `exp` (expiration time) and `iat` (issued at) claims, and Metabase accepts it for at most three minutes after its `iat`.
+
+The token gets all the [permission scopes](#permission-scopes), unless you ask for fewer with a space-separated `scope` parameter. The token lasts an hour. To get a new one after the token expires, you'll need to sign a fresh JWT.
+
+To request only the scopes for reading content and running queries:
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt} \
+  --data-urlencode "scope=agent:content:read agent:query:run"
+```
+
+Your agent sends the token to the MCP server at `https://{your-metabase.example.com}/api/metabase-mcp` as `Authorization: Bearer {access_token}`.
+
+Each token issued for headless access to the MCP server appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`. Calls made with these tokens appear in [MCP analytics](#mcp-analytics).
+
+People who only use headless access show **Never** under **Last Login** in **Admin > People**.
 
 ## Authorization logs
 

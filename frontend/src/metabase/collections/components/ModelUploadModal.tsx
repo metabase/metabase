@@ -131,7 +131,7 @@ export function ModelUploadModal({
                 label: model.name,
               })) ?? []
             }
-            onChange={setTableId}
+            onChange={(value) => setTableId(value ? Number(value) : null)}
           />
         )}
       </Stack>

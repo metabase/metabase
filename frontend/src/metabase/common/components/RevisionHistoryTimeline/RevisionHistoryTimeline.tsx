@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -138,7 +139,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         bd="1px solid var(--mb-color-border-neutral)"
         bg="background_page-primary"
       >
-        <Icon name={icon} c="text-disabled" size={12} />
+        <Icon name={icon} c="text-secondary" size={12} />
       </Center>
     );
   }

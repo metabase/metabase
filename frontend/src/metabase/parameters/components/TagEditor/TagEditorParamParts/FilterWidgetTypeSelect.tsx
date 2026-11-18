@@ -37,8 +37,8 @@ export function FilterWidgetTypeSelect({
   );
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "questions/native-editor/sql-parameters",
-    { anchor: "the-field-filter-variable-type" },
+    "questions/native-editor/field-filters",
+    { anchor: "field-filter-variables" },
   );
 
   return (

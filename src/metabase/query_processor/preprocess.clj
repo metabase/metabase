@@ -109,6 +109,7 @@
    #'optimize-temporal-clauses/optimize-temporal-clauses
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
+   #'qp.middleware.enterprise/apply-workspace-remapping
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms
@@ -164,4 +165,4 @@
     (let [preprocessed (-> query preprocess)]
       ;; TODO - we should throw an Exception if the query has a native source query with no attached metadata or at
       ;; least warn about it. Need to check where this is used.
-      (not-empty (annotate/expected-cols preprocessed)))))
+      (not-empty (qp.add-remaps/remap-cols preprocessed (annotate/expected-cols preprocessed))))))

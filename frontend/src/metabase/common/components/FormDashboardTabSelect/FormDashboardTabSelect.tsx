@@ -7,7 +7,6 @@ import type { DashboardId } from "metabase-types/api";
 
 export const FormDashboardTabSelect = ({
   dashboardId,
-  styles,
   ...props
 }: { dashboardId: DashboardId | null | undefined } & Omit<
   FormSelectProps,
@@ -58,14 +57,5 @@ export const FormDashboardTabSelect = ({
     return null;
   }
 
-  return (
-    <FormSelect
-      {...props}
-      styles={{
-        ...(styles ?? {}),
-        wrapper: { marginBottom: "1.25rem" },
-      }}
-      data={options}
-    />
-  );
+  return <FormSelect {...props} data={options} />;
 };

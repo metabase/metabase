@@ -75,10 +75,6 @@
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
 
-;; Transforms
-(api-scope/defscope agent-transforms-read "agent:transforms:read"
-  (deferred-tru "View transforms"))
-
 ;; Snippets
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
@@ -161,12 +157,6 @@
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "Read MCP resources"))
 
-;; Todo
-(api-scope/defscope agent-todo-read "agent:todo:read"
-  (deferred-tru "View todos"))
-(api-scope/defscope agent-todo-write "agent:todo:write"
-  (deferred-tru "Create and edit todos"))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────
@@ -229,7 +219,7 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:snippets:*"}
    ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
    ;; content and data structure, but content *writes* are an other-tools capability. Granting the
    ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.
@@ -259,7 +249,7 @@
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
-  #{"agent:search" "agent:resource:*" "agent:todo:*" "agent:metadata:*"})
+  #{"agent:search" "agent:resource:*" "agent:metadata:*"})
 
 (def all-yes-permissions
   "Permissions map granting all permissions. Used for superuser context."

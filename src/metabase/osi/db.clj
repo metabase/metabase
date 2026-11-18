@@ -34,14 +34,6 @@
    entity-local-id  :- ms/PositiveInt]
   (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
 
-(mu/defn update-ai-context!
-  "Apply `changes` to the OsiAiContext of the entity with `entity-type` and `entity-local-id`, returning the
-  number updated."
-  [entity-type      :- :string
-   entity-local-id  :- ms/PositiveInt
-   changes          :- ::osi.schema/osi-ai-context.update]
-  (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id changes))
-
 (mu/defn upsert-ai-context!
   "Insert or replace the `:ai_context` of the OsiAiContext of the entity with `entity-type` and `entity-local-id`
   with `ai-context`, returning its `[entity_type entity_local_id]` compound key."

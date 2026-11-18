@@ -36,7 +36,10 @@ export interface Measurement {
  * `brotliBytes` is optional because a point cached before brotli logging
  * landed does not carry it — see buildStatsRows' per-row gzip fallback.
  */
-export type CacheRow = Pick<Measurement, "bundle" | "kind" | "rawBytes" | "gzipBytes"> & {
+export type CacheRow = Pick<
+  Measurement,
+  "bundle" | "kind" | "rawBytes" | "gzipBytes"
+> & {
   brotliBytes?: number;
 };
 
@@ -65,7 +68,10 @@ export interface BuildStatsRowsResult {
 
 // null, not "", for an absent delta: the stats importer coerces values
 // strictly and rejects "" for a numeric column.
-const deltaPercent = (current: number, base: number | undefined | null): number | null =>
+const deltaPercent = (
+  current: number,
+  base: number | undefined | null,
+): number | null =>
   base ? Math.round(((current - base) * 10000) / base) / 100 : null;
 
 /**
@@ -97,15 +103,26 @@ export function buildStatsRows({
     // Non-null only when BOTH sides carry brotli: a point cached before brotli
     // logging landed has none, and that row falls back to the gzip delta.
     const baseBrotli =
-      measurement.brotliBytes != null && base?.brotliBytes != null ? base.brotliBytes : null;
-    const gzipDeltaPercent = deltaPercent(measurement.gzipBytes, base?.gzipBytes);
+      measurement.brotliBytes != null && base?.brotliBytes != null
+        ? base.brotliBytes
+        : null;
+    const gzipDeltaPercent = deltaPercent(
+      measurement.gzipBytes,
+      base?.gzipBytes,
+    );
     const brotliDeltaPercent =
-      baseBrotli != null ? deltaPercent(measurement.brotliBytes, baseBrotli) : null;
+      baseBrotli != null
+        ? deltaPercent(measurement.brotliBytes, baseBrotli)
+        : null;
     if (!base) {
       hasNewSeries = true;
     } else {
-      const servedDeltaPercent = baseBrotli != null ? brotliDeltaPercent : gzipDeltaPercent;
-      maxServedDeltaPercent = Math.max(maxServedDeltaPercent, Math.abs(servedDeltaPercent ?? 0));
+      const servedDeltaPercent =
+        baseBrotli != null ? brotliDeltaPercent : gzipDeltaPercent;
+      maxServedDeltaPercent = Math.max(
+        maxServedDeltaPercent,
+        Math.abs(servedDeltaPercent ?? 0),
+      );
     }
     return {
       Date: date,
@@ -122,7 +139,8 @@ export function buildStatsRows({
       "File count": measurement.fileCount,
       "Raw bytes delta": base ? measurement.rawBytes - base.rawBytes : null,
       "Gzip bytes delta": base ? measurement.gzipBytes - base.gzipBytes : null,
-      "Brotli bytes delta": baseBrotli != null ? measurement.brotliBytes - baseBrotli : null,
+      "Brotli bytes delta":
+        baseBrotli != null ? measurement.brotliBytes - baseBrotli : null,
       "Raw delta %": deltaPercent(measurement.rawBytes, base?.rawBytes),
       "Gzip delta %": gzipDeltaPercent,
       "Brotli delta %": brotliDeltaPercent,
@@ -130,7 +148,8 @@ export function buildStatsRows({
   });
 
   const firstPoint = previous.length === 0;
-  const significant = firstPoint || hasNewSeries || maxServedDeltaPercent >= threshold;
+  const significant =
+    firstPoint || hasNewSeries || maxServedDeltaPercent >= threshold;
 
   // Slim rows the next run diffs against. The workflow only persists this to the
   // cache when we actually push, so the cached reference always stays the last
@@ -162,8 +181,10 @@ export function buildStatsRows({
   };
 }
 
-const readJson = <T,>(filePath: string | undefined): T | null =>
-  filePath && existsSync(filePath) ? (JSON.parse(readFileSync(filePath, "utf8")) as T) : null;
+const readJson = <T>(filePath: string | undefined): T | null =>
+  filePath && existsSync(filePath)
+    ? (JSON.parse(readFileSync(filePath, "utf8")) as T)
+    : null;
 
 const writeJson = (filePath: string, value: unknown) => {
   mkdirSync(dirname(filePath), { recursive: true });
@@ -181,7 +202,9 @@ const setOutput = (name: string, value: string) => {
 function readVersion(versionPropsPath: string | undefined): string {
   const raw =
     versionPropsPath && existsSync(versionPropsPath)
-      ? (readFileSync(versionPropsPath, "utf8").match(/^tag=(.*)$/m)?.[1]?.trim() ?? "")
+      ? (readFileSync(versionPropsPath, "utf8")
+          .match(/^tag=(.*)$/m)?.[1]
+          ?.trim() ?? "")
       : "";
   return raw === "vUNKNOWN" ? "" : raw;
 }
@@ -216,7 +239,9 @@ export function main() {
   setOutput("significant", result.significant ? "true" : "false");
   setOutput(
     "max_delta_percent",
-    result.firstPoint || result.hasNewSeries ? "" : result.maxServedDeltaPercent.toFixed(2),
+    result.firstPoint || result.hasNewSeries
+      ? ""
+      : result.maxServedDeltaPercent.toFixed(2),
   );
 }
 

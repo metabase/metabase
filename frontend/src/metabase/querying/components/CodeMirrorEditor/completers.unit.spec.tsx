@@ -17,7 +17,7 @@ import type {
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 import {
   useCardTagCompletion,
@@ -511,6 +511,28 @@ describe("useCardTagCompletion", () => {
     expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
+  it("should describe models in the root collection", async () => {
+    const { complete } = setup({
+      results: [
+        { id: 7, name: "People Model", type: "model", collection_name: null },
+      ],
+    });
+    const results = await complete("SELECT {{ #people|");
+
+    expect(results).toEqual({
+      from: 10,
+      to: 17,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "#7-people-model",
+          apply: "#7-people-model }}",
+          detail: "Model in Our analytics",
+        },
+      ],
+    });
+  });
+
   it("should autocomplete cards when inside a closed card tag, inside a word", async () => {
     const { complete, url } = setup();
     const results = await complete("SELECT {{ #ba|r }}");
@@ -542,11 +564,13 @@ describe("useReferencedCardCompletion", () => {
       id: 42,
       name: "Referenced Question",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "Foobar",
+          database_type: "varchar",
         }),
-        createMockField({
+        createMockColumn({
           name: "Bar",
+          database_type: "varchar",
         }),
       ],
     }),
@@ -694,6 +718,29 @@ describe("useLocalsCompletion", () => {
           detail: "local",
         },
       ],
+    });
+  });
+
+  it.each([
+    {
+      name: "aliases",
+      query:
+        "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY order_mo|",
+      from: 75,
+      label: "order_month",
+    },
+    {
+      name: "quoted aliases",
+      query: `SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY QU|`,
+      from: 50,
+      label: "QUOTED_local",
+    },
+  ])("should complete $name in an h2 query", async ({ query, from, label }) => {
+    const { complete } = setup({ engine: "h2" });
+    const results = await complete(query);
+    expect(results).toEqual({
+      from,
+      options: [{ label, detail: "local" }],
     });
   });
 

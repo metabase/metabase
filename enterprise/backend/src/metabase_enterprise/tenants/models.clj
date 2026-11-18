@@ -4,48 +4,87 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
+
+(t2/deftransforms :model/Tenant
+  {:attributes mi/transform-json-no-keywordization})
+
+(doto :model/Tenant
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive :hook/events)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
+
+(defmethod events/spec :model/Tenant
+  [_model]
+  {:create :event/tenant-create
+   :update :event/tenant-update
+   :delete :event/tenant-delete})
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]
   (select-keys entity [:name :slug :is_active :attributes]))
 
-(t2/deftransforms :model/Tenant
-  {:attributes mi/transform-json-no-keywordization})
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(def Slug
-  "The malli schema for a tenant's slug"
-  [:re #"^[-_a-z0-9]{1,255}$"])
+(defn- check-new-name-and-slug
+  "Throws a 400 when `tenant`, a row an INSERT writes, has the name or slug of an existing Tenant."
+  [{tenant-name :name :keys [slug]}]
+  (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
+    (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
 
 (t2/define-before-insert :model/Tenant
   [tenant]
+  (check-new-name-and-slug tenant)
   (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
                                                              :name      (format "Tenant Collection: %s" (:name tenant))
-                                                             :namespace "tenant-specific"})]
-    (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
-      ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
-      ;; of defense.
-      (mu/validate-throw Slug (:slug tenant)))))
+                                                             :namespace :tenant-specific})]
+    (assoc tenant :tenant_collection_id tenant-collection-id)))
 
-(defn tenant-exists?
-  "Given a tenant name, returns truthy if the name (or its slugified version) is already reserved."
-  [{n :name slug :slug}]
-  (tenants.db/tenant-name-or-slug-exists? n slug))
+(t2/define-before-update :model/Tenant
+  [{:keys [id] :as tenant}]
+  (let [changes (t2/changes tenant)]
+    (when (contains? changes :slug)
+      (throw (ex-info (tru "You cannot change the slug of a tenant.") {:status-code 400})))
+    (when (contains? changes :tenant_collection_id)
+      (throw (ex-info (tru "You cannot change the collection of a tenant.") {:status-code 400})))
+    (when (and (contains? changes :name) (tenants.db/other-tenant-named? (:name changes) id))
+      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
+    (when (false? (:is_active changes))
+      (tenants.db/deactivate-tenant-users! id))
+    (when (true? (:is_active changes))
+      (tenants.db/reactivate-tenant-users! id))
+    tenant))
 
-(doto :model/Tenant
-  (derive :metabase/model)
-  (derive :hook/timestamped?))
+(mi/define-update-in-transaction :model/Tenant)
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn current-user-reads-tenants?
+  "Whether the current user may read Tenants, which superusers and users outside any tenant may."
+  []
+  (boolean (or (mi/superuser?) (nil? (:tenant_id @api/*current-user*)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Tenant :can_read]
+  "Whether the current user can read each of `tenants`, per [[current-user-reads-tenants?]]."
+  [_model k tenants]
+  (let [readable? (current-user-reads-tenants?)]
+    (for [tenant tenants]
+      (when tenant
+        (vary-meta tenant assoc k readable?)))))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
   [_model k tenants]
@@ -58,29 +97,7 @@
    :id
    {:default 0}))
 
-(def ^:private StrictAttributes
-  [:map-of
-   [:and
-    (mu/with-api-error-message
-     ms/KeywordOrString
-     (deferred-tru "attribute keys must be a keyword or string"))
-    (mu/with-api-error-message
-     [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
-     (deferred-tru "attribute keys must not start with `@`"))]
-   :any])
-
-(def Attributes
-  "Attributes attached to a tenant that will be passed down to users in the tenant.
-
-  [[StrictAttributes]] can't be the request schema directly: request decoding drops `:map-of` entries that don't
-  match their schema, so an `@`-prefixed key would be quietly discarded and the tenant saved without it. Decoding
-  therefore sees a permissive `:map-of` that keeps every entry, and the `:fn` re-checks the strict shape afterwards,
-  so an `@`-prefixed key is a 400."
-  [:and
-   (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
-   (mu/with-api-error-message
-    [:fn #(mr/validate StrictAttributes %)]
-    (deferred-tru "attribute keys must be a keyword or string and must not start with `@`"))])
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defenterprise user->tenant-collection-and-descendant-ids
   "EE version of user->tenant-collection-and-descendant-ids. Returns a vector of the tenant collection ID and all

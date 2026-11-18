@@ -139,6 +139,20 @@ const elements = [
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
+  // The data-app-* elements are the Data Apps team's folders inside embedding
+  // code. Each one takes its parent's tier and comes before its parent.
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/data-apps/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-setup",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/data-apps/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-iframe-sdk",
@@ -171,8 +185,18 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
   ),
+  createElement({
+    type: "shared",
+    name: "data-app-embedding",
+    pattern: "frontend/src/metabase/embedding/data-apps/**",
+  }),
   createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "embedding-sdk" }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/components/public/DataApp/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-sdk-bundle",
@@ -187,6 +211,11 @@ const elements = [
     type: "app",
     name: "embedding-sdk-ee",
     pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/data-apps/**",
   }),
   createElement({
     type: "app",
@@ -220,6 +249,11 @@ const elements = [
   }),
   createElement({
     type: "shared",
+    name: "data-app-embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/data-apps/**",
+  }),
+  createElement({
+    type: "shared",
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
@@ -243,6 +277,11 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
+  createElement({
+    type: "shared",
+    name: "permissions",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying" }),
@@ -332,6 +371,13 @@ const elements = [
       mode: "full",
     }),
   ),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-ee",
+    pattern:
+      "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/data-apps/**",
+    mode: "full",
+  }),
   // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
   // contract). Feature tier on purpose: it's a library consumed by the app-tier
   // entries (runtime + SDK package dev preset), and the tier guarantees it only
@@ -339,13 +385,13 @@ const elements = [
   createElement({
     type: "feature",
     name: "data-app-sandbox",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/sandbox/**",
     mode: "full",
   }),
   createElement({
     type: "app",
     name: "data-app-runtime",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/runtime/**",
     mode: "full",
   }),
   createElement({
@@ -382,7 +428,7 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
-    "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/AppComponent.unit.spec.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",

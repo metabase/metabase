@@ -18,7 +18,7 @@ import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../cartesian/option/goal-line";
-import { applyResponsiveYAxisTicks } from "../../cartesian/option/responsive-axis";
+import { applyYAxisTicks } from "../../cartesian/option/y-axis";
 import { BOXPLOT_STATS } from "../constants";
 import type { BoxPlotLayoutModel } from "../layout/types";
 import type { BoxPlotChartModel } from "../model/types";
@@ -166,12 +166,19 @@ export const getBoxPlotOption = (
     sideLabelOverflow.rightYAxisOffset,
   );
 
-  const yAxis = applyResponsiveYAxisTicks(
+  const yAxis = applyYAxisTicks(
     [leftYAxis, rightYAxis].filter(isNotNull),
     chartModel,
     { ...layoutModel, padding: adjustedPadding },
     settings,
   );
+
+  // echarts crashes building a cartesian coordinate system that has an x-axis
+  // but no y-axis, which happens when no y-axis model resolves on an empty
+  // render. Render an empty chart instead of emitting a lone x-axis.
+  if (yAxis.length === 0) {
+    return {};
+  }
 
   const boxDimensions = [
     X_AXIS_DATA_KEY,

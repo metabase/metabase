@@ -127,14 +127,7 @@
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
- mbql.u/aggregation-at-index
- mbql.u/assoc-field-options
- mbql.u/expression-with-name
- mbql.u/field-options
- mbql.u/normalize-token
  mbql.u/query->max-rows-limit
- mbql.u/query->source-table-id
- mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source
  mdb/make-subname
@@ -169,6 +162,7 @@
  qp.util.transformations.nest-breakouts/nest-pivot-joins
  qp.util/default-query->remark
  qp.util/query->remark
+ qp.util/query->remark-data
  qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query

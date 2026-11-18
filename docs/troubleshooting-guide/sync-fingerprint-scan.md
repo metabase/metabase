@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting syncs, scans, and fingerprinting
+summary: Fix missing tables, stale filter values, and wrong column types by understanding how syncing, scanning, and fingerprinting work.
 ---
 
 # Troubleshooting syncs, scans, and fingerprinting

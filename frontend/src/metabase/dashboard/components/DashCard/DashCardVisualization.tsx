@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getActionDisplayType, isActionDashCard } from "metabase/actions/utils";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
@@ -40,7 +42,7 @@ import type { LoadingViewProps } from "metabase/visualizations/components/Visual
 import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
-} from "metabase/visualizations/components/legend/LegendCaption";
+} from "metabase/visualizations/components/legend/constants";
 import type {
   CardSlownessStatus,
   ClickObject,
@@ -61,7 +63,7 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardId,
@@ -89,11 +91,15 @@ import {
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
+import { DashCardFilterMenu } from "./DashCardFilterMenu/DashCardFilterMenu";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetCardHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import {
   getCardsFromSeries,
   getMissingColumnsFromVisualizationSettings,
@@ -129,6 +135,7 @@ interface DashCardVisualizationProps {
   series: DashCardSeries;
   question: Question | null;
   getHref?: () => string | undefined;
+  getCardHref?: DashCardGetCardHref;
 
   gridSize: {
     width: number;
@@ -164,11 +171,14 @@ interface DashCardVisualizationProps {
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
 
+const SCALAR_DISPLAYS = new Set<string>(["scalar", "smartscalar"]);
+
 export function DashCardVisualization({
   dashcard,
   series: rawSeries,
   question,
   getHref,
+  getCardHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -443,6 +453,17 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
+  const getNextCardHref = useMemo(() => {
+    if (!getCardHref) {
+      return;
+    }
+
+    return (nextCard: SeriesCard) => {
+      const previousCard = findCardById(nextCard.id);
+      return previousCard ? getCardHref({ nextCard, previousCard }) : undefined;
+    };
+  }, [getCardHref, findCardById]);
+
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
@@ -479,6 +500,9 @@ export function DashCardVisualization({
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
+  const display = series?.[0]?.card.display;
+  const isScalarCard = display != null && SCALAR_DISPLAYS.has(display);
+
   const fontFamily = useSelector((state) =>
     getSetting(state, "application-font"),
   );
@@ -513,6 +537,17 @@ export function DashCardVisualization({
   const withTimelineEvents =
     isTimelineEventsEnabled && isChartTimelineEventsEnabled;
 
+  // A 403 means the viewer may not see the card's data, so its filters stay hidden too.
+  const hasViewAccess = useMemo(() => {
+    const cardId = dashcard.card_id ?? dashcard.card?.id;
+    const cardResult = cardId ? datasets?.[cardId] : undefined;
+    const errorStatus =
+      cardResult?.error && typeof cardResult.error === "object"
+        ? cardResult.error.status
+        : undefined;
+    return !cardResult || errorStatus !== 403;
+  }, [dashcard, datasets]);
+
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
@@ -534,13 +569,10 @@ export function DashCardVisualization({
         withTimelineEvents,
       });
 
-    const errorStatus =
-      cardResult?.error && typeof cardResult.error === "object"
-        ? cardResult.error.status
-        : undefined;
-    const hasViewAccess = !cardResult || errorStatus !== 403;
-
-    const showInlineParams = inlineParameters.length > 0 && hasViewAccess;
+    // Number and Trend cards have no header row, so their filters render in
+    // the leading slot instead of here.
+    const showInlineParams =
+      inlineParameters.length > 0 && hasViewAccess && !isScalarCard;
 
     if (!showMenu && !showInlineParams) {
       return null;
@@ -590,7 +622,17 @@ export function DashCardVisualization({
     titleMenuItems,
     shouldCollapseList,
     parameterListRef,
+    isScalarCard,
+    hasViewAccess,
   ]);
+
+  const cardLevelFilters = useMemo(() => {
+    if (!isScalarCard || inlineParameters.length === 0 || !hasViewAccess) {
+      return null;
+    }
+
+    return <DashCardFilterMenu parameters={inlineParameters} />;
+  }, [hasViewAccess, inlineParameters, isScalarCard]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
     dashcardId: dashcard.id,
@@ -615,6 +657,15 @@ export function DashCardVisualization({
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
 
+  // An action button fills its borderless card and has its own rounded outline,
+  // so clipping it to the card's radius would cut its corners off.
+  const isActionButton =
+    isActionDashCard(dashcard) &&
+    getActionDisplayType(
+      dashcard.visualization_settings.actionDisplayType,
+      dashcard.action,
+    ) === "button";
+
   return (
     <div
       className={cx(S.VisualizationContainer, CS.flexFull, CS.fullHeight, {
@@ -626,7 +677,7 @@ export function DashCardVisualization({
         <Visualization
           className={cx(S.Visualization, CS.flexFull, {
             [CS.overflowAuto]: visualizationOverlay,
-            [CS.overflowHidden]: !visualizationOverlay,
+            [CS.overflowHidden]: !visualizationOverlay && !isActionButton,
           })}
           dashboard={dashboard ?? undefined}
           dashcard={dashcard}
@@ -639,6 +690,7 @@ export function DashCardVisualization({
           }
           mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
+          getCardHref={getNextCardHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
           headerIcon={headerIcon}
@@ -656,6 +708,7 @@ export function DashCardVisualization({
           isEditingParameter={isEditingParameter}
           isMobile={isMobile}
           actionButtons={actionButtons}
+          cardLevelFilters={cardLevelFilters}
           replacementContent={visualizationOverlay}
           getExtraDataForClick={getExtraDataForClick}
           transformClickObject={transformClickObject}

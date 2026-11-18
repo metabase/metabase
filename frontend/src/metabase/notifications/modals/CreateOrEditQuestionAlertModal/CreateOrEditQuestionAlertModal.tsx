@@ -30,6 +30,7 @@ import {
   getHasConfiguredEmailOrSlackChannel,
 } from "metabase/pulse";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Undo } from "metabase/redux/store/undo";
 import { addUndo } from "metabase/redux/undo";
 import {
   Button,
@@ -50,6 +51,7 @@ import type {
   NotificationCardSendCondition,
   NotificationCronSubscription,
   NotificationHandler,
+  SendNotificationResponse,
   UpdateAlertNotificationRequest,
   UserId,
   VisualizationSettings,
@@ -117,6 +119,20 @@ type CreateOrEditQuestionAlertModalProps = {
       onAlertCreated?: () => void;
     }
 );
+
+function toastForSendResult(result: SendNotificationResponse): Partial<Undo> {
+  return match(result.status)
+    .with("sent", () => ({
+      message: t`Test alert sent.`,
+    }))
+    .with("skipped", () => ({
+      variant: "warning",
+      message: result.skip_reason
+        ? t`No alert to send (${result.skip_reason})`
+        : t`No alert to send.`,
+    }))
+    .exhaustive();
+}
 
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
@@ -250,6 +266,8 @@ export const CreateOrEditQuestionAlertModal = ({
             message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
+      } else if (result.data) {
+        dispatch(addUndo(toastForSendResult(result.data)));
       }
     }
   };
@@ -312,7 +330,6 @@ export const CreateOrEditQuestionAlertModal = ({
       opened
       size={rem(680)}
       onClose={onClose}
-      padding="2.5rem"
       title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {
@@ -322,7 +339,7 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="2.5rem">
+      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="xl">
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >
@@ -407,11 +424,6 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
             labelPosition="right"
             checked={notification.payload?.send_once}
             onChange={(event) => {
@@ -433,7 +445,7 @@ export const CreateOrEditQuestionAlertModal = ({
       <Flex
         justify="space-between"
         align="center"
-        px="2.5rem"
+        px="xl"
         pt="xl"
         className={CS.borderTop}
       >

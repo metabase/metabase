@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -152,7 +153,7 @@ function MetricsEmptyState({
   newMetricLink: string;
 }) {
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
-    "data-modeling/metrics",
+    "data-modeling/semantic-layer/metrics",
   );
 
   return (

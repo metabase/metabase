@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -23,11 +22,10 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 
 import VisErrorS from "./VisualizationError.module.css";
 import { AdminEmail } from "./components";
-import { adjustPositions, getDatasetErrorMessage, stripRemarks } from "./utils";
+import { getDatasetErrorMessage, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
   className?: string;
-  via: Record<string, any>[];
   question: Question;
   duration: number;
   error: DatasetError;
@@ -37,7 +35,6 @@ interface VisualizationErrorProps {
 
 export function VisualizationError({
   className,
-  via,
   question,
   duration,
   error,
@@ -139,14 +136,9 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = errorMessage;
-    const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
-    if (typeof origSql === "string" && processedError) {
-      processedError = adjustPositions(processedError, origSql);
-    }
-    processedError = stripRemarks(processedError);
-    const database = question.database();
-    const isSql = database && getEngineNativeType(database.engine) === "sql";
+    const processedError = stripRemarks(errorMessage);
+    const engine = Lib.databaseDisplayInfo(question.query())?.engine;
+    const isSql = engine != null && getEngineNativeType(engine) === "sql";
 
     return (
       <Box className={cx(className, CS.overflowAuto)}>

@@ -11,7 +11,6 @@
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -91,7 +90,7 @@
     (loop [found            []
            [current & more] parsed]
       (let [[found more] (match/match-one current
-                           (_ :guard string?) [found more]
+                           #'string? [found more]
 
                            {:type ::lib.parse/param, :name tag-name}
                            (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
@@ -277,7 +276,7 @@
   (assert-native-stage (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
-                                           (update stage :template-tags update-vals #(dissoc % :dimension)))))]
+                                           (update stage :template-tags update-vals #(dissoc % :field-id)))))]
     (lib.query/query-with-stages metadata-provider stages-without-fields)))
 
 (mu/defn native-extras :- [:maybe ::native-extras]
@@ -360,13 +359,6 @@
   [s]
   (str/replace s #"[.*+?^${}()|\[\]\\]" (fn [c] (str "\\" c))))
 
-(defn- replace-tag-in-text
-  [text old-name new-name]
-  (str/replace text
-               (re-pattern (str "\\{\\{\\s*" (regex-escape old-name) "\\s*\\}\\}"))
-               ;; function replacement so a `$` in the new name can't be misread as a match reference
-               (constantly (str "{{" new-name "}}"))))
-
 (defn- rename-tag
   "Rename a template tag, replacing its `:display-name` only if it was the humanized default for the
   old name (same rule as [[rename-template-tag]])."
@@ -376,10 +368,16 @@
     (assoc :display-name (u.humanization/name->human-readable-name :simple new-name))))
 
 (mu/defn rename-template-tags-in-text :- :string
-  "`text` with its `{{...}}` references renamed per `renames`, a map of old tag name => new tag name."
+  "`text` with its `{{...}}` references renamed per `renames`, a map of old tag name => new tag name, all in one pass,
+  so a new name that is another tag's old name is not renamed again."
   [text    :- :string
    renames :- [:map-of :string :string]]
-  (reduce-kv replace-tag-in-text text renames))
+  (if (empty? renames)
+    text
+    (str/replace text
+                 (re-pattern (str "\\{\\{\\s*(" (str/join "|" (map regex-escape (keys renames))) ")\\s*\\}\\}"))
+                 (fn [[_match old-name]]
+                   (str "{{" (get renames old-name) "}}")))))
 
 (mu/defn rename-template-tags :- ::lib.schema.template-tag/template-tag-map
   "`tags`, a map of tag name => tag, with the tags in `renames` renamed the way [[replace-template-tag-names]] renames
@@ -445,13 +443,13 @@
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
   "Validate a single template tag, returning a list of errors."
   [_query :- ::lib.schema/query
-   {tag-type :type tag-name :name, :keys [display-name dimension table-id]} :- ::lib.schema.template-tag/template-tag]
+   {tag-type :type tag-name :name, :keys [display-name field-id table-id]} :- ::lib.schema.template-tag/template-tag]
   (cond-> []
     (empty? display-name)
     (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
            :tag-name tag-name})
 
-    (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
+    (and (#{:dimension :temporal-unit} tag-type) (nil? field-id))
     (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
            :tag-name tag-name})
 
@@ -481,7 +479,7 @@
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value
-  [query tag-name {:keys [id dimension], param-type :type}]
+  [query tag-name {:keys [id field-id], param-type :type}]
   ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
   ;; value so that the query will compile.
   (case param-type
@@ -501,10 +499,9 @@
                     :type   :boolean/=,
                     :value  [false],
                     :target ["variable" ["template-tag" tag-name]]}
-    :dimension     (let [effective-type (->> dimension
-                                             lib.ref/field-ref-id
-                                             (lib.metadata/field query)
-                                             :effective-type)]
+    :dimension     (let [effective-type (some->> field-id
+                                                 (lib.metadata/field query)
+                                                 :effective-type)]
                      (merge {:id     id,
                              :type   :string/=,
                              :value  ["foo"],

@@ -8,8 +8,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
@@ -66,7 +65,7 @@ const setup = async ({
   });
 
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(TEST_CARD_ID));
+  const question = new Question(TEST_CARD, metadata);
 
   const onClose = jest.fn();
 

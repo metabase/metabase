@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
@@ -365,6 +366,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         <SubtitleText>{wrappedSearchResult.dashboard.name}</SubtitleText>
       </>
     );
+  } else if (wrappedSearchResult.model === "data-app") {
+    // A data app is in no collection, which getCollection would name as the root one.
+    return <SubtitleText>{t`Data app`}</SubtitleText>;
   } else {
     return (
       <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>

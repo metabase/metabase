@@ -443,7 +443,7 @@
                   :name           "count"
                   :display-name   "Count"
                   :lib/source     :source/aggregations}
-                 {:settings       {:is_priceless true}
+                 {:settings       {:decimals 2}
                   :lib/type       :metadata/column
                   :effective-type :type/Integer
                   :name           "sum"
@@ -623,16 +623,58 @@
                      (filterv :selected?))))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
-  (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
+  (testing "Aggregation metadata should inherit value-formatting `:settings` from the field being aggregated."
     (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
-      (is (=? {:settings       {:is_priceless true}
+      (is (=? {:settings       {:decimals 2}
                :lib/type       :metadata/column
                :effective-type :type/Integer
                :name           "sum"
                :display-name   "Sum of Price"
                :lib/source     :source/aggregations}
               (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
+
+(deftest ^:parallel preserve-currency-position-metadata-test
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price)
+                                            :settings {:currency_position "after"})]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/sum price))
+                              (lib/aggregate (lib/distinct price)))
+        [sum-col count-col] (lib/aggregations-metadata query)]
+    (is (= {:currency_position "after"} (:settings sum-col)))
+    (is (nil? (:settings count-col)))))
+
+(deftest ^:parallel preserve-duration-settings-metadata-test
+  (let [settings          {:number_style       "duration"
+                           :duration_unit      "hour"
+                           :duration_style     "narrow"
+                           :duration_precision "minute"}
+        metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price) :settings settings)]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/max price))
+                              (lib/aggregate (lib/distinct price))
+                              (lib/aggregate (lib/var price)))
+        [max-col count-col var-col] (lib/aggregations-metadata query)]
+    (is (= settings (:settings max-col)))
+    (is (nil? (:settings count-col)))
+    (testing "variance is in squared units, so it is not formatted as duration"
+      (is (nil? (:settings var-col))))))
+
+(deftest ^:parallel variance-keeps-other-number-settings-test
+  (let [settings          {:number_style "currency", :decimals 1}
+        metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price) :settings settings)]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/var price)))]
+    (is (= settings (:settings (first (lib/aggregations-metadata query)))))))
 
 (deftest ^:parallel preserve-model-column-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` from model's result_metadata for the column being aggregated (#68692)"

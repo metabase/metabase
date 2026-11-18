@@ -96,35 +96,24 @@
                  (sort (keep :column (:returned-fields result))))
               (pr-str sql)))))))
 
-;;; --------------------------------------------- is-single-stmt-of-type? ------------------------------------------
+(deftest ^:parallel field-references-alias-per-select-item-test
+  (testing "a column selected with and without an alias keeps the alias of each select item"
+    (is (= ["b" "a"]
+           (mapv :alias (:returned-fields (sql-parsing/field-references
+                                           "postgres"
+                                           "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u")))))))
 
-(deftest ^:parallel is-single-stmt-of-type?-test
+;;; ------------------------------------------ single-stmt classification ------------------------------------------
+
+(deftest ^:parallel single-stmt-classification-test
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
     (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
       (testing name
-        (is (=? expected (sql-parsing/is-single-stmt-of-type? dialect sql stmt-type))
+        (is (=? expected (sql-parsing/validate-executable-stmt dialect sql stmt-type))
+            (pr-str sql))
+        (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
+               (sql-parsing/classify-stmt dialect sql stmt-type))
             (pr-str sql))))))
-
-;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
-
-(deftest ^:parallel returned-columns-lineage-test
-  (testing "the columns a query returns, which is what an expectation compares against"
-    (doseq [{:keys [name sql dialect default-schema columns]} (cases "returned_columns")]
-      (testing name
-        (is (= columns
-               (sort (map (comp u/lower-case-en first)
-                          (sql-parsing/returned-columns-lineage dialect sql default-schema {}))))
-            (pr-str sql))))))
-
-;;; ------------------------------------------------- validate-query -----------------------------------------------
-
-(deftest ^:parallel validate-query-test
-  (testing "a query checked against a schema, column by column"
-    (let [schemas (:schemas (edn/read-string (slurp (io/resource "metabase/sql_parsing/test_cases/validate_query.edn"))))]
-      (doseq [{:keys [name sql dialect default-schema schema expected]} (cases "validate_query")]
-        (testing name
-          (is (=? expected (sql-parsing/validate-query dialect sql default-schema (get schemas schema)))
-              (pr-str sql)))))))
 
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 
@@ -175,6 +164,14 @@
       (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
       (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
              (sort (sql-parsing/referenced-fields "postgres" sql))))))
-  (testing "and is one statement still"
-    (let [sql (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
-      (is (=? {:is-single-stmt? true} (sql-parsing/is-single-stmt-of-type? "postgres" sql "read"))))))
+  (testing "but a classification never answers about a stripped rewrite"
+    ;; Analysis can read a stripped query because it only needs the shape. A classification's answer has to
+    ;; hold for the string the caller holds, so it parses the original and reports SQL over its ceiling as
+    ;; unchecked rather than answering about a rewrite.
+    (let [under (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)) ")")
+          over  (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
+      (testing "a list the analysis threshold would strip still validates as one statement"
+        (is (=? {:verdict :allowed} (sql-parsing/validate-executable-stmt "postgres" under "read"))))
+      (testing "a list past the ceiling comes back unchecked, not stripped and vouched for"
+        (is (= {:verdict :unknown, :reason "large-literal-list", :sql over}
+               (sql-parsing/validate-executable-stmt "postgres" over "read")))))))

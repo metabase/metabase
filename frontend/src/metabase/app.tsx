@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 // This is conditionally aliased in the webpack config.
@@ -24,6 +25,7 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
+import { ChunkLoadFailed } from "metabase/common/components/ErrorPages";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -46,7 +48,7 @@ import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
 import { captureConsoleErrors } from "metabase/utils/errors";
-import { initMetaplow } from "metabase/utils/metaplow";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import MetabaseSettings from "metabase/utils/settings";
@@ -114,6 +116,7 @@ async function _init(
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
+    hostUrl: getCollectorHostUrl(),
     getUserId: () => getUserId(store.getState()),
   });
 
@@ -139,7 +142,8 @@ async function _init(
                 <RouterProvider
                   routes={routes}
                   onLocationChange={mirrorLocation}
-                  hydrateFallback={<DelayedLoadingSpinner />}
+                  loadingFallback={<DelayedLoadingSpinner />}
+                  chunkErrorFallback={ChunkLoadFailed}
                 />
               </MetabotProvider>
             </AppThemeProvider>

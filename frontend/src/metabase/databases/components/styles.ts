@@ -1,9 +1,10 @@
 import type { FieldType } from "../types";
 
 export function getSharedFieldStyleProps(type?: FieldType) {
-  // the file input isn't a Mantine field, so it takes no style props
+  // the file input isn't a Mantine field, so it takes the label gap as `gap`
+  // rather than through `labelProps`
   if (type === "textFile") {
-    return {};
+    return { mb: "xl", gap: "sm" };
   }
 
   // our boolean (Switch) fields don't support the labelProps

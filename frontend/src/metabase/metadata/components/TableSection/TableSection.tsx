@@ -51,6 +51,8 @@ const TableSectionBase = ({
   } = useTableUpdateHandlers({ table });
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const readOnly = !table.can_write;
+  const canSort = hasFields && !readOnly;
   const {
     buttonsContainerRef,
     showButtonLabel,
@@ -58,7 +60,7 @@ const TableSectionBase = ({
     setSortingButtonWidth,
     setSyncButtonWidth,
   } = useResponsiveButtons({
-    hasFields,
+    canSort,
     isSorting,
     isUpdatingSorting,
   });
@@ -96,6 +98,7 @@ const TableSectionBase = ({
                 </ActionIcon>
               </Tooltip>
             }
+            readOnly={readOnly}
             onNameChange={handleNameChange}
             onDescriptionChange={handleDescriptionChange}
           />
@@ -122,7 +125,7 @@ const TableSectionBase = ({
 
             {isUpdatingSorting && <Loader size="xs" />}
 
-            {!isSorting && hasFields && (
+            {!isSorting && canSort && (
               <ResponsiveButton
                 icon="sort_arrows"
                 showLabel={showButtonLabel}

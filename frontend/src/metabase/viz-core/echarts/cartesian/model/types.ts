@@ -186,7 +186,7 @@ export type YAxisModel = {
   label?: string;
   formatter: AxisFormatter;
   formatGoal: AxisFormatter;
-  splitNumber?: number;
+  splitNumber: number;
   hasResponsiveTicks?: boolean;
   isNormalized?: boolean;
 };
@@ -256,6 +256,9 @@ export type BaseCartesianChartModel = {
 
   // For `graph.max_categories` setting
   groupedSeriesModels?: SeriesModel[];
+
+  // Row chart rows summed into the folded "Other" row
+  foldedDataset?: ChartDataset;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

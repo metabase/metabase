@@ -47,7 +47,7 @@
 ;; reflectively, unwrapping the InvocationTargetException so the filter's own exception surfaces.
 (defn- read-through-delegate! [db-type result-set-fn obj]
   (let [k        (Class/forName (secure-delegate/install! db-type) true (classloader/the-classloader))
-        delegate (.newInstance k)
+        delegate (.newInstance (.getDeclaredConstructor k (into-array Class [])) (object-array 0))
         m        (.getMethod k "getObjectFromBlob" (into-array Class [ResultSet String]))]
     (try
       (.invoke m delegate (object-array [(result-set-fn (serialize-bytes obj)) "data"]))

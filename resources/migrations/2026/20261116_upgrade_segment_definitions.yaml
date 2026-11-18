@@ -1,0 +1,11 @@
+## Segment definitions stored as bare MBQL 4 fragments become full queries, so a definition reads without its row.
+
+databaseChangeLog:
+  - changeSet:
+      id: m8mp4e
+      author: ranquild
+      comment: Rewrite segment definitions stored as MBQL 4 fragments into full queries
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.UpgradeSegmentDefinitionFragments
+      rollback:

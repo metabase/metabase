@@ -144,6 +144,21 @@
         (mt/user-http-request tenant-user-id :get 403 "ee/tenant/")
         (mt/user-http-request tenant-user-id :get 403 (str "ee/tenant/" id))))))
 
+(deftest tenant-permission-checked-before-existence-test
+  (mt/with-temporary-setting-values [use-tenants true]
+    (mt/with-temp [:model/Tenant {id :id} {}
+                   :model/User {tenant-user-id :id} {:tenant_id id}]
+      (testing "refused callers get 403 for missing tenants too"
+        (mt/user-http-request tenant-user-id :get 403 (str "ee/tenant/" Integer/MAX_VALUE))
+        (mt/user-http-request :rasta :put 403 (str "ee/tenant/" Integer/MAX_VALUE) {:name "Missing Tenant"})
+        (mt/user-http-request :rasta :put 403 (str "ee/tenant/" id) {:name "Renamed Tenant"}))
+      (testing "superusers get 404 for missing tenants"
+        (mt/user-http-request :crowberto :get 404 (str "ee/tenant/" Integer/MAX_VALUE))
+        (mt/user-http-request :crowberto :put 404 (str "ee/tenant/" Integer/MAX_VALUE) {:name "Missing Tenant"}))
+      (testing "non-superusers cannot create tenants"
+        (mt/user-http-request :rasta :post 403 "ee/tenant/" {:name "Refused Tenant" :slug "refused-tenant"})
+        (is (not (t2/exists? :model/Tenant :slug "refused-tenant")))))))
+
 (deftest tenant-users-can-only-list-tenant-recipients-visibility-all-test
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
@@ -407,7 +422,7 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection/" {:namespace collection/shared-tenant-ns
                                                                                  :name (mt/random-name)})
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? coll))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -421,7 +436,7 @@
       (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}]
         (let [id (:id (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
                                                                                 :parent_id parent-id}))
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? id))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -719,6 +734,26 @@
           (testing "tenant collection is now archived"
             (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
 
+(deftest tenants-feature-toggle-leaves-tenant-collections-test
+  (testing "turning the Tenants feature off deactivates every Tenant and leaves their Collections where they are"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id, tenant-collection-id :tenant_collection_id} {:name "Toggle" :slug "toggle"}]
+          (mt/with-temp [:model/Card {card-id :id} {:collection_id tenant-collection-id}]
+            (mt/with-temporary-setting-values [use-tenants false]
+              (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+              (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+              (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))
+            (testing "reactivating the Tenant keeps its Collection where it is"
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+              (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id))))
+            (testing "an admin who deactivates and reactivates the Tenant archives and restores its Collection"
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
+              (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+              (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+              (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))))))))
+
 (deftest tenant-collection-children-archived-when-tenant-deactivated-test
   (testing "Children of tenant-specific collection are also archived when tenant is deactivated"
     (mt/with-premium-features #{:tenants}
@@ -813,6 +848,17 @@
         (mt/with-temp [:model/Collection {shared-id :id}  {:namespace collection/shared-tenant-ns}
                        :model/Collection {regular-id :id} {}]
           (mt/user-http-request :crowberto :put 400 (str "collection/" regular-id) {:parent_id shared-id}))))))
+
+(deftest can-move-shared-tenant-collection-within-shared-tenant-namespace-test
+  (testing "PUT /api/collection/:id can nest a shared-tenant collection and move it back to root"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}
+                       :model/Collection {child-id :id}  {:namespace collection/shared-tenant-ns}]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id parent-id})
+          (is (= (format "/%d/" parent-id) (t2/select-one-fn :location :model/Collection :id child-id)))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id nil})
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id child-id))))))))
 
 (deftest can-create-dashboards-in-shared-tenant-collections-test
   (testing "POST /api/dashboard can save a dashboard to a shared-tenant-namespace collection"

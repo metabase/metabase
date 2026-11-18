@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
@@ -131,8 +132,12 @@ export const ErrorDiagnosticModal = ({
 
   if (isSubmissionComplete) {
     return (
-      <Modal opened onClose={onClose} size={550}>
-        <Stack gap="sm" align="center" py="xxl">
+      <Modal
+        opened
+        onClose={onClose}
+        size={550}
+        layout="centered"
+        illustration={
           <MetabotLogo
             variant="bug"
             alt={c(
@@ -140,14 +145,15 @@ export const ErrorDiagnosticModal = ({
             ).t`Bug report submitted`}
             style={{ height: "100px", width: "100px" }}
           />
-          <Text ta="center" size="lg" fw="bold">
-            {t`Thank you for your feedback!`}
-          </Text>
-          <Text ta="center" c="text-secondary">
-            {t`Bug report submitted successfully.`}
-          </Text>
-          <Button mt="xxl" onClick={onClose}>{t`Close`}</Button>
-        </Stack>
+        }
+        title={t`Thank you for your feedback!`}
+      >
+        <Text c="text-secondary">{t`Bug report submitted successfully.`}</Text>
+        <Modal.Footer>
+          <Button variant="filled" onClick={onClose}>
+            {t`Close`}
+          </Button>
+        </Modal.Footer>
       </Modal>
     );
   }

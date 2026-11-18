@@ -6,6 +6,8 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import type { State } from "metabase/redux/store";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -16,13 +18,8 @@ import {
   createMockCard,
   createMockDashboardCard,
   createMockParameter,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 export const PARAMETER_ID = "parameter";
 
@@ -37,9 +34,9 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const ORDERS_DATASET_QUERY = createMockStructuredDatasetQuery({
-  query: { "source-table": ORDERS_ID },
-});
+const ORDERS_DATASET_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 export function createOrdersCard(id: CardId) {
   return createMockCard({

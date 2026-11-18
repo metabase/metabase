@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import _ from "underscore";
 
 import {
-  skipToken,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
-  useSearchQuery,
 } from "metabase/api";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
@@ -18,7 +17,6 @@ import type {
   RootNode,
   SchemaNode,
   TableNode,
-  TreeNode,
   TreePath,
 } from "./types";
 import { expandPath, merge, node, rootNode, toKey } from "./utils";
@@ -68,89 +66,6 @@ export function useExpandedState(
 }
 
 /**
- * Fetch items from the search API and renders them as a TreeNode so we can use the same
- * data structure for the tree and the search results and render them in a consistent way.
- */
-export function useSearch(query: string) {
-  const { data, isLoading } = useSearchQuery(
-    query === ""
-      ? skipToken
-      : {
-          q: query,
-          models: ["table"],
-          context: "data-picker",
-        },
-  );
-
-  const tree = useMemo(() => {
-    const tree: TreeNode = rootNode();
-
-    data?.data.forEach((result) => {
-      const { model, database_name, database_id, table_schema, id, name } =
-        result;
-      const tableSchema = table_schema ?? "";
-
-      if (model !== "table" || database_name === null) {
-        return;
-      }
-
-      let databaseNode = tree.children.find(
-        (node) =>
-          node.type === "database" && node.value.databaseId === database_id,
-      );
-      if (!databaseNode) {
-        databaseNode = node<DatabaseNode>({
-          type: "database",
-          label: database_name,
-          value: {
-            databaseId: database_id,
-          },
-        });
-        tree.children.push(databaseNode);
-      }
-
-      let schemaNode = databaseNode.children.find((node) => {
-        return node.type === "schema" && node.value.schemaName === tableSchema;
-      });
-      if (!schemaNode) {
-        schemaNode = node<SchemaNode>({
-          type: "schema",
-          label: tableSchema,
-          value: {
-            databaseId: database_id,
-            schemaName: tableSchema,
-          },
-        });
-        databaseNode.children.push(schemaNode);
-      }
-
-      let tableNode = schemaNode.children.find(
-        (node) => node.type === "table" && node.value.tableId === id,
-      );
-      if (!tableNode) {
-        tableNode = node<TableNode>({
-          type: "table",
-          label: name,
-          value: {
-            databaseId: database_id,
-            schemaName: tableSchema,
-            tableId: id,
-          },
-          disabled: !isSyncCompleted(result),
-        });
-        schemaNode.children.push(tableNode);
-      }
-    });
-    return tree;
-  }, [data]);
-
-  return {
-    isLoading,
-    tree,
-  };
-}
-
-/**
  * Provides a function that fetches for a specific path the database, schema and table (or any subset that applies to the path).
  *
  * This state is managed at the top-level so we can generate a flat list of all nodes in the tree,
@@ -173,7 +88,10 @@ export function useTableLoader() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases({}, true);
+    const response = await fetchDatabases(
+      PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+      true,
+    );
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
       // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -204,6 +122,7 @@ export function useTableLoader() {
         id: databaseId,
         schema: schemaName,
         include_hidden: true,
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
       };
 
       if (
@@ -244,6 +163,7 @@ export function useTableLoader() {
       const newArgs = {
         id: databaseId,
         include_hidden: true,
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
       };
 
       if (
@@ -268,6 +188,7 @@ export function useTableLoader() {
           // fetch the tables immediately so we can render a flattened tree.
           if (schemaName === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
             schema.children = await getTables(databaseId, schemaName);
+            schema.loaded = true;
           }
           return schema;
         }) ?? [],
@@ -299,20 +220,24 @@ export function useTableLoader() {
         getTables(path.databaseId, path.schemaName),
       ]);
 
+      // The database and schema on the path were just fetched, so mark them
+      // loaded even if they came back empty
       const newTree = rootNode(
-        databases.map((database) => ({
-          ...database,
-          children:
-            database.value.databaseId !== databaseId
-              ? database.children
-              : schemas.map((schema) => ({
-                  ...schema,
-                  children:
-                    schema.value.schemaName !== schemaName
-                      ? schema.children
-                      : tables,
-                })),
-        })),
+        databases.map((database) => {
+          if (database.value.databaseId !== databaseId) {
+            return database;
+          }
+          return {
+            ...database,
+            loaded: true,
+            children: schemas.map((schema) => {
+              if (schema.value.schemaName !== schemaName) {
+                return schema;
+              }
+              return { ...schema, loaded: true, children: tables };
+            }),
+          };
+        }),
       );
       try {
         setTree((current) => {

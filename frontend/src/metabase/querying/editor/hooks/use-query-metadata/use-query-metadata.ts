@@ -1,24 +1,21 @@
 import { useEffect, useMemo, useRef } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
+import {
+  getPrimarySourceMetadata,
+  hasPrimarySource,
+} from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function useQueryMetadata(question: Question) {
-  const [loadMetadata, { error, isFetching, isUninitialized }] =
-    useLazyGetAdhocQueryMetadataQuery();
+  const [loadMetadata, { error }] = useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
 
-  const isSourceTableLoaded = useMemo(() => {
+  const isSourceLoaded = useMemo(() => {
     const query = question.query();
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    const sourceTable =
-      sourceTableId != null
-        ? Lib.tableOrCardMetadata(query, sourceTableId)
-        : null;
-    return sourceTableId == null || sourceTable != null;
+    return !hasPrimarySource(query) || getPrimarySourceMetadata(query) != null;
   }, [question]);
 
   useEffect(() => {
@@ -33,14 +30,8 @@ export function useQueryMetadata(question: Question) {
     }
   }, [question, loadMetadata]);
 
-  const metadataError =
-    error ??
-    (!isUninitialized && !isFetching && !isSourceTableLoaded
-      ? t`The source database for this query is not available`
-      : undefined);
-
   return {
-    isLoading: !isSourceTableLoaded && (isFetching || isUninitialized),
-    error: metadataError,
+    isLoading: !isSourceLoaded,
+    error,
   };
 }

@@ -1,17 +1,30 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;;; ------------------------------------------------------- Setup --------------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/PulseCard [_model] :pulse_card)
 
 (doto :model/PulseCard
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/events))
+
+(defmethod events/spec :model/PulseCard
+  [_model]
+  {:create :event/pulse-card-create
+   :update :event/pulse-card-update
+   :delete :event/pulse-card-delete})
+
+;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"
@@ -27,7 +40,7 @@
    [:card_id                            ms/PositiveInt]
    [:pulse_id                           ms/PositiveInt]
    [:dashboard_card_id                  ms/PositiveInt]
-   [:position          {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:position          {:optional true} [:maybe ::pulse.schema/pulse-card.position]]
    [:include_csv       {:optional true} [:maybe :boolean]]
    [:include_xls       {:optional true} [:maybe :boolean]]
    [:format_rows       {:optional true} [:maybe :boolean]]

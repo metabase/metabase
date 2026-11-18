@@ -3,8 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-surface :as mcp.ui-surface]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]))
@@ -73,6 +76,20 @@
   (client/client-full-response method expected-status url
                                {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
                                                             "mcp-session-id" session-id}}}))
+
+(deftest ui-credential-authenticates-with-auth-method-mcp-ui-test
+  (init-status/set-complete!)
+  (testing "a resolvable credential on the surface authenticates its user with auth method \"mcp-ui\""
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})]
+      (is (=? {:metabase-user-id      user-id
+               :embedding/auth-method "mcp-ui"}
+              (#'mw.session/merge-current-user-info
+               mcp.http-handler/options
+               {:request-method :get
+                :uri            "/api/embed-mcp/bootstrap"
+                :headers        {"x-metabase-mcp-ui-auth" credential}}))))))
 
 (deftest ui-credential-cannot-read-the-profile-test
   (testing "GHY-4400: `refresh_ui_credential` is not a scope-escalation primitive — the credential cannot read

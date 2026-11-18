@@ -30,7 +30,7 @@ export interface MetabaseProviderProps {
   authConfig: MetabaseAuthConfig;
 
   /**
-   * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
+   * See [Appearance](https://www.metabase.com/docs/latest/embedding/appearance).
    */
   theme?: MetabaseEmbeddingTheme;
 
@@ -86,4 +86,13 @@ export interface MetabaseProviderProps {
    * Requires the `custom-viz` premium feature.
    **/
   allowedCustomVisualizations?: `custom:${string}`[];
+
+  /**
+   * URL of an empty HTML page that custom visualizations run in. Use it when
+   * your page's Content Security Policy does not allow `'unsafe-eval'`.
+   *
+   * The page must be served from the same origin as your app, with its own
+   * `Content-Security-Policy: default-src 'none'; script-src 'unsafe-eval'`.
+   **/
+  customVisualizationsSandboxUrl?: string;
 }

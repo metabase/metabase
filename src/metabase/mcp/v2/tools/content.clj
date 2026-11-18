@@ -19,6 +19,7 @@
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -66,7 +67,7 @@
   [dataset-query]
   (or (not-empty (get-in dataset-query [:native :template-tags]))
       (when-let [tags (some (comp not-empty :template-tags) (:stages dataset-query))]
-        (into {} (map (juxt :name identity)) tags))))
+        (u/index-by :name tags))))
 
 (defn- source-cards-readable?
   "Whether the current user can read every Card `query` reads, at any depth.
@@ -83,9 +84,9 @@
   (try
     (let [ids (lib/all-source-card-ids-recursive query)]
       (or (empty? ids)
-          (let [cards (mcp.db/select-by-ids :model/Card ids)]
+          (let [cards (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read)]
             (and (= (count cards) (count ids))
-                 (every? mi/can-read? cards)))))
+                 (every? mi/can-read? (t2/hydrate cards :can_read))))))
     (catch Exception _ false)))
 
 (def ^:private max-native-summary-length
@@ -285,7 +286,7 @@
   (mapv (fn [node]
           (u/remove-nils {:type    (:type node)
                           :card_id (when (= (:type node) prose-mirror/card-embed-type)
-                                     (get-in node [:attrs "id"]))
+                                     (get-in node [:attrs :id]))
                           :text    (not-empty (prose-mirror/ast->text node))}))
         (get-in row [::document :document :content])))
 
@@ -307,7 +308,7 @@
    in one, while their `supportingText` children are emitted verbatim and do have spans."
   [row]
   (letfn [(walk [node ancestors]
-            (let [id       (get-in node [:attrs "_id"])
+            (let [id       (get-in node [:attrs :_id])
                   inherited (cond->> ancestors id (cons id))]
               (concat (when id [[id ancestors]])
                       (mapcat #(walk % inherited) (:content node)))))]
@@ -325,7 +326,7 @@
   [row]
   (let [markdown   (:content_markdown row)
         spans      (::spans row)
-        span-by-id (into {} (map (juxt :node-id identity)) spans)
+        span-by-id (u/index-by :node-id spans)
         ancestor-ids (node-id->ancestor-ids row)
         threads    (->> (comments/comments-for-document (:id row))
                         (group-by :child_target_id)
@@ -394,6 +395,15 @@
                             u/remove-nils))
                       dashcards)}))
 
+(defn- dashboard-parameters
+  "The `parameters` include: each stored parameter with every property, and the ids of the dashcards wired to it.
+   The concise row shows only some of those properties."
+  [row]
+  (let [dash                   (::dashboard row)
+        param-id->dashcard-ids (projections/parameter-dashcard-ids dash)]
+    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (u/qualified-name (:id %))))
+                       (:parameters dash))}))
+
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
 (defn- fetch-notification
@@ -404,7 +414,7 @@
     (common/throw-teaching-error
      (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
-    (when-not (and notification (mi/can-read? notification))
+    (when-not (and notification (mi/can-read? (t2/hydrate notification :can_read)))
       (common/throw-not-found (keyword tool-type) id-or-eid))
     (projections/notification-row
      (redaction/hydrate-and-redact-notification notification))))
@@ -431,12 +441,12 @@
   (let [pulse-id (subscription-pulse-id id-or-eid)]
     (if (and pulse-id (mcp.db/subscription-pulse-exists? pulse-id))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
-        (if (and pulse-row (mi/can-read? pulse-row))
+        (if (and pulse-row (mi/can-read? (t2/hydrate pulse-row :can_read)))
           (projections/subscription-row (redaction/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
             (let [notification (mcp.db/notification-by-payload-type id-or-eid :notification/dashboard)]
-              (when (and notification (mi/can-read? notification))
+              (when (and notification (mi/can-read? (t2/hydrate notification :can_read)))
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))
           (common/throw-not-found :subscription id-or-eid)))))
@@ -508,7 +518,7 @@
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard
-                   :includes {"parameters" (fn [row] {:parameters (vec (:parameters row))})
+                   :includes {"parameters" dashboard-parameters
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})

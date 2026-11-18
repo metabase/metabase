@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -98,14 +98,16 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data :unrestricted}}}
+             :perms/view-data :unrestricted
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" :no}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}}
+            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
@@ -113,14 +115,16 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data :unrestricted}}}
+             :perms/view-data :unrestricted
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" {table-id-1 :no}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
+            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}
+             :perms/transforms :no}}})))))
 
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
@@ -626,7 +630,7 @@
                    {:groups {group-id {db-id {:view-data :unrestricted
                                               :create-queries :query-builder-and-native
                                               :transforms :yes}}}})))
-        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/transforms db-id))))
+        (is (= :yes (get (data-perms/database-permissions-for-user (data-perms/user-info (mt/user->id :crowberto)) :perms/transforms [db-id]) db-id))))
       (testing "transforms:yes together with create-queries:query-builder is rejected"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Query builder and native"
@@ -643,3 +647,245 @@
              clojure.lang.ExceptionInfo #"Query builder and native"
              (data-perms.graph/update-data-perms-graph!
               {:groups {group-id {db-id {:transforms :yes}}}})))))))
+
+(defn- data-permission-rows
+  "The `data_permissions` rows of the group with `group-id` on the Database with `db-id`, each as `[perm-type table-name
+  schema-name value]`, sorted."
+  [group-id db-id table-id->name]
+  (->> (t2/select :model/DataPermissions :group_id group-id :db_id db-id)
+       (map (fn [{:keys [perm_type perm_value table_id schema_name]}]
+              [perm_type (table-id->name table_id) schema_name perm_value]))
+       sort
+       vec))
+
+(defn- data-permission-writer-snapshots!
+  "The rows the group has on the temp Database after each of a fixed list of programmatic and graph writes."
+  []
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {set-group-id :id}   {}
+                   :model/PermissionsGroup {graph-group-id :id} {}
+                   :model/Database         {db-id :id}          {}
+                   :model/Table            {t1 :id}             {:db_id db-id :schema "s1" :name "t1"}
+                   :model/Table            {t2 :id}             {:db_id db-id :schema "s1" :name "t2"}
+                   :model/Table            {t3 :id}             {:db_id db-id :schema "s2" :name "t3"}]
+      (t2/delete! :model/DataPermissions :db_id db-id :group_id [:in [set-group-id graph-group-id]])
+      (let [table-id->name {t1 "t1" t2 "t2" t3 "t3"}
+            snapshot       (fn [group-id] (data-permission-rows group-id db-id table-id->name))
+            set-steps      [#(data-perms/set-database-permission! set-group-id db-id :perms/create-queries :query-builder-and-native)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/transforms :yes)
+                            #(data-perms/set-table-permission! set-group-id t1 :perms/create-queries :query-builder)
+                            #(data-perms/set-table-permissions! set-group-id :perms/create-queries {t2 :query-builder t3 :no})
+                            #(data-perms/set-table-permissions! set-group-id :perms/create-queries {t3 :query-builder})
+                            #(data-perms/set-table-permission! set-group-id t1 :perms/view-data :blocked)
+                            #(data-perms/set-table-permission! set-group-id t1 :perms/view-data :unrestricted)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/view-data :blocked)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/view-data :legacy-no-self-service)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/create-queries :query-builder)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/download-results :ten-thousand-rows)
+                            #(data-perms/set-table-permission! set-group-id t3 :perms/download-results :no)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/manage-table-metadata :yes)
+                            #(data-perms/set-table-permission! set-group-id t2 :perms/manage-table-metadata :no)
+                            #(data-perms/set-database-permission! set-group-id db-id :perms/manage-database :yes)
+                            #(data-perms/set-table-permissions! set-group-id :perms/view-data {t1 :blocked t2 :blocked t3 :blocked})]
+            graph-steps    [{:view-data :unrestricted :create-queries :query-builder-and-native :transforms :yes}
+                            {:create-queries {"s1" {t1 :query-builder}}}
+                            {:create-queries {"s1" :query-builder "s2" :no}}
+                            {:view-data {"s1" {t1 :blocked} "s2" :unrestricted}}
+                            {:view-data {"s1" {t1 :unrestricted}}}
+                            {:view-data :blocked}
+                            {:view-data :legacy-no-self-service :create-queries :query-builder}
+                            {:download {:schemas :limited}}
+                            {:download {:schemas {"s1" :full "s2" :none}}}
+                            {:data-model {:schemas {"s1" {t1 :all}}}}
+                            {:details :yes}
+                            {:view-data :unrestricted :create-queries :query-builder-and-native}
+                            {:view-data :blocked :create-queries :query-builder}
+                            {:view-data {"s1" :blocked "s2" :blocked}}]]
+        {:set   (mapv (fn [step] (step) (snapshot set-group-id)) set-steps)
+         :graph (mapv (fn [step]
+                        (data-perms.graph/update-data-perms-graph! {:groups {graph-group-id {db-id step}}})
+                        (snapshot graph-group-id))
+                      graph-steps)}))))
+
+(def ^:private writer-rows
+  "The rows [[data-permission-writer-snapshots!]] returns."
+  {:set   [[[:perms/create-queries nil nil :query-builder-and-native]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder-and-native]
+            [:perms/transforms nil nil :yes]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :query-builder]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :query-builder]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :query-builder]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :no]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :query-builder]
+            [:perms/download-results "t1" "s1" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data "t1" "s1" :blocked]
+            [:perms/view-data "t2" "s1" :unrestricted]
+            [:perms/view-data "t3" "s2" :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :no]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :query-builder]
+            [:perms/download-results "t1" "s1" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :no]
+            [:perms/download-results nil nil :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :blocked]]
+           [[:perms/create-queries nil nil :no]
+            [:perms/download-results nil nil :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :legacy-no-self-service]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results nil nil :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results nil nil :ten-thousand-rows]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :ten-thousand-rows]
+            [:perms/download-results "t2" "s1" :ten-thousand-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :ten-thousand-rows]
+            [:perms/download-results "t2" "s1" :ten-thousand-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-table-metadata nil nil :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :ten-thousand-rows]
+            [:perms/download-results "t2" "s1" :ten-thousand-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/manage-table-metadata "t2" "s1" :no]
+            [:perms/manage-table-metadata "t3" "s2" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :ten-thousand-rows]
+            [:perms/download-results "t2" "s1" :ten-thousand-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-database nil nil :yes]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/manage-table-metadata "t2" "s1" :no]
+            [:perms/manage-table-metadata "t3" "s2" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :no]
+            [:perms/create-queries "t2" "s1" :no]
+            [:perms/create-queries "t3" "s2" :no]
+            [:perms/download-results "t1" "s1" :no]
+            [:perms/download-results "t2" "s1" :no]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-database nil nil :yes]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/manage-table-metadata "t2" "s1" :no]
+            [:perms/manage-table-metadata "t3" "s2" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data "t1" "s1" :blocked]
+            [:perms/view-data "t2" "s1" :blocked]
+            [:perms/view-data "t3" "s2" :blocked]]]
+   :graph [[[:perms/create-queries nil nil :query-builder-and-native]
+            [:perms/transforms nil nil :yes]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :query-builder]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :query-builder]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :query-builder]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :no]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :no]
+            [:perms/download-results "t1" "s1" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data "t1" "s1" :blocked]
+            [:perms/view-data "t2" "s1" :unrestricted]
+            [:perms/view-data "t3" "s2" :unrestricted]]
+           [[:perms/create-queries "t1" "s1" :no]
+            [:perms/create-queries "t2" "s1" :query-builder]
+            [:perms/create-queries "t3" "s2" :no]
+            [:perms/download-results "t1" "s1" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data "t1" "s1" :unrestricted]
+            [:perms/view-data "t2" "s1" :unrestricted]
+            [:perms/view-data "t3" "s2" :unrestricted]]
+           [[:perms/create-queries nil nil :no]
+            [:perms/download-results nil nil :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :blocked]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results nil nil :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :legacy-no-self-service]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results nil nil :ten-thousand-rows]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :legacy-no-self-service]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :one-million-rows]
+            [:perms/download-results "t2" "s1" :one-million-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :legacy-no-self-service]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :one-million-rows]
+            [:perms/download-results "t2" "s1" :one-million-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :legacy-no-self-service]]
+           [[:perms/create-queries nil nil :query-builder]
+            [:perms/download-results "t1" "s1" :one-million-rows]
+            [:perms/download-results "t2" "s1" :one-million-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-database nil nil :yes]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :legacy-no-self-service]]
+           [[:perms/create-queries nil nil :query-builder-and-native]
+            [:perms/download-results "t1" "s1" :one-million-rows]
+            [:perms/download-results "t2" "s1" :one-million-rows]
+            [:perms/download-results "t3" "s2" :no]
+            [:perms/manage-database nil nil :yes]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :unrestricted]]
+           [[:perms/create-queries nil nil :no]
+            [:perms/download-results nil nil :no]
+            [:perms/manage-database nil nil :yes]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :blocked]]
+           [[:perms/create-queries nil nil :no]
+            [:perms/download-results nil nil :no]
+            [:perms/manage-database nil nil :yes]
+            [:perms/manage-table-metadata "t1" "s1" :yes]
+            [:perms/transforms nil nil :no]
+            [:perms/view-data nil nil :blocked]]]})
+
+(deftest data-permission-writers-rows-test
+  (testing "programmatic and graph writes leave fixed data_permissions rows"
+    (is (= writer-rows (data-permission-writer-snapshots!)))))

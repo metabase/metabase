@@ -6,7 +6,11 @@ import type { YAXisOption } from "echarts/types/dist/shared";
 
 import type { Extent } from "../../../types";
 
-import { getResponsiveYAxisTicks } from "./y-axis-ticks";
+import {
+  getDurationYAxisTicks,
+  getResponsiveDurationYAxisTicks,
+  getResponsiveYAxisTicks,
+} from "./y-axis-ticks";
 
 echarts.use([LineChart, GridComponent, SVGRenderer]);
 
@@ -35,12 +39,10 @@ describe.each(scenarios)(
   "responsive Y-axis ticks with $name",
   ({ extent, axis }) => {
     it.each([
-      [199, 2, 3],
-      [200, 3, 3],
+      [95, 2, 3],
+      [96, 3, 3],
       [299, 3, 3],
-      [300, 3, 5],
-      [399, 3, 5],
-      [400, 5, 5],
+      [300, 5, 5],
     ])("renders %ipx density", (height, labelCount, lineCount) => {
       const baseAxis = {
         type: "value" as const,
@@ -100,7 +102,7 @@ describe.each(scenarios)(
   },
 );
 
-it("uses the specified quarter and midpoint ticks for a zero to 100 range", () => {
+it("labels every quarter tick of a zero to 100 range from the medium plot height", () => {
   const axis = getResponsiveYAxisTicks(
     [0, 100],
     { type: "value", splitNumber: 5 },
@@ -108,6 +110,63 @@ it("uses the specified quarter and midpoint ticks for a zero to 100 range", () =
   );
 
   expect(axis.axisTick?.customValues).toEqual([0, 25, 50, 75, 100]);
-  expect(axis.axisLabel?.customValues).toEqual([0, 50, 100]);
+  expect(axis.axisLabel?.customValues).toEqual([0, 25, 50, 75, 100]);
   expect(axis.minorSplitLine?.show).toBe(false);
+});
+
+it("labels the min and max ticks only below the small plot height", () => {
+  const axis = getResponsiveYAxisTicks(
+    [0, 100],
+    { type: "value", splitNumber: 5 },
+    95,
+  );
+
+  expect(axis.axisTick?.customValues).toEqual([0, 50, 100]);
+  expect(axis.axisLabel?.customValues).toEqual([0, 100]);
+});
+
+it("keeps zero tick on padded duration axis with negative values", () => {
+  const axis = getDurationYAxisTicks(
+    [-99, 3723],
+    { type: "value", boundaryGap: [0.03, 0] },
+    4,
+    {},
+  );
+
+  expect(axis).toMatchObject({ interval: 1800, min: -1800, max: 5400 });
+});
+
+it("keeps duration axis within segment limit after rounding its bounds", () => {
+  const axis = getDurationYAxisTicks(
+    [7, 27],
+    { type: "value", scale: true },
+    2,
+    {},
+  );
+
+  expect(axis).toMatchObject({ interval: 15, min: 0, max: 30 });
+});
+
+it("labels min and max duration ticks only below small plot height", () => {
+  const axis = getResponsiveDurationYAxisTicks(
+    [0, 3600],
+    { type: "value" },
+    95,
+    {},
+  );
+
+  expect(axis).toMatchObject({ interval: 1800, min: 0, max: 3600 });
+  expect(axis.axisLabel?.customValues).toEqual([0, 3600]);
+});
+
+it("labels every duration tick from small plot height", () => {
+  const axis = getResponsiveDurationYAxisTicks(
+    [0, 3600],
+    { type: "value" },
+    96,
+    {},
+  );
+
+  expect(axis).toMatchObject({ interval: 1800, min: 0, max: 3600 });
+  expect(axis.axisLabel?.customValues).toBeUndefined();
 });

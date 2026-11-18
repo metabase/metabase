@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNative } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
 import { selectQuestionFromCard } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
@@ -153,7 +153,14 @@ export const getEventDimensions = (
   const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
   const dimensions: ClickObjectDimension[] = [];
 
-  if (hasDimensionValue) {
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    dimensions.push({
+      column: dimensionColumn,
+      value: (chartModel.foldedDataset ?? []).map((foldedDatum) =>
+        normalizeDimensionValue(dimensionColumn, foldedDatum[X_AXIS_DATA_KEY]),
+      ),
+    });
+  } else if (hasDimensionValue) {
     dimensions.push({
       column: dimensionColumn,
       value: normalizeDimensionValue(dimensionColumn, datum[X_AXIS_DATA_KEY]),
@@ -338,7 +345,8 @@ export const canBrush = (
   return (
     !!onChangeCardAndRun &&
     !hasCombinedCards &&
-    (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
+    (!series[0].data.cols.some((col) => col.source === "native") ||
+      isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
@@ -458,6 +466,10 @@ export const getTooltipModel = (
     return null;
   }
 
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    return getFoldedRowTooltipModel(chartModel, settings, datum, hoveredSeries);
+  }
+
   const seriesStack = chartModel.stackModels.find((stackModel) =>
     stackModel.seriesKeys.includes(hoveredSeries.dataKey),
   );
@@ -492,6 +504,71 @@ export const getTooltipModel = (
     previousDatum,
     hoveredSeries,
   );
+};
+
+// The hovered series leads, as the tooltip's one full-emphasis value column.
+const getFoldedRowTooltipSeries = (
+  chartModel: BaseCartesianChartModel,
+  hoveredSeries: SeriesModel,
+): SeriesModel[] => [
+  hoveredSeries,
+  ...chartModel.seriesModels.filter(
+    (seriesModel) =>
+      seriesModel.visible && seriesModel.dataKey !== hoveredSeries.dataKey,
+  ),
+];
+
+const getFoldedRowTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  datum: Datum,
+  hoveredSeries: SeriesModel,
+): EChartsTooltipModel => {
+  const tooltipSeries = getFoldedRowTooltipSeries(chartModel, hoveredSeries);
+  const formatSeriesValues = (seriesDatum: Datum) =>
+    tooltipSeries.map(({ dataKey, column }) =>
+      String(
+        formatValueForTooltip({
+          value: seriesDatum[dataKey],
+          column,
+          settings,
+          isAlreadyScaled: true,
+        }),
+      ),
+    );
+
+  const markerColorClass = getMarkerColorClass(hoveredSeries.color);
+
+  const seriesNamesRows: EChartsTooltipRow[] =
+    tooltipSeries.length > 1
+      ? [
+          {
+            name: "",
+            isSecondary: true,
+            values: tooltipSeries.map((seriesModel) => seriesModel.name),
+          },
+        ]
+      : [];
+
+  const categoryRows: EChartsTooltipRow[] = (
+    chartModel.foldedDataset ?? []
+  ).map((foldedDatum) => ({
+    name: String(
+      formatValueForTooltip({
+        value: foldedDatum[X_AXIS_DATA_KEY],
+        column: chartModel.dimensionModel.column,
+        settings,
+      }),
+    ),
+    markerColorClass,
+    values: formatSeriesValues(foldedDatum),
+  }));
+
+  return {
+    header: String(datum[X_AXIS_DATA_KEY]),
+    rows: [...seriesNamesRows, ...categoryRows],
+    footer: { name: t`Total`, values: formatSeriesValues(datum) },
+  };
 };
 
 const getSingleSeriesTooltipModel = (
@@ -925,8 +1002,11 @@ export const getSeriesClickData = (
   }
 
   const datum = chartModel.dataset[dataIndex];
-  // A row chart's folded "Other" row has no single category to drill into.
-  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+  // Binned drills filter to a single bin, not the folded row's set of bins.
+  const isFoldedBinnedRow =
+    datum[IS_FOLDED_ROW_DATA_KEY] &&
+    chartModel.dimensionModel.column.binning_info != null;
+  if (isFoldedBinnedRow) {
     return null;
   }
 

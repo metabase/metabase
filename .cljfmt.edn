@@ -41,6 +41,7 @@
   metabase.lib.drill-thru.test-util/test-drill-variants-with-merged-args :all
   metabase.lib.drill-thru.test-util/test-returns-drill                   :all
   metabase.test/with-temp                                                #{0}
+  metabase.util.match/match-all                                          :all
   metabase.util.match/match-many                                         :all
   metabase.util.match/match-one                                          :all
   metabase.util.match/replace                                            :all
@@ -208,6 +209,7 @@
   metabase.lib.test-util.macros/mbql-query                                                    [[:inner 0]]
   metabase.util.match/match-one                                                               [[:inner 0]]
   metabase.util.match/match-many                                                              [[:inner 0]]
+  metabase.util.match/match-all                                                               [[:inner 0]]
   metabase.util.match/replace                                                                 [[:inner 0]]
   metabase.util.match/replace-all                                                             [[:inner 0]]
   metabase.util.match/replace-in                                                              [[:inner 0]]
@@ -238,6 +240,7 @@
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution        [[:block 1]]
   metabase.query-processor.pipeline-queries-test/mbql5-query                                  [[:block 1]]
   metabase.query-processor.pipeline-queries-test/run-mbql5-query                              [[:block 1]]
+  metabase.query-processor.pivot/wrapping-pivot-generation-errors                             [[:block 1]]
   metabase.query-processor.store/cached                                                       [[:block 1]]
   metabase.query-processor.store/with-metadata-provider                                       [[:inner 0]]
   metabase.query-processor.streaming/streaming-response                                       [[:block 1]]

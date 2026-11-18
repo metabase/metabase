@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -32,12 +35,7 @@
               (python-library/update-python-library-source! "common" "def updated_func(): return 2")))
       (is (= 1 (t2/count :model/PythonLibrary)) "Should not create duplicate")
       (is (= "def updated_func(): return 2"
-             (t2/select-one-fn :source :model/PythonLibrary))))
-    (testing "rejects invalid paths"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid library path"
-                            (python-library/update-python-library-source! "invalid-path" "def test(): pass")))
-      (is (= 1 (t2/count :model/PythonLibrary)) "Should not create library with invalid path"))))
+             (t2/select-one-fn :source :model/PythonLibrary))))))
 
 (deftest get-python-library-by-path-test
   (testing "get-python-library-by-path"
@@ -49,11 +47,7 @@
                :id integer?
                :created_at some?
                :updated_at some?}
-              (python-library/get-python-library-by-path "common"))))
-    (testing "rejects invalid paths"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Invalid library path"
-                            (python-library/get-python-library-by-path "invalid-path"))))))
+              (python-library/get-python-library-by-path "common"))))))
 
 (deftest normalize-path-test
   (testing "normalize-path function"
@@ -74,3 +68,34 @@
       (is (=? {:source "def test(): pass"
                :path "common.py"}
               (python-library/get-python-library-by-path "common"))))))
+
+(deftest is-default-cleared-by-a-source-change-test
+  (testing "Saving the default library with its source unchanged keeps it the default one"
+    (t2/delete! :model/PythonLibrary)
+    (t2/insert! :model/PythonLibrary {:path "common.py" :source "" :entity_id (u/generate-nano-id) :is_default true})
+    (python-library/update-python-library-source! "common" "")
+    (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py"))))
+  (testing "while changing its source makes it no longer the default one"
+    (python-library/update-python-library-source! "common" "def f(): pass")
+    (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py")))))
+
+(deftest recreated-library-is-the-built-in-one-test
+  (testing "A recreated common.py takes the built-in entity_id, and is the default one only with an empty source"
+    (doseq [[source default?] [["" true] ["def f(): pass" false]]]
+      (testing (pr-str source)
+        (t2/delete! :model/PythonLibrary)
+        (python-library/update-python-library-source! "common" source)
+        (is (=? {:entity_id python-library/builtin-entity-id :is_default default?}
+                (t2/select-one :model/PythonLibrary :path "common.py")))))))
+
+(deftest only-common-path-is-written-by-request-test
+  (t2/delete! :model/PythonLibrary)
+  (testing "a request path other than common is refused by the request schema"
+    (is (not (mr/validate ::transforms-python.schema/python-library.request-path "other")))
+    (is (mr/validate ::transforms-python.schema/python-library.request-path "common"))
+    (is (mr/validate ::transforms-python.schema/python-library.request-path "common.py")))
+  (testing "a library of another path that is stored or imported is accepted by the model"
+    (let [id (t2/insert-returning-pk! :model/PythonLibrary {:path "shared" :source "" :entity_id (u/generate-nano-id)})]
+      (is (= "shared.py" (t2/select-one-fn :path :model/PythonLibrary :id id)))
+      (t2/update! :model/PythonLibrary :id id {:source "def helper(): pass"})
+      (is (= "def helper(): pass" (t2/select-one-fn :source :model/PythonLibrary :id id))))))

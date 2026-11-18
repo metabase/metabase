@@ -17,7 +17,7 @@
    month :- ms/PositiveInt]
   (let [date-part (fn [part-key part-value]
                     (if (= (mdb/db-type) :postgres)
-                      [:= [:date_part ^:allow-raw-sql [:inline (name part-key)] :started_at] part-value]
+                      [:= [:date_part (name part-key) :started_at] part-value]
                       [:= [part-key :started_at] part-value]))]
     (t2/select :query_execution
                {:order-by [[:started_at :desc]]
@@ -61,7 +61,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
@@ -76,7 +76,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn insert-database!
   "Insert `database` and return the new instance."
@@ -87,9 +87,9 @@
   "Apply `changes` to the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn delete-database!
   "Delete the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database database-id))
+  (t2/delete! :model/Database :id database-id))

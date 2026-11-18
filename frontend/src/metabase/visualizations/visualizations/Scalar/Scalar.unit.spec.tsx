@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 
 import {
   fireEvent,
+  mockTextOverflow,
   render,
   renderWithProviders,
   screen,
@@ -10,7 +11,7 @@ import {
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Series } from "metabase-types/api";
+import type { DatasetColumn, RowValue, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -272,22 +273,60 @@ describe("Scalar", () => {
     expect(screen.getByText("null")).toBeInTheDocument();
   });
 
-  it("should not apply text-overflow ellipsis to the container", () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series(1234567)}
-        rawSeries={series(1234567)}
-        settings={settings}
-        visualizationIsClickable={() => false}
-        width={230}
-      />,
-    );
-    const container = screen.getByTestId("scalar-container");
-    const styles = window.getComputedStyle(container);
-    // The container should not have text-overflow: ellipsis
-    // as the ScalarValue component handles sizing to fit
-    expect(styles.textOverflow).not.toBe("ellipsis");
+  describe("values wider than the card", () => {
+    const TOKEN = "0d79f0c276571a3c7fd2b5b6db30c1a9";
+    const textSeries = () =>
+      // Unjustified type cast. FIXME
+      [
+        {
+          card: createMockCard({ display: "scalar" }),
+          data: {
+            rows: [[TOKEN]],
+            cols: [createMockColumn({ name: "count", base_type: "type/Text" })],
+          },
+        },
+      ] as Series;
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should show the full value in a tooltip when the value is truncated", async () => {
+      mockTextOverflow();
+      renderWithProviders(
+        <Scalar
+          {...mockedProps}
+          series={textSeries()}
+          rawSeries={textSeries()}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={230}
+        />,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(
+        within(await screen.findByRole("tooltip")).getByText(TOKEN),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show a tooltip for a value that fits", async () => {
+      renderWithProviders(
+        <Scalar
+          {...mockedProps}
+          series={textSeries()}
+          rawSeries={textSeries()}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={230}
+        />,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
   });
 
   it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {
@@ -344,6 +383,66 @@ describe("Scalar", () => {
     );
 
     expect(screen.getByText("12,345")).toBeInTheDocument();
+  });
+});
+
+describe("Scalar value font size (#85061)", () => {
+  const LONG_SUFFIX = " active users this quarter";
+  const NUMBER_COLUMN = createMockColumn({
+    name: "count",
+    base_type: "type/Integer",
+  });
+  const TEXT_COLUMN = createMockColumn({
+    name: "count",
+    base_type: "type/Text",
+  });
+
+  interface SetupOpts {
+    column: DatasetColumn;
+    value: RowValue;
+    suffix?: string;
+  }
+
+  const getValueFontSize = ({ column, value, suffix }: SetupOpts) => {
+    const rawSeries = [
+      createMockSingleSeries(
+        { display: "scalar" },
+        { data: createMockDatasetData({ rows: [[value]], cols: [column] }) },
+      ),
+    ];
+    const { unmount } = render(
+      <Scalar
+        {...mockedProps}
+        series={rawSeries}
+        rawSeries={rawSeries}
+        settings={{ ...settings, column: () => ({ suffix }) }}
+        visualizationIsClickable={() => false}
+        width={230}
+        height={150}
+      />,
+    );
+    const { fontSize } = screen.getByTestId("scalar-value").style;
+    unmount();
+    return fontSize;
+  };
+
+  it("keeps the card font size for a number with a long suffix", () => {
+    expect(
+      getValueFontSize({
+        column: NUMBER_COLUMN,
+        value: 12345,
+        suffix: LONG_SUFFIX,
+      }),
+    ).toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
+  });
+
+  it("shrinks the font size for a long text value", () => {
+    expect(
+      getValueFontSize({
+        column: TEXT_COLUMN,
+        value: `12,345${LONG_SUFFIX}`,
+      }),
+    ).not.toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
   });
 });
 

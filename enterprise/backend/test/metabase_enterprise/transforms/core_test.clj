@@ -43,14 +43,16 @@
       (with-redefs [t/offset-date-time (constantly frozen-today)]
         (mt/with-model-cleanup [:model/TransformRun]
           (mt/with-temp [:model/Transform {mbql-id :id}
-                         {:source {:type  "query"
+                         {:source {:type  :query
                                    :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                           :target {:type     "table"
                                    :name     (str "test_mbql_" (random-uuid))
                                    :database (mt/id)}}
                          :model/Transform {python-id :id}
-                         {:source {:type            "python"
-                                   :source-database (mt/id)}
+                         {:source {:type            :python
+                                   :source-database (mt/id)
+                                   :source-tables   []
+                                   :body            "print('hello world')"}
                           :target {:type     "table"
                                    :name     (str "test_python_" (random-uuid))
                                    :database (mt/id)}}]

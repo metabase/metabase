@@ -1,0 +1,168 @@
+import { type ComponentType, useEffect, useState } from "react";
+import { t } from "ttag";
+
+import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
+
+import {
+  DataAppBundleError,
+  fetchDataAppBundleCode,
+  instantiateDataAppBundle,
+} from "../loader";
+
+import { describeError } from "./describe-error";
+import { reportErrorToParent } from "./report-error-to-parent";
+
+export interface LoadedApp {
+  component: ComponentType<Record<string, unknown>>;
+  providerProps: DataAppMetabaseProviderProps;
+}
+
+/**
+ * Loads a data-app bundle in the near-membrane sandbox and watches for crashes.
+ * Embedded apps return errors for display inside the iframe. Internal apps report
+ * errors to the host's DataAppView.
+ *
+ * With `installContentSecurityPolicy` (the default for embedded apps), the bundle's
+ * CSP is installed before the sandbox is created.
+ */
+export const useDataAppBundle = (
+  slug: string,
+  {
+    embedded = false,
+    installContentSecurityPolicy = embedded,
+  }: { embedded?: boolean; installContentSecurityPolicy?: boolean } = {},
+): {
+  data: LoadedApp | null;
+  failed: boolean;
+  error?: string | null;
+} => {
+  const [data, setData] = useState<LoadedApp | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setData(null);
+    setFailed(false);
+    setError(null);
+
+    const load = async () => {
+      const { code, allowedHosts, contentSecurityPolicy } =
+        await fetchDataAppBundleCode(slug, { embedded });
+
+      if (cancelled) {
+        return;
+      }
+
+      // Ensure CSP is installed *before* the bundle code evaluates.
+      // If CSP were to be installed after, it won't apply to already evaluated bundle.
+      if (installContentSecurityPolicy) {
+        insertContentSecurityPolicyMeta(contentSecurityPolicy);
+      }
+
+      const { component, providerProps } = await instantiateDataAppBundle(
+        code,
+        slug,
+        window,
+        allowedHosts,
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      setData({ component, providerProps });
+    };
+
+    load().catch((error: unknown) => {
+      if (!cancelled) {
+        const notReady =
+          error instanceof DataAppBundleError && error.status === 404;
+        // A 404 (not-yet-synced) is expected, so we keep the friendly message;
+        // any other failure carries the real error so it can be shown.
+        const detail = notReady ? undefined : describeError(error);
+        setFailed(true);
+
+        if (embedded) {
+          // Embedded data apps shows their own error screen
+          setError(describeError(error).message);
+        } else {
+          // Internal data apps reports the error to the parent
+          reportErrorToParent(notReady, detail);
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, embedded, installContentSecurityPolicy]);
+
+  useEffect(() => {
+    // The bundle runs in a Near-Membrane sandbox that can throw errors which
+    // escape React's render cycle (e.g. an opaque `#<Object>` from the membrane)
+    // and so slip past `BundleErrorBoundary`, leaving a blank frame. Catch
+    // genuine uncaught JS errors at the window level and show the error screen.
+    // `event.error == null` for resource-load errors, which we ignore.
+    const onError = (event: ErrorEvent) => {
+      if (event.error != null) {
+        const detail = describeError(event.error, event.message);
+        // Log the unpacked message/stack so devtools shows the real error
+        // instead of the membrane's opaque `#<Object>`.
+        console.error(
+          "[data-app] uncaught error in the bundle:",
+          detail.message,
+          detail.stack ?? "",
+        );
+        setFailed(true);
+
+        if (embedded) {
+          setError(detail.message);
+        } else {
+          reportErrorToParent(false, detail);
+        }
+      }
+    };
+
+    window.addEventListener("error", onError);
+
+    return () => window.removeEventListener("error", onError);
+  }, [embedded]);
+
+  return { data, failed, error };
+};
+
+/**
+ * CSP contains allowed hosts which we don't want to expose without auth.
+ * We do client-side auth first, then fetch and inject the CSP next.
+ */
+function insertContentSecurityPolicyMeta(policy: string | null | undefined) {
+  const cspErrorMessage = t`Something went wrong while loading this app. Try refreshing the page.`;
+
+  if (!policy?.trim()) {
+    console.error("CSP is missing from the data app bundle's response.");
+
+    throw new Error(cspErrorMessage);
+  }
+
+  const installedPolicy = document.querySelector<HTMLMetaElement>(
+    'meta[http-equiv="Content-Security-Policy"]',
+  );
+
+  if (installedPolicy) {
+    if (installedPolicy.content !== policy) {
+      console.error("A different CSP is already installed for this data app.");
+
+      throw new Error(cspErrorMessage);
+    }
+
+    return;
+  }
+
+  const meta = document.createElement("meta");
+  meta.httpEquiv = "Content-Security-Policy";
+  meta.content = policy;
+
+  document.head.appendChild(meta);
+}

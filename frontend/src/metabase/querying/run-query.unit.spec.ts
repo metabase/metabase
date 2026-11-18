@@ -5,6 +5,8 @@ import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -15,23 +17,13 @@ import type {
 import {
   createMockCard,
   createMockDataset,
-  createMockStructuredDatasetQuery,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { runQuestionQuery } from "./run-query";
 
-const MOCK_QUERY = createMockStructuredDatasetQuery({
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-  },
-});
+const MOCK_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
 function createMockMetadata(card?: Card) {
   const database = createSampleDatabase();
@@ -51,8 +43,7 @@ type DashboardAwareCard = Card & {
 
 function createMockSavedQuestion(card?: Partial<DashboardAwareCard>) {
   const savedCard = createMockCard({ dataset_query: MOCK_QUERY, ...card });
-  // Unjustified type cast. FIXME
-  return createMockMetadata(savedCard).question(savedCard.id) as Question;
+  return new Question(savedCard, createMockMetadata(savedCard));
 }
 
 function createMockAdHocQuestion(card?: Partial<UnsavedCard>) {

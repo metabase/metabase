@@ -971,10 +971,10 @@
           "sanity check: the helper produced a disk-backed handle")
       (testing "the un-realized handle is exactly what used to blow up detect-pulse-chart-type"
         (is (thrown? IllegalArgumentException
-                     (render.card/detect-pulse-chart-type {:display "table" :name "t"} nil
+                     (render.card/detect-pulse-chart-type {:display :table :name "t"} nil
                                                           {:cols cols :rows storage}))))
       (testing "dashcard->cell reuses the pre-executed part from the index, deferring realization (rows stay on disk)"
-        (let [part     {:card     {:display "table"
+        (let [part     {:card     {:display :table
                                    :name    "t"}
                         :dashcard {:id 99}
                         :type     :card
@@ -993,7 +993,7 @@
           (is (nil? (#'pdf/dashcard->cell dashcard [] {}))
               "a dashcard with no part in the index (hidden-empty / failed card) is omitted")))
       (testing "render-card-cell! realizes the disk-backed rows at draw time and draws without throwing"
-        (let [part {:card     {:display "table"
+        (let [part {:card     {:display :table
                                :name    "t"}
                     :dashcard nil
                     :result   {:data {:cols cols

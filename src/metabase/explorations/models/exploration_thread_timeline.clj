@@ -24,8 +24,7 @@
           ;; moved into a collection they can't read — those rows hydrate with a nil `:timeline`.
           timelines    (when (seq timeline-ids)
                          (timeline/include-events
-                          (filterv mi/can-read?
-                                   (explorations.db/timelines timeline-ids))
+                          (mi/readable (explorations.db/timelines timeline-ids))
                           {:events/all? false}))]
       (into {} (map (juxt :id identity)) timelines))
    :timeline_id))

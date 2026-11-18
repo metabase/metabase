@@ -605,6 +605,53 @@
           (is (= "https://1.1.1.1" (semantic.settings/ee-embedding-service-base-url)))
           (is (= "replacement-key" (semantic.settings/ee-embedding-service-api-key))))))))
 
+(deftest embedding-environment-key-refuses-a-previously-stored-url-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
+                                       ee-embedding-service-api-key  nil]
+      (mt/with-user-in-groups [group {:name "Embedding settings managers"}
+                               user [group]]
+        (perms/grant-application-permissions! group :setting)
+        (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-base-url"
+                                        {:value "https://1.1.1.1"})))
+        (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "deployment-key"]
+          (let [requests (atom [])]
+            (mt/with-dynamic-fn-redefs [http/post (fn [& args] (swap! requests conj args))]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Set MB_EE_EMBEDDING_SERVICE_BASE_URL alongside MB_EE_EMBEDDING_SERVICE_API_KEY"
+                   (embedding/get-embedding {:provider "ai-service", :model-name "m", :vector-dimensions 3}
+                                            "text" {:record-tokens? false})))
+              (is (empty? @requests)))))))))
+
+(defn- resolved-endpoint-and-key!
+  "Return `[endpoint api-key]` from the resolved embedding-service config, or the refusal's `:error-code`."
+  []
+  (try
+    ((juxt :endpoint :api-key) (#'embedding/embedding-service-resolve-config!))
+    (catch clojure.lang.ExceptionInfo e
+      (:error-code (ex-data e)))))
+
+(deftest embedding-credential-source-combinations-test
+  (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "https://ai.test")]
+    (doseq [[stored-url env-url env-key expected]
+            [;; accepted: stored URL, environment URL, environment pair, then the ai-service fallback
+             ["https://8.8.8.8" nil               nil       ["https://8.8.8.8/v1/embeddings" "stored-key"]]
+             ["https://8.8.8.8" "https://1.1.1.1" nil       ["https://1.1.1.1/v1/embeddings" "stored-key"]]
+             ["https://8.8.8.8" "https://1.1.1.1" "env-key" ["https://1.1.1.1/v1/embeddings" "env-key"]]
+             [nil               nil               nil       ["https://ai.test/v1/embeddings" nil]]
+             ;; refused: an environment key with no usable environment URL, whether or not another URL is set
+             ["https://8.8.8.8" nil               "env-key" :embedding-environment-key-requires-environment-url]
+             [nil               nil               "env-key" :embedding-environment-key-requires-environment-url]
+             ["https://8.8.8.8" "  \t "           "env-key" :embedding-environment-key-requires-environment-url]
+             ["https://8.8.8.8" nil               "  "      :embedding-environment-key-requires-environment-url]]]
+      (testing (pr-str {:stored-url stored-url, :env-url env-url, :env-key env-key})
+        (mt/with-temporary-setting-values [ee-embedding-service-base-url stored-url
+                                           ee-embedding-service-api-key  "stored-key"]
+          (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url env-url
+                                        mb-ee-embedding-service-api-key  env-key]
+            (is (= expected (resolved-endpoint-and-key!)))))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
@@ -747,16 +794,30 @@
             (is (= "Bearer sk-embed" (get @captured "Authorization")))))))))
 
 (deftest embedding-supported?-test
-  (testing "ai-service: supported iff an embedding-service base URL or the ai-service base URL is set"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"]
+  (testing "ai-service: supported iff the embedding-service config resolves"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"
+                                       ee-embedding-service-api-key  "stored-key"]
       (is (true? (embedding/embedding-supported? {:provider "ai-service"}))))
+    (testing "a connection that would refuse to embed is not ready, and says why"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"
+                                         ee-embedding-service-api-key  nil]
+        (is (=? {:ready?  false
+                 :reason  :embedding-database-url-requires-api-key
+                 :message #"(?s).*MB_EE_EMBEDDING_SERVICE_BASE_URL.*"}
+                (embeddings.provider/readiness {:provider "ai-service"})))
+        (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "deployment-key"]
+          (is (=? {:ready? false
+                   :reason :embedding-environment-key-requires-environment-url}
+                  (embeddings.provider/readiness {:provider "ai-service"}))))))
     ;; ai-service-base-url is :enabled? only under the AI-managed / metabot-v3 features, so license one to
     ;; exercise that branch (and to make the setting settable/restorable here).
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [ee-embedding-service-base-url nil ai-service-base-url "http://ai"]
         (is (true? (embedding/embedding-supported? {:provider "ai-service"})))))
     (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
-      (is (false? (embedding/embedding-supported? {:provider "ai-service"})))))
+      (is (=? {:ready? false
+               :reason :embedding-service-url-not-configured}
+              (embeddings.provider/readiness {:provider "ai-service"})))))
   (testing "openai: supported iff the connection semantic search embeds through has an API key"
     (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-test"})]
       (is (true? (embedding/embedding-supported? {:provider "openai"}))))

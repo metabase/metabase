@@ -2,22 +2,31 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.models.serialization :as serdes]
+   [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
 
 (doto :model/Timeline
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
+  (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;;;; transforms
+(defmethod events/spec :model/Timeline
+  [_model]
+  {:create :event/timeline-create
+   :update :event/timeline-update
+   :delete :event/timeline-delete})
 
 (t2/define-after-select :model/Timeline
   [timeline]
@@ -26,15 +35,61 @@
   (update timeline :icon (fn [icon]
                            (if (= icon "balloons") timeline-event/default-icon icon))))
 
-(t2/define-before-insert :model/Timeline [model]
-  (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(t2/define-before-update :model/Timeline [model]
-  (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
-  model)
+(defmethod mi/after-archived-change :model/Timeline
+  [_model rows changes]
+  (let [archive? (boolean (:archived changes))
+        direct   (if archive?
+                   (timeline.db/directly-archived-timeline-ids (mapv :id rows))
+                   (into #{} (comp (filter :archived_directly) (map :id)) rows))]
+    (doseq [{:keys [id]} rows
+            :when        (contains? direct id)]
+      (events/with-event-context {:archived-with [:model/Timeline id]}
+        (timeline.db/set-timeline-events-archived! id archive?)))))
 
-;;;; functions
+(t2/define-before-insert :model/Timeline
+  [row]
+  (collection/check-collection-for :model/Timeline row)
+  (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon)))
+
+(t2/define-before-update :model/Timeline
+  [row]
+  (let [changes (t2/changes row)]
+    (when (contains? changes :collection_id)
+      (collection/check-collection-for :model/Timeline row))
+    (cond-> row
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
+
+(mi/define-update-in-transaction :model/Timeline)
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]
+  "Whether the current user reads each of `timelines`, as the content of its Collection."
+  [_model _k timelines]
+  (collection/hydrate-content-can-read :model/Timeline timelines {:audit-rules? false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Timeline :can_write]
+  "Whether the current user writes each of `timelines`, as the content of its Collection."
+  [_model _k timelines]
+  (collection/hydrate-content-can-write :model/Timeline timelines {:audit-rules? false}))
+
+(defn- collection-writable?
+  "Whether the current user can write the Collection with `collection-id`, nil for the root Collection."
+  [collection-id]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(defmethod mi/can-create? :model/Timeline
+  [_model {collection-id :collection_id}]
+  (collection-writable? collection-id))
+
+(defmethod mi/can-update? :model/Timeline
+  [timeline changes]
+  (and (mi/can-write? timeline)
+       (collection/can-move? timeline changes)))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
@@ -44,22 +99,31 @@
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-;;;; serialization
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
-  (when collection_id
-    [[{:model "Collection" :id collection_id}]]))
+(defmethod serialization/spec :model/Timeline [_]
+  {:schema    ::timeline.schema/external-timeline
+   :copy      [:archived :archived_directly :default :description :entity_id :icon :name]
+   :transform {:collection_id (serialization/fk-transform :model/Collection)
+               :creator_id    serialization/user-transform}
+   :children  {:events :model/TimelineEvent}
+   :defaults  {:archived false :archived_directly false :default false}})
 
-(defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
-  ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.
-  (when collection_id
-    #{[{:model "Collection" :id collection_id}]}))
+(defmethod serialization/import-dependencies :model/Timeline [_ entities]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            [[:model/Collection collection_id]]))
+        entities))
 
-(defmethod serdes/make-spec "Timeline" [_model-name opts]
-  {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      []
-   :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
-               :creator_id    (serdes/fk :model/User)
-               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :created_at)} opts))}
-   :defaults  {:archived false :default false}})
+(defmethod serialization/export-dependencies :model/Timeline [_ timelines]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            #{[:model/Collection collection_id]}))
+        timelines))
+
+;;; ------------------------------------------------- Remote sync ----------------------------------------------------
+
+(defmethod remote-sync/spec :model/Timeline
+  [_model]
+  {:synced-items         timeline.db/synced-timeline-items
+   :synced-filter-clause timeline.db/synced-timelines-clause})

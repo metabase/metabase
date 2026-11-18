@@ -1,6 +1,7 @@
 (ns metabase.settings.schema
   "Malli schemas for the settings module."
   (:require
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::setting
@@ -15,3 +16,14 @@
    [:key            {:optional true} [:maybe :string]]
    [:value          {:optional true} [:maybe :string]]
    [:value_with_aad {:optional true} [:maybe :string]]])
+
+(mr/def ::external-setting
+  "A Setting as serialization writes it: its key, and its value as a string."
+  [:map {:closed true}
+   [:serdes/meta {:optional true} ::models.schema/external-meta]
+   [:key :string]
+   [:value {:optional true} [:maybe :string]]])
+
+(mr/def ::setting-value.object
+  "A JSON object a client sets a Setting to, whose keys the Setting owns."
+  [:map {:closed false, :description "a JSON object setting value"}])

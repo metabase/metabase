@@ -14,9 +14,9 @@
 
 (deftest ^:parallel transform-testing-tables-are-ee-only-test
   (let [entities (set copy/entities)]
-    (doseq [model [:model/TransformTest :model/TransformTestRun]]
+    (doseq [model [:model/TransformTest :model/CardTest :model/SegmentTest :model/DataTestRun]]
       (is (= config/ee-available? (contains? entities model))))
-    (is (not-any? entities [:transform_test :transform_test_run]))))
+    (is (not-any? entities [:transform_test :card_test :segment_test :data_test_run]))))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -139,6 +139,7 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite
@@ -146,13 +147,13 @@
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DataApp
-    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/EmbeddingSdkReact18Host
     :model/ExplorationQueryResult
+    :model/ImpersonationQueryCache
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
@@ -164,9 +165,9 @@
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
-    :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/ReplacementRun
+    :model/ResultMetadataStatus
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking

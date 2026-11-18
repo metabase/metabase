@@ -5,37 +5,39 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
   "Search model string names, ordered by indexing priority.
    Important / cheaper models come first so partial index is usable as soon as possible during a full index."
-  ["collection"
-   "dashboard"
-   "segment"
-   "measure"
-   "database"
-   "action"
-   "document"
-   "exploration"
-   "transform"
-   ;; The following come last as they can be slow to index due to:
-   ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. large text payloads and native-query parsing for cards)
-   "table"
-   "metric"
-   "card"
-   "dataset"
-   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
-   "indexed-entity"])
+  (-> ["collection"
+       "dashboard"
+       "segment"
+       "measure"
+       "database"
+       "action"
+       "document"
+       "exploration"
+       "transform"]
+      ;; An OSS build has no model namespace to resolve data apps from.
+      (cond-> config/ee-available? (conj "data-app"))
+      (into [;; The following come last as they can be slow to index due to:
+             ;; - cardinality (table, indexed-entity),
+             ;; - cost (e.g. large text payloads and native-query parsing for cards)
+             "table"
+             "metric"
+             "card"
+             "dataset"
+             ;; These can easily dwarf the cardinality of other entities, hence being dead last.
+             "indexed-entity"])))
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
@@ -211,7 +213,6 @@
                    [:map-of :keyword [:or fn? true?]]]]
    [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
-   [:source {:optional true} fn?]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
@@ -322,16 +323,15 @@
     (sequential? expr)
     (into (empty expr) (map #(replace-qualification % from to) expr))
 
+    (map? expr)
+    (update-vals expr #(replace-qualification % from to))
+
     :else
     expr))
 
 (defn- insert-values [expr table m]
-  (walk/postwalk
-   (fn [x]
-     (if (and (keyword? x) (has-table? table x))
-       (get m (remove-table table x))
-       x))
-   expr))
+  (match/replace-all expr
+    (kw :guard (and (keyword? kw) (has-table? table kw))) (get m (remove-table table kw))))
 
 (defn- construct-source-where [id-fields]
   (cond
@@ -412,10 +412,6 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
-   - `:source` - A thunk returning what `:this` reads from, as a `[source :this]` pair, when the indexable rows are
-     not simply the model's own table -- a Table, whose user-set values live in a side-car. A thunk because the spec
-     map is evaluated as the namespace loads, and resolving another model there would be a load cycle. Defaults to
-     the model's own table.
    - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
      column keyword to either `true` (use the raw value) or a transform fn applied for
      full-text search (required)
@@ -442,7 +438,8 @@
                      (update :visibility #(or % :all))
                      (update :attrs #(merge ~default-attrs %)))]
        (validate-spec! spec#)
-       (derive (:model spec#) :hook/search-index)
+       (derive (:model spec#) :hook/events)
+       (derive (:model spec#) :search/indexed)
        (defmethod spec* ~search-model [~'_] spec#))))
 
 (def ^:private model-hooks*
@@ -465,7 +462,9 @@
   (model-hooks* (methods spec*)))
 
 (defn- instance->db-values
-  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query, leaving as it is
+  a value that its write transform refuses, such as the `:unknown` an unrecognized stored value reads as, since only the
+  columns the hooks read are looked up in the result."
   [instance]
   (let [xforms (try
                  (let [model (t2/model instance)]
@@ -476,7 +475,12 @@
                    nil))]
     (reduce-kv
      (fn [m k v]
-       (assoc m k (if-let [f (get xforms k)] (f v) v)))
+       (assoc m k (if-let [f (get xforms k)]
+                    (try
+                      (f v)
+                      (catch Exception _
+                        v))
+                    v)))
      {}
      instance)))
 
@@ -492,11 +496,6 @@
           (get (model-hooks) (t2/model instance)))))
 
 (comment
-  (doseq [d (descendants :hook/search-index)]
-    (underive d :hook/search-index))
-  (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index))
-
   (methods spec)
   (model-hooks)
 

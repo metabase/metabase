@@ -1,10 +1,14 @@
 (ns metabase-enterprise.database-routing.models
   (:require
-   [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
+   [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -12,7 +16,34 @@
 (methodical/defmethod t2/table-name :model/DatabaseRouter [_model] :db_router)
 
 (doto :model/DatabaseRouter
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/events))
+
+(defmethod events/spec :model/DatabaseRouter
+  [_model]
+  {:create :event/database-router-create
+   :update :event/database-router-update
+   :delete :event/database-router-delete})
+
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(defn- check-not-destination
+  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
+  [database-id]
+  (when (database-routing.db/destination-database? database-id)
+    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
+
+(t2/define-before-insert :model/DatabaseRouter
+  [{:keys [database_id] :as router}]
+  (check-not-destination database_id)
+  router)
+
+(t2/define-before-update :model/DatabaseRouter
+  [router]
+  (let [changes (t2/changes router)]
+    (when (contains? changes :database_id)
+      (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
+    router))
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
@@ -29,7 +60,7 @@
   The destination is nil while the `:database-routing` feature is unavailable."
   :feature :none
   [field]
-  (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id router-db-or-id->destination-db-id)]
+  (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id driver.u/lib-database router-db->destination-db-id)]
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
 
 (defenterprise delete-associated-database-router!
@@ -38,11 +69,11 @@
   [db-id]
   (database-routing.db/delete-router! db-id))
 
-(defenterprise db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database."
-  :feature :database-routing
-  :fallback :oss
-  [db-or-id]
-  (or (database-routing.db/router-exists? (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               database-routing.db/router-exists?)))
+(defenterprise-schema db-routing-enabled? :- :boolean
+  "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database, even while
+  the `:database-routing` feature is unavailable."
+  :feature :none
+  [db :- ::lib.schema.metadata/database]
+  (boolean (or (database-routing.db/router-exists? (:id db))
+               (some->> (:router-database-id db)
+                        database-routing.db/router-exists?))))

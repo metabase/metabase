@@ -143,7 +143,7 @@
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
-  (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
+  (t2/update! :model/AuthIdentity :id auth-identity-id {:credentials credentials}))
 
 (mu/defn auth-identity-provider
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
@@ -159,6 +159,11 @@
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
+
+(mu/defn user-sso-source
+  "The `sso_source` of the User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one-fn :sso_source :model/User :id user-id))
 
 (mu/defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."

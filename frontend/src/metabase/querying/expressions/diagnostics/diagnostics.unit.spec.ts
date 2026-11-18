@@ -136,6 +136,22 @@ describe("diagnostics", () => {
         ).toBeUndefined();
       });
 
+      it("should accept a parenthesized OR inside an AND in filter mode", () => {
+        expect(
+          err("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4", "filter"),
+        ).toBeUndefined();
+        expect(err("([ID] > 2 OR [Subtotal] = 100) and", "filter")).toBe(
+          "Expected expression",
+        );
+      });
+
+      it("should reject non-boolean expressions in filter mode", () => {
+        expect(err("[Tax] * 22", "filter")).toBe("Types are incompatible.");
+        expect(err("3.14159", "filter")).toBe("Types are incompatible.");
+        expect(err('"TheAnswer"', "filter")).toBe("Types are incompatible.");
+        expect(err("[Total] > 10", "filter")).toBeUndefined();
+      });
+
       it.each(["in", "notIn"])(
         "should reject multi-arg function calls without options when there is not enough arguments",
         (fn) => {

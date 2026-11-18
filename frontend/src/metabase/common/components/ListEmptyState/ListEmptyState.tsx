@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -7,7 +8,7 @@ import { Box, Stack, Text } from "metabase/ui";
 
 type ListEmptyStateProps = {
   label: string;
-  description?: string;
+  description?: ReactNode;
   action?: ReactNode;
 };
 

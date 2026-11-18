@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -25,6 +26,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [metabase.warehouses.models.database :as database]
    [toucan2.realize :as t2.realize])
   (:import
@@ -66,9 +69,6 @@
    [:fn
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
     #(events/isa? % ::event)]])
-
-(def ^:private DatabaseOrId
-  [:or ::lib.schema.id/database :metabase.warehouses.schema/database-or-metadata])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -112,18 +112,18 @@
      :sync database-id
      #(sync-db! database-id))"
   {:style/indent [:form]}
-  [operation database-or-id f]
+  [operation database f]
   (fn []
-    (when-not (contains? (@operation->db-ids operation) (u/the-id database-or-id))
+    (when-not (contains? (@operation->db-ids operation) (u/the-id database))
       (try
         ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
-        (swap! operation->db-ids update operation #(conj (or % #{}) (u/the-id database-or-id)))
+        (swap! operation->db-ids update operation #(conj (or % #{}) (u/the-id database)))
         (log/debug "Sync operations in flight:" (m/filter-vals seq @operation->db-ids))
         ;; do our work
         (f)
         ;; always take the ID out of the set when we are through
         (finally
-          (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
+          (swap! operation->db-ids update operation #(disj % (u/the-id database))))))))
 
 (mu/defn- with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
@@ -131,7 +131,7 @@
   {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix :- :keyword
-    database-or-id    :- DatabaseOrId
+    database    :- i/DatabaseInstance
     f                 :- fn?]
    (letfn [(event-keyword [prefix suffix]
              (keyword (or (namespace event-name-prefix) "event")
@@ -139,21 +139,21 @@
      (with-sync-events
       (event-keyword event-name-prefix "-begin")
       (event-keyword event-name-prefix "-end")
-      database-or-id
+      database
       f)))
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic
-    database-or-id   :- DatabaseOrId
+    database   :- i/DatabaseInstance
     f                :- fn?]
    (fn []
      (let [start-time    (System/nanoTime)
            tracking-hash (str (random-uuid))]
-       (events/publish-event! begin-event-name {:database_id (u/the-id database-or-id), :custom_id tracking-hash})
+       (events/publish-event! begin-event-name {:database_id (u/the-id database), :custom_id tracking-hash})
        (let [return        (f)
              total-time-ms (int (/ (- (System/nanoTime) start-time)
                                    1000000.0))]
-         (events/publish-event! end-event-name {:database_id  (u/the-id database-or-id)
+         (events/publish-event! end-event-name {:database_id  (u/the-id database)
                                                 :custom_id    tracking-hash
                                                 :running_time total-time-ms})
          return)))))
@@ -236,6 +236,29 @@
   (or (isa? transient-exception-hierarchy (class e) ::transient-exception)
       (some-> (ex-cause e) recur)))
 
+(defn- customer-environment-sql-exception?
+  [^java.sql.SQLException e]
+  (let [state (.getSQLState e)]
+    (or (some-> state (str/starts-with? "28"))                      ; invalid authorization specification
+        (= state "42501")                                           ; insufficient privilege
+        (and (= state "42000")                                      ; MySQL: access denied to a db, table, or column
+             (contains? #{1044 1142 1143} (.getErrorCode e)))
+        (some-> (ex-message e) (str/includes? "user mapping not found")))))  ; Postgres FDW
+
+(defn- customer-environment-exception*?
+  [e]
+  (or (and (instance? java.sql.SQLException e)
+           (customer-environment-sql-exception? e))
+      ;; checked on every exception: a JDBC driver may put the AWS SDK's message in its own SQLException
+      (some-> (ex-message e) (str/includes? "not authorized to perform:"))))  ; AWS IAM denial (Athena, Glue)
+
+(defn customer-environment-exception?
+  "True if `e` (or any of its causes) is a failure the customer has to fix in their own environment -- the connecting
+  user lacks a login, a grant, a user mapping, or an IAM permission -- rather than a Metabase bug. Like
+  [[transient-exception?]] failures, these are still logged, but not at ERROR."
+  [e]
+  (boolean (some customer-environment-exception*? (u/full-exception-chain e))))
+
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
@@ -291,7 +314,7 @@
   wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
   Performs no eligibility gating itself — the public wrappers decide whether to call it."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
-   database  :- (ms/InstanceOf :model/Database)
+   database  :- i/DatabaseInstance
    message   :- ms/NonBlankString
    f         :- fn?]
   (if-let [busy (external-busy)]
@@ -311,7 +334,7 @@
                          (with-db-logging-disabled
                           (sync-in-context database
                                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
-              result (sync-fn)]
+              result (database-routing/with-anonymous-router-access (sync-fn))]
           (when (instance? Throwable result)
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
@@ -322,10 +345,10 @@
   [[metabase.warehouses.models.database/should-auto-sync?]]) — i.e. it is suppressed when the
   `disable-auto-sync` setting is on."
   [operation :- :keyword
-   database  :- (ms/InstanceOf :model/Database)
+   database  :- i/DatabaseInstance
    message   :- ms/NonBlankString
    f         :- fn?]
-  (when (database/should-auto-sync? database)
+  (when (database/should-auto-sync? (u/the-id database))
     (do-sync-operation* operation database message f)))
 
 (mu/defn do-explicit-sync-operation
@@ -334,10 +357,10 @@
   syncable at all (see [[metabase.warehouses.models.database/should-sync?]]), ignoring the
   `disable-auto-sync` setting, which suppresses only automatically-triggered syncs."
   [operation :- :keyword
-   database  :- (ms/InstanceOf :model/Database)
+   database  :- i/DatabaseInstance
    message   :- ms/NonBlankString
    f         :- fn?]
-  (when (database/should-sync? database)
+  (when (database/should-sync? (u/the-id database))
     (do-sync-operation* operation database message f)))
 
 (defmacro sync-operation
@@ -441,8 +464,8 @@
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set."
-  [database-or-id]
-  (let [ids (sync.db/sync-table-ids (u/the-id database-or-id))]
+  [database]
+  (let [ids (sync.db/sync-table-ids (u/the-id database))]
     (reduce (fn [acc ids']
               (+ acc (sync.db/update-tables! ids' {:initial_sync_status "complete"})))
             0
@@ -451,7 +474,7 @@
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
-  (when (not= (:initial_sync_status database) "complete")
+  (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
     (sync.db/update-database! (u/the-id database) {:initial_sync_status "complete"
                                                    :initial_sync_error  nil})))
 
@@ -459,7 +482,7 @@
   "Marks initial sync as aborted for this database, recording the message of `error` (the Throwable that aborted it)
   so that the cause can be displayed on the UI"
   [database error]
-  (when (not= (:initial_sync_status database) "complete")
+  (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
     (sync.db/update-database! (u/the-id database) {:initial_sync_status "aborted"
                                                    :initial_sync_error  (ex-message error)})))
 
@@ -468,31 +491,31 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn reducible-sync-tables
-  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`.
+  "Returns a reducible of all the Tables that should go through the sync processes for `database`.
 
   Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
-  [database-or-id                       :- DatabaseOrId
+  [database                       :- i/DatabaseInstance
    & {:keys [schema-names table-names]} :- [:maybe ::driver/describe-fks.options]]
   (eduction (map t2.realize/realize)
-            (sync.db/sync-tables-reducible (u/the-id database-or-id) schema-names table-names)))
+            (sync.db/sync-tables-reducible (u/the-id database) schema-names table-names)))
 
 (defn sync-tables-count
-  "The count of all tables that should be synced for `database-or-id`."
-  [database-or-id]
-  (sync.db/sync-tables-count (u/the-id database-or-id)))
+  "The count of all tables that should be synced for `database`."
+  [database]
+  (sync.db/sync-tables-count (u/the-id database)))
 
 (defn refingerprint-reducible-sync-tables
-  "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the
+  "A reducible collection of all the Tables that should go through the sync processes for `database`, in the
    order they should be refingerprinted (by earliest last_analyzed timestamp)."
-  [database-or-id]
+  [database]
   (eduction (map t2.realize/realize)
-            (sync.db/sync-tables-by-earliest-analyzed-reducible (u/the-id database-or-id))))
+            (sync.db/sync-tables-by-earliest-analyzed-reducible (u/the-id database))))
 
 (defn sync-schemas
-  "Returns all the Schemas that have their metadata sync'd for `database-or-id`.
+  "Returns all the Schemas that have their metadata sync'd for `database`.
   Assumes the database supports schemas."
-  [database-or-id]
-  (vec (map :schema (sync.db/sync-table-schemas (u/the-id database-or-id)))))
+  [database]
+  (vec (map :schema (sync.db/sync-table-schemas (u/the-id database)))))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like
@@ -502,9 +525,10 @@
   This function is used all over the sync code to make sure we have easy access to consistently formatted descriptions
   of various objects."
   {:arglists '([instance])}
-  mi/model)
+  (fn [instance]
+    (or (:lib/type instance) (mi/model instance))))
 
-(defmethod name-for-logging :model/Database
+(defmethod name-for-logging :metadata/database
   [{database-name :name, id :id, engine :engine}]
   (format "%s Database %s ''%s''" (name engine) (str (or id "")) database-name))
 
@@ -783,3 +807,23 @@
   (and (or (isa? base-type :type/Text)
            (isa? base-type :type/TextLike))
        (can-be-list? base-type semantic-type)))
+
+(mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
+  "Apply to the Field with `field-id` the `changes` to columns no user set, returning the number updated."
+  [field-id :- ::lib.schema.id/field
+   changes  :- ::warehouse-schema.schema/field.update]
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
+                                       (sync.db/field-user-settings field-id)))]
+    (if (seq changes)
+      (sync.db/update-field! field-id changes)
+      0)))
+
+(mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
+  "Apply to the Table with `table-id` the `changes` to columns no user set, returning the number updated."
+  [table-id :- ::lib.schema.id/table
+   changes  :- ::warehouse-schema.schema/table.update]
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
+                                       (sync.db/table-user-settings table-id)))]
+    (if (seq changes)
+      (sync.db/update-table! table-id changes)
+      0)))

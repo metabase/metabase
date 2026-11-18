@@ -17,7 +17,7 @@ You can define measures on any table. Measures on [published tables](published-t
 
 ## Create measures
 
-> If your instance is in read-only [remote sync](../../installation-and-operation/remote-sync.md) mode, and you enabled sync of the [Library](./library.md), you will not be able to create measures on tables published in the Library while in read-only mode.
+> If your instance is in read-only [remote sync](./remote-sync.md) mode, you will not be able to create measures on tables published in the Library while in read-only mode.
 
 Measures are created in [Data Studio](../data-studio.md).
 
@@ -84,14 +84,13 @@ To **use** a measure, people need to:
 
 ## Only measures on published tables are synced to Git
 
-When using [Remote Sync](../../installation-and-operation/remote-sync.md):
+When using [Remote Sync](./remote-sync.md):
 
 - Measures on tables that are _not_ published to the [Library](./library.md) are _not_ synced;
-- Measures on published tables are only synced if [_Library sync is enabled_](./library.md#versioning-the-library).
+- Measures on published tables sync with the Library.
 
-If your instance is in read-only Remote Sync mode, and the Library sync is enabled, you won't be able to create measures on published tables.
 
-You can, however, sync [Metrics](./metrics.md) on any tables by syncing their collection.
+Metrics in the Library sync with it, whether or not their tables are published.
 
 ## Limitations
 

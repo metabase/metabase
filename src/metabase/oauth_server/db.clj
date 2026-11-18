@@ -59,6 +59,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_active true))
 
+(mu/defn personal-user?
+  "Whether the User with `user-id` is a `:personal` user."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/User :id user-id :type :personal))
+
 (mu/defn oauth-client-exists?
   "Whether an OAuthClient with `client-id` exists."
   [client-id :- :string]
@@ -108,7 +113,7 @@
   "Apply `row` to the OAuthClient with primary key `id`, returning the number updated."
   [id  :- ms/PositiveInt
    row :- ::oauth-server.schema/oauth-client.update]
-  (t2/update! :model/OAuthClient id row))
+  (t2/update! :model/OAuthClient :id id row))
 
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."

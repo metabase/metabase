@@ -17,7 +17,7 @@
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         sql-args  ["select column_name from information_schema.constraint_column_usage where constraint_name = ?" constraint-name]]
     (into []
           (map :column_name)

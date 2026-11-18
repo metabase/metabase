@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
 import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { Location } from "metabase/router";
-import { queryToSearch, useNavigate } from "metabase/router";
+import {
+  getIsNavigationPending,
+  getRouterLocation,
+  queryToSearch,
+  useNavigate,
+} from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import type { UrlStateQuery } from "./types";
@@ -23,11 +29,12 @@ type PatchUrlStateOptions = {
   immediate?: boolean;
 };
 
-type UrlStateActions<State extends BaseState> = {
+type UrlStateApi<State extends BaseState> = {
   patchUrlState: (
     patch: Partial<State>,
     options?: PatchUrlStateOptions,
   ) => void;
+  searchString: string;
 };
 
 export const URL_UPDATE_DEBOUNCE_DELAY = 300;
@@ -39,7 +46,7 @@ export const URL_UPDATE_DEBOUNCE_DELAY = 300;
 export function useUrlState<State extends BaseState>(
   location: Location,
   { parse, serialize }: UrlStateConfig<State>,
-): [State, UrlStateActions<State>] {
+): [State, UrlStateApi<State>] {
   const navigate = useNavigate();
   const [state, setState] = useState(() =>
     parse(parseSearchQuery(location.search)),
@@ -68,23 +75,39 @@ export function useUrlState<State extends BaseState>(
     [],
   );
 
+  const toSearchString = useCallback(
+    (state: State) => queryToSearch(serialize(state)),
+    [serialize],
+  );
+
   const updateUrl = useCallback(
     (state: State) => {
-      const search = queryToSearch(serialize(state));
+      const routerLocationKey = getRouterLocation()?.key;
+      const hasNavigatedSinceRender =
+        routerLocationKey !== undefined && routerLocationKey !== location.key;
+      if (hasNavigatedSinceRender || getIsNavigationPending()) {
+        return;
+      }
+      const search = toSearchString(state);
       // skip when the URL already carries this state, so adopting a URL below
       // does not push it onto the history a second time
       if (search !== location.search) {
         navigate({ ...location, search });
       }
     },
-    [location, serialize, navigate],
+    [location, toSearchString, navigate],
+  );
+
+  const searchString = useMemo(
+    () => toSearchString(state),
+    [toSearchString, state],
   );
 
   const updateUrlRef = useLatest(updateUrl);
   const urlStateRef = useLatest(urlState);
 
   useEffectOnce(function cleanInvalidQueryParams() {
-    const search = queryToSearch(serialize(urlState));
+    const search = toSearchString(urlState);
     // Replacing to the identical URL notifies the router, which re-renders every
     // location consumer on the page for nothing.
     if (search !== location.search) {
@@ -108,5 +131,5 @@ export function useUrlState<State extends BaseState>(
     updateUrlRef.current(urlState);
   }, [updateUrlRef, urlState]);
 
-  return [state, { patchUrlState }];
+  return [state, { patchUrlState, searchString }];
 }

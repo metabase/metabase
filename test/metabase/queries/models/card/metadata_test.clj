@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -48,8 +49,8 @@
                                   :base_type                 :type/BigInteger}]}
               (card.metadata/populate-result-metadata (lib/normalize ::queries.schema/card card)))))))
 
-(deftest ^:parallel infer-metadata-no-remaps
-  (testing "infer-metadata should not include remapped columns (#67128)"
+(deftest infer-metadata-remaps-test
+  (testing "infer-metadata returns the remapped columns of a run, which a query on the card leaves out (#67128)"
     (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
                                        :name                    "User ID"
                                        :human_readable_field_id (mt/id :people :name)
@@ -58,10 +59,26 @@
                                        :name                    "Product ID"
                                        :human_readable_field_id (mt/id :products :title)
                                        :type                    :external}]
-      (let [mp (mt/metadata-provider)
-            query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-        (is (= 9 ;; there are two remaps, giving 11 if included
-               (count (card.metadata/infer-metadata query))))))))
+      (let [mp       (mt/metadata-provider)
+            query    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            metadata (card.metadata/infer-metadata query)
+            run      (get-in (qp/process-query query) [:data :results_metadata :columns])
+            remap    (juxt :name :remapped_from :remapped_to)]
+        (is (= (mapv remap run) (mapv remap metadata)))
+        (is (= 2 (count (filter :remapped_from metadata))))
+        (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query query :result_metadata metadata}]
+          (let [mp (mt/metadata-provider)]
+            (is (= (mapv :name (lib/returned-columns query))
+                   (mapv :name (lib/returned-columns (lib/query mp (lib.metadata/card mp card-id))))))))))))
+
+(deftest infer-metadata-internal-remaps-test
+  (testing "infer-metadata returns the column of an internal remap that a run adds"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            remap (juxt :name :display_name :remapped_from :remapped_to :base_type)]
+        (is (= (mapv remap (get-in (qp/process-query query) [:data :results_metadata :columns]))
+               (mapv remap (card.metadata/infer-metadata query))))))))
 
 (deftest ^:parallel untyped-metadata?-test
   (testing "metadata is untyped when it has columns and none of them has a known base type (GHY-4213)"
@@ -75,6 +92,35 @@
 (defn- venues-query []
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(deftest maybe-async-result-metadata-recompute-failure-preserves-original-test
+  (testing "when the metadata recompute throws (missing required native parameter), preserve original-metadata (#83734)"
+    (let [mp                (mt/metadata-provider)
+          state-tag         {:id           "_STATE_"
+                             :name         "state"
+                             :display-name "State"
+                             :type         :text
+                             :required     true}
+          original-metadata [{:name "ID"    :base_type :type/BigInteger :display_name "ID"
+                              :field_ref [:field "ID" {:base-type :type/BigInteger}]}
+                             {:name "NAME"  :base_type :type/Text       :display_name "Name"
+                              :field_ref [:field "NAME" {:base-type :type/Text}]}
+                             {:name "EMAIL" :base_type :type/Text       :display_name "Email"
+                              :field_ref [:field "EMAIL" {:base-type :type/Text}]}]
+          with-default      (-> (lib/native-query mp "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}")
+                                (lib/with-template-tags {"state" (assoc state-tag :default "CA")}))
+          without-default   (-> (lib/native-query
+                                 mp
+                                 "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}\n-- edited")
+                                (lib/with-template-tags {"state" state-tag}))
+          result            (card.metadata/maybe-async-result-metadata
+                             {:original-query    with-default
+                              :query             without-default
+                              :original-metadata original-metadata
+                              :model?            false})]
+      (is (= (map :name original-metadata)
+             (map :name (:metadata result)))
+          "existing columns should be preserved when the recompute fails on missing required parameter"))))
 
 (deftest backfill-untyped-model-metadata!-test
   (testing "backfill-untyped-model-metadata! infers the untyped metadata of the models on a database (GHY-4213)"
@@ -107,3 +153,45 @@
           (is (= typed (metadata typed-id))))
         (testing "a model whose metadata still cannot be inferred is not changed"
           (is (= unresolvable (metadata unresolvable-id))))))))
+
+(deftest missing-required-parameter-is-not-an-error-test
+  (testing "a native query whose required parameter has no value is expected to fail metadata calculation (GHY-4954)"
+    (let [mp    (mt/metadata-provider)
+          query (fn [sql template-tags]
+                  (lib/query mp (mt/native-query {:query sql, :template-tags template-tags})))
+          logs  (fn [query]
+                  (mt/with-log-messages-for-level [messages [metabase.queries.models.card.metadata :debug]]
+                    (is (= ::card.metadata/recompute-failed @(#'card.metadata/legacy-result-metadata-future query)))
+                    (into #{} (map :level) (messages))))]
+      (testing "logs at debug"
+        (is (= #{:debug}
+               (logs (query "SELECT * FROM venues WHERE id = {{id}}"
+                            {"id" {:name "id", :display-name "ID", :type :number, :required true, :id "1"}})))))
+      (testing "other failures still log at error"
+        (is (= #{:error}
+               (logs (query "SELECT * FROM no_such_table" {}))))))))
+
+(deftest model-metadata-supplied-by-writer-is-kept-test
+  (testing "a model written with column metadata keeps that metadata whoever writes it"
+    (let [mp        (mt/metadata-provider)
+          native    (fn [sql] (lib/native-query mp sql))
+          metadata  [{:name "ONE" :display_name "Mine" :base_type :type/Integer :semantic_type :type/Quantity}]
+          stored    #(:result_metadata (t2/select-one [:model/Card :result_metadata :card_schema] :id %))
+          summarize #(mapv (juxt :name :display_name :base_type :semantic_type) %)]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                :dataset_query   (native "SELECT 1 AS ONE")
+                                                :result_metadata metadata}]
+        (testing "on insert"
+          (is (= (summarize metadata) (summarize (stored card-id)))))
+        (testing "on an update of the query and the metadata together"
+          (let [edited [{:name "TWO" :display_name "Edited" :base_type :type/Integer :semantic_type :type/Score}]]
+            (t2/update! :model/Card :id card-id {:dataset_query   (native "SELECT 2 AS TWO")
+                                                 :result_metadata edited})
+            (is (= (summarize edited) (summarize (stored card-id)))))))
+      (testing "an MBQL model whose supplied metadata has no field ids"
+        (let [query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+          (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                    :dataset_query   query
+                                                    :result_metadata [{:name "NAME" :display_name "Venue Name" :base_type :type/Text}]}]
+            (is (= [["NAME" "Venue Name" :type/Text]]
+                   (mapv (juxt :name :display_name :base_type) (stored card-id))))))))))

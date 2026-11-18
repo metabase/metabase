@@ -9,13 +9,14 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
 import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("scenarios > embedding > full app", () => {
@@ -513,8 +514,96 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
           databaseName: "Sample Database",
         });
-        verifyTableSelected({
-          tableName: modelDetails.name,
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("contain.text", modelDetails.name);
+      });
+    });
+
+    describe("metric", () => {
+      it("should select a metric, and switch to the full data picker at 100 tables, models, and metrics", () => {
+        const metricDetails = {
+          ...ordersCardDetails,
+          name: "Orders count",
+          type: "metric",
+          query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+        };
+        H.createQuestion(metricDetails);
+
+        cy.log("show the simple data picker below 100 data sources");
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByRole("link", { name: "Orders" }).should("be.visible");
+          cy.findByText("Raw Data").should("not.exist");
+        });
+
+        cy.log("select a metric as the starting data source");
+        selectDataSource(metricDetails.name);
+
+        // A metric becomes the aggregation on the table it is built from
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(metricDetails.name)
+          .should("be.visible");
+
+        cy.log("switch to the full data picker at 100 data sources");
+        // Tables and models alone stay under 100, so only the metrics can
+        // push the count over
+        Cypress._.times(100, (index) => {
+          H.createQuestion({
+            ...ordersCardDetails,
+            name: `Orders count ${index}`,
+            type: "metric",
+            query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+          });
+        });
+
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("be.visible");
+        });
+      });
+    });
+
+    describe("semantic-layer", () => {
+      it("should count the metrics in the Library toward the full data picker switch", () => {
+        const metricDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+        };
+        cy.signInAsAdmin();
+        Cypress._.times(50, (index) => {
+          H.createQuestion({ ...metricDetails, name: `Orders count ${index}` });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByRole("link", { name: "Orders" }).should("be.visible");
+          cy.findByText("Raw Data").should("not.exist");
+        });
+
+        // The other half of the 100 metrics goes into the Library, so only
+        // the Library's metrics can push the count over
+        cy.signInAsAdmin();
+        H.createLibrary().then(({ metricsCollectionId }) => {
+          Cypress._.times(50, (index) => {
+            H.createQuestion({
+              ...metricDetails,
+              name: `Library orders count ${index}`,
+            }).then(({ body: metric }) => {
+              cy.request("PUT", `/api/card/${metric.id}`, {
+                collection_id: metricsCollectionId,
+              });
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("be.visible");
         });
       });
     });
@@ -568,16 +657,21 @@ describe("scenarios > embedding > full app", () => {
 
     const DEFAULT_ALIASES = {
       cardAlias: "@getCard",
+      cardQueryMetadataAlias: "@getCardQueryMetadata",
       tableMetadataAlias: "@getTableMetadata",
     };
 
     function interceptDataPickerRequests(name) {
       cy.intercept("GET", "/api/card/*").as(`getCard${name}`);
+      cy.intercept("GET", "/api/card/*/query_metadata").as(
+        `getCardQueryMetadata${name}`,
+      );
       cy.intercept("GET", "/api/table/*/query_metadata").as(
         `getTableMetadata${name}`,
       );
       return {
         cardAlias: `@getCard${name}`,
+        cardQueryMetadataAlias: `@getCardQueryMetadata${name}`,
         tableMetadataAlias: `@getTableMetadata${name}`,
       };
     }
@@ -614,7 +708,7 @@ describe("scenarios > embedding > full app", () => {
         );
         cy.findByText(cardName).click();
       });
-      cy.wait(aliases.tableMetadataAlias);
+      cy.wait(aliases.cardQueryMetadataAlias);
       if (cardType !== "metric") {
         cy.wait(aliases.cardAlias);
       }
@@ -677,31 +771,30 @@ describe("scenarios > embedding > full app", () => {
     beforeEach(() => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
+      cy.intercept("GET", "/api/card/*/query_metadata").as(
+        "getCardQueryMetadata",
+      );
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
-    it('should respect "entity_types" search parameter and never offer questions or metrics (EMB-228)', () => {
+    it('should show tables, models, and metrics without "entity_types", and only tables with `entity_types=table` (EMB-228)', () => {
       H.createQuestion({
         ...ordersCountCardDetails,
         type: "metric",
         collection_id: null,
       });
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/database",
-        query: {
-          saved: "true",
-        },
-      }).as("getDatabases");
+      cy.signInAsAdmin();
+      createLibraryWithTable();
+      cy.signInAsNormalUser();
 
       cy.log("test not providing `entity_types`");
       startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-      cy.wait("@getDatabases");
       H.popover().within(() => {
         cy.findByText("Models").should("be.visible");
         cy.findByText("Raw Data").should("be.visible");
         cy.findByText("Saved Questions").should("not.exist");
-        cy.findByText("Metrics").should("not.exist");
+        cy.findByText("Metrics").should("be.visible");
+        cy.findByText("Library").should("be.visible");
       });
 
       cy.log("test providing `entity_types` as an empty string");
@@ -868,6 +961,51 @@ describe("scenarios > embedding > full app", () => {
         },
       );
 
+      it(
+        "should drill down from the databases to the schemas and tables, then back up, with the staged data picker",
+        { tags: "@external" },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          cy.signInAsAdmin();
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+          H.popover().within(() => {
+            cy.findByText("Raw Data").click();
+
+            cy.log("the databases are listed under the Raw Data back link");
+            cy.findByRole("button", { name: "Raw Data" }).should("be.visible");
+            cy.findByText("Sample Database").should("be.visible");
+            cy.findByText("Writable Postgres12").should("be.visible");
+            cy.findByText("Writable Postgres12").click();
+
+            cy.log("a database with several schemas lists its schemas");
+            cy.findByText("Domestic").should("be.visible");
+            cy.findByText("Wild").should("be.visible");
+            cy.findByText("Sample Database").should("not.exist");
+            cy.findByText("Wild").click();
+
+            cy.log("a schema lists its tables");
+            cy.findByText("Birds").should("be.visible");
+            cy.findByText("Animals").should("be.visible");
+            cy.findByText("Domestic").should("not.exist");
+
+            cy.log("going back from the tables lands on the schemas");
+            cy.findByRole("button", { name: "Writable Postgres12" }).click();
+            cy.findByText("Domestic").should("be.visible");
+            cy.findByText("Wild").should("be.visible");
+            cy.findByText("Birds").should("not.exist");
+
+            cy.log("going back from the schemas lands on the databases");
+            cy.findByRole("button", { name: "Writable Postgres12" }).click();
+            cy.findByText("Sample Database").should("be.visible");
+            cy.findByText("Writable Postgres12").should("be.visible");
+            cy.findByText("Domestic").should("not.exist");
+          });
+        },
+      );
+
       it("should join tables and models when the data source is a table", () => {
         const cardDetails = {
           ...ordersCardDetails,
@@ -1014,6 +1152,260 @@ describe("scenarios > embedding > full app", () => {
         });
       });
     });
+
+    describe("metric", () => {
+      beforeEach(() => {
+        H.createQuestion({
+          ...ordersCountCardDetails,
+          type: "metric",
+          collection_id: null,
+        });
+      });
+
+      it("should select a metric as the starting data source", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectCard({
+          cardName: ordersCountCardDetails.name,
+          cardType: "metric",
+          collectionNames: [],
+        });
+
+        // A metric becomes the aggregation on the table it is built from,
+        // rather than the source card a model or a question would become.
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(ordersCountCardDetails.name)
+          .should("be.visible");
+      });
+
+      it("should not be able to join a metric", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectTable({ tableName: "Orders" });
+
+        H.getNotebookStep("data").button("Join data").click();
+        goBackToBucketStep();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("not.exist");
+        });
+      });
+    });
+
+    describe("semantic-layer", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        createLibraryWithTable();
+        cy.signInAsNormalUser();
+      });
+
+      it("should select a table published in the Library", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").click();
+          cy.findByText("Orders").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+      });
+
+      it("should join a table published in the Library", () => {
+        cy.signInAsAdmin();
+        H.publishTables({ table_ids: [PRODUCTS_ID] });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectTable({ tableName: "Orders" });
+
+        H.getNotebookStep("data").button("Join data").click();
+        goBackToBucketStep();
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          cy.findByText("Products").click();
+        });
+
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .findByText("Products")
+          .should("be.visible");
+      });
+
+      it("should select a table published in a Library subfolder", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          // A collection created in a Library folder takes that folder's type
+          H.createCollection({
+            name: "Finance",
+            parent_id: dataCollection.id,
+          }).then(({ body: subfolder }) => {
+            H.publishTables({
+              table_ids: [PRODUCTS_ID],
+              collection_id: subfolder.id,
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          cy.findByText("Finance").click();
+          cy.findByText("Products").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Products").should("be.visible");
+      });
+
+      it("should reopen a table published in a Library subcollection in the Library", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          H.createCollection({
+            name: "Finance",
+            parent_id: dataCollection.id,
+          }).then(({ body: subcollection }) => {
+            H.publishTables({
+              table_ids: [PRODUCTS_ID],
+              collection_id: subcollection.id,
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          cy.findByText("Finance").click();
+          cy.findByText("Products").click();
+        });
+        cy.wait("@getTableMetadata");
+        clickOnDataSource("Products");
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("not.exist");
+          cy.findByTestId("saved-entity-collection-tree")
+            .findByText("Finance")
+            .should("be.visible");
+          cy.findByLabelText("Products").should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
+        });
+      });
+
+      it("should not offer a Library whose only content is archived", () => {
+        cy.signInAsAdmin();
+        H.unpublishTables({ table_ids: [ORDERS_ID] });
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const metricsCollection = body.effective_children.find(
+            (collection) => collection.type === "library-metrics",
+          );
+          H.createQuestion({ ...ordersCountCardDetails, type: "metric" }).then(
+            ({ body: metric }) => {
+              cy.request("PUT", `/api/card/${metric.id}`, {
+                collection_id: metricsCollection.id,
+              });
+              cy.request("PUT", `/api/card/${metric.id}`, { archived: true });
+            },
+          );
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("not.exist");
+        });
+      });
+
+      it("should not offer a Library whose only content the user can't read", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          cy.updateCollectionGraph({
+            [ALL_USERS_GROUP]: { [dataCollection.id]: "none" },
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("not.exist");
+        });
+      });
+
+      it("should offer every Library subcollection the user can read when they can't read Data itself", () => {
+        cy.signInAsAdmin();
+        H.unpublishTables({ table_ids: [ORDERS_ID] });
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          H.createCollection({
+            name: "Client A",
+            parent_id: dataCollection.id,
+          }).then(({ body: clientA }) => {
+            H.publishTables({
+              table_ids: [PRODUCTS_ID],
+              collection_id: clientA.id,
+            });
+            H.createCollection({
+              name: "Client B",
+              parent_id: dataCollection.id,
+            }).then(({ body: clientB }) => {
+              H.publishTables({
+                table_ids: [ORDERS_ID],
+                collection_id: clientB.id,
+              });
+              cy.updateCollectionGraph({
+                [ALL_USERS_GROUP]: {
+                  [dataCollection.id]: "none",
+                  [clientA.id]: "read",
+                  [clientB.id]: "read",
+                },
+              });
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          // Client A and Client B share one "Data" entry, not one each
+          cy.findAllByText("Data").should("have.length", 1);
+          cy.findByText("Client A").should("be.visible");
+          cy.findByText("Client B").click();
+          cy.findByText("Orders").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+
+        clickOnDataSource("Orders");
+        H.popover().within(() => {
+          cy.findByTestId("saved-entity-collection-tree")
+            .findByText("Client B")
+            .should("be.visible");
+          cy.findByLabelText("Orders").should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
+        });
+      });
+    });
   });
 
   describe("dashboards", () => {
@@ -1043,7 +1435,7 @@ describe("scenarios > embedding > full app", () => {
       H.dashboardHeader().findByRole("img", { name: /info/i }).click();
       H.sidesheet().within(() => {
         cy.findByRole("heading", { name: "Description" }).should("be.visible");
-        cy.findByRole("heading", { name: /entity id/i }).should("not.exist");
+        cy.findByText("Entity ID info").should("not.exist");
       });
       H.sidesheet().findByLabelText("Close").click();
       H.sidesheet().should("not.exist");
@@ -1742,3 +2134,216 @@ const signInForCollectionCase = ({ user, readCollectionIds }) => {
   }
   cy.signIn(user);
 };
+
+describe("issue 51934 (EMB-189)", () => {
+  const COLLECTION_NAME = "Model Collection";
+  const MODEL_IN_ROOT_NAME = "Products Model";
+  const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const QUESTION_IN_COLLECTION_NAME = "Orders Question";
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.createModelFromTableName({
+      tableName: "products",
+      modelName: MODEL_IN_ROOT_NAME,
+    });
+    H.createCollection({
+      name: COLLECTION_NAME,
+      alias: "collectionId",
+    });
+    H.createModelFromTableName({
+      tableName: "orders",
+      modelName: MODEL_IN_COLLECTION_NAME,
+      idAlias: "modelId",
+    });
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "modelId",
+    });
+    H.createQuestion(
+      {
+        name: QUESTION_IN_COLLECTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "questionId",
+      },
+    );
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "questionId",
+    });
+  });
+
+  it("should set the starting join step based on the query source", () => {
+    startNewEmbeddingQuestion();
+    const QA_DB_NAME = "QA Postgres12";
+    const DATA_SOURCE_NAME = "Orders";
+
+    // Before the picker can auto-navigate into the data source's collection it
+    // resolves the target path asynchronously: a card-metadata fetch plus one
+    // `listCollectionItems` request per collection level (root -> Model
+    // Collection). On a throttled CI runner that serial chain routinely outlasts
+    // Cypress's default 4 s command timeout, so the picker is still showing the
+    // parent (root) collections when a default-timeout query gives up — the
+    // dominant "cannot find menuitem '...' (only the root collections are
+    // present)" flake. Wait for the loader to clear, then give the item lookup a
+    // generous timeout so it waits for the path to finish resolving, and assert
+    // it is visible (positive anchor) before clicking.
+    const PICKER_ITEM_TIMEOUT = 15000;
+    const clickPickerItem = (name) => {
+      cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
+      cy.findByRole("menuitem", { name }, { timeout: PICKER_ITEM_TIMEOUT })
+        .should("be.visible")
+        .click();
+    };
+
+    // The data-source picker and the join picker are both rendered by the same
+    // embedding DataSourceSelector, so a generic popover query could not tell
+    // them apart. When a click swaps one for the other they can briefly overlap
+    // (the outgoing one is still in its close transition while the incoming one
+    // is already mounted), which made matching ambiguous and flaky on slow CI
+    // runners.
+    //
+    // Each picker now carries its trigger's label as the dropdown's accessible
+    // name (`aria-label`), so we can target each popover deterministically by
+    // name regardless of any transition overlap. `.filter(":visible").last()`
+    // guards against a same-named popover that is still animating closed.
+    const pickerPopover = (name) =>
+      cy
+        .get(`[data-element-id=mantine-popover][aria-label="${name}"]`)
+        .filter(":visible")
+        .should("have.length.at.least", 1)
+        .last();
+    const dataSourcePopover = () => pickerPopover("Pick your starting data");
+    const joinPopover = () => pickerPopover("Pick data to join");
+
+    cy.log("select a table as a data source");
+    dataSourcePopover().within(() => {
+      cy.findByText("Raw Data").click();
+    });
+    dataSourcePopover().within(() => {
+      cy.findByRole("heading", { name: QA_DB_NAME }).click();
+    });
+    dataSourcePopover().within(() => {
+      cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
+    });
+    H.getNotebookStep("data").button("Join data").click();
+
+    cy.log(
+      'select the "Join" step when the data source is a table will open a table in the same database',
+    );
+    joinPopover().within(() => {
+      cy.findByText(QA_DB_NAME).should("be.visible");
+      cy.findByRole("option", { name: "Orders" }).should("be.visible");
+    });
+
+    cy.log(
+      "changing the data source while not selecting the join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
+
+    cy.log('go back to the "Bucket" step');
+    dataSourcePopover().within(() => {
+      cy.icon("chevronleft").click();
+    });
+    dataSourcePopover().within(() => {
+      cy.icon("chevronleft").click();
+    });
+
+    cy.log(
+      "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
+    );
+    dataSourcePopover().within(() => {
+      cy.findByText("Saved Questions").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(COLLECTION_NAME));
+    dataSourcePopover().within(() =>
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME),
+    );
+
+    cy.log("the join popover is automatically opened");
+    joinPopover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME);
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
+
+    // Go back to the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Saved Questions").click();
+    });
+    // We're now at the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Models").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
+
+    cy.log("the join popover is automatically opened");
+    joinPopover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      clickPickerItem(MODEL_IN_COLLECTION_NAME);
+    });
+
+    cy.log(
+      "select a data source after selecting a join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
+    dataSourcePopover().within(() => clickPickerItem("Our analytics"));
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
+
+    joinPopover().within(() => {
+      cy.log("the collection of the new data source should be selected");
+      cy.findByRole("menuitem", { name: "Our analytics" }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  function startNewEmbeddingQuestion() {
+    H.visitFullAppEmbeddingUrl({
+      url: "/question/notebook",
+      qs: {
+        data_picker: "staged",
+        entity_types: "table,model,question",
+      },
+    });
+  }
+
+  function moveToCollection({ collectionIdAlias, cardIdAlias }) {
+    cy.get(`@${collectionIdAlias}`).then((collectionId) => {
+      cy.get(`@${cardIdAlias}`).then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_id: collectionId,
+        });
+      });
+    });
+  }
+});

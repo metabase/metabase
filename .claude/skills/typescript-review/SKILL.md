@@ -19,7 +19,7 @@ metadata:
 
 ## Main Focus
 
-**Primary standard: the [`typescript-write`](../typescript-write/SKILL.md) skill.** Load it first — it defines the authoring rules this review enforces, alongside `frontend/CLAUDE.md` and `docs/developers-guide/frontend.md`.
+**Primary standard: the [`typescript-write`](../typescript-write/SKILL.md) skill.** Load it first — it defines the authoring rules this review enforces, alongside `frontend/AGENTS.md` and `docs/developers-guide/frontend.md`.
 
 Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new, moved, or otherwise edited code) as **blocking**. Use TypeScript LSP tools to inspect inferred types when available; otherwise rely on type-checking and linting.
 
@@ -28,7 +28,7 @@ Read the full diff and new files, including tests and helpers. For tests, check 
 Review in this priority order:
 
 1. **Violations of [`typescript-write`](../typescript-write/SKILL.md) provisions** — no-`any`, type tightening, type modeling, function signatures, null/undefined handling, naming, structure, comments. Highest priority; block on the no-`any` rule. Apply conditional guidance in context: explain the unsupported type guarantee or concrete readability problem, rather than treating every preference as a blanket ban.
-2. Compliance with `frontend/CLAUDE.md`.
+2. Compliance with `frontend/AGENTS.md`.
 3. Readability and maintainability.
 4. Appropriate test coverage. For internal typed callers, avoid requesting tests solely for inputs the type system excludes. External API data, deserialised values, storage and JavaScript callers can violate annotations: test runtime validation and nontrivial assumptions at those boundaries. Types do not replace behavioural, security or data-integrity tests.
 
