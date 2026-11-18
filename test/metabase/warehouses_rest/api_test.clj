@@ -690,6 +690,14 @@
                                 {:name "New Name"})
           (is (= "New Name" (t2/select-one-fn :name :model/Database :id db-id))))))))
 
+(deftest update-sample-database-test
+  (testing "PUT /api/database/:id refuses to edit the Sample Database with a 400, after the permission check"
+    (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver, :is_sample true, :name "Sample"}]
+      (is (= "The sample database cannot be edited."
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id) {:name "Renamed"})))
+      (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Renamed"})
+      (is (= "Sample" (t2/select-one-fn :name :model/Database :id db-id))))))
+
 (deftest database-modifiability-flags-test
   (testing "GET /api/database/:id returns the is_sample and is_attached_dwh flags the admin UI uses to disable editing"
     (testing "sample database"
