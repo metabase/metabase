@@ -1936,9 +1936,11 @@
 (defn- with-model-metadata
   "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
   stores them, with the exported metadata of a native query, whose columns can't be inferred without running it, or
-  with the overrides applied to freshly inferred metadata, as an update of its query would store them."
+  with the overrides applied to freshly inferred metadata, as an update of its query would store them. A row without
+  a `:type` keeps the type of the local row."
   [{:keys [row local] :as item}]
-  (let [{query :dataset_query metadata :result_metadata card-type :type} row]
+  (let [{query :dataset_query metadata :result_metadata} row
+        card-type (or (:type row) (:type local))]
     (cond
       (not (and local query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
       item
@@ -1952,7 +1954,8 @@
       :else
       (let [overrides (mapv #(select-keys % (model-override-keys)) metadata)]
         (assoc-in item [:row :result_metadata]
-                  (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
+                  (or (card.metadata/infer-metadata-with-model-overrides
+                       query (assoc row :result_metadata overrides :type :model))
                       metadata))))))
 
 (defn- keep-local-columns

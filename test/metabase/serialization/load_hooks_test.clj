@@ -1,6 +1,8 @@
 (ns metabase.serialization.load-hooks-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -93,3 +95,23 @@
         (is (= [] (load-all exported)))
         (is (=? {:name "changed" :type :model}
                 (t2/select-one [:model/Card :name :type] :id card-id)))))))
+
+(deftest model-update-without-type-merges-overrides-test
+  (testing "a model without a type, as an entity written by hand can be, applies its metadata overrides to the
+            inferred metadata of the local model"
+    (mt/with-temp [:model/Collection {coll-id :id :as coll} {}
+                   :model/Card       {card-id :id :as card} {:collection_id coll-id
+                                                             :type          :model
+                                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                                              (lib/query mp (lib.metadata/table
+                                                                                             mp (mt/id :venues))))}]
+      (let [exported (concat (export-all :model/Collection [coll])
+                             (map #(-> % (dissoc :card_schema :type) (assoc-in [:result_metadata 0 :display_name] "Renamed"))
+                                  (export-all :model/Card [card])))]
+        (is (= [] (load-all exported)))
+        (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          (is (= (count (:result_metadata card)) (count metadata)))
+          (is (=? {:display_name "Renamed"
+                   :base_type    (:base_type (first (:result_metadata card)))
+                   :field_ref    some?}
+                  (first metadata))))))))
