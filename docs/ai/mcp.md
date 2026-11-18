@@ -7,7 +7,7 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 ![A metric viewed through an MCP client connected to Metabase](./images/metric-in-mcp.png)
 
-Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions. 
+Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
 The MCP server is available on every Metabase plan. Some controls, like [MCP tools access](./usage-controls.md#mcp-tools-access) and [MCP analytics](#mcp-analytics), require a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
@@ -163,6 +163,14 @@ The consent page lists the permission scopes the client is asking for. Each [too
 - `agent:delivery:write`: create alerts and subscriptions that email or Slack your data. Creating one also needs `agent:query:run`, since it runs a query when it fires.
 
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
+
+### MCP requests run with your Metabase permissions
+
+The MCP server runs every request with the Metabase permissions of the person who signed in. Your [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md) apply to every tool call, so a client can't see or query anything that you couldn't in Metabase yourself.
+
+Two other controls can narrow what a client can do, but neither one grants access beyond your data and collection permissions. You approve [permission scopes](#permission-scopes) for each client on the consent page when you connect. [MCP tools access](./usage-controls.md#mcp-tools-access), on Pro and Enterprise plans, lets admins limit which tools each group can use.
+
+> If you use [impersonation](../permissions/impersonation.md) to control access with database roles, queries that the MCP server runs, from both query builder tools and raw SQL, run under the person's database role, just like queries run in Metabase.
 
 ### Using the MCP server when embedding Metabase
 
