@@ -391,13 +391,13 @@
                      (re-pattern "single sign-on")))))))))))
 
 (deftest forgot-password-sso-user-with-used-password-test
-  (testing "POST /api/session/forgot_password - SSO user with enabled provider gets link only for used, unexpired password"
+  (testing "POST /api/session/forgot_password - SSO user with enabled provider gets link only for used password, expired or not"
     (doseq [[password-attrs expected-body] [[{:last_used_at (t/offset-date-time)}
                                              "Click the button below to reset the password"]
                                             [{} "You're using Google to log in to"]
                                             [{:last_used_at (t/offset-date-time)
                                               :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
-                                             "You're using Google to log in to"]]]
+                                             "Click the button below to reset the password"]]]
       (testing (pr-str password-attrs)
         (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
                                     (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
