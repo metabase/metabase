@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -265,11 +266,17 @@
                       (invalid! :columns (tru "Provide at least one column, metric or measure."))))))
 
 (defn- check-llm-available!
-  "Throw an HTTP exception when Metabot is off or `model` has no usable connection."
+  "Throw an HTTP exception when Metabot is off, the current user lacks AI access, or `model` has no usable connection."
   [model]
   (cond
     (not (metabot.settings/metabot-enabled?))
     (throw (ex-info (tru "AI features are not enabled.") {:status-code 403 ::error-reason "metabot-disabled"}))
+
+    ;; The LLM call checks this too, but too late to come before the managed-limit and database checks.
+    (metabot.scope/missing-permission (metabot.scope/resolve-user-permissions api/*current-user-id*)
+                                      required-permission)
+    (throw (ex-info (tru "You don''t have access to AI features.")
+                    {:status-code 403 ::error-reason "permission-denied"}))
 
     (not (metabot.settings/llm-model-configured? model))
     (throw (ex-info (tru "No AI provider is connected.") {:status-code 503 ::error-reason "no-llm"}))))

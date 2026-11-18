@@ -465,11 +465,23 @@
       (mt/with-dynamic-fn-redefs [metabot.usage/check-usage-limits! (constantly "Over the limit")]
         (check-error 403 "AI features are not enabled.")))))
 
+(defn- do-without-nlq-permission
+  "Call `f` with the current user lacking the natural-language query permission."
+  [f]
+  (mt/with-dynamic-fn-redefs [scope/resolve-user-permissions (constantly {:permission/metabot     :yes
+                                                                          :permission/metabot-nlq :no})]
+    (f)))
+
 (deftest summary-formula-metabot-permission-test
   (testing "summary-formula returns a 403 without the metabot permission"
-    (mt/with-dynamic-fn-redefs [scope/resolve-user-permissions (constantly {:permission/metabot     :yes
-                                                                            :permission/metabot-nlq :no})]
-      (check-error-before-provider! 403 "You don't have access to AI features."))))
+    (do-without-nlq-permission
+     #(check-error-before-provider! 403 "You don't have access to AI features."))))
+
+(deftest summary-formula-metabot-permission-before-database-test
+  (testing "summary-formula reports the missing metabot permission before the database access check"
+    (do-without-nlq-permission
+     #(mt/with-no-data-perms-for-all-users!
+        (check-error 403 "You don't have access to AI features.")))))
 
 (defn- provider-api-error
   "Return a mock provider exception with HTTP `status`."
@@ -616,6 +628,17 @@
      (fn [models]
        (is (=? {:error-code "metabase_ai_managed_locked"}
                (mt/user-http-request :rasta :post 402 endpoint (request-body))))
+       (is (empty? @models))))))
+
+(deftest summary-formula-metabot-permission-before-managed-limit-test
+  (testing "summary-formula reports the missing metabot permission before the locked managed provider"
+    (do-with-models!
+     own-key-model
+     managed-model
+     (fn [models]
+       (do-without-nlq-permission
+        #(is (= "You don't have access to AI features."
+                (mt/user-http-request :rasta :post 403 endpoint (request-body)))))
        (is (empty? @models))))))
 
 (deftest summary-formula-mini-model-not-configured-test
