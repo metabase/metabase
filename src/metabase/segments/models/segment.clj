@@ -17,11 +17,13 @@
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.segments.serialization :as segments.serialization]
+   [metabase.segments.xrays :as segments.xrays]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -175,6 +177,10 @@
    :storage-paths       segments.serialization/storage-paths})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+
+(defmethod xrays/spec :model/Segment [_model]
+  {:related    segments.xrays/related
+   :definition segments.xrays/definition})
 
 (defmethod remote-sync/spec :model/Segment
   [_model]

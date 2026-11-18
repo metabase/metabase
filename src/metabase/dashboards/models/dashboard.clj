@@ -15,6 +15,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
    [metabase.dashboards.staleness :as dashboards.staleness]
+   [metabase.dashboards.xrays :as dashboards.xrays]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -42,6 +43,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -563,6 +565,9 @@
                                                          [:= :mr.moderated_item_type "dashboard"]
                                                          [:= :mr.moderated_item_id :this.id]
                                                          [:= :mr.most_recent true]]]}}})
+
+(defmethod xrays/spec :model/Dashboard [_model]
+  {:related dashboards.xrays/related})
 
 (defmethod staleness/spec :model/Dashboard [_model]
   {:candidates dashboards.db/stale-dashboard-candidates

@@ -22,6 +22,8 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -570,6 +572,9 @@
    :storage-paths       storage-paths
    :import-dependencies import-dependencies
    :rows-by-refs        serialization/table-rows-by-refs})
+
+(defmethod xrays/spec :model/Table [_model]
+  {:related warehouse-schema.xrays/table-related})
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 

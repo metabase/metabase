@@ -847,7 +847,8 @@
            sync
            timeline
            util
-           util.config}
+           util.config
+           xrays}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -2305,7 +2306,8 @@
            util
            util.config
            util.graph
-           warehouses.schema}
+           warehouses.schema
+           xrays}
    :model-exports #{:model/Card
                     :model/ParameterCard
                     :model/Query
@@ -2705,7 +2707,8 @@
            search
            segments.schema
            serialization
-           util}
+           util
+           xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
@@ -3609,7 +3612,8 @@
            settings
            sync.analyze
            util
-           warehouses}
+           warehouses
+           xrays}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
@@ -3682,7 +3686,10 @@
   {:team "Graphy"
    :api  #{metabase.xrays.api
            metabase.xrays.core
-           metabase.xrays.init}
+           metabase.xrays.db
+           metabase.xrays.init
+           metabase.xrays.related
+           metabase.xrays.spec}
    :uses #{api
            appearance
            collections

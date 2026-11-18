@@ -9,10 +9,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.xrays :as queries.xrays]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
@@ -26,6 +28,9 @@
 
 (defmethod app-db-copy/spec :model/Query [_model]
   {:skip? true})
+
+(defmethod xrays/spec :model/Query [_model]
+  {:related queries.xrays/related-query})
 
 (t2/deftransforms :model/Query
   {:query mi/transform-json})

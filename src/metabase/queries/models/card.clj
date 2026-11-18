@@ -44,6 +44,7 @@
    [metabase.queries.search :as queries.search]
    [metabase.queries.serialization :as queries.serialization]
    [metabase.queries.staleness :as queries.staleness]
+   [metabase.queries.xrays :as queries.xrays]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -57,6 +58,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -1892,6 +1894,10 @@
   {:candidates queries.db/stale-card-candidates
    :load       queries.staleness/load-items
    :render     queries.staleness/render})
+
+(defmethod xrays/spec :model/Card [_model]
+  {:related    queries.xrays/related
+   :definition queries.xrays/definition})
 
 (defmethod remote-sync/spec :model/Card
   [_model]

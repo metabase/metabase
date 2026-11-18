@@ -25,7 +25,9 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.warehouses.models.database :as database]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -476,6 +478,10 @@
    :parent_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+(defmethod xrays/spec :model/Field [_model]
+  {:related    warehouse-schema.xrays/field-related
+   :definition warehouse-schema.xrays/field-definition})
 
 (defmethod serialization/spec :model/Field [_]
   {:schema        ::warehouse-schema.schema/external-field
