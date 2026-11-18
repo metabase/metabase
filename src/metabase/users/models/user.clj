@@ -177,7 +177,8 @@
   "Clean up user subscriptions when user is archived."
   [user-id active?]
   (when (false? active?)
-    (users.db/delete-pulse-channel-recipients-for-user! user-id)))
+    (binding [api/*current-user-id* nil]
+      (users.db/delete-pulse-channel-recipients-for-user! user-id))))
 
 (defn- prepare-archival-timestamp
   "Return a map with deactivated_at field based on is_active status.
