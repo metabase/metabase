@@ -3,7 +3,7 @@ jest.unmock("@uiw/react-codemirror");
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
+import { fireEvent, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
@@ -27,8 +27,8 @@ import {
 
 import {
   blurEditor,
+  focusEditor,
   getEditorValue,
-  getEditorView,
   pasteText,
   pressKey,
   queryHelpText,
@@ -203,7 +203,7 @@ describe("ExpressionWidget > help text", () => {
     await blurEditor();
     await waitFor(() => expect(queryHelpText()).not.toBeInTheDocument());
 
-    await act(async () => getEditorView().focus());
+    await focusEditor();
     await pressKey("ArrowLeft");
     await assertHelpTextIsVisible();
     expect(screen.getByTestId("helptext-example")).toHaveTextContent(
