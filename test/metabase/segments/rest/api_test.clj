@@ -198,6 +198,28 @@
                        :definition              (eq-fn (mt/id :users :name) "cans")})
                      segment-response))))))))
 
+(deftest revision-descriptions-test
+  (testing "each edit of a segment through the API records a revision that describes it"
+    (let [definition (fn [value] {:type "query" :database (mt/id)
+                                  :query {:source-table (mt/id :orders)
+                                          :filter       ["<" ["field" (mt/id :orders :total) nil] value]}})
+          {id :id}   (mt/user-http-request :crowberto :post 200 "segment"
+                                           {:name        "Original Name"
+                                            :description "Original description"
+                                            :table_id    (mt/id :orders)
+                                            :definition  (definition 50)})
+          update!    #(mt/user-http-request :crowberto :put 200 (format "segment/%d" id)
+                                            (assoc % :revision_message "edit"))]
+      (try
+        (update! {:name "Updated Name" :description "Original description" :definition (definition 50)})
+        (update! {:name "Updated Name" :description "Updated description" :definition (definition 50)})
+        (update! {:name "Updated Name" :description "Updated description" :definition (definition 100)})
+        (is (= [#{:definition} #{:description} #{:name} #{:name :description :definition}]
+               (->> (mt/user-http-request :crowberto :get 200 "revision" :entity "segment" :id id)
+                    (map (comp set keys :diff)))))
+        (finally
+          (t2/delete! :model/Segment :id id))))))
+
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
     (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"

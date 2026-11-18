@@ -1,7 +1,6 @@
 (ns metabase.revisions.impl.measure
   (:require
    [medley.core :as m]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.revisions.models.revision :as revision]))
 
 (def ^:private computed-columns
@@ -24,7 +23,7 @@
   [measure]
   (-> measure
       (select-keys [:name :description :definition])
-      (update :definition lib.schema.util/remove-lib-uuids)))
+      (update :definition revision/comparable-definition)))
 
 (defmethod revision/diff-map :model/Measure
   [model measure1 measure2]

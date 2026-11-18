@@ -1,12 +1,14 @@
 (ns metabase.revisions.models.revision
   (:require
    [clojure.data :as data]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.explorations.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.measures.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
@@ -24,6 +26,13 @@
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
+
+(defn comparable-definition
+  "`definition`, a query, without the uuids and the markers of added base types that its writers and its readers set
+  differently."
+  [definition]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/transformation-added-base-type))
+                 (lib.schema.util/remove-lib-uuids definition)))
 
 (defn toucan-model?
   "Check if `model` is a toucan model."
