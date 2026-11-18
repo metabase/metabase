@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 
 import DataSelectorS from "./DataSelector.module.css";
 import type {
@@ -36,14 +36,17 @@ export function Trigger({
 }) {
   if (isMantine) {
     return (
-      <Box className={DataSelectorS.TriggerContainer}>
+      <Input
+        component="button"
+        type="button"
+        w="100%"
+        pointer
+        // "Field to map to" shows the table above the field name
+        multiline
+        rightSection={showDropdownIcon ? <Icon name="chevrondown" /> : null}
+      >
         {children}
-        {showDropdownIcon && (
-          <Box className={DataSelectorS.TriggerContainerIcon}>
-            <Icon name="chevrondown" size={iconSize} />
-          </Box>
-        )}
-      </Box>
+      </Input>
     );
   }
 
