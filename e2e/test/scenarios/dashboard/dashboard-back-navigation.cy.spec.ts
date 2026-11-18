@@ -6,8 +6,26 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers/api/createQuestion";
+import type {
+  CardId,
+  DashboardId,
+  DashboardParameterMapping,
+  DatabaseId,
+  FieldId,
+  Parameter,
+  TableId,
+} from "metabase-types/api";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const {
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+}: {
+  ORDERS_ID: TableId;
+  PRODUCTS: { CATEGORY: FieldId };
+  PRODUCTS_ID: TableId;
+} = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
 const MAX_CARDS = 5;
@@ -238,7 +256,7 @@ describe(
       // could be a regular dashboard with card and filters
       createDashboardWithSlowCard();
 
-      cy.get("@dashboardId").then((dashboardId) => {
+      cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
         cy.visit(`/dashboard/${dashboardId}`);
         cy.wait("@dashboard");
         cy.wait("@dashcardQuery");
@@ -281,7 +299,7 @@ describe(
     // so it will affect interception of @dashcardQuery and mess up the number of requests
     it("should restore a dashboard with loading cards and re-fetch query data", () => {
       createDashboardWithSlowCard();
-      cy.get("@dashboardId").then((dashboardId) => {
+      cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
         cy.visit({
           url: `/dashboard/${dashboardId}`,
           qs: { sleep: 60 },
@@ -321,7 +339,7 @@ const createDashboardWithCards = () => {
     name: "Orders model",
     query: { "source-table": ORDERS_ID },
     type: "model",
-  };
+  } satisfies Parameters<typeof H.createQuestion>[0];
 
   const actionDetails = {
     name: "Update orders quantity",
@@ -338,6 +356,8 @@ const createDashboardWithCards = () => {
     visualization_settings: {
       type: "button",
     },
+  } satisfies Parameters<typeof H.createAction>[0] & {
+    database_id: DatabaseId;
   };
 
   const questionDashcardDetails = {
@@ -383,7 +403,7 @@ const createDashboardWithNativeCard = () => {
 };
 
 const createDashboardWithSlowCard = () => {
-  const questionDetails = {
+  const questionDetails: NativeQuestionDetails = {
     name: "Sleep card",
     database: PG_DB_ID,
     native: {
@@ -407,7 +427,7 @@ const createDashboardWithSlowCard = () => {
     type: "number/=",
     sectionId: "number",
     default: 0,
-  };
+  } satisfies Parameter;
 
   const dashboardDetails = {
     name: "Sleep dashboard",
@@ -424,7 +444,7 @@ const createDashboardWithSlowCard = () => {
   const parameterMapping = {
     parameter_id: filterDetails.id,
     target: ["variable", ["template-tag", "sleep"]],
-  };
+  } satisfies Omit<DashboardParameterMapping, "card_id">;
 
   H.createNativeQuestionAndDashboard({
     questionDetails,
@@ -498,7 +518,7 @@ describe("issue 31766", () => {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save").click();
     });
   }
@@ -525,29 +545,34 @@ describe("issue 31766", () => {
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
-    }).then(({ body: { dashboard_id, question_id, id: dashcard_id } }) => {
-      const textCard = H.getTextCardDetails({
-        row: 0,
-        size_x: 24,
-        size_y: 1,
-        text: "top",
-      });
-      const questionCard = {
-        row: 2,
-        size_x: 16,
-        size_y: 6,
-        id: dashcard_id,
-        card_id: question_id,
-      };
+    }).then(
+      ({ body: { dashboard_id, card_id: question_id, id: dashcard_id } }) => {
+        const textCard = H.getTextCardDetails({
+          row: 0,
+          size_x: 24,
+          size_y: 1,
+          text: "top",
+        });
+        const questionCard = {
+          row: 2,
+          size_x: 16,
+          size_y: 6,
+          id: dashcard_id,
+          card_id: question_id,
+        };
 
-      H.updateDashboardCards({ dashboard_id, cards: [textCard, questionCard] });
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [textCard, questionCard],
+        });
 
-      H.visitDashboard(dashboard_id);
-      H.editDashboard();
-    });
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      },
+    );
 
     // update text card
-    cy.findByTestId("editing-dashboard-text-preview").type(1);
+    cy.findByTestId("editing-dashboard-text-preview").type("1");
 
     H.saveDashboard();
 
@@ -569,7 +594,10 @@ describe("issue 31766", () => {
 
 describe("issue 34382", () => {
   const createDashboardWithCards = () => {
-    const getParameterMapping = ({ card_id }, parameters) => ({
+    const getParameterMapping = (
+      { card_id }: { card_id: CardId },
+      parameters: Parameter[],
+    ): { parameter_mappings: DashboardParameterMapping[] } => ({
       parameter_mappings: parameters.map((parameter) => ({
         card_id,
         parameter_id: parameter.id,
@@ -594,7 +622,7 @@ describe("issue 34382", () => {
       slug: "category",
       id: "96917421",
       type: "category",
-    };
+    } satisfies Parameter;
 
     const dashboardDetails = {
       name: "Products in a dashboard",
@@ -626,7 +654,7 @@ describe("issue 34382", () => {
     );
   };
 
-  function addFilterValue(value) {
+  function addFilterValue(value: string) {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText(value).click();
