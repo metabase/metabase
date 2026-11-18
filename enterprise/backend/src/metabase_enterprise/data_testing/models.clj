@@ -16,6 +16,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -104,16 +105,33 @@
 
 ;;; ------------------------------------------------- Saved tests --------------------------------------------------
 
-(defmulti saved-test-spec
-  "How a test of the saved-test `model` reaches its subject, as a map:
+(mr/def ::saved-test-spec
+  "How a test of a saved-test model reaches its subject."
+  [:map {:closed true}
+   [:test-type
+    {:description "The test type its runs record."}
+    ::data-testing.schema/test-type]
+   [:subject-key
+    {:description "The column that holds the subject's id."}
+    :keyword]
+   [:subject
+    {:description "A function from a subject id to the subject, or nil when no subject has that id."}
+    ifn?]
+   [:subjects
+    {:description "A function from subject ids to the subjects that exist."}
+    ifn?]
+   [:can-save?
+    {:description "A function from a subject id to whether the current user may save or delete a test of that subject."}
+    ifn?]
+   [:remote-sync-guard?
+    {:optional    true
+     :description (str "True when, on a read-only remote-sync instance, nobody may write the test and no update may "
+                       "change a column that remote sync exports, whatever the subject allows.")}
+    :boolean]])
 
-  - `:test-type`: the test type its runs record.
-  - `:subject-key`: the column that holds the subject's id.
-  - `:subject`: a function from a subject id to the subject, or nil when no subject has that id.
-  - `:subjects`: a function from subject ids to the subjects that exist.
-  - `:can-save?`: a function from a subject id to whether the current user may save or delete a test of that subject.
-  - `:remote-sync-guard?` (optional): true when, on a read-only remote-sync instance, nobody may write the test and no
-    update may change a column that remote sync exports, whatever the subject allows."
+(defmulti saved-test-spec
+  "How a test of the saved-test `model` reaches its subject, as a `::saved-test-spec`. The methods that every
+  saved-test model shares (hydration, permissions, revisions, hooks) read it."
   {:arglists '([model])}
   keyword)
 

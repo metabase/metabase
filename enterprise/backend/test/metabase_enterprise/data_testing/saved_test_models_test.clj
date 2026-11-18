@@ -4,6 +4,7 @@
   their hooks."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.action-test]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
@@ -17,6 +18,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.transforms.models.transform :as transform]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -60,6 +62,19 @@
   [user model test-id k check]
   (mt/with-current-user (mt/user->id user)
     (boolean (check (t2/hydrate (t2/select-one model :id test-id) k)))))
+
+(deftest every-saved-test-spec-matches-its-schema-test
+  (testing "premise: each saved-test model, and no other, has a saved-test spec"
+    (is (= (set (map :model test-types))
+           (set (keys (methods data-testing.models/saved-test-spec))))))
+  (doseq [{:keys [model test-type subject-key]} test-types]
+    (testing model
+      (let [spec (data-testing.models/saved-test-spec model)]
+        (is (nil? (mr/explain ::data-testing.models/saved-test-spec spec)))
+        (is (= {:test-type test-type :subject-key subject-key} (select-keys spec [:test-type :subject-key]))))))
+  (testing "control: a spec with a key the schema does not declare does not match it"
+    (is (some? (mr/explain ::data-testing.models/saved-test-spec
+                           (assoc (data-testing.models/saved-test-spec :model/CardTest) :remote-sync-gaurd? true))))))
 
 (deftest a-test-is-read-and-written-through-its-subject-test
   (do-with-each-test-type!
