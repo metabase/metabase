@@ -248,7 +248,7 @@ const HISTORY_TAB = createMockDashboardTab({
 });
 
 const DASHCARD_QUERY_URL =
-  /\/api\/dashboard\/\d+\/dashcard\/(\d+)\/card\/(\d+)\/query$/;
+  /\/api\/dashboard\/(\d+)\/dashcard\/(\d+)\/card\/(\d+)\/query$/;
 
 interface SetupOpts {
   dashcards: QuestionDashboardCard[];
@@ -369,7 +369,23 @@ function setup({
   fetchMock.post(
     DASHCARD_QUERY_URL,
     (call) => {
-      const [, , cardId] = call.url.match(DASHCARD_QUERY_URL) ?? [];
+      const [, dashboardId, dashcardId, cardId] =
+        call.url.match(DASHCARD_QUERY_URL) ?? [];
+      // like the backend, answer only a card that the addressed placement shows,
+      // either as its question or as an added series
+      const placement = storedDashcards.find(
+        (dashcard) => dashcard.id === Number(dashcardId),
+      );
+      const placementCardIds = [
+        placement?.card_id,
+        ...(placement?.series ?? []).map((series) => series.id),
+      ];
+      if (
+        Number(dashboardId) !== DASHBOARD_ID ||
+        !placementCardIds.includes(Number(cardId))
+      ) {
+        return { status: 404 };
+      }
       const body: { parameters?: unknown[] } = JSON.parse(
         String(call.options.body ?? "{}"),
       );
@@ -787,11 +803,20 @@ describe("DashboardApp > timeline events", () => {
       within(popover).getByRole("button", { name: "Add filter" }),
     );
 
+    // wait for the filtered chart to render before checking what it leaves out
     await waitFor(() =>
       expect(
-        queryEventChip(card.name, "Stable release"),
-      ).not.toBeInTheDocument(),
+        fetchMock.callHistory
+          .calls("dashcard-query")
+          .some((call) =>
+            JSON.parse(String(call.options.body)).parameters?.some(
+              (parameter: { value?: unknown }) => parameter.value != null,
+            ),
+          ),
+      ).toBe(true),
     );
+    expect(await findEventChip(card.name, "RC1")).toBeInTheDocument();
+    expect(queryEventChip(card.name, "Stable release")).not.toBeInTheDocument();
     const filteredQuery = fetchMock.callHistory.lastCall("dashcard-query");
     expect(JSON.parse(String(filteredQuery?.options.body)).parameters).toEqual([
       {
@@ -838,7 +863,8 @@ describe("DashboardApp > timeline events", () => {
       visualization_settings: {},
     });
     setup({
-      dashcards: [createPlacement(card, { id: 1, series: [series] })],
+      // a placement id that matches neither card, so a query cannot address it by accident
+      dashcards: [createPlacement(card, { id: 7, series: [series] })],
       rowsByCardId: { [card.id]: BEFORE_RELEASE_ROWS },
     });
     await waitForDashboardToLoad();
@@ -849,6 +875,15 @@ describe("DashboardApp > timeline events", () => {
     expect(
       await within(await findEventsSidebar()).findByText("RC1"),
     ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory
+        .calls("dashcard-query")
+        .map((call) => new URL(call.url).pathname)
+        .sort(),
+    ).toEqual([
+      `/api/dashboard/${DASHBOARD_ID}/dashcard/7/card/${card.id}/query`,
+      `/api/dashboard/${DASHBOARD_ID}/dashcard/7/card/${series.id}/query`,
+    ]);
   });
 
   it("shows the replacing question's events after replacing a card", async () => {
