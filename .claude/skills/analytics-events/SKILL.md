@@ -461,7 +461,7 @@ frontend/src/metabase-types/analytics/event.ts
 ```
 
 In embedding SDK code, use `trackSdkSimpleEvent`
-(`frontend/src/embedding-sdk-bundle/analytics/snowplow.ts`) instead — the main-app `"sp"` tracker
+(`frontend/src/embedding-sdk-bundle/analytics/event.ts`) instead — the main-app `"sp"` tracker
 isn't initialized in the customer's page, so `trackSimpleEvent`'s Snowplow leg is a no-op there.
 
 ## Real-World Examples

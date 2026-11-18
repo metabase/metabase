@@ -44,15 +44,15 @@
   [ids]
   (when (seq ids)
     (let [fields (warehouse-schema.db/fields ids)]
-      (-> (filter mi/can-read? (t2/hydrate fields :can_read))
+      (-> (mi/readable fields)
           (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
 
 (defn field-ids->table-ids
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."
   [ids]
   (->> (when (seq ids)
-         (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table :can_read))
-       (filter mi/can-read?)
+         (t2/hydrate (warehouse-schema.db/field-table-id-rows ids) :table))
+       mi/readable
        (keep :table_id)
        set
        sort

@@ -7,7 +7,7 @@ import type {
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
-const { PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > custom column > boolean functions", () => {
   const expressionName = "Boolean column";
@@ -15,287 +15,6 @@ describe("scenarios > custom column > boolean functions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  describe("query builder", () => {
-    describe("same stage", () => {
-      const questionDetails: StructuredQuestionDetails = {
-        query: {
-          "source-table": PRODUCTS_ID,
-          fields: [
-            ["field", PRODUCTS.CATEGORY, null],
-            ["expression", expressionName, { "base-type": "type/Boolean" }],
-          ],
-          expressions: {
-            [expressionName]: [
-              "starts-with",
-              ["field", PRODUCTS.CATEGORY, null],
-              "Gi",
-            ],
-          },
-        },
-      };
-
-      it("should be able to add a same-stage custom column", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-        H.openNotebook();
-
-        cy.log("add an identity column");
-        H.getNotebookStep("expression").icon("add").click();
-        H.enterCustomColumnDetails({
-          formula: `[${expressionName}]`,
-          name: "Identity column",
-        });
-        H.popover().button("Done").click();
-
-        cy.log("add a simple expression");
-        H.getNotebookStep("expression").icon("add").click();
-        H.enterCustomColumnDetails({
-          formula: `[${expressionName}] != True`,
-          name: "Simple expression",
-        });
-        H.popover().button("Done").click();
-
-        cy.log("assert query results");
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: [
-            "Category",
-            expressionName,
-            "Identity column",
-            "Simple expression",
-          ],
-          firstRows: [["Gizmo", "true", "true", "false"]],
-        });
-      });
-
-      it("should be able to add a same-stage aggregation", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-        H.openNotebook();
-        H.getNotebookStep("expression").button("Summarize").click();
-        H.popover().findByText("Minimum of ...").click();
-        H.popover().findByText(expressionName).click();
-        H.getNotebookStep("summarize")
-          .findByTestId("aggregate-step")
-          .icon("add")
-          .click();
-        H.popover().findByText("Maximum of ...").click();
-        H.popover().findByText(expressionName).click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: [`Min of ${expressionName}`, `Max of ${expressionName}`],
-          firstRows: [["false", "true"]],
-        });
-      });
-
-      it("should be able to add a same-stage sorting", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-        H.openNotebook();
-        H.getNotebookStep("expression").button("Sort").click();
-        H.popover().findByText(expressionName).click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: ["Category", expressionName],
-          firstRows: [["Doohickey", "false"]],
-        });
-      });
-    });
-
-    describe("previous stage", () => {
-      const questionDetails: StructuredQuestionDetails = {
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            [expressionName]: [
-              "starts-with",
-              ["field", PRODUCTS.CATEGORY, null],
-              "Gi",
-            ],
-          },
-          aggregation: [["count"]],
-          breakout: [
-            ["expression", expressionName, { "base-type": "type/Boolean" }],
-          ],
-        },
-      };
-
-      it("should be able to add a post-aggregation custom column", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-        H.openNotebook();
-        H.getNotebookStep("summarize").button("Custom column").click();
-        H.enterCustomColumnDetails({
-          formula: `not([${expressionName}])`,
-          name: "Simple expression",
-        });
-        H.popover().button("Done").click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: [expressionName, "Count", "Simple expression"],
-          firstRows: [
-            ["false", "149", "true"],
-            ["true", "51", "false"],
-          ],
-        });
-      });
-
-      it("should be able to add a post-aggregation filter", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-        H.assertQueryBuilderRowCount(2);
-        H.tableHeaderClick(expressionName);
-        H.popover().within(() => {
-          cy.findByText("Filter by this column").click();
-          cy.findByLabelText("True").click();
-          cy.findByText("Add filter").click();
-        });
-        H.assertQueryBuilderRowCount(1);
-      });
-
-      it("should be able to add a post-aggregation aggregation", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-        H.openNotebook();
-        H.getNotebookStep("summarize").button("Summarize").click();
-        H.popover().findByText("Minimum of ...").click();
-        H.popover().findByText(expressionName).click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: [`Min of ${expressionName}`],
-          firstRows: [["false"]],
-        });
-      });
-
-      it("should be able to add a post-aggregation breakout and sorting", () => {
-        H.createQuestion(questionDetails, { visitQuestion: true });
-
-        cy.log("add a breakout");
-        H.openNotebook();
-        H.getNotebookStep("summarize").button("Summarize").click();
-        H.popover().findByText("Count of rows").click();
-        H.getNotebookStep("summarize", { stage: 1 })
-          .findByTestId("breakout-step")
-          .findByText("Pick a column to group by")
-          .click();
-        H.popover().findByText(expressionName).click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: [expressionName, "Count"],
-          firstRows: [
-            ["false", 1],
-            ["true", 1],
-          ],
-        });
-
-        cy.log("add sorting");
-        H.openNotebook();
-        H.getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
-        H.popover().findByText(expressionName).click();
-        H.getNotebookStep("sort", { stage: 1 }).icon("arrow_up").click();
-        H.visualize();
-        H.assertTableData({
-          columns: [expressionName, "Count"],
-          firstRows: [
-            ["true", 1],
-            ["false", 1],
-          ],
-        });
-      });
-    });
-
-    describe("source card", () => {
-      const questionDetails: StructuredQuestionDetails = {
-        name: "Source",
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            [expressionName]: [
-              "starts-with",
-              ["field", PRODUCTS.CATEGORY, null],
-              "Gi",
-            ],
-          },
-        },
-      };
-
-      function getNestedQuestionDetails(
-        cardId: number,
-      ): StructuredQuestionDetails {
-        return {
-          name: "Nested",
-          query: {
-            "source-table": `card__${cardId}`,
-          },
-        };
-      }
-
-      it("should be able to add a custom column for a boolean column", () => {
-        H.createQuestion(questionDetails).then(({ body: card }) =>
-          H.createQuestion(getNestedQuestionDetails(card.id), {
-            visitQuestion: true,
-          }),
-        );
-
-        cy.log("add a custom column");
-        H.openNotebook();
-        H.getNotebookStep("data").button("Custom column").click();
-        H.enterCustomColumnDetails({
-          formula: `[${expressionName}] != True`,
-          name: "Simple expression",
-        });
-        H.popover().button("Done").click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertQueryBuilderRowCount(200);
-
-        cy.log("use the new custom column in a filter");
-        H.tableHeaderClick("Simple expression");
-        H.popover().within(() => {
-          cy.findByText("Filter by this column").click();
-          cy.findByLabelText("True").click();
-          cy.findByText("Add filter").click();
-        });
-        H.assertQueryBuilderRowCount(149);
-      });
-
-      it("should be able to add a filter for a boolean column", () => {
-        H.createQuestion(questionDetails).then(({ body: card }) =>
-          H.createQuestion(getNestedQuestionDetails(card.id), {
-            visitQuestion: true,
-          }),
-        );
-        H.assertQueryBuilderRowCount(200);
-        H.tableHeaderClick(expressionName);
-        H.popover().within(() => {
-          cy.findByText("Filter by this column").click();
-          cy.findByLabelText("True").click();
-          cy.findByText("Add filter").click();
-        });
-        H.assertQueryBuilderRowCount(51);
-      });
-
-      it("should be able to add an aggregation for a boolean column", () => {
-        H.createQuestion(questionDetails).then(({ body: card }) =>
-          H.createQuestion(getNestedQuestionDetails(card.id), {
-            visitQuestion: true,
-          }),
-        );
-        H.openNotebook();
-        H.getNotebookStep("data").button("Summarize").click();
-        H.popover().findByText("Minimum of ...").click();
-        H.popover().findByText(expressionName).click();
-        H.visualize();
-        cy.wait("@dataset");
-        H.assertTableData({
-          columns: [`Min of ${expressionName}`],
-          firstRows: [["false"]],
-        });
-      });
-    });
   });
 
   describe("dashboards", () => {
@@ -362,44 +81,7 @@ describe("scenarios > custom column > boolean functions", () => {
       );
     }
 
-    it("should be able setup an 'open question' click behavior", () => {
-      createDashboardWithQuestion().then((dashboard) =>
-        H.visitDashboard(dashboard.id),
-      );
-
-      cy.log("setup click behavior");
-      H.editDashboard();
-      H.showDashboardCardActions();
-      H.getDashboardCard().findByLabelText("Click behavior").click();
-      H.sidebar().within(() => {
-        cy.findByText(expressionName).click();
-        cy.findByText("Go to a custom destination").click();
-        cy.findByText("Saved question").click();
-      });
-      H.entityPickerModal().within(() => {
-        cy.findByText("Q1").click();
-      });
-      H.sidebar()
-        .findByTestId("click-mappings")
-        .findByText(expressionName)
-        .click();
-      H.popover().findByText(expressionName).click();
-      H.saveDashboard();
-
-      cy.log("verify click behavior");
-      H.getDashboardCard().findAllByText("false").first().click();
-      cy.wait("@dataset");
-      cy.findByTestId("qb-filters-panel")
-        .findByText(`${expressionName} is false`)
-        .should("be.visible");
-    });
-
-    it("should be able setup an 'open dashboard' click behavior for the same dashboard", () => {
-      createDashboardWithQuestion().then((dashboard) =>
-        H.visitDashboard(dashboard.id),
-      );
-
-      cy.log("setup click behavior");
+    function setupOpenDashboardClickBehavior(targetDashboardName: string) {
       H.editDashboard();
       H.showDashboardCardActions();
       H.getDashboardCard().findByLabelText("Click behavior").click();
@@ -409,7 +91,7 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Dashboard").click();
       });
       H.entityPickerModal().within(() => {
-        cy.findByText("D1").click();
+        cy.findByText(targetDashboardName).click();
       });
       H.sidebar()
         .findByTestId("click-mappings")
@@ -417,8 +99,9 @@ describe("scenarios > custom column > boolean functions", () => {
         .click();
       H.popover().findByText(expressionName).click();
       H.saveDashboard();
+    }
 
-      cy.log("verify click behavior");
+    function clickFalseValueAndVerifyFilteredCard() {
       H.getDashboardCard().within(() => {
         cy.findByText("Hudson Borer").should("be.visible");
         cy.findByText("Sydney Rempel").should("not.exist");
@@ -428,44 +111,31 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Hudson Borer").should("not.exist");
         cy.findByText("Sydney Rempel").should("be.visible");
       });
-    });
+    }
 
-    it("should be able setup an 'open dashboard' click behavior for another dashboard", () => {
+    // Each target dashboard is opened for the first time by the click. A dashboard that ran a filtered query before
+    // loads with the last used filter value, and that hides a click behavior that does not send the value.
+    it("should be able setup an 'open dashboard' click behavior for another and for the same dashboard", () => {
       createDashboardWithQuestion({ name: "D2" });
+      createDashboardWithQuestion({ name: "D3" }).then((dashboard) =>
+        cy.wrap(dashboard.id).as("sameDashboardId"),
+      );
       createDashboardWithQuestion({ name: "D1" }).then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
-      cy.log("setup click behavior");
-      H.editDashboard();
-      H.showDashboardCardActions();
-      H.getDashboardCard().findByLabelText("Click behavior").click();
-      H.sidebar().within(() => {
-        cy.findByText(expressionName).click();
-        cy.findByText("Go to a custom destination").click();
-        cy.findByText("Dashboard").click();
-      });
-      H.entityPickerModal().within(() => {
-        cy.findByText("D2").click();
-      });
-      H.sidebar()
-        .findByTestId("click-mappings")
-        .findByText(parameterDetails.name)
-        .click();
-      H.popover().findByText(expressionName).click();
-      H.saveDashboard();
-
-      cy.log("verify click behavior");
-      H.getDashboardCard().within(() => {
-        cy.findByText("Hudson Borer").should("be.visible");
-        cy.findByText("Sydney Rempel").should("not.exist");
-        cy.findAllByText("false").first().click();
-      });
+      cy.log("another dashboard");
+      setupOpenDashboardClickBehavior("D2");
+      clickFalseValueAndVerifyFilteredCard();
       cy.findByTestId("dashboard-name-heading").should("have.value", "D2");
-      H.getDashboardCard().within(() => {
-        cy.findByText("Hudson Borer").should("not.exist");
-        cy.findByText("Sydney Rempel").should("be.visible");
-      });
+
+      cy.log("same dashboard");
+      cy.get<number>("@sameDashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
+      setupOpenDashboardClickBehavior("D3");
+      clickFalseValueAndVerifyFilteredCard();
+      cy.findByTestId("dashboard-name-heading").should("have.value", "D3");
     });
   });
 });

@@ -1,0 +1,6 @@
+# Delete a workspace the parent kept
+// After a lost or failed create, the parent can keep the workspace. The caller finds it by a name that
+// no other workspace in the parent has, then deletes it. See createWorkspace in parent.openapi.yaml.
+mbcode -> parent: createWorkspace {id}
+mbcode -> parent: listWorkspaces {id, name}
+mbcode -> parent: deleteWorkspace

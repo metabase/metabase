@@ -216,6 +216,16 @@
           (is (=? {:value "#work" :channel_id "C001"}
                   slack-details)))))))
 
+(deftest create-notification-invalid-cron-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp [:model/Card {card-id :id}]
+      (testing "an invalid cron schedule is a 400"
+        (mt/user-http-request :crowberto :post 400 "notification"
+                              {:payload       {:card_id card-id}
+                               :payload_type  "notification/card"
+                               :subscriptions [{:type          "notification-subscription/cron"
+                                                :cron_schedule "not a cron"}]})))))
+
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))

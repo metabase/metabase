@@ -29,6 +29,16 @@ You can choose between downloading the results as:
 
 If you don't see the option to export results, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
 
+## Copying results of a question
+
+To copy the results of a question to your clipboard, click the **clipboard** icon in the lower right of a question, next to the **Download** button. Metabase copies the columns that are visible in the table. If the question is a chart, Metabase copies the chart as an image.
+
+You can't copy results with more than 1,000,000 cells. If the results are truncated, Metabase copies only the rows that it loaded.
+
+If you don't see the clipboard icon, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
+
+To copy only some cells from a table, see [Copy cells from a table](./visualizations/table.md#copy-cells-from-a-table).
+
 ## Exporting pivot tables
 
 By default, Metabase will export the pivoted results, but you'll have the option to export the unpivoted results.
