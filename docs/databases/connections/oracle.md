@@ -108,7 +108,7 @@ If you need to connect to other databases using SSL, instead of creating a new t
 
 ## Downloading the Oracle JDBC Driver JAR
 
-Only the Open Source edition of Metabase needs this step. Because of licensing restrictions, Metabase can't include the Oracle JDBC driver in the Open Source edition, so you'll need to download the driver and add it to Metabase as a plugin. The Pro and Enterprise editions of Metabase include the Oracle JDBC driver, so you can skip this step.
+Only the Open Source edition of Metabase needs this step. Because of licensing restrictions, Metabase can't include the Oracle JDBC driver in the Open Source edition, so you'll need to download the driver and add it to Metabase as a plugin. Pro and Enterprise editions of Metabase, as well as all Metabase Cloud plans, include the Oracle JDBC driver, so you can skip this step.
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 
