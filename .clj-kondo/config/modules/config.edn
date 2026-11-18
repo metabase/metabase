@@ -2379,7 +2379,6 @@
    :uses #{api
            lib
            lib.be
-           lib.legacy-mbql
            lib.metadata
            lib.schema
            models

@@ -46,7 +46,7 @@
       - native queries
       - queries that include tables that are not audit views"
   :feature :audit-app
-  [{query-type :type, database-id :database, query :query :as outer-query}]
+  [{database-id :database :as outer-query}]
   ;; Each refusal has a QP error type, so that agents (Metabot, MCP, the Agent API) tell the caller why the query
   ;; failed. They show the message of the invalid-query refusals. For the permissions refusal, some agents (Metabot
   ;; `run_query`, Slackbot) show their own permission message.
@@ -55,11 +55,7 @@
   ;; audit database in general.
   (when-not (some-> (audit/default-audit-collection) (t2/hydrate :can_read) mi/can-read?)
     (throw (query-perms/perms-exception (tru "You do not have access to the audit database") nil {:query outer-query})))
-  ;; query->source-table-ids returns a set of table IDs or a map with the key `:native?`
-  (when (= query-type :native)
-    (throw (ex-info (tru "Native queries are not allowed on the audit database")
-                    {:type qp.error-type/invalid-query, :query outer-query})))
-  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)]
+  (let [{:keys [table-ids native?]} (query-perms/query->source-ids outer-query)]
     (when native?
       (throw (ex-info (tru "Native queries are not allowed on the audit database")
                       {:type qp.error-type/invalid-query, :query outer-query})))
