@@ -419,6 +419,7 @@
            util}
    :model-exports #{:model/AuditLog}
    :model-imports #{:model/ApiKey
+                    :model/CacheConfig
                     :model/Card
                     :model/Channel
                     :model/Collection
@@ -3474,7 +3475,11 @@
                      util.config
                      util.graph}
    :api  :any
-   :uses #{util.classloader util.config}}
+   :uses #{util.classloader util.config}
+   :model-imports #{:model/Dashboard
+                    :model/Database
+                    :model/Transform
+                    :model/User}}
 
   util.classloader
   {:team "DevEx"

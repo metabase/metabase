@@ -90,6 +90,22 @@
                               {:dimension_ids [price]})
         (is (= [[:card-update "Card" metric-id]] (topics-since before)))))))
 
+(deftest reading-metric-records-no-card-update-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {metric-id :id} {:name          "Metric"
+                                                :type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (lib/aggregate (venues-query) (lib/count))}]
+      (let [before (max-id)
+            revs   (t2/count :model/Revision :model "Card" :model_id metric-id)]
+        (mt/user-http-request :rasta :get 200 (str "metric/" metric-id))
+        (testing "the read syncs the dimensions"
+          (is (seq (:dimensions (t2/select-one :model/Card :id metric-id)))))
+        (testing "the sync is not an update by the reader"
+          (is (= [] (rows-since before)))
+          (is (= revs (t2/count :model/Revision :model "Card" :model_id metric-id))))))))
+
 (deftest database-update-records-row-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Audited"}]

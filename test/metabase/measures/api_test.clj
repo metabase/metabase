@@ -451,3 +451,20 @@
                                                  :value "2")]
               ;; Should return [value] or [value, display-name]
               (is (= [2] response)))))))))
+
+(deftest reading-measure-records-no-audit-row-or-revision-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/Measure]
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "measure"
+                                           {:name       "Synced measure"
+                                            :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})
+            audit-id (fn [] (or (t2/select-one-fn :id :model/AuditLog {:order-by [[:id :desc]]}) 0))
+            before   (audit-id)
+            revs     (t2/count :model/Revision :model "Measure" :model_id id)]
+        (t2/update! :model/Measure :id id {:dimensions nil :dimension_mappings nil})
+        (mt/user-http-request :rasta :get 200 (str "measure/" id))
+        (testing "the read syncs the dimensions"
+          (is (seq (t2/select-one-fn :dimensions :model/Measure :id id))))
+        (testing "the sync is not an update by the reader"
+          (is (= [] (t2/select :model/AuditLog :id [:> before])))
+          (is (= revs (t2/count :model/Revision :model "Measure" :model_id id))))))))
