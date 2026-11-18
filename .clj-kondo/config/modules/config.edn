@@ -2695,6 +2695,7 @@
    :api  #{metabase.segments.init}
    :uses #{api.eid-translation
            app-db
+           audit-app
            collections
            events
            lib

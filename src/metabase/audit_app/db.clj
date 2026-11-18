@@ -89,3 +89,18 @@
   (if (seq channel-ids)
     (t2/select-pk->fn :pulse_id :model/PulseChannel :id [:in channel-ids])
     {}))
+
+(mu/defn parent-ids
+  "The ids that the `parent-key` column of the `model` rows with `ids` holds, by id."
+  [model      :- :keyword
+   parent-key :- :keyword
+   ids        :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (into {} (t2/select-fn-vec (juxt :id parent-key) [model :id parent-key] :id [:in ids]))
+    {}))
+
+(mu/defn row
+  "The row of `model` with `id`, or nil."
+  [model :- :keyword
+   id    :- ms/PositiveInt]
+  (t2/select-one model :id [:auto/param id]))

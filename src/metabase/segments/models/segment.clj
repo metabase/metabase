@@ -3,6 +3,7 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -14,6 +15,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.segments.audit :as segments.audit]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.segments.serialization :as segments.serialization]
@@ -50,6 +52,13 @@
   {:create :event/segment-create
    :update :event/segment-update
    :delete :event/segment-delete})
+
+(defmethod audit/spec :model/Segment [_model]
+  {:track          [:name :description :table_id]
+   :track-redacted [:archived :caveats :creator_id :definition :points_of_interest :show_in_getting_started]
+   :skip           [:entity_id]
+   :changes?       false
+   :details        segments.audit/details})
 
 (defmethod revisions/spec :model/Segment [_model]
   {:track        [:name :description :definition :archived :table_id :caveats :points_of_interest

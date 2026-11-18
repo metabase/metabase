@@ -245,10 +245,8 @@
 
 (deftest segment-create-event-test
   (testing :segment-create
-    (mt/with-temp [:model/Segment segment]
-      (mt/with-test-user :rasta
-        (is (= {:object segment :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})))
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Segment segment]
         (is (= {:topic       :segment-create
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -261,31 +259,27 @@
 
 (deftest segment-update-event-test
   (testing :segment-update
-    (mt/with-temp [:model/Segment segment]
-      (let [event {:object  segment
-                   :context {:revision-message "update this mofo"}
-                   :user-id (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/segment-update event)))
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Segment segment]
+        (events/with-event-context {:revision-message "update this mofo"}
+          (t2/update! :model/Segment :id (:id segment) {:name "Renamed segment"}))
         (is (= {:topic       :segment-update
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
                 :model_id    (:id segment)
-                :details     {:name             (:name segment)
+                :details     {:name             "Renamed segment"
                               :description      (:description segment)
                               :revision-message "update this mofo"
-                              :database_id (mt/id)
-                              :table_id    (mt/id :checkins)}}
+                              :database_id      (mt/id)
+                              :table_id         (mt/id :checkins)}}
                (mt/latest-audit-log-entry "segment-update" (:id segment))))))))
 
 (deftest segment-delete-event-test
   (testing :segment-delete
-    (mt/with-temp [:model/Segment segment]
-      (let [event {:object  segment
-                   :context {:revision-message "deleted"}
-                   :user-id (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/segment-delete event)))
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Segment segment]
+        (events/with-event-context {:revision-message "deleted"}
+          (t2/delete! :model/Segment :id (:id segment)))
         (is (= {:topic       :segment-delete
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -293,8 +287,8 @@
                 :details     {:name             (:name segment)
                               :description      (:description segment)
                               :revision-message "deleted"
-                              :database_id (mt/id)
-                              :table_id    (mt/id :checkins)}}
+                              :database_id      (mt/id)
+                              :table_id         (mt/id :checkins)}}
                (mt/latest-audit-log-entry "segment-delete" (:id segment))))))))
 
 (deftest user-joined-event-test

@@ -173,7 +173,7 @@
                          (class? model) (.getSimpleName ^java.lang.Class model))]
     (model-name->audit-logged-name raw-model-name raw-model-name)))
 
-(defn- prepare-update-event-data
+(defn update-details
   "Returns a map with previous and new versions of the objects, _keeping only fields that are present in both
   but have changed values_."
   [object previous-object]
@@ -226,7 +226,7 @@
                           (merge {}
                                  (:details params)
                                  (if (not-empty previous-object)
-                                   (prepare-update-event-data object-details previous-details)
+                                   (update-details object-details previous-details)
                                    object-details)))})))
 
 (mu/defn audit-row :- [:maybe :map]
