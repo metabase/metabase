@@ -9,6 +9,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
@@ -16,6 +17,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -71,6 +73,7 @@ type SetupOpts = {
   currentUser?: User;
   collections?: Collection[];
   collectionItems?: { collection: Collection; items: CollectionItem[] }[];
+  hasNestedQueries?: boolean;
 };
 
 async function setup({
@@ -86,6 +89,7 @@ async function setup({
     createMockCollection({ id: 3, name: "Collection B" }),
   ],
   collectionItems = [],
+  hasNestedQueries = true,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect();
   process.env.OVERSCAN = "20";
@@ -114,9 +118,10 @@ async function setup({
       onClose={onClose}
     />,
     {
-      storeInitialState: currentUser
-        ? createMockState({ currentUser })
-        : undefined,
+      storeInitialState: createMockState({
+        ...(currentUser ? { currentUser } : {}),
+        settings: mockSettings({ "enable-nested-queries": hasNestedQueries }),
+      }),
     },
   );
 
@@ -540,6 +545,128 @@ describe("DataPickerModal", () => {
       expect(
         screen.queryByText("You can't combine data from different databases."),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("models", () => {
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: ["Orders", "People", "Products", "Reviews"].map((name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          display_name: name,
+        }),
+      ),
+    });
+    const COLLECTION_ITEMS = [
+      createMockCollectionItem({
+        id: 1,
+        name: "Orders Model",
+        model: "dataset",
+        collection_id: null,
+      }),
+      createMockCollectionItem({
+        id: 2,
+        name: "Orders, Count",
+        model: "card",
+        collection_id: null,
+      }),
+    ];
+    const SEARCH_ITEMS = [
+      createMockSearchResult({
+        id: 1,
+        name: "Orders Model",
+        model: "dataset",
+        collection: ROOT,
+      }),
+      createMockSearchResult({
+        id: 2,
+        name: "Orders, Count",
+        model: "card",
+        collection: ROOT,
+      }),
+      createMockSearchResult({
+        id: 10,
+        name: "Orders",
+        model: "table",
+        database_id: 1,
+        collection: ROOT,
+      }),
+    ];
+
+    function setupModels({ hasNestedQueries }: { hasNestedQueries: boolean }) {
+      return setup({
+        hasNestedQueries,
+        databases: [SAMPLE_DATABASE],
+        collections: [ROOT],
+        collectionItems: [{ collection: ROOT, items: COLLECTION_ITEMS }],
+        searchItems: SEARCH_ITEMS,
+      });
+    }
+
+    const getSearchResults = () =>
+      within(screen.getByTestId("item-picker-level-1")).getAllByTestId(
+        "result-item",
+      );
+
+    it("lists models with questions in a collection, and only tables in a database", async () => {
+      const { onChange } = await setupModels({ hasNestedQueries: true });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(await screen.findByText("Orders Model")).toBeInTheDocument();
+      expect(screen.getByText("Orders, Count")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Databases"));
+      await userEvent.click(await screen.findByText("Sample Database"));
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("Orders, Count")).not.toBeInTheDocument();
+
+      await typeSearchText("Ord");
+      expect(getLastSearchParams().getAll("models")).toEqual(["table"]);
+      await expectSearchResults(["Orders"]);
+      expect(getSearchResults()[0]).toHaveAttribute("data-model-type", "table");
+
+      await userEvent.click(getScopeRadio("Everywhere"));
+      await expectSearchResults(["Orders Model", "Orders, Count", "Orders"]);
+      expect(getLastSearchParams().getAll("models")).toEqual([
+        "card",
+        "dataset",
+        "metric",
+        "table",
+      ]);
+      expect(
+        getSearchResults().map((item) => item.getAttribute("data-model-type")),
+      ).toEqual(["dataset", "card", "table"]);
+
+      await userEvent.click(await findSearchResult("Orders Model"));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, model: "dataset" }),
+      );
+    });
+
+    it("does not list models when nested queries are disabled", async () => {
+      await setupModels({ hasNestedQueries: false });
+
+      await userEvent.click(await screen.findByText("Sample Database"));
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+
+      await typeSearchText("Ord");
+      await userEvent.click(getScopeRadio("Everywhere"));
+      await waitFor(() =>
+        expect(getLastSearchParams().getAll("models")).toEqual(["table"]),
+      );
+      expect(getLastSearchParams().get("collection")).toBeNull();
+      await expectSearchResults(["Orders"]);
+      expect(getSearchResults()[0]).toHaveAttribute("data-model-type", "table");
+      expect(screen.queryByText("Orders Model")).not.toBeInTheDocument();
     });
   });
 });
