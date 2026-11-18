@@ -12,14 +12,14 @@
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
-   [metabase.warehouses.models.database :as models.database]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
-                                                  models.database/assert-not-h2! (constantly nil)]
+                                                  warehouses.serialization/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (def ^:private ingestion-in-memory ts/ingestion-in-memory)

@@ -2217,7 +2217,9 @@
       [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
-(defmethod serialization/storage-paths :model/Collection [_ entities {:keys [collections]}]
+(defn- storage-paths
+  "The storage path of each of the Collection `entities`, under the folder of its namespace by its hierarchy."
+  [entities {:keys [collections]}]
   (mapv (fn [coll]
           (into [{:label "collections"} {:label (serialization/collection-namespace-folder (:namespace coll))}]
                 (get collections (:entity_id coll))))
@@ -2243,22 +2245,6 @@
         locations  (when-let [ids (seq (filter some? parent-ids))]
                      (collections.db/collection-locations (vec (distinct ids))))]
     (mapv #(if % (str (get locations %) % "/") "/") parent-ids)))
-
-(defmethod serialization/spec :model/Collection [_]
-  {:schema    ::collections.schema/external-collection
-   :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
-               :is_remote_synced :is_sample :namespace :slug :type]
-   :transform {:name              {:export stored-names
-                                   :import stored-names}
-               :location          {:as     :parent_id
-                                   :export (fn [store _ locations _]
-                                             (serialization/column-refs store :model/Collection
-                                                                        (map location-path->parent-id locations)))
-                                   :import import-parent-locations}
-               :personal_owner_id serialization/user-transform}
-   :defaults  {:archived         false
-               :is_sample        false
-               :is_remote_synced false}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
@@ -2552,13 +2538,17 @@
 
 ;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
 
-(defmethod serialization/import-dependencies :model/Collection [_ entities]
+(defn- import-dependencies
+  "The parent Collection each of the Collection `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [parent_id]}]
           (when parent_id
             #{[:model/Collection parent_id]}))
         entities))
 
-(defmethod serialization/export-dependencies :model/Collection [_ collections]
+(defn- export-dependencies
+  "The parent Collection each of the `collections` depends on, if any."
+  [collections]
   (mapv (fn [{:keys [location]}]
           (when-let [parent-id (some-> location location-path->parent-id)]
             #{[:model/Collection parent-id]}))
@@ -2566,7 +2556,9 @@
 
 ;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
-(defmethod serialization/before-load :model/Collection [_ items]
+(defn- before-load
+  "The Collection load `items`, refusing archived transforms folders and keeping the names of system collections."
+  [items]
   (mapv (fn [{:keys [local row] :as item}]
           ;; An import skips `update-collection!`, so an export from an older version can bring back an archived
           ;; transforms folder.
@@ -2579,3 +2571,26 @@
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))
+
+(defn- export-parent-ids
+  "Exports the `location` of each Collection as the entity id of its parent."
+  [store _collections locations _opts]
+  (serialization/column-refs store :model/Collection (map location-path->parent-id locations)))
+
+(defmethod serialization/spec :model/Collection [_]
+  {:schema              ::collections.schema/external-collection
+   :copy                [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
+                         :is_remote_synced :is_sample :namespace :slug :type]
+   :transform           {:name              {:export stored-names
+                                             :import stored-names}
+                         :location          {:as     :parent_id
+                                             :export export-parent-ids
+                                             :import import-parent-locations}
+                         :personal_owner_id serialization/user-transform}
+   :defaults            {:archived         false
+                         :is_sample        false
+                         :is_remote_synced false}
+   :storage-paths       storage-paths
+   :import-dependencies import-dependencies
+   :export-dependencies export-dependencies
+   :before-load         before-load})

@@ -7,6 +7,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.serialization :as transforms.serialization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -120,41 +121,12 @@
 
 ;;; ------------------------------------------------ Serialization -------------------------------------------------
 
-(defn- built-in-name-kept
-  "`item`, a load item, with the name of the built-in tag it updates."
-  [{:keys [local row] :as item}]
-  (cond-> item
-    (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
-    (update :row assoc :name (:name local))))
-
-(defn- free-name-taken
-  "`item`, a load item, with the first of its name, then the name followed by \" (2)\", \" (3)\" and so on, that no other
-  tag has, `taken` being the names the items before it took, each with its entity id."
-  [taken {{:keys [entity_id] tag-name :name} :row, :keys [local] :as item}]
-  (let [own?  (fn [owner] (or (nil? owner) (= owner entity_id) (= owner (:entity_id local))))
-        free? (fn [candidate] (own? (or (get taken candidate) (transforms.db/tag-entity-id-by-name candidate))))
-        n     (first (filter free? (cons tag-name (map #(str tag-name " (" % ")") (iterate inc 2)))))]
-    [(assoc-in item [:row :name] n) (assoc taken n entity_id)]))
-
-(defmethod serialization/before-load :model/TransformTag [_ items]
-  (first
-   (reduce (fn [[items taken] item]
-             (if (not (string? (not-empty (get-in item [:row :name]))))
-               [(conj items item) taken]
-               (let [[item taken] (free-name-taken taken item)]
-                 [(conj items item) taken])))
-           [[] {}]
-           (map built-in-name-kept items))))
-
 (defmethod serialization/spec :model/TransformTag [_]
-  {:schema    ::transforms.schema/external-transform-tag
-   :copy      [:entity_id :built_in_type]
-   :transform {:name {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}})
-
-(defmethod serialization/storage-paths :model/TransformTag [_ entities _ctx]
-  (mapv (fn [tt]
-          [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
-        entities))
+  {:schema        ::transforms.schema/external-transform-tag
+   :copy          [:entity_id :built_in_type]
+   :transform     {:name transforms.serialization/string-transform}
+   :before-load   transforms.serialization/transform-tag-before-load
+   :storage-paths transforms.serialization/transform-tag-storage-paths})
 
 ;;; ------------------------------------------------- Remote sync --------------------------------------------------
 

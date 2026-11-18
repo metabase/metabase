@@ -101,25 +101,31 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/Timeline [_]
-  {:schema    ::timeline.schema/external-timeline
-   :copy      [:archived :archived_directly :default :description :entity_id :icon :name]
-   :transform {:collection_id (serialization/fk-transform :model/Collection)
-               :creator_id    serialization/user-transform}
-   :children  {:events :model/TimelineEvent}
-   :defaults  {:archived false :archived_directly false :default false}})
-
-(defmethod serialization/import-dependencies :model/Timeline [_ entities]
+(defn- import-dependencies
+  "The Collection each of the Timeline `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [collection_id]}]
           (when collection_id
             [[:model/Collection collection_id]]))
         entities))
 
-(defmethod serialization/export-dependencies :model/Timeline [_ timelines]
+(defn- export-dependencies
+  "The Collection each of the `timelines` depends on, if any."
+  [timelines]
   (mapv (fn [{:keys [collection_id]}]
           (when collection_id
             #{[:model/Collection collection_id]}))
         timelines))
+
+(defmethod serialization/spec :model/Timeline [_]
+  {:schema              ::timeline.schema/external-timeline
+   :copy                [:archived :archived_directly :default :description :entity_id :icon :name]
+   :transform           {:collection_id (serialization/fk-transform :model/Collection)
+                         :creator_id    serialization/user-transform}
+   :children            {:events :model/TimelineEvent}
+   :defaults            {:archived false :archived_directly false :default false}
+   :import-dependencies import-dependencies
+   :export-dependencies export-dependencies})
 
 ;;; ------------------------------------------------- Remote sync ----------------------------------------------------
 

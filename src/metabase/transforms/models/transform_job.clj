@@ -12,6 +12,7 @@
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.serialization :as transforms.serialization]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -251,28 +252,13 @@
 
 ;;; ------------------------------------------------ Serialization -------------------------------------------------
 
-(defmethod serialization/before-load :model/TransformJob [_ items]
-  (mapv (fn [{:keys [local row] :as item}]
-          (cond-> item
-            (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
-            (update :row assoc :name (:name local) :description (:description local))))
-        items))
-
 (defmethod serialization/spec :model/TransformJob [_]
-  {:schema    ::transforms.schema/external-transform-job
-   :copy      [:entity_id :built_in_type :schedule :ui_display_type]
-   :skip      [:active]
-   :transform {:name        {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}
-               :description {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}
-   :children  {:job_tags :model/TransformJobTransformTag}})
-
-(defmethod serialization/storage-paths :model/TransformJob [_ entities _ctx]
-  (mapv (fn [job]
-          [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])
-        entities))
-
-(defmethod serialization/import-dependencies :model/TransformJob [_ entities]
-  (mapv (fn [{:keys [job_tags]}]
-          (set (for [{tag-id :tag_id} job_tags]
-                 [:model/TransformTag tag-id])))
-        entities))
+  {:schema              ::transforms.schema/external-transform-job
+   :copy                [:entity_id :built_in_type :schedule :ui_display_type]
+   :skip                [:active]
+   :transform           {:name        transforms.serialization/string-transform
+                         :description transforms.serialization/string-transform}
+   :children            {:job_tags :model/TransformJobTransformTag}
+   :before-load         transforms.serialization/transform-job-before-load
+   :storage-paths       transforms.serialization/transform-job-storage-paths
+   :import-dependencies transforms.serialization/transform-job-import-dependencies})

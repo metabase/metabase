@@ -10,6 +10,7 @@
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
    [metabase.measures.schema :as measures.schema]
+   [metabase.measures.serialization :as measures.serialization]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -148,27 +149,14 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serialization/spec :model/Measure [_]
-  {:schema    ::measures.schema/external-measure
-   :copy      [:name :archived :description :entity_id]
-   :skip      [:dimensions :dimension_mappings :table_id]
-   :transform {:creator_id serialization/user-transform
-               :definition (assoc serialization/mbql-transform
-                                  :import (fn [store _ queries opts]
-                                            (mapv #(cond-> % (seq %) lib-be/normalize-query)
-                                                  (serialization/import-mbql store queries opts))))}
-   :defaults  {:archived false}})
-
-(defmethod serialization/import-dependencies :model/Measure [_ entities]
-  (mapv (fn [{:keys [definition]}]
-          (serialization/import-mbql-dependencies definition))
-        entities))
-
-(defmethod serialization/storage-paths :model/Measure [_ entities _ctx]
-  (mapv (fn [measure]
-          (let [table-path (-> measure :definition serialization/serialized-query-source-table)]
-            (into (serialization/storage-path-prefixes table-path)
-                  [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
-        entities))
+  {:schema              ::measures.schema/external-measure
+   :copy                [:name :archived :description :entity_id]
+   :skip                [:dimensions :dimension_mappings :table_id]
+   :transform           {:creator_id serialization/user-transform
+                         :definition measures.serialization/definition-transform}
+   :defaults            {:archived false}
+   :import-dependencies measures.serialization/import-dependencies
+   :storage-paths       measures.serialization/storage-paths})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 

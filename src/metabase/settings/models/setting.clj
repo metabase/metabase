@@ -107,13 +107,24 @@
         :when (and (export? key) (not is_env_setting))]
     {:key key :value value}))
 
+(defn- export-keys
+  "Exports the keys of Settings as strings."
+  [_store _settings ks _opts]
+  (mapv name ks))
+
+(defn- import-keys
+  "Imports the keys of Settings as keywords."
+  [_store _entities ks _opts]
+  (mapv keyword ks))
+
 (defmethod serialization/spec :model/Setting [_]
-  {:schema    ::settings.schema/external-setting
-   :identity  [:key]
-   :copy      [:value]
-   :skip      [:value_with_aad]
-   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
-                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
+  {:schema       ::settings.schema/external-setting
+   :identity     [:key]
+   :copy         [:value]
+   :skip         [:value_with_aad]
+   :transform    {:key {:export export-keys
+                        :import import-keys}}
+   :rows-by-refs serialization/setting-rows-by-refs})
 
 (def ^:private Type
   [:fn

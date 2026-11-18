@@ -196,47 +196,73 @@
   [entity]
   (lib/normalize ::data-apps.schema/bundle-path (:path entity)))
 
-(defmethod serialization/spec :model/DataApp [_]
-  {:schema    ::data-apps.schema/external-data-app
-   :copy      [:entity_id :slug :name :description :version :allowed_hosts]
-   :skip      [:enabled :bundle_hash]
-   :transform {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
-               :bundle_path            {:as     :path
-                                        :export serialization/export-unchanged
-                                        :import serialization/import-unchanged}
-               :bundle                 {:as     :serdes/resources
-                                        :export (fn [_store apps bundles _opts]
-                                                  (mapv (fn [app bundle]
-                                                          (when bundle
-                                                            {(:bundle_path app) (bundle->file bundle)}))
-                                                        apps
-                                                        bundles))
-                                        :import (fn [_store entities files _opts]
-                                                  (mapv (fn [app files]
-                                                          (let [path (entity-bundle-path app)]
-                                                            (file->bundle
-                                                             (or (get files path)
-                                                                 (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
-                                                                                 {:status-code 400}))))))
-                                                        entities
-                                                        files))}}})
+(defn- export-bundles
+  "Exports the `bundles` of data `apps` as the files at their bundle paths."
+  [_store apps bundles _opts]
+  (mapv (fn [app bundle]
+          (when bundle
+            {(:bundle_path app) (bundle->file bundle)}))
+        apps
+        bundles))
 
-(defmethod serialization/before-load :model/DataApp [_ items]
+(defn- import-bundles
+  "Imports the bundles of data app `entities` from the `files` at their bundle paths."
+  [_store entities files _opts]
+  (mapv (fn [app files]
+          (let [path (entity-bundle-path app)]
+            (file->bundle
+             (or (get files path)
+                 (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
+                                 {:status-code 400}))))))
+        entities
+        files))
+
+(defn- before-load
+  "The DataApp load `items` without the bundles their local rows already hold."
+  [items]
   (mapv (fn [{:keys [row local] :as item}]
           (cond-> item
             (and local (some-> ^bytes (:bundle row) bytes-hash (= (:bundle_hash local))))
             (update :row dissoc :bundle)))
         items))
 
-(defmethod serialization/storage-paths :model/DataApp [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the DataApp `entities`, in the apps directory by slug."
+  [entities _ctx]
   (mapv (fn [app]
           [{:label data-app.config/apps-dir}
            {:label (:slug app) :key (:entity_id app) :style :slug}
            {:label "data_app"}])
         entities))
 
-(defmethod serialization/resource-paths :model/DataApp [entity]
+(defn- resource-paths
+  "The bundle file stored next to the file of the DataApp `entity`."
+  [entity]
   [(entity-bundle-path entity)])
+
+(defn- import-dependencies
+  "The resource Collection each of the DataApp `entities` depends on, if any."
+  [entities]
+  (mapv (fn [{:keys [collection resource_collection_id]}]
+          (when-let [collection-entity-id (or collection resource_collection_id)]
+            [[:model/Collection collection-entity-id]]))
+        entities))
+
+(defmethod serialization/spec :model/DataApp [_]
+  {:schema              ::data-apps.schema/external-data-app
+   :copy                [:entity_id :slug :name :description :version :allowed_hosts]
+   :skip                [:enabled :bundle_hash]
+   :transform           {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
+                         :bundle_path            {:as     :path
+                                                  :export serialization/export-unchanged
+                                                  :import serialization/import-unchanged}
+                         :bundle                 {:as     :serdes/resources
+                                                  :export export-bundles
+                                                  :import import-bundles}}
+   :before-load         before-load
+   :storage-paths       storage-paths
+   :resource-paths      resource-paths
+   :import-dependencies import-dependencies})
 
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."
@@ -253,12 +279,6 @@
   (if (map? collection)
     (= "data-apps" (some-> (:namespace collection) name))
     (data-apps.db/data-apps-namespace-collection? collection)))
-
-(defmethod serialization/import-dependencies :model/DataApp [_ entities]
-  (mapv (fn [{:keys [collection resource_collection_id]}]
-          (when-let [collection-entity-id (or collection resource_collection_id)]
-            [[:model/Collection collection-entity-id]]))
-        entities))
 
 (defmethod remote-sync/spec :model/DataApp
   [_model]

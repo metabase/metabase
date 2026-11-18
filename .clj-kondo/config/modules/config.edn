@@ -2741,8 +2741,6 @@
                     :model/Channel
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Database
                     :model/Dimension
@@ -2750,21 +2748,15 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
-                    :model/ImplicitAction
                     :model/Measure
-                    :model/MetabotPrompt
                     :model/NativeQuerySnippet
                     :model/OsiAiContext
-                    :model/QueryAction
                     :model/Segment
                     :model/Setting
                     :model/Table
-                    :model/TableIndex
                     :model/TableUserSettings
                     :model/Timeline
                     :model/TimelineEvent
-                    :model/TransformJobTransformTag
-                    :model/TransformTransformTag
                     :model/User}}
 
   server

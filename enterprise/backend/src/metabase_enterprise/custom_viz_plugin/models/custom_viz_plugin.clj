@@ -1,9 +1,8 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
-   [buddy.core.codecs :as codecs]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
-   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -83,61 +82,14 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- bundle->b64 ^String [^bytes b]
-  (some-> b codecs/bytes->b64-str))
-
-(defn- b64->bundle ^bytes [^String s]
-  (some-> s codecs/b64->bytes))
-
 (defmethod serialization/spec :model/CustomVizPlugin [_]
-  {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
-   :identity  [:identifier]
-   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version]
-   :skip      [:status :error_message :dev_bundle_url :bundle_hash]
-   :defaults  {:enabled true}
-   :transform {:bundle {:export (fn [_store _batch bundles _opts] (mapv bundle->b64 bundles))
-                        :import (fn [_store _batch encoded _opts] (mapv b64->bundle encoded))}}})
-
-(defmethod serialization/rows-by-refs :model/CustomVizPlugin [_ identifiers columns]
-  (let [identifiers (filterv some? identifiers)
-        rows        (when (seq identifiers)
-                      (custom-viz-plugin.db/plugins-by-identifiers
-                       identifiers
-                       (some->> columns (concat [:id :identifier]) distinct vec)))]
-    (reduce (fn [found {:keys [identifier] :as row}]
-              (cond-> found
-                (not (contains? found identifier)) (assoc identifier row)))
-            {}
-            rows)))
-
-(defn- bundle-columns
-  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
-  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
-  reason when it is not. The same checks guard a bundle upload."
-  [{:keys [identifier bundle]}]
-  (try
-    (->> (cache/validate-bundle! bundle)
-         (cache/check-bundle-identifier! identifier)
-         cache/derived-columns)
-    (catch Exception e
-      {:status        :error
-       :error_message (ex-message e)})))
-
-(defmethod serialization/storage-paths :model/CustomVizPlugin [_ entities _ctx]
-  (mapv (fn [entity]
-          [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
-        entities))
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defmethod serialization/before-load :model/CustomVizPlugin [_ items]
-  (mapv (fn [{:keys [row local] :as item}]
-          (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
-            (update item :row dissoc :bundle)
-            (update item :row #(merge % (bundle-columns %)))))
-        items))
-
-(defmethod serialization/after-load :model/CustomVizPlugin [_ items]
-  (doseq [{:keys [local]} items
-          :when local]
-    (cache/purge-plugin-cache! {:id (:id local)})))
+  {:schema        ::custom-viz-plugin.schema/external-custom-viz-plugin
+   :identity      [:identifier]
+   :copy          [:display_name :identifier :enabled :icon :manifest :metabase_version]
+   :skip          [:status :error_message :dev_bundle_url :bundle_hash]
+   :defaults      {:enabled true}
+   :transform     {:bundle custom-viz-plugin.serialization/bundle-transform}
+   :rows-by-refs  custom-viz-plugin.serialization/rows-by-refs
+   :storage-paths custom-viz-plugin.serialization/storage-paths
+   :before-load   custom-viz-plugin.serialization/before-load
+   :after-load    custom-viz-plugin.serialization/after-load})

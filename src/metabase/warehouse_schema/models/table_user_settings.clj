@@ -11,6 +11,7 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -182,60 +183,25 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(def ^:private table-user-settings-slug "___tableusersettings")
-
 (defmethod serialization/spec :model/TableUserSettings [_]
-  {:schema    ::warehouse-schema.schema/external-table-user-settings
-   :identity  [:table_id]
-   :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
-               :show_in_getting_started :data_authority :data_source :data_layer :owner_email :is_published
-               :description_set :visibility_type_set :data_layer_set :data_source_set]
-   :skip      [:caveats_set :points_of_interest_set]
-   :defaults  {:description_set     false
-               :visibility_type_set false
-               :data_layer_set      false
-               :data_source_set     false}
-   :transform {:collection_id (serialization/fk-transform :model/Collection)
-               :owner_user_id serialization/user-transform
-               :table_id      serialization/table-transform}})
-
-(defmethod serialization/storage-paths :model/TableUserSettings [_ entities _ctx]
-  (mapv (fn [{:keys [table_id]}]
-          (conj (serialization/storage-path-prefixes table_id)
-                {:label (nth table_id 2) :suffix table-user-settings-slug}))
-        entities))
-
-(defmethod serialization/import-dependencies :model/TableUserSettings [_ entities]
-  (mapv (fn [{:keys [collection_id]}]
-          (cond-> #{} collection_id (conj [:model/Collection collection_id])))
-        entities))
-
-(defn- without-derived-half
-  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
-  [{:keys [visibility_type data_layer] :as changes}]
-  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
-    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
-      (dissoc changes :data_layer)
-      (dissoc changes :visibility_type))
-    changes))
-
-(defn- load-legacy-fields!
-  "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
-  FieldUserSettings of their Tables."
-  [items]
-  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
-    (let [kept (into #{} (map :field_id)
-                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
-      (warehouse-schema.db/delete-field-user-settings!
-       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
-
-(defmethod serialization/after-load :model/TableUserSettings [_ items]
-  (load-legacy-fields! items)
-  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
-    (warehouse-schema.db/update-table! table_id (without-derived-half
-                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
-    (when (:field_order entity)
-      (table/update-field-positions! (warehouse-schema.db/table table_id)))))
+  {:schema              ::warehouse-schema.schema/external-table-user-settings
+   :identity            [:table_id]
+   :copy                [:display_name :description :entity_type :visibility_type :field_order :caveats
+                         :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
+                         :owner_email :is_published :description_set :visibility_type_set :data_layer_set
+                         :data_source_set]
+   :skip                [:caveats_set :points_of_interest_set]
+   :defaults            {:description_set     false
+                         :visibility_type_set false
+                         :data_layer_set      false
+                         :data_source_set     false}
+   :transform           {:collection_id (serialization/fk-transform :model/Collection)
+                         :owner_user_id serialization/user-transform
+                         :table_id      serialization/table-transform}
+   :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
+   :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
+   :after-load          warehouse-schema.serialization/table-user-settings-after-load
+   :rows-by-refs        serialization/table-user-settings-rows-by-refs})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 

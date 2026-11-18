@@ -77,15 +77,18 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/Glossary [_]
-  {:schema    ::glossary.schema/external-glossary
-   :copy      [:entity_id :term :definition]
-   :transform {:creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/Glossary [_ entities _]
+(defn- storage-paths
+  "The storage path of each of the Glossary `entities`, under `glossary/` by term."
+  [entities _ctx]
   (mapv (fn [item]
           [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
         entities))
+
+(defmethod serialization/spec :model/Glossary [_]
+  {:schema        ::glossary.schema/external-glossary
+   :copy          [:entity_id :term :definition]
+   :transform     {:creator_id serialization/user-transform}
+   :storage-paths storage-paths})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 

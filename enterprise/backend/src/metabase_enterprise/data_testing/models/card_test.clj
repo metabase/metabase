@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -149,21 +150,12 @@
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (defmethod serialization/spec :model/CardTest [_]
-  {:schema    ::data-testing.schema/external-card-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:card_id    (serialization/fk-transform :model/Card)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/CardTest [_ entities _ctx]
-  ;; A card's file can sit in a collection, a dashboard or a document, so its path reads all three.
-  (data-testing.models/subject-storage-paths entities :model/Card :card_id {:collection_id :model/Collection
-                                                                            :dashboard_id  :model/Dashboard
-                                                                            :document_id   :model/Document}))
-
-(defmethod serialization/import-dependencies :model/CardTest [_ entities]
-  (mapv (fn [{:keys [card_id]}]
-          #{[:model/Card card_id]})
-        entities))
+  {:schema              ::data-testing.schema/external-card-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:card_id    (serialization/fk-transform :model/Card)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/card-test-storage-paths
+   :import-dependencies data-testing.serialization/card-test-import-dependencies})
 
 ;;; -------------------------------------------------- Remote sync -------------------------------------------------
 

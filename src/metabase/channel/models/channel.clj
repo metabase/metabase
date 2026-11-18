@@ -239,13 +239,17 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the Channel `entities`, under `channels/` by name."
+  [entities _ctx]
   (mapv (fn [channel]
           [{:label "channels"} {:label (:name channel) :key (:name channel)}])
         entities))
 
 (defmethod serialization/spec :model/Channel [_]
-  {:schema   ::channel.schema/external-channel
-   :identity [:name]
-   :copy     [:name :description :type :details :active]
-   :defaults {:active true}})
+  {:schema        ::channel.schema/external-channel
+   :identity      [:name]
+   :copy          [:name :description :type :details :active]
+   :defaults      {:active true}
+   :storage-paths storage-paths
+   :rows-by-refs  serialization/channel-rows-by-refs})

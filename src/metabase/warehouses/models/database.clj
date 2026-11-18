@@ -15,7 +15,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -36,6 +35,7 @@
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -735,104 +735,34 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- import-constantly
-  "A transform fn importing every value as `v`."
-  [v]
-  (fn [_store _entities values _opts]
-    (mapv (constantly v) values)))
-
-(def ^:private instance-local-settings
-  "Database-local settings that hold names in this instance's warehouse, not content: an export leaves them out, and an
-  import keeps the values of the database it updates. A copied workspace schema would point the target's transforms
-  at another schema while its remap rows still point at the old one."
-  [:database-workspace-schema])
-
-(def ^:private settings-transform
-  "The serialization transform of `:settings`, which leaves out [[instance-local-settings]]. An import normalizes the
-  value by the `:settings` schema of [[warehouses.schema/external-database]], as it would if `:settings` were copied.
-  Settings the model could not decrypt are the raw ciphertext string, which passes through unchanged."
-  {:export (fn [_store _rows values _opts]
-             (mapv #(if (map? %) (not-empty (apply dissoc % instance-local-settings)) %) values))
-   :import (fn [_store entities values _opts]
-             (mapv (fn [{db-name :name} settings]
-                     (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
-                           target   (warehouses.db/database-settings-by-name db-name)
-                           kept     (when (map? target) (select-keys target instance-local-settings))]
-                       (if (map? settings)
-                         (not-empty (merge (apply dissoc settings instance-local-settings) kept))
-                         settings)))
-                   entities values))})
-
 (defmethod serialization/spec :model/Database [_]
-  {:schema    ::warehouses.schema/external-database
-   :identity  [:name]
-   :copy      [:auto_run_queries :caveats
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
-               :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix]
-   :skip      [:cache_ttl :initial_sync_error :dbms_version :provider_name]
-   :transform {:details                     serialization/import-only-transform
-               :write_data_details          serialization/import-only-transform
-               :admin_details               serialization/import-only-transform
-               :cache_field_values_schedule serialization/import-only-transform
-               :metadata_sync_schedule      serialization/import-only-transform
-               :initial_sync_status         {:import (import-constantly "complete")}
-               :is_sample                   {:import (import-constantly false)}
-               :is_stub                     {:import (import-constantly false)}
-               :creator_id                  serialization/user-transform
-               :router_database_id          serialization/database-transform
-               :settings                    settings-transform}
-   :defaults  {:auto_run_queries true
-               :is_attached_dwh  false
-               :is_audit         false
-               :is_full_sync     true
-               :is_on_demand     false
-               :uploads_enabled  false}})
-
-(defmethod serialization/storage-paths :model/Database [_ entities _]
-  (mapv (fn [{:keys [name]}]
-          ;; directory for the database with same-named file inside.
-          [{:label "databases"} {:label name :key name} {:label name :key name}])
-        entities))
-
-(defn assert-not-h2!
-  "Validate db is not h2 for serialization import"
-  [row]
-  (when (= :h2 (keyword (:engine row)))
-    (throw (ex-info "h2 is not supported for serialization import"
-                    {:engine (:engine row) :name (:name row)}))))
-
-(defn assert-sqlite-not-hosted!
-  "Refuse to import a SQLite Database on a hosted instance. SQLite is blocked as a warehouse on Metabase Cloud (only
-  the bundled Sample Database, which serdes never exports, is allowed); serialization import is the one write path
-  that never tests the connection, so without this an archive could persist a SQLite row whose attacker-chosen `:db`
-  path is later opened by sync. Mirrors [[assert-not-h2!]]. Self-hosted instances import SQLite normally."
-  [row]
-  (when (and (= :sqlite (keyword (:engine row)))
-             (premium-features/is-hosted?))
-    (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
-                    {:engine (:engine row) :name (:name row) :status-code 400}))))
-
-(defn- keep-local-audit-columns
-  "The load `item` of a Database, keeping the local values of the columns its entity lacks when it is the internal
-  analytics Database, whose engine, details and timezone belong to this instance."
-  [{:keys [entity local] :as item}]
-  (if (and local (:is_audit entity))
-    (update item :row #(apply dissoc % (remove (set (keys entity)) (keys %))))
-    item))
-
-(defmethod serialization/before-load :model/Database [_ items]
-  (doseq [{:keys [row]} items]
-    (assert-not-h2! row)
-    (assert-sqlite-not-hosted! row))
-  (mapv (fn [item]
-          (-> item
-              keep-local-audit-columns
-              (update :row #(cond-> %
-                              (:details %)            (update :details driver/sanitize-db-details)
-                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)
-                              (:admin_details %)      (update :admin_details driver/sanitize-db-details)))))
-        items))
+  {:schema        ::warehouses.schema/external-database
+   :identity      [:name]
+   :copy          [:auto_run_queries :caveats
+                   :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
+                   :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
+                   :uploads_schema_name :uploads_table_prefix]
+   :skip          [:cache_ttl :initial_sync_error :dbms_version :provider_name]
+   :transform     {:details                     serialization/import-only-transform
+                   :write_data_details          serialization/import-only-transform
+                   :admin_details               serialization/import-only-transform
+                   :cache_field_values_schedule serialization/import-only-transform
+                   :metadata_sync_schedule      serialization/import-only-transform
+                   :initial_sync_status         {:import warehouses.serialization/import-complete}
+                   :is_sample                   {:import warehouses.serialization/import-false}
+                   :is_stub                     {:import warehouses.serialization/import-false}
+                   :creator_id                  serialization/user-transform
+                   :router_database_id          serialization/database-transform
+                   :settings                    warehouses.serialization/settings-transform}
+   :defaults      {:auto_run_queries true
+                   :is_attached_dwh  false
+                   :is_audit         false
+                   :is_full_sync     true
+                   :is_on_demand     false
+                   :uploads_enabled  false}
+   :storage-paths warehouses.serialization/storage-paths
+   :before-load   warehouses.serialization/before-load
+   :rows-by-refs  serialization/database-rows-by-refs})
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 

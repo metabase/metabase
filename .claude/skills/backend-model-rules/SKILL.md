@@ -163,6 +163,10 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 Banners `;;; ---- Hooks ----`, centred in a line of about 120 columns, in this order: `Model setup`, `Hooks`, `Permissions`,
 `Hydration`, `Writes`, `Revisions`, `Serialization`, `Remote sync`, `Search`.
 
+The `Serialization` section holds only `(defmethod serialization/spec :model/X ...)`, a literal map whose fns are
+references (keys in the `metabase.serialization.spec` docstring). The model's own SerDes fns live in
+`<module>.serialization`, which the model file requires and never the reverse; its app-DB queries stay in `<module>.db`.
+
 ## Tests
 
 - One `with-temp` default per model in `with-temp-defaults-fns` that passes its hooks; a fixture overrides a column only

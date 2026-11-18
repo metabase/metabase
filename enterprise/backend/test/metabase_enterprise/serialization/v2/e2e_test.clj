@@ -34,7 +34,7 @@
    [metabase.test.generate :as test-gen]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2])
   (:import
@@ -48,7 +48,7 @@
 ;; off and extract with `:include-h2?` (production keeps it filtered).
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
-                                                  models.database/assert-not-h2! (constantly nil)]
+                                                  warehouses.serialization/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- dir->contents-set [p ^File dir]

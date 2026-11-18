@@ -526,37 +526,44 @@
         values
         (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
-(defmethod serialization/spec :model/Table [_]
-  {:schema    ::warehouse-schema.schema/external-table
-   :identity  [:db_id :schema :name]
-   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-               :database_require_filter :is_writable :data_authority :data_source :data_layer
-               :owner_email :is_published]
-   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target :is_defective_duplicate
-               :unique_table_helper]
-   :transform {:archived_at    serialization/date-transform
-               :deactivated_at serialization/date-transform
-               :db_id          serialization/database-transform
-               :collection_id  (serialization/fk-transform :model/Collection)
-               :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
-               :transform_id   (serialization/fk-transform :model/Transform)}
-   :defaults  {:is_published            false
-               :is_upload               false
-               :show_in_getting_started false}})
-
-(defmethod serialization/storage-paths :model/Table [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the Table `entities`, in the directory of its Database and schema."
+  [entities _ctx]
   (mapv (fn [{:keys [db_id schema name]}]
           (conj (serialization/storage-path-prefixes [db_id schema name])
                 {:label name :key name}))
         entities))
 
-(defmethod serialization/import-dependencies :model/Table [_ entities]
+(defn- import-dependencies
+  "The Collection and Transform each of the Table `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [collection_id transform_id]}]
           (cond-> []
             collection_id (conj [:model/Collection collection_id])
             transform_id  (conj [:model/Transform transform_id])))
         entities))
+
+(defmethod serialization/spec :model/Table [_]
+  {:schema              ::warehouse-schema.schema/external-table
+   :identity            [:db_id :schema :name]
+   :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
+                         :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
+                         :database_require_filter :is_writable :data_authority :data_source :data_layer
+                         :owner_email :is_published]
+   :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
+                         :is_defective_duplicate :unique_table_helper]
+   :transform           {:archived_at    serialization/date-transform
+                         :deactivated_at serialization/date-transform
+                         :db_id          serialization/database-transform
+                         :collection_id  (serialization/fk-transform :model/Collection)
+                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
+                         :transform_id   (serialization/fk-transform :model/Transform)}
+   :defaults            {:is_published            false
+                         :is_upload               false
+                         :show_in_getting_started false}
+   :storage-paths       storage-paths
+   :import-dependencies import-dependencies
+   :rows-by-refs        serialization/table-rows-by-refs})
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 

@@ -81,15 +81,18 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/PythonLibrary [_]
-  {:schema ::transforms-python.schema/external-python-library
-   :copy   [:path :source :entity_id]
-   :skip   [:is_default]})
-
-(defmethod serialization/storage-paths :model/PythonLibrary [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the PythonLibrary `entities`, under `python-libraries/` by path."
+  [entities _ctx]
   (mapv (fn [entity]
           [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
         entities))
+
+(defmethod serialization/spec :model/PythonLibrary [_]
+  {:schema        ::transforms-python.schema/external-python-library
+   :copy          [:path :source :entity_id]
+   :skip          [:is_default]
+   :storage-paths storage-paths})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 

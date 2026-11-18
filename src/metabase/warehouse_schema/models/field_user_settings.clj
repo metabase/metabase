@@ -11,6 +11,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -155,40 +156,23 @@
   [table-id :- ::lib.schema.id/table]
   (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
 
-(def ^:private field-user-settings-slug "___fieldusersettings")
-
 (defmethod serialization/spec :model/FieldUserSettings [_]
-  {:schema    ::warehouse-schema.schema/external-field-user-settings
-   :identity  [:field_id]
-   :copy      [:semantic_type :description :display_name :visibility_type
-               :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
-               :description_set :semantic_type_set :fk_target_field_id_set]
-   :skip      [:nfc_path]
-   :defaults  {:description_set        false
-               :semantic_type_set      false
-               :fk_target_field_id_set false}
-   :transform {:fk_target_field_id serialization/field-transform
-               :field_id           serialization/field-transform}})
-
-(defmethod serialization/storage-paths :model/FieldUserSettings [_ entities _ctx]
-  (mapv (fn [field-user-settings]
-          (let [field-path (serialization/storage-path-prefixes (:field_id field-user-settings))]
-            (update field-path (dec (count field-path))
-                    (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
-        entities))
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defmethod serialization/before-load :model/FieldUserSettings [_ items]
-  (mapv (fn [{:keys [local] :as item}]
-          (cond-> item
-            local (update :row #(merge (zipmap user-settings/user-settable-field-columns (repeat nil)) %))))
-        items))
-
-(defmethod serialization/after-load :model/FieldUserSettings [_ items]
-  (doseq [{{:keys [field_id] :as settings} :instance} items]
-    (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
+  {:schema        ::warehouse-schema.schema/external-field-user-settings
+   :identity      [:field_id]
+   :copy          [:semantic_type :description :display_name :visibility_type
+                   :has_field_values :effective_type :coercion_strategy :caveats
+                   :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
+                   :description_set :semantic_type_set :fk_target_field_id_set]
+   :skip          [:nfc_path]
+   :defaults      {:description_set        false
+                   :semantic_type_set      false
+                   :fk_target_field_id_set false}
+   :transform     {:fk_target_field_id serialization/field-transform
+                   :field_id           serialization/field-transform}
+   :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
+   :before-load   warehouse-schema.serialization/field-user-settings-before-load
+   :after-load    warehouse-schema.serialization/field-user-settings-after-load
+   :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 
 (defmethod remote-sync/spec :model/FieldUserSettings
   [_model]

@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -233,44 +234,12 @@
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (defmethod serialization/spec :model/TransformTest [_]
-  {:schema    ::data-testing.schema/external-transform-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:transform_id (serialization/fk-transform :model/Transform)
-               :creator_id   serialization/user-transform}})
-
-(defn subject-storage-paths
-  "The storage path of each of `tests`, saved tests whose `subject-key` holds the entity id of a row of
-  `subject-model`: the path of the subject's file, as a directory, then the test's name. `fk-models` maps each column of
-  the subject that the subject's storage path reads to the model the column references."
-  [tests subject-model subject-key fk-models]
-  (let [rows     (vals (serialization/rows-by-refs subject-model
-                                                   (into #{} (keep subject-key) tests)
-                                                   (into [:entity_id :name] (keys fk-models))))
-        fk-refs  (into {}
-                       (map (fn [[k model]]
-                              [k (zipmap (map :entity_id rows)
-                                         (serialization/column-refs serialization/app-db-store model (map k rows)))]))
-                       fk-models)
-        subjects (into {}
-                       (map (fn [{eid :entity_id subject-name :name}]
-                              [eid (into {:serdes/meta [{:model (name subject-model)}]
-                                          :name        subject-name
-                                          :entity_id   eid}
-                                         (map (fn [[k refs]] [k (get refs eid)]))
-                                         fk-refs)]))
-                       rows)
-        paths    (serialization/batch-storage-paths (mapv #(get subjects (subject-key %)) tests))]
-    (mapv (fn [saved-test path]
-            (conj path {:label (:name saved-test) :key (:entity_id saved-test)}))
-          tests paths)))
-
-(defmethod serialization/storage-paths :model/TransformTest [_ entities _ctx]
-  (subject-storage-paths entities :model/Transform :transform_id {:collection_id :model/Collection}))
-
-(defmethod serialization/import-dependencies :model/TransformTest [_ entities]
-  (mapv (fn [{:keys [transform_id]}]
-          #{[:model/Transform transform_id]})
-        entities))
+  {:schema              ::data-testing.schema/external-transform-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:transform_id (serialization/fk-transform :model/Transform)
+                         :creator_id   serialization/user-transform}
+   :storage-paths       data-testing.serialization/transform-test-storage-paths
+   :import-dependencies data-testing.serialization/transform-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/TransformTest
   [_model]

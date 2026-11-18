@@ -14,6 +14,7 @@
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
+   [metabase.segments.serialization :as segments.serialization]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -156,24 +157,14 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serialization/spec :model/Segment [_]
-  {:schema    ::segments.schema/external-segment
-   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [:table_id]
-   :transform {:creator_id serialization/user-transform
-               :definition serialization/mbql-transform}
-   :defaults  {:archived false :show_in_getting_started false}})
-
-(defmethod serialization/import-dependencies :model/Segment [_ entities]
-  (mapv (fn [{:keys [definition]}]
-          (serialization/import-mbql-dependencies definition))
-        entities))
-
-(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
-  (mapv (fn [segment]
-          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
-            (into (serialization/storage-path-prefixes table-path)
-                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-        entities))
+  {:schema              ::segments.schema/external-segment
+   :copy                [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip                [:table_id]
+   :transform           {:creator_id serialization/user-transform
+                         :definition serialization/mbql-transform}
+   :defaults            {:archived false :show_in_getting_started false}
+   :import-dependencies segments.serialization/import-dependencies
+   :storage-paths       segments.serialization/storage-paths})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 

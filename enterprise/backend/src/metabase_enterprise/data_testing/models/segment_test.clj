@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -145,24 +146,12 @@
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
 (defmethod serialization/spec :model/SegmentTest [_]
-  {:schema    ::data-testing.schema/external-segment-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:segment_id (serialization/fk-transform :model/Segment)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/SegmentTest [_ entities _ctx]
-  ;; A segment's path comes from its table, and only the segment's exported definition names that table.
-  (let [segments (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities) nil))
-        exported (zipmap (map :entity_id segments) (serialization/export-batch :model/Segment segments))
-        paths    (serialization/batch-storage-paths (mapv #(get exported (:segment_id %)) entities))]
-    (mapv (fn [segment-test path]
-            (conj path {:label (:name segment-test) :key (:entity_id segment-test)}))
-          entities paths)))
-
-(defmethod serialization/import-dependencies :model/SegmentTest [_ entities]
-  (mapv (fn [{:keys [segment_id]}]
-          #{[:model/Segment segment_id]})
-        entities))
+  {:schema              ::data-testing.schema/external-segment-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:segment_id (serialization/fk-transform :model/Segment)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/segment-test-storage-paths
+   :import-dependencies data-testing.serialization/segment-test-import-dependencies})
 
 ;;; -------------------------------------------------- Remote sync -------------------------------------------------
 

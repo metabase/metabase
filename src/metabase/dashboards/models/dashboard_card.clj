@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dashboards.serialization :as dashboards.serialization]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -454,11 +455,7 @@
    :transform {:dashboard_id           serialization/import-only-transform
                :card_id                (serialization/fk-transform :model/Card)
                :action_id              (serialization/fk-transform :model/Action)
-               :dashboard_tab_id       (update (serialization/fk-transform :model/DashboardTab) :import
-                                               (fn [import-ids]
-                                                 (fn [store batch refs opts]
-                                                   (import-ids store batch (map serialization/owned-entity-id refs)
-                                                               opts))))
+               :dashboard_tab_id       dashboards.serialization/dashboard-tab-id-transform
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}})
 

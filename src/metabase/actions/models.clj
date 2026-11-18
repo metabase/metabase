@@ -4,6 +4,7 @@
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
+   [metabase.actions.serialization :as actions.serialization]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
@@ -769,51 +770,23 @@
                :table_id serialization/table-transform}})
 
 (defmethod serialization/spec :model/Action [_]
-  {:schema    ::actions.schema/external-action
-   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid :type]
-   :skip      [:public_uuid_prefix]
-   :transform {:creator_id             serialization/user-transform
-               :made_public_by_id      serialization/user-transform
-               :collection_id          (serialization/fk-transform :model/Collection)
-               :model_id               (serialization/fk-transform :model/Card)
-               :parameters             serialization/parameters-transform
-               :parameter_mappings     serialization/parameter-mappings-transform
-               :visualization_settings serialization/visualization-settings-transform}
-   :children  {:query    :model/QueryAction
-               :implicit :model/ImplicitAction}
-   :defaults  {:archived false, :archived_directly false}})
-
-(defmethod serialization/storage-paths :model/Action [_ entities ctx]
-  (mapv (fn [{:keys [model_id] :as action}]
-          (serialization/storage-default-collection-path
-           action ctx (if (nil? model_id)
-                        (serialization/collection-namespace-folder collection/data-actions-ns)
-                        "main")))
-        entities))
-
-(defmethod serialization/import-dependencies :model/Action [_ entities]
-  (mapv (fn [action]
-          (set (concat (when-let [collection-id (:collection_id action)]
-                         [[:model/Collection collection-id]])
-                       (when-let [model-id (:model_id action)]
-                         [[:model/Card model-id]])
-                       (when (= (keyword (:type action)) :query)
-                         (serialization/import-mbql-dependencies (:dataset_query (first (:query action))))))))
-        entities))
-
-(defmethod serialization/export-dependencies :model/Action [_ actions]
-  (let [queries (when-let [ids (seq (keep #(when (= (keyword (:type %)) :query) (:id %)) actions))]
-                  (into {} (map (juxt :action_id identity)) (actions.db/query-actions (vec ids))))]
-    (mapv (fn [{:keys [id collection_id model_id]}]
-            (set (concat (when collection_id [[:model/Collection collection_id]])
-                         (when model_id [[:model/Card model_id]])
-                         (when-let [{:keys [database_id dataset_query]} (get queries id)]
-                           (concat (when database_id [[:model/Database database_id]])
-                                   (serialization/export-mbql-dependencies dataset_query))))))
-          actions)))
-
-(defmethod serialization/loaded-entities :model/Action [_ entities]
-  (filterv #(not= "http" (some-> % :type name)) entities))
+  {:schema              ::actions.schema/external-action
+   :copy                [:archived :archived_directly :description :entity_id :name :public_uuid :type]
+   :skip                [:public_uuid_prefix]
+   :transform           {:creator_id             serialization/user-transform
+                         :made_public_by_id      serialization/user-transform
+                         :collection_id          (serialization/fk-transform :model/Collection)
+                         :model_id               (serialization/fk-transform :model/Card)
+                         :parameters             serialization/parameters-transform
+                         :parameter_mappings     serialization/parameter-mappings-transform
+                         :visualization_settings serialization/visualization-settings-transform}
+   :children            {:query    :model/QueryAction
+                         :implicit :model/ImplicitAction}
+   :defaults            {:archived false, :archived_directly false}
+   :storage-paths       actions.serialization/storage-paths
+   :import-dependencies actions.serialization/import-dependencies
+   :export-dependencies actions.serialization/export-dependencies
+   :loaded-entities     actions.serialization/loaded-entities})
 
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
