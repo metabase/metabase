@@ -3686,7 +3686,6 @@
   {:team "Graphy"
    :api  #{metabase.xrays.api
            metabase.xrays.core
-           metabase.xrays.db
            metabase.xrays.init
            metabase.xrays.related
            metabase.xrays.spec}

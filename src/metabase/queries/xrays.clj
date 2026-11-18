@@ -4,7 +4,6 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
-   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.related :as xrays.related]))
 
 (set! *warn-on-reflection* true)
@@ -24,7 +23,7 @@
 (defn related
   "The related entities of `card`."
   [card]
-  (let [table             (xrays.db/table (:table_id card))
+  (let [table             (xrays.related/table-of card)
         similar-questions (xrays.related/similar-questions card)
         similar-metrics   (xrays.related/similar-metrics card)]
     {:table             table

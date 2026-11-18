@@ -52,6 +52,26 @@
   [entity]
   ((spec-fn entity :related) entity))
 
+(defn table-of
+  "The Table of `entity`, or nil."
+  [entity]
+  (xrays.db/table (:table_id entity)))
+
+(defn sibling-tables
+  "The Tables in the schema of `table`, but `table`."
+  [table]
+  (xrays.db/sibling-tables (:db_id table) (:schema table) (:id table)))
+
+(defn fields-beside
+  "The Fields of `table` but `field`, that are visible."
+  [table field]
+  (xrays.db/other-visible-fields-in-table (:id table) (:id field)))
+
+(defn dashboard-cards
+  "The Cards on `dashboard`."
+  [dashboard]
+  (map xrays.db/card (xrays.db/card-ids-for-dashboard (:id dashboard))))
+
 (defn similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
    definition (MBQL).

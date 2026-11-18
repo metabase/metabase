@@ -3,7 +3,6 @@
   (:require
    [metabase.segments.schema :as segments.schema]
    [metabase.util.malli :as mu]
-   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.related :as xrays.related]))
 
 (set! *warn-on-reflection* true)
@@ -16,7 +15,7 @@
 (defn related
   "The related entities of `segment`."
   [segment]
-  (let [table (xrays.db/table (:table_id segment))]
+  (let [table (xrays.related/table-of segment)]
     {:table       table
      :metrics     (xrays.related/metrics-for-table table)
      :segments    (->> table
