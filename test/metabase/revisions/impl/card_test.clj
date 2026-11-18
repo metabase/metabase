@@ -8,6 +8,7 @@
    [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -89,7 +90,7 @@
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Card :id card-id)
     :entity       :model/Card
     :id           card-id

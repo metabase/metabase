@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.usages-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.graph.core :as graph]

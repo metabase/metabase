@@ -10,6 +10,7 @@
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.parameters.schema :as parameters.schema]
@@ -20,7 +21,7 @@
 (def ^:private generate-content-body-schema
   [:map {:closed true}
    [:instructions ms/NonBlankString]
-   [:references {:optional true} ms/OpaqueJSONObject]])
+   [:references {:optional true} ::metabot.schema/references]])
 
 (def ^:private generate-content-response-schema
   [:map

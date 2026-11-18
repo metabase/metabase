@@ -2,22 +2,18 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
-   [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -31,162 +27,108 @@
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
-(defn- validate-mbql5-definition
-  "Validate that an MBQL 5 segment definition has the correct structure. Normalizing a definition that cannot be made
-  into a query yields an empty map, which is as invalid as any other broken definition."
-  [definition]
-  (mu/validate-throw ::segments.schema/definition definition)
-  definition)
-
-(defn- normalize-segment-definition
-  "Normalize segment definition.
-  Accepts:
-  - MBQL 5 full queries (passed through)
-  - MBQL 4 full queries (from serialization - converted to MBQL 5)
-  - MBQL 4 fragments (for backward compat during migration - wrapped then converted)
-  Empty seqs are normalized to `{}`."
-  [definition table-id database-id]
-  (if (seq definition)
-    (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   :mbql-version/mbql5
-                   (lib/normalize ::lib.schema/query definition)
-
-                   :mbql-version/legacy
-                   definition
-                   ;; default MBQL4 fragment
-                   (let [definition (update-keys definition keyword)
-                         definition
-                         (if (:aggregation definition)
-                           (do
-                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration")
-                             (dissoc definition :aggregation))
-                           definition)]
-                     {:database database-id
-                      :type :query
-                      :query (merge {:source-table table-id} definition)}))
-                 lib-be/normalize-query)
-      (validate-mbql5-definition <>))
-    {}))
-
-(def ^:private transform-segment-definition
-  "Transform for segment definitions. Only handles JSON serialization/deserialization.
-  Normalization and validation happen in before-insert and after-select hooks."
-  {:in mi/json-in
-   :out mi/json-out-without-keywordization})
-
 (t2/deftransforms :model/Segment
-  {:definition transform-segment-definition})
+  {:definition lib-be/transform-query})
 
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/events))
+
+(defmethod events/spec :model/Segment
+  [_model]
+  {:create :event/segment-create
+   :update :event/segment-update
+   :delete :event/segment-delete})
+
+(defn- definition-table-id
+  "The id of the Table `definition`, a full query, is built on."
+  [definition]
+  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- check-definition
+  "Throws unless `definition` is a full query that fits a Segment."
+  [definition]
+  (when-not (and (seq definition)
+                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
+    (throw (ex-info (tru "Segment definition must be a full query with a source table.") {:status-code 400})))
+  (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
+
+(defn- check-referenced-segments-exist
+  "Throws unless every Segment that `definition`, a new Segment's, refers to exists."
+  [definition]
+  (lib/check-segment-overwrite nil (lib-be/normalize-query definition)))
+
+(t2/define-before-insert :model/Segment
+  [{:keys [definition] :as segment}]
+  (check-definition definition)
+  (check-referenced-segments-exist definition)
+  (assoc segment :table_id (definition-table-id definition)))
+
+(t2/define-before-update :model/Segment
+  [{:keys [id definition] :as segment}]
+  (let [changes (t2/changes segment)]
+    (when (contains? changes :creator_id)
+      (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
+    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
+      (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.") {:status-code 400})))
+    (when (contains? changes :definition)
+      (check-definition definition)
+      (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
+    (cond-> segment
+      (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_read]
   "Whether the current user can read each of `segments`, which they can when they read its Table, the Tables answered
   together."
-  [_model k segments]
-  (let [rows  (t2/hydrate (into [] (remove nil?) segments) [:table :can_read])
-        flags (into {} (map (juxt :id (comp mi/can-read? :table))) rows)]
-    (for [segment segments]
-      (when segment
-        (vary-meta segment assoc k (get flags (:id segment) false))))))
-
-;; Segments can be written by
-;; a) superusers
-;; b) OR data analysts with unrestricted view-data permissions
-;; but not on a read-only instance that syncs their table
-(defn- segment-writable?
-  "Whether the current user can write `instance`, a Segment with or without its `:table`."
-  [instance]
-  (let [table (or (:table instance)
-                  (segments.db/table (:table_id instance)))]
-    (and (or (mi/superuser?)
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-         (collection/remote-sync-writable-table? table))))
-
-;; Segments can be created by
-;; a) superusers
-;; b) OR data analysts with unrestricted view-data permissions
-;; but not on a read-only instance that syncs their table
-(defmethod mi/can-create? :model/Segment
-  [_model instance]
-  (let [table (or (:table instance)
-                  (segments.db/table (:table_id instance)))]
-    (and (or (mi/superuser?)
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(u/the-id table) (:db_id table)})))
-         (collection/remote-sync-writable-table? table))))
+  [_model _k segments]
+  (collection/hydrate-table-content-can-read segments))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
-  "Batched hydration for :can_write on segments, hydrating their tables first."
-  [_model k segments]
-  (mi/instances-with-hydrated-data
-   segments k
-   #(u/index-by :id (comp boolean segment-writable?) (t2/hydrate (remove nil? segments) :table))
-   :id
-   {:default false}))
+  "Whether the current user can write each of `segments`, which they can when they write Segments of its Table."
+  [_model _k segments]
+  (collection/hydrate-table-content-can-write segments))
 
-(defn- migrated-segment-definition
-  [{:keys [definition], table-id :table_id}]
-  (when (some? definition)
-    (let [database-id (when table-id
-                        (segments.db/table-database-id table-id))]
-      (normalize-segment-definition definition table-id database-id))))
+(defn- definition-writable?
+  "Whether the current user can write Segments of the Table `definition` is built on."
+  [definition]
+  (let [table (some-> definition not-empty definition-table-id segments.db/table)]
+    (boolean (and table (seq (collection/writable-table-ids [table]))))))
 
-(t2/define-before-insert :model/Segment
-  [segment]
-  (let [definition (migrated-segment-definition segment)]
-    (when (seq definition)
-      (lib/check-segment-overwrite nil definition))
-    (cond-> (assoc segment :definition definition)
-      (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))))
+(defmethod mi/can-create? :model/Segment
+  [_model {:keys [definition]}]
+  (definition-writable? definition))
 
-(defenterprise pre-update-check-sandbox-constraints-for-segment
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+(defenterprise sandboxes-allow-segment-update?
+  "Whether sandboxing lets the current user apply `changes` to `segment`, which OSS always does."
   metabase-enterprise.sandbox.models.sandbox
-  [_ _])
+  [_segment _changes]
+  true)
 
-(defenterprise pre-delete-check-sandbox-constraints-for-segment
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_])
+(defmethod mi/can-update? :model/Segment
+  [segment changes]
+  (and (mi/can-write? segment)
+       (or (not (contains? changes :definition))
+           (definition-writable? (:definition changes)))
+       (sandboxes-allow-segment-update? segment changes)))
 
-(t2/define-before-update :model/Segment [{:keys [id] :as segment}]
-  ;; additional checks (Enterprise Edition only)
-  (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-  ;; normalize and check for cycles if definition is being updated
-  (if-let [def-change (:definition (t2/changes segment))]
-    (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
-      (when (seq definition)
-        (lib/check-segment-overwrite id definition))
-      (cond-> (assoc segment :definition definition)
-        (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
-    segment))
+(defenterprise delete-segment-tests!
+  "Delete the tests of the segment `segment-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.segment-test
+  [_segment-id]
+  nil)
 
 (t2/define-before-delete :model/Segment
-  [segment]
-  ;; additional checks (Enterprise Edition only)
-  (pre-delete-check-sandbox-constraints-for-segment segment)
+  [{:keys [id] :as segment}]
+  (delete-segment-tests! id)
   segment)
 
-(defn- maybe-migrated-segment-definition
-  [segment]
-  (try
-    (migrated-segment-definition segment)
-    (catch Throwable e
-      (log/errorf "Error upgrading segment definition: %s" (ex-message e))
-      nil)))
-
-(t2/define-after-select :model/Segment
-  [{:keys [definition] :as segment}]
-  (cond-> segment
-    (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
@@ -203,14 +145,7 @@
   (for [segment segments]
     (assoc segment :definition_description (definition-description segment))))
 
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
-  (mapv (fn [segment]
-          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
-            (into (serialization/storage-path-prefixes table-path)
-                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-        entities))
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serialization/spec :model/Segment [_]
   {:schema    ::segments.schema/external-segment
@@ -220,7 +155,26 @@
                :definition serialization/mbql-transform}
    :defaults  {:archived false :show_in_getting_started false}})
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
+(defmethod serialization/import-dependencies :model/Segment [_ entities]
+  (mapv (fn [{:keys [definition]}]
+          (serialization/import-mbql-dependencies definition))
+        entities))
+
+(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
+  (mapv (fn [segment]
+          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
+        entities))
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+
+(defmethod remote-sync/spec :model/Segment
+  [_model]
+  {:synced-items         segments.db/synced-segment-items
+   :synced-filter-clause segments.db/synced-segments-clause})
+
+;;; ----------------------------------------------------- Search -----------------------------------------------------
 
 (search/define-spec "segment"
   {:model :model/Segment
@@ -251,13 +205,3 @@
                         [:and
                          [:= :table.is_published true]
                          [:= :collection.id :table.collection_id]]]}})
-
-(defmethod serialization/import-dependencies :model/Segment [_ entities]
-  (mapv (fn [{:keys [definition]}]
-          (serialization/import-mbql-dependencies definition))
-        entities))
-
-(defmethod remote-sync/spec :model/Segment
-  [_model]
-  {:synced-items         segments.db/synced-segment-items
-   :synced-filter-clause segments.db/synced-segments-clause})

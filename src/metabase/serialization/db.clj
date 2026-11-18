@@ -1,6 +1,7 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
+   [metabase.events.core :as events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -9,7 +10,7 @@
 
 (mr/def ::row
   "A row of any serialized model, as its spec imports it; the model's own hooks and schemas check it."
-  [:map {:closed false, ::mr/deliberately-open true, :description "row of a serialized model"}])
+  [:map {:closed false, :description "row of a serialized model"}])
 
 (mr/def ::columns
   "The columns a query selects, or nil for every column."
@@ -211,10 +212,12 @@
   (t2/delete! model pk [:in [:auto/param ids]]))
 
 (defn do-in-transaction
-  "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open."
+  "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open, in a batch of events that
+  delivers them before the outermost one commits."
   [thunk]
   (t2/with-transaction [_]
-    (thunk)))
+    (events/with-batched-events
+      (thunk))))
 
 (defn do-in-repeatable-read-transaction
   "Calls `thunk` in a REPEATABLE READ transaction of the app DB, or in the transaction already open, whose isolation

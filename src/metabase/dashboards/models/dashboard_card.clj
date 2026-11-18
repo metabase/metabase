@@ -5,6 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
@@ -14,10 +15,13 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ------------------------------------------------------ Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 
@@ -25,14 +29,20 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies)
-  ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
-  #_(derive :hook/search-index))
+  (derive :hook/events))
+
+(defmethod events/spec :model/DashboardCard
+  [_model]
+  {:create :event/dashboard-card-create
+   :update :event/dashboard-card-update
+   :delete :event/dashboard-card-delete})
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings lib-be/transform-visualization-settings
    :inline_parameters      mi/transform-json})
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- validate-link-card-entity-id
   "Require the link-card entity id to be an integer before it is stored. It is used as an id when the linked
@@ -62,8 +72,16 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
+(defn- check-tab
+  "Throws a 400 unless the tab of `dashcard`, if any, belongs to the Dashboard of the dashcard."
+  [{:keys [dashboard_id dashboard_tab_id]}]
+  (when (and dashboard_tab_id
+             (not= dashboard_id (:dashboard_id (dashboards.db/dashboard-tab dashboard_tab_id))))
+    (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400}))))
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (check-tab dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -72,7 +90,12 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (validate-dashcard-on-write dashcard))
+  (let [changes (t2/changes dashcard)]
+    (when (contains? changes :dashboard_id)
+      (throw (ex-info (tru "You cannot move a dashboard card to another dashboard.") {:status-code 400})))
+    (when (contains? changes :dashboard_tab_id)
+      (check-tab dashcard))
+    (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
@@ -83,6 +106,8 @@
     dashcard))
 
 (declare series)
+
+;;; --------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- card-collection-ids
   "For each of `dashcards`, by id, the ids of the Collections, nil for the root, of its Card and of the Cards of its
@@ -239,23 +264,34 @@
                   (not= v (get old k)))
                 new)))
 
+(mu/defn update-dashboard-cards!
+  "Update existing DashboardCards, each given as a `[dashboard-card old-dashboard-card]` pair with `old-dashboard-card`
+  sparing a DB call when nothing changed, rewriting their DashboardCardSeries in one statement for all of them, and
+  returning nil."
+  [pairs :- [:sequential [:tuple DashboardCardUpdates DashboardCardUpdates]]]
+  (t2/with-transaction [_conn]
+    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
+                     :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]]
+      (doseq [[dashboard-card old-dashboard-card] pairs
+              :let [updates (shallow-updates (select-keys dashboard-card update-ks)
+                                             (select-keys old-dashboard-card update-ks))]
+              :when (seq updates)]
+        (dashboards.db/update-dashcard! (:id dashboard-card) updates))
+      (update-dashboard-cards-series!
+       (into {}
+             (keep (fn [[{dashcard-id :id :keys [series] :as dashboard-card} old-dashboard-card]]
+                     (when (not= (:series dashboard-card []) (:series old-dashboard-card []))
+                       [dashcard-id series])))
+             pairs))
+      nil)))
+
 (mu/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."
-  [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
+  [dashboard-card     :- DashboardCardUpdates
    old-dashboard-card :- DashboardCardUpdates]
-  (t2/with-transaction [_conn]
-    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
-                     :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]
-          updates   (shallow-updates (select-keys dashboard-card update-ks)
-                                     (select-keys old-dashboard-card update-ks))]
-      (when (seq updates)
-        (dashboards.db/update-dashcard! dashcard-id updates))
-      (when (not= (:series dashboard-card [])
-                  (:series old-dashboard-card []))
-        (update-dashboard-cards-series! {dashcard-id series}))
-      nil)))
+  (update-dashboard-cards! [[dashboard-card old-dashboard-card]]))
 
 (def ^:private NewDashboardCard
   [:merge
@@ -405,6 +441,8 @@
                                                                opts))))
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}})
+
+;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/DashboardCard
   [_model]

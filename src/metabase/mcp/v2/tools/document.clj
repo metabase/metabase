@@ -113,7 +113,7 @@
   (into {}
         (mapcat (fn [[model model-links]]
                   (let [db-model (prose-mirror/smart-link-model->db-model model)
-                        ids      (distinct (map #(get-in % [:attrs "entityId"]) model-links))
+                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
                         rows     (when db-model
                                    (try
                                      (filterv #(smart-link-readable? model %)
@@ -128,7 +128,7 @@
                                        nil)))]
                     (for [row rows]
                       [[model (:id row)] row]))))
-        (group-by #(get-in % [:attrs "model"]) links)))
+        (group-by #(get-in % [:attrs :model]) links)))
 
 (defn- stored-smart-link-attrs
   "`{[model entityId] attrs}` for every already-labelled smartLink in `ast`."
@@ -136,7 +136,7 @@
   (into {}
         (keep (fn [node]
                 (when (and (map? node) (= "smartLink" (:type node)))
-                  (let [{:strs [entityId model label] :as attrs} (:attrs node)]
+                  (let [{:keys [entityId model label] :as attrs} (:attrs node)]
                     (when label
                       [[model entityId] attrs])))))
         (tree-seq :content :content ast)))
@@ -165,14 +165,14 @@
             stored (some-> previous-ast stored-smart-link-attrs)]
         (match/replace-all ast
           {:type "smartLink"}
-          (let [{:strs [entityId model]} (:attrs &match)
+          (let [{:keys [entityId model]} (:attrs &match)
                 k                        [model entityId]]
             (if-let [row (get rows k)]
               (update &match :attrs assoc
-                      "label" (smart-link-label row)
-                      "href" (smart-link-href model row))
+                      :label (smart-link-label row)
+                      :href (smart-link-href model row))
               (if-let [prior (get stored k)]
-                (update &match :attrs assoc "label" (get prior "label") "href" (get prior "href"))
+                (update &match :attrs assoc :label (:label prior) :href (:href prior))
                 (do
                   (when (prose-mirror/smart-link-model->db-model model)
                     (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
@@ -181,14 +181,14 @@
 (defn- ast-id-set
   [ast]
   (set (prose-mirror/collect-ast {:document ast :content_type prose-mirror/prose-mirror-content-type}
-                                 (comp #(get % "_id") :attrs))))
+                                 (comp :_id :attrs))))
 
 (defn- ast-id->type
   [ast]
   (into {} (prose-mirror/collect-ast
             {:document ast :content_type prose-mirror/prose-mirror-content-type}
             (fn [{:keys [type attrs]}]
-              (when-let [id (get attrs "_id")]
+              (when-let [id (:_id attrs)]
                 [id type])))))
 
 (defn- changed-blocks
@@ -197,7 +197,7 @@
     (->> (prose-mirror/collect-ast
           {:document before :content_type prose-mirror/prose-mirror-content-type}
           (fn [{:keys [type attrs]}]
-            (when-let [id (get attrs "_id")]
+            (when-let [id (:_id attrs)]
               [id type])))
          (keep (fn [[id old-type]]
                  (let [new-type (get after-types id)]
@@ -431,12 +431,12 @@
                                                    (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
       (api/check-not-archived existing))
-    (api/write-check existing)
     (let [collection-id (when (contains? args :collection_id)
-                          (v2.resolve/resolve-collection-id (:collection_id args)))]
-      (when (and (contains? args :collection_id)
-                 (not= collection-id (:collection_id existing)))
-        (documents/validate-collection-move-permissions (:collection_id existing) collection-id))
+                          (v2.resolve/resolve-collection-id (:collection_id args)))
+          move          (cond-> {}
+                          (contains? args :collection_id) (assoc :collection_id collection-id)
+                          (contains? args :archived)      (assoc :archived (:archived args)))]
+      (api/update-check existing move)
       (let [old-ids (ast-id-set (:document existing))
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document
             ;; column is left entirely alone below.

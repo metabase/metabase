@@ -2,8 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.cache.db :as cache.db]
-   [metabase.cache.api]
    [metabase.cache.core :as cache]
+   [metabase.cache.schema :as cache.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.log :as log]
@@ -11,26 +11,24 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.cache.api/keep-me)
-
 ;; Data shape
 
-;;; This is basically the same schema as `:metabase.cache.api/cache-strategy.ee` except it adds optional
+;;; This is basically the same schema as `:metabase.cache.schema/cache-strategy.ee` except it adds optional
 ;;; `:invalidated-at` keys
 (mr/def ::cache-strategy
   "Schema for a caching strategy used internally"
   [:multi {:dispatch :type}
-   [:nocache  :metabase.cache.api/cache-strategy.nocache]
+   [:nocache  ::cache.schema/cache-strategy.nocache]
    [:ttl      [:merge
-               :metabase.cache.api/cache-strategy.ttl
+               ::cache.schema/cache-strategy.ttl
                [:map
                 [:invalidated-at {:optional true} some?]]]]
    [:duration [:merge
-               :metabase.cache.api/cache-strategy.ee.duration
+               ::cache.schema/cache-strategy.ee.duration
                [:map
                 [:invalidated-at {:optional true} some?]]]]
    [:schedule [:merge
-               :metabase.cache.api/cache-strategy.ee.schedule
+               ::cache.schema/cache-strategy.ee.schedule
                [:map
                 [:invalidated-at {:optional true} some?]]]]])
 

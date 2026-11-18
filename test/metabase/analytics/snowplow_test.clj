@@ -201,6 +201,21 @@
           turn  {"finish_reason" "stop" "steps" 2}]
       (with-fake-snowplow-collector
         (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" tool) nil)))
+        (testing "a tool event names the repair passes that changed the query, or none"
+          (doseq [repairs [[] ["rewrite-operator-name-aliases" "swap-between-bounds"]]]
+            (is (true? (snowplow/track-event! :snowplow/ai_service_event
+                                              (event "agent_used_tool" {"tool_name" "construct_notebook_query"
+                                                                        "step"      1
+                                                                        "repairs"   repairs})
+                                              nil))))
+          (is (= [[] ["rewrite-operator-name-aliases" "swap-between-bounds"]]
+                 (->> (pop-event-data-and-user-id!)
+                      (keep #(get-in % [:data "event_details" "repairs"])))))
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (snowplow/track-event! :snowplow/ai_service_event
+                                              (event "agent_used_tool" {"tool_name" "x" "repairs" "a,b"}) nil))
+              "a string in place of the list"))
+        (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" tool) nil)))
         (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_turn_finished" turn) nil)))
         ;; the collector also holds new_instance_created
         (is (= ["agent_used_tool" "agent_turn_finished"]
