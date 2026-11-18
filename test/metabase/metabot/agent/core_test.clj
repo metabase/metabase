@@ -1748,12 +1748,16 @@
                                         openrouter/openrouter
                                         (fn [{:keys [input]}]
                                           (mut/mock-llm-response
+                                           ;; The links fill the registry, so the tails of calls 2 and 3 go
+                                           ;; through a real inversion.
                                            (case (count (swap! inputs conj input))
-                                             1 [{:type      :tool-input
+                                             1 [{:type :text :text "See [Orders](metabase://model/1)."}
+                                                {:type      :tool-input
                                                  :id        "call-1"
                                                  :function  "search"
                                                  :arguments {:keyword_queries ["orders"]}}]
-                                             2 [{:type      :tool-input
+                                             2 [{:type :text :text "See [Ops](metabase://dashboard/2)."}
+                                                {:type      :tool-input
                                                  :id        "call-2"
                                                  :function  "search"
                                                  :arguments {:keyword_queries ["people"]}}]
@@ -1768,7 +1772,14 @@
                 (is (= 1 @renders))
                 (is (= preload? (boolean (some #(= "load_skill" (:function %)) input-1))))
                 (is (= @base-inputs @inputs))
-                (is (=? [{:type :tool-input :id "call-2"}
+                (is (=? [{:type :text :text "See "}
+                         {:type :text :text "[Orders](metabase://model/1)."}
+                         {:type :tool-input :id "call-1"}
+                         {:type :tool-output :id "call-1"}]
+                        (drop (count input-1) input-2)))
+                (is (=? [{:type :text :text "See "}
+                         {:type :text :text "[Ops](metabase://dashboard/2)."}
+                         {:type :tool-input :id "call-2"}
                          {:type :tool-output :id "call-2"}]
                         (drop (count input-2) input-3)))))))))))
 
