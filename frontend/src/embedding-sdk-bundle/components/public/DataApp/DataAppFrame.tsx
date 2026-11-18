@@ -21,7 +21,7 @@ import type { DataAppProps } from "./DataApp";
 // Matches metabase-data-app web component's default height
 const DEFAULT_HEIGHT = 600;
 
-interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
+interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
   path: string;
   slug: string;
   origin: string;

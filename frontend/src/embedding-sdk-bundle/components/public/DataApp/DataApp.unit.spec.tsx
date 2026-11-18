@@ -293,6 +293,38 @@ describe("DataApp", () => {
     );
   });
 
+  it("ignores route changes to initialPath and reloads the iframe when its app slug changes", () => {
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    rerender(<DataApp initialPath="boba-hq/orders" />);
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    rerender(<DataApp initialPath="milk-tea-hq/orders" />);
+    const newIframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    expect(newIframe).not.toBe(iframe);
+    expect(new URL(newIframe.src).pathname).toBe(
+      "/mb/embed/embedded-apps/milk-tea-hq/orders",
+    );
+  });
+
+  it("uses path and warns when initialPath is also set", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { iframe } = setup({ initialPath: "milk-tea-hq", path: "boba-hq" });
+
+    expect(new URL(iframe.src).pathname).toBe(
+      "/mb/embed/embedded-apps/boba-hq",
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "`initialPath` is ignored when `path` is set. Pass only one.",
+    );
+
+    warn.mockRestore();
+  });
+
   it("sends the latest path once the iframe is ready after a route change", () => {
     const { iframe, postMessage, rerender } = setup();
 

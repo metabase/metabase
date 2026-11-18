@@ -1,4 +1,4 @@
-import { type CSSProperties, useId, useMemo } from "react";
+import { type CSSProperties, useEffect, useId, useMemo, useState } from "react";
 
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
@@ -17,15 +17,26 @@ import { DataAppFrame } from "./DataAppFrame";
 /** @category DataApp */
 export interface DataAppProps {
   /**
-   * App slug and optional route/query, such as `my-store/orders?active=true`.
+   * The page the app opens first: the app slug and optional route/query, such as `my-store/orders?active=true`.
+   *
+   * Later changes to the route or query are ignored.
+   * Changing the app slug remounts the iframe with the new app.
+   *
+   * Use {@link DataAppProps.path | path} instead to navigate the app from the host.
+   **/
+  initialPath?: string;
+
+  /**
+   * Controlled path: the app slug and optional route/query, such as `my-store/orders?active=true`.
    *
    * Changing only the route or query navigates within the app.
    * Changing the app slug remounts the iframe.
+   * The user can still navigate inside the app, for example with a `DataAppLink`.
    *
-   * To navigate back to a page after the user navigates inside the app,
-   * keep `path` in state and update it with `onPathChange`.
+   * Pair with {@link DataAppProps.onPathChange | onPathChange} to stay in sync with that navigation,
+   * so the host can always navigate, including back to an earlier page.
    **/
-  path: string;
+  path?: string;
 
   /**
    * Called with the new path whenever the app's page changes, for example
@@ -33,7 +44,7 @@ export interface DataAppProps {
    *
    * The path has the same format as `path`, such as `my-store/orders/42?tab=items`.
    *
-   * It is not called when the host changes the `path` prop manually.
+   * It is not called when the host changes the `path` prop.
    *
    * @example
    * ```tsx
@@ -61,7 +72,25 @@ export const DataApp = (props: DataAppProps) => (
   </PublicComponentWrapper>
 );
 
-function DataAppInner({ path, ...props }: DataAppProps) {
+function DataAppInner({
+  initialPath,
+  path: controlledPath,
+  ...props
+}: DataAppProps) {
+  const hasConflictingPaths =
+    initialPath !== undefined && controlledPath !== undefined;
+
+  useEffect(() => {
+    if (hasConflictingPaths) {
+      console.warn(
+        "`initialPath` is ignored when `path` is set. Pass only one.",
+      );
+    }
+  }, [hasConflictingPaths]);
+
+  const uncontrolledPath = useUncontrolledPath(initialPath);
+  const path = controlledPath ?? uncontrolledPath ?? "";
+
   const {
     state: { props: providerProps },
   } = useMetabaseProviderPropsStore();
@@ -136,3 +165,17 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     />
   );
 }
+
+/** Keeps the first `initialPath` until its app slug changes. */
+function useUncontrolledPath(initialPath: string | undefined) {
+  const [path, setPath] = useState(initialPath);
+
+  if (getSlug(initialPath) !== getSlug(path)) {
+    setPath(initialPath);
+  }
+
+  return path;
+}
+
+const getSlug = (path: string | undefined) =>
+  path === undefined ? undefined : getEmbeddedAppSlugFromPath(path);
