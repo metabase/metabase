@@ -61,12 +61,14 @@ export function PreviewBand({
         role="status"
         aria-label={t`Previewing as`}
         bg="feedback-warning"
-        px="md"
-        py="xs"
+        // the Banner's own left padding wins over px
+        pl="lg"
+        pr="lg"
+        py="sm"
         style={{ borderRadius: "var(--mantine-radius-md)" }}
         contentGroupProps={{
           className: S.wrapping,
-          gap: "sm",
+          gap: "md",
           flex: 1,
           miw: 0,
         }}
@@ -152,7 +154,6 @@ export function ExplainAccessButton({
   if (!isCompact) {
     return (
       <Button
-        size="sm"
         style={{ flexShrink: 0 }}
         disabled={disabled}
         aria-pressed={isOpen}
@@ -165,7 +166,6 @@ export function ExplainAccessButton({
   return (
     <Tooltip label={t`Explain access`}>
       <Button
-        size="sm"
         style={{ flexShrink: 0 }}
         disabled={disabled}
         aria-label={t`Explain access`}

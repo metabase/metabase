@@ -54,6 +54,26 @@ describe("TroubleshootPage", () => {
     ).toHaveTextContent("Explain access");
   });
 
+  it("gives the band the mode bar spacing: 16px sides, 8px above and below, and 32px buttons", async () => {
+    setup({});
+
+    const band = await screen.findByRole("status", { name: "Previewing as" });
+    // jsdom can't resolve var(), so the props are read from the inline style they render
+    const bandStyle = band.getAttribute("style");
+    expect(bandStyle).toContain("padding-left: var(--mantine-spacing-lg)");
+    expect(bandStyle).toContain("padding-right: var(--mantine-spacing-lg)");
+    expect(bandStyle).toContain("padding-block: var(--mantine-spacing-sm)");
+    for (const name of [
+      "Back to all collections",
+      "Explain access",
+      "Open in new tab",
+    ]) {
+      expect(screen.getByRole("button", { name })).toHaveStyle(
+        "--button-height: var(--button-height-md)",
+      );
+    }
+  });
+
   it("says what Read-only means in its tooltip, without Audited next to the name", async () => {
     setup({});
 

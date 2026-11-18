@@ -194,7 +194,6 @@ export function TroubleshootPage() {
             {/* the item kept across a person switch may be one the new person can't open */}
             <Tooltip label={t`Back to all collections`}>
               <Button
-                size="sm"
                 style={{ flexShrink: 0 }}
                 aria-label={t`Back to all collections`}
                 leftSection={<Icon name="home" />}
@@ -211,7 +210,6 @@ export function TroubleshootPage() {
             />
             <Tooltip label={t`Open in new tab`}>
               <Button
-                size="sm"
                 style={{ flexShrink: 0 }}
                 aria-label={t`Open in new tab`}
                 leftSection={<Icon name="external" />}

@@ -1,7 +1,7 @@
 /* Troubleshoot's band: one row while everything fits, else who you're viewing as on top and the controls below */
 .wrapping {
   flex-wrap: wrap;
-  row-gap: var(--mantine-spacing-xs);
+  row-gap: var(--mantine-spacing-sm);
 }
 
 .who {
@@ -9,8 +9,8 @@
   flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: var(--mantine-spacing-sm);
-  row-gap: var(--mantine-spacing-xs);
+  column-gap: var(--mantine-spacing-md);
+  row-gap: var(--mantine-spacing-sm);
   min-width: 0;
 }
 
@@ -36,6 +36,6 @@
   display: flex;
   flex: 1000 1 22rem;
   align-items: center;
-  gap: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-md);
   min-width: 0;
 }
