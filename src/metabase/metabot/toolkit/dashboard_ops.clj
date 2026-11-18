@@ -1030,10 +1030,22 @@
               {:keys [parameter_id card_id]}                            parameter_mappings]
           [parameter_id dashcard-id (or (slot dashcard card_id) card_id)])))
 
-(def ^:private intentional-drop-ops
-  "The ops whose dropped connections were asked for: `unwire_parameter`, and `patch_dashcard` setting
-   `parameter_mappings`."
-  #{"unwire_parameter" "patch_dashcard"})
+(defn- asked-drops
+  "The connections among `stored`, as [[slot-connections]] gives them, that `op` asks to drop.
+   Those are a filter's for `remove_parameter` and `unwire_parameter`, on its one dashcard when the unwire names one,
+   and a dashcard's for a `patch_dashcard` that sets its `parameter_mappings`."
+  [stored {:keys [op parameter_id dashcard_id patch] :as o}]
+  ;; Judged by what the op names rather than what it removed, so asking to drop a connection an earlier op already
+  ;; cleared still counts.
+  (case op
+    "remove_parameter" (filter (fn [[p]] (= parameter_id p)) stored)
+    "unwire_parameter" (filter (fn [[p dc]]
+                                 (and (= parameter_id p)
+                                      (or (not (contains? o :dashcard_id)) (= dashcard_id dc))))
+                               stored)
+    "patch_dashcard"   (when (contains? patch :parameter_mappings)
+                         (filter (fn [[_ dc]] (= dashcard_id dc)) stored))
+    nil))
 
 (defn- track-promotions
   "The origins after `op`: for each dashcard id, the stored slots each of its current slots stands for.
@@ -1058,18 +1070,13 @@
 
 (defn- apply-op-tracking-drops
   "Runs [[apply-op-at]], and keeps `::slot-origins`, as [[track-promotions]] gives them, and `::asked-drops`, the
-   connections, as [[stored-connections]] gives them, that an op in [[intentional-drop-ops]] removed and no later op
-   restored."
+   stored connections an op asked to drop, as [[asked-drops]] finds them, that no later op restored.
+   The `state` holds the stored connections in `::stored-connections`."
   [state idx op]
-  (let [origins  (::slot-origins state)
-        origins' (track-promotions origins state op)
-        before   (stored-connections origins (:dashcards state))
-        state'   (assoc (apply-op-at state idx op) ::slot-origins origins')
-        after    (stored-connections origins' (:dashcards state'))]
-    (update state' ::asked-drops
-            (fn [asked]
-              (cond-> (set/difference (or asked #{}) after)
-                (contains? intentional-drop-ops (:op op)) (set/union (set/difference before after)))))))
+  (let [origins (track-promotions (::slot-origins state) state op)
+        state'  (assoc (apply-op-at state idx op) ::slot-origins origins)
+        asked   (into (or (::asked-drops state) #{}) (asked-drops (::stored-connections state) op))]
+    (assoc state' ::asked-drops (set/difference asked (stored-connections origins (:dashcards state'))))))
 
 (defn- current-slot
   "Where the stored slot `stored-slot` of `dashcard` is after the ops, given the dashcard's `origins` from
@@ -1130,7 +1137,9 @@
   [current ops cards]
   (let [ops     (prepare-ops ops)
         state   (-> (reduce-kv apply-op-tracking-drops
-                               (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
+                               (assoc (init-state current cards)
+                                      ::stored-card-ids    (dashboard-card-ids current)
+                                      ::stored-connections (slot-connections (:dashcards current)))
                                ops)
                     check-tab-coverage!
                     settle-layout)
