@@ -610,8 +610,7 @@
   From the first [[request!]] until the last answer, no sync of the Database runs in this JVM, and while a sync of it
   runs, a request or an answer is refused (`metadata-sync-sync-running`): both insert Tables. See the lease above."
   [database-id :- ::lib.schema.id/database
-   response    :- [:map {::mr/deliberately-open true
-                         :description           "the other Metabase's answer, decoded from JSON, which this checks"}]]
+   response    :- [:map {:description "the other Metabase's answer, decoded from JSON, which this checks"}]]
   (let [database (receiving-database database-id)]
     (check-response! database response)
     (take-lease! database-id)

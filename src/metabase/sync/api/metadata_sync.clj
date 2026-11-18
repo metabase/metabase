@@ -60,6 +60,11 @@
   (api/check-superuser)
   (receive/request! database_id after))
 
+(mr/def ::answer
+  "The other Metabase's answer, open so that the receiver sees every key it has: an answer of another version is then
+  refused with an error code of its own, not stripped."
+  [:map {:closed false, :description "the other Metabase's answer, which the receiver checks"}])
+
 (api.macros/defendpoint :post "/metadata/apply" :- ::receive/result
   "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the
   Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,
@@ -84,9 +89,6 @@
    _query-params
    {:keys [database_id response]} :- [:map {:closed true}
                                       [:database_id ::lib.schema.id/database]
-                                      [:response    [:map {:closed                false
-                                                           ::mr/deliberately-open true
-                                                           :description           (str "the other Metabase's answer, "
-                                                                                       "which the receiver checks")}]]]]
+                                      [:response    ::answer]]]
   (api/check-superuser)
   (receive/apply-response! database_id response))

@@ -75,8 +75,7 @@
   50)
 
 (mr/def ::field
-  [:map {::mr/deliberately-open true
-         :description           "a Field's entry: its name path, and each of `field-columns` that has a value"}
+  [:map {:description "a Field's entry: its name path, and each of `field-columns` that has a value"}
    [:path          [:sequential {:min 1 :max max-path-length} ms/NonBlankString]]
    [:base_type     ms/NonBlankString]
    [:database_type ms/NonBlankString]
@@ -84,8 +83,7 @@
    [:user_set      {:optional true} [:sequential {:min 1} (into [:enum] field-user-set-columns)]]])
 
 (mr/def ::table
-  [:map {::mr/deliberately-open true
-         :description           "a Table's entry: each of `table-columns` that has a value, and its Fields"}
+  [:map {:description "a Table's entry: each of `table-columns` that has a value, and its Fields"}
    [:name        ms/NonBlankString]
    [:schema      {:optional true} :string]
    [:data_source {:optional true} (into [:enum] (sort sent-data-sources))]

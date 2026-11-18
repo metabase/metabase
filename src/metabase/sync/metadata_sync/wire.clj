@@ -23,19 +23,17 @@
 
 (mr/def ::database
   [:map {:closed true}
-   [:dbms_version {:optional true} [:map {::mr/deliberately-open true
-                                          :description           "the version a driver reports, in its shape"}]]
+   [:dbms_version {:optional true} [:map {:description "the version a driver reports, in its shape"}]]
    [:timezone     {:optional true} :string]])
 
 (mu/defn database-values :- ::database
   "The values of `database`, a Database row, that are sent: each of [[database-columns]] that has one."
-  [database :- [:map {::mr/deliberately-open true :description "a Database row"}]]
+  [database :- [:map {:description "a Database row"}]]
   (u/remove-nils (select-keys database database-columns)))
 
 (mr/def ::request
-  [:map {::mr/deliberately-open true
-         :description           (str "a request for the metadata of one Database; a key that this version does not "
-                                     "know is ignored, so that a newer receiver is not refused")}
+  [:map {:description (str "a request for the metadata of one Database; a key that this version does not "
+                           "know is ignored, so that a newer receiver is not refused")}
    [:database       ms/NonBlankString]
    [:engine         ms/NonBlankString]
    [:schema_filters {:optional true} [:maybe ::tables/schema-filter]]
