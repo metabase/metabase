@@ -32,14 +32,18 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card]
+   [metabase-enterprise.data-testing.subject.segment]
    [metabase-enterprise.data-testing.subject.transform]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.util :as u]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -53,6 +57,7 @@
   metabase-enterprise.data-testing.expectations.empty/keep-me
   metabase-enterprise.data-testing.expectations.equals/keep-me
   metabase-enterprise.data-testing.subject.card/keep-me
+  metabase-enterprise.data-testing.subject.segment/keep-me
   metabase-enterprise.data-testing.subject.transform/keep-me)
 
 (mr/def ::labels
@@ -187,6 +192,25 @@
         (doseq [table (vals @temp-tables)]
           (data-testing.executor/drop-temp-table! driver conn table))))))
 
+(mu/defn- columns-read :- [:maybe [:set ::data-testing.validator/column-read]]
+  "The columns of tables that `sql` reads, as `metadata-provider` spells them, or nil when the parser reports an error
+  in `sql`. A column is left out when `metadata-provider` does not list it, when only a wildcard reads it, or when its
+  reference could also read something else: a column of another table, a column whose name differs only in case, a
+  computed value, or a column of a source whose columns are unknown."
+  [driver            :- :keyword
+   metadata-provider :- ::lib.schema.metadata/metadata-provider
+   sql               :- :string]
+  (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)]
+    (when (empty? errors)
+      (into #{}
+            (comp (filter #(= :single-column (:type %)))
+                  (keep (fn [field]
+                          (let [[column & more] (sql-tools/field-candidates driver metadata-provider field)]
+                            (when (and (:table-id column) (not more))
+                              (let [{:keys [schema name]} (lib.metadata/table metadata-provider (:table-id column))]
+                                {:schema schema :name name :column (:name column)}))))))
+            (concat used-fields returned-fields)))))
+
 (mu/defn- source-tables :- [:set ::data-testing.schema/table]
   "The tables the subject's `sql` reads, or a refusal naming what would not parse."
   [driver :- :keyword
@@ -218,26 +242,12 @@
                                (data-testing.validator/table-label (:table input)))
                           labels)))))
 
-(defmulti column-names-ignore-case?
-  "Whether `driver` treats two column names that differ only in case as one name, so that a table cannot hold both.
-  False unless a driver says otherwise."
-  {:arglists '([driver])}
-  identity
-  :hierarchy #'driver/hierarchy)
-
-(defmethod column-names-ignore-case? :default [_driver] false)
-
-;; MySQL and MariaDB, SQL Server with its default collation, and DuckDB compare column names without regard to case.
-;; Redshift folds quoted names to lower case too, unless `enable_case_sensitive_identifier` is on.
-(doseq [driver [:mysql :sqlserver :motherduck :redshift]]
-  (defmethod column-names-ignore-case? driver [_driver] true))
-
 (mu/defn- check-output-columns! :- :nil
   "Refuse the output `columns` of the query under test unless their names are distinct, as `driver` compares column
   names."
   [driver  :- :keyword
    columns :- [:sequential ::data-testing.schema/result-column]]
-  (let [same-name (if (column-names-ignore-case? driver) u/lower-case-en identity)]
+  (let [same-name (partial data-testing.u/column-key (data-testing.u/column-names-ignore-case? driver))]
     (when-let [repeated (seq (for [[_name [column-name & more]] (group-by same-name (map :name columns))
                                    :when (seq more)]
                                column-name))]
@@ -299,7 +309,7 @@
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
   (let [{:keys [database compiled output-tables output-token output-label]}
-        (data-testing.subject/subject-plan subject-type subject)
+        (data-testing.subject/subject-plan subject-type subject inputs)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
@@ -315,7 +325,10 @@
       :rewritten-query (:query rewritten)
       :replacements        replacements
       :output-token        output-token
-      :default-schema      default-schema})
+      :default-schema      default-schema
+      :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
+                                         (:query compiled))
+      :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
     {:driver       driver
      :database     database
      :input->table input->table

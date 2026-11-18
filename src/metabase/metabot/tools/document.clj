@@ -227,9 +227,11 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 sql-chart-schema})
   (handle [_ {:keys [database_id name description analysis approach sql viz_settings]} _ctx]
+    ;; No table check: this tool drops warnings and runs the query, so the database reports a bad reference.
     (let [{:keys [query-id query]} (sql.common/validated-sql-action!
-                                    (create-sql-query-tools/create-sql-query {:database-id database_id
-                                                                              :sql sql}))
+                                    (create-sql-query-tools/create-sql-query {:database-id   database_id
+                                                                              :sql           sql
+                                                                              :check-tables? false}))
           chart-type (get viz_settings :chart_type)]
       (check-query! query)
       {:output            "Draft chart payload generated from SQL query."
@@ -266,7 +268,7 @@
      :args        model-chart-schema})
   (handle [_ {:keys [name description query viz_settings]} ctx]
     (let [chart-type (get viz_settings :chart_type)
-          {query-id :query-id dataset-query :query}
+          {query-id :query-id dataset-query :query repairs :repairs}
           (:structured-output (tools/call construct-tools/construct-notebook-query-tool
                                           {:query         query
                                            :title         name
@@ -282,7 +284,9 @@
                            :chart_type    chart-type
                            :query_id      query-id
                            :query         dataset-query
-                           :result-type   :chart-draft}})))
+                           :result-type   :chart-draft
+                           ;; For the `agent_used_tool` event of this call, as in `construct_notebook_query`.
+                           :repairs       repairs}})))
 
 (def document-construct-model-chart-tool
   "The `document_construct_model_chart` tool."

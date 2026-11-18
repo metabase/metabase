@@ -375,14 +375,6 @@
       (vec (json/decode (call "referenced_tables" sql dialect))))
     (referenced-fields [_ dialect sql]
       (vec (json/decode (call "referenced_fields" sql dialect))))
-    (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
-      (vec (json/decode (call "returned_columns_lineage"
-                              dialect sql default-table-schema (json/encode sqlglot-schema)))))
-    (validate-query [_ dialect sql default-table-schema sqlglot-schema]
-      ;; nil → "{}" (an empty JSON object), which sql_tools reads as permissive mode; encoding the
-      ;; *string* "{}" here would double-encode and make Python treat a string as the schema
-      (json/decode+kw (call "validate_query"
-                            dialect sql default-table-schema (json/encode (or sqlglot-schema {})))))
     (simple-query [_ dialect sql]
       (json/decode+kw (call "simple_query" sql dialect)))
     (add-into-clause [_ dialect sql table-name]

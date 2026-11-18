@@ -583,7 +583,10 @@
           refused (atom nil)]
       (try
         (binding [qp.pipeline/*execute* (fn [driver native-query respond]
-                                          (let [sql (get-in native-query [:native :query])]
+                                          (let [sql (if (:lib/type native-query)
+                                                      ;; drivers that support `:mbql-5-native-query-execution`
+                                                      (:native (lib/query-stage native-query -1))
+                                                      (get-in native-query [:native :query]))]
                                             (when-not (or (= checked-sql sql)
                                                           (and (string? sql)
                                                                (sql-tools/read-only-select? driver sql)))

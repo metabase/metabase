@@ -144,8 +144,7 @@
         (mt/with-temp [:model/Collection collection {:type "library-data"}
                        :model/Table      table     {:collection_id (u/the-id collection)
                                                     :is_published  true}
-                       :model/Table      _         {:collection_id (u/the-id collection)
-                                                    :is_published  false}
+                       :model/Table      _         {:is_published false}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)

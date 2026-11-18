@@ -88,3 +88,20 @@
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
   (maybe-send-notification-for-topic! topic event-info))
+
+(defn- created-notification-owner
+  "The id of the Notification that the `event` of the write of it created."
+  [{:keys [model operation object]}]
+  (when (and (= :model/Notification model) (= :create operation))
+    (:id object)))
+
+(defn- publish-created-notification!
+  "Publish `:event/notification-create` with the fully hydrated Notification `notification-id`, once its batch wrote
+  all of it, as the user who created it."
+  [notification-id events _all-events]
+  (when-let [user-id (some :user-id events)]
+    (when-let [notification (some-> (notification.db/instance :model/Notification notification-id)
+                                    models.notification/hydrate-notification)]
+      (events/publish-event! :event/notification-create {:object notification :user-id user-id}))))
+
+(events/register-owned-consumer! ::created-notification created-notification-owner publish-created-notification!)

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -32,9 +33,18 @@
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :get 403 "osi/ai-context/"))
     (testing "a legacy row whose entity_type is no longer in the write enum still reads back fine"
-      (with-test-entry [_ {:entity_type "retired-model-string" :entity_local_id 7}]
-        (is (has-entity? (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/"))
-                         "retired-model-string" 7))))))
+      (let [now (java.time.OffsetDateTime/now)]
+        (t2/insert! (t2/table-name :model/OsiAiContext) {:entity_type     "retired-model-string"
+                                                         :entity_local_id 7
+                                                         :entity_id       (u/generate-nano-id)
+                                                         :ai_context      "{\"instructions\":\"find orders\"}"
+                                                         :created_at      now
+                                                         :updated_at      now})
+        (try
+          (is (has-entity? (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/"))
+                           "retired-model-string" 7))
+          (finally
+            (t2/delete! :model/OsiAiContext :entity_type "retired-model-string" :entity_local_id 7)))))))
 
 (deftest get-test
   (with-test-entry [_ {:entity_type "table" :entity_local_id 1 :ai_context {:instructions "find customers"}}]

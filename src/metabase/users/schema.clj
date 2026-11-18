@@ -23,6 +23,10 @@
   "The combined attributes of a User: its login and JWT attributes plus the system (`@`-prefixed) attributes like its tenant's."
   (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value]))
 
+(mr/def ::user.type
+  "The `:type` column of a User."
+  (ms/enum-keywords-and-strings :internal :personal :api-key))
+
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
   [:map {:closed true}
@@ -34,7 +38,7 @@
    [:jwt_attributes   {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]
+   [:type             {:optional true} [:maybe ::user.type]]
    [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]
    [:is_active        {:optional true} [:maybe :boolean]]])
 
@@ -91,7 +95,7 @@
    [:locale                  [:maybe :string]]
    [:is_datasetnewb          :boolean]
    [:settings                [:maybe ::user.settings]]
-   [:type                    [:or :keyword :string]]
+   [:type                    ::user.type]
    [:entity_id               :string]
    [:deactivated_at          [:maybe ms/TemporalInstant]]
    [:tenant_id               [:maybe ms/PositiveInt]]
@@ -121,7 +125,7 @@
    [:locale                  {:optional true} [:maybe :string]]
    [:is_datasetnewb          {:optional true} [:maybe :boolean]]
    [:settings                {:optional true} [:maybe ::user.settings]]
-   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                    {:optional true} [:maybe ::user.type]]
    [:entity_id               {:optional true} [:maybe :string]]
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
-import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
+import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/event";
 import {
   getHostReactVersion,
   getSdkAuthMethod,
@@ -9,7 +9,7 @@ import {
   getSdkLocaleUsed,
   initSdkTracker,
   trackSdkSimpleEvent,
-} from "embedding-sdk-bundle/analytics/snowplow";
+} from "embedding-sdk-bundle/analytics/event";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
@@ -57,7 +57,7 @@ export function useInitSdkTracker(
     }
     initMetaplow({
       hostUrl: getMetaplowHostUrl(reduxStore, authConfig.metabaseInstanceUrl),
-      // Via frontend/src/embedding-sdk-bundle/analytics/snowplow.ts
+      // Via frontend/src/embedding-sdk-bundle/analytics/event.ts
       // Omits userId — unlike the main-app tracker, SDK component usage is tracked at instance granularity;
       // the analytics-uuid already identifies the account.
       getUserId: () => undefined,

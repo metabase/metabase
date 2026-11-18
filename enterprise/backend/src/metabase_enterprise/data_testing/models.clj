@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,7 +28,14 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
+  (derive :hook/events)
   (derive ::saved-test))
+
+(defmethod events/spec :model/TransformTest
+  [_model]
+  {:create :event/transform-test-create
+   :update :event/transform-test-update
+   :delete :event/transform-test-delete})
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
@@ -64,6 +72,12 @@
   [transform-test _event-type]
   (select-keys transform-test [:transform_id :name :description]))
 
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(t2/define-before-delete :model/TransformTest [transform-test]
+  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
+  transform-test)
+
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn can-run-native-query?
@@ -71,6 +85,20 @@
   test does."
   [db-id]
   (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
+
+(defn query-subject-allows?
+  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
+  `query`, the subject's query, and write the native SQL of a test against the Database of `query`. False when
+  `subject` is nil."
+  [subject-check k subject query]
+  (boolean
+   (when subject
+     (and (subject-check (t2/hydrate subject k))
+          ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
+          ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
+          (query-perms/can-run-query? query)
+          (or (mi/superuser?)
+              (some-> (not-empty query) lib/database-id can-run-native-query?))))))
 
 (defn- can-save-for-transform?
   "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
@@ -126,12 +154,48 @@
   [_model instance]
   (can-save? (:transform_id instance)))
 
+(defn- unsynced-change-writable?
+  "Whether the current user can apply `changes` that touch no synced column of `instance`, which a read-only instance
+  still accepts."
+  [instance changes]
+  (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
+       (can-save? (:transform_id instance))))
+
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (can-save? (:transform_id instance))
-       (can-save? (:transform_id changes (:transform_id instance)))
-       (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-           (not (remote-sync/read-only?)))))
+  (and (or (mi/can-write? instance)
+           (unsynced-change-writable? instance changes))
+       (can-save? (:transform_id changes (:transform_id instance)))))
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-transform-test! :- ::data-testing.schema/transform-test
+  "Insert the TransformTest `transform-test` returning the inserted test."
+  [transform-test :- [:merge
+                      ::data-testing.schema/transform-test.create
+                      [:map {:closed true}
+                       [:creator_id ::lib.schema.id/user]]]]
+  (data-testing.db/insert-transform-test! transform-test))
+
+(mu/defn update-transform-test! :- :nil
+  "Apply `changes` to the TransformTest with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/transform-test.update]
+  (data-testing.db/update-transform-test! id changes)
+  nil)
+
+(mu/defn delete-transform-test! :- :nil
+  "Delete the TransformTest with `id`."
+  [id :- ms/PositiveInt]
+  (data-testing.db/delete-transform-test! id)
+  nil)
+
+(defenterprise delete-transform-tests!
+  "Deletes the tests of the transform `transform-id` whatever the token says,
+  since the rows outlive the feature."
+  :feature :none
+  [transform-id]
+  (data-testing.db/delete-transform-tests! transform-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -152,38 +216,7 @@
 
 (defmethod revision/revert-to-revision! :model/TransformTest
   [_model id _user-id serialized-instance]
-  (data-testing.db/update-transform-test! id (select-keys serialized-instance revision-columns)))
-
-;;; ---------------------------------------------------- Events ----------------------------------------------------
-
-(t2/define-after-insert :model/TransformTest [transform-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-create
-                           {:object  (t2/instance :model/TransformTest transform-test)
-                            :user-id (:creator_id transform-test)}))
-  transform-test)
-
-(t2/define-after-update :model/TransformTest [transform-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-update
-                           {:object (t2/instance :model/TransformTest transform-test)}))
-  transform-test)
-
-(defenterprise delete-transform-tests!
-  "Enterprise implementation: delete the tests of the transform `transform-id`, each through its own hook. Runs
-  whatever the token says, since the rows outlive the feature. See the OSS declaration in
-  `metabase.transforms.models.transform`."
-  :feature :none
-  [transform-id]
-  (data-testing.db/delete-transform-tests! transform-id))
-
-(t2/define-before-delete :model/TransformTest [transform-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook.
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-delete {:object transform-test}))
-  transform-test)
+  (update-transform-test! id (select-keys serialized-instance revision-columns)))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
