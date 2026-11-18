@@ -8,17 +8,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mr/def ::status
-  [:enum :unprovisioned :provisioning :provisioned :deprovisioning])
+  [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (mr/def ::workspace-database.insert
   [:map {:closed true}
    [:workspace_id     ms/PositiveInt]
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential :string]]
-   [:database_details ms/DatabaseDetails]
+   [:database_details ::warehouses.schema/database.connection-details]
    [:output_namespace :string]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
@@ -26,7 +27,7 @@
 (mr/def ::workspace-database.update
   [:map {:closed true}
    [:output_namespace {:optional true} :string]
-   [:database_details {:optional true} ms/DatabaseDetails]
+   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
@@ -117,11 +118,21 @@
   []
   (t2/select :model/Workspace {:order-by [[:id :asc]]}))
 
+(mu/defn workspace-id-by-idempotency-key :- [:maybe ms/PositiveInt]
+  "The id of the Workspace that `creator-id` created with `idempotency-key`, or nil."
+  [creator-id      :- ::lib.schema.id/user
+   idempotency-key :- :string]
+  (t2/select-one-pk :model/Workspace :creator_id creator-id :idempotency_key idempotency-key))
+
 (mu/defn insert-workspace!
-  "Insert a Workspace and return its id."
-  [workspace-name :- :string
-   creator-id     :- [:maybe ::lib.schema.id/user]]
-  (t2/insert-returning-pk! :model/Workspace {:name workspace-name :creator_id creator-id}))
+  "Insert a Workspace and return its id. Throws a duplicate-key error when `creator-id` already has a Workspace with
+  `idempotency-key`."
+  [workspace-name  :- :string
+   creator-id      :- [:maybe ::lib.schema.id/user]
+   idempotency-key :- [:maybe :string]]
+  (t2/insert-returning-pk! :model/Workspace {:name            workspace-name
+                                             :creator_id      creator-id
+                                             :idempotency_key idempotency-key}))
 
 (mu/defn update-workspace-name!
   "Rename the Workspace with `workspace-id`."
@@ -147,14 +158,14 @@
   (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
 
 (mu/defn workspace-databases
-  "The WorkspaceDatabases of the Workspace with `workspace-id`."
+  "The WorkspaceDatabases of the Workspace with `workspace-id`, ordered by id."
   [workspace-id :- ms/PositiveInt]
-  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))
+  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-databases-of-workspaces
-  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`."
+  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, ordered by id."
   [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids]))
+  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
 
 (mu/defn workspace-database-ids-with-status
   "The ids of the WorkspaceDatabases of the Workspace with `workspace-id` whose status is `status`."
@@ -181,6 +192,18 @@
    to-status             :- ::status]
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id :status from-status}
               {:status to-status :updated_at (mi/current-timestamp)}))
+
+(mu/defn transition-workspace-database-at!
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
+  `updated-at`, if its status is `from-status`. The `UPDATE` statement carries the status condition, so of two
+  concurrent calls from the same status only one updates the row. Returns the number of rows updated."
+  [workspace-database-id :- ms/PositiveInt
+   from-status           :- ::status
+   to-status             :- ::status
+   updated-at            :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/update! :model/WorkspaceDatabase
+              {:id workspace-database-id :status from-status}
+              {:status to-status :updated_at updated-at}))
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
@@ -214,6 +237,20 @@
   (t2/exists? :model/WorkspaceDatabase
               :workspace_id workspace-id
               :status       [:in [:provisioning :deprovisioning]]
+              {:where [:exists ^:allow-subquery {:select [1]
+                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :where  [:and
+                                                          [:= :any_wsd.workspace_id workspace-id]
+                                                          [:> :any_wsd.updated_at since]]}]}))
+
+(mu/defn workspace-has-unfinished-databases-since?
+  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:unprovisioned`, `:provisioning` or
+  `:deprovisioning`, and any of its WorkspaceDatabases, whatever its status, was last updated after `since`."
+  [workspace-id :- ms/PositiveInt
+   since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/exists? :model/WorkspaceDatabase
+              :workspace_id workspace-id
+              :status       [:in [:unprovisioned :provisioning :deprovisioning]]
               {:where [:exists ^:allow-subquery {:select [1]
                                                  :from   [[:workspace_database :any_wsd]]
                                                  :where  [:and

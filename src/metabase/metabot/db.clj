@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -279,11 +280,14 @@
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
-(mu/defn participant?
-  "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string
+(mu/defn participated-conversation-ids :- [:maybe [:set :string]]
+  "The IDs of those of the MetabotConversations with `conversation-ids` the User with `user-id` has sent a message in,
+  or nil if none."
+  [conversation-ids :- [:sequential :string]
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
+  (t2/select-fn-set :conversation_id :model/MetabotMessage
+                    :conversation_id [:in conversation-ids]
+                    :user_id user-id))
 
 (mu/defn- other-participant?
   "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
@@ -926,8 +930,11 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
-                                                       :metabot_chart_id        chart-id}))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/Card :update :id card-id)
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
+                                                         :metabot_chart_id        chart-id})))
 
 (mu/defn conversation-dashboard-questions
   "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
@@ -1131,10 +1138,51 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/Card :id [:in ids] :archived true))
 
+(mu/defn card-database-ids
+  "A map of Card ID to Database ID for the Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  ;; select only the two columns: a full Card row runs its query-dependent after-select hooks
+  (into {} (map (juxt :id :database_id)) (t2/select [:model/Card :id :database_id] :id [:in ids])))
+
 (mu/defn card-curation-rows
   "The ID, Collection ID, archived flag, and Document ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
+
+(mu/defn database-card-read-rows
+  "The ID, Collection ID, and Document ID of the Cards of `database-id` with `ids`: the columns that the `:can_read`
+  hydration reads."
+  [database-id :- ::lib.schema.id/database
+   ids         :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Card :id :collection_id :document_id] :id [:in ids] :database_id [:auto/param database-id]))
+
+(mu/defn snippet-read-rows
+  "The ID and Collection ID of the NativeQuerySnippets with `ids`: the columns that the `:can_read` hydration reads."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/NativeQuerySnippet :id :collection_id] :id [:in ids]))
+
+(mu/defn database-table-names
+  "The schema and name of each active Table of `database-id` whose name case-insensitively is one of `table-names`,
+  whatever its visibility."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential :string]]
+  (t2/select [:model/Table :schema :name]
+             :db_id [:auto/param database-id]
+             :active true
+             {:where [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]}))
+
+(mu/defn database-table-names-like
+  "The schema and name of each active Table of `database-id` whose name case-insensitively starts with one of
+  `prefixes`, whatever its visibility. As in SQL `LIKE`, a `_` or `%` in a prefix matches any character, so the
+  result can hold Tables whose names do not start with the prefix."
+  [database-id :- ::lib.schema.id/database
+   prefixes    :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :schema :name]
+             :db_id [:auto/param database-id]
+             :active true
+             {:where (into [:or]
+                           (map (fn [prefix] [:like [:lower :name] [:auto/param (str (u/lower-case-en prefix) "%")]]))
+                           prefixes)}))
 
 (mu/defn dashboard-curation-rows
   "The ID, Collection ID, and archived flag of the Dashboards with `ids`."

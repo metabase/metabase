@@ -810,6 +810,12 @@
                                                       "")]
       (is (= nil (get headers "Access-Control-Allow-Origin"))))))
 
+(deftest workspaces-version-header-exposed-test
+  (testing "X-Metabase-Workspaces-Version is in Access-Control-Expose-Headers, so a cross-origin browser client can read it"
+    (let [headers (mw.security/access-control-headers "https://example.com" "https://example.com")]
+      (is (contains? (set (str/split (get headers "Access-Control-Expose-Headers") #",\s*"))
+                     "X-Metabase-Workspaces-Version")))))
+
 (deftest test-cors-enabled-when-origins-configured-without-embedding-features
   (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
     (mt/with-temporary-setting-values [enable-embedding-sdk      false

@@ -6,6 +6,7 @@
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
@@ -15,7 +16,14 @@
 
 (doto :model/Comment
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/Comment
+  [_model]
+  {:create :event/comment-create
+   :update :event/comment-update
+   :delete :event/comment-delete})
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON
@@ -49,6 +57,65 @@
          (comment-reaction/reactions-for-comments api/*current-user-id*))
    :id
    {:default {}}))
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(def target-type->model
+  "The model of each `target_type` a Comment can have."
+  {"document"    :model/Document
+   "exploration" :model/Exploration})
+
+(defn target
+  "The entity `comment` is on, or nil when it does not exist."
+  [{:keys [target_type target_id]}]
+  (when-let [model (target-type->model target_type)]
+    (comments.db/target model target_id)))
+
+(defn- targets-by-key
+  "The entities `comments` are on, by `[target_type target_id]`, with `:can_read` hydrated, loaded together per type."
+  [comments]
+  (into {}
+        (for [[target-type rows] (group-by :target_type comments)
+              :let  [model (target-type->model target-type)]
+              :when model
+              entity (t2/hydrate (comments.db/targets model (into #{} (map :target_id) rows)) :can_read)]
+          [[target-type (:id entity)] entity])))
+
+(methodical/defmethod t2/batched-hydrate [:model/Comment :can_read]
+  "Whether the current user can read each of `comments`, which they can when they read the entity it is on, the
+  entities answered together."
+  [_model k comments]
+  (let [entities (targets-by-key (remove nil? comments))]
+    (for [comment comments]
+      (when comment
+        (vary-meta comment assoc k (boolean (some-> (get entities [(:target_type comment) (:target_id comment)])
+                                                    mi/can-read?)))))))
+
+(defn- own-or-superuser?
+  "Whether the current user created `comment` or is a superuser."
+  [comment]
+  (boolean (or (= (:creator_id comment) api/*current-user-id*)
+               (mi/superuser?))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Comment :can_write]
+  "Whether the current user can edit the content of, or delete, each of `comments`: they read the entity it is on, and
+  they created it or are a superuser."
+  [_model k comments]
+  (for [comment (t2/hydrate comments :can_read)]
+    (when comment
+      (assoc comment k (and (mi/can-read? comment) (own-or-superuser? comment))))))
+
+(defmethod mi/can-create? :model/Comment
+  [_model comment]
+  (boolean (some-> (target comment) (t2/hydrate :can_read) mi/can-read?)))
+
+(defmethod mi/can-update? :model/Comment
+  [comment changes]
+  (boolean (and (mi/can-read? comment)
+                (or (not (contains? changes :content))
+                    (mi/can-write? comment))
+                (or (not (contains? changes :is_resolved))
+                    (some-> (target comment) (t2/hydrate :can_write) mi/can-write?)))))
 
 ;;;
 
@@ -127,8 +194,8 @@
   [content]
   (into []
         (comp (filter #(and (= "smartLink" (:type %))
-                            (= "user" (get-in % [:attrs "model"]))))
-              (keep #(let [entity-id (get-in % [:attrs "entityId"])]
+                            (= "user" (get-in % [:attrs :model]))))
+              (keep #(let [entity-id (get-in % [:attrs :entityId])]
                        (when (pos-int? entity-id)
                          entity-id))))
         (tree-seq :content :content content)))

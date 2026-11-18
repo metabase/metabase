@@ -395,7 +395,8 @@
                   (testing "The calculated hash should be different"
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash (driver.u/ensure-lib-database db))
                               (#'sql-jdbc.conn/jdbc-spec-hash (driver.u/ensure-lib-database db-perturbed)))))
-                  (t2/update! :model/Database :id (mt/id) {:details (:details db-perturbed)})
+                  (mt/with-dynamic-fn-redefs [sql-jdbc.conn/invalidate-pool-for-db! (fn [_db-id] nil)]
+                    (t2/update! :model/Database :id (mt/id) {:details (:details db-perturbed)}))
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db-perturbed))

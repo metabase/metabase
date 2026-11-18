@@ -17,4 +17,4 @@
       (users.db/set-user-last-login-now! user-id)
       (catch Throwable e
         ;; TODO -- huh? Terrible log message.
-        (log/warnf "Failed to process sync-database event. %s: %s" topic (ex-message e))))))
+        (log/warnf "Failed to set the last login of a user. %s: %s" topic (ex-message e))))))

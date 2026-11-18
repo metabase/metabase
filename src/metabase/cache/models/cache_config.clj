@@ -9,13 +9,13 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically
-(def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
+;;; ------------------------------------------------- Model setup --------------------------------------------------
 
 (def ^:private available-sort-columns
   "Valid columns for sorting cache configs."
@@ -29,7 +29,14 @@
 
 (doto :model/CacheConfig
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/CacheConfig
+  [_model]
+  {:create :event/cache-config-create
+   :update :event/cache-config-update
+   :delete :event/cache-config-delete})
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
 
@@ -37,6 +44,34 @@
   {:strategy mi/transform-keyword
    :config   mi/transform-json
    :state    mi/transform-json})
+
+(defn- row->strategy
+  "The cache strategy a CacheConfig `row` stores across its `strategy`, `config` and `refresh_automatically` columns."
+  [{:keys [strategy config refresh_automatically]}]
+  (let [strategy-type (some-> strategy keyword)]
+    (cond-> (assoc config :type strategy-type)
+      (#{:duration :schedule} strategy-type) (assoc :refresh_automatically refresh_automatically))))
+
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(t2/define-before-update :model/CacheConfig
+  [cache-config]
+  (let [changes (t2/changes cache-config)]
+    (when (or (contains? changes :model) (contains? changes :model_id))
+      (throw (ex-info (tru "You cannot change the target of a cache configuration.") {:status-code 400})))
+    cache-config))
+
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+(defn- target-key
+  "The `[model model_id]` target of `cache-config`, which identifies it whether it is saved or not."
+  [{:keys [model model_id]}]
+  [model model_id])
+
+(defn- target-ids
+  "The distinct `model_id`s of those of `cache-configs` targeting `model`."
+  [cache-configs model]
+  (into [] (comp (filter (comp #{model} :model)) (keep :model_id) (distinct)) cache-configs))
 
 (defn- can-write-config?
   "Whether the current user can write the CacheConfig `instance`, given the collection of the dashboard or card it
@@ -53,60 +88,82 @@
   "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they
   target at once."
   [_model k cache-configs]
-  (mi/instances-with-hydrated-data
-   cache-configs k
-   #(let [configs        (remove nil? cache-configs)
-          target-ids     (fn [model] (into [] (comp (filter (comp #{model} :model)) (keep :model_id) (distinct)) configs))
-          collection-ids {"dashboard" (cache.db/dashboard-collection-ids (target-ids "dashboard"))
-                          "question"  (cache.db/card-collection-ids (target-ids "question"))}
-          collection-permissions (perms/collection-permissions-for-user
-                                  (api/current-user-info)
-                                  (into [] (comp (filter (comp #{"dashboard" "question"} :model))
-                                                 (map (fn [{:keys [model model_id]}]
-                                                        (get-in collection-ids [model model_id])))
-                                                 (distinct))
-                                        configs)
-                                  {:root-namespace nil})
-          databases      (u/index-by :id (t2/hydrate (cache.db/databases (target-ids "database")) :can_write))]
-      (into {}
-            (map (fn [{:keys [id model model_id] :as config}]
-                   [id (can-write-config? config
-                                          (get-in collection-ids [model model_id])
-                                          collection-permissions
-                                          (when (= "database" model) (get databases model_id)))]))
-            configs))
-   :id
-   {:default false}))
+  (let [configs        (remove nil? cache-configs)
+        collection-ids {"dashboard" (cache.db/dashboard-collection-ids (target-ids configs "dashboard"))
+                        "question"  (cache.db/card-collection-ids (target-ids configs "question"))}
+        collection-permissions (perms/collection-permissions-for-user
+                                (api/current-user-info)
+                                (into [] (comp (filter (comp #{"dashboard" "question"} :model))
+                                               (map (fn [{:keys [model model_id]}]
+                                                      (get-in collection-ids [model model_id])))
+                                               (distinct))
+                                      configs)
+                                {:root-namespace nil})
+        databases      (u/index-by :id (t2/hydrate (cache.db/databases (target-ids configs "database")) :can_write))
+        flags          (into {}
+                             (map (fn [{:keys [model model_id] :as config}]
+                                    [(target-key config)
+                                     (can-write-config? config
+                                                        (get-in collection-ids [model model_id])
+                                                        collection-permissions
+                                                        (when (= "database" model) (get databases model_id)))]))
+                             configs)]
+    (for [config cache-configs]
+      (when config
+        (assoc config k (get flags (target-key config) false))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/CacheConfig :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (case (:model instance)
-                "root"      (mi/superuser?)
-                "database"  (some-> (cache.db/database-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)
-                "dashboard" (some-> (cache.db/dashboard-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)
-                "question"  (some-> (cache.db/card-with-ids [(:model_id instance)]) (t2/hydrate :can_read) mi/can-read?)))))
+(defn- readable-ids
+  "The ids of those of `targets` the current user can read, their `:can_read` hydrated together."
+  [targets]
+  (into #{} (map :id) (mi/readable targets)))
 
-(defn- can-set-cache-policy?
-  "Check if the current user can set a cache policy for an entity.
-   Uses collection permissions directly, bypassing remote-sync content lock."
-  [{model-id :id :as instance}]
-  (mi/can-write? (t2/hydrate (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
-                                                                         name
-                                                                         u/lower-case-en)
-                                                              :model_id model-id}) :can_write)))
+(methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_read]
+  "Whether the current user can read each CacheConfig, which they can when they read its target, the targets of each
+  model answered together."
+  [_model k cache-configs]
+  (let [configs  (remove nil? cache-configs)
+        readable {"database"  (readable-ids (cache.db/databases (target-ids configs "database")))
+                  "dashboard" (readable-ids (cache.db/dashboards (target-ids configs "dashboard")))
+                  "question"  (readable-ids (cache.db/cards (target-ids configs "question")))}]
+    (for [{:keys [model model_id] :as config} cache-configs]
+      (when config
+        (vary-meta config assoc k (if (= "root" model)
+                                    (boolean (mi/superuser?))
+                                    (contains? (get readable model #{}) model_id)))))))
+
+(defmethod mi/can-create? :model/CacheConfig
+  [_model cache-config]
+  (mi/can-write? (t2/hydrate (t2/instance :model/CacheConfig (select-keys cache-config [:model :model_id]))
+                             :can_write)))
+
+(defmethod mi/can-update? :model/CacheConfig
+  [cache-config _changes]
+  (mi/can-write? cache-config))
+
+;;; -------------------------------------------------- Hydration ---------------------------------------------------
+
+(def ^:private entity-model->caching-model
+  "The CacheConfig `model` that targets an entity of each model whose cache policy can be set."
+  {:model/Card      "question"
+   :model/Dashboard "dashboard"})
 
 (defn- hydrate-can-set-cache-policy
-  "Sets `k` on the Cards or Dashboards `models` to whether the current user can set the cache policy of each."
+  "Sets `k` on the Cards or Dashboards `models` to whether the current user can set the cache policy of each, the
+  CacheConfigs that would target them answered together; it reads collection permissions directly, so a remote-sync
+  content lock on the entity does not count."
   [k models]
-  (mi/instances-with-hydrated-data
-   models k
-   #(into {}
-          (map (juxt :id can-set-cache-policy?))
-          (remove nil? models))
-   :id
-   {:default false}))
+  (let [configs (t2/hydrate (into []
+                                  (comp (remove nil?)
+                                        (map (fn [entity]
+                                               (t2/instance :model/CacheConfig
+                                                            {:model    (entity-model->caching-model (t2/model entity))
+                                                             :model_id (:id entity)}))))
+                                  models)
+                            :can_write)
+        flags   (into {} (map (juxt :model_id :can_write)) configs)]
+    (for [entity models]
+      (when entity
+        (assoc entity k (get flags (:id entity) false))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_set_cache_policy]
   [_model k models]
@@ -116,18 +173,15 @@
   [_model k models]
   (hydrate-can-set-cache-policy k models))
 
-(defn- audit-caching-change! [user-id id prev new]
-  (events/publish-event!
-   :event/cache-config-update
-   {:user-id  user-id
-    :model    :model/CacheConfig
-    :model-id id
-    :details  {:model     (or (:model prev) (:model new))
-               :model-id  (or (:model_id prev) (:model_id new))
-               :old-value (dissoc prev :model :model_id)
-               :new-value (dissoc new :model :model_id)}}))
+;;; ----------------------------------------------------- API ------------------------------------------------------
 
-;;; API
+(defn- caching-change
+  "The details of the change of a cache config from `prev` to `new`, which the audit log records."
+  [prev new]
+  {:model     (or (:model prev) (:model new))
+   :model-id  (or (:model_id prev) (:model_id new))
+   :old-value (dissoc prev :model :model_id)
+   :new-value (dissoc new :model :model_id)})
 
 (defn root-strategy
   "Returns root strategy, if it's defined."
@@ -140,11 +194,7 @@
   (when row
     (cond-> {:model    (:model row)
              :model_id (:model_id row)
-             :strategy (-> (:config row)
-                           (assoc :type (:strategy row))
-                           (cond->
-                            (#{:duration :schedule} (:strategy row))
-                             (assoc :refresh_automatically (:refresh_automatically row))))}
+             :strategy (row->strategy row)}
       ;; Include name if present (from JOINed query)
       (:item_name row)
       (assoc :name (:item_name row))
@@ -196,25 +246,28 @@
 
 (defn store!
   "Store cache configuration in DB."
-  [user-id {:keys [model model_id] :as config}]
+  [_user-id {:keys [model model_id] :as config}]
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
           current (cache.db/lock-cache-config model model_id)]
-      (u/prog1 (cache.db/upsert-cache-config! model model_id data)
-        (audit-caching-change! user-id <> current data)))))
+      (events/with-event-context {:details (caching-change current data)}
+        (cache.db/upsert-cache-config! model model_id data)))))
 
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
-  [user-id model model-ids]
+  [_user-id model model-ids]
   (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
-    (cache.db/delete-cache-configs! model model-ids)
     (doseq [item current]
-      (audit-caching-change! user-id
-                             (:id item)
-                             (select-keys item [:strategy :config :model :model_id])
-                             nil))))
+      (events/with-event-context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}
+        (cache.db/delete-cache-configs! model [(:model_id item)])))))
 
-;;; Invalidation
+(defn delete-target-configs!
+  "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
+  [model model-ids]
+  (when (seq model-ids)
+    (cache.db/delete-cache-configs! model (vec model-ids))))
+
+;;; ------------------------------------------------- Invalidation -------------------------------------------------
 
 (defn- invalidate-cards [databases dashboards questions]
   (let [card-ids (concat

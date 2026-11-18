@@ -5,6 +5,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::connection-impersonation.attribute
+  "The `:attribute` of a ConnectionImpersonation: the non-blank name of the user attribute that holds the role."
+  ms/NonBlankString)
+
 (mr/def ::connection-impersonation
   "A ConnectionImpersonation as selected from the app DB: every column of `:connection_impersonations`."
   [:merge
@@ -17,7 +21,7 @@
   [:map {:closed true}
    [:db_id     {:optional true} [:maybe ::lib.schema.id/database]]
    [:group_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:attribute {:optional true} [:maybe :string]]])
+   [:attribute {:optional true} ::connection-impersonation.attribute]])
 
 (mr/def ::impersonation-query-cache.result
   "The outcome of validating an impersonated native query, as an ImpersonationQueryCache records it."
