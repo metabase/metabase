@@ -94,6 +94,43 @@
          (testing "a SQLite database that an admin connects fails: its file is opened for writes"
            (is (= "writable" (get result "rc sqlite")))))))))
 
+(deftest database-timeout-test
+  (mt/with-temporary-setting-values [db-connection-timeout-ms 200]
+    (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection
+                                (fn [{{:keys [user]} :details} _f]
+                                  (if (= user "hung")
+                                    (do (Thread/sleep 60000) [])
+                                    ;; writable: a read-only answer also reads the roles of the database from the app DB
+                                    (privileges :insert true)))]
+      (let [check-database  #'read-only-connections/check-database
+            check-databases #'read-only-connections/check-databases]
+        (testing "a database that does not answer within db-connection-timeout-ms gets a timeout result"
+          (is (= "timed-out" (check-database {:id 1, :engine :postgres, :details {:user "hung"}}))))
+        (testing "a database that hangs holds a thread only until its own limit, so the databases after it are checked"
+          (let [hung (for [id (range 1 11)]
+                       {:id id, :engine :postgres, :details {:user "hung"}})
+                live {:id 11, :engine :postgres, :details {:user "writer"}}]
+            (is (= (conj (vec (repeat 10 "timed-out")) "writable")
+                   (check-databases (conj (vec hung) live) check-database 10 5000)))))))))
+
+(deftest database-check-interrupted-test
+  (testing "a check that the refresh interrupts at its deadline is a timeout, not an error with a warning"
+    (mt/with-temporary-setting-values [db-connection-timeout-ms 60000]
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f] (Thread/sleep 60000) [])]
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :warn]]
+          (let [result  (promise)
+                started (promise)
+                thread  (Thread. (bound-fn []
+                                   (deliver started true)
+                                   (deliver result (#'read-only-connections/check-database
+                                                    {:id 1, :engine :postgres, :details {}}))))]
+            (.start thread)
+            @started
+            (Thread/sleep 200)
+            (.interrupt thread)
+            (is (= "timed-out" (deref result 5000 ::no-result)))
+            (is (= [] (messages)))))))))
+
 (deftest check-databases-test
   (let [check-databases #'read-only-connections/check-databases
         databases       [{:id 1, :engine :postgres} {:id 2, :engine :mysql} {:id 3, :engine :h2} {:id 4, :engine :oracle}]]
@@ -242,7 +279,7 @@
       (is (= [[:pass "The connection user of Birds can't write"]
               [:fail "The connection user of Sales can insert, update or delete"]
               [:pass "Metabase opens Sample Database read-only"]
-              [:unknown "Timed out after 30 s"]
+              [:unknown "Timed out while checking Slow"]
               [:unknown "Couldn't check Down. Check the server logs for the underlying error."]
               [:unknown "no-such-engine is not supported"]
               [:unknown "Couldn't read the privileges of the connection user of Empty"]

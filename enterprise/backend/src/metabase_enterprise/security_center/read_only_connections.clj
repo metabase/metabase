@@ -17,7 +17,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,8 +43,9 @@
   ;; feature false
   #{:postgres :mysql :oracle :sqlserver :sqlite})
 
-(def ^:private timeout-ms
-  "The limit for one database, and for the whole refresh."
+(def ^:private refresh-timeout-ms
+  "The limit for the whole refresh. Each database also has its own limit,
+  [[driver.settings/db-connection-timeout-ms]]."
   30000)
 
 (def ^:private max-pool-size
@@ -68,7 +71,7 @@
            (security-center.db/impersonation-exists-for-database? (or router_database_id id)))))
 
 (defn- privileges-result
-  [database]
+  [database timeout-ms]
   ;; ends a read that the database never answers, so the thread and the connection are free again
   (let [rows (binding [driver.settings/*network-timeout-ms* timeout-ms]
                ;; not a pooled connection: the check must also work for a database whose pool refuses connections
@@ -87,14 +90,30 @@
 
 (defn- check-database
   "The result for one database: `\"read-only\"`, `\"writable\"`, `\"roles-skipped\"`, `\"no-privileges\"` when the
-  database lists no table privileges, or `\"error\"` when the database could not be asked."
+  database lists no table privileges, `\"timed-out\"` when it does not answer within
+  [[driver.settings/db-connection-timeout-ms]], or `\"error\"` when the database could not be asked."
   [{:keys [id engine] :as database}]
   (try
-    (let [result (privileges-result database)]
+    ;; the network timeout does not cover the connect: a host that drops packets can hold the connect, and so a thread
+    ;; of the refresh, for as long as the driver allows. The future of `with-timeout` frees the thread at the limit,
+    ;; and the connect ends in the background when the driver gives up.
+    (let [timeout-ms (driver.settings/db-connection-timeout-ms)
+          result     (try
+                       (u/with-timeout timeout-ms
+                         (privileges-result database timeout-ms))
+                       (catch TimeoutException _
+                         (log/warnf "Health check read-only-connections got no answer from database %d (%s) in %d ms"
+                                    id (name engine) timeout-ms)
+                         "timed-out"))]
       (when (= result "no-privileges")
         (log/warnf "Health check read-only-connections could not read the table privileges of database %d (%s)"
                    id (name engine)))
       result)
+    (catch InterruptedException _
+      ;; usually the refresh passed its deadline and shut its pool down, and it has already counted this database as
+      ;; timed out; a server shutdown can also interrupt the thread
+      (.interrupt (Thread/currentThread))
+      "timed-out")
     (catch Throwable e
       ;; the message of a connection error can hold the host or the user, so it stays in the log
       (log/warnf e "Health check read-only-connections could not check database %d (%s)" id (name engine))
@@ -155,7 +174,7 @@
   []
   (let [timer     (u/start-timer)
         databases (security-center.db/databases-with-details)
-        results   (check-databases databases check-database (pool-size databases) timeout-ms)]
+        results   (check-databases databases check-database (pool-size databases) refresh-timeout-ms)]
     (log/infof "Health check read-only-connections checked %d databases in %.0f ms: %s"
                (count databases) (u/since-ms timer) (frequencies results))
     {:databases (mapv (fn [database result]
@@ -189,7 +208,7 @@
                            "roles-skipped" [:unknown (tru "Couldn''t check the database roles that Metabase uses on {0}" db-name)]
                            "no-privileges" [:unknown (tru "Couldn''t read the privileges of the connection user of {0}" db-name)]
                            "not-supported" [:unknown (tru "{0} is not supported" (engine-name engine))]
-                           "timed-out"     [:unknown (tru "Timed out after 30 s")]
+                           "timed-out"     [:unknown (tru "Timed out while checking {0}" db-name)]
                            [:unknown (tru "Couldn''t check {0}. Check the server logs for the underlying error." db-name)])]
     {:status      status
      :message     message
