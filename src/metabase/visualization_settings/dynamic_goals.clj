@@ -6,6 +6,7 @@
   (:require
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.visualization-settings.dynamic-goal-settings :as dynamic-goal-settings]))
 
 (set! *warn-on-reflection* true)
@@ -50,14 +51,16 @@
 
 (mr/def ::source-result
   "The result of running one goal source."
-  [:map
+  [:map {:closed true}
    [:status     [:enum "completed" "failed"]]
    [:error      {:optional true} [:maybe :string]]
    [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters" "withheld"
                                           "too-many-sources"]]]
-   [:data       {:optional true} [:maybe [:map
-                                          [:cols [:sequential :map]]
-                                          [:rows [:sequential [:sequential :any]]]]]]])
+   [:data       {:optional true} [:maybe [:map {:closed true}
+                                          [:cols {:optional true}
+                                           [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+                                          [:rows {:optional true}
+                                           [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
 
 (mr/def ::goal-values
   "Goal source results by source type, then by source id. A source with no entry wasn't run."
