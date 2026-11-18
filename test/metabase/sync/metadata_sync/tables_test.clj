@@ -81,13 +81,33 @@
                  :model/Field    _              {:table_id table-id :name "payload → kind" :base_type :type/Text
                                                  :nfc_path ["payload" "kind"]}
                  :model/Field    {parent :id}   {:table_id table-id :name "address" :base_type :type/Dictionary}
-                 :model/Field    _              {:table_id table-id :name "city" :base_type :type/Text
-                                                 :parent_id parent}]
-    (let [doc (get (entries db-id) ["public" "events"])]
+                 :model/Field    {city :id}     {:table_id table-id :name "city" :base_type :type/Dictionary
+                                                 :parent_id parent}
+                 :model/Field    _              {:table_id table-id :name "zip" :base_type :type/Text
+                                                 :parent_id city}
+                 :model/Field    {old :id}      {:table_id table-id :name "old" :base_type :type/Dictionary
+                                                 :visibility_type :retired}
+                 :model/Field    _              {:table_id table-id :name "child_of_old" :base_type :type/Text
+                                                 :parent_id old}]
+    (let [doc   (get (entries db-id) ["public" "events"])
+          paths (map :path (:fields doc))]
       (testing "an unfolded JSON field is carried with its nfc_path"
         (is (= ["payload" "kind"] (:nfc_path (field-named doc "payload → kind")))))
-      (testing "a nested field is not carried"
-        (is (= #{["payload → kind"] ["address"]} (set (map :path (:fields doc)))))))))
+      (testing "a nested field is carried with the names of its parents first in its path"
+        (is (= #{["payload → kind"] ["address"] ["address" "city"] ["address" "city" "zip"]} (set paths))))
+      (testing "a parent comes before its children"
+        (is (= [["address"] ["address" "city"] ["address" "city" "zip"]]
+               (filter #(= "address" (first %)) paths))))
+      (testing "a field whose parent is not sent is not sent"
+        (is (not-any? #(= "child_of_old" (last %)) paths))))))
+
+(deftest nested-fields-weigh-in-the-field-counts-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id :schema "public" :name "events"}
+                 :model/Field    {parent :id}   {:table_id table-id :name "address" :base_type :type/Dictionary}
+                 :model/Field    _              {:table_id table-id :name "city" :base_type :type/Text
+                                                 :parent_id parent}]
+    (is (= [{:table_id table-id :field_count 2}] (sync.db/described-field-counts db-id)))))
 
 (deftest schema-filter-test
   (mt/with-temp [:model/Database {db-id :id} {}

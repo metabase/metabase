@@ -323,3 +323,54 @@
               (receive/apply-response! receiver-id {:format_version wire/format-version
                                                     :batches        [{:type   "tables"
                                                                       :tables [{:name "loose" :fields []}]}]}))))))
+
+;;; ------------------------------------------------ Nested Fields ------------------------------------------------
+
+(defn- field-paths
+  "The name path of each active Field of the Database with `db-id`, by its Table's name, with its base type."
+  [db-id]
+  (let [tables (t2/select-pk->fn :name :model/Table :db_id db-id :active true)
+        fields (when (seq tables) (t2/select :model/Field :table_id [:in (keys tables)] :active true))
+        by-id  (into {} (map (juxt :id identity)) fields)
+        path   (fn path [{:keys [parent_id] field-name :name}]
+                 (conj (if parent_id (path (by-id parent_id)) []) field-name))]
+    (into #{} (map (fn [field] [(tables (:table_id field)) (path field) (:base_type field)])) fields)))
+
+(deftest nested-fields-are-copied-under-their-parents-test
+  (mt/with-temp [:model/Database {sender :id sender-name :name} {:initial_sync_status "complete"}
+                 :model/Database {receiver-id :id}              {:initial_sync_status "incomplete"}
+                 :model/Table    {table-id :id}                 {:db_id sender :schema "PUBLIC" :name "sightings"}
+                 :model/Field    {place :id}                    {:table_id table-id :name "place"
+                                                                 :base_type :type/Dictionary}
+                 :model/Field    {coords :id}                   {:table_id table-id :name "coords"
+                                                                 :base_type :type/Dictionary :parent_id place}
+                 :model/Field    _                              {:table_id table-id :name "lat"
+                                                                 :base_type :type/Float :parent_id coords}
+                 :model/Field    _                              {:table_id table-id :name "name"
+                                                                 :base_type :type/Text :parent_id place}
+                 :model/Field    _                              {:table_id table-id :name "name"
+                                                                 :base_type :type/Text}]
+    (let [{:keys [counts]} (seed! sender-name receiver-id)]
+      (testing "every nested Field is copied, under the parent of the same path"
+        (is (= (field-paths sender) (field-paths receiver-id))))
+      (testing "and counted"
+        (is (= 5 (:fields_inserted counts)))))))
+
+(deftest broken-field-paths-are-refused-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [field  (fn [& path] {:path (vec path) :base_type "type/Text" :database_type "TEXT"})
+          answer (fn [& fields]
+                   {:format_version wire/format-version
+                    :batches        [{:type "tables" :tables [{:schema "PUBLIC" :name "sightings"
+                                                               :fields (vec fields)}]}]})]
+      (testing "a nested Field whose parent is not in its Table's entry"
+        (is (= {:status-code 422 :error-code "metadata-sync-malformed-response"}
+               (refusal! receiver-id (answer (field "place") (field "coords" "lat"))))))
+      (testing "a path that is in an entry twice"
+        (is (= {:status-code 422 :error-code "metadata-sync-malformed-response"}
+               (refusal! receiver-id (answer (field "place") (field "place"))))))
+      (testing "nothing was written"
+        (is (= {} (metadata receiver-id))))
+      (testing "a parent after its child is fine"
+        (is (=? {:counts {:fields_inserted 2}}
+                (receive/apply-response! receiver-id (answer (field "place" "lat") (field "place")))))))))

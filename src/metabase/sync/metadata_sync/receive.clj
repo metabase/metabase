@@ -183,29 +183,59 @@
     {:database_updated (if (seq changes) 1 0)}))
 
 (defn- insert-table!
-  "Insert the Table that `entry` describes into the Database with `database-id`, with its Fields, and return how many
-  Fields it inserted. The Table counts as synced at once, since it has its metadata. A multi-row insert writes NULL
-  for a column that a row leaves out, so each row has every column."
+  "Insert the Table that `entry` describes into the Database with `database-id`, without its Fields, and return its
+  id. The Table counts as synced at once, since it has its metadata."
   [database-id entry]
-  (let [table-id (:id (sync.db/insert-table! (merge {:db_id               database-id
-                                                     :schema              (:schema entry)
-                                                     :name                (:name entry)
-                                                     :active              true
-                                                     :initial_sync_status "complete"}
-                                                    (u/remove-nils
-                                                     (values-of (remove #{:schema :name} tables/table-columns)
-                                                                entry
-                                                                (table-defaults (:name entry)))))))
-        rows     (for [{[field-name & more] :path :as field-entry} (:fields entry)
-                       :when (or (nil? more)
-                                 (log/warnf "Not inserting a nested Field of Table %d" table-id))]
-                   (merge (values-of tables/field-columns
-                                     field-entry
-                                     (field-defaults field-name (row-value field-entry :base_type)))
-                          {:table_id table-id :name field-name :active true}))]
-    (doseq [batch (partition-all pages/query-batch-size rows)]
-      (sync.db/insert-fields! (vec batch)))
-    (count rows)))
+  (:id (sync.db/insert-table! (merge {:db_id               database-id
+                                      :schema              (:schema entry)
+                                      :name                (:name entry)
+                                      :active              true
+                                      :initial_sync_status "complete"}
+                                     (u/remove-nils
+                                      (values-of (remove #{:schema :name} tables/table-columns)
+                                                 entry
+                                                 (table-defaults (:name entry))))))))
+
+(defn- field-row
+  "The row of the Field that `field-entry` describes, in the Table with `table-id`, under the Field with `parent-id`
+  or at the top. A multi-row insert writes NULL for a column that a row leaves out, so the row has every column."
+  [table-id parent-id {:keys [path] :as field-entry}]
+  (let [field-name (peek path)]
+    (merge (values-of tables/field-columns field-entry (field-defaults field-name (row-value field-entry :base_type)))
+           {:table_id table-id :parent_id parent-id :name field-name :active true})))
+
+(defn- field-ids-by-key
+  "The ids of the Fields of the Tables with `table-ids`, by `[table-id parent-id name]`."
+  [table-ids]
+  (into {}
+        (map (juxt (juxt :table_id :parent_id :name) :id))
+        (pages/in-batches sync.db/field-keys-of-tables table-ids)))
+
+(defn- insert-fields!
+  "Insert the Fields of the entries of `tables`, each `[table-id entry]`, one level of nesting at a time, so that a
+  parent has its id before its children are inserted. Returns how many it inserted."
+  [tables]
+  (let [levels (->> (for [[table-id entry] tables
+                          field-entry      (:fields entry)]
+                      [table-id (update field-entry :path vec)])
+                    (group-by (comp count :path second))
+                    (sort-by key)
+                    (map val))]
+    (loop [[level & deeper] levels, ids {}, inserted 0]
+      (if-not level
+        inserted
+        (let [rows (for [[table-id {:keys [path] :as field-entry}] level]
+                     (field-row table-id (ids [table-id (pop path)]) field-entry))]
+          (doseq [batch (partition-all pages/query-batch-size rows)]
+            (sync.db/insert-fields! (vec batch)))
+          (recur deeper
+                 ;; Only a deeper level needs the ids of this one.
+                 (if (seq deeper)
+                   (let [by-key (field-ids-by-key (mapv first tables))]
+                     (into ids (for [[table-id {:keys [path]}] level]
+                                 [[table-id path] (by-key [table-id (ids [table-id (pop path)]) (peek path)])])))
+                   ids)
+                 (+ inserted (count rows))))))))
 
 (defn- apply-tables!
   "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not, once for each key."
@@ -214,7 +244,7 @@
         new-entries (m/distinct-by unique-key (remove (comp existing unique-key) tables))]
     {:tables_inserted (count new-entries)
      :tables_existing (count (filter (comp existing unique-key) tables))
-     :fields_inserted (transduce (map #(insert-table! database-id %)) + 0 new-entries)}))
+     :fields_inserted (insert-fields! (mapv (juxt #(insert-table! database-id %) identity) new-entries))}))
 
 (defn- target-key [{{table-schema :schema table-name :table} :target}]
   [table-schema table-name])
@@ -296,9 +326,17 @@
 (defn- refused [message error-code]
   (ex-info message {:status-code 422 :error-code error-code}))
 
+(defn- broken-field-paths?
+  "Whether the Fields of the Table entry `table` have a path twice, or a nested Field whose parent is not there."
+  [table]
+  (let [paths (mapv (comp vec :path) (:fields table))
+        known (set paths)]
+    (or (not= (count paths) (count known))
+        (some #(and (next %) (not (known (pop %)))) paths))))
+
 (defn- check-response!
   "Throw unless `response` is an answer this version can apply: of its format version, with batch types it knows, and
-  of the right shape. The error says nothing of the answer's values: they are warehouse metadata."
+  of the right shape, with each nested Field's parent in its Table's entry. The error says nothing of the answer's values: they are warehouse metadata."
   [response]
   (when (not= wire/format-version (:format_version response))
     (throw (refused (tru "The other Metabase sends format version {0}, and this Metabase reads version {1}."
@@ -310,7 +348,11 @@
     (throw (refused (tru "The other Metabase sent a batch of type {0}, which this version does not know."
                          (str/join ", " unknown))
                     "metadata-sync-unknown-batch-type")))
-  (when-not (mr/validate ::wire/response response)
+  (when-not (and (mr/validate ::wire/response response)
+                 (not-any? broken-field-paths? (for [{batch-type :type :keys [tables]} (:batches response)
+                                                     :when (= "tables" batch-type)
+                                                     table tables]
+                                                 table)))
     (throw (refused (tru "The answer of the other Metabase does not have the shape this version applies.")
                     "metadata-sync-malformed-response"))))
 

@@ -5,6 +5,7 @@
   A Table's entry holds nothing that belongs to one instance. A Table is its schema and name, and a Field is a name
   path in its Table, so two instances with different ids describe the same warehouse table with the same entry."
   (:require
+   [medley.core :as m]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -54,10 +55,14 @@
    [:type     [:enum "inclusion" "exclusion"]]
    [:patterns :string]])
 
+(def max-path-length
+  "The most names a Field's path has: a Field nested deeper is not sent."
+  50)
+
 (mr/def ::field
   [:map {::mr/deliberately-open true
          :description           "a Field's entry: its name path, and each of `field-columns` that has a value"}
-   [:path          [:sequential {:min 1} ms/NonBlankString]]
+   [:path          [:sequential {:min 1 :max max-path-length} ms/NonBlankString]]
    [:base_type     ms/NonBlankString]
    [:database_type ms/NonBlankString]
    [:last_analyzed {:optional true} ms/NonBlankString]])
@@ -83,12 +88,34 @@
   (cond-> field
     (not (:coercion_strategy field)) (dissoc :effective_type)))
 
-(defn- field-entry [field]
+(defn- field-entry [field path]
   (-> (select-keys field field-columns)
       coercion-pair
       (update-vals wire-value)
-      (assoc :path [(:name field)])
+      (assoc :path path)
       u/remove-nils))
+
+(defn- field-paths
+  "The name path of each of `fields`, the Fields of one Table, by Field id: the names of its parents, top-level first,
+  then its own. A Field with a parent that is not in `fields` has none."
+  [fields]
+  (let [by-id (m/index-by :id fields)]
+    (letfn [(path [{:keys [parent_id] field-name :name} depth]
+              (cond
+                (nil? parent_id)            [field-name]
+                (>= depth max-path-length) nil
+                :else                       (some-> (by-id parent_id) (path (inc depth)) (conj field-name))))]
+      (into {} (keep (fn [field] (some->> (path field 1) (vector (:id field))))) fields))))
+
+(defn- field-entries
+  "The entries of `fields`, the Fields of one Table, parents before their children. A Field with a parent that is not
+  sent is not sent."
+  [fields]
+  (let [paths (field-paths fields)]
+    (->> fields
+         (keep (fn [field] (some->> (paths (:id field)) (field-entry field))))
+         (sort-by (comp count :path))
+         vec)))
 
 (defn- table-entry [table field-entries]
   (-> (select-keys table table-columns)
@@ -126,8 +153,7 @@
          vec)))
 
 (mu/defn entries :- [:sequential ::table]
-  "The entries of `tables`, which are rows from [[selection]], in the same order. A nested Field is not part of an
-  entry."
+  "The entries of `tables`, which are rows from [[selection]], in the same order."
   [tables :- [:sequential ::sync.db/described-table]]
   (let [table-ids       (mapv :id tables)
         rows            (into {} (map (juxt :id identity)) (pages/in-batches sync.db/tables-with-ids table-ids))
@@ -135,5 +161,5 @@
     (into []
           (keep (fn [{table-id :id}]
                   (when-let [table (rows table-id)]
-                    (table-entry table (mapv field-entry (fields-by-table table-id []))))))
+                    (table-entry table (field-entries (fields-by-table table-id []))))))
           tables)))
