@@ -11,7 +11,8 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
 
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
@@ -130,10 +131,9 @@
 
 (defn- check-tenancy-matches
   "Throws a 400 when `membership` puts `member`, its User, a tenant user in a non-tenant group or a non-tenant user in a
-  tenant group."
-  [{:keys [user_id group_id]} member]
-  (let [group-id->tenant? (permissions.db/group-tenant-flags #{group_id})
-        group-tenant?     (when (contains? group-id->tenant? group_id)
+  tenant group, by the `:is_tenant_group` of each group `group-id->tenant?` holds."
+  [{:keys [user_id group_id]} member group-id->tenant?]
+  (let [group-tenant?     (when (contains? group-id->tenant? group_id)
                             (boolean (group-id->tenant? group_id)))
         user-tenant?      (some? (:tenant_id member))]
     (when (not= group-tenant? user-tenant?)
@@ -144,15 +144,32 @@
                                                :group-is-tenant? group-tenant?}]
                        :status-code          400})))))
 
+(defn- check-members
+  "Throws a 400 when one of `memberships` makes a tenant user or an admin a group manager or puts a User in a group of
+  the other tenancy, with the Users and groups of all of them read once."
+  [memberships]
+  (when (seq memberships)
+    (let [members           (u/index-by :id (permissions.db/member-flags (into #{} (map :user_id) memberships)))
+          group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) memberships))]
+      (doseq [membership memberships
+              :let       [member (get members (:user_id membership))]]
+        (check-group-manager-member membership member)
+        (check-tenancy-matches membership member group-id->tenant?)))))
+
 (t2/define-before-insert :model/PermissionsGroupMembership
   [{:keys [group_id] :as membership}]
   (check-not-all-users-group group_id)
   (check-not-all-external-users-group group_id)
   (check-can-add-to-data-analyst-group group_id)
-  (let [member (member membership)]
-    (check-group-manager-member membership member)
-    (check-tenancy-matches membership member))
   membership)
+
+(methodical/defmethod t2.pipeline/build :around [:toucan.query-type/insert.*
+                                                 :model/PermissionsGroupMembership
+                                                 clojure.lang.IPersistentMap]
+  "Checks the Users of every membership an INSERT writes against its group, in one read of them for the statement."
+  [query-type model parsed-args resolved-query]
+  (check-members (or (:rows parsed-args) (:rows resolved-query)))
+  (next-method query-type model parsed-args resolved-query))
 
 (t2/define-after-insert :model/PermissionsGroupMembership
   [{:keys [user_id group_id], :as membership}]
