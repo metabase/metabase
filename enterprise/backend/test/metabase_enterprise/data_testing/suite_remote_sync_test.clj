@@ -173,8 +173,8 @@
           (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))
 
 (defn- pull-messages!
-  "The result of a pull of `url` from `version`, or what it threw, and the messages of that throwable and its causes, or
-  the printed result."
+  "A pair `[result messages]`: the result of a pull of `url` from `version`, or what the pull threw; and the messages of
+  that throwable and its causes, or the printed result, joined by newlines."
   [url version]
   (let [result (try (remote-sync.tu/pull! url version) (catch Exception e e))]
     [result (str/join "\n" (if (instance? Throwable result)
@@ -185,7 +185,7 @@
   (doseq [[case-name edit expected]
           [["a file that names one test twice"
             (fn [yaml member] (str/replace yaml member (str member (str/replace member "position: 0" "position: 1"))))
-            ["\"Nightly\" names the same test more than once" "card test "]]
+            ["\"Nightly\" names the same test more than once" "card test EID"]]
            ["a file whose member has no test_type"
             (fn [yaml _member] (str/replace yaml "  test_type: card\n" ""))
             ["\"Nightly\" has a member without a test_type or test_entity_id"]]
@@ -210,7 +210,8 @@
               (let [[result messages] (pull-messages! url v1)]
                 (testing "fails the pull with a message naming the suite"
                   (is (not= :success (:status result)))
+                  ;; EID stands for the entity id of the test, which the case's message must name
                   (doseq [text expected]
-                    (is (str/includes? messages text))))
+                    (is (str/includes? messages (str/replace text "EID" (:entity_id t))))))
                 (testing "and leaves the suite as it was"
                   (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))))
