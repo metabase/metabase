@@ -113,7 +113,42 @@
              :is_audit false
              {:order-by [:name]}))
 
-(mu/defn impersonation-exists-for-database? :- :boolean
-  "Whether a connection impersonation policy exists on the Database with `database-id`."
+(mu/defn impersonations-for-database :- [:sequential [:map [:group_id ms/PositiveInt] [:attribute [:maybe :string]]]]
+  "The group and the user attribute of each connection impersonation policy on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/ConnectionImpersonation :db_id database-id))
+  (t2/select [:model/ConnectionImpersonation :group_id :attribute] :db_id database-id))
+
+(mu/defn active-non-admin-members :- [:sequential [:map [:id ::lib.schema.id/user]]]
+  "The active Users that are not admins and are in a group with an id in `group-ids`, with the columns that their user
+  attributes are built from."
+  [group-ids :- [:set {:min 1} ms/PositiveInt]]
+  (t2/select [:model/User :id :type :tenant_id :login_attributes :jwt_attributes]
+             {:where [:and
+                      [:= :is_active true]
+                      [:= :is_superuser false]
+                      [:in :id ^:allow-subquery {:select [:user_id]
+                                                 :from   [:permissions_group_membership]
+                                                 :where  [:in :group_id group-ids]}]]}))
+
+(mu/defn group-memberships :- [:sequential [:map [:user_id ::lib.schema.id/user] [:group_id ms/PositiveInt]]]
+  "The user and the group of every group membership of the Users that are in a group with an id in `group-ids`."
+  [group-ids :- [:set {:min 1} ms/PositiveInt]]
+  (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
+             {:where [:in :user_id ^:allow-subquery {:select [:user_id]
+                                                     :from   [:permissions_group_membership]
+                                                     :where  [:in :group_id group-ids]}]}))
+
+(mu/defn router-user-attribute :- [:maybe :string]
+  "The user attribute that the router Database with `database-id` routes on, or nil when that Database is not a
+  router."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id database-id))
+
+(mu/defn unrestricted-group-ids :- [:set ms/PositiveInt]
+  "The ids of the groups whose View data permission on the whole Database with `database-id` is `:unrestricted`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-fn-set :group_id :model/DataPermissions
+                    :db_id      database-id
+                    :table_id   nil
+                    :perm_type  :perms/view-data
+                    :perm_value :unrestricted))
