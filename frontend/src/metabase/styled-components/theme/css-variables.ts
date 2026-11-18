@@ -22,7 +22,7 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import { getAtPath } from "metabase/utils/get-at-path";
 import type { ColorSettings } from "metabase-types/api";
 
-const createColorVars = ({
+export const createColorVars = ({
   colorScheme,
   whitelabelColors,
   forceDynamicBrandRamp,

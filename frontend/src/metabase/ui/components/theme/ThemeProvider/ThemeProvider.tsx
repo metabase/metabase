@@ -2,7 +2,12 @@
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
-import { type ReactNode, useContext, useMemo } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useContext,
+  useMemo,
+} from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/ui/colors/types/color-scheme";
@@ -52,6 +57,14 @@ export interface ThemeProviderProps {
    * replacing them with Ocean stops. Used by SDK.
    */
   forceDynamicBrandRamp?: boolean;
+
+  /** Writes extra CSS variables through Mantine. */
+  cssVariablesResolver?: ComponentProps<
+    typeof MantineProvider
+  >["cssVariablesResolver"];
+
+  /** Style nonce; defaults to the app's. */
+  nonce?: string;
 }
 
 export const ThemeProvider = ({
@@ -62,6 +75,8 @@ export const ThemeProvider = ({
   onUpdateWhitelabelColors,
   cssVariablesSelector,
   forceDynamicBrandRamp,
+  cssVariablesResolver,
+  nonce,
 }: ThemeProviderProps) => {
   const colorSchemeContext = useColorScheme();
   const resolvedColorScheme =
@@ -113,13 +128,19 @@ export const ThemeProvider = ({
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
 
+  const getNonce = useMemo(
+    () => (nonce === undefined ? getStyleNonce : () => nonce),
+    [nonce],
+  );
+
   return (
     <MantineProvider
       theme={theme}
       forceColorScheme={resolvedColorScheme}
-      getStyleNonce={getStyleNonce}
+      getStyleNonce={getNonce}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={cssVariablesSelector}
+      cssVariablesResolver={cssVariablesResolver}
       withCssVariables={withCssVariables}
       withGlobalClasses={withGlobalClasses}
     >
