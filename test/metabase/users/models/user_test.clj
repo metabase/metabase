@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.auth-identity.core :as auth-identity]
@@ -19,10 +20,12 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -710,3 +713,69 @@
                                (str "Discarding unreadable settings for user " user-id)))
             (testing "without leaking the unreadable column contents, which are user data"
               (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))
+
+(deftest internal-user-update-test
+  (testing "internal user cannot be updated"
+    (let [before (t2/select-one :model/User :id config/internal-mb-user-id)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
+                            (t2/update! :model/User :id config/internal-mb-user-id {:first_name "Changed"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
+                            (t2/update! :model/User :id config/internal-mb-user-id {:is_active true})))
+      (is (= before (t2/select-one :model/User :id config/internal-mb-user-id))))))
+
+(deftest schema-checks-type-test
+  (is (mr/validate ::users.schema/user.type :api-key))
+  (is (mr/validate ::users.schema/user.type "personal"))
+  (is (not (mr/validate ::users.schema/user.type :robot))))
+
+(deftest update-check-test
+  (mt/with-temp [:model/User {self-id :id}   {}
+                 :model/User other           {}
+                 :model/User {google-id :id} {:sso_source :google}]
+    (let [self   (t2/select-one [:model/User :id :email :sso_source] :id self-id)
+          google (t2/select-one [:model/User :id :email :sso_source] :id google-id)]
+      (testing "a user changes their own profile columns and nothing else"
+        (mt/with-current-user (:id self)
+          (is (api/update-check self {:first_name "Changed" :email "changed@example.com" :is_qbnewb false}))
+          (doseq [changes [{:is_superuser true} {:login_attributes {"key" "value"}} {:tenant_id 1}
+                           {:is_data_analyst true} {:is_active false}]]
+            (testing changes
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                    (api/update-check self changes)))))))
+      (testing "a user changes nothing of another user"
+        (mt/with-current-user (:id self)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check other {:first_name "Changed"})))))
+      (testing "a Google user does not change their own email"
+        (mt/with-current-user google-id
+          (is (api/update-check google {:email (:email google)}))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check google {:email "changed@example.com"})))))
+      (testing "a user selected without its SSO source does not change their email"
+        (mt/with-current-user google-id
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check (dissoc google :sso_source) {:email "changed@example.com"})))))
+      (testing "a superuser changes admin columns of another user"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (api/update-check google {:email "changed@example.com" :is_superuser true :login_attributes {}})))))))
+
+(deftest read-and-write-check-test
+  (mt/with-temp [:model/User self  {}
+                 :model/User other {}]
+    (mt/with-current-user (:id self)
+      (is (api/read-check self))
+      (is (api/write-check self))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (api/read-check other)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (api/write-check other))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (api/read-check other))
+      (is (api/write-check other)))))
+
+(deftest create-check-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                          (api/create-check :model/User {:email "user@example.com"}))))
+  (mt/with-current-user (mt/user->id :crowberto)
+    (is (api/create-check :model/User {:email "user@example.com"}))))

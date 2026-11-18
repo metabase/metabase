@@ -152,12 +152,6 @@ src/metabase/data_apps.* @metabase/data-apps
 test/metabase/data_apps @metabase/data-apps
 test/metabase/data_apps_test.* @metabase/data-apps
 
-# dependencies (Data Apps)
-src/metabase/dependencies @metabase/data-apps
-src/metabase/dependencies.* @metabase/data-apps
-test/metabase/dependencies @metabase/data-apps
-test/metabase/dependencies_test.* @metabase/data-apps
-
 # remote-sync (Data Apps)
 src/metabase/remote_sync @metabase/data-apps
 src/metabase/remote_sync.* @metabase/data-apps

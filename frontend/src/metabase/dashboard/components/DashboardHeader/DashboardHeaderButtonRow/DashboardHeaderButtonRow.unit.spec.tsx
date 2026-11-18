@@ -123,6 +123,7 @@ const setup = ({
   hasEmailSetup = true,
   hasSlackSetup = true,
   refreshPeriod = null,
+  canWrite = true,
   isArchived = false,
 }: Partial<{
   isEditing: boolean;
@@ -134,6 +135,7 @@ const setup = ({
   hasEmailSetup: boolean;
   hasSlackSetup: boolean;
   refreshPeriod: number | null;
+  canWrite: boolean;
   isArchived: boolean;
 }>) => {
   setupBookmarksEndpoints([]);
@@ -151,6 +153,7 @@ const setup = ({
   const MOCK_DASHCARD = createMockDashboardCard();
   const MOCK_DASHBOARD = createMockDashboard({
     dashcards: [MOCK_DASHCARD],
+    can_write: canWrite,
     archived: isArchived,
   });
   const MOCK_STORE_DASHBOARD = createMockStoreDashboard({
@@ -393,6 +396,21 @@ describe("DashboardHeaderButtonRow", () => {
       await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR],
       });
+    });
+  });
+
+  describe("when the user cannot write to the dashboard", () => {
+    it("should only offer to duplicate it from the dashboard menu (metabase#15280)", async () => {
+      setup({ isEditing: false, canWrite: false });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /Move, trash, and more/ }),
+      );
+
+      expect(await screen.findByText("Duplicate")).toBeInTheDocument();
+      expect(screen.queryByText("Edit settings")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
   });
 

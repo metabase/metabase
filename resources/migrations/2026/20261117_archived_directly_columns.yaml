@@ -1,0 +1,88 @@
+## Pulses, snippets and timelines record, as cards, dashboards and collections do, whether they were archived on their
+## own or along with their collection, so that restoring a collection restores only what its archive took down.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: pu1a7q
+      author: ranquild
+      comment: Add pulse.archived_directly
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: Whether the Pulse was archived directly, rather than along with its collection
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: pu2b8r
+      author: ranquild
+      comment: Mark already-archived pulse rows as archived directly unless their collection is archived
+      changes:
+        - sql:
+            sql: >-
+              UPDATE pulse
+              SET archived_directly = TRUE
+              WHERE archived = TRUE AND (dashboard_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM collection WHERE collection.id = pulse.collection_id AND collection.archived = TRUE));
+      rollback: # nothing to do; rolling back the preceding changeset drops the column
+
+  - changeSet:
+      id: nq3c9x
+      author: ranquild
+      comment: Add native_query_snippet.archived_directly
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: Whether the NativeQuerySnippet was archived directly, rather than along with its collection
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: nq4d1y
+      author: ranquild
+      comment: Mark already-archived native_query_snippet rows as archived directly unless their collection is archived
+      changes:
+        - sql:
+            sql: >-
+              UPDATE native_query_snippet
+              SET archived_directly = TRUE
+              WHERE archived = TRUE AND NOT EXISTS (SELECT 1 FROM collection WHERE collection.id = native_query_snippet.collection_id AND collection.archived = TRUE);
+      rollback: # nothing to do; rolling back the preceding changeset drops the column
+
+  - changeSet:
+      id: tl5e3m
+      author: ranquild
+      comment: Add timeline.archived_directly
+      changes:
+        - addColumn:
+            tableName: timeline
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: Whether the Timeline was archived directly, rather than along with its collection
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: tl6f4n
+      author: ranquild
+      comment: Mark already-archived timeline rows as archived directly unless their collection is archived
+      changes:
+        - sql:
+            sql: >-
+              UPDATE timeline
+              SET archived_directly = TRUE
+              WHERE archived = TRUE AND NOT EXISTS (SELECT 1 FROM collection WHERE collection.id = timeline.collection_id AND collection.archived = TRUE);
+      rollback: # nothing to do; rolling back the preceding changeset drops the column

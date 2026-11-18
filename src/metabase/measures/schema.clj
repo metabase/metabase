@@ -45,12 +45,15 @@
     [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
     [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
+(mr/def ::measure.name
+  ms/NonBlankString)
+
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
   [:map {:closed true}
    [:table_id           {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
-   [:name               {:optional true} [:maybe :string]]
+   [:name               {:optional true} [:maybe ::measure.name]]
    [:description        {:optional true} [:maybe :string]]
    [:archived           {:optional true} [:maybe :boolean]]
    [:definition         {:optional true} [:maybe ::measure.definition]]

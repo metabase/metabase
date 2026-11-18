@@ -43,7 +43,7 @@ When anonymous tracking is enabled, Metabase collects usage data from embedded i
 - The authentication method (like SSO or guest)
 - Whether a custom locale is configured
 
-Within a session, an in-memory identifier groups related events, but this identifier is regenerated on every page load and is never written to cookies or localStorage, so there's no persistent cross-session identifier.  
+Within a session, an in-memory identifier groups related events, but this identifier is regenerated on every page load and is never written to cookies or localStorage, so there's no persistent cross-session identifier.
 
 ### Data collected by iframe embeds
 
@@ -72,13 +72,18 @@ The token validation request includes:
 - Count of active users (used for billing)
 - Count of external users
 - Count of internal users
+- Whether [tenants](../embedding/tenants.md) are turned on
+- Count of tenant users
+- Count of tenants with at least one active user
 - Count of email domains
 - Count of embedded dashboards and questions
-- Types of embedding (modular, guest, SDK, full app)
+- Types of embedding (modular, guest, SDK, full app, and standalone Metabase linked from your app)
 - Site UUID (just an identifier for your Metabase)
 - Metabase version
 - Query execution counts for the previous UTC day, broken down by embedding type (SDK, interactive, static, public link, simple, and internal)
-- Metabot usage statistics: count of tokens, queries, users, and date (just counts and the date).
+- Metabot usage statistics: count of tokens (in total and per AI model), queries, users, and date for the previous UTC day, and count of tokens per AI model for the current UTC day so far (just counts and the dates).
+- Count of live [data apps](../data-apps/start.md)
+- Transform usage statistics: counts of successful [basic and advanced transform](../data-modeling/transforms/addons.md#how-billing-works-for-transforms) runs for the previous UTC day and for the current UTC day so far (just counts and the dates).
 
 ## Further reading
 

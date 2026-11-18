@@ -56,6 +56,20 @@
   ["assumeminserverversion" "hostrecheckseconds" "isserverless" "kerberosservername" "loadbalancehosts"
    "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"])
 
+(defmethod driver/disallowed-connection-parameters :redshift
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :postgres) driver)
+        [;; Loads connection properties from a server-side profile, which can set any of these
+         "AuthProfile"
+         ;; Loads connection properties from a local file
+         "IniFile"
+         ;; Can pick a profile from the host's AWS config files
+         "Profile"
+         ;; Instantiates an arbitrary class (an IAM credentials provider)
+         "plugin_name"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true
@@ -71,6 +85,8 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          false
+                              ;; A capped query left a data-test run's transaction aborted; see `:jdbc/set-max-rows`.
+                              :jdbc/set-max-rows                false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false

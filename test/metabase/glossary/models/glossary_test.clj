@@ -1,8 +1,12 @@
 (ns metabase.glossary.models.glossary-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.glossary.schema :as glossary.schema]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest creator-hydration-test
@@ -43,3 +47,27 @@
                                                                    {:term       "SQL"
                                                                     :definition "Structured Query Language"})]
             (is (= config/internal-mb-user-id (:creator_id glossary-no-creator)))))))))
+
+(deftest glossary-schema-test
+  (testing "the Glossary schema refuses a blank or missing term or definition"
+    (is (not (mr/validate ::glossary.schema/glossary.update {:term " "})))
+    (is (not (mr/validate ::glossary.schema/glossary.update {:definition nil})))
+    (is (mr/validate ::glossary.schema/glossary.update {:term "Kept" :definition "Kept definition"}))))
+
+(deftest write-permission-test
+  (mt/with-temp [:model/Glossary entry {:term "Checked" :definition "Permission checked"}]
+    (testing "superuser can create and update entries"
+      (mt/with-test-user :crowberto
+        (is (true? (api/create-check :model/Glossary {:term "New" :definition "Entry"})))
+        (is (true? (api/update-check entry {:term "Renamed"})))
+        (is (true? (:can_write (t2/hydrate entry :can_write))))))
+    (testing "regular user cannot create or update entries"
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/create-check :model/Glossary {:term "New" :definition "Entry"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/update-check entry {:term "Renamed"})))
+        (is (false? (:can_write (t2/hydrate entry :can_write))))))
+    (testing "every user can read entries"
+      (mt/with-test-user :rasta
+        (is (= [true] (map mi/can-read? (t2/hydrate [entry] :can_read))))))))

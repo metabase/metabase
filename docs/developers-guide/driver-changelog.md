@@ -7,6 +7,11 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
+  a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
+  query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
+  Return false for a driver where a capped query breaks the transaction it runs in.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
@@ -34,6 +39,9 @@ summary: Changes to the Metabase driver interface, listed by release.
 - Various legacy MBQL utility functions that were deprecated in 57 have been removed from `driver-api`:
   `aggregation-at-index`, `assoc-field-options`, `expression-with-name`, `field-options`, `normalize-token`,
   `query->source-table-id`, and `update-field-options`.
+
+- `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends.
+  If your driver derives from `:postgres` and overrides the method, extend `:postgres`'s list rather than `:sql-jdbc`'s.
 
 ## Metabase 0.65.3
 

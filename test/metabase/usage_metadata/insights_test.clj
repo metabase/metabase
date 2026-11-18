@@ -208,8 +208,7 @@
       (testing "precondition: candidate is present without a saved Segment"
         (is (seq (insights/suggested-segments-for-owner opts))))
       (memoize/memo-clear! composite-atomsets-memo)
-      (mt/with-temp [:model/Segment _seg {:table_id   (mt/id :orders)
-                                          :definition (composite-orders-query)}]
+      (mt/with-temp [:model/Segment _seg {:definition (composite-orders-query)}]
         (let [results (insights/suggested-segments-for-owner opts)]
           (testing "candidate is filtered out when a saved Segment has the same atom-set"
             (is (not-any? (fn [{:keys [source itemset-size]}]
