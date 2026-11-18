@@ -1,10 +1,4 @@
-import {
-  type FocusEvent,
-  type KeyboardEvent,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type FocusEvent, type KeyboardEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
 import S from "./ChipNameInput.module.css";
@@ -23,13 +17,6 @@ type ChipNameInputProps = {
 export function ChipNameInput({ name, onRename, onClose }: ChipNameInputProps) {
   const [value, setValue] = useState(name);
   const isDoneRef = useRef(false);
-  // The removal of the chip blurs this field. That blur must not rename the removed chip.
-  useLayoutEffect(() => {
-    isDoneRef.current = false;
-    return () => {
-      isDoneRef.current = true;
-    };
-  }, []);
 
   const finish = (keepChanges: boolean, moveFocus: boolean) => {
     if (isDoneRef.current) {
