@@ -275,25 +275,25 @@ describe("BrowseMetrics (OSS)", () => {
         createMockMetricResult({
           id: 3,
           name: "Metric C",
-          description: "Description X",
+          description: "Description Z",
           ...ROOT_METRIC,
         }),
         createMockMetricResult({
           id: 1,
           name: "Metric A",
-          description: "Description Z",
+          description: "Description Y",
           ...ROOT_METRIC,
         }),
         createMockMetricResult({
           id: 4,
           name: "Metric D",
-          description: "Description W",
+          description: "Description X",
           ...ROOT_METRIC,
         }),
         createMockMetricResult({
           id: 2,
           name: "Metric B",
-          description: "Description Y",
+          description: "Description W",
           collection: FIRST_COLLECTION,
         }),
       ],
@@ -310,10 +310,10 @@ describe("BrowseMetrics (OSS)", () => {
 
     await userEvent.click(within(table).getByText("Description"));
     expect(getMetricNames()).toEqual([
-      "Metric D",
-      "Metric C",
       "Metric B",
+      "Metric D",
       "Metric A",
+      "Metric C",
     ]);
 
     await userEvent.click(within(table).getByText("Collection"));
