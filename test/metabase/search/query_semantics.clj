@@ -10,7 +10,7 @@
   (-> "search/query_semantics.edn" io/resource slurp edn/read-string))
 
 (defn- with-fallback
-  "Semantic search's results: its keyword and vector arms, topped up with the fallback engine's hits."
+  "Return the union of the keyword, vector, and fallback hits, or an empty set when both arms are empty."
   [keyword-hits vector-hits fallback-hits]
   ;; Semantic search falls back below its results threshold, which these catalogues always are, but only when
   ;; its own arms found something.
@@ -21,8 +21,8 @@
 
 (defn expected-hits
   "Expected result labels for an engine's identical-query search.
-  The `:semantic` and `:semantic-only` engines expose the vector arm; see [[expected-hybrid-hits]] for both arms.
-  The `:semantic-with-fallback` engine adds the keyword arm and app-db's PostgreSQL hits, as semantic search does."
+  Both :semantic and :semantic-only expose the vector arm; see [[expected-hybrid-hits]] for both arms.
+  The fallback view includes the keyword arm and app-db's PostgreSQL fallback hits."
   [scenario engine]
   (case engine
     (:semantic :semantic-only) (set (get-in scenario [:expect :semantic :vector]))

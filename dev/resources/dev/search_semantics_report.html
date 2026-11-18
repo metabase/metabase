@@ -475,6 +475,7 @@
         </tbody>
       </table>
     </div>
+    <p class="note">The in-place results use a PostgreSQL app database. MySQL/MariaDB collations can return different results, including matches across accents.</p>
     <p class="note">Semantic search unions these vector hits with keyword hits, then ranks the combined results. For every case here, the keyword hits are the appdb/PostgreSQL hits. When it finds fewer results than its threshold (100 by default), as it always does in a small catalog, it also appends appdb's results, as long as its own arms found something. This page scores semantic search twice: <em>Semantic only</em> is the vector arm alone, and <em>Semantic with fallback</em> is what it returns, modeling appdb as PostgreSQL.</p>
   </section>
   </details>
@@ -566,7 +567,6 @@ __REPORT_MODEL__
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
-    const number = value => Number(value).toFixed(2);
     const fixed = value => Number(value).toFixed(2);
     const percent = value => `${(100 * value).toFixed(1)}%`;
     const table = (headers, rows) => `<table><thead><tr>${headers.map(h => typeof h === "string" ? `<th>${escape(h)}</th>` : `<th class="${h.className}">${escape(h.text)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -688,7 +688,7 @@ __REPORT_MODEL__
         $("second-table-note").textContent = "F1 combines precision and recall, as Scores by goal explains. Within each column, darker cells are better and the best is bold. Each goal counts once here, whatever the weights in Scores by goal. Exact counts the goals where an engine returns exactly the correct cards. The original-query columns score each goal's query unchanged.";
       } else {
         $("second-table-title").textContent = "Average cards returned per query";
-        $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
+        $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), fixed(summary.meanHits[engine])]));
         $("second-table-note").textContent = "Each count is the cards an engine returns per query. More is not better.";
       }
     }
@@ -827,11 +827,10 @@ __REPORT_MODEL__
         return (missing.length ? `<span class="missing">missing ${escape(missing.join(", "))}</span>` : "")
           + (extra.length ? `<span class="extra-hits">extra ${escape(extra.join(", "))}</span>` : "");
       };
-      const keywordArm = engine => engine.keywordHits ? `<span class="sub">Keyword arm: ${hitList(engine.keywordHits)}</span>` : "";
       const queryRows = !translated ? "" : item.engines.map(engine => {
         const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="check" aria-label="correct">✓</span>' : ""}`;
         const adapted = engine.query !== item.query;
-        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">unchanged</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${verdict(engine.typedHits)}</td></tr>`;
+        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">unchanged</span>'}</td><td>${verdict(engine.hits)}</td><td>${verdict(engine.typedHits)}</td></tr>`;
       }).join("");
       const queries = translated
         ? `<p class="single-query muted">Original query: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Best query</th><th>Wrong cards</th><th>Wrong cards, original query</th></tr></thead><tbody>${queryRows}</tbody></table></div>`

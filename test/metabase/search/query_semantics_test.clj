@@ -50,7 +50,7 @@
   "Build the case index and query it with the case's text-search language."
   [config docs query expected]
   ;; PostgreSQL uses this language for both indexed tsvectors and the query.
-  ;; H2 ignores it for matching.
+  ;; H2 and MySQL ignore it for matching.
   (mt/with-temporary-setting-values [search-language config]
     (search.tu/with-temp-index-table
       (let [id->label (index-documents! docs)]
@@ -60,15 +60,17 @@
                            id->label)))))))
 
 (def ^:private in-place-divergences
-  "In-place results that differ from those on a PostgreSQL app DB, keyed by app DB type and scenario id.
-  PostgreSQL is the reference, so each entry is a shortcoming of that app DB, to remove when in-place is fixed there.
-  The adapted-query comparisons need no entries: their in-place results are the same on every app DB.
-  MySQL and MariaDB collations ignore accents, so `cafe` also finds \"Café sales\" there."
+  "In-place results that differ from the PostgreSQL reference, keyed by app database type and scenario ID."
+  ;; MySQL/MariaDB collations ignore accents, broadening the matches in these scenarios.
+  ;; Adapted-query comparisons have the same in-place results on every tested app database.
   {:mysql {"accent-literal"          #{:A :B :C}
-           "unicode-composed-accent" #{:A :B :C :D}}})
+           "unicode-composed-accent" #{:A
+                                       :B
+                                       :C
+                                       :D}}})
 
 (defn- expected-in-place-hits
-  [{:keys [id] :as case}]
+  [{:keys [id], :as case}]
   (get-in in-place-divergences [(mdb/db-type) id] (fixtures/expected-hits case :in-place)))
 
 (defn- available-appdb-dialect
@@ -82,7 +84,7 @@
 
 (deftest identical-query-semantics-test
   (let [dialect (available-appdb-dialect)]
-    (doseq [{:keys [id focus config docs query] :as case} fixtures/cases]
+    (doseq [{:keys [id focus config docs query], :as case} fixtures/cases]
       (testing (str id " / " focus)
         (check-in-place-query! docs query (expected-in-place-hits case))
         (when dialect
@@ -90,8 +92,8 @@
 
 (deftest translated-query-semantics-test
   (let [dialect (available-appdb-dialect)]
-    (doseq [{:keys [id config docs comparisons] :as case} fixtures/cases
-            {:keys [focus] :as comparison} comparisons]
+    (doseq [{:keys [id config docs comparisons], :as case} fixtures/cases
+            {:keys [focus], :as comparison} comparisons]
       (testing (str id " / " focus)
         (let [{:keys [query hits]} (fixtures/comparison-spec case comparison :in-place)]
           (check-in-place-query! docs query hits))

@@ -22,13 +22,12 @@
 ;; Both arms are recorded. Statistics compare the vector arm alone and semantic search with its app-db fallback.
 ;; The fallback is modelled as PostgreSQL; semantic rewrites record :keyword and :fallback hits separately.
 ;; In-place hits are what in-place returns on a PostgreSQL app DB.
-;; Where another app DB returns something else, that app DB falls short, and metabase.search.query-semantics-test
-;; records the difference.
+;; The integration tests record in-place differences on other app databases.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :note
-  ["In-place's OR favors recall; app-db's AND favors precision. Neither default is universally better"
-   "without knowing the user's intent."]
+  ["In-place's OR favors recall; app-db's AND favors precision. Neither default is universally"
+   "better without knowing the user's intent."]
   :config "simple"
   :query  "revenue region"
   :docs   {:A {:name "Revenue forecast"}
@@ -36,15 +35,12 @@
            :C {:name "Revenue by region"}
            :D {:name "Quarterly revenue", :description "Split by sales region"}
            :E {:name "Product reviews"}}
-  ;; In-place's OR favors recall; app-db's AND favors precision.
-  ;; Neither default is universally better without knowing the user's intent.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:C :D]
            :appdb-mysql    [:C :D]
            :appdb-postgres [:C :D]
            :semantic       {:keyword [:C :D], :vector [:A :B :C :D]}}
   :comparisons
-  ;; H2 cannot express OR, and in-place cannot express AND, so each falls back to a single word.
   [{:id      "revenue-or-regions"
     :kind    :or
     :note
@@ -76,8 +72,6 @@
            :B {:name "Exchange rates"}
            :C {:name "Churn rate"}
            :D {:name "Average order value"}}
-  ;; Infix matching finds "rate" in "Moderated"; lexeme-prefix matching avoids that likely false positive, but
-  ;; cannot serve arbitrary substring lookup.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-mysql    [:B :C]
@@ -95,8 +89,6 @@
            :B {:name "Signed contracts"}
            :C {:name "Upgrades"}
            :D {:name "Sign up funnel"}}
-  ;; H2 requires both substrings, not two separate words, which here happens to find the compound "Signups".
-  ;; In-place needs only one substring; PostgreSQL's lexemes match only the separate-word card.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A :D]
            :appdb-mysql    [:D]
@@ -132,8 +124,8 @@
  {:id     "or-operator"
   :focus  "unquoted or operator versus literal substring"
   :note
-  ["PostgreSQL parses `or` as an operator; H2 searches for the literal substring, and in-place matches"
-   "any word, including \"or\" in \"Store\"."]
+  ["PostgreSQL parses `or` as an operator; H2 searches for the literal substring, and in-place"
+   "matches any word, including \"or\" in \"Store\"."]
   :config "simple"
   :query  "refunds or returns"
   :docs   {:A {:name "Refunds"}
@@ -141,8 +133,6 @@
            :C {:name "Refunds and returns"}
            :D {:name "Refunds or returns"}
            :E {:name "Store locations"}}
-  ;; PostgreSQL parses `or` as an operator; H2 searches for the literal substring, and in-place matches any
-  ;; word, including "or" in "Store".
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:D]
            :appdb-mysql    [:A :B :C :D]
@@ -167,29 +157,25 @@
  {:id     "negation"
   :focus  "leading hyphen negation"
   :note
-  ["Keyword negation excludes B, but it cannot veto the vector arm, which still retrieves it. This is a"
-   "current-behavior contract, not approval."]
+  ["Keyword negation excludes B, but it cannot veto the vector arm, which still retrieves it. This"
+   "is a current-behavior contract, not approval."]
   :config "simple"
   :query  "orders -test"
   :docs   {:A {:name "Orders"}
            :B {:name "Test orders"}
            :C {:name "Test dashboard"}
            :D {:name "Orders -test"}}
-  ;; Keyword negation excludes B, but it cannot veto the vector arm, which still retrieves it.
-  ;; This is a current-behavior contract, not approval.
   :expect {:in-place       [:A :B :D]
            :appdb-h2       [:D]
            :appdb-mysql    [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :D]}}
   :comparisons
-  ;; Spelling out the exclusion changes nothing for the vector arm, except that "Test orders" becomes its
-  ;; closest card.
   [{:id      "orders-without-tests"
     :kind    :exclusion
     :note
-    ["Spelling out the exclusion changes nothing for the vector arm, except that \"Test orders\" becomes its"
-     "closest card."]
+    ["Spelling out the exclusion changes nothing for the vector arm, except that \"Test orders\""
+     "becomes its closest card."]
     :focus   "orders, excluding test cards"
     :correct [:A]
     :alternatives
@@ -236,7 +222,6 @@
            :appdb-postgres [:A :B :F]
            :semantic       {:keyword [:A :B :F], :vector [:A :B :C :F]}}
   :comparisons
-  ;; PostgreSQL discards the `and` and requires both words, which is what this user wants.
   [{:id      "sales-and-marketing"
     :kind    :and
     :note
@@ -249,24 +234,19 @@
  {:id     "english-stopword"
   :focus  "English stopword removal"
   :note
-  ["PostgreSQL's English dictionary drops \"the\". That generally helps a natural-language query, but not"
-   "a search intended to find literal text."]
+  ["PostgreSQL's English dictionary drops \"the\". That generally helps a natural-language query, but"
+   "not a search intended to find literal text."]
   :config "english"
   :query  "the office"
   :docs   {:A {:name "The Office episodes"}
            :B {:name "Office supplies"}
            :C {:name "Top shows of the year"}}
-  ;; PostgreSQL's English dictionary drops "the".
-  ;; That generally helps a natural-language query, but not a search intended to find literal text.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A]
            :appdb-mysql    [:A]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A]}}
   :comparisons
-  ;; A stopword the user typed is probably intentional, e.g. in a show title.
-  ;; The English dictionary strips "the" from indexed documents too, so no PostgreSQL query, quoted or not,
-  ;; can require it; excluding "supplies" is as close as it gets.
   [{:id      "the-office-show"
     :kind    :title
     :note
@@ -294,8 +274,8 @@
  {:id     "english-stemming"
   :focus  "English stemming of a non-final word"
   :note
-  ["English stemming matches \"Subscription cancellations\" for \"cancelled subscriptions\". This improves"
-   "recall for inflections while broadening beyond exact-word matching."]
+  ["English stemming matches \"Subscription cancellations\" for \"cancelled subscriptions\". This"
+   "improves recall for inflections while broadening beyond exact-word matching."]
   :config "english"
   :query  "cancelled subscriptions"
   :docs   {:A {:name "Cancelled subscriptions"}
@@ -303,15 +283,12 @@
            :C {:name "Cancelled orders"}
            :D {:name "Active subscriptions"}
            :E {:name "Refund requests"}}
-  ;; English stemming matches "Subscription cancellations" for "cancelled subscriptions".
-  ;; This improves recall for inflections while broadening beyond exact-word matching.
   :expect {:in-place       [:A :C :D]
            :appdb-h2       [:A]
            :appdb-mysql    [:A]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}
   :comparisons
-  ;; Substring engines need the shared stem typed out; for in-place, whose words are ORed, that stem alone.
   [{:id      "subscription-cancellations"
     :kind    :word-forms
     :note
@@ -354,8 +331,6 @@
            :D {:name "Ship dates"}
            :E {:name "Membership tiers"}
            :F {:name "Shopping carts"}}
-  ;; PostgreSQL stems "shipping" to "ship" and completes it, which finds every shipping card and not "Membership".
-  ;; Substring engines need the exact word.
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
            :appdb-mysql    [:C]
@@ -402,16 +377,14 @@
  {:id     "english-not-stopword"
   :focus  "same documents/query with English dropping not as a stopword"
   :note
-  ["With \"not\" dropped, PostgreSQL asks only for \"orders\" and \"shipped\", so A matches too: the opposite"
-   "of what the user asked for."]
+  ["With \"not\" dropped, PostgreSQL asks only for \"orders\" and \"shipped\", so A matches too: the"
+   "opposite of what the user asked for."]
   :config "english"
   :query  "orders not shipped"
   :docs   {:A {:name "Orders shipped"}
            :B {:name "Orders not shipped"}
            :C {:name "Orders by day"}
            :D {:name "Not shipped yet"}}
-  ;; With "not" dropped, PostgreSQL asks only for "orders" and "shipped", so A matches too: the opposite of
-  ;; what the user asked for.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:B]
            :appdb-mysql    [:B]
@@ -420,16 +393,14 @@
  {:id     "vector-only-match"
   :focus  "vector-only match enters semantic union without lexical overlap"
   :note
-  ["B shares no word with the query but falls within the vector distance cutoff. C is related too, but"
-   "the model places it outside the cutoff."]
+  ["B shares no word with the query but falls within the vector distance cutoff. C is related too,"
+   "but the model places it outside the cutoff."]
   :config "simple"
   :query  "customers"
   :docs   {:A {:name "Customers by signup date"}
            :B {:name "Client list"}
            :C {:name "Accounts receivable"}
            :D {:name "Product inventory"}}
-  ;; B shares no word with the query but falls within the vector distance cutoff.
-  ;; C is related too, but the model places it outside the cutoff.
   :expect {:in-place       [:A]
            :appdb-h2       [:A]
            :appdb-mysql    [:A]
@@ -476,9 +447,6 @@
            :E {:name "OFF50 redemptions"}
            :F {:name "50-off sale"}
            :G {:name "50th anniversary sale"}}
-  ;; PostgreSQL treats % as token punctuation; H2 and in-place require the literal character.
-  ;; Tokenization suits prose, literal matching code-like text.
-  ;; A and B would match if % were a LIKE wildcard.
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
            :appdb-mysql    [:C :D :F]
@@ -495,7 +463,6 @@
            :C {:name "Orders by userid"}
            :D {:name "Orders by user id"}
            :E {:name "Orders by user-id"}}
-  ;; A and D would match if _ were a LIKE wildcard.
   :expect {:in-place       [:B]
            :appdb-h2       [:B]
            :appdb-mysql    [:A :B :D :E]
@@ -517,16 +484,14 @@
  {:id     "possessive-apostrophe"
   :focus  "an apostrophe splits a PostgreSQL word but is literal in substring search"
   :note
-  ["PostgreSQL reads \"customer's\" as \"customer\" and \"s\", and only the possessive card has a lone \"s\". H2"
-   "needs the apostrophe; in-place needs any one word."]
+  ["PostgreSQL reads \"customer's\" as \"customer\" and \"s\", and only the possessive card has a lone"
+   "\"s\". H2 needs the apostrophe; in-place needs any one word."]
   :config "simple"
   :query  "customer's orders"
   :docs   {:A {:name "Customer's orders"}
            :B {:name "Customers orders"}
            :C {:name "Customer orders"}
            :D {:name "Orders"}}
-  ;; PostgreSQL reads "customer's" as "customer" and "s", and only the possessive card has a lone "s".
-  ;; H2 needs the apostrophe; in-place needs any one word.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A]
            :appdb-mysql    [:A]
@@ -550,9 +515,9 @@
  {:id     "year-in-range"
   :focus  "PostgreSQL reads the second year of a range as a negative number"
   :note
-  ["PostgreSQL parses \"2023-2024\" as \"2023\" and \"-2024\", and \"FY2024\" as one word, so it misses both."
-   "Prefix completion still matches the ticket number, as substring search does. The vector arm returns"
-   "exactly the 2024 cards."]
+  ["PostgreSQL parses \"2023-2024\" as \"2023\" and \"-2024\", and \"FY2024\" as one word, so it misses"
+   "both. Prefix completion still matches the ticket number, as substring search does. The vector"
+   "arm returns exactly the 2024 cards."]
   :config "simple"
   :query  "2024"
   :docs   {:A {:name "Revenue 2024"}
@@ -560,9 +525,6 @@
            :C {:name "Revenue 2023-2024"}
            :D {:name "Ticket 20241 escalation"}
            :E {:name "Revenue 2023"}}
-  ;; PostgreSQL parses "2023-2024" as "2023" and "-2024", and "FY2024" as one word, so it misses both.
-  ;; Prefix completion still matches the ticket number, as substring search does.
-  ;; The vector arm returns exactly the 2024 cards.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A :B :C :D]
            :appdb-mysql    [:A :C :D]
@@ -581,17 +543,15 @@
   :focus  "only the vector arm matches across an accent"
   :note
   ["Lexical engines treat \"é\" as a different letter, so \"cafe\" misses \"Café sales\" but matches"
-   "\"Cafeteria\". On a MySQL or MariaDB app DB, in-place ignores accents and also finds \"Café sales\","
-   "which the test records. The vector arm matches across the accent, and \"Coffee orders\" by meaning."]
+   "\"Cafeteria\". On a MySQL or MariaDB app DB, in-place ignores accents and also finds \"Café"
+   "sales\", which the test records. The vector arm matches across the accent, and \"Coffee orders\""
+   "by meaning."]
   :config "simple"
   :query  "cafe"
   :docs   {:A {:name "Café sales"}
            :B {:name "Cafe locations"}
            :C {:name "Cafeteria costs"}
            :D {:name "Coffee orders"}}
-  ;; Lexical engines treat "é" as a different letter, so "cafe" misses "Café sales" but matches "Cafeteria".
-  ;; On a MySQL or MariaDB app DB, in-place ignores accents and also finds "Café sales", which the test records.
-  ;; The vector arm matches across the accent, and "Coffee orders" by meaning.
   :expect {:in-place       [:B :C]
            :appdb-h2       [:B :C]
            :appdb-mysql    [:B :C]
@@ -619,7 +579,6 @@
            :C {:name "E commerce returns"}
            :D {:name "Commerce settings"}
            :E {:name "Email campaigns"}}
-  ;; Each lexical engine finds only the hyphenated spelling; the vector arm finds all three.
   :expect {:in-place       [:A]
            :appdb-h2       [:A]
            :appdb-mysql    [:A]
@@ -640,8 +599,8 @@
  {:id     "camel-case-name"
   :focus  "PostgreSQL indexes a camelCase name as one word"
   :note
-  ["Substring engines find \"revenue\" inside the camelCase names, and PostgreSQL does not. Underscores"
-   "separate PostgreSQL words, so it finds \"monthly_revenue\"."]
+  ["Substring engines find \"revenue\" inside the camelCase names, and PostgreSQL does not."
+   "Underscores separate PostgreSQL words, so it finds \"monthly_revenue\"."]
   :config "simple"
   :query  "revenue"
   :docs   {:A {:name "monthlyRevenue"}
@@ -649,8 +608,6 @@
            :C {:name "monthly_revenue"}
            :D {:name "Monthly revenue"}
            :E {:name "Revenue"}}
-  ;; Substring engines find "revenue" inside the camelCase names, and PostgreSQL does not.
-  ;; Underscores separate PostgreSQL words, so it finds "monthly_revenue".
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:A :B :C :D :E]
            :appdb-mysql    [:C :D :E]
@@ -671,16 +628,13 @@
            :appdb-postgres [:A :C :E]
            :semantic       {:keyword [:A :C :E], :vector [:A :B :C :D :E]}}
   :comparisons
-  ;; PostgreSQL keeps the stopword's position, so any word can fill it and C matches.
-  ;; The user wants the sets, including "Salt & pepper shakers", which no phrase with "and" finds.
-  ;; Naming the items instead finds exactly the sets, except on H2, which cannot express OR and so names one.
-  ;; Any query that mentions salt and pepper brings the vector arm every card.
   [{:id      "salt-and-pepper-sets"
     :kind    :word-forms
     :note
-    ["PostgreSQL keeps the stopword's position, so any word can fill it and C matches. The user wants the"
-     "sets, including \"Salt & pepper shakers\", which no phrase with \"and\" finds. Dropping the \"and\" and"
-     "the quotes is the best a lexical engine can do, and it returns every card."]
+    ["PostgreSQL keeps the stopword's position, so any word can fill it and C matches. The goal"
+     "includes \"Salt & pepper shakers\", which a phrase with \"and\" cannot find. Naming shakers and"
+     "grinders finds exactly the sets, except on H2, which cannot express OR and names one."
+     "The original query returns every card through the vector arm."]
     :focus   "salt-and-pepper sets"
     :correct [:A :B]
     :alternatives
@@ -762,9 +716,6 @@
            :appdb-postgres [:B :C :D :F :G]
            :semantic       {:keyword [:B :C :D :F :G], :vector [:B]}}
   :comparisons
-  ;; The typed query abbreviates both words, and PostgreSQL completes only the last, so it misses "Customers".
-  ;; Spelling out "revenue" gives in-place and PostgreSQL exactly the goal; H2 cannot express OR.
-  ;; "Reviews" also starts with "rev", but is not about revenue.
   [{:id      "customer-or-revenue"
     :kind    :or
     :note
@@ -823,8 +774,8 @@
  {:id     "negation-only"
   :focus  "negation-only query is a broad PostgreSQL complement"
   :note
-  ["PostgreSQL treats this as the complement of \"test\", returning otherwise unrelated rows. That broad"
-   "result is likely poor search UX, but is current."]
+  ["PostgreSQL treats this as the complement of \"test\", returning otherwise unrelated rows. That"
+   "broad result is likely poor search UX, but is current."]
   :config "simple"
   :query  "-test"
   :docs   {:A {:name "Weekly revenue"}
@@ -832,8 +783,6 @@
            :C {:name "Revenue test"}
            :D {:name "Revenue -test"}
            :E {:name "Customer list"}}
-  ;; PostgreSQL treats this as the complement of "test", returning otherwise unrelated rows.
-  ;; That broad result is likely poor search UX, but is current.
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
            :appdb-mysql    [:A :E]
@@ -855,16 +804,14 @@
  {:id     "or-only-operator"
   :focus  "operator-only or is literal for substring engines but empty for tsquery"
   :note
-  ["PostgreSQL sees only an operator, so it has no searchable lexeme, even when \"or\" is the start of"
-   "\"orders\". Literal substring engines still find \"or\", including its occurrences inside words."]
+  ["PostgreSQL sees only an operator, so it has no searchable lexeme, even when \"or\" is the start"
+   "of \"orders\". Literal substring engines still find \"or\", including its occurrences inside words."]
   :config "simple"
   :query  "or"
   :docs   {:A {:name "Refunds or returns"}
            :B {:name "Orders by month"}
            :C {:name "Store locations"}
            :D {:name "Revenue"}}
-  ;; PostgreSQL sees only an operator, so it has no searchable lexeme, even when "or" is the start of "orders".
-  ;; Literal substring engines still find "or", including its occurrences inside words.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-mysql    []
@@ -934,7 +881,6 @@
   :docs   {:A {:name "Monthly churn"}
            :B {:name "Retention cohorts", :description "Churn by signup month"}
            :C {:name "Order volume"}}
-  ;; All four engines agree on an exact ordinary term in either field.
   :expect {:in-place       [:A :B]
            :appdb-h2       [:A :B]
            :appdb-mysql    [:A :B]
@@ -949,7 +895,6 @@
   :docs   {:A {:name "Revenue by product"}
            :B {:name "Revenue", :description "Broken down by product line"}
            :C {:name "Customer list"}}
-  ;; With no one-term-only document, OR and AND produce the same result.
   :expect {:in-place       [:A :B]
            :appdb-h2       [:A :B]
            :appdb-mysql    [:A :B]
@@ -977,7 +922,6 @@
   :docs   {:A {:name "Order status"}
            :B {:name "Order statistics"}
            :C {:name "Customer list"}}
-  ;; Last-word completion and substring matching coincide on these documents.
   :expect {:in-place       [:A :B]
            :appdb-h2       [:A :B]
            :appdb-mysql    [:A :B]
@@ -992,7 +936,6 @@
   :docs   {:A {:name "Revenue"}
            :B {:name "Customers"}
            :C {:name "Daily signups"}}
-  ;; PostgreSQL discards the operator; the substring engines find no literal.
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-mysql    []
@@ -1006,7 +949,6 @@
   :query  "inventory"
   :docs   {:A {:name "Revenue"}
            :B {:name "Customers"}}
-  ;; Unlike operator-empty-agreement, every engine searches for a term but finds no match.
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-mysql    []
@@ -1022,8 +964,6 @@
            :B {:name "Desktop sessions"}
            :C {:name "Mobile vs desktop sessions"}
            :D {:name "Quarterly revenue"}}
-  ;; App-db needs both words in one row.
-  ;; The vector arm also retrieves each one-word row.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:C]
            :appdb-mysql    [:C]
@@ -1034,7 +974,8 @@
  {:id     "vector-noise"
   :focus  "the vector arm returns an unrelated card and misses the relevant one"
   :note
-  ["\"Sales team headcount\" passes the cutoff; \"Deals closed\", the card this user wants, does not."]
+  ["\"Sales team headcount\" passes the cutoff; \"Deals closed\", the card this user wants, does not."
+   "At 0.85, \"Deals closed\" is farther than five other cards, including \"Support tickets\"."]
   :config "simple"
   :query  "sales pipeline"
   :docs   {:A {:name "Monthly sales"}
@@ -1045,8 +986,6 @@
            :F {:name "Salesforce sync errors"}
            :G {:name "Sales tax settings"}
            :H {:name "Support tickets"}}
-  ;; "Sales team headcount" passes the cutoff; "Deals closed", the card this user wants, does not.
-  ;; At 0.85, "Deals closed" is farther than five other cards, including "Support tickets".
   :expect {:in-place       [:A :B :E :F :G]
            :appdb-h2       []
            :appdb-mysql    []
@@ -1066,7 +1005,6 @@
            :F {:name "Salesforce sync errors"}
            :G {:name "Sales tax settings"}
            :H {:name "Support tickets"}}
-  ;; "Monthly sales", at 0.86, is farther than "Sales team headcount", at 0.83.
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-mysql    []
@@ -1085,7 +1023,6 @@
            :D {:name "Customer lifetime value"}
            :E {:name "Support tickets"}
            :F {:name "Order volume"}}
-  ;; In-place matches "customers"; app-db needs every word.
   :expect {:in-place       [:A :C]
            :appdb-h2       []
            :appdb-mysql    []
@@ -1141,8 +1078,6 @@
            :D {:name "Monthly sales"}
            :E {:name "Support tickets"}
            :F {:name "Product inventory"}}
-  ;; The query shares no word or stem with any card, so lexical engines find nothing.
-  ;; The vector arm returns "Monthly sales" at about 0.46, and "Sales by region" at 0.68, inside the cutoff.
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-mysql    []
@@ -1159,7 +1094,6 @@
            :C {:name "Orders by month"}
            :D {:name "Support tickets"}
            :E {:name "Customer reviews"}}
-  ;; In-place matches the other words; app-db needs the misspelled one too.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       []
            :appdb-mysql    []
@@ -1168,8 +1102,8 @@
  {:id     "vector-typo-alone"
   :focus  "the cutoff drops the nearest cards for a lone misspelling"
   :note
-  ["Unlike vector-noise, the nearest cards are the wanted ones: both revenue cards sit at about 0.82,"
-   "ahead of \"Customer reviews\" at 0.88. A looser cutoff would return them."]
+  ["Unlike vector-noise, the nearest cards are the wanted ones: both revenue cards sit at about"
+   "0.82, ahead of \"Customer reviews\" at 0.88. A looser cutoff would return them."]
   :config "simple"
   :query  "reveune"
   :docs   {:A {:name "Revenue by month"}
@@ -1177,9 +1111,6 @@
            :C {:name "Orders by month"}
            :D {:name "Support tickets"}
            :E {:name "Customer reviews"}}
-  ;; Unlike vector-noise, the nearest cards are the wanted ones: both revenue cards sit at about 0.82, ahead of
-  ;; "Customer reviews" at 0.88.
-  ;; A looser cutoff would return them.
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-mysql    []
@@ -1187,7 +1118,9 @@
            :semantic       {:keyword [], :vector []}}}
  {:id     "short-word-prefix"
   :focus  "completion of a two-letter business identifier"
-  :note   ["Only the final unquoted word receives completion. Word-prefix engines exclude the internal id in Paid."]
+  :note
+  ["Only the final unquoted word receives completion. Word-prefix engines exclude the internal id"
+   "in Paid."]
   :config "simple"
   :query  "id"
   :docs   {:A {:name "ID revenue"}
@@ -1203,7 +1136,9 @@
                             :vector  [:A :D]}}}
  {:id     "short-word-exact"
   :focus  "a quoted short word requires a complete token"
-  :note   ["Quotes disable completion on appdb. Substring engines look for literal quote characters and find nothing."]
+  :note
+  ["Quotes disable completion on appdb. Substring engines look for literal quote characters and"
+   "find nothing."]
   :config "simple"
   :query  "\"id\""
   :docs   {:A {:name "ID revenue"}
@@ -1219,7 +1154,9 @@
                             :vector  [:A :D]}}}
  {:id     "short-word-first"
   :focus  "a short non-final word stays exact"
-  :note   ["The non-final id must be a complete word. MySQL handles this short exact token with its regexp fallback."]
+  :note
+  ["The non-final id must be a complete word. MySQL handles this short exact token with its regexp"
+   "fallback."]
   :config "simple"
   :query  "id revenue"
   :docs   {:A {:name "ID revenue"}
@@ -1235,7 +1172,9 @@
                             :vector  [:A :B :C :D :E]}}}
  {:id     "short-word-last"
   :focus  "moving the short word last enables completion"
-  :note   ["Moving id last also admits Identifier revenue. Paid revenue remains an internal-substring distractor."]
+  :note
+  ["Moving id last also admits Identifier revenue. Paid revenue remains an internal-substring"
+   "distractor."]
   :config "simple"
   :query  "revenue id"
   :docs   {:A {:name "ID revenue"}
@@ -1251,7 +1190,9 @@
                             :vector  [:A :B :C :D :E]}}}
  {:id     "single-character-prefix"
   :focus  "one-character completion versus an internal substring"
-  :note   ["MySQL handles one-character completion with its regexp fallback. Acquisition has only an internal q."]
+  :note
+  ["MySQL handles one-character completion with its regexp fallback. Acquisition has only an"
+   "internal q."]
   :config "simple"
   :query  "q"
   :docs   {:A {:name "Q1 revenue"}
@@ -1267,7 +1208,8 @@
                             :vector  []}}}
  {:id     "letter-number-prefix"
   :focus  "a short mixed letter-number token"
-  :note   ["Q1 also finds Q10 by completion. FYQ1 tests the same text inside a longer token."]
+  :note
+  ["Q1 also finds Q10 by completion. FYQ1 tests the same text inside a longer token."]
   :config "simple"
   :query  "q1"
   :docs   {:A {:name "Q1 revenue"}
@@ -1282,8 +1224,9 @@
                             :vector  [:A :C]}}}
  {:id     "cjk-prefix"
   :focus  "prefix versus internal substring in Chinese text without spaces"
-  :note   ["The query starts A and B, occurs inside C, and is the whole title D."
-           "Word-prefix engines miss the internal occurrence in C, reducing recall for Chinese text without spaces."]
+  :note
+  ["The query starts A and B, occurs inside C, and is the whole title D. Word-prefix engines miss"
+   "the internal occurrence in C, reducing recall for Chinese text without spaces."]
   :config "simple"
   :query  "订单"
   :docs   {:A {:name "订单状态"}
@@ -1300,8 +1243,8 @@
  {:id     "cjk-exact"
   :focus  "closing quotes requires the complete Chinese token"
   :note
-  ["Closing quotes requires the entire token on appdb. The vector arm still retrieves longer"
-   "titles about orders."]
+  ["Closing quotes requires the entire token on appdb. The vector arm still retrieves longer titles"
+   "about orders."]
   :config "simple"
   :query  "\"订单\""
   :docs   {:A {:name "订单状态"}
@@ -1317,7 +1260,9 @@
                             :vector  [:A :B :C :D]}}}
  {:id     "version-identifier"
   :focus  "dots within a version identifier versus separate words"
-  :note   ["MySQL also matches space-separated v1 2. In-place and PostgreSQL distinguish dots from spaces here."]
+  :note
+  ["MySQL also matches space-separated v1 2. In-place and PostgreSQL distinguish dots from spaces"
+   "here."]
   :config "simple"
   :query  "v1.2"
   :docs   {:A {:name "Release v1.2"}
@@ -1333,8 +1278,9 @@
                             :vector  [:A :B :C :D :E]}}}
  {:id     "email-identifier"
   :focus  "a quoted email address versus words separated by spaces"
-  :note   ["MySQL matches the address as adjacent words, including the space-separated and cross-field cards."
-           "PostgreSQL preserves the email token and returns only A."]
+  :note
+  ["MySQL matches the address as adjacent words, including the space-separated and cross-field"
+   "cards. PostgreSQL preserves the email token and returns only A."]
   :config "simple"
   :query  "\"alice@example.com\""
   :docs   {:A {:name "alice@example.com orders"}
@@ -1351,7 +1297,9 @@
                             :vector  [:A :B :C :D :E]}}}
  {:id     "unicode-composed-accent"
   :focus  "composed accent queried against both Unicode spellings"
-  :note   ["A uses U+00E9; B uses e plus U+0301. The titles look identical but have different Unicode spellings."]
+  :note
+  ["A uses U+00E9; B uses e plus U+0301. The titles look identical but have different Unicode"
+   "spellings."]
   :config "simple"
   :query  "café"
   :docs   {:A {:name "Café sales"}
@@ -1366,8 +1314,10 @@
                             :vector  [:A :B :C]}}}
  {:id     "unicode-decomposed-accent"
   :focus  "decomposed accent queried against both Unicode spellings"
-  :note   ["The query uses e plus U+0301. MySQL drops the combining mark and also finds Cafe and Cafeteria."
-           "PostgreSQL returns only the card with the same Unicode spelling. This records a MySQL tokenization bug."]
+  :note
+  ["The query uses e plus U+0301. MySQL drops the combining mark and also finds Cafe and Cafeteria."
+   "PostgreSQL returns only the card with the same Unicode spelling. This records a MySQL"
+   "tokenization bug."]
   :config "simple"
   :query  "cafe\u0301"
   :docs   {:A {:name "Café sales"}
@@ -1382,7 +1332,9 @@
                             :vector  [:A :B :C]}}}
  {:id     "unicode-apostrophe"
   :focus  "curly apostrophe versus ASCII apostrophe and separate words"
-  :note   ["The curly apostrophe separates customer and s, as the ASCII apostrophe does on both word engines."]
+  :note
+  ["The curly apostrophe separates customer and s, as the ASCII apostrophe does on both word"
+   "engines."]
   :config "simple"
   :query  "customer’s orders"
   :docs   {:A {:name "Customer’s orders"}
@@ -1398,8 +1350,9 @@
                             :vector  [:A :B :C :D :E]}}}
  {:id     "phrase-punctuation-separators"
   :focus  "phrase adjacency across hyphen, slash and space separators"
-  :note   ["MySQL treats the slash as a phrase separator; PostgreSQL does not match that card."
-           "Both match reversed title E across the duplicated title in searchable text, as in phrase-boundary."]
+  :note
+  ["MySQL treats the slash as a phrase separator; PostgreSQL does not match that card. Both match"
+   "reversed title E across the duplicated title in searchable text, as in phrase-boundary."]
   :config "simple"
   :query  "\"customer refunds\""
   :docs   {:A {:name "Customer refunds"}

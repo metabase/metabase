@@ -12,8 +12,7 @@
 (def ^:private default-cutoff 0.7)
 
 (def ^:private default-findings
-  "The page's opening findings. Each names its case and the memberships it relies on, which are checked at build
-  time, so a fixture change that falsifies one fails the build instead of leaving the claim stale."
+  "Opening findings with the scenario and result memberships needed to validate each claim."
   [{:case  "english-stopword-only"
     :text  (str "MySQL keeps `the` as a searchable word. "
                 "PostgreSQL's English config drops it and returns nothing.")
@@ -53,11 +52,8 @@
                 "sales\" is in the catalog.")
     :holds {:semantic-with-fallback :none}}])
 
-;;; Themes
-
 (def ^:private default-themes
-  "The themes a reader can browse identical-query scenarios by. Every scenario belongs to exactly one, which the
-  build checks, so a new or renamed scenario fails the build until it is placed."
+  "Browse groups that place each identical-query scenario exactly once."
   [{:id          "partial"
     :label       "Partial words"
     :description "What matches while a word is only partly typed, as a prefix or a substring."
@@ -174,8 +170,8 @@
       :else
       (for [[label included?] memberships
             :let [problem (cond
-                            (not (contains? known label)) :unknown-finding-label
-                            (not (boolean? included?))    :invalid-finding-claim
+                            (not (contains? known label))             :unknown-finding-label
+                            (not (boolean? included?))                :invalid-finding-claim
                             (not= included? (contains? results label)) :finding-mismatch)]
             :when problem]
         (cond-> (assoc context :type problem, :label label)
@@ -255,9 +251,9 @@
         query (if (= corpus :translations) (get-in row [:specs engine :query]) (:query row))]
     (cond-> {:id (name engine), :hits (labels (get-in row [:results engine]))}
       (= corpus :translations)
-      (assoc :query query
-             :typedHits (labels (get-in row [:typed engine]))
-             :bestScore (double-values best)
+      (assoc :query      query
+             :typedHits  (labels (get-in row [:typed engine]))
+             :bestScore  (double-values best)
              :typedScore (double-values typed))
       (= engine :semantic-only)
       (assoc :distances (distances context row query (get-in row [:results engine])))
