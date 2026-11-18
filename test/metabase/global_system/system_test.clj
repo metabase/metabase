@@ -787,7 +787,7 @@
           (cleanup! handles))))))
 
 (deftest ^:synchronized halt-order-through-components-that-are-not-running-test
-  (testing "a path through components that are not running opens toward the latest-started component it leads to"
+  (testing "components on the path to the latest-started component stop first"
     (let [a1      (system/mutable-component-handle ::paths-a1 (constantly nil))
           a2      (system/mutable-component-handle ::paths-a2 (constantly nil))
           b1      (system/mutable-component-handle ::paths-b1 (constantly nil))

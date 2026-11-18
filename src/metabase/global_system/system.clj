@@ -321,7 +321,7 @@
   "The handles of the running components, in the order [[halt!]] stops them.
    Each comes before every component it uses in `graph`, directly or through components that are not running.
    Otherwise components come in the reverse of their first-start order, as far as those paths allow.
-   A path through components that are not running clears toward the latest-started running component it leads to."
+   Where those paths leave the order open, components on the path to the latest-started component stop first."
   [graph]
   (let [running              @started-components
         position             (zipmap @start-order (range))
