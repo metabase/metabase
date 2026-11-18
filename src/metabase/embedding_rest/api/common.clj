@@ -21,6 +21,7 @@
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.request.core :as request]
@@ -423,14 +424,6 @@
      :parameters           (apply-slug->value card-parameters merged-slug->value)
      :signed-parameter-ids (signed-parameter-ids card-parameters token-params)}))
 
-(defn- check-card-and-dashcard-are-in-dashboard
-  "404 unless `dashcard` is on `dashboard` and `card` is its card or one of its series."
-  [dashboard dashcard card]
-  (api/check-404
-   (and (= (:dashboard_id dashcard) (:id dashboard))
-        (or (= (:card_id dashcard) (:id card))
-            (embedding-rest.db/dashcard-series-exists? (:id card) (:id dashcard))))))
-
 (mu/defn dashcard-context :- ::dashcard-context
   "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `dashboard`, then check that
   `card` is on `dashcard` on `dashboard`. Throws a 400 on bad params, a 404 on a membership mismatch."
@@ -442,7 +435,7 @@
    query-params     :- [:or QueryParams ParsedQueryParams]]
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard slug->value)]
-    (check-card-and-dashcard-are-in-dashboard dashboard dashcard card)
+    (qp.dashboard/check-card-and-dashcard-are-in-dashboard (:id dashboard) (:id card) dashcard)
     {:dashboard            dashboard
      :dashcard             dashcard
      :card                 card
