@@ -47,6 +47,7 @@ export const ChartSettingSegmentsEditor = ({
               <tr key={index}>
                 <td>
                   <ColorSelector
+                    pillSize="large"
                     className={S.ColorPill}
                     value={segment.color}
                     colors={getColorPalette()}
@@ -95,6 +96,7 @@ export const ChartSettingSegmentsEditor = ({
                   {(segments.length > 1 || canRemoveAll) && (
                     <ActionIcon
                       variant="subtle"
+                      size="lg"
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
