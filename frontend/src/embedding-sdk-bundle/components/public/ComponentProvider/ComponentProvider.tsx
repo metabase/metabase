@@ -144,7 +144,6 @@ export const ComponentProviderInternal = (
   // calls the OSS no-op, and its deps don't re-fire when the EE fn lands.
   const pluginsReady = useArePluginsReady();
 
-  // The image export styles, scoped to the SDK wrappers
   const saveDomImageStyles = getSaveDomImageStyles(
     isEmbeddingSdk(),
     ".mb-wrapper",
