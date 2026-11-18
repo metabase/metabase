@@ -9,6 +9,7 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -19,13 +20,18 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { dashboardReducers } from "../reducers";
 
+import { onReplaceAllDashCardVisualizationSettings } from "./core";
 import { updateDashboardAndCards } from "./save";
 
 const NEW_DASHCARD_TEMP_ID = -1;
 const NEW_DASHCARD_REAL_ID = 99;
 const CARD_ID = 1;
 
-function setup() {
+type SetupOpts = {
+  dashcardVisualizationSettings?: VisualizationSettings;
+};
+
+function setup({ dashcardVisualizationSettings = {} }: SetupOpts = {}) {
   const database = createSampleDatabase();
 
   // The card the user added during editing only exists locally, with a
@@ -35,6 +41,7 @@ function setup() {
     card_id: CARD_ID,
     dashboard_id: 1,
     card: createMockCard({ id: CARD_ID }),
+    visualization_settings: dashcardVisualizationSettings,
   });
 
   const savedDashboard = createMockDashboard({
@@ -117,5 +124,38 @@ describe("updateDashboardAndCards", () => {
     expect(
       fetchMock.callHistory.called("path:/api/dashboard/1", { method: "GET" }),
     ).toBe(false);
+  });
+
+  it("keeps an empty card title when the settings modal clears it (metabase#12013, metabase#36788)", () => {
+    const { store } = setup();
+
+    store.dispatch(
+      onReplaceAllDashCardVisualizationSettings(NEW_DASHCARD_TEMP_ID, {
+        "card.title": "",
+      }),
+    );
+
+    const dashcard = store.getState().dashboard.dashcards[NEW_DASHCARD_TEMP_ID];
+    expect(dashcard.visualization_settings).toEqual({ "card.title": "" });
+    expect(dashcard.isDirty).toBe(true);
+  });
+
+  it("saves an empty card title as an empty string (metabase#12013, metabase#36788)", async () => {
+    const { store } = setup({
+      dashcardVisualizationSettings: { "card.title": "" },
+    });
+
+    await store.dispatch(updateDashboardAndCards());
+
+    const request = fetchMock.callHistory.lastCall("path:/api/dashboard/1", {
+      method: "PUT",
+    });
+    const body = JSON.parse(String(request?.options.body));
+    expect(body.dashcards).toEqual([
+      expect.objectContaining({
+        id: NEW_DASHCARD_TEMP_ID,
+        visualization_settings: { "card.title": "" },
+      }),
+    ]);
   });
 });

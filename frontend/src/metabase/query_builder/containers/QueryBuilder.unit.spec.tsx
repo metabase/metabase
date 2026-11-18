@@ -7,11 +7,13 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
+  renderHook,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
@@ -116,6 +118,16 @@ describe("QueryBuilder", () => {
           const element = screen.getByTestId("question-row-count");
           expect(element).toBeVisible();
         },
+      );
+    });
+
+    it("uses the question name as the document title (metabase#42165)", async () => {
+      // AppComponent sets the application name as the base of the title stack
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      await setup({ card: TEST_CARD });
+
+      await waitFor(() =>
+        expect(document.title).toBe(`${TEST_CARD.name} · Metabase`),
       );
     });
 
