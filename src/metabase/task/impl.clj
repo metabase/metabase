@@ -254,10 +254,17 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
+(defn- running-scheduler
+  "The scheduler, or nil when there is none or it has been shut down, which leaves nothing to remove from it."
+  ^Scheduler []
+  (when-let [^Scheduler s (scheduler)]
+    (when-not (.isShutdown s)
+      s)))
+
 (mu/defn delete-task!
   "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
-  (when-let [scheduler (scheduler)]
+  (when-let [scheduler (running-scheduler)]
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
@@ -276,7 +283,7 @@
 (mu/defn delete-trigger!
   "Remove `trigger-key` from the scheduler"
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
-  (when-let [scheduler (scheduler)]
+  (when-let [scheduler (running-scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
 
 (mu/defn delete-all-triggers-of-job!

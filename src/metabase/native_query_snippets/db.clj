@@ -45,10 +45,12 @@
    changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
   (t2/update! :model/NativeQuerySnippet :id id changes))
 
-(mu/defn snippet-id-by-name
-  "The id of the NativeQuerySnippet named `snippet-name`, or nil."
-  [snippet-name :- :string]
-  (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name))
+(mu/defn snippet-ids-by-names :- [:map-of :string pos-int?]
+  "The ids of the NativeQuerySnippets named one of `snippet-names`, by name."
+  [snippet-names :- [:sequential :string]]
+  (into {}
+        (map (juxt :name :id))
+        (t2/select [:model/NativeQuerySnippet :id :name] :name [:in snippet-names])))
 
 (mu/defn snippet-names-and-entity-ids
   "The name and entity id of the NativeQuerySnippets whose name starts with one of `snippet-names`."

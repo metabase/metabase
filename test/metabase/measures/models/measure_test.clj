@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -21,14 +22,22 @@
     (-> (lib/query mp table-metadata)
         (lib/aggregate aggregation-clause))))
 
-(deftest insert-measure-cycle-detection-test
+(deftest insert-measure-referencing-missing-measure-test
+  (testing "Inserting a measure that references a non-existent measure should fail"
+    (is (thrown-with-msg?
+         Exception
+         #"does not exist"
+         (t2/insert! :model/Measure {:name       "Bad Measure"
+                                     :creator_id (mt/user->id :rasta)
+                                     :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])})))
+    (is (not (t2/exists? :model/Measure :name "Bad Measure")))))
+
+(deftest insert-measure-referencing-measure-test
   (testing "Inserting a measure that references an existing measure should succeed"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
-                                                      :table_id (mt/id :venues)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (measure-definition (lib/count))}
                    :model/Measure measure-2 {:name "Measure 2"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (-> (mt/metadata-provider)
                                                              (lib.metadata/measure measure-1-id)
@@ -43,7 +52,6 @@
 (deftest update-measure-cycle-detection-test
   (testing "Updating a measure to reference a non-existent measure should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
-                                                    :table_id (mt/id :venues)
                                                     :creator_id (mt/user->id :rasta)
                                                     :definition (measure-definition (lib/count))}]
       (is (thrown-with-msg?
@@ -52,7 +60,6 @@
            (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing 99999)})))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
-                                                    :table_id (mt/id :venues)
                                                     :creator_id (mt/user->id :rasta)
                                                     :definition (measure-definition (lib/count))}]
       (is (thrown-with-msg?
@@ -61,11 +68,9 @@
            (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing measure-id)})))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
-                                                      :table_id (mt/id :venues)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (measure-definition (lib/count))}
                    :model/Measure {measure-2-id :id} {:name "Measure 2"
-                                                      :table_id (mt/id :venues)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (measure-definition-referencing measure-1-id)}]
       (is (thrown-with-msg?
@@ -98,7 +103,6 @@
                #"[Mm]easures cannot reference metrics"
                (t2/insert! :model/Measure
                            {:name "Bad Measure"
-                            :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
                             :definition (measure-definition (lib.metadata/metric mp metric-id))})))))))
   (deftest insert-measure-with-nested-metric-reference-test
@@ -114,7 +118,6 @@
                #"[Mm]easures cannot reference metrics"
                (t2/insert! :model/Measure
                            {:name "Bad Measure"
-                            :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
                             ;; Metric nested in an arithmetic expression: metric + 1
                             :definition (measure-definition
@@ -123,7 +126,6 @@
   (deftest update-measure-with-metric-reference-test
     (testing "Updating a measure to reference a metric should fail"
       (mt/with-temp [:model/Measure {measure-id :id} {:name "Good Measure"
-                                                      :table_id (mt/id :venues)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (measure-definition (lib/count))}
                      :model/Card {metric-id :id} {:name "Test Metric"
@@ -138,63 +140,61 @@
                (t2/update! :model/Measure :id measure-id
                            {:definition (measure-definition (lib.metadata/metric mp metric-id))}))))))))
 
-;;; ------------------------------------------------ MBQL4 Rejection Tests ------------------------------------------------
-;;; The model layer should only accept MBQL5 definitions. MBQL4 conversion still happens at the API/serdes layer.
+;;; ------------------------------------------------ MBQL4 Tests ------------------------------------------------
+;;; The model accepts a full MBQL4 query and stores it normalized as MBQL5; anything that is not a full query is rejected.
 
-(deftest model-rejects-mbql4-on-insert-test
-  (testing "Model layer should reject MBQL4 definitions on insert"
-    (testing "MBQL4 fragment"
-      (is (thrown-with-msg?
-           Exception
-           #"Invalid measure definition"
-           (t2/insert! :model/Measure
-                       {:name "Bad Measure"
-                        :table_id (mt/id :venues)
-                        :creator_id (mt/user->id :rasta)
-                        :definition {:source-table (mt/id :venues)
-                                     :aggregation [[:count]]}}))))
-    (testing "MBQL4 full query"
-      (is (thrown-with-msg?
-           Exception
-           #"Invalid measure definition"
-           (t2/insert! :model/Measure
-                       {:name "Bad Measure"
-                        :table_id (mt/id :venues)
-                        :creator_id (mt/user->id :rasta)
-                        :definition {:database (mt/id)
-                                     :type :query
-                                     :query {:source-table (mt/id :venues)
-                                             :aggregation [[:count]]}}}))))))
+(defn- legacy-count-query []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :venues)
+              :aggregation  [[:count]]}})
 
-(deftest model-rejects-mbql4-on-update-test
-  (testing "Model layer should reject MBQL4 definitions on update"
-    (mt/with-temp [:model/Measure {measure-id :id} {:name "Good Measure"
-                                                    :table_id (mt/id :venues)
+(deftest model-accepts-full-mbql4-on-insert-test
+  (mt/with-model-cleanup [:model/Measure]
+    (let [{:keys [id]} (t2/insert-returning-instance! :model/Measure
+                                                      {:name       "Legacy Measure"
+                                                       :creator_id (mt/user->id :rasta)
+                                                       :definition (legacy-count-query)})
+          measure      (t2/select-one :model/Measure :id id)]
+      (is (= (mt/id :venues) (:table_id measure)))
+      (is (= :mbql/query (:lib/type (:definition measure))))
+      (is (= (mt/id :venues) (lib/primary-source-table-id (:definition measure)))))))
+
+(deftest model-accepts-full-mbql4-on-update-test
+  (mt/with-temp [:model/Measure {measure-id :id} {:name       "Good Measure"
+                                                  :creator_id (mt/user->id :rasta)
+                                                  :definition (measure-definition (lib/count))}]
+    (t2/update! :model/Measure :id measure-id {:definition (legacy-count-query)})
+    (let [measure (t2/select-one :model/Measure :id measure-id)]
+      (is (= (mt/id :venues) (:table_id measure)))
+      (is (= :mbql/query (:lib/type (:definition measure))))
+      (is (= (mt/id :venues) (lib/primary-source-table-id (:definition measure)))))))
+
+(deftest model-rejects-mbql4-fragment-test
+  (testing "Insert"
+    (is (thrown-with-msg?
+         Exception
+         #"Measure definition must be a full query"
+         (t2/insert! :model/Measure
+                     {:name       "Bad Measure"
+                      :creator_id (mt/user->id :rasta)
+                      :definition {:source-table (mt/id :venues)
+                                   :aggregation  [[:count]]}}))))
+  (testing "Update"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Good Measure"
                                                     :creator_id (mt/user->id :rasta)
                                                     :definition (measure-definition (lib/count))}]
-      (testing "MBQL4 fragment"
-        (is (thrown-with-msg?
-             Exception
-             #"Invalid measure definition"
-             (t2/update! :model/Measure :id measure-id
-                         {:definition {:source-table (mt/id :venues)
-                                       :aggregation [[:count]]}}))))
-      (testing "MBQL4 full query"
-        (is (thrown-with-msg?
-             Exception
-             #"Invalid measure definition"
-             (t2/update! :model/Measure :id measure-id
-                         {:definition {:database (mt/id)
-                                       :type :query
-                                       :query {:source-table (mt/id :venues)
-                                               :aggregation [[:count]]}}})))))))
+      (is (thrown-with-msg?
+           Exception
+           #"Measure definition must be a full query"
+           (t2/update! :model/Measure :id measure-id
+                       {:definition {:aggregation [[:count]]}}))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
 (deftest can-write?-superuser-test
   (testing "Superusers can write measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
@@ -210,7 +210,6 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {analyst-id :id} {:is_data_analyst true}
                      :model/Measure measure {:name "Test Measure"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (perms/add-user-to-group! analyst-id group-id)
@@ -228,7 +227,6 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
                      :model/Measure measure {:name "Test Measure"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (session/with-current-user analyst-id
@@ -237,7 +235,6 @@
 (deftest can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :rasta
@@ -246,7 +243,6 @@
 (deftest can-read?-superuser-test
   (testing "Superusers can read measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
-                                           :table_id (mt/id :venues)
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
@@ -258,7 +254,6 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/Measure measure {:name "Test Measure"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (perms/add-user-to-group! user-id group-id)
@@ -273,7 +268,6 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/Measure measure {:name "Test Measure"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (perms/add-user-to-group! user-id group-id)
@@ -286,7 +280,6 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/User {user-id :id} {}
                      :model/Measure measure {:name "Test Measure"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (session/with-current-user user-id
@@ -298,7 +291,6 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/Measure measure {:name "Test Measure"
-                                             :table_id (mt/id :venues)
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
         (perms/add-user-to-group! user-id group-id)
@@ -310,7 +302,6 @@
   (testing "Superusers can create measures"
     (mt/with-test-user :crowberto
       (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                 :table_id (mt/id :venues)
                                                  :definition (measure-definition (lib/count))}))))))
 
 (deftest can-create?-analyst-unrestricted-test
@@ -324,12 +315,10 @@
           (mt/when-ee-evailable
            (mt/with-premium-features #{:advanced-permissions}
              (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                        :table_id (mt/id :venues)
                                                         :definition (measure-definition (lib/count))})))))
           (testing "but not once the advanced-permissions feature is gone"
             (mt/with-premium-features #{}
               (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                          :table_id (mt/id :venues)
                                                           :definition (measure-definition (lib/count))}))))))))))
 
 (deftest can-create?-analyst-restricted-test
@@ -338,12 +327,14 @@
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}]
         (session/with-current-user analyst-id
           (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                      :table_id (mt/id :venues)
                                                       :definition (measure-definition (lib/count))}))))))))
 
 (deftest can-create?-non-analyst-test
   (testing "Non-data-analysts cannot create measures"
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                  :table_id (mt/id :venues)
                                                   :definition (measure-definition (lib/count))}))))))
+
+(deftest serialization-skips-computed-dimensions-test
+  (testing "the dimensions of a measure are recomputed whenever it is read, so serialization carries none"
+    (is (every? (set (:skip (serialization/spec :model/Measure))) [:dimensions :dimension_mappings]))))

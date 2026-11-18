@@ -5,6 +5,7 @@ model: opus
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
 ---
 
 You work on how Metabase builds, preprocesses, compiles, runs, and post-processes queries. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.

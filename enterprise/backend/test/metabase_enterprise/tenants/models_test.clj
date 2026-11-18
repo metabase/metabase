@@ -2,8 +2,12 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.tenants.models :as tenants.model]
+   [metabase-enterprise.tenants.schema :as tenants.schema]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -192,3 +196,120 @@
             (let [coll (t2/select-one :model/Collection :id tenant-collection-id)
                   localized-coll (collection/maybe-localize-tenant-collection-name coll)]
               (is (= "Our data" (:name localized-coll))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  Tenant Hooks                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest tenant-schema-checks-columns-test
+  (testing "slug must be lower-case letters, digits, dashes and underscores"
+    (is (not (mr/validate ::tenants.schema/tenant.update {:slug "UPPER"}))))
+  (testing "name cannot be blank"
+    (is (not (mr/validate ::tenants.schema/tenant.update {:name " "}))))
+  (testing "attribute keys cannot start with @"
+    (is (not (mr/validate ::tenants.schema/tenant.update {:attributes {"@tenant.slug" "other"}}))))
+  (testing "valid columns pass"
+    (is (mr/validate ::tenants.schema/tenant.update {:name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
+
+(deftest insert-checks-name-and-slug-uniqueness-test
+  (mt/with-temp [:model/Tenant _ {:name "Unique Tenant" :slug "unique-tenant"}]
+    (mt/with-model-cleanup [:model/Tenant]
+      (testing "name of existing tenant"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
+                              (t2/insert! :model/Tenant {:name "Unique Tenant" :slug "other-unique-tenant"}))))
+      (testing "slug of existing tenant"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
+                              (t2/insert! :model/Tenant {:name "Other Unique Tenant" :slug "unique-tenant"})))))))
+
+(deftest update-checks-tenant-columns-test
+  (mt/with-temp [:model/Tenant {id :id} {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
+                 :model/Tenant _        {:name "Taken Tenant" :slug "taken-tenant"}]
+    (testing "slug cannot change"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the slug of a tenant"
+                            (t2/update! :model/Tenant :id id {:slug "new-slug"}))))
+    (testing "tenant collection cannot change"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the collection of a tenant"
+                              (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
+    (testing "name cannot be taken by another tenant"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
+                            (t2/update! :model/Tenant :id id {:name "Taken Tenant"}))))
+    (testing "nothing was written"
+      (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
+              (t2/select-one :model/Tenant :id id))))))
+
+(deftest deactivating-tenant-deactivates-its-users-test
+  (mt/with-temp [:model/Tenant {tenant-id :id}       {}
+                 :model/Tenant {other-tenant-id :id} {}
+                 :model/User   {user-id :id}         {:tenant_id tenant-id}
+                 :model/User   {inactive-id :id}     {:tenant_id tenant-id}
+                 :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
+    (t2/update! :model/User :id inactive-id {:is_active false})
+    (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
+      (t2/update! :model/Tenant :id tenant-id {:is_active false})
+      (testing "active users of tenant are deactivated with it"
+        (is (=? {:is_active false :deactivated_with_tenant true} (state user-id))))
+      (testing "users deactivated before tenant are not marked"
+        (is (=? {:is_active false :deactivated_with_tenant nil} (state inactive-id))))
+      (testing "users of other tenants stay active"
+        (is (=? {:is_active true} (state other-id))))
+      (t2/update! :model/Tenant :id tenant-id {:is_active true})
+      (testing "reactivating tenant reactivates only users deactivated with it"
+        (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
+        (is (=? {:is_active false} (state inactive-id)))))))
+
+(deftest deactivating-all-tenants-deactivates-their-users-test
+  (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                 :model/User   {user-id :id}   {:tenant_id tenant-id}]
+    (let [active-ids (t2/select-pks-set :model/Tenant :is_active true)]
+      (try
+        (permissions.db/deactivate-all-tenants!)
+        (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+        (is (=? {:is_active false :deactivated_with_tenant true}
+                (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))
+        (finally
+          (t2/update! :model/Tenant :id [:in active-ids] {:is_active true}))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Tenant Permissions                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest tenant-permission-checks-test
+  (mt/with-temp [:model/Tenant tenant           {}
+                 :model/User   {tenant-user :id} {:tenant_id (:id tenant)}]
+    (testing "superusers create, read and write tenants"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (true? (api/create-check :model/Tenant {:name "New Tenant" :slug "new-tenant"})))
+        (is (some? (api/read-check tenant)))
+        (is (some? (api/write-check tenant)))))
+    (testing "internal users read tenants but neither create nor write them"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/create-check :model/Tenant {:name "New Tenant" :slug "new-tenant"})))
+        (is (some? (api/read-check tenant)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/write-check tenant)))))
+    (testing "tenant users do not read tenants"
+      (mt/with-current-user tenant-user
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                              (api/read-check tenant)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Tenant rules on Users                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest superuser-cannot-be-tenant-user-test
+  (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                 :model/User   {user-id :id}   {:tenant_id tenant-id}]
+    (testing "insert of superuser with tenant"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Superusers cannot be tenant users"
+                            (t2/insert! :model/User {:first_name   "Test"
+                                                     :last_name    "User"
+                                                     :email        "superuser-tenant-user@example.com"
+                                                     :is_superuser true
+                                                     :tenant_id    tenant-id})))
+      (is (not (t2/exists? :model/User :email "superuser-tenant-user@example.com"))))
+    (testing "tenant user made superuser"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Superusers cannot be tenant users"
+                            (t2/update! :model/User :id user-id {:is_superuser true})))
+      (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))

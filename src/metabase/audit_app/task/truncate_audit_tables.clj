@@ -27,7 +27,7 @@
       (:postgres :h2)
       (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
-      (:mysql :mariadb)
+      :mysql
       (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
 
 (defn- truncate-table!

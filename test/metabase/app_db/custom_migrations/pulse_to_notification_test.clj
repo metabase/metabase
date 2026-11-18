@@ -8,7 +8,6 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- sort-handlers
@@ -67,7 +66,7 @@
                         alert-prop)
                  [{:card_id  card-id
                    :position 0}]
-                 (map #(merge schedule-daily-6-am {:details "{}"} %) pcs+recipients)))
+                 (map #(merge schedule-daily-6-am {:details {}} %) pcs+recipients)))
 
 (deftest migrate-alert-test
   (testing "basic alert migration"
@@ -123,11 +122,11 @@
                                                       :details {:url "https://example.com/hook", :auth-method "none"}}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                    :enabled      true
-                                                   :details      (json/encode {:emails ["ngoc@metabase.com"]})
+                                                   :details      {:emails ["ngoc@metabase.com"]}
                                                    :recipients   [{:user_id (mt/user->id :rasta)}]}
                                                   {:channel_type "slack"
                                                    :enabled      true
-                                                   :details      (json/encode {:channel "#test-channel"})}
+                                                   :details      {:channel "#test-channel"}}
                                                   {:channel_type "http"
                                                    :enabled      true
                                                    :channel_id   channel-id}

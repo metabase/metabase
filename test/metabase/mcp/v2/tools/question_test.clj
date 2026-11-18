@@ -97,6 +97,14 @@
         (is (not (re-find #"(?i)internal error" text))
             "the schema rejects it with a teaching error rather than failing deep in the insert")))))
 
+(deftest blank-name-test
+  (testing "a whitespace-only name is refused on create and update by the argument schema"
+    (doseq [args [{:method "create" :name "   " :native {:database_id (mt/id) :sql "SELECT 1"}}
+                  {:method "update" :id 13371337 :name "   "}]]
+      (let [result (call-tool v2.tu/all-scopes (str (random-uuid)) "question_write" args)]
+        (is (:isError result))
+        (is (str/starts-with? (-> result :content first :text) "Invalid arguments"))))))
+
 (deftest native-template-tags-test
   (mt/with-current-user (mt/user->id :rasta)
     (testing "a supplied tag not present in the SQL is a teaching error"

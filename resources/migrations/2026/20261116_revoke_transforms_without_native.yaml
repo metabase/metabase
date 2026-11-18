@@ -1,0 +1,26 @@
+## A group may hold the transforms permission on a database only while it has "Query builder and native" access to the
+## whole database. Revoke transforms for every group and database that lost native access through a table-level
+## create-queries change.
+
+databaseChangeLog:
+  - changeSet:
+      id: ii2ymb
+      author: ranquild
+      comment: Revoke transforms where the group has no database-level native create-queries
+      changes:
+        - sql:
+            sql: >-
+              UPDATE data_permissions
+              SET perm_value = 'no'
+              WHERE data_permissions.perm_type = 'perms/transforms'
+                AND data_permissions.perm_value = 'yes'
+                AND NOT EXISTS (SELECT 1
+                                FROM (SELECT group_id, db_id FROM data_permissions
+                                      WHERE perm_type = 'perms/create-queries'
+                                        AND perm_value = 'query-builder-and-native'
+                                        AND table_id IS NULL) native
+                                WHERE native.group_id = data_permissions.group_id
+                                  AND native.db_id = data_permissions.db_id)
+      # The revoked rows cannot be told apart from rows that were `no` already, so there is nothing to restore.
+      rollback:
+        - empty: {}

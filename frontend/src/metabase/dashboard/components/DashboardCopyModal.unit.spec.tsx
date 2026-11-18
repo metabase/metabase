@@ -10,9 +10,16 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderRoutes,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
-import type { Dashboard, DashboardCard } from "metabase-types/api";
+import type { Collection, Dashboard, DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -147,6 +154,90 @@ describe("DashboardCopyModal", () => {
     await act(() => fetchMock.callHistory.flush(true));
     expect(
       screen.queryByRole("checkbox", { name: /Only duplicate the dashboard/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+const PERSONAL_COLLECTION = createMockCollection({
+  id: 301,
+  name: "Robert Tableton's Personal Collection",
+  is_personal: true,
+  can_write: true,
+});
+
+interface DefaultCollectionSetupOpts {
+  rootCollection: Collection;
+}
+
+function setupDefaultCollection({
+  rootCollection,
+}: DefaultCollectionSetupOpts) {
+  const dashboard = createMockDashboard({
+    id: 1,
+    name: "Orders in a dashboard",
+    collection_id: null,
+    collection: rootCollection,
+    can_write: rootCollection.can_write,
+  });
+
+  setupDashboardEndpoints(dashboard);
+  setupCollectionByIdEndpoint({
+    collections: [rootCollection, PERSONAL_COLLECTION],
+  });
+
+  renderRoutes(
+    [
+      {
+        path: "/dashboard/:slug/copy",
+        element: <DashboardCopyModalConnected onClose={jest.fn()} />,
+      },
+    ],
+    {
+      initialRoute: `/dashboard/${dashboard.id}/copy`,
+      storeInitialState: {
+        currentUser: createMockUser({
+          personal_collection_id: PERSONAL_COLLECTION.id,
+        }),
+        dashboard: createMockDashboardState({
+          dashboardId: dashboard.id,
+          dashboards: { [dashboard.id]: { ...dashboard, dashcards: [] } },
+        }),
+      },
+    },
+  );
+}
+
+describe("DashboardCopyModal default collection", () => {
+  it("should default to the personal collection when the user cannot write to the dashboard's collection (metabase#15280)", async () => {
+    setupDefaultCollection({
+      rootCollection: createMockCollection({
+        ...ROOT_COLLECTION,
+        can_write: false,
+      }),
+    });
+
+    expect(
+      await screen.findByText(PERSONAL_COLLECTION.name, {
+        selector: "[data-testid='collection-picker-button'] *",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("should default to the dashboard's collection when the user can write to it", async () => {
+    setupDefaultCollection({
+      rootCollection: createMockCollection({
+        ...ROOT_COLLECTION,
+        can_write: true,
+      }),
+    });
+
+    expect(
+      await screen.findByText("Our analytics", {
+        selector: "[data-testid='collection-picker-button'] *",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(PERSONAL_COLLECTION.name),
     ).not.toBeInTheDocument();
   });
 });
