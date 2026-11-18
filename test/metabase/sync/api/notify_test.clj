@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.sync.api.notify-test
+(ns metabase.sync.api.notify-test
   (:require
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
@@ -63,7 +63,7 @@
                     (catch clojure.lang.ExceptionInfo e
                       (select-keys (ex-data e) [:status :body])))))))))
 
-(deftest post-db-id-test
+(deftest ^:mb/driver-tests post-db-id-test
   (mt/test-drivers (mt/normal-drivers)
     (let [table-name (->> (mt/db) database/tables first :name)
           post       (fn post-api
@@ -129,7 +129,7 @@
             (deliver release-sync true)
             (is (= {:success true} (deref response 10000 nil)))))))))
 
-(deftest add-new-table-sync-test
+(deftest ^:mb/driver-tests add-new-table-sync-test
   (mt/test-driver :postgres
     (testing "Ensure we have the ability to add a single new table"
       (let [db-name "add_new_table_sync_test_table"
@@ -183,7 +183,7 @@
   [& body]
   `(do-with-no-attached-data-warehouses (fn [] ~@body)))
 
-(deftest sync-data-warehouse-test
+(deftest ^:mb/driver-tests sync-data-warehouse-test
   (mt/test-driver :postgres
     (testing "Ensure we can interact with the attached datawarehouse db"
       (with-no-attached-data-warehouses

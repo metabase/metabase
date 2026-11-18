@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.actions.test-util
+(ns metabase.actions.test-util
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.test-util]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.actions.test-util]}}}}}}
   (:require
@@ -158,7 +158,7 @@
     :postgres ["DELETE FROM \"categories\" WHERE \"id\" = 1"]
     :mysql    ["DELETE FROM `categories` WHERE `id` = 1"]))
 
-(deftest with-actions-test-data-test
+(deftest ^:mb/driver-tests with-actions-test-data-test
   (datasets/test-drivers (qp.test-util/normal-drivers-with-feature :actions/custom)
     (dotimes [i 2]
       (testing (format "Iteration %d" i)

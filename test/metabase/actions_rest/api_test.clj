@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.actions-rest.api-test
+(ns metabase.actions-rest.api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions-rest.api-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.actions-rest.api-test]}}}}}}
   (:require
@@ -1206,7 +1206,7 @@
                                        (format "action/%s/execute" action-id)
                                        {:parameters {:id 1 :name "European"}}))))))))
 
-(deftest execute-action-permission-test
+(deftest ^:mb/driver-tests execute-action-permission-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query categories)
@@ -1284,7 +1284,7 @@
                          (:message (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
                                                          {:parameters {:name "Darth Vader"}}))))))))))
 
-(deftest implicit-update-timestamp-round-trip-test
+(deftest ^:mb/driver-tests implicit-update-timestamp-round-trip-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"users"}
       (mt/with-actions-test-data-and-actions-enabled
@@ -1301,7 +1301,7 @@
                                     {:parameters (assoc fetched :last_login local-value)})
               (is (= last_login (:last_login (fetch!)))))))))))
 
-(deftest fetch-implicit-action-default-values-test
+(deftest ^:mb/driver-tests fetch-implicit-action-default-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
       (mt/with-actions [_                             {:type :model :dataset_query (mt/mbql-query venues {:fields [$id $name]})
@@ -1335,7 +1335,7 @@
 
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
-(deftest action-error-handling-test
+(deftest ^:mb/driver-tests action-error-handling-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
       (mt/with-current-user (mt/user->id :crowberto)

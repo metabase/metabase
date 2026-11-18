@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.null-array-test
+(ns metabase.query-processor.null-array-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.null-array-test]}}}}}}
   (:require
    [clojure.test :refer :all]
@@ -6,7 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
 
-(deftest ^:parallel null-array-test
+(deftest ^:mb/driver-tests ^:parallel null-array-test
   (testing "a null array should be handled gracefully and return nil"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/null-arrays)
       (is (= [[nil]]

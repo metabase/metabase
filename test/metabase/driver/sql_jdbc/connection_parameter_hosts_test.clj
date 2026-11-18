@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-parameter-hosts-test
+(ns metabase.driver.sql-jdbc.connection-parameter-hosts-test
   "Keeps [[metabase.driver/host-carrying-parameters]] from falling behind the clients it describes.
 
   A JDBC client enumerates every parameter it accepts through `java.sql.Driver/getPropertyInfo`. This asks each
@@ -69,7 +69,7 @@
                          (.-name info)))))
     (catch Throwable _ nil)))
 
-(deftest ^:parallel host-parameters-are-declared-or-reviewed-test
+(deftest ^:mb/driver-tests ^:parallel host-parameters-are-declared-or-reviewed-test
   (mt/test-drivers (filter probe-details (tx.env/test-drivers))
     (let [driver  driver/*driver*
           details (probe-details driver)]
@@ -92,7 +92,7 @@
   rather than filling a host in. Every other client here substitutes `localhost` instead."
   #{:h2 :sqlite :druid-jdbc})
 
-(deftest ^:parallel host-less-details-name-a-host-or-fail-closed-test
+(deftest ^:mb/driver-tests ^:parallel host-less-details-name-a-host-or-fail-closed-test
   (testing "a client that fills in its own host does not thereby slip past the network policy"
     (mt/test-drivers (filter #(and (probe-details %) (not (opens-no-connection-without-a-host %)))
                              (tx.env/test-drivers))
@@ -121,7 +121,7 @@
    :snowflake  ["client_config_file" "CRL_RESPONSE_CACHE_DIR" "ENABLE_DIAGNOSTICS" "DIAGNOSTICS_ALLOWLIST_FILE"
                 "private_key_file"]})
 
-(deftest ^:parallel dangerous-parameters-are-disallowed-test
+(deftest ^:mb/driver-tests ^:parallel dangerous-parameters-are-disallowed-test
   (mt/test-drivers (filter dangerous-parameters (tx.env/test-drivers))
     (doseq [parameter (dangerous-parameters driver/*driver*)]
       (testing parameter

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.sync.sync-metadata.dbms-version-test
+(ns metabase.sync.sync-metadata.dbms-version-test
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
@@ -15,7 +15,7 @@
 (defn- check-dbms-version [dbms-version]
   (me/humanize (mr/explain [:maybe sync-dbms-ver/DBMSVersion] dbms-version)))
 
-(deftest dbms-version-test
+(deftest ^:mb/driver-tests dbms-version-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "This tests populating the dbms_version field for a given database."
                   " The sync happens automatically, so this test removes it first"

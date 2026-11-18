@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.transforms-base.ordering-test
+(ns metabase.transforms-base.ordering-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -69,7 +69,7 @@
   (mt/with-metadata-provider (mt/id)
     (transforms-base.i/table-dependencies transform)))
 
-(deftest not-run-transform-dependency-ordering-test
+(deftest ^:mb/driver-tests not-run-transform-dependency-ordering-test
   (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
     (testing "dependencies are correctly identified when no transforms have been run yet"
       (mt/with-temp [:model/Transform {t1 :id} (make-transform
@@ -122,7 +122,7 @@
           (finally
             (t2/delete! :model/Table :name "checkins_transform")))))))
 
-(deftest bigquery-native-transform-dependency-ordering-test
+(deftest ^:mb/driver-tests bigquery-native-transform-dependency-ordering-test
   (mt/test-driver :biquery-cloud-sdk
     (let [[dataset] (sql.tx/qualified-name-components :bigquery-cloud-sdk nil)]
       (testing "dependencies are correctly identified when some transform have been run and some haven't"
@@ -153,7 +153,7 @@
     (is (= #{{:table (mt/id :orders)}}
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
-(deftest ^:parallel joined-dependencies-test
+(deftest ^:mb/driver-tests ^:parallel joined-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                               (orders-products-query))]
@@ -161,7 +161,7 @@
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
-(deftest card-dependencies-test
+(deftest ^:mb/driver-tests card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/with-temp [:model/Card {card :id} {:dataset_query (orders-products-query)}
                    :model/Transform {t1 :id} (make-transform
@@ -182,7 +182,7 @@
     (is (= #{{:table (mt/id :orders)}}
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
-(deftest native-card-dependencies-test
+(deftest ^:mb/driver-tests native-card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
                                                          :native-parameter-card-reference
                                                          :left-join]})
@@ -353,7 +353,7 @@
     (is (= {1 #{}}
            (:dependencies (ordering/transform-ordering #{1} [{:id 1 :table_dependencies []}]))))))
 
-(deftest lazy-table-dependencies-backfill-test
+(deftest ^:mb/driver-tests lazy-table-dependencies-backfill-test
   (testing "a transform with no cached :table_dependencies is reported in :uncached and persisted"
     (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/with-temp [:model/Transform {id :id} (make-transform

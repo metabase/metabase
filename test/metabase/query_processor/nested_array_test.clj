@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.nested-array-test
+(ns metabase.query-processor.nested-array-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.nested-array-test]}}}}}}
   (:require
    [clojure.test :refer :all]
@@ -62,7 +62,7 @@
     [_driver _feature _database]
     true))
 
-(deftest ^:parallel nested-array-query-test
+(deftest ^:mb/driver-tests ^:parallel nested-array-query-test
   (testing "A nested array query should be returned in a readable format"
     (mt/test-drivers (mt/normal-driver-select {:+features [:test/nested-arrays]})
       (mt/dataset test-data

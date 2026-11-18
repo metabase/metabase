@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.warehouses.models.database-test
+(ns metabase.warehouses.models.database-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -161,7 +161,7 @@
         (testing "stub databases can't claim an engine's slot"
           (is (not (contains? candidate-ids stub))))))))
 
-(deftest check-health!-test
+(deftest ^:mb/driver-tests check-health!-test
   (mt/test-drivers (mt/normal-drivers)
     (let [original-select (mt/original-fn #'t2/select)]
       (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
@@ -179,7 +179,7 @@
                 (database/check-health!)
                 (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})))))))))))
 
-(deftest health-check-database-test
+(deftest ^:mb/driver-tests health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (binding [driver.settings/*allow-testing-h2-connections* true]
@@ -225,7 +225,7 @@
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
               (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))))))
 
-(deftest health-check-write-connection-test
+(deftest ^:mb/driver-tests health-check-write-connection-test
   (mt/test-drivers (mt/normal-drivers)
     (when config/ee-available?
       (mt/with-premium-features #{:writable-connection}
@@ -300,7 +300,7 @@
           (is (=? [{:level :debug, :message #"Hiding unknown setting :removed-setting.*"}]
                   (filter #(re-find #"removed-setting" (:message %)) (messages)))))))))
 
-(deftest driver-supports-actions-and-database-enable-actions-test
+(deftest ^:mb/driver-tests driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
       (mt/with-temp [:model/Database database {:engine :sqlite}]

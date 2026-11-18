@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.sql-jdbc.actions-test
+(ns metabase.driver.sql-jdbc.actions-test
   "Most of the tests for code in [[metabase.driver.sql-jdbc.actions]] are e2e tests that live
   in [[metabase.actions-rest.api-test]]."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.actions-test]}
@@ -111,7 +111,7 @@
               :user-name     (field-id->name (mt/id :user :name))
               :user-group-id (field-id->name (mt/id :user :group-id))}))))))
 
-(deftest action-error-handling-not-null-constraint-creating-test
+(deftest ^:mb/driver-tests action-error-handling-not-null-constraint-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name]}]
      (testing "violate not-null constraint"
@@ -124,7 +124,7 @@
                                                                     :query      {:source-table $$group}
                                                                     :type       :query}))))))))
 
-(deftest action-error-handling-not-null-constraint-creating-test-2
+(deftest ^:mb/driver-tests action-error-handling-not-null-constraint-creating-test-2
   (test-action-error-handling!
    (fn [{:keys [db-id group-name]}]
      (testing "violate not-null constraint"
@@ -138,7 +138,7 @@
                                                                       :query      {:source-table $$group}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-not-null-constraint-updating-test
+(deftest ^:mb/driver-tests action-error-handling-not-null-constraint-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-ranking]}]
      (testing "violate not-null constraint"
@@ -153,7 +153,7 @@
                                                                                    :source-table $$group}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-unique-constraint-creating-test
+(deftest ^:mb/driver-tests action-error-handling-unique-constraint-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name group-ranking]}]
      (testing "violate unique constraint"
@@ -168,7 +168,7 @@
                                                                       :query      {:source-table $$group}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-unique-constraint-updating-test
+(deftest ^:mb/driver-tests action-error-handling-unique-constraint-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-ranking]}]
      (testing "violate unique constraint"
@@ -192,7 +192,7 @@
     [_driver _feature _database]
     false))
 
-(deftest action-error-handling-incorrect-type-creating-test
+(deftest ^:mb/driver-tests action-error-handling-incorrect-type-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-name group-ranking]}]
      (testing "incorrect type"
@@ -212,7 +212,7 @@
                                                                       :query      {:source-table $$group}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-incorrect-type-updating-test
+(deftest ^:mb/driver-tests action-error-handling-incorrect-type-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id group-ranking]}]
      (testing "incorrect type"
@@ -232,7 +232,7 @@
                                                                                    :source-table $$group}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-fk-constraint-creating-test
+(deftest ^:mb/driver-tests action-error-handling-fk-constraint-creating-test
   (test-action-error-handling!
    (fn [{:keys [db-id user-name user-group-id]}]
      (testing "violate fk constraint"
@@ -247,7 +247,7 @@
                                                                       :query      {:source-table $$user}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-fk-constraint-updating-test
+(deftest ^:mb/driver-tests action-error-handling-fk-constraint-updating-test
   (test-action-error-handling!
    (fn [{:keys [db-id user-group-id]}]
      (testing "violate fk constraint"
@@ -262,7 +262,7 @@
                                                                                    :source-table $$user}
                                                                       :type       :query})))))))))
 
-(deftest action-error-handling-fk-constraint-deleting-test
+(deftest ^:mb/driver-tests action-error-handling-fk-constraint-deleting-test
   (test-action-error-handling!
    (fn [{:keys [db-id]}]
      (testing "violate fk constraint"
@@ -276,7 +276,7 @@
                                                                                  :source-table $$group}
                                                                       :type     :query})))))))))
 
-(deftest actions-return-rows-with-correct-names-test
+(deftest ^:mb/driver-tests actions-return-rows-with-correct-names-test
   (testing "rows returned by perform action should match the name in metabase_field.name"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (actions.tu/with-actions-temp-db action-error-handling
@@ -318,7 +318,7 @@
                         :table-id (mt/id :user)
                         :row      {(field-id->name (mt/id :user :id)) created-user-id}}))))))))))
 
-(deftest delete-row-with-children-test
+(deftest ^:mb/driver-tests delete-row-with-children-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.tu/with-actions-temp-db action-error-handling
       (mt/with-actions-enabled
@@ -376,7 +376,7 @@
                        :table-id (mt/id :group)
                        :row      {group-id-col created-group-id}})))))))))))
 
-(deftest create-all-nil-test
+(deftest ^:mb/driver-tests create-all-nil-test
   (testing "table.row/create with no optional fields provided"
     ;; This has been broken since Basic Actions were first built.
     ;; It was recently fixed for postgres, but we still need to fix the other drivers. [kondo-keep]

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.h2-test
+(ns metabase.driver.h2-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.h2-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -31,7 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest default-schema-test
+(deftest ^:mb/driver-tests default-schema-test
   (mt/test-driver :h2
     (testing "default"
       (is (= "PUBLIC"
@@ -42,7 +42,7 @@
           (is (= "INFORMATION_SCHEMA"
                  (driver.sql/default-schema :h2 (driver.u/lib-database (:id database))))))))))
 
-(deftest database-error-while-reading-rows-is-invalid-query-test
+(deftest ^:mb/driver-tests database-error-while-reading-rows-is-invalid-query-test
   (mt/test-driver :h2
     (testing "An error that lazy execution raises while rows are read is :invalid-query, like one raised at the start"
       (let [details (update (:details (mt/db)) :db str ";LAZY_QUERY_EXECUTION=TRUE")
@@ -142,7 +142,7 @@
                  (ex-message result)))
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
-(deftest ^:parallel db-default-timezone-test
+(deftest ^:mb/driver-tests ^:parallel db-default-timezone-test
   (mt/test-driver :h2
     (is (= (t/zone-id "Z")
            (-> (driver/db-default-timezone :h2 (lib.metadata/database (mt/metadata-provider)))
@@ -186,7 +186,7 @@
             "timestamp")
            (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
 
-(deftest ^:parallel clob-test
+(deftest ^:mb/driver-tests ^:parallel clob-test
   (mt/test-driver :h2
     (testing "Make sure we properly handle rows that come back as `org.h2.jdbc.JdbcClob`"
       (let [results (qp/process-query (mt/native-query {:query "SELECT cast('Conchúr Tihomir' AS clob) AS name;"}))]
@@ -202,7 +202,7 @@
                     :name         "NAME"}]
                   (mt/cols results))))))))
 
-(deftest ^:parallel native-query-date-trunc-test
+(deftest ^:mb/driver-tests ^:parallel native-query-date-trunc-test
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (=? [{:display_name "D"
@@ -241,7 +241,7 @@
       (str/replace #"\"" "")
       (str/replace #"PUBLIC\." "")))
 
-(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:mb/driver-tests ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (mt/test-driver :h2
     (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
       (mt/dataset attempted-murders
@@ -254,7 +254,7 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
-(deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
+(deftest ^:mb/driver-tests ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
   (mt/test-driver :h2
     (testing "Don't cast date binned by week"
       (mt/dataset attempted-murders
@@ -264,7 +264,7 @@
               compiled (some-> (qp.compile/compile query) :query pretty-sql)]
           (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
 
-(deftest ^:parallel check-action-commands-test
+(deftest ^:mb/driver-tests ^:parallel check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (lib.metadata/database (mt/metadata-provider)) query)))
       "select 1"
@@ -384,7 +384,7 @@
       "CALL CSVREAD('a')"
       "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))
 
-(deftest disallowed-commands-in-action-test
+(deftest ^:mb/driver-tests disallowed-commands-in-action-test
   (mt/test-driver :h2
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Should not be able to execute query actions with disallowed commands"
@@ -400,7 +400,7 @@
                                           :post 500
                                           (format "action/%s/execute" action-id))))))))))
 
-(deftest disallowed-commands-in-action-test-2
+(deftest ^:mb/driver-tests disallowed-commands-in-action-test-2
   (mt/test-driver :h2
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Should be able to execute query actions with allowed commands"
@@ -414,14 +414,14 @@
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
 
-(deftest ^:parallel syncable-schemas-test
+(deftest ^:mb/driver-tests ^:parallel syncable-schemas-test
   (mt/test-driver :h2
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))
 
-(deftest syncable-audit-db-test
+(deftest ^:mb/driver-tests syncable-audit-db-test
   (mt/test-driver :h2
     (when config/ee-available?
       (let [audit-db-expected-id 13371337
@@ -520,7 +520,7 @@
     (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
       (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))
 
-(deftest workspace-isolation-details-uses-admin-overlay-test
+(deftest ^:mb/driver-tests workspace-isolation-details-uses-admin-overlay-test
   (mt/test-driver :h2
     (mt/when-ee-evailable
      (mt/with-premium-features #{:workspaces}

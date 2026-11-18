@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.app-db.liquibase-test
+(ns metabase.app-db.liquibase-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -31,7 +31,7 @@
                         (str/blank? s)
                         (str/starts-with? s "--"))))))
 
-(deftest mysql-engine-charset-test
+(deftest ^:mb/driver-tests mysql-engine-charset-test
   (mt/test-driver :mysql
     (testing "Make sure MySQL CREATE DATABASE statements have ENGINE/CHARACTER SET appended to them (#10691)"
       (sql-jdbc.execute/do-with-connection-with-options
@@ -59,7 +59,7 @@
                       (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
                     (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))))
 
-(deftest consolidate-liquibase-changesets-test
+(deftest ^:mb/driver-tests consolidate-liquibase-changesets-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; fake a db where we ran all the migrations, including the legacy ones
@@ -78,7 +78,7 @@
               (is (= (t2/select-fn-set :id table-name)
                      (set (mdb.test-util/all-liquibase-ids true driver/*driver* conn)))))))))))
 
-(deftest wait-for-all-locks-test
+(deftest ^:mb/driver-tests wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; We don't need a long time for tests, keep it zippy.
@@ -101,7 +101,7 @@
               @locked
               (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms))))))))))
 
-(deftest release-all-locks-if-needed!-test
+(deftest ^:mb/driver-tests release-all-locks-if-needed!-test
   (mt/test-drivers #{:h2}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -121,7 +121,7 @@
             (testing "The lock was released before the migration finished"
               (is (not @locked?)))))))))
 
-(deftest auto-release-session-lock-test
+(deftest ^:mb/driver-tests auto-release-session-lock-test
   (mt/test-drivers #{:mysql :postgres}
     (testing "Session lock is released on conn close"
       ;; Session lock provided automatically by the com.github.blagerweij/liquibase-sessionlock dependency
@@ -142,7 +142,7 @@
             ;; This will fail if the com.github.blagerweij/liquibase-sessionlock dep is not present
             (is (lock liquibase3) "Can acquire session lock when conn closed without lock release")))))))
 
-(deftest decide-liquibase-file-version-less-ids-test
+(deftest ^:mb/driver-tests decide-liquibase-file-version-less-ids-test
   (testing "decide-liquibase-file treats version-less (year-directory) ids as modern, not as a pre-4.2 install"
     ;; Regression: a version-less latest changeset id (e.g. `aeiagus09e`) has no leading `v`, so the old heuristic
     ;; mistook a modern install for pre-4.2 and loaded the legacy changelog, re-running the earliest migrations and
@@ -198,7 +198,7 @@
 (defn- filename-of [conn changelog-table id]
   (:filename (first (jdbc/query {:connection conn} [(format "SELECT filename FROM %s WHERE id = ?" changelog-table) id]))))
 
-(deftest consolidate-does-not-clobber-version-less-ids-test
+(deftest ^:mb/driver-tests consolidate-does-not-clobber-version-less-ids-test
   (testing "consolidate-liquibase-changesets! rewrites legacy ids' filenames but leaves version-less ids alone"
     ;; Regression: `consolidate` rewrote the filename of any id sorting before `v45.00-001`, which caught version-less
     ;; ids (e.g. `aeiagus09e` < `v45.00-001`) and pointed them at the legacy changelog file -> Liquibase then re-ran the
@@ -221,7 +221,7 @@
             (is (= "migrations/2026/foo.yaml" (filename-of conn ct "12345"))
                 "an all-digit version-less id in a year directory is recognized by its path, not mistaken for pre-4.2")))))))
 
-(deftest consolidate-repairs-version-less-rows-rewritten-by-old-binaries-test
+(deftest ^:mb/driver-tests consolidate-repairs-version-less-rows-rewritten-by-old-binaries-test
   (testing "consolidate-liquibase-changesets! restores the filename of version-less rows that a pre-version-less binary
             pointed at the legacy changelog"
     ;; Binaries before this change consolidate with an unguarded `WHEN ID < 'v45.00-001' THEN <legacy file>`, which
@@ -265,7 +265,7 @@
                 (is (false? (versions/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned")
                 (is (nil? (filename-of conn ct "dev_run_a")))))))))))
 
-(deftest filename-repair-leaves-ambiguous-change-set-identities-alone-test
+(deftest ^:mb/driver-tests filename-repair-leaves-ambiguous-change-set-identities-alone-test
   (testing "filename repair does not guess when [author id] occurs in more than one year-directory file"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]

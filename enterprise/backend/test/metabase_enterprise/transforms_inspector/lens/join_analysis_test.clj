@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.lens.join-analysis-test
+(ns metabase-enterprise.transforms-inspector.lens.join-analysis-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-inspector.lens.join-analysis :as join-analysis]
@@ -80,7 +80,7 @@
         transforms-base.u/massage-sql-query
         qp.preprocess/preprocess)))
 
-(deftest make-join-step-query-mbql-single-condition-test
+(deftest ^:mb/driver-tests make-join-step-query-mbql-single-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "single-condition left join produces two aggregations: COUNT(*) and COUNT(CASE ...)"
       (let [preprocessed (preprocess-query-with-join)
@@ -90,7 +90,7 @@
         (is (= 2 (count aggs))
             "should have COUNT(*) and COUNT(CASE WHEN condition THEN 1 END)")))))
 
-(deftest make-join-step-query-mbql-multi-condition-test
+(deftest ^:mb/driver-tests make-join-step-query-mbql-multi-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "multi-condition left join still produces two aggregations"
       (let [preprocessed (preprocess-query-with-multi-condition-join)

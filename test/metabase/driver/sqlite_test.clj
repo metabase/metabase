@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.sqlite-test
+(ns metabase.driver.sqlite-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlite-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlite-test]}}}}}}
   (:require
@@ -310,11 +310,11 @@
                                          #"Reading from path is disallowed|SQLite is not available as a data warehouse"
                                          (native-rows writable "INSERT INTO t VALUES (1)")))))))))))))
 
-(deftest default-schema-test
+(deftest ^:mb/driver-tests default-schema-test
   (mt/test-driver :sqlite
     (is (nil? (driver.sql/default-schema :sqlite (lib.metadata/database (mt/metadata-provider)))))))
 
-(deftest ^:parallel database-error-while-reading-rows-is-invalid-query-test
+(deftest ^:mb/driver-tests ^:parallel database-error-while-reading-rows-is-invalid-query-test
   (mt/test-driver :sqlite
     (testing "A database error raised while rows are read is :invalid-query, like one raised when the query starts"
       (is (=? {:status     :failed
@@ -326,7 +326,7 @@
                                   (str "SELECT json_extract(CASE WHEN ID = 1 THEN '{\"n\":1}' ELSE 'broken' END, '$.n')"
                                        " AS N FROM VENUES")))))))))
 
-(deftest canceled-while-reading-rows-is-not-invalid-query-test
+(deftest ^:mb/driver-tests canceled-while-reading-rows-is-not-invalid-query-test
   (mt/test-driver :sqlite
     (let [query     (qp/userland-query
                      (lib/native-query (mt/metadata-provider) "SELECT 1 AS X UNION ALL SELECT 2 AS X"))
@@ -353,7 +353,7 @@
               (is (nil? (.getSQLState ^SQLException @interrupted)))
               (is (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode ^SQLException @interrupted))))))))))
 
-(deftest ^:parallel timezone-id-test
+(deftest ^:mb/driver-tests ^:parallel timezone-id-test
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (lib.metadata/database (mt/metadata-provider)))))))
@@ -402,7 +402,7 @@
         (is (= ["TIME('09:30:00')"]
                (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :default time-lit))))))))
 
-(deftest current-user-table-privileges-test
+(deftest ^:mb/driver-tests current-user-table-privileges-test
   (testing "SQLite table privileges normalization"
     (mt/test-driver :sqlite
       (is (= {"people"     {:role nil, :schema nil, :table "people", :select true, :insert true, :update true, :delete true}
@@ -442,7 +442,7 @@
              (is (= [{:role nil, :schema nil, :table "t", :select true, :insert true, :update true, :delete true}]
                     (privileges {:db path} connection?))))))))))
 
-(deftest ^:parallel filter-by-date-test
+(deftest ^:mb/driver-tests ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
     (mt/test-driver :sqlite
       (is (= [[225 "2014-03-04T00:00:00Z"]
@@ -469,7 +469,7 @@
   {:name   name
    :fields (map #(select-keys % [:name :base_type]) fields)})
 
-(deftest type-inference-for-views
+(deftest ^:mb/driver-tests type-inference-for-views
   (mt/test-driver :sqlite
     (testing "Make sure we correctly infer complex types in views (#8630, #9276, #12191, #12547, #10681)"
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
@@ -541,7 +541,7 @@
    :description nil
    :is_writable true})
 
-(deftest timestamp-test-db
+(deftest ^:mb/driver-tests timestamp-test-db
   (let [driver :sqlite]
     (mt/test-driver driver
       (let [db-name "timestamp_test"
@@ -573,7 +573,7 @@
                         (-> (driver/describe-table driver (driver.u/ensure-lib-database db) (t2/select-one :model/Table :id (mt/id :timestamp_table)))
                             (update :fields (partial sort-by :name)))))))))))))
 
-(deftest select-query-datetime
+(deftest ^:mb/driver-tests select-query-datetime
   (mt/test-driver :sqlite
     (let [db-name "datetime_test"
           details (mt/dbdef->connection-details :sqlite :db {:database-name db-name})]
@@ -634,7 +634,7 @@
                       {:fields [$col_timestamp $col_date $col_datetime]
                        :filter [:= $test_case "null"]}))))))))))
 
-(deftest ^:parallel duplicate-identifiers-test
+(deftest ^:mb/driver-tests ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
       (is (= '{:with     [__mb_stage_0 AS {:select [products.category || ? AS CATEGORY] :from [products]}]
@@ -651,7 +651,7 @@
                  :order-by    [[:asc [:expression :CATEGORY]]]
                  :limit       1})))))))
 
-(deftest ^:parallel disallow-fdw-to-other-databases-test
+(deftest ^:mb/driver-tests ^:parallel disallow-fdw-to-other-databases-test
   (testing "Don't allow connections to other SQLite databases with ATTACH DATABASE (https://github.com/metabase/metaboat/issues/152)"
     (mt/test-driver :sqlite
       ;; force creation of the sample dataset file
@@ -762,7 +762,7 @@
         (testing (pr-str details)
           (is (nil? (driver.u/validate-connection-hosts! :sqlite details))))))))
 
-(deftest ^:parallel non-date-in-date-columns-are-returned-test
+(deftest ^:mb/driver-tests ^:parallel non-date-in-date-columns-are-returned-test
   (mt/test-driver :sqlite
     (mt/dataset (mt/dataset-definition
                  "sqlite_mixed_dates"
@@ -783,7 +783,7 @@
                     (mt/rows))))))))
 
 ;; From #75204 which has a similar fix for a related issue
-(deftest ^:parallel date-bucketed-breakout-preserves-temporal-type-test
+(deftest ^:mb/driver-tests ^:parallel date-bucketed-breakout-preserves-temporal-type-test
   (testing (str "SQLite has no date type: a :month-bucketed breakout compiles to date()/strftime() whose JDBC "
                 "type is reported as TEXT. The returned column must still be typed temporally, not :type/Text, so "
                 "that date drills, date filters, and date dimension mapping are offered (GHY-3790).")
@@ -802,7 +802,7 @@
           (is (isa? (:base_type col) :type/Temporal))
           (is (isa? (:effective_type col) :type/Temporal)))))))
 
-(deftest ^:parallel query-error-evidence-test
+(deftest ^:mb/driver-tests ^:parallel query-error-evidence-test
   (mt/test-driver :sqlite
     (doseq [code [1 19 20]]
       (is (true? (sql-jdbc.execute/impl-error-in-query? :sqlite (SQLException. "Query error" nil (int code))))))))

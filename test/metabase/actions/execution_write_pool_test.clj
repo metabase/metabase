@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.actions.execution-write-pool-test
+(ns metabase.actions.execution-write-pool-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.execution-write-pool-test]}}}}}}
   (:require
    [clojure.test :refer :all]
@@ -8,7 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
-(deftest query-action-creates-write-pool-test
+(deftest ^:mb/driver-tests query-action-creates-write-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:actions/custom]})
     (mt/with-actions-test-data-and-actions-enabled
       (let [db-id           (mt/id)

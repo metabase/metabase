@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.middleware.format-rows-test
+(ns metabase.query-processor.middleware.format-rows-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.format-rows-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.format-rows-test]}}}}}}
   (:require
@@ -52,7 +52,7 @@
    [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
    [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]])
 
-(deftest format-rows-without-report-timezone-test
+(deftest ^:mb/driver-tests format-rows-without-report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type ::format-rows-test)
     (mt/dataset time-test-data
       (testing "without report timezone"
@@ -90,7 +90,7 @@
    [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
    [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]])
 
-(deftest format-rows-with-report-timezone-test
+(deftest ^:mb/driver-tests format-rows-with-report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type ::format-rows-test)
     (mt/dataset time-test-data
       (testing "with report timezone"

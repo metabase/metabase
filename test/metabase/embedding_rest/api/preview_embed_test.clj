@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.embedding-rest.api.preview-embed-test
+(ns metabase.embedding-rest.api.preview-embed-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
                                                             metabase.test.data/query          {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.embedding-rest.api.preview-embed-test]}}}}}}
@@ -391,7 +391,7 @@
                                                 (str (dashcard-url dashcard {:_embedding_params {:num "enabled"}})
                                                      "?num=50"))))))))))
 
-(deftest postgres-convert-parameters-to-numbers-test
+(deftest ^:mb/driver-tests postgres-convert-parameters-to-numbers-test
   (mt/test-driver :postgres
     (testing "Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)..."
       (embed-test/with-embedding-enabled-and-new-secret-key!
@@ -418,7 +418,7 @@
        (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))
        "/query"))
 
-(deftest pivot-query-test
+(deftest ^:mb/driver-tests pivot-query-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "GET /api/preview_embed/pivot/card/:token/query"
@@ -455,7 +455,7 @@
        "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
 
-(deftest pivot-card-id-test
+(deftest ^:mb/driver-tests pivot-card-id-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"

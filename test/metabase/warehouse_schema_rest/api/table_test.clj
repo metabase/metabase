@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.warehouse-schema-rest.api.table-test
+(ns metabase.warehouse-schema-rest.api.table-test
   "Tests for /api/table endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.warehouse-schema-rest.api.table-test]}}}}}}
   (:require
@@ -957,7 +957,7 @@
                     :table-id (:id table)
                     :file     file}))))
 
-(deftest append-csv-test
+(deftest ^:mb/driver-tests append-csv-test
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
@@ -969,7 +969,7 @@
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                  (update-csv-via-api! :metabase.upload/append))))))))
 
-(deftest append-csv-deletes-file-test
+(deftest ^:mb/driver-tests append-csv-deletes-file-test
   (testing "File gets deleted after appending"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :rasta)
@@ -988,7 +988,7 @@
 ;;; |                                          POST /api/table/:id/replace-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest replace-csv-test
+(deftest ^:mb/driver-tests replace-csv-test
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
@@ -1000,7 +1000,7 @@
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                  (update-csv-via-api! :metabase.upload/replace))))))))
 
-(deftest replace-csv-deletes-file-test
+(deftest ^:mb/driver-tests replace-csv-deletes-file-test
   (testing "File gets deleted after replacing"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :rasta)

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.lens-output-test
+(ns metabase-enterprise.transforms-inspector.lens-output-test
   "Tests for lens card output validation and trigger flow."
   (:require
    [clojure.test :refer :all]
@@ -120,7 +120,7 @@
 
 ;;; -------------------------------------------------- Generic Summary --------------------------------------------------
 
-(deftest generic-summary-cards-test
+(deftest ^:mb/driver-tests generic-summary-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "generic-summary lens with simple query"
       (let [ctx  (build-simple-context)
@@ -149,7 +149,7 @@
 
 ;;; -------------------------------------------------- Join Analysis --------------------------------------------------
 
-(deftest join-analysis-cards-test
+(deftest ^:mb/driver-tests join-analysis-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (let [ctx  (build-joined-context)
           lens (lens.core/make-lens :join-analysis ctx nil)]
@@ -183,7 +183,7 @@
       (testing "summary includes join count"
         (is (some #(= "Joins" (:label %)) (get-in lens [:summary :highlights])))))))
 
-(deftest join-analysis-triggers-test
+(deftest ^:mb/driver-tests join-analysis-triggers-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (let [ctx  (build-joined-context)
           lens (lens.core/make-lens :join-analysis ctx nil)]
@@ -208,7 +208,7 @@
 
 ;;; -------------------------------------------------- Column Comparison --------------------------------------------------
 
-(deftest column-comparison-cards-test
+(deftest ^:mb/driver-tests column-comparison-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (let [ctx  (build-joined-context)
           lens (lens.core/make-lens :column-comparison ctx nil)]
@@ -231,7 +231,7 @@
 
 ;;; -------------------------------------------------- Unmatched Rows --------------------------------------------------
 
-(deftest unmatched-rows-cards-test
+(deftest ^:mb/driver-tests unmatched-rows-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (let [ctx  (build-joined-context)
           lens (lens.core/make-lens :unmatched-rows ctx nil)]
@@ -270,7 +270,7 @@
         (doseq [card (:cards lens)]
           (is (seq (get-in card [:dataset_query :stages 0 :filters]))))))))
 
-(deftest unmatched-rows-with-params-test
+(deftest ^:mb/driver-tests unmatched-rows-with-params-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "params filter to specific join step"
       (let [ctx  (build-joined-context)
@@ -282,7 +282,7 @@
 
 ;;; -------------------------------------------------- Trigger Evaluation Flow --------------------------------------------------
 
-(deftest trigger-evaluation-flow-test
+(deftest ^:mb/driver-tests trigger-evaluation-flow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "full flow: join-analysis triggers → evaluate → drill to unmatched-rows"
       (let [ctx  (build-joined-context)

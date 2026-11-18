@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.json-field-alias-test
+(ns metabase.query-processor.json-field-alias-test
   "Regression tests for compiling queries that reference JSON-unfolded fields through aliases containing characters
   that HoneySQL would otherwise treat as identifier separators (notably `/`). See #70445."
   (:require
@@ -54,7 +54,7 @@
                :database-id   1
                :dataset-query (lib/query base (lib.metadata/table base 1))}]})))
 
-(deftest ^:parallel json-breakout-from-joined-slashed-model-test
+(deftest ^:mb/driver-tests ^:parallel json-breakout-from-joined-slashed-model-test
   (testing "Breakout on a JSON-unfolded field from a joined model whose name contains `/` (#70445)"
     ;; Iterate drivers directly instead of `mt/test-drivers`: that macro loads each driver's
     ;; test-data extensions namespace, which isn't needed for a pure compile test and may not be

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.sync.sync-metadata.indexes-test
+(ns metabase.sync.sync-metadata.indexes-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -13,7 +13,7 @@
    [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
-(deftest sync-single-indexed-columns-test
+(deftest ^:mb/driver-tests sync-single-indexed-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
     (mt/dataset (mt/dataset-definition "single_index"
                                        [["table"
@@ -23,7 +23,7 @@
       (is (true? (t2/select-one-fn :database_indexed :model/Field :id (mt/id :table :indexed))))
       (is (not= true (t2/select-one-fn :database_indexed :model/Field :id (mt/id :table :not-indexed)))))))
 
-(deftest sync-composite-indexed-columns-test
+(deftest ^:mb/driver-tests sync-composite-indexed-columns-test
   (mt/test-drivers
     (disj (mt/normal-drivers-with-feature :index-info) :mongo)
     (let [ds [["table"
@@ -46,7 +46,7 @@
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! (driver.u/lib-database (:id db)))))
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! (driver.u/lib-database (:id db)) table))))))
 
-(deftest all-indexes->fields-ids-many-indexes-test
+(deftest ^:mb/driver-tests all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"
     (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes :index-info)
       (let [indexes (into [] (driver/describe-indexes driver/*driver* (lib.metadata/database (mt/metadata-provider))))
@@ -56,7 +56,7 @@
             field-ids (#'sync.indexes/all-indexes->field-ids (mt/id) many-indexes)]
         (is (seq field-ids))))))
 
-(deftest sync-all-indexes!-test
+(deftest ^:mb/driver-tests sync-all-indexes!-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:index-info :describe-indexes]})
     (let [ds-to-index-def [["first_table"

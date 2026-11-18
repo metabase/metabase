@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.mysql.workspace-test
+(ns metabase.driver.mysql.workspace-test
   "Tests for the MySQL workspace isolation methods: the statements they build, and their effect on a real server."
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -176,7 +176,7 @@
       (finally
         (jdbc/execute! (admin-spec database) [(format "DROP TABLE IF EXISTS `%s`" table)])))))
 
-(deftest ^:synchronized workspace-reads-the-bound-database-test
+(deftest ^:mb/driver-tests ^:synchronized workspace-reads-the-bound-database-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -202,7 +202,7 @@
              (driver/destroy-workspace-isolation! :mysql database workspace)
              (jdbc/execute! (admin-spec database) [(format "DROP DATABASE IF EXISTS `%s`" wild-db)]))))))))
 
-(deftest ^:synchronized init-refuses-an-existing-user-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-an-existing-user-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -221,7 +221,7 @@
         (finally
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" user)]))))))
 
-(deftest ^:synchronized init-refuses-an-existing-database-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-an-existing-database-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -238,7 +238,7 @@
         (finally
           (jdbc/execute! (admin-spec database) [(format "DROP DATABASE IF EXISTS `%s`" db-name)]))))))
 
-(deftest ^:synchronized destroy-ends-open-sessions-test
+(deftest ^:mb/driver-tests ^:synchronized destroy-ends-open-sessions-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -268,7 +268,7 @@
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace))))))
 
-(deftest ^:synchronized kill-denied-is-skipped-and-logged-with-the-missing-privilege-test
+(deftest ^:mb/driver-tests ^:synchronized kill-denied-is-skipped-and-logged-with-the-missing-privilege-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -356,7 +356,7 @@
       (finally
         (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" (:user victim))])))))
 
-(deftest ^:synchronized init-refuses-an-admin-that-cannot-end-sessions-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-an-admin-that-cannot-end-sessions-test
   (mt/test-driver :mysql
     (let [database (mt/db)
           kill     (if (mariadb? database) "CONNECTION ADMIN" "CONNECTION_ADMIN")
@@ -406,7 +406,7 @@
      (let [md (.getMetaData conn)]
        [(.getDatabaseProductName md) (.getDatabaseMajorVersion md) (.getDatabaseMinorVersion md)]))))
 
-(deftest ^:synchronized init-refuses-mariadb-before-10-4-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-mariadb-before-10-4-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -427,7 +427,7 @@
           (is (nil? refused))
           (is created?))))))
 
-(deftest ^:synchronized init-refuses-a-role-every-login-holds-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-a-role-every-login-holds-test
   (mt/test-driver :mysql
     (let [database   (mt/db)
           admin      (admin-spec database)
@@ -500,7 +500,7 @@
                  (finally
                    (driver/destroy-workspace-isolation! :mysql database workspace)))))))))))
 
-(deftest ^:synchronized init-refusal-for-a-role-granted-to-public-names-only-revokes-test
+(deftest ^:mb/driver-tests ^:synchronized init-refusal-for-a-role-granted-to-public-names-only-revokes-test
   (mt/test-driver :mysql
     (let [database   (mt/db)
           admin      (admin-spec database)
@@ -549,7 +549,7 @@
 (defn- grants [database user]
   (mapv (comp first vals) (jdbc/query (admin-spec database) [(format "SHOW GRANTS FOR `%s`@'%%'" user)])))
 
-(deftest ^:synchronized init-refuses-a-user-created-after-the-check-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-a-user-created-after-the-check-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -577,7 +577,7 @@
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" user)])
           (jdbc/execute! (admin-spec database) [(format "DROP DATABASE IF EXISTS `%s`" (:schema workspace))]))))))
 
-(deftest ^:synchronized init-refuses-a-database-created-after-the-check-test
+(deftest ^:mb/driver-tests ^:synchronized init-refuses-a-database-created-after-the-check-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -609,7 +609,7 @@
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" user)])
           (jdbc/execute! (admin-spec database) [(format "DROP DATABASE IF EXISTS `%s`" db-name)]))))))
 
-(deftest ^:synchronized retried-destroy-still-finds-the-sessions-test
+(deftest ^:mb/driver-tests ^:synchronized retried-destroy-still-finds-the-sessions-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -658,7 +658,7 @@
           (driver/destroy-workspace-isolation! :mysql database workspace)
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" (:user no-kill))]))))))
 
-(deftest ^:synchronized destroy-waits-for-another-users-lock-at-most-the-bound-test
+(deftest ^:mb/driver-tests ^:synchronized destroy-waits-for-another-users-lock-at-most-the-bound-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)

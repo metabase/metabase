@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.native-test
+(ns metabase.query-processor.native-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.native-test]}}}}}}
   (:require
    [clojure.string :as str]
@@ -44,7 +44,7 @@
             (mt/native-query
              {:query "select name from users;"}))))))
 
-(deftest ^:parallel native-with-duplicate-column-names-test
+(deftest ^:mb/driver-tests ^:parallel native-with-duplicate-column-names-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     ;; TODO (Cam 10/7/25) -- this should be updated to run against all the SQL drivers, at least all the ones that
     ;; allow duplicate column names in the `SELECT` list (all of them, I think?). That was the original intention of
@@ -115,7 +115,7 @@
   [_driver _feature _database]
   false)
 
-(deftest convert-timezone-in-case-with-default-test
+(deftest ^:mb/driver-tests convert-timezone-in-case-with-default-test
   (testing "convert-timezone inside case with a default value should not double-convert (#68712)"
     (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
       (mt/with-report-timezone-id! "UTC"

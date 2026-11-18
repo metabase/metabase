@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.native-parsing-test
+(ns metabase.driver.native-parsing-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -6,7 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 
-(deftest ^:parallel can-get-deps-from-table-tags
+(deftest ^:mb/driver-tests ^:parallel can-get-deps-from-table-tags
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
     (testing "native-query-deps looks in table tags for dependencies"
       (let [mp (mt/metadata-provider)

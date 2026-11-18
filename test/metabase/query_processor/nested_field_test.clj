@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.nested-field-test
+(ns metabase.query-processor.nested-field-test
   "Tests for nested field access."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.nested-field-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-field-test]}}}}}}
@@ -7,7 +7,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
-(deftest ^:parallel filter-test
+(deftest ^:mb/driver-tests ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in FILTER"
       (mt/dataset geographical-tips
@@ -29,7 +29,7 @@
                     [470 "Kyle's Low-Carb Grill"]]
                    (mt/formatted-rows [int str] (qp/process-query query))))))))))
 
-(deftest ^:parallel order-by-test
+(deftest ^:mb/driver-tests ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in ORDER-BY"
       (mt/dataset geographical-tips
@@ -70,7 +70,7 @@
                               [:= $tips.source.username "kyle"]]
                    :order-by [[:asc $tips.venue.name]]}))))))))
 
-(deftest ^:parallel aggregation-test
+(deftest ^:mb/driver-tests ^:parallel aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in AGGREGATION"
       (mt/dataset geographical-tips
@@ -87,7 +87,7 @@
                   (mt/run-mbql-query tips
                     {:aggregation [[:count $tips.venue.name]]})))))))))
 
-(deftest ^:parallel breakout-test
+(deftest ^:mb/driver-tests ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in BREAKOUT"
       ;; Let's see how many tips we have by source.service
@@ -103,7 +103,7 @@
                     ["yelp"        90]]
                    (mt/formatted-rows [str int] (qp/process-query query))))))))))
 
-(deftest ^:parallel breakout-test-2
+(deftest ^:mb/driver-tests ^:parallel breakout-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in BREAKOUT"
       (mt/dataset geographical-tips
@@ -118,7 +118,7 @@
                    :breakout    [$tips.source.username]
                    :limit       4}))))))))
 
-(deftest ^:parallel fields-test
+(deftest ^:mb/driver-tests ^:parallel fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in FIELDS"
       (mt/dataset geographical-tips
@@ -139,7 +139,7 @@
                    :order-by [[:asc $id]]
                    :limit    10}))))))))
 
-(deftest ^:parallel children-and-parents-test
+(deftest ^:mb/driver-tests ^:parallel children-and-parents-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Can select both a child and its parent"
       (mt/dataset geographical-tips
@@ -200,7 +200,7 @@
                    :order-by [[:asc $id]]
                    :limit    10}))))))))
 
-(deftest ^:parallel order-by-aggregation-test
+(deftest ^:mb/driver-tests ^:parallel order-by-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field w/ ordering by aggregation"
       (mt/dataset geographical-tips
@@ -225,7 +225,7 @@
                    :breakout    [$tips.source.mayor]
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
 
-(deftest ^:parallel nested-query-test
+(deftest ^:mb/driver-tests ^:parallel nested-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in a nested query"
       (mt/dataset geographical-tips
@@ -242,7 +242,7 @@
                                   :breakout    [$tips.source.service]
                                   :source-table $$tips}}))))))))
 
-(deftest ^:parallel nested-query-2-test
+(deftest ^:mb/driver-tests ^:parallel nested-query-2-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested fields in a nested query where the outer query needs the nested field"
       (mt/dataset geographical-tips

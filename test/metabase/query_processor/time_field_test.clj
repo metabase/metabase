@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.time-field-test
+(ns metabase.query-processor.time-field-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.time-field-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.time-field-test]}}}}}}
   (:require
@@ -36,7 +36,7 @@
   [[1 "Plato Yeshua" "08:30:00"]
    [4 "Simcha Yan"   "08:30:00"]])
 
-(deftest ^:parallel basic-test
+(deftest ^:mb/driver-tests ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (doseq [[message [start end]] {"Basic between query on a time field"
                                    ["08:00:00" "09:00:00"]
@@ -64,7 +64,7 @@
    [5 "Quentin Sören" "17:30:00"]
    [10 "Frans Hevel" "19:30:00"]])
 
-(deftest ^:parallel greater-than-test
+(deftest ^:mb/driver-tests ^:parallel greater-than-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (is (= (greater-than-test-expected-rows driver/*driver*)
            (time-query :> "16:00:00Z")))))
@@ -82,7 +82,7 @@
   [_driver]
   [[3 "Kaneonuskatew Eiran" "16:15:00"]])
 
-(deftest ^:parallel equals-test
+(deftest ^:mb/driver-tests ^:parallel equals-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (is (= (equals-test-expected-rows driver/*driver*)
            (time-query := "16:15:00Z")))))
@@ -107,7 +107,7 @@
   [[1 "Plato Yeshua" "08:30:00"]
    [4 "Simcha Yan" "08:30:00"]])
 
-(deftest report-timezone-test
+(deftest ^:mb/driver-tests report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (is (= (report-timezone-test-expected-rows driver/*driver*)
@@ -118,7 +118,7 @@
 ;;; FIXME: `:second` and `:millisecond` are theoretically allowed in MBQL but don't seem to be implemented for most if
 ;;; not all of our drivers.
 
-(deftest ^:parallel attempted-murders-test
+(deftest ^:mb/driver-tests ^:parallel attempted-murders-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (testing "Sanity check: make sure time columns for attempted-murders test dataset (used in tests below) is loaded correctly"
       (mt/dataset attempted-murders
@@ -157,7 +157,7 @@
                 [int str]
                 (qp/process-query query)))))))))
 
-(deftest ^:parallel bucket-time-column-hour-test
+(deftest ^:mb/driver-tests ^:parallel bucket-time-column-hour-test
   (test-time-bucketing
    :time :hour
    (fn [results]
@@ -165,7 +165,7 @@
               [2 #"00:00:00Z?"]]
              results)))))
 
-(deftest ^:parallel bucket-time-column-minute-test
+(deftest ^:mb/driver-tests ^:parallel bucket-time-column-minute-test
   (test-time-bucketing
    :time :minute
    (fn [results]
@@ -173,7 +173,7 @@
               [2 #"00:14:00Z?"]]
              results)))))
 
-(deftest ^:parallel bucket-time-with-time-zone-hour-test
+(deftest ^:mb/driver-tests ^:parallel bucket-time-with-time-zone-hour-test
   (doseq [time-column [:time_tz :time_ltz]]
     (testing time-column
       (test-time-bucketing
@@ -183,7 +183,7 @@
                   [2 #"07:00:00Z?"]]
                  results)))))))
 
-(deftest ^:parallel bucket-time-with-time-zone-minute-test
+(deftest ^:mb/driver-tests ^:parallel bucket-time-with-time-zone-minute-test
   (doseq [time-column [:time_tz :time_ltz]]
     (testing time-column
       (test-time-bucketing
@@ -193,7 +193,7 @@
                   [2 #"07:14:00Z?"]]
                  results)))))))
 
-(deftest hour-bucketing-time-field-in-source-query-test
+(deftest ^:mb/driver-tests hour-bucketing-time-field-in-source-query-test
   (testing "Hour group-by on a time field from a source query should work (#75193, #68065)"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
       (mt/dataset time-test-data

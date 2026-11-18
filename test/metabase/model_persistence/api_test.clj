@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.model-persistence.api-test
+(ns metabase.model-persistence.api-test
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -239,7 +239,7 @@
 ;;; Database tests
 ;;;
 
-(deftest persist-database-test
+(deftest ^:mb/driver-tests persist-database-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (let [db-id (mt/id)]
       (mt/with-temp
@@ -267,7 +267,7 @@
           (testing "it's okay to trigger persist even though the database is already persisted"
             (mt/user-http-request :crowberto :post 204 (str "persist/database/" db-id "/persist"))))))))
 
-(deftest unpersist-database-test
+(deftest ^:mb/driver-tests unpersist-database-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (let [db-id (mt/id)]
       (mt/with-temp

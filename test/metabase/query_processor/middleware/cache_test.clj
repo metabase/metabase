@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.middleware.cache-test
+(ns metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.cache-test]}}}}}}
   (:require
@@ -567,7 +567,7 @@
                    :status        :completed}
                   result)))))))
 
-(deftest array-query-can-be-cached-test
+(deftest ^:mb/driver-tests array-query-can-be-cached-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
                          ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                          #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
@@ -598,7 +598,7 @@
             (is (= (dissoc original-result :cache/details)
                    (dissoc cached-result :cache/details)))))))))
 
-(deftest postgres-domain-can-be-cached-test
+(deftest ^:mb/driver-tests postgres-domain-can-be-cached-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
