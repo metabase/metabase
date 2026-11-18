@@ -12,7 +12,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -949,23 +949,21 @@
              :tables
              (#(map :name %))))))
 
-;;; ---------------------------------------- visible-filter-clause tests ----------------------------------------
+;;; ------------------------------------- visible-databases-filter-clause tests -------------------------------------
 
 (defn- fetch-visible-db-ids
-  "Helper to fetch visible database IDs using visible-filter-clause.
-   Handles the :with/:clause return value format."
+  "Helper to fetch visible database IDs using `perms/visible-databases-filter-clause`."
   [db-ids user-info permission-mapping column-field]
-  (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
-    (t2/select-pks-set :model/Database
-                       {:where [:and
-                                clause
-                                [:in :id db-ids]]})))
+  (t2/select-pks-set :model/Database
+                     {:where [:and
+                              (perms/visible-databases-filter-clause column-field user-info permission-mapping)
+                              [:in :id db-ids]]}))
 
 (def ^:private default-permission-mapping
   {:perms/view-data :unrestricted
    :perms/create-queries :query-builder})
 
-(deftest visible-filter-clause-superuser-test
+(deftest visible-databases-filter-clause-superuser-test
   (testing "Superuser should see all databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -987,11 +985,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id db3-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? true}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? true :is-data-analyst? false}
                                      default-permission-mapping
                                      :id)))))))
 
-(deftest visible-filter-clause-non-superuser-test
+(deftest visible-databases-filter-clause-non-superuser-test
   (testing "Non-superuser should only see databases they have permissions for"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1013,11 +1011,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
                                      :id)))))))
 
-(deftest visible-filter-clause-qualified-column-test
+(deftest visible-databases-filter-clause-qualified-column-test
   (testing "Should work with qualified column names"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1039,11 +1037,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
                                      :metabase_database.id)))))))
 
-(deftest visible-filter-clause-column-expression-test
+(deftest visible-databases-filter-clause-column-expression-test
   (testing "Should work with column expressions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1065,11 +1063,11 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
                                      [:coalesce :id :metabase_database.id])))))))
 
-(deftest visible-filter-clause-view-data-only-test
+(deftest visible-databases-filter-clause-view-data-only-test
   (testing "Requiring only view-data permissions should include databases where user has view permissions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1091,12 +1089,12 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      {:perms/view-data :unrestricted
                                       :perms/create-queries :no}
                                      :id)))))))
 
-(deftest visible-filter-clause-blocked-level-test
+(deftest visible-databases-filter-clause-blocked-level-test
   (testing "Requiring blocked level permissions (most permissive) should include all databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1118,12 +1116,12 @@
         (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
         (is (= #{db1-id db2-id db3-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      {:perms/view-data :blocked
                                       :perms/create-queries :no}
                                      :id)))))))
 
-(deftest visible-filter-clause-no-permissions-test
+(deftest visible-databases-filter-clause-no-permissions-test
   (testing "User with no group memberships should see no databases"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
@@ -1149,11 +1147,11 @@
                       :user_id (mt/user->id :rasta)
                       :group_id [:in [(:id pg1) (:id pg2)]]))
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
-                                          {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                          {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                           default-permission-mapping
                                           :id)))))))
 
-(deftest visible-filter-clause-table-level-permissions-test
+(deftest visible-databases-filter-clause-table-level-permissions-test
   (testing "Database should be visible when user has access to at least one table"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
@@ -1173,7 +1171,7 @@
         (data-perms/set-table-permission! pg table2-id :perms/view-data :unrestricted)
         (data-perms/set-table-permission! pg table2-id :perms/create-queries :query-builder)
         (is (contains? (fetch-visible-db-ids [db-id]
-                                             {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                             {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                              default-permission-mapping
                                              :id)
                        db-id))))))
@@ -1190,7 +1188,7 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 (deftest database-can-read?-with-manage-database-permission-test
   (testing "User with manage-database permission can read database"
@@ -1203,7 +1201,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 (deftest database-can-read?-with-manage-table-metadata-on-any-table-test
   (testing "User with manage-table-metadata on any table can read database"
@@ -1216,7 +1214,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? :model/Database db-id)))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_read))))))))
 
 ;;; ---------------------------------------- can-query? permission tests ----------------------------------------
 
@@ -1230,10 +1228,10 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? :model/Database db-id))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query)))))
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? :model/Database db-id)))))))
+        (is (true? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query))))))))
 
 (deftest database-can-query?-manage-database-does-not-grant-query-access-test
   (testing "manage-database alone does NOT grant query access"
@@ -1246,7 +1244,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? :model/Database db-id)))))))
+        (is (false? (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id db-id) :can_query))))))))
 
 (deftest router-database-id-is-immutable-test
   (testing "updating a database's router_database_id throws"

@@ -338,7 +338,7 @@
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
-        (is (false? (mt/with-test-user :rasta (mi/can-read? card))))
+        (is (false? (mt/with-test-user :rasta (mi/can-read? (t2/hydrate card :can_read)))))
         (testing "source-table card__N"
           (is (mt/user-http-request :rasta :post 403 "dataset/native"
                                     {:database (mt/id)

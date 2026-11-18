@@ -21,10 +21,8 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
-   [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -423,39 +421,6 @@
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
 
-(jm/def-json-migration migrate-viz-settings*)
-
-(def ^:private viz-settings-current-version 2)
-
-(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
-  (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings
-        new-visibility              (cond
-                                      legend?  "inside"
-                                      percent? "legend")
-        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
-                                      "dashboard")]
-    (cond-> viz-settings
-      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
-      new-visibility (assoc :pie.percent_visibility new-visibility)
-      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
-
-(defn- migrate-viz-settings
-  [viz-settings]
-  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
-    (cond-> new-viz-settings
-      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
-
-;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
-;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
-
-(def transform-visualization-settings
-  "Transform for viz-settings."
-  {:in  (comp json-in migrate-viz-settings)
-   :out (comp migrate-viz-settings
-              #(lib/normalize ::lib.schema.visualization-settings/visualization-settings %)
-              json-out-without-keywordization)})
-
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))
@@ -644,76 +609,65 @@
 
 ;;; TODO -- consider moving all this stuff into the `permissions` module
 
-(defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
-  be something like
-
-    #{\"/db/1/schema/public/table/20/\"}
-
-  `read-or-write` will be either `:read` or `:write`, depending on which permissions set we're fetching (these will be
-  the same sets for most models; they can ignore this param)."
-  {:arglists '([instance read-or-write])}
-  dispatch-on-model)
-
-(defmethod perms-objects-set :default
-  [_instance _read-or-write]
-  nil)
-
-(defmulti can-read?
-  "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use
-  one of these implementations:
-
-  *  `(constantly true)`
-  *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :read)` (you must also implement [[perms-objects-set]] to use this)
-  *  `(partial current-user-has-partial-permissions? :read)` (you must also implement [[perms-objects-set]] to use
-     this)"
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmulti can-write?
-  "Return whether [[metabase.api.common/*current-user*]] has *write* permissions for an object. You should typically use
-  one of these implementations:
-
-  *  `(constantly true)`
-  *  `superuser?`
-  *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
-  *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
-      this)"
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmulti can-query?
-  "Return whether [[metabase.api.common/*current-user*]] has *query* permissions for an object (i.e., can run
-  queries against it). This is separate from [[can-read?]] which determines if the user can see the object's
-  metadata.
-
-  For data model entities like Tables and Databases, `can-read?` means 'can see metadata' while `can-query?`
-  means 'can execute queries against'. For collection entities, `can-query?` typically falls back to `can-read?`.
-
-  The default implementation falls back to [[can-read?]] for backward compatibility."
-  {:arglists '([instance] [model pk])}
-  dispatch-on-model)
-
-(defmethod can-query? :default
-  ;; Default implementation: fall back to can-read? for backward compatibility
-  ([instance]
-   (can-read? instance))
-  ([model pk]
-   (can-read? model pk)))
-
-;; only reached through the :can_write hydration key, never called by name
-#_{:clj-kondo/ignore [:unused-private-var]}
-(define-simple-hydration-method ^:private hydrate-can-write
-  :can_write
-  "Hydration method for `:can_write`."
+(defn- model-name
+  "The name of the model of `instance`, for a message."
   [instance]
-  (can-write? instance))
+  (let [model (some-> instance t2/model)]
+    (cond
+      (class? model)   (.getSimpleName ^Class model)
+      (keyword? model) (name model)
+      :else            (str model))))
 
-(methodical/defmethod t2/simple-hydrate [:default :can_query]
-  "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
+(defn- hydrated-answer
+  "The `answer` hydration left under `k` for `instance`, throwing when there is none."
+  [instance k answer]
+  (when (nil? answer)
+    (throw (ex-info (format "No %s is hydrated on a %s." k (model-name instance))
+                    {:status-code 500})))
+  answer)
+
+(defn can-read?
+  "Whether the current user reads `instance`, as its `:can_read` hydration answered in its metadata."
+  [instance]
+  (hydrated-answer instance :can_read (:can_read (meta instance))))
+
+(defn can-write?
+  "Whether the current user writes `instance`, as its `:can_write` hydration answered."
+  [instance]
+  (hydrated-answer instance :can_write (:can_write instance)))
+
+(defn can-query?
+  "Whether the current user runs queries against `instance`, as its `:can_query` hydration answered."
+  [instance]
+  (hydrated-answer instance :can_query (:can_query instance)))
+
+(methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
+  "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
+  the row."
+  [_model _k instance]
+  (nil? (:can_read (meta instance))))
+
+(defn- no-check-hydration
+  "Throws for `instance`, whose model has no hydration of the check `k`."
+  [k instance]
+  (throw (ex-info (format "%s has no %s hydration." (model-name instance) k) {:status-code 500})))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_read]
+  "Throws: a model answers `:can_read` in a hydration of its own."
   [_model k instance]
-  (assoc instance k (can-query? instance)))
+  (no-check-hydration k instance))
+
+(methodical/defmethod t2.hydrate/simple-hydrate [:default :can_write]
+  "Throws: a model answers `:can_write` in a hydration of its own."
+  [_model k instance]
+  (no-check-hydration k instance))
+
+(methodical/defmethod t2.hydrate/batched-hydrate [:default :can_query]
+  "Sets `:can_query` on each of `instances` to its `:can_read`, for a model that answers both alike."
+  [_model k instances]
+  (for [instance (t2/hydrate instances :can_read)]
+    (when instance
+      (assoc instance k (can-read? instance)))))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -751,16 +705,6 @@
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
-(defmulti visible-filter-clause
-  "Return a map with:
-   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
-   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
-
-  Uses the map of permission type->minimum permission-level for filtering.
-  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
-  {:arglists '([model column-or-exp user-info perm-type->perm-level])}
-  dispatch-on-model)
-
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
   of [[can-read?]] and/or [[can-write?]]."
@@ -772,85 +716,25 @@
   []
   @(requiring-resolve 'metabase.api.common/*current-user-id*))
 
-(defn- current-user-permissions-set []
-  @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))
+(methodical/defmethod t2/simple-hydrate [::read-policy.always-allow :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean true)))
 
-(defn- current-user-has-root-permissions? []
-  (contains? (current-user-permissions-set) "/"))
+(methodical/defmethod t2/simple-hydrate [::write-policy.always-allow :can_write]
+  [_model k instance]
+  (assoc instance k (boolean true)))
 
-(mu/defn- check-perms-with-fn
-  ([fn-symb       :- qualified-symbol?
-    read-or-write :- [:enum :read :write]
-    a-model       :- qualified-keyword?
-    object-id     :- [:or pos-int? string?]]
-   (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (models.db/entity-by-pk a-model (first (t2/primary-keys a-model)) object-id))))
+(methodical/defmethod t2/simple-hydrate [::read-policy.superuser :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (superuser?))))
 
-  ([fn-symb       :- qualified-symbol?
-    read-or-write :- [:enum :read :write]
-    object        :- [:maybe [:fn {:error/message "a Toucan instance or model-like record"}
-                              #(some? (t2.protocols/model %))]]]
-   (and object
-        (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
-
-  ([fn-symb   :- qualified-symbol?
-    perms-set :- [:set :string]]
-   ;; resolves the permissions implementation lazily to avoid a models -> permissions load cycle
-   (let [f #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve fn-symb)]
-     (assert f)
-     (u/prog1 (f (current-user-permissions-set) perms-set)
-       (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
-
-(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
-  current-user-has-full-permissions?
-  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
-  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
-
-(defmethod can-read? ::read-policy.always-allow
-  ([_instance]
-   true)
-  ([_model _pk]
-   true))
-
-(defmethod can-write? ::write-policy.always-allow
-  ([_instance]
-   true)
-  ([_model _pk]
-   true))
-
-(defmethod can-read? ::read-policy.full-perms-for-perms-set
-  ([instance]
-   (current-user-has-full-permissions? :read instance))
-  ([model pk]
-   (current-user-has-full-permissions? :read model pk)))
-
-(defmethod can-write? ::write-policy.full-perms-for-perms-set
-  ([instance]
-   (current-user-has-full-permissions? :write instance))
-  ([model pk]
-   (current-user-has-full-permissions? :write model pk)))
-
-(defmethod can-read? ::read-policy.superuser
-  ([_instance]
-   (superuser?))
-  ([_model _pk]
-   (superuser?)))
-
-(defmethod can-write? ::write-policy.superuser
-  ([_instance]
-   (superuser?))
-  ([_model _pk]
-   (superuser?)))
+(methodical/defmethod t2/simple-hydrate [::write-policy.superuser :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (superuser?))))
 
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
-
-(defmethod visible-filter-clause :default
-  [_m _column-or-expression _user-info _perm-type->perm-level]
-  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 
