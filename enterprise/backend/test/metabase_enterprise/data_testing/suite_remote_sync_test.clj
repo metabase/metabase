@@ -57,7 +57,7 @@
                                                                          "- position: 1\n"))})
               (let [{v2 :version :as result} (remote-sync.tu/pull! url v1)]
                 (is (=? {:status :success} result))
-                (is (= [[:card missing-eid] [:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite))))
+                (is (= [[:card missing-eid] [:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite))))
                 (testing "and a run of the suite reports the missing member, which fails the suite"
                   (is (=? {:status  "failed"
                            :members [{:status "missing" :test_entity_id missing-eid} {:test_entity_id (:entity_id t)}]}
@@ -71,11 +71,11 @@
                                                                  (str/replace "SWAP" (:entity_id t)))}))
                   (let [{v3 :version :as result} (remote-sync.tu/pull! url v2)]
                     (is (=? {:status :success} result))
-                    (is (= [[:card (:entity_id t)] [:card missing-eid]] (data-testing.test-util/member-rows (:id suite))))
+                    (is (= [[:card (:entity_id t)] [:card missing-eid]] (data-testing.test-util/member-refs (:id suite))))
                     (testing "a pull that changes the members replaces them"
                       (remote-sync.tu/commit! url "main" {path (str/replace yaml-text (:entity_id t) (:entity_id other))})
                       (is (=? {:status :success} (remote-sync.tu/pull! url v3)))
-                      (is (= [[:card (:entity_id other)]] (data-testing.test-util/member-rows (:id suite)))))))))))))))
+                      (is (= [[:card (:entity_id other)]] (data-testing.test-util/member-refs (:id suite)))))))))))))))
 
 (deftest member-changes-are-local-changes-test
   (remote-sync.tu/with-repository [url]
@@ -122,7 +122,7 @@
           (is (= "After" (t2/select-one-fn :description :model/TestSuite :id (:id suite)))
               "premise: the pull loaded the suite")
           (testing "a pull that loads a suite with unchanged members keeps their content"
-            (is (= [[:card a] [:transform b]] (data-testing.test-util/member-rows (:id suite)))))
+            (is (= [[:card a] [:transform b]] (data-testing.test-util/member-refs (:id suite)))))
           (testing "and keeps their rows"
             (is (= ids-before (t2/select-fn-vec :id :model/TestSuiteMember {:where    [:= :suite_id (:id suite)]
                                                                             :order-by [[:position :asc]]})))))))))
@@ -154,7 +154,7 @@
               (is (=? {:status :success} pulled))
               (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the pull deleted the card test")
               (testing "a pull that deletes a test the suite file still names keeps the member, as git has it"
-                (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite)))))
+                (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))
               (testing "and leaves no local change"
                 (is (empty? (map (juxt :status :key) (remote-sync.tu/local-changes! url v2))))))))))))
 
@@ -167,9 +167,10 @@
       (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
       (remote-sync.tu/with-remote-sync ["file:///nonexistent/remote-sync-test-suite" :read-only]
         (mt/user-http-request :crowberto :put 403 (str "ee/test-suite/" (:id suite)) {:members []})
-        (mt/user-http-request :crowberto :delete (str "ee/card-test/" (:id t)))
+        (mt/user-http-request :crowberto :delete 204 (str "ee/card-test/" (:id t)))
+        (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the delete happened")
         (testing "on a read-only instance, deleting a test of an unsynced card leaves the suite's members unchanged"
-          (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite)))))))))
+          (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))
 
 (deftest pull-of-a-suite-naming-a-test-twice-is-refused-test
   (remote-sync.tu/with-repository [url]
@@ -194,4 +195,26 @@
               (is (str/includes? messages "\"Nightly\" names the same test more than once"))
               (is (str/includes? messages (str "card test " (:entity_id t)))))
             (testing "and leaves the suite as it was"
-              (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-rows (:id suite)))))))))))
+              (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))
+
+(deftest pull-of-a-suite-member-without-a-test-type-is-refused-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Card      card  {:name "Card"}
+                     :model/CardTest  t     {:card_id (:id card)}
+                     :model/TestSuite suite {:name "Nightly"}]
+        (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
+        (let [{v1 :version} (remote-sync.tu/push! url nil)
+              path          (remote-sync.tu/entity-path! url "main" suite)
+              yaml-text     (remote-sync.tu/read-file! url "main" path)]
+          (is (str/includes? yaml-text "  test_type: card\n") "premise: the file lists the member's test type")
+          (remote-sync.tu/commit! url "main" {path (str/replace yaml-text "  test_type: card\n" "")})
+          (let [result   (try (remote-sync.tu/pull! url v1) (catch Exception e e))
+                messages (str/join "\n" (if (instance? Throwable result)
+                                          (keep ex-message (take-while some? (iterate ex-cause result)))
+                                          [(pr-str result)]))]
+            (testing "a pull of a suite file whose member has no test type fails, naming the suite"
+              (is (not= :success (:status result)))
+              (is (str/includes? messages "\"Nightly\" has a member without a test_type or test_entity_id")))
+            (testing "and leaves the suite as it was"
+              (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))))))

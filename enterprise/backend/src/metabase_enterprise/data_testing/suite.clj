@@ -1,8 +1,10 @@
 (ns metabase-enterprise.data-testing.suite
-  "Test suites as the current user sees them: [[saved-tests-by]] finds the saved tests that members name;
-  [[with-members]] resolves each member to the saved test it names; [[member-rows]] turns the members a client sends
-  into the rows a suite stores; and [[runs-for-reader]] hides from the run history what the reader may not see."
+  "Test suites as the current user sees them: [[member-ref]] is the test a member names; [[saved-tests-by]] finds the
+  saved tests that members name; [[with-members]] resolves each member to the saved test it names; [[member-rows]]
+  turns the members a client sends into the rows a suite stores; [[repeated-tests]] finds a test named twice; and
+  [[runs-for-reader]] hides from the run history what the reader may not see."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
@@ -22,7 +24,7 @@
   [:tuple :keyword [:or ms/PositiveInt :string]])
 
 (mu/defn member-ref :- TestRef
-  "The `[test-type entity-id]` of the test that `member`, a stored member or a member outcome, names."
+  "The `[test-type entity-id]` that `member`, a suite member or a member outcome of a run, names."
   [member :- [:or
               ::data-testing.schema/test-suite.member
               ::data-testing.schema/test-suite-run.stored-member
@@ -64,11 +66,21 @@
           suites)))
 
 (defn- refuse-member
-  "Throw a 400 for a requested member that names, by `value`, its id or entity id, no `test-type` test that the current
+  "Throw a 400 for a requested member whose `value`, the id or entity id of a `test-type` test, names no test the current
   user can read. The message is the same whether the test is missing or unreadable."
   [test-type value]
   (throw (ex-info (tru "There is no {0} test {1} that you can read." (name test-type) (pr-str value))
                   {:status-code 400})))
+
+(defn repeated-tests
+  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". A member is a map with a
+  `:test_type`, a keyword or a string, and a `:test_entity_id`."
+  [members]
+  (into []
+        (keep (fn [[[test-type eid] n]]
+                (when (> n 1)
+                  (str test-type " test " eid))))
+        (frequencies (map (juxt (comp name :test_type) :test_entity_id) members))))
 
 (mu/defn member-rows :- [:sequential [:map {:closed true}
                                       [:test_type      ::data-testing.schema/test-type]
@@ -92,22 +104,20 @@
                              {:test_type test_type :test_entity_id test_entity_id}
                              (refuse-member test_type test_entity_id))))
                        requested)]
-    (when-let [repeated (seq (keep (fn [[row n]] (when (> n 1) row)) (frequencies rows)))]
-      (throw (ex-info (tru "A test can be in a suite at most once. Named more than once: {0}"
-                           (pr-str (mapv (juxt (comp name :test_type) :test_entity_id) repeated)))
+    (when-let [repeated (not-empty (repeated-tests rows))]
+      (throw (ex-info (tru "A test can be in a suite at most once. Named more than once: {0}" (str/join ", " repeated))
                       {:status-code 400})))
     rows))
 
 (mu/defn runs-for-reader :- [:sequential ::data-testing.schema/test-suite-run]
   "`runs` with the `:error` removed from each member unless the member's test exists and the current user may run it.
   An error can quote the SQL of the test's query and of the cards and snippets that query includes; reading the test
-  does not grant reading that SQL, running it does. A permission check that throws withholds the error. Every member
-  keeps its status."
+  does not grant reading that SQL, permission to run it does. A permission check that throws withholds the error
+  rather than fail the history. Every member keeps its status."
   [runs :- [:sequential ::data-testing.schema/test-suite-run]]
   (let [refs  (into [] (comp (mapcat :members) (filter :error) (map member-ref) (distinct)) runs)
         shown (into #{}
                     (keep (fn [[[test-type :as ref] saved-test]]
-                            ;; A permission check that throws withholds the error rather than fail the history.
                             (when (try
                                     ((:can-run? (data-testing.test-type/spec test-type)) saved-test)
                                     (catch Exception e

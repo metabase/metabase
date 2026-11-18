@@ -77,28 +77,28 @@
   [run-ids :- [:sequential ms/PositiveInt]]
   (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
 
-(defn- logging-throwables
-  "Call `thunk` and return its value; if it throws, log the throwable as the failure of `what` and return nil, so that the
-  caller goes on with its other work."
+(defn- call-or-log-failure
+  "Call `thunk` and return its value. If it throws an exception, log it as a failure to `what`, a verb phrase such as
+  \"reap test runs\", and return nil, so that the caller goes on with its other work."
   [what thunk]
   (try
     (thunk)
-    (catch Throwable t
-      (log/warnf t "Failed to %s" what)
+    (catch Exception e
+      (log/warnf e "Failed to %s" what)
       nil)))
 
 (mu/defn heartbeat-and-reconcile-runs! :- :nil
   "Heartbeat the test runs and suite runs owned by this process and forget any that became terminal elsewhere. A
   failure for one kind of run does not stop the other."
   []
-  (logging-throwables
+  (call-or-log-failure
    "heartbeat test runs"
    #(rt/heartbeat-and-reconcile! {:model      :model/DataTestRun
                                   :active     [:status "started"]
                                   :ids        @active-runs
                                   :heartbeat! heartbeat-runs!
                                   :on-gone    (fn [id] (swap! active-runs disj id))}))
-  (logging-throwables
+  (call-or-log-failure
    "heartbeat suite runs"
    #(rt/heartbeat-and-reconcile! {:model      :model/TestSuiteRun
                                   :active     [:status "started"]
@@ -108,9 +108,9 @@
   nil)
 
 (defn- reap-and-publish!
-  "Time out the started rows of `model`, a run model, whose owning process has stopped heartbeating for
-  `stale-minutes`, publish for each the timeout topic `(topic-of run)` returns, and return them. A run with no topic is
-  logged, and a failed publish does not stop the others."
+  "Time out the started runs of the run model `model` whose last heartbeat is older than `stale-minutes`, and return
+  them. For each run, publish an event to the topic that `(topic-of run)` returns, or log the run when it returns nil. A
+  failed publish does not stop the others."
   [model stale-minutes topic-of]
   (let [reaped (rt/reap-orphaned! {:model    model
                                    :active   [:status "started"]
@@ -118,11 +118,11 @@
                                    :terminal {:status "timeout" :end_time :%now}})]
     (doseq [run reaped]
       (if-let [topic (topic-of run)]
-        (logging-throwables
+        (call-or-log-failure
          (str "publish the timeout event of run " (:id run) " of " (name model))
          #(events/publish-event! topic (-> {:object (assoc run :status :timeout)}
                                            (m/assoc-some :user-id (:initiated_by run)))))
-        (log/warnf "Timed out run %s of %s, which has no timeout event" (:id run) (name model))))
+        (log/warnf "Timed out %s %s, which has no timeout event" (name model) (select-keys run [:id :test_type]))))
     reaped))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/stored-data-test-run]]
@@ -146,7 +146,7 @@
   (rt/schedule-reaper! {:job-key "metabase.transform-testing.reaper"
                         :label   "test or suite run"
                         ;; A failure to reap one kind of run does not stop the other.
-                        :reap-fn #(concat (logging-throwables "reap test runs"
-                                                              (fn [] (reap-orphaned-runs! heartbeat-stale-minutes)))
-                                          (logging-throwables "reap suite runs"
-                                                              (fn [] (reap-orphaned-suite-runs! heartbeat-stale-minutes))))}))
+                        :reap-fn #(concat (call-or-log-failure "reap test runs"
+                                                               (fn [] (reap-orphaned-runs! heartbeat-stale-minutes)))
+                                          (call-or-log-failure "reap suite runs"
+                                                               (fn [] (reap-orphaned-suite-runs! heartbeat-stale-minutes))))}))

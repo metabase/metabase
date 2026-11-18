@@ -30,12 +30,17 @@
   "Expectations the card below fails with [[inputs]]: its output has one row."
   [{:type "empty" :name "no rows" :sql "SELECT * FROM {{output}}"}])
 
+(defn- native-card
+  "A native card with the query `sql`, in the collection `collection-id`."
+  [collection-id sql]
+  {:name          "People"
+   :collection_id collection-id
+   :dataset_query (lib/native-query (mt/metadata-provider) sql)})
+
 (defn- card
   "A native card reading the table [[inputs]] stands in for, in the collection `collection-id`."
   [collection-id]
-  {:name          "People"
-   :collection_id collection-id
-   :dataset_query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")})
+  (native-card collection-id "SELECT ID, NAME FROM PUBLIC.PEOPLE"))
 
 (defn- run-path [suite-id] (str "ee/test-suite/" suite-id "/run"))
 
@@ -154,13 +159,6 @@
                      (second (:members (mt/user-http-request :lucky :post 200 (run-path suite-id))))))
               (is (= runs-before (t2/count :model/DataTestRun :test_type "card" :test_id hidden-id))))))))))
 
-(defn- native-card
-  "A native card with the query `sql`, in the collection `collection-id`."
-  [collection-id sql]
-  {:name          "People"
-   :collection_id collection-id
-   :dataset_query (lib/native-query (mt/metadata-provider) sql)})
-
 (def ^:private failing-sql
   "SQL that fails on the warehouse; the failure message quotes it, marker included."
   "SELECT ID, NAME, 'SECRET_MARKER' AS S FROM PUBLIC.PEOPLE WHERE NOPE_COLUMN = 1")
@@ -208,14 +206,17 @@
                                  :members first :error :message str)
                              "SECRET_MARKER")))
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (letfn [(lucky-member [] (-> (mt/user-http-request :lucky :get 200 (runs-path suite-id)) :data first :members first))]
-            (testing "control: while the test exists, a reader who cannot read it does not see its error"
-              (is (=? {:status "refused"} (lucky-member)))
-              (is (not (contains? (lucky-member) :error))))
+          (letfn [(member-as [user] (-> (mt/user-http-request user :get 200 (runs-path suite-id)) :data first :members first))]
+            (testing "control: while the test exists, an admin sees its error, and a reader who cannot read it does not"
+              (is (=? {:status "refused" :error {:message #(str/includes? % "SECRET_MARKER")}} (member-as :crowberto)))
+              (is (=? {:status "refused"} (member-as :lucky)))
+              (is (not (contains? (member-as :lucky) :error))))
             (t2/delete! :model/CardTest :id hidden-id)
-            (testing "after the test is deleted, the history withholds its error message"
-              (is (=? {:status "refused"} (lucky-member)))
-              (is (nil? (-> (lucky-member) :error :message))))))))))
+            (testing "after the test is deleted, the history withholds its error from every reader, the admin too"
+              (doseq [user [:lucky :crowberto]]
+                (testing user
+                  (is (=? {:status "refused"} (member-as user)))
+                  (is (not (contains? (member-as user) :error))))))))))))
 
 (deftest run-response-agrees-with-stored-run-when-reaped-mid-run-test
   (mt/with-premium-features #{:transforms-testing}

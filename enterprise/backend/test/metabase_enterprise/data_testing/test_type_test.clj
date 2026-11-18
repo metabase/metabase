@@ -1,13 +1,16 @@
 (ns metabase-enterprise.data-testing.test-type-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.core :as mc]
    [metabase-enterprise.data-testing.models]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest every-test-type-has-a-spec-test
   (doseq [test-type (mc/children (mr/resolve-schema ::data-testing.schema/test-type))

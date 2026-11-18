@@ -46,13 +46,13 @@
               :database (mt/id)}}))
 
 (defn add-members!
-  "Make `refs`, `[test-type entity-id]` pairs, the members of the suite `suite-id`, in order."
+  "Insert `refs`, `[test-type entity-id]` pairs, as members of the suite `suite-id` at positions 0, 1, ..."
   [suite-id refs]
   (t2/insert! :model/TestSuiteMember (map-indexed (fn [i [test-type eid]]
                                                     {:suite_id suite-id :test_type test-type :test_entity_id eid :position i})
                                                   refs)))
 
-(defn member-rows
+(defn member-refs
   "The members of the suite `suite-id`, in order, as `[test-type test-entity-id]`."
   [suite-id]
   (into [] (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember

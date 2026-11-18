@@ -67,11 +67,11 @@
                                                      {:test_type "card" :test_id test-b}]})))
             (is (= [[:card eid-a]] (do (mt/user-http-request :crowberto :put 200 path
                                                              {:members [{:test_type "card" :test_id test-a}]})
-                                       (data-testing.test-util/member-rows (:id created))))))
+                                       (data-testing.test-util/member-refs (:id created))))))
           (testing "DELETE removes the suite and its members"
             (mt/user-http-request :crowberto :delete 204 path)
             (is (not (t2/exists? :model/TestSuite :id (:id created))))
-            (is (= [] (data-testing.test-util/member-rows (:id created))))
+            (is (= [] (data-testing.test-util/member-refs (:id created))))
             (mt/user-http-request :crowberto :get 404 path))
           (finally
             (t2/delete! :model/TestSuite :id (:id created))))))))
@@ -100,7 +100,7 @@
           (mt/user-http-request :crowberto :put 400 path {:members [{:test_type "card" :test_id test-id :test_entity_id eid}]}))
         (testing "nothing was written: no suite was created, and no member was written to the suite"
           (is (= suites (t2/count :model/TestSuite)))
-          (is (= [] (data-testing.test-util/member-rows suite-id))))))))
+          (is (= [] (data-testing.test-util/member-refs suite-id))))))))
 
 (deftest missing-members-test
   (mt/with-premium-features #{:transforms-testing}
@@ -229,7 +229,7 @@
                           path     (str "ee/test-suite/" suite-id)]
                       (mt/user-http-request :crowberto :put 200 path {:members (map ref first-ids)})
                       (mt/user-http-request :crowberto :put 200 path {:members (map ref second-ids)})
-                      (is (= expected (data-testing.test-util/member-rows suite-id)))))
+                      (is (= expected (data-testing.test-util/member-refs suite-id)))))
                   (testing "two concurrent PUTs both succeed, and the second replaces the first"
                     (let [suite-id  (new-suite)
                           responses (put-members-concurrently! (str "ee/test-suite/" suite-id)
@@ -238,6 +238,6 @@
                       (is (:second-waited? responses))
                       (is (=? {:status 200} (:first responses)))
                       (is (=? {:status 200} (:second responses)))
-                      (is (= expected (data-testing.test-util/member-rows suite-id)))))))
+                      (is (= expected (data-testing.test-util/member-refs suite-id)))))))
               (finally
                 (t2/delete! :model/TestSuite :id [:in @suite-ids])))))))))

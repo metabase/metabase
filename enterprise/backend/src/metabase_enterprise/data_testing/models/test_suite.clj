@@ -8,6 +8,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.suite :as data-testing.suite]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -90,15 +91,19 @@
                            :import (fn [_store _entities values _opts] (mapv keyword values))}}})
 
 (defmethod serialization/before-load :model/TestSuite [_ items]
-  (doseq [{{suite-name :name :keys [members]} :entity} items
-          :let [repeated (keep (fn [[ref n]] (when (> n 1) ref))
-                               (frequencies (map (juxt (comp name :test_type) :test_entity_id) members)))]
-          :when (seq repeated)]
-    (throw (ex-info (tru "Test suite {0} names the same test more than once: {1}"
-                         (pr-str suite-name)
-                         (str/join ", " (map (fn [[test-type eid]] (str test-type " test " eid)) repeated)))
-                    {:status-code 400
-                     :suite       suite-name})))
+  ;; A hand-edited file can name a test twice, or leave a member without its test; refuse it naming the suite, rather
+  ;; than fail on a database constraint.
+  (doseq [{{suite-name :name :keys [members]} :entity} items]
+    (when (some #(or (nil? (:test_type %)) (nil? (:test_entity_id %))) members)
+      (throw (ex-info (tru "Test suite {0} has a member without a test_type or test_entity_id." (pr-str suite-name))
+                      {:status-code 400
+                       :suite       suite-name})))
+    (when-let [repeated (not-empty (data-testing.suite/repeated-tests members))]
+      (throw (ex-info (tru "Test suite {0} names the same test more than once: {1}"
+                           (pr-str suite-name)
+                           (str/join ", " repeated))
+                      {:status-code 400
+                       :suite       suite-name}))))
   items)
 
 (defmethod serialization/storage-paths :model/TestSuite [_ entities _ctx]

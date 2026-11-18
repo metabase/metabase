@@ -20,7 +20,7 @@
 (defn- members
   "The members of the suite `suite-id`, as a set of `[test-type test-entity-id]`."
   [suite-id]
-  (set (data-testing.test-util/member-rows suite-id)))
+  (set (data-testing.test-util/member-refs suite-id)))
 
 (deftest deleting-a-test-removes-it-from-every-suite-test
   (mt/with-temp [:model/Card          {card-id :id}        {}

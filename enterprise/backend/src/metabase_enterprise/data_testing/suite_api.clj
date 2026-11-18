@@ -90,9 +90,12 @@
 
   Each member runs as its own run endpoint would run it, under the same permission rule, and reports its `status`:
   `passed` or `failed` with its `result`; `refused` with the `error` its run endpoint would have returned; `error`
-  when its run failed for another reason; `forbidden` when the caller may not run it (with no name when the caller
-  cannot read it); `missing` when this instance has no such test. The suite's `status` is `passed` iff every member
-  passed, and `timeout` if the server stopped tracking the run while it ran."
+  when loading its test's subject, checking the caller's permission, or its run failed for another reason; `forbidden`
+  when the caller may not run it (with no name when the caller cannot read it); `missing` when this instance has no
+  such test.
+
+  The suite's `status` is `timeout` when the server timed the run out while it ran, because its heartbeat stopped;
+  otherwise `passed` when every member passed, and `failed` when not."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-data-studio-access)

@@ -54,9 +54,9 @@
 
 (mu/defn run-suite! :- ::data-testing.schema/test-suite-run.result
   "Run the members of `suite` in order, as the current user, and record the run. A member whose test the user may not
-  read or run is `forbidden`, and one whose test this instance lacks is `missing`; neither runs. The suite passes iff
-  every member passes. When the cluster reaper timed the run out while it ran, the run stays `timeout`, keeps the
-  member outcomes, and the result reports `timeout`."
+  read or run is `forbidden`, and one whose test this instance lacks is `missing`; neither runs. Unless the cluster
+  reaper timed the run out while it ran, the suite passes iff every member passes; a timed-out run stays `timeout`,
+  keeps the member outcomes, and the result reports `timeout`."
   [suite :- ::data-testing.schema/test-suite]
   (let [members      (data-testing.db/suite-members [(:id suite)])
         tests        (data-testing.suite/saved-tests-by :entity_id (mapv data-testing.suite/member-ref members))
