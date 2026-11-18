@@ -72,10 +72,12 @@
                     :parameterized_object_type parameterized-object-type
                     :parameterized_object_id   parameterized-object-id))
 
-(mu/defn dashboard-id-of-dashcard
-  "The id of the Dashboard that the DashboardCard with `dashcard-id` belongs to, or nil when it is gone."
-  [dashcard-id :- [:maybe ms/PositiveInt]]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id [:auto/param dashcard-id]))
+(mu/defn dashboard-ids-of-dashcards
+  "The ids of the Dashboards of the DashboardCards with `dashcard-ids`, by DashboardCard id."
+  [dashcard-ids :- [:set ms/PositiveInt]]
+  (if (seq dashcard-ids)
+    (into {} (t2/select-fn-vec (juxt :id :dashboard_id) [:model/DashboardCard :id :dashboard_id] :id [:in dashcard-ids]))
+    {}))
 
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."

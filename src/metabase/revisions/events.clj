@@ -71,8 +71,9 @@
                             (u.events/changed-keys event)))))))
 
 (defn- entity
-  "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none."
-  [{:keys [model operation object previous-object context] :as event}]
+  "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none, `dashboard-of`
+  being a function of a DashboardCard id giving the id of its Dashboard."
+  [dashboard-of {:keys [model operation object previous-object context] :as event}]
   (cond
     (and (contains? revisioned-models model) (#{:create :update} operation))
     (when (and (or (not (:reverting? context)) (creator-recorded model))
@@ -82,7 +83,7 @@
     (#{:model/DashboardCard :model/DashboardTab :model/DashboardCardSeries} model)
     (when (and (not (:reverting? context)) (user-edit? event))
       (when-let [dashboard-id (if (= :model/DashboardCardSeries model)
-                                (revisions.db/dashboard-id-of-dashcard (:dashboardcard_id (or object previous-object)))
+                                (dashboard-of (:dashboardcard_id (or object previous-object)))
                                 (:dashboard_id (or object previous-object)))]
         [:model/Dashboard dashboard-id]))))
 
@@ -118,20 +119,26 @@
           (log/warnf "Failed to record a revision of %s %s: %s" model id (ex-message e)))))))
 
 (defn- owner
-  "The one owner of the events of a batch that call for a Revision, nil for the others."
+  "The one owner of the events of a batch that call for a Revision, nil for the others, without reading the app DB."
   [event]
-  (when (entity event)
+  (when (entity identity event)
     ::revisions))
 
 (defn- push!
   "Write, in one statement, the Revision of each entity that `events` change, as it is now."
   [_owner events _all-events]
-  (let [by-entity (group-by entity events)
-        rows      (into [] (keep #(revision-row % (get by-entity %))) (distinct (map entity events)))]
-    (when (seq rows)
-      (try
-        (revisions.db/insert-revisions! rows)
-        (catch Throwable e
-          (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e)))))))
+  (when (some :user-id events)
+    (let [dashboards (revisions.db/dashboard-ids-of-dashcards
+                      (into #{} (keep #(when (= :model/DashboardCardSeries (:model %))
+                                         (:dashboardcard_id (or (:object %) (:previous-object %)))))
+                            events))
+          entity-of  #(entity dashboards %)
+          by-entity  (group-by entity-of events)
+          rows       (into [] (keep #(revision-row % (get by-entity %))) (distinct (map entity-of events)))]
+      (when (seq rows)
+        (try
+          (revisions.db/insert-revisions! rows)
+          (catch Throwable e
+            (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))))))))
 
 (events/register-owned-consumer! ::revisions owner push!)
