@@ -72,13 +72,24 @@
          :subject-k     :can_write
          :subject-check mi/can-write?})))
 
+(defn- assoc-can-query
+  "Each of the segment tests, nil ones left nil, with under `k` whether the current user reads it and may run its
+  segment, as the segment's `:can_query` says, loading the segments at once."
+  [segment-tests k]
+  (vec (data-testing.models/assoc-can-query
+        segment-tests k :segment_id
+        (data-testing.db/segments-by-ids (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_query]
   "Add whether the current user may run each segment test: they read it and may run its segment, as its `:can_query`
   says, loading the segments at once."
   [_model k segment-tests]
-  (vec (data-testing.models/assoc-can-query
-        segment-tests k :segment_id
-        (data-testing.db/segments-by-ids (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests)))))
+  (assoc-can-query segment-tests k))
+
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_run]
+  "Add whether the current user may run each segment test, as its `:can_query` says, loading the segments at once."
+  [_model k segment-tests]
+  (assoc-can-query segment-tests k))
 
 (defmethod mi/can-create? :model/SegmentTest
   [_model instance]

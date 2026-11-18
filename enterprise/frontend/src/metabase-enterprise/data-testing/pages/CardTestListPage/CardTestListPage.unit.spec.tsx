@@ -56,14 +56,11 @@ const CARD_ID = 42;
 
 type SetupOpts = {
   tests?: CardTest[];
-  canRunNativeQueries?: boolean;
 };
 
-function setup({ tests = [], canRunNativeQueries = true }: SetupOpts = {}) {
+function setup({ tests = [] }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
-  const database = createSampleDatabase({
-    native_permissions: canRunNativeQueries ? "write" : "none",
-  });
+  const database = createSampleDatabase();
   const card = createMockCard({
     id: CARD_ID,
     type: "metric",
@@ -252,10 +249,16 @@ describe("CardTestListPage", () => {
     ).toHaveAttribute("href", Urls.dataStudioMetricTestRuns(CARD_ID, 5));
   });
 
-  it("hides the row menu from users who can't run native queries on the database", async () => {
+  it("hides the row menu from users who can't run the tests", async () => {
     setup({
-      tests: [createMockCardTest({ id: 1, card_id: CARD_ID, name: "Refunds" })],
-      canRunNativeQueries: false,
+      tests: [
+        createMockCardTest({
+          id: 1,
+          card_id: CARD_ID,
+          name: "Refunds",
+          can_run: false,
+        }),
+      ],
     });
 
     const row = await findRow("Refunds");

@@ -53,8 +53,8 @@
                      :inputs       [{:format "rows" :rows [{:ID 1 :SOURCE "Google"} {:ID 2 :SOURCE "Twitter"}]}]
                      :expectations data-testing.test-util/google-segment-expectations}
                     created)))
-          (testing "GET returns the test with its newest run"
-            (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
+          (testing "GET returns the test with its newest run and whether the user may run it"
+            (is (= (assoc created :last_run nil :can_run true) (mt/user-http-request :crowberto :get 200 path))))
           (testing "GET / filters by segment"
             (is (= [(:id created)]
                    (map :id (mt/user-http-request :crowberto :get 200 "ee/segment-test" :segment-id segment-id))))
@@ -436,3 +436,52 @@
               (is (= "No data-testing.test-util/google-segment-inputs" (t2/select-one-fn :name :model/SegmentTest :id test-id)))))
           (finally
             (t2/delete! :model/SegmentTest :id test-id)))))))
+
+(defn- can-run-flags
+  "The `can_run` of the segment test `test-id` as `user` gets it, and as `user` lists it among the tests of
+  `segment-id`."
+  [user segment-id test-id]
+  {:get  (:can_run (mt/user-http-request user :get 200 (str "ee/segment-test/" test-id)))
+   :list (:can_run (m/find-first #(= test-id (:id %))
+                                 (mt/user-http-request user :get 200 "ee/segment-test" :segment-id segment-id)))})
+
+(deftest can-run-says-whether-the-run-endpoint-accepts-the-user-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (perms.tu/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
+                     :model/SegmentTest {test-id :id}    {:segment_id   segment-id
+                                                          :inputs       data-testing.test-util/google-segment-inputs
+                                                          :expectations data-testing.test-util/google-segment-expectations}
+                     :model/SegmentTest _                {:segment_id   segment-id
+                                                          :inputs       data-testing.test-util/google-segment-inputs
+                                                          :expectations data-testing.test-util/google-segment-expectations}]
+        (try
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder-and-native}
+              (testing "a user who may read the segment and write native queries: true, and the run is accepted"
+                (is (= {:get true :list true} (can-run-flags :lucky segment-id test-id)))
+                (is (= [true true] (map :can_run (mt/user-http-request :lucky :get 200 "ee/segment-test"
+                                                                       :segment-id segment-id))))
+                (mt/user-http-request :lucky :post 200 (str "ee/segment-test/" test-id "/run"))))
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder}
+              (testing "a user who may not write native queries on the segment's database: true, and the run is accepted"
+                (is (= {:get true :list true} (can-run-flags :lucky segment-id test-id)))
+                (mt/user-http-request :lucky :post 200 (str "ee/segment-test/" test-id "/run")))))
+          (finally
+            (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id)))))))
+
+(deftest can-run-of-a-list-loads-the-segments-at-once-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
+                   :model/SegmentTest test-1           {:segment_id segment-id}
+                   :model/SegmentTest test-2           {:segment_id segment-id}
+                   :model/SegmentTest test-3           {:segment_id segment-id}]
+      (mt/with-test-user :rasta
+        (let [calls (fn [segment-tests]
+                      (t2/with-call-count [call-count]
+                        (doall (t2/hydrate segment-tests :can_run))
+                        (call-count)))]
+          (calls [test-1])
+          (is (= (calls [test-1]) (calls [test-1 test-2 test-3]))))))))

@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
   setupGetCardTestEndpoint,
   setupRunCardTestEndpoint,
 } from "__support__/server-mocks";
@@ -26,14 +25,12 @@ import {
   createMockDataTestEqualsExpectation,
   createMockDataTestRowsData,
   createMockDataTestRun,
-  createMockDatabase,
 } from "metabase-types/api/mocks";
 
 import { CardTestOverviewPage } from "./CardTestOverviewPage";
 
 type SetupOpts = {
   test?: CardTest;
-  canRunNativeQueries?: boolean;
   initialRoute?: string;
 };
 
@@ -43,16 +40,9 @@ function setup({
     card_id: 1,
     name: "Revenue ignores refunds",
   }),
-  canRunNativeQueries = true,
   initialRoute = Urls.dataStudioMetricTest(1, test.id),
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
-  setupDatabasesEndpoints([
-    createMockDatabase({
-      id: 1,
-      native_permissions: canRunNativeQueries ? "write" : "none",
-    }),
-  ]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });
@@ -177,8 +167,10 @@ describe("CardTestOverviewPage", () => {
     });
   });
 
-  it("disables running for users who can't run native queries on the database", async () => {
-    setup({ canRunNativeQueries: false });
+  it("disables running for users who can't run the test", async () => {
+    setup({
+      test: createMockCardTest({ id: 2, card_id: 1, can_run: false }),
+    });
 
     expect(
       await screen.findByRole("button", { name: /Run now/ }),
