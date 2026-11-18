@@ -1075,6 +1075,20 @@
   (and (:order-by stage)
        (not (:limit stage))))
 
+(declare fix-order-bys)
+
+(defn- fix-ctes
+  "Apply `fix-order-bys` to each CTE body's `:stages` (which is always an inner subquery), and recurse into any
+  `:ctes` nested on the body itself."
+  [ctes]
+  (mapv (fn [cte]
+          (update cte :query (fn [body]
+                               (-> body
+                                   (update :stages fix-order-bys true)
+                                   (cond-> (seq (:ctes body))
+                                     (update :ctes fix-ctes))))))
+        ctes))
+
 (defn- fix-order-bys
   "`inner-subquery?` = these stages are inside a join or CTE body."
   [stages inner-subquery?]
@@ -1083,11 +1097,17 @@
      (map-indexed
       (fn [i stage]
         (let [last? (= i (dec n))
-              ;; recurse into any joins first — each join's own `:stages` is a fresh derived table
+              ;; recurse into any joins first — each join's own `:stages` is a fresh derived table, and the join may
+              ;; carry its own `:ctes` that compile to the same top-level WITH as the outer query.
               stage (cond-> stage
                       (:joins stage)
                       (update :joins (fn [joins]
-                                       (mapv #(update % :stages fix-order-bys true) joins))))]
+                                       (mapv (fn [join]
+                                               (-> join
+                                                   (update :stages fix-order-bys true)
+                                                   (cond-> (seq (:ctes join))
+                                                     (update :ctes fix-ctes))))
+                                             joins))))]
           (cond
             ;; last stage inside a subquery → the outer context controls ordering, drop the ORDER BY
             (and last? inner-subquery? (has-order-by-without-limit? stage))
@@ -1107,8 +1127,7 @@
     (-> preprocessed
         (update :stages fix-order-bys false)
         (cond-> (seq (:ctes preprocessed))
-          (update :ctes (fn [ctes]
-                          (mapv #(update-in % [:query :stages] fix-order-bys true) ctes)))))))
+          (update :ctes fix-ctes)))))
 
 ;; SQL server only supports setting holdability at the connection level, not the statement level, as per
 ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15

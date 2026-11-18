@@ -2075,7 +2075,9 @@
   [driver _top-level-clause honeysql-form {source-cte-uuid :source-cte}]
   (let [aliases (cte-aliases)]
     (if-let [cte-alias (get aliases source-cte-uuid)]
-      (let [cte-identifier (->honeysql driver (h2x/identifier :table cte-alias))
+      ;; A CTE alias is NOT a physical table — emit it as a `:table-alias` identifier so drivers that auto-qualify
+      ;; `:table` identifiers (e.g. BigQuery prepending a dataset) don't mangle it.
+      (let [cte-identifier (->honeysql driver (h2x/identifier :table-alias cte-alias))
             source-alias   (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
         (update honeysql-form :from (fnil conj []) [cte-identifier [source-alias]]))
       (throw (ex-info (tru "No CTE registered for UUID {0}" source-cte-uuid)

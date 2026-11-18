@@ -26,33 +26,28 @@
             b (cte "b")]
         (is (= ["a" "b"]
                (mapv :cte-name (all-user-ctes [a b] []))))))
-
     (testing "CTEs nested inside another CTE's body are discovered and come before their parent"
       (let [inner (cte "inner")
             outer (cte "outer" :ctes [inner])]
         (is (= ["inner" "outer"]
                (mapv :cte-name (all-user-ctes [outer] []))))))
-
     (testing "transitive nesting: deepest-first"
       (let [z (cte "z")
             y (cte "y" :ctes [z])
             x (cte "x" :ctes [y])]
         (is (= ["z" "y" "x"]
                (mapv :cte-name (all-user-ctes [x] []))))))
-
     (testing "CTEs attached to joins in the top stages are discovered"
       (let [in-join (cte "in_join")
             stages  [{:joins [{:lib/type :mbql/join, :ctes [in-join]}]}]]
         (is (= ["in_join"]
                (mapv :cte-name (all-user-ctes [] stages))))))
-
     (testing "CTEs attached to joins inside a CTE body are discovered"
       (let [deep        (cte "deep")
             body-stages [{:joins [{:lib/type :mbql/join, :ctes [deep]}]}]
             parent      (cte "parent" :stages body-stages)]
         (is (= ["deep" "parent"]
                (mapv :cte-name (all-user-ctes [parent] []))))))
-
     (testing "duplicate uuid reached via multiple paths appears once"
       (let [shared (cte "shared")
             branch (cte "branch" :ctes [shared]) ; shared via body of branch (deepest)
@@ -79,7 +74,7 @@
           checkins  (lib.metadata/table mp (mt/id :checkins))
           base      (lib/query mp checkins)
           venue-id  (nb/find-col-with-spec base (lib/visible-columns base)
-                                           "Checkins" "Venue ID")
+                                           (:display-name checkins) "Venue ID")
           counts    (-> base
                         (lib/breakout venue-id)
                         (lib/aggregate (lib/count))
@@ -105,11 +100,11 @@
             ;; CTE body: distinct venue IDs that have at least one checkin
             cte-body  (let [base (lib/query mp checkins)
                             vid  (nb/find-col-with-spec base (lib/visible-columns base)
-                                                        "Checkins" "Venue ID")]
+                                                        (:display-name checkins) "Venue ID")]
                         (-> base (lib/breakout vid)))
             cte-query (lib/wrap-as-cte cte-body "checked_in_venues")
             main      (lib/query mp venues)
-            venue-id  (nb/find-col-with-spec main (lib/visible-columns main) "Venues" "ID")
+            venue-id  (nb/find-col-with-spec main (lib/visible-columns main) (:display-name venues) "ID")
             cte-vid   (nb/find-col-with-spec cte-query (lib/visible-columns cte-query)
                                              "checked_in_venues" "Venue ID")
             joined    (lib/join main (-> (lib/join-clause cte-query [(lib/= venue-id cte-vid)])
@@ -129,7 +124,7 @@
             ;; CTE body: events for a single user — "events_base" pattern
             cte-query  (let [base    (lib/query mp checkins)
                              user-id (nb/find-col-with-spec base (lib/visible-columns base)
-                                                            "Checkins" "User ID")]
+                                                            (:display-name checkins) "User ID")]
                          (-> base
                              (lib/filter (lib/= user-id 1))
                              (lib/wrap-as-cte "events_base")))
@@ -155,7 +150,7 @@
             venues    (lib.metadata/table base-mp (mt/id :venues))
             price     (nb/find-col-with-spec (lib/query base-mp venues)
                                              (lib/visible-columns (lib/query base-mp venues))
-                                             "Venues" "Price")
+                                             (:display-name venues) "Price")
             card-q    (-> (lib/query base-mp venues)
                           (lib/filter (lib/= price 4)))
             mp        (lib/composed-metadata-provider
@@ -228,7 +223,7 @@
             eb-user-id (nb/find-col-with-spec with-sa (lib/filterable-columns with-sa)
                                               "events_base" "User ID")
             main       (lib/join with-sa (-> (lib/join-clause sa-meta [(lib/= eb-user-id sa-user-id)])
-                                              (lib/with-join-strategy :inner-join)))]
+                                             (lib/with-join-strategy :inner-join)))]
         (mt/with-native-query-testing-context main
           (let [native (-> main qp/process-query :data :native_form :query)]
             (is (re-find #"(?i)WITH\s+[\"`]?events_base[\"`]?\s+AS" native))
@@ -242,9 +237,10 @@
     (let [mp             (mt/metadata-provider)
           venues         (lib.metadata/table mp (mt/id :venues))
           base           (lib/query mp venues)
-          price          (nb/find-col-with-spec base (lib/visible-columns base) "Venues" "Price")
+          price          (nb/find-col-with-spec base (lib/visible-columns base) (:display-name venues) "Price")
           price=4        (-> base (lib/filter (lib/= price 4)))
-          cat            (nb/find-col-with-spec price=4 (lib/visible-columns price=4) "Venues" "Category ID")
+          cat            (nb/find-col-with-spec price=4 (lib/visible-columns price=4)
+                                                (:display-name venues) "Category ID")
           cat=4          (-> price=4 (lib/filter (lib/= cat 4)))
           expensive      (-> price=4 (lib/wrap-as-cte "expensive"))
           price-then-cat (-> expensive

@@ -8,7 +8,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel validate-query-test
-  (is (= {:dataset_query {:stages [["Initial MBQL stage must have either :source-table or :source-card (but not both)"]]}}
+  (is (= {:dataset_query {:stages [["Initial MBQL stage must have exactly one of :source-table, :source-card, or :source-cte"]]}}
          (me/humanize (mr/explain ::queries.schema/card
                                   {:dataset_query {:lib/type :mbql/query, :database 2378, :stages [{:lib/type :mbql.stage/mbql}]}})))))
 
