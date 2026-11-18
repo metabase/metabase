@@ -413,3 +413,37 @@
         (is (= {:visibility_type nil :visibility_type_set true}
                (t2/select-one [:model/TableUserSettings :visibility_type :visibility_type_set] :table_id table-id)))
         (is (in-sync-tables? table-id))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Busy Databases and running syncs                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest a-busy-predicate-skips-the-sync-of-one-database-test
+  (mt/with-temp [:model/Database busy  {:engine :h2}
+                 :model/Database other {:engine :h2}]
+    (let [ran (atom #{})
+          run! (fn [database]
+                 (sync-util/do-explicit-sync-operation :sync (driver.u/lib-database (:id database)) "test"
+                                                       #(swap! ran conj (:id database))))]
+      (let [predicates @#'sync-util/external-busy-predicates
+            registered @predicates]
+        (try
+          (sync-util/register-busy-predicate! (fn [database]
+                                                (when (= (:id busy) (:id database))
+                                                  {:reason "busy for a test"})))
+          (run! busy)
+          (run! other)
+          (finally
+            (reset! predicates registered))))
+      (testing "the predicate is given the Database, and skips only the sync of the one it names"
+        (is (= #{(:id other)} @ran))))))
+
+(deftest sync-running-test
+  (mt/with-temp [:model/Database database {:engine :h2}]
+    (testing "no sync of the Database runs"
+      (is (false? (sync-util/sync-running? (:id database)))))
+    (testing "while a sync operation of the Database runs"
+      (is (true? ((sync-util/with-duplicate-ops-prevented :analyze database
+                                                          #(sync-util/sync-running? (:id database)))))))
+    (testing "after it ends"
+      (is (false? (sync-util/sync-running? (:id database)))))))

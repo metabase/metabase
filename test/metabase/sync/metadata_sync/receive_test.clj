@@ -1,11 +1,13 @@
 (ns metabase.sync.metadata-sync.receive-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
    [metabase.search.core :as search]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.receive :as receive]
    [metabase.sync.metadata-sync.send :as send]
    [metabase.sync.metadata-sync.wire :as wire]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -466,3 +468,52 @@
         (receive/apply-response! receiver-id (one-table-answer)))
       (is (= [[:model/Table (t2/select-one-pk :model/Table :db_id receiver-id)]]
              (map (juxt t2/model :id) @queued))))))
+
+;;; ------------------------------------------------ The lease ------------------------------------------------
+
+(defn- sync-runs?
+  "Whether a sync operation of the Database with `db-id` runs now, and not skipped."
+  [db-id]
+  (let [ran (atom false)]
+    (sync-util/do-explicit-sync-operation :sync (driver.u/lib-database db-id) "test" #(reset! ran true))
+    @ran))
+
+(deftest no-sync-during-a-seed-test
+  (do-with-sender-and-receiver!
+   (fn [_tables sender-name receiver-id sender]
+     (testing "before a seed, a sync runs"
+       (is (sync-runs? receiver-id)))
+     (testing "from the first request, a sync of the receiving Database does not run"
+       (receive/request receiver-id nil)
+       (is (not (sync-runs? receiver-id))))
+     (testing "a sync of another Database runs"
+       (is (sync-runs? sender)))
+     (testing "after the last answer, a sync runs again"
+       (seed! sender-name receiver-id)
+       (is (sync-runs? receiver-id))))))
+
+(deftest a-seed-that-stops-lets-sync-run-again-test
+  (do-with-sender-and-receiver!
+   (fn [_tables _sender-name receiver-id _sender]
+     (receive/request receiver-id nil)
+     (is (not (sync-runs? receiver-id)))
+     (testing "once the lease is older than its time, a sync runs"
+       (swap! @#'receive/leases update receiver-id #(.minus ^java.time.Instant % @#'receive/lease-duration))
+       (is (sync-runs? receiver-id))))))
+
+(deftest no-seed-during-a-sync-test
+  (do-with-sender-and-receiver!
+   (fn [_tables sender-name receiver-id _sender]
+     (let [good    (sender-answer sender-name (receive/request receiver-id nil))
+           refused (fn [thunk]
+                     (try (thunk) nil (catch ExceptionInfo e (select-keys (ex-data e) [:status-code :error-code]))))
+           during  (fn [thunk]
+                     ((sync-util/with-duplicate-ops-prevented :sync (driver.u/lib-database receiver-id)
+                                                              #(refused thunk))))]
+       (testing "while a sync of the Database runs, a request and an apply are refused"
+         (is (= {:status-code 409 :error-code "metadata-sync-sync-running"}
+                (during #(receive/request receiver-id nil))))
+         (is (= {:status-code 409 :error-code "metadata-sync-sync-running"}
+                (during #(receive/apply-response! receiver-id good)))))
+       (testing "and nothing was written"
+         (is (= {} (metadata receiver-id))))))))

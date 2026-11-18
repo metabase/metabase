@@ -90,17 +90,22 @@
 (defonce ^:private operation->db-ids (atom {}))
 
 ;; In-JVM only, same scope as `operation->db-ids`.
-(defonce ^:private external-busy-predicates (atom []))
+(defonce ^:private external-busy-predicates (atom #{}))
 
 (defn register-busy-predicate!
-  "Register a 0-arity `pred` to be checked before each `do-sync-operation`.
-  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it
-  (logged at WARN by the caller)."
+  "Register `pred`, a function of a Database, to be checked before each sync operation of that Database, also an
+  explicit one. `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it (logged at WARN by the
+  caller). Registering the same `pred` again does nothing, so pass a var to register at load."
   [pred]
   (swap! external-busy-predicates conj pred))
 
-(defn- external-busy []
-  (some (fn [p] (p)) @external-busy-predicates))
+(defn- external-busy [database]
+  (some (fn [p] (p database)) @external-busy-predicates))
+
+(defn sync-running?
+  "Whether a sync operation of the Database with `database-id` runs in this JVM."
+  [database-id]
+  (boolean (some #(contains? % database-id) (vals @operation->db-ids))))
 
 (defn with-duplicate-ops-prevented
   "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
@@ -317,7 +322,7 @@
    database  :- i/DatabaseInstance
    message   :- ms/NonBlankString
    f         :- fn?]
-  (if-let [busy (external-busy)]
+  (if-let [busy (external-busy database)]
     (log/warnf "Skipping %s for database %d: %s"
                (name operation) (u/the-id database) (:reason busy))
     (let [run-type (operation->run-type operation)]

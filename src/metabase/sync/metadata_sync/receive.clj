@@ -32,11 +32,11 @@
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Duration Instant)))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------------------------------------ Request ------------------------------------------------
 
 (defn- receiving-database
   "The Database with `database-id`, when a seed may write it. Throws for no such Database, a stub Database, or the
@@ -55,6 +55,43 @@
       :else
       database)))
 
+;;; ------------------------------------------------ Lease ------------------------------------------------
+
+;; A seed is many calls that something outside Metabase makes. From the first until the last answer is applied, the
+;; receiving Database has a lease, and no sync of it runs: a sync and a seed both insert Tables. The lease is in this
+;; JVM only. It ends with the last answer, or once no call renewed it for [[lease-duration]], so a seed that stops does
+;; not stop sync for ever.
+
+(def ^:private lease-duration (Duration/ofMinutes 10))
+
+(defonce ^:private leases
+  ;; Database id -> the Instant its lease ends.
+  (atom {}))
+
+(defn- renew-lease! [database-id]
+  (swap! leases assoc database-id (.plus (Instant/now) ^Duration lease-duration)))
+
+(defn- end-lease! [database-id]
+  (swap! leases dissoc database-id))
+
+(defn- seed-running
+  "`{:reason ..}` when a seed of `database` runs, so that its sync is skipped, or nil."
+  [database]
+  (when-let [^Instant ends (@leases (u/the-id database))]
+    (when (.isAfter ends (Instant/now))
+      {:reason "a seed of its metadata from another Metabase is running"})))
+
+(sync-util/register-busy-predicate! #'seed-running)
+
+(defn- check-no-sync-running!
+  "Throw when a sync of the Database with `database-id` runs: it would insert Tables while the seed does."
+  [database-id]
+  (when (sync-util/sync-running? database-id)
+    (throw (ex-info (tru "A sync of this Database is running. Try again when it ends.")
+                    {:status-code 409 :error-code "metadata-sync-sync-running"}))))
+
+;;; ------------------------------------------------ Request ------------------------------------------------
+
 (defn- schema-filters
   "The schema filters of the Database with `database-id`, as a request sends them, or nil when it has none."
   [database-id]
@@ -69,6 +106,8 @@
   [database-id :- ::lib.schema.id/database
    after       :- [:maybe ::pages/cursor]]
   (let [database (receiving-database database-id)]
+    (check-no-sync-running! database-id)
+    (renew-lease! database-id)
     (u/remove-nils
      {:database       (:name database)
       :engine         (u/qualified-name (:engine database))
@@ -431,16 +470,19 @@
   as synced at once; once an answer has no next cursor, the Database counts as synced too. An answer with no batches
   and no cursor therefore marks the Database as synced, also when it has no Tables.
 
-  A seed and a sync of the same Database must not run at the same time: both insert Tables, and the unique index on
-  Tables refuses the second insert of one key. A seed's answer that fails that way can be sent again."
+  From the first [[request]] until the last answer, no sync of the Database runs in this JVM, and while a sync of it
+  runs, a request or an answer is refused (`metadata-sync-sync-running`): both insert Tables. See the lease above."
   [database-id :- ::lib.schema.id/database
    response    :- [:map {::mr/deliberately-open true
                          :description           "the other Metabase's answer, decoded from JSON, which this checks"}]]
   (let [database (receiving-database database-id)]
     (check-response! response)
+    (check-no-sync-running! database-id)
+    (renew-lease! database-id)
     (let [counts (apply-batches! database (:batches response))]
       (when-not (:next response)
         (sync-util/set-initial-table-sync-complete-for-db! database)
-        (sync-util/set-initial-database-sync-complete! database))
+        (sync-util/set-initial-database-sync-complete! database)
+        (end-lease! database-id))
       (cond-> {:counts counts}
         (:next response) (assoc :next (:next response))))))
