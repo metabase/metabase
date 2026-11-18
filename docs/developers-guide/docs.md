@@ -5,8 +5,6 @@ summary: Preview docs as you write them, check for broken links, and regenerate 
 
 # Developing Metabase documentation
 
-Notes on writing docs for Metabase.
-
 ## Linting markdown links
 
 You can check for broken links in the [docs](../) directory by running:

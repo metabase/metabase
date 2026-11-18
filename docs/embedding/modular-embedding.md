@@ -1,6 +1,6 @@
 ---
 title: Modular embedding
-summary: Getting started with modular embedding for embedding Metabase entities into external applications
+summary: Embed and customize Metabase components, like dashboards, the query builder, and AI chat, in your own app.
 redirect_from:
   - /docs/latest/embedding/embedded-analytics-js
 ---

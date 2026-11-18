@@ -7,8 +7,6 @@ summary: Fix common SAML setup problems, from certificate and Entity ID mismatch
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-Some common problems when setting up SAML.
-
 ## Does your app support SAML?
 
 Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
