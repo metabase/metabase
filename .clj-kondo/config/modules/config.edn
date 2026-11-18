@@ -3615,7 +3615,8 @@
            settings
            sync.analyze
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings

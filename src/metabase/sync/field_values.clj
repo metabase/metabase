@@ -15,7 +15,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]))
 
 (mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
@@ -176,9 +177,11 @@
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
-  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
+  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries. The values are stored for every
+  workspace, so they are read in no workspace that a request names."
   ([table :- i/TableInstance]
-   (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table))
+   (workspaces/without-workspace
+     (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table)))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]

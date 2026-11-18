@@ -29,6 +29,7 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [metabase.warehouses.models.database :as database]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.realize :as t2.realize])
   (:import
    (java.time.temporal Temporal)))
@@ -309,14 +310,9 @@
    :analyze           :fingerprint
    :refingerprint     :fingerprint})
 
-(mu/defn- do-sync-operation*
-  "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
-  wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
-  Performs no eligibility gating itself — the public wrappers decide whether to call it."
-  [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
-   database  :- i/DatabaseInstance
-   message   :- ms/NonBlankString
-   f         :- fn?]
+(defn- do-sync-operation-in-context
+  "Impl for [[do-sync-operation*]]."
+  [operation database message f]
   (if-let [busy (external-busy)]
     (log/warnf "Skipping %s for database %d: %s"
                (name operation) (u/the-id database) (:reason busy))
@@ -338,6 +334,21 @@
           (when (instance? Throwable result)
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
+
+(mu/defn- do-sync-operation*
+  "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
+  wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
+  Performs no eligibility gating itself — the public wrappers decide whether to call it.
+
+  Runs in no workspace that a request names ([[workspaces/without-workspace]]): a sync writes the metadata that every
+  workspace shares, so it reads the warehouse with the Database's own login."
+  [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
+   database  :- i/DatabaseInstance
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (workspaces/without-workspace
+    (do-sync-operation-in-context operation database message f)))
+
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs
