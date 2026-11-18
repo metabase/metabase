@@ -29,7 +29,6 @@ import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/settings";
 import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { getSaveDomImageStyles } from "metabase/viz-core";
 import { initializePlugins } from "sdk-ee-plugins";
 
@@ -150,45 +149,43 @@ export const ComponentProviderInternal = (
   );
 
   return (
-    <EmotionCacheProvider>
-      <OverlayStackProvider>
-        <SdkThemeProvider theme={theme}>
-          <EnsureSingleInstance
-            groupId="component-providers"
-            instanceId={ensureSingleInstanceId}
-          >
-            {({ isInstanceToRender }) => (
-              <>
-                <LocaleProvider locale={locale || instanceLocale}>
-                  {children}
+    <OverlayStackProvider>
+      <SdkThemeProvider theme={theme}>
+        <EnsureSingleInstance
+          groupId="component-providers"
+          instanceId={ensureSingleInstanceId}
+        >
+          {({ isInstanceToRender }) => (
+            <>
+              <LocaleProvider locale={locale || instanceLocale}>
+                {children}
 
-                  {isInstanceToRender && pluginsReady && (
-                    <ContentTranslationsProvider />
-                  )}
-                </LocaleProvider>
-
-                {isInstanceToRender && (
-                  <>
-                    <GlobalStyleSheet styles={SCOPED_CSS_RESET} />
-                    <GlobalStyleSheet styles={saveDomImageStyles} />
-
-                    <SdkFontsGlobalStyles />
-
-                    <SdkUsageProblemDisplay
-                      authConfig={authConfig}
-                      allowConsoleLog={allowConsoleLog}
-                      isLocalHost={isLocalHost}
-                    />
-
-                    <PortalContainer />
-                  </>
+                {isInstanceToRender && pluginsReady && (
+                  <ContentTranslationsProvider />
                 )}
-              </>
-            )}
-          </EnsureSingleInstance>
-        </SdkThemeProvider>
-      </OverlayStackProvider>
-    </EmotionCacheProvider>
+              </LocaleProvider>
+
+              {isInstanceToRender && (
+                <>
+                  <GlobalStyleSheet styles={SCOPED_CSS_RESET} />
+                  <GlobalStyleSheet styles={saveDomImageStyles} />
+
+                  <SdkFontsGlobalStyles />
+
+                  <SdkUsageProblemDisplay
+                    authConfig={authConfig}
+                    allowConsoleLog={allowConsoleLog}
+                    isLocalHost={isLocalHost}
+                  />
+
+                  <PortalContainer />
+                </>
+              )}
+            </>
+          )}
+        </EnsureSingleInstance>
+      </SdkThemeProvider>
+    </OverlayStackProvider>
   );
 };
 

@@ -27,7 +27,6 @@ import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { loadCodeEditor } from "metabase/common/components/CodeEditor";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
@@ -156,16 +155,14 @@ const decorators = [
     );
 
     return (
-      <EmotionCacheProvider>
-        <OverlayStackProvider>
-          <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
-            <GlobalStyleSheet styles={globalStyles} />
-            <CssVariables />
-            {createPortal(<PortalContainer />, document.body)}
-            <Story />
-          </ThemeProvider>
-        </OverlayStackProvider>
-      </EmotionCacheProvider>
+      <OverlayStackProvider>
+        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
+          <GlobalStyleSheet styles={globalStyles} />
+          <CssVariables />
+          {createPortal(<PortalContainer />, document.body)}
+          <Story />
+        </ThemeProvider>
+      </OverlayStackProvider>
     );
   },
 ];
