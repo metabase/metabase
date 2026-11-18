@@ -84,11 +84,6 @@
    archived    :- :boolean]
   (t2/update! :model/TimelineEvent {:timeline_id timeline-id} {:archived archived}))
 
-(mu/defn timeline-archived?
-  "Whether the Timeline with `timeline-id` is archived."
-  [timeline-id :- ms/PositiveInt]
-  (t2/exists? :model/Timeline :id timeline-id :archived true))
-
 (mu/defn delete-timeline!
   "Delete the Timeline with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
