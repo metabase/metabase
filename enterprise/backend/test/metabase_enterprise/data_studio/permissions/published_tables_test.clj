@@ -17,7 +17,7 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                     :model/Table table {:is_published false :collection_id (:id collection)}]
+                     :model/Table table {:is_published false}]
         (perms/grant-collection-read-permissions! group-id (:id collection))
         (mt/with-current-user user-id
           (is (false? (boolean (published-tables/can-access-via-collection? table)))))))))
@@ -79,7 +79,7 @@
                      :model/Table {hidden-pub-id :id}
                      {:db_id db-id :is_published true :collection_id blocked-coll-id :active true}
                      :model/Table {unpub-id :id}
-                     {:db_id db-id :is_published false :collection_id allowed-coll-id :active true}]
+                     {:db_id db-id :is_published false :active true}]
         (perms/grant-collection-read-permissions! group-id allowed-coll-id)
         (perms/revoke-collection-permissions! group-id blocked-coll-id)
         (perms/revoke-collection-permissions! (perms/all-users-group) blocked-coll-id)
@@ -107,7 +107,7 @@
                      :model/Table {pub-blocked :id}
                      {:db_id db-id :is_published true :collection_id blocked-coll-id :active true}
                      :model/Table {unpub-allowed :id}
-                     {:db_id db-id :is_published false :collection_id allowed-coll-id :active true}
+                     {:db_id db-id :is_published false :active true}
                      :model/Table {pub-blocked-by-view-data :id}
                      {:db_id db-id :is_published true :collection_id allowed-coll-id :active true}
                      :model/Table {plain-allowed :id}

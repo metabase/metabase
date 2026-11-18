@@ -21,8 +21,7 @@
 
 (def ^:private segment
   (delay
-    {:table_id (mt/id :venues)
-     :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
+    {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (defn- test-comparison
   [left right]
@@ -44,8 +43,7 @@
 
 (deftest ^:parallel test-2
   (mt/with-temp [:model/Segment {segment1-id :id} @segment
-                 :model/Segment {segment2-id :id} {:table_id (mt/id :venues)
-                                                   :definition (let [metadata-provider (mt/metadata-provider)
+                 :model/Segment {segment2-id :id} {:definition (let [metadata-provider (mt/metadata-provider)
                                                                      table (lib.metadata/table metadata-provider (mt/id :venues))
                                                                      query (lib/query metadata-provider table)
                                                                      field (lib.metadata/field metadata-provider (mt/id :venues :price))]

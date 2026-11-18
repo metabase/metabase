@@ -3,29 +3,21 @@
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase-enterprise.metabot.models.metabot-permissions :as metabot-perms]
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase-enterprise.metabot.settings :as metabot-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.metabot.scope :as scope]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
-
-(def ^:private perm-type-enum
-  "Malli enum of valid perm_type keywords."
-  (into [:enum] scope/perm-types))
-
-(def ^:private perm-value-enum
-  "Malli enum of valid perm_value keywords."
-  (into [:enum] (distinct (mapcat (comp :values val) scope/metabot-permissions))))
 
 (def ^:private permissions-response-schema
   [:map
    [:permissions [:sequential [:map
                                [:group_id   pos-int?]
-                               [:perm_type  perm-type-enum]
-                               [:perm_value perm-value-enum]]]]
+                               [:perm_type  ::metabot-ee.schema/metabot-permissions.perm-type]
+                               [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]
    [:advanced :boolean]])
 
 (defn- permissions-response
@@ -40,40 +32,19 @@
   (api/check-superuser)
   (permissions-response))
 
-(def ^:private valid-perm-types
-  "Set of valid perm_type strings for the PUT request body."
-  (into #{} (map (comp str symbol)) scope/perm-types))
-
-(def ^:private valid-perm-values-by-type
-  "Map of perm_type string → set of valid perm_value strings for that type."
-  (into {} (map (fn [[perm-type {:keys [values]}]]
-                  [(-> perm-type symbol str) (into #{} (map name) values)]))
-        scope/metabot-permissions))
-
-(defn- valid-perm-value?
-  "Returns true if `perm_value` is valid for the given `perm_type`."
-  [{:keys [perm_type perm_value]}]
-  (contains? (get valid-perm-values-by-type perm_type) perm_value))
-
-(def ^:private all-valid-perm-values
-  "Flat set of all valid perm_value strings (for schema-level validation)."
-  (into #{} (mapcat val) valid-perm-values-by-type))
-
 (api.macros/defendpoint :put "/" :- permissions-response-schema
   "Update metabot permissions for all groups. Upserts each permission entry and returns the full
    permissions list with defaults filled in."
   [_route-params
    _query-params
    {:keys [permissions]} :- [:map {:closed true}
-                             [:permissions [:sequential [:map {:closed true}
-                                                         [:group_id pos-int?]
-                                                         [:perm_type  (into [:enum] valid-perm-types)]
-                                                         [:perm_value (into [:enum] all-valid-perm-values)]]]]]]
+                             [:permissions [:sequential [:merge
+                                                         ::metabot-ee.schema/metabot-permissions.update
+                                                         [:map {:closed true}
+                                                          [:group_id pos-int?]
+                                                          [:perm_type  ::metabot-ee.schema/metabot-permissions.perm-type]
+                                                          [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]]]]
   (api/check-superuser)
-  (doseq [perm permissions]
-    (when-not (valid-perm-value? perm)
-      (throw (ex-info (format "Invalid perm_value %s for perm_type %s" (:perm_value perm) (:perm_type perm))
-                      {:status-code 400}))))
   (t2/with-transaction [_conn]
     (doseq [{:keys [group_id perm_type perm_value]} permissions]
       (let [perm-type-kw  (keyword perm_type)

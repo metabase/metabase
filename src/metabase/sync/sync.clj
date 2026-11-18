@@ -9,6 +9,7 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -21,9 +22,13 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field])
+   [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.core :as warehouses])
   (:import
    (java.time.temporal Temporal)))
 
@@ -99,6 +104,43 @@
       (sync.field-values/update-field-values-for-table! database table)
       (sync-util/set-initial-table-sync-complete! table)
       table)))
+
+(mu/defn start-initial-sync!
+  "Start the first sync of `database`, which a user created through the API when `previous-database` is nil, or
+  connected when `previous-database` was a stub, on another thread once the transaction it was written in commits: a
+  full sync when it `:is_full_sync`, else a metadata sync; nothing for a stub, any other update, or when auto sync is
+  disabled."
+  [database          :- [:map [:id ::lib.schema.id/database]]
+   previous-database :- [:maybe :map]]
+  (when (and (not (:is_stub database))
+             (or (nil? previous-database) (:is_stub previous-database))
+             (not (warehouses/disable-auto-sync)))
+    (mdb/do-after-commit
+     #(quick-task/submit-task!
+       (fn []
+         (try
+           (if (:is_full_sync database)
+             (sync-database! (u/the-id database))
+             (sync-metadata/sync-db-metadata! (u/the-id database)))
+           (catch Throwable e
+             (log/errorf "Error syncing Database %s: %s" (u/the-id database) (ex-message e)))))))))
+
+(defn sync-tables-in-background!
+  "Syncs `tables` on a background thread, Database by Database, skipping the Databases it cannot connect to."
+  [tables]
+  (when (seq tables)
+    (quick-task/submit-task!
+     (fn []
+       (doseq [[db-id tables] (group-by :db_id tables)]
+         (let [database (sync.db/database db-id)]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning

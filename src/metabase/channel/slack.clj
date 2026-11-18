@@ -368,7 +368,7 @@
 
 (mr/def ::slack-block
   "A Slack Block Kit block or legacy `attachments` entry, whose keys are Slack's (see https://api.slack.com/block-kit)."
-  [:map {:closed false, ::mr/deliberately-open true, :description "Slack Block Kit block"}])
+  [:map {:closed false, :description "Slack Block Kit block"}])
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.

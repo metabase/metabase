@@ -5,6 +5,9 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::bookmark-ordering.type
+  [:enum "card" "dashboard" "collection" "document" "exploration"])
+
 (mr/def ::bookmark-ordering
   "A BookmarkOrdering as selected from the app DB: every column of `:bookmark_ordering`."
   [:merge
@@ -16,7 +19,7 @@
   "What an update (or insert) of a BookmarkOrdering accepts: every column of `:bookmark_ordering` except `id`, all optional."
   [:map {:closed true}
    [:user_id  {:optional true} [:maybe ::lib.schema.id/user]]
-   [:type     {:optional true} [:maybe [:or :keyword :string]]]
+   [:type     {:optional true} ::bookmark-ordering.type]
    [:item_id  {:optional true} [:maybe ms/PositiveInt]]
    [:ordering {:optional true} [:maybe :int]]])
 

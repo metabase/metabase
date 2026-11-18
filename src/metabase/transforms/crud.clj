@@ -13,7 +13,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -27,22 +26,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(mu/defn check-database-feature :- :nil
-  "Check that the target database supports the required features for this transform."
-  [transform :- ::transforms.schema/transform.definition]
-  (let [database (api/check-400 (transforms.db/database (transforms-base.i/target-db-id transform))
-                                (deferred-tru "The target database cannot be found."))
-        features (transforms-base.u/required-database-features transform)]
-    (api/check-400 (not (:is_sample database))
-                   (deferred-tru "Cannot run transforms on the sample database."))
-    (api/check-400 (not (:is_audit database))
-                   (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
-                   (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
-                   (deferred-tru "Transforms are not supported on databases with DB routing enabled."))
-    nil))
 
 (mu/defn check-feature-enabled! :- :nil
   "Check that the premium features required for this transform type are enabled."
@@ -109,19 +92,43 @@
                            (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit.")))))))
   nil)
 
-(mu/defn validate-incremental-table-tag! :- :nil
-  "Reject a table-incremental native-query transform whose source query has no table template tag for
-  the incremental range filter to target.
+(mu/defn check-references :- :nil
+  "Throws a 400 unless what `definition` refers to outside the transform allows it: a target database with the features
+  the transform needs and without DB routing, and for the parts the request writes, `written`, a query that
+  preprocesses, a target schema where the driver needs one and a checkpoint column and lookback of supported types, the
+  rest of the rules on a transform being those of its model hooks."
+  [definition :- ::transforms.schema/transform.definition
+   written    :- [:set [:enum :source :target]]]
+  (let [database (api/check-400 (some-> (transforms-base.i/target-db-id definition) transforms.db/database)
+                                (deferred-tru "The target database cannot be found."))]
+    (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database))
+                           (transforms-base.u/required-database-features definition))
+                   (deferred-tru "The database does not support the requested transform features."))
+    (api/check-400 (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
+                   (deferred-tru "Transforms are not supported on databases with DB routing enabled.")))
+  (when (transforms-base.u/query-transform? definition)
+    (validate-transform-query! definition))
+  (when (contains? written :target)
+    (validate-target-schema! definition))
+  (when (contains? written :source)
+    (validate-incremental-column-type! definition))
+  (when (seq written)
+    (transform.model/check-incremental-table-tag definition)
+    (validate-lookback! definition))
+  nil)
 
-  Without that table variable the incremental filter has nowhere to be injected, so the transform is
-  in a broken state. This surfaces the error eagerly at create/update time instead of only when the
-  transform is run."
-  [transform :- ::transforms.schema/transform.definition]
-  (when (and (transforms-base.u/incremental-target? transform)
-             (transforms-base.u/native-query-transform? transform))
-    (api/check-400 (transforms-base.u/incremental-table-tag-name transform)
-                   (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))
-    nil))
+(defn- written-parts
+  "The source and target of a transform that the request `body` writes, as a set."
+  [body]
+  (into #{} (filter #(contains? body %)) [:source :target]))
+
+(mu/defn check-target-table-free :- :nil
+  "Throws a 409 when the table `definition` would write to already exists in the target database."
+  [definition :- ::transforms.schema/transform.definition]
+  (api/check (not (transforms-base.u/planned-target-table-exists? definition))
+             409
+             (deferred-tru "A table with that name already exists."))
+  nil)
 
 (mu/defn get-transforms :- [:sequential ::transforms.schema/transform]
   "Get a list of transforms."
@@ -172,13 +179,10 @@
   ([body       :- ::transforms.schema/transform.create
     creator-id :- [:maybe ::lib.schema.id/user]]
    (let [definition (transforms.u/->definition body)]
-     (when (transforms-base.u/query-transform? definition)
-       (validate-transform-query! definition))
-     (validate-target-schema! definition)
-     (validate-incremental-table-tag! definition)
-     (validate-lookback! definition))
+     (check-references definition (written-parts body))
+     (check-target-table-free definition))
    (let [creator-id (or creator-id api/*current-user-id*)
-         transform  (t2/with-transaction [_]
+         transform  (events/with-batched-events
                       (let [tag-ids       (:tag_ids body)
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
@@ -193,16 +197,14 @@
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
-     (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
      transform)))
 
 (mu/defn update-transform! :- ::transforms.schema/transform
-  "Update a transform. Validates features, database support, cycles, and target conflicts.
-   Returns the updated transform with hydrated associations."
+  "Update a transform, validating its features, what it refers to and its target conflicts, and return it with its
+  associations hydrated."
   [id   :- ::lib.schema.id/transform
    body :- ::transforms.schema/transform.create]
-  (let [transform (t2/with-transaction [_]
-                    ;; Cycle detection should occur within the transaction to avoid race
+  (let [transform (events/with-batched-events
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)
                           definition    (transforms.u/->definition new)
@@ -210,39 +212,23 @@
                       (api/update-check old body)
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
-                      (check-database-feature definition)
-                      (when (contains? body :target)
-                        (validate-target-schema! definition))
-                      (when (contains? body :source)
-                        (validate-incremental-column-type! definition))
-                      (when (or (contains? body :source) (contains? body :target))
-                        (validate-incremental-table-tag! definition)
-                        (validate-lookback! definition))
-                      (when (transforms-base.u/query-transform? old)
-                        (validate-transform-query! definition)
-                        (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
-                          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                                          {:status-code 400}))))
+                      (check-references definition (written-parts body))
+                      (transforms.db/update-transform! id (dissoc body :tag_ids))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    (transforms.db/update-transform! id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
-    (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         transforms.u/add-source-readable)))
 
 (mu/defn delete-transform! :- :nil
-  "Delete a transform and publish the delete event."
+  "Delete a transform."
   [transform :- ::transforms.schema/transform]
   (transforms.db/delete-transform! (:id transform))
-  (events/publish-event! :event/transform-delete
-                         {:object transform
-                          :user-id api/*current-user-id*})
   nil)
 
 (mu/defn delete-transforms-folder! :- :nil

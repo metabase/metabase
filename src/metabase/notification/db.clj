@@ -680,6 +680,11 @@
   [card-id :- [:maybe ::lib.schema.id/card]]
   (t2/select-one :model/Card :id [:auto/param card-id]))
 
+(mu/defn cards
+  "The Cards with `card-ids`, a non-empty collection."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in [:auto/param (vec card-ids)]]))
+
 (mu/defn unarchived-card
   "The Card with `card-id` if it is not archived, or nil."
   [card-id :- ::lib.schema.id/card]

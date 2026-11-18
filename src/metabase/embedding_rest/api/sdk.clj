@@ -5,8 +5,7 @@
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.embedding.sdk-react-18 :as embedding.sdk-react-18]
-   [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
+   [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,6 +16,5 @@
   is null when the host app page URL has no hostname."
   []
   (->> (embedding-rest.db/sdk-react-18-hosts-last-seen-after (embedding.sdk-react-18/last-seen-cutoff) max-hosts)
-       (#(t2/hydrate % :can_read))
-       (filter mi/can-read?)
+       mi/readable
        (map #(update % :host not-empty))))

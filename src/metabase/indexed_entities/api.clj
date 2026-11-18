@@ -50,6 +50,10 @@
                                                             [:value_ref ::indexed-entities.schema/model-index.value-ref]]]
   (let [model    (api/write-check :model/Card model_id)
         metadata (:result_metadata model)]
+    (when-not (= (:type model) :model)
+      (throw (ex-info (tru "Question {0} is not a model" model_id)
+                      {:model_id    model_id
+                       :status-code 400})))
     (when-not (seq metadata)
       (throw (ex-info (tru "Model has no metadata. Cannot index")
                       {:model-id model_id})))

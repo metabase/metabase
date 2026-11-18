@@ -113,7 +113,6 @@
   "An MBQL 5 external query as the LLM wrote it, before [[execute-representations-query]] repairs and validates it: its
   keys are the LLM's until then."
   [:map {:closed                false
-         ::mr/deliberately-open true
          :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
 
 (def LLMQueryArgument
@@ -681,7 +680,7 @@
         by-id     (if repr.resolve/*numeric-ids-allowed?*
                     (metabot.db/cards-with-ids (into [] (comp (filter pos-int?) (distinct)) refs))
                     [])
-        readable  (into #{} (comp (filter mi/can-read?) (map :id)) (t2/hydrate (into by-eid by-id) :can_read))
+        readable  (into #{} (map :id) (mi/readable (into by-eid by-id)))
         eid->card (into {} (comp (filter (comp readable :id)) (map (juxt :entity_id identity))) by-eid)
         id->card  (into {} (comp (filter (comp readable :id)) (map (juxt :id identity))) by-id)]
     (fn [ref]
