@@ -1,18 +1,24 @@
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseEndpoints,
   setupDatabaseNotFoundEndpoint,
   setupDatabaseUsageInfoEndpoint,
   setupEnginesEndpoint,
+  setupListTransformsEndpoint,
+  setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
-import type { Database, DatabaseId } from "metabase-types/api";
+import type { Database, DatabaseId, TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockEngines,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -28,9 +34,16 @@ const SAMPLE_DATABASE = createMockDatabase({
 interface SetupOpts {
   database: Database;
   hasNullDetails?: boolean;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
-const setup = ({ database, hasNullDetails = false }: SetupOpts) => {
+const setup = ({
+  database,
+  hasNullDetails = false,
+  hasEnterprisePlugins = false,
+  tokenFeatures = {},
+}: SetupOpts) => {
   if (hasNullDetails) {
     // Registered before `setupDatabaseEndpoints` so that this route matches
     // first. The backend can send `details: null`, which `Database` does not allow.
@@ -49,11 +62,20 @@ const setup = ({ database, hasNullDetails = false }: SetupOpts) => {
     segment: 0,
     transform: 0,
   });
+  setupUserAttributesEndpoint([]);
+  setupListTransformsEndpoint([]);
   fetchMock.get(`path:/api/database/${database.id}/settings-available`, {
     settings: {},
   });
 
-  renderDatabaseEditApp(database.id);
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
+  if (hasEnterprisePlugins) {
+    setupEnterpriseOnlyPlugin("database_routing");
+  }
+
+  renderDatabaseEditApp(database.id, settings);
 };
 
 const setupNonExistingDatabase = () => {
@@ -67,7 +89,10 @@ const setupNonExistingDatabase = () => {
   renderDatabaseEditApp(NON_EXISTING_DATABASE_ID);
 };
 
-const renderDatabaseEditApp = (databaseId: DatabaseId) => {
+const renderDatabaseEditApp = (
+  databaseId: DatabaseId,
+  settings = mockSettings({}),
+) => {
   renderWithProviders(
     <Route path="/admin/databases/:databaseId" element={<DatabaseEditApp />} />,
     {
@@ -75,12 +100,17 @@ const renderDatabaseEditApp = (databaseId: DatabaseId) => {
       initialRoute: `/admin/databases/${databaseId}`,
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: true }),
+        settings,
       }),
     },
   );
 };
 
 describe("DatabaseEditApp", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("shows every section for a regular database", async () => {
     setup({ database: createMockDatabase({ features: ["actions"] }) });
 
@@ -109,6 +139,50 @@ describe("DatabaseEditApp", () => {
     expect(
       screen.getByTestId("database-danger-zone-section"),
     ).toBeInTheDocument();
+  });
+
+  describe("database routing", () => {
+    const routableDatabase = createMockDatabase({
+      engine: "postgres",
+      features: ["database-routing"],
+    });
+
+    it("hides the database routing section when the token lacks the database_routing feature", async () => {
+      setup({ database: routableDatabase, hasEnterprisePlugins: true });
+
+      expect(
+        await screen.findByTestId("database-connection-info-section"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("database-routing-section"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the database routing section when the token has the database_routing feature", async () => {
+      setup({
+        database: routableDatabase,
+        hasEnterprisePlugins: true,
+        tokenFeatures: { database_routing: true },
+      });
+
+      expect(
+        await screen.findByTestId("database-routing-section"),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the database routing section without the enterprise plugin", async () => {
+      setup({
+        database: routableDatabase,
+        tokenFeatures: { database_routing: true },
+      });
+
+      expect(
+        await screen.findByTestId("database-connection-info-section"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("database-routing-section"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("shows the database and lets admins remove it when its details are null (metabase#25715)", async () => {
