@@ -2,7 +2,7 @@ import { type CSSProperties, useId, useMemo } from "react";
 
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
-import { useDataAppPath } from "embedding-sdk-bundle/hooks/private/use-data-app-path";
+import { useDataAppPath } from "embedding-sdk-bundle/hooks/private/data-apps/use-data-app-path";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { useSdkStore } from "embedding-sdk-bundle/store";

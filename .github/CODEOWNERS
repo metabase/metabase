@@ -93,6 +93,7 @@ frontend/src/metabase/monitor/dependency-diagnostics @metabase/data-apps
 # These lines come after the embedding lines, so they replace Embedding's ownership.
 # Keep data app code in these folders instead of adding single files here.
 frontend/src/embedding-sdk-bundle/components/public/DataApp @metabase/data-apps
+frontend/src/embedding-sdk-bundle/hooks/private/data-apps @metabase/data-apps
 frontend/src/embedding-sdk-shared/data-apps @metabase/data-apps
 frontend/src/metabase/embedding/data-apps @metabase/data-apps
 frontend/src/metabase/embedding/embedding-iframe-sdk/data-apps @metabase/data-apps
