@@ -146,22 +146,21 @@
 (t2/define-before-update :model/ApiKey
   [{user-id :user_id, :as api-key}]
   (t2/with-transaction [_conn]
-    (do
-      ;; update the user name associated with this API key if it was created just for this API key.
-      (when-let [new-name (:name (t2/changes api-key))]
-        (api-keys.db/rename-api-key-user! user-id new-name))
-      ;; update user group as well.
-      (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
-        (assert (= (api-keys.db/user-type user-id) :api-key)
-                "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
-        (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
-      (u/prog1 (-> api-key
-                   add-prefix
-                   add-key
-                   ;; force a no-op update so the T2 code doesn't optimize this whole update out
-                   (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
-                                                                          (assoc :updated_at (t/offset-date-time))))
-                   (validate-with-schema ::api-keys.schema/api-key.update))))))
+    ;; update the user name associated with this API key if it was created just for this API key.
+    (when-let [new-name (:name (t2/changes api-key))]
+      (api-keys.db/rename-api-key-user! user-id new-name))
+    ;; update user group as well.
+    (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
+      (assert (= (api-keys.db/user-type user-id) :api-key)
+              "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
+      (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
+    (-> api-key
+        add-prefix
+        add-key
+        ;; force a no-op update so the T2 code doesn't optimize this whole update out
+        (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
+                                                               (assoc :updated_at (t/offset-date-time))))
+        (validate-with-schema ::api-keys.schema/api-key.update))))
 
 (t2/define-before-delete :model/ApiKey
   [{user-id :user_id, :as api-key}]

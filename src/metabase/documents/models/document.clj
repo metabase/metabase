@@ -47,7 +47,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/events)
   (derive :hook/events))
 
 (defmethod events/spec :model/Document

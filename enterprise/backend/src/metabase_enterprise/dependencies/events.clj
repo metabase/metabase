@@ -56,12 +56,6 @@
   "An entity as `[entity-type entity-id]`, the ID nil when unknown."
   [:maybe [:tuple ::deps.dependency-types/dependency-types [:maybe ms/PositiveInt]]])
 
-(mu/defn- changed? :- :boolean
-  "Whether the `event`, an update, changes any of `columns`."
-  [event   :- [:map]
-   columns :- Columns]
-  (u.events/changed-any? event columns))
-
 (def ^:private dimension-columns
   "The columns of a Dimension whose update changes the remap it describes."
   #{:field_id :human_readable_field_id :name :type})
@@ -207,9 +201,9 @@
   ignoring a card's result metadata changes they don't see, such as a run's new fingerprints."
   [{:keys [model object previous-object] :as event} :- [:map]]
   (let [columns (output-columns model object)]
-    (and (changed? event columns)
+    (and (u.events/changed-any? event columns)
          (or (not= :model/Card model)
-             (changed? event (disj columns :result_metadata))
+             (u.events/changed-any? event (disj columns :result_metadata))
              (not (deps.result-metadata/same-output? (:result_metadata previous-object) (:result_metadata object)))))))
 
 (mu/defn- data-apps-changed? :- :boolean
@@ -217,7 +211,7 @@
   what the data apps whose resource collection it leaves or enters depend on."
   [{:keys [model] :as event} :- [:map]]
   (and (contains? #{:model/Action :model/Card} model)
-       (changed? event #{:collection_id})))
+       (u.events/changed-any? event #{:collection_id})))
 
 (mu/defn- mark-data-apps!
   "Mark the dependencies of the data apps whose resource collection is one of `collection-ids` stale, querying nothing
@@ -233,10 +227,10 @@
    {:keys [model object previous-object] :as event} :- [:map]]
   (let [entity-type (deps.dependency-types/model->dependency-type model)
         own         {entity-type #{(:id object)}}
-        dependency? (changed? event (dependency-columns model))
-        analysis?   (changed? event (analysis-columns model))
+        dependency? (u.events/changed-any? event (dependency-columns model))
+        analysis?   (u.events/changed-any? event (analysis-columns model))
         output?     (output-changed? event)
-        part?       (changed? event (part-columns model))
+        part?       (u.events/changed-any? event (part-columns model))
         data-apps?  (data-apps-changed? event)]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
@@ -255,7 +249,7 @@
       (mark-data-apps! [(:collection_id previous-object) (:collection_id object)]))
     (or dependency? analysis? output? part? data-apps?
         (case model
-          :model/Dimension   (boolean (when (changed? event dimension-columns)
+          :model/Dimension   (boolean (when (u.events/changed-any? event dimension-columns)
                                         (run! #(mark-dimension! batched %) (distinct [previous-object object]))
                                         true))
           :model/FieldValues (mark-field-values! batched previous-object object)

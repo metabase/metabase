@@ -19,7 +19,7 @@
         ::lifecycle)
       :map))
 
-(defn- with-hydrate
+(defn with-hydrate
   "Given a malli entry schema of a map, return a new entry schema with an additional option
   to hydrate information when sending system event notifications.
 
@@ -37,9 +37,6 @@
                                        :model model})
      schema]))
 
-(def ^:private user-hydrate
-  [:model/User :first_name :last_name :email])
-
 ;; collection events
 
 (mr/def :event/collection-read
@@ -53,23 +50,6 @@
   [:map {:closed true}
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
-
-(mr/def ::publicize-dashboard
-  [:map {:closed true}
-   [:user-id pos-int?]
-   [:object-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
-
-(mr/def ::publicize-card
-  [:map {:closed true}
-   [:user-id pos-int?]
-   [:object-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Card %)]]])
-
-(mr/def :event/dashboard-public-link-created ::publicize-dashboard)
-(mr/def :event/dashboard-public-link-deleted ::publicize-dashboard)
-(mr/def :event/card-public-link-created ::publicize-card)
-(mr/def :event/card-public-link-deleted ::publicize-card)
 
 ;; user events
 
@@ -125,40 +105,12 @@
               [:count     ms/IntGreaterThanOrEqualToZero]
               [:remaining ms/IntGreaterThanOrEqualToZero]]]])
 
-;; alert schemas
-
-(mr/def :event/alert-create
-  [:map {:closed true}
-   (-> [:user-id pos-int?]
-       (with-hydrate :user user-hydrate))
-   [:object [:and
-             [:fn #(t2/instance-of? :model/Pulse %)]
-             [:map
-              [:card [:fn #(t2/instance-of? :model/Card %)]]]]]])
-
-;; pulse schemas
-
-(mr/def :event/pulse-create
-  [:map {:closed true}
-   [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Pulse %)]]])
-
 ;; table events
 
 (mr/def :event/table-read
   [:map {:closed true}
    [:user-id  pos-int?]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
-
-;; table write events
-
-(mr/def ::table
-  [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
-   [:object [:fn #(t2/instance-of? :model/Table %)]]])
-
-(mr/def :event/table-publish ::table)
-(mr/def :event/table-unpublish ::table)
 
 (mr/def ::permission-failure
   [:map {:closed true}

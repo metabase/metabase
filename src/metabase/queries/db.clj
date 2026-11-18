@@ -383,11 +383,6 @@
   [model-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Action :model_id [:in model-ids]))
 
-(mu/defn actions-for-model
-  "The Actions of the model Card with `model-id`."
-  [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id))
-
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]

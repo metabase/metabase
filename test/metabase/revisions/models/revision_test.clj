@@ -263,7 +263,7 @@
         (mt/with-temp [:model/Card {card-id :id}]
           (doseq [i (range (+ 5 revision/max-revisions))]
             (push-fake-revision! card-id :name (format "Settled %d" i)))
-          (revision/flush-settling!)
+          (revisions.tu/flush-settling!)
           (let [revisions (t2/select [:model/Revision :id :most_recent] :model "FakedCard" :model_id card-id)]
             (is (= revision/max-revisions (count revisions)))
             (is (= [(apply max (map :id revisions))]
@@ -386,7 +386,7 @@
             (deref other 1000 ::timeout))
           ;; sanity check: nothing timed out, both transactions finished
           (is (= ::done (deref p1 100 ::timeout) (deref p2 100 ::timeout)))
-          (revision/flush-settling!)
+          (revisions.tu/flush-settling!)
           ;; we only have one `most_recent: true`
           (is (= 1 (t2/count :model/Revision
                              :model_id card-id :model "FakedCard"

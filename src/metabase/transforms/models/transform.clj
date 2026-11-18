@@ -42,7 +42,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events :hook/events]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events]]
   (derive :model/Transform trait))
 
 (defmethod events/spec :model/Transform
@@ -269,15 +269,6 @@
                                                         :tag_id       tag-id
                                                         :position     (get new-positions tag-id)})))))
     nil))
-
-(mu/defn transforms-with-tags :- [:sequential ::transforms.schema/transform]
-  "Returns all transforms associated with the given tag IDs.
-  Return empty list if no tag IDs are provided or no transforms are associated with the tags."
-  [tag-ids :- [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-  (or (when (seq tag-ids)
-        (when-let [transform-ids (transforms.db/transform-ids-with-tags tag-ids)]
-          (transforms.db/transforms transform-ids)))
-      []))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

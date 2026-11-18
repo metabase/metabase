@@ -130,7 +130,7 @@
         rows      (into [] (keep #(revision-row % (get by-entity %))) (distinct (map entity events)))]
     (when (seq rows)
       (try
-        (revision/record-revisions! rows)
+        (revisions.db/insert-revisions! rows)
         (catch Throwable e
           (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e)))))))
 

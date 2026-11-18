@@ -139,9 +139,7 @@
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
-(doto :model/Revision
-  (derive :metabase/model)
-  (derive :search/indexed))
+(derive :model/Revision :metabase/model)
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
@@ -167,11 +165,6 @@
   (delay (grouper/start! #'settle-revisions!*
                          :capacity 500
                          :interval 5000)))
-
-(defn flush-settling!
-  "Block until the bookkeeping of every Revision inserted before this call has run."
-  []
-  (grouper/flush! @settle-queue))
 
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
@@ -313,14 +306,9 @@
     (not= (serialize before) (serialize after))))
 
 (mu/defn revision-row :- [:map [:model :string]]
-  "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[record-revisions!]]."
+  "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[revisions.db/insert-revisions!]]."
   [{:keys [id entity object] :as info} :- PushRevisionInput]
   (row info (serialize-instance entity id (dissoc object :message))))
-
-(defn record-revisions!
-  "Record the Revisions `rows`, which [[revision-row]] gives, in one statement."
-  [rows]
-  (revisions.db/insert-revisions! rows))
 
 (def models-recording-own-revert
   "The models whose reversion also writes a Revision of its own update, which the reversion Revision follows."

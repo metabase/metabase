@@ -55,9 +55,9 @@
 
 (defmethod events/spec :model/Pulse
   [_model]
-  {:create :event/pulse-row-create
-   :update :event/pulse-row-update
-   :delete :event/pulse-row-delete})
+  {:create :event/pulse-create
+   :update :event/pulse-update
+   :delete :event/pulse-delete})
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."

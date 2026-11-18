@@ -157,9 +157,9 @@
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
 
 (deftest ^:parallel search-index-model-test
-  (testing "All the required models descend from :search/indexed\n"
+  (testing "All the required models, but Revision, which publishes no lifecycle event, descend from :search/indexed\n"
     ;; TODO restore hooks to ModelIndex when toucan issue is resolved
-    (let [expected-models (keys (dissoc (#'search.spec/model-hooks) :model/ModelIndex :model/ModelIndexValue))
+    (let [expected-models (keys (dissoc (#'search.spec/model-hooks) :model/ModelIndex :model/ModelIndexValue :model/Revision))
           ;; Some models have submodels, so absorb those too
           expected-models (into (set expected-models) (mapcat descendants) expected-models)
           actual-models   (set (descendants :search/indexed))]

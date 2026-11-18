@@ -1,4 +1,4 @@
-(ns metabase-enterprise.library.validation-test
+(ns metabase-enterprise.library.collection-content-test
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
