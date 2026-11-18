@@ -1020,18 +1020,28 @@
               {:keys [parameter_id card_id]}                parameter_mappings]
           [parameter_id dashcard-id card_id])))
 
+(defn- slot-connections
+  "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id slot]`, with the slot from [[slot]],
+   or the card id for a card the dashcard doesn't show.
+   The dashcard's own slot stays the same when `replace_card` changes its card."
+  [dashcards]
+  (into #{}
+        (for [{dashcard-id :id :keys [parameter_mappings] :as dashcard} dashcards
+              {:keys [parameter_id card_id]}                            parameter_mappings]
+          [parameter_id dashcard-id (or (slot dashcard card_id) card_id)])))
+
 (def ^:private intentional-drop-ops
   "The ops whose dropped connections were asked for: `unwire_parameter`, and `patch_dashcard` setting
    `parameter_mappings`."
   #{"unwire_parameter" "patch_dashcard"})
 
 (defn- apply-op-tracking-drops
-  "Runs [[apply-op-at]], and keeps `::asked-drops`, the connections, as [[connections]] gives them, that an op in
-   [[intentional-drop-ops]] removed and no later op restored."
+  "Runs [[apply-op-at]], and keeps `::asked-drops`, the connections, as [[slot-connections]] gives them, that an op
+   in [[intentional-drop-ops]] removed and no later op restored."
   [state idx op]
-  (let [before (connections (:dashcards state))
+  (let [before (slot-connections (:dashcards state))
         state' (apply-op-at state idx op)
-        after  (connections (:dashcards state'))]
+        after  (slot-connections (:dashcards state'))]
     (update state' ::asked-drops
             (fn [asked]
               (cond-> (set/difference (or asked #{}) after)
@@ -1062,7 +1072,7 @@
                :when (and (surviving-parameter? parameter-id)
                           new-slot
                           (not (contains? after [parameter-id dashcard-id new-slot]))
-                          (not (contains? asked-drops [parameter-id dashcard-id card-id])))]
+                          (not (contains? asked-drops [parameter-id dashcard-id new-slot])))]
            {:parameter_id parameter-id
             :dashcard_id  dashcard-id
             :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
