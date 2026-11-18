@@ -4,7 +4,6 @@ import { PLUGIN_API } from "metabase/api/client";
 import { PLUGIN_PERMISSION_PREVIEW } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { PermissionsToolbarButtons } from "./PermissionsToolbarButtons";
 import { PreviewBanner } from "./PreviewBanner";
 import { ReadOnlyToast, isReadOnlyRefusal } from "./ReadOnlyToast";
 import { ViewAsButton } from "./ViewAsButton";
@@ -60,7 +59,5 @@ export function initializePlugin() {
     { name: t`Preview access`, value: "troubleshoot" },
   ];
   PLUGIN_PERMISSION_PREVIEW.getTabRoutes = getTabRoutes;
-  PLUGIN_PERMISSION_PREVIEW.PermissionsToolbarButtons =
-    PermissionsToolbarButtons;
   PLUGIN_PERMISSION_PREVIEW.ViewAsButton = ViewAsButton;
 }
