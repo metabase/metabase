@@ -23,7 +23,7 @@
    [:and
     (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
     [:fn (fn [m] (not-any? #(str/starts-with? (name %) "@") (keys m)))]]
-   (deferred-tru "attribute keys must be strings and must not start with `@`")))
+   (deferred-tru "attribute keys must be strings and must not start with `@`.")))
 
 (mr/def ::tenant
   "A Tenant as selected from the app DB: every column of `:tenant`."

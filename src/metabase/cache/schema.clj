@@ -103,7 +103,7 @@
   [{:keys [model model_id] :as row}]
   (when (and (contains? row :model) (contains? row :model_id)
              (not (if (= "root" model) (= 0 model_id) (pos-int? model_id))))
-    (throw (ex-info (tru "model_id must be 0 for the root config and positive otherwise") {:status-code 400})))
+    (throw (ex-info (tru "model_id must be 0 for the root config and positive otherwise.") {:status-code 400})))
   row)
 
 (defn- check-strategy
@@ -116,7 +116,7 @@
                                  (cond-> (assoc config :type strategy-type)
                                    (and (#{:duration :schedule} strategy-type) (contains? row :refresh_automatically))
                                    (assoc :refresh_automatically (:refresh_automatically row))))))
-      (throw (ex-info (tru "strategy, config and refresh_automatically must form a valid cache strategy")
+      (throw (ex-info (tru "strategy, config and refresh_automatically must form a valid cache strategy.")
                       {:status-code 400}))))
   row)
 

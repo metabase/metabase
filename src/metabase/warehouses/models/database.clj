@@ -382,9 +382,9 @@
   admin connection, since a destination is only reached through its router."
   [database overlays]
   (when (and (:router_database_id database) (seq (:write_data_details overlays)))
-    (throw (ex-info (tru "Cannot configure a write connection on a destination database") {:status-code 400})))
+    (throw (ex-info (tru "Cannot configure a write connection on a destination database.") {:status-code 400})))
   (when (and (:router_database_id database) (seq (:admin_details overlays)))
-    (throw (ex-info (tru "Cannot configure an admin connection on a destination database") {:status-code 400}))))
+    (throw (ex-info (tru "Cannot configure an admin connection on a destination database.") {:status-code 400}))))
 
 (defn- provider-name
   "The name of the provider hosting `database`, as its engine and host tell it, or nil."

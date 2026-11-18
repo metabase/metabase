@@ -149,7 +149,7 @@
   (when (and (map? channel)
              (every? #(contains? channel %) [:schedule_type :schedule_hour :schedule_day :schedule_frame])
              (not (schedule-fits-type? channel)))
-    (throw (ex-info (tru "Invalid schedule: the schedule type does not take this hour, day and frame.")
+    (throw (ex-info (tru "Invalid schedule: the schedule type does not take this hour, day or week of the month.")
                     {:status-code 400})))
   channel)
 

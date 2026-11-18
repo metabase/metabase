@@ -118,7 +118,7 @@
     (when (contains? changes :collection_id)
       (collection/check-collection-for :model/NativeQuerySnippet snippet))
     (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot update the creator_id of a NativeQuerySnippet.") {:status-code 400})))
+      (throw (ex-info (tru "You cannot change the creator of a snippet.") {:status-code 400})))
     (cond-> snippet
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet))))
       (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))

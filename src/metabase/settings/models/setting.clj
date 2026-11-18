@@ -1150,7 +1150,7 @@
         string-value (not-empty string-value)]
     (when (not= string-value (db-stored-value setting))
       (when-let [[env-var] (env-var-source setting)]
-        (throw (ex-info (tru "Setting {0} is set by the environment variable {1}" (setting-name setting) env-var)
+        (throw (ex-info (tru "Setting {0} is set by the environment variable {1}." (setting-name setting) env-var)
                         {:status-code 400
                          :setting     (setting-name setting)})))
       (metabase.settings.models.setting/set! setting (some->> string-value (parse-string-value (:type setting)))))))

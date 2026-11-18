@@ -2925,7 +2925,7 @@
                                                       :details            {:host "localhost"}
                                                       :router_database_id router-id}]
           (with-redefs [driver/can-connect? (constantly true)]
-            (is (= "Cannot configure a write connection on a destination database"
+            (is (= "Cannot configure a write connection on a destination database."
                    (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
                                          {:write_data_details {:host                  "write-host"
                                                                :write-data-connection true}})))))))
@@ -3111,7 +3111,7 @@
                                                         :details            {:host "localhost"}
                                                         :router_database_id router-id}]
           (with-redefs [driver/can-connect? (constantly true)]
-            (is (= "Cannot configure an admin connection on a destination database"
+            (is (= "Cannot configure an admin connection on a destination database."
                    (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
                                          {:admin_details {:host             "admin-host"
                                                           :admin-connection true}})))))))

@@ -13,7 +13,7 @@
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my-snippet", :content "wow", :creator_id (mt/user->id :lucky)}]
       (is (thrown-with-msg?
            Exception
-           #"You cannot update the creator_id of a NativeQuerySnippet\."
+           #"You cannot change the creator of a snippet\."
            (t2/update! :model/NativeQuerySnippet :id snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
