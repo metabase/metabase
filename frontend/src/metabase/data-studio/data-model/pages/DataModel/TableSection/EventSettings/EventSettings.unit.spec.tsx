@@ -222,11 +222,17 @@ describe("EventSettings", () => {
         "Pick the required columns to make this table available in product analysis.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/is ready for product analysis/),
+    ).not.toBeInTheDocument();
   });
 
-  it("doesn't ask for anything once the table is set up", () => {
+  it("says the table is ready once it's set up", () => {
     setup({ eventSettings: SET_UP_SETTINGS });
 
+    expect(
+      screen.getByText("This table is ready for product analysis."),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/Pick the required columns/),
     ).not.toBeInTheDocument();
@@ -262,6 +268,17 @@ describe("EventSettings", () => {
   });
 
   describe("on a table that isn't an event table", () => {
+    it("doesn't say the table is ready, even with its columns set", () => {
+      setup({
+        entityType: "entity/GenericTable",
+        eventSettings: SET_UP_SETTINGS,
+      });
+
+      expect(
+        screen.queryByText(/is ready for product analysis/),
+      ).not.toBeInTheDocument();
+    });
+
     it("disables the column roles", () => {
       setup({ entityType: "entity/GenericTable" });
 

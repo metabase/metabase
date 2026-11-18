@@ -101,6 +101,11 @@ export function EventSettings({ table }: EventSettingsProps) {
             : t`Pick the required columns to make this table available in product analysis.`}
         </Text>
       )}
+      {isEvent && isSetUp && (
+        <Text c="text-secondary">
+          {t`This table is ready for product analysis.`}
+        </Text>
+      )}
       <ColumnRoleSection
         title={t`Required`}
         table={table}
