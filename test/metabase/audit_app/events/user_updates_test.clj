@@ -223,12 +223,13 @@
         (is (= [[:channel-update "Channel" id]] (topics-since before)))))))
 
 (deftest tenant-update-records-row-test
-  (mt/with-premium-features #{:audit-app :tenants}
-    (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Audited tenant" :slug "audited-tenant"}]
-        (let [before (max-id)]
-          (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:name "Renamed tenant"})
-          (is (= [[:tenant-update "Tenant" tenant-id]] (topics-since before))))))))
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:audit-app :tenants}
+     (mt/with-temporary-setting-values [use-tenants true]
+       (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Audited tenant" :slug "audited-tenant"}]
+         (let [before (max-id)]
+           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:name "Renamed tenant"})
+           (is (= [[:tenant-update "Tenant" tenant-id]] (topics-since before)))))))))
 
 (deftest read-paths-of-reader-record-nothing-test
   (mt/with-premium-features #{:audit-app}

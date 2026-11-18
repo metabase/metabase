@@ -1,6 +1,7 @@
 (ns metabase.serialization.load-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -98,10 +99,11 @@
             (let [good-id (t2/select-one-pk :model/Dashboard :entity_id (eid \v))]
               (is (some? good-id))
               (is (not (t2/exists? :model/Dashboard :entity_id (eid \w))))
-              (is (= #{good-id}
-                     (into #{} (map :row_id) (t2/query {:select [:row_id]
-                                                        :from   [:change_log]
-                                                        :where  [:and [:> :id top-log] [:= :table_name "report_dashboard"]]}))))
+              (when config/ee-available?
+                (is (= #{good-id}
+                       (into #{} (map :row_id) (t2/query {:select [:row_id]
+                                                          :from   [:change_log]
+                                                          :where  [:and [:> :id top-log] [:= :table_name "report_dashboard"]]})))))
               (is (= #{good-id}
                      (t2/select-fn-set :model_id :model/Revision :model "Dashboard" :id [:> top-rev]))))
             (finally
