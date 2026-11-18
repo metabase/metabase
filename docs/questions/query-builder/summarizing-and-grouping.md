@@ -1,11 +1,9 @@
 ---
 title: Summarizing and grouping
-summary: Learn how to summarize and group your data in Metabase's query builder to calculate metrics like counts, sums, and averages across different dimensions.
+summary: Summarize and group your data in Metabase's query builder to calculate metrics like counts, sums, and averages across different dimensions.
 ---
 
 # Summarizing and grouping
-
-This page covers the Summarize and Grouping steps in the [query builder](./editor.md).
 
 ![Summarizing](../images/summarize-step.png)
 

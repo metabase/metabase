@@ -539,7 +539,6 @@
                               :native-requires-specified-collection true
                               :nested-fields                        true
                               :nested-queries                       true
-                              :python-transforms                    true
                               :rename                               true
                               :saved-question-sandboxing            false
                               :schemas                              false
