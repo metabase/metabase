@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -86,17 +87,114 @@
                  (throw (Exception. "boom")))))
   (is (empty? @received)))
 
+(defn- row [nm]
+  {:name nm :icon "cake" :creator_id (mt/user->id :rasta)})
+
+(defn- names [] (mapv (comp :name :object :event) @received))
+
+(defmacro ^:private with-timeline-cleanup [& body]
+  `(try
+     ~@body
+     (finally
+       (t2/delete! :model/EventsTestTimeline :name [:like "batch-test-%"]))))
+
 (deftest joined-batch-rollback-test
-  (testing "a joined write that throws and rolls back with a savepoint of its caller leaves no event behind"
-    (let [creator (mt/user->id :rasta)]
+  (testing "a joined batch rolled back with a savepoint of its caller leaves no event behind"
+    (with-timeline-cleanup
       (events/with-batched-events
-        (t2/insert! :model/EventsTestTimeline {:name "kept" :icon "cake" :creator_id creator})
+        (t2/insert! :model/EventsTestTimeline (row "batch-test-kept"))
         (is (thrown? Exception
-                     (t2/with-transaction [_conn nil {:nested-transaction-rule :savepoint}]
+                     (t2/with-transaction [_conn]
                        (events/with-batched-events
-                         (t2/insert! :model/EventsTestTimeline {:name "dropped" :icon "cake" :creator_id creator})
+                         (t2/insert! :model/EventsTestTimeline (row "batch-test-dropped"))
                          (throw (Exception. "boom")))))))
-      (is (= ["kept"] (map (comp :name :object :event) @received))))))
+      (is (not (t2/exists? :model/EventsTestTimeline :name "batch-test-dropped")))
+      (is (= ["batch-test-kept"] (names))))))
+
+(deftest joined-batch-throw-keeps-rows-and-events-test
+  (testing "a joined batch that throws and is caught keeps its rows, which are committed with their events"
+    (with-timeline-cleanup
+      (events/with-batched-events
+        (t2/insert! :model/EventsTestTimeline (row "batch-test-outer"))
+        (try
+          (events/with-batched-events
+            (t2/insert! :model/EventsTestTimeline (row "batch-test-joined"))
+            (throw (ex-info "boom" {})))
+          (catch Exception _ nil)))
+      (is (t2/exists? :model/EventsTestTimeline :name "batch-test-joined"))
+      (is (= ["batch-test-outer" "batch-test-joined"] (names))))))
+
+(deftest batch-of-writes-opens-no-savepoint-per-write-test
+  (testing "the writes of a batch open no savepoint of their own"
+    (let [savepoints (fn [n]
+                       (let [opened (atom 0)
+                             orig   (mt/original-fn #'mdb.connection/set-savepoint!)]
+                         (mt/with-dynamic-fn-redefs [mdb.connection/set-savepoint! (fn [conn]
+                                                                                     (swap! opened inc)
+                                                                                     (orig conn))]
+                           (t2/with-transaction [_conn nil {:rollback-only true}]
+                             (events/with-batched-events
+                               (dotimes [i n]
+                                 (t2/insert! :model/EventsTestTimeline (row (str "batch-test-" i)))))))
+                         @opened))]
+      (is (= (savepoints 1) (savepoints 5))))))
+
+(deftest savepoint-rollback-drops-events-test
+  (testing "a write rolled back by a caught nested transaction in a batch has no event delivered"
+    (with-timeline-cleanup
+      (events/with-batched-events
+        (t2/insert! :model/EventsTestTimeline (row "batch-test-kept"))
+        (try
+          (t2/with-transaction [_conn]
+            (t2/insert! :model/EventsTestTimeline (row "batch-test-phantom"))
+            (throw (ex-info "boom" {})))
+          (catch Exception _ nil)))
+      (is (not (t2/exists? :model/EventsTestTimeline :name "batch-test-phantom")))
+      (is (= ["batch-test-kept"] (names))))))
+
+(deftest savepoint-rollback-restores-sinks-test
+  (let [flushed (atom [])]
+    (events/register-sink! ::sink #(swap! flushed into %))
+    (testing "the items given to a sink in a savepoint that rolls back are not flushed"
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (events/with-batched-events
+          (events/add-to-sink! ::sink {:item 1})
+          (try
+            (t2/with-transaction [_conn]
+              (events/add-to-sink! ::sink {:item 2})
+              (throw (ex-info "boom" {})))
+            (catch Exception _ nil))))
+      (is (= [{:item 1}] @flushed)))))
+
+(deftest savepoint-rollback-restores-captures-test
+  (let [calls    (atom 0)
+        captured (atom [])]
+    (events/register-capture! ::capture-once
+                              (fn [deleted]
+                                (when (= :model/EventsTestTimeline (:model (first deleted)))
+                                  (when (= 1 (swap! calls inc))
+                                    {:rolled-back true}))))
+    (events/register-owned-consumer! ::capture-once
+                                     (fn [{:keys [model operation]}]
+                                       (when (and (= :model/EventsTestTimeline model) (= :delete operation)) :deletes))
+                                     (fn [_owner deletes _all]
+                                       (swap! captured into (map :captures deletes))))
+    (try
+      (with-timeline-cleanup
+        (let [id (t2/insert-returning-pk! :model/EventsTestTimeline (row "batch-test-deleted"))]
+          (testing "the captures of a delete rolled back to a savepoint are not delivered with a later delete"
+            (events/with-batched-events
+              (try
+                (t2/with-transaction [_conn]
+                  (t2/delete! :model/EventsTestTimeline :id id)
+                  (throw (ex-info "boom" {})))
+                (catch Exception _ nil))
+              (t2/delete! :model/EventsTestTimeline :id id))
+            (is (= 2 @calls))
+            (is (= [nil] @captured)))))
+      (finally
+        (events/register-capture! ::capture-once (constantly nil))
+        (events/register-owned-consumer! ::capture-once (constantly nil) (constantly nil))))))
 
 (deftest owned-consumer-test
   (let [calls (atom [])]

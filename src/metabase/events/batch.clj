@@ -1,7 +1,9 @@
 (ns metabase.events.batch
   "Delivery of the lifecycle events of rows: each write of a row of a model with the events trait collects an event,
-  and the events are delivered when the batch they belong to ends, inside its transaction."
+  and the events are delivered when the batch they belong to ends, inside its transaction. The batch is kept in the
+  transaction state of the app DB, which a rolled back savepoint restores, so that a write rolled back leaves no event."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.impl :as events.impl]
    [metabase.events.schema :as events.schema]
@@ -11,12 +13,6 @@
    [toucan2.connection :as t2.conn]))
 
 (set! *warn-on-reflection* true)
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *batch*
-  "Within [[do-with-batched-events]], an atom of `{:events [collected-event ...], :pending [delete-event ...],
-  :captures {[model id] {consumer-key value}}}`."
-  nil)
 
 (def ^:private Operation
   "The kind of a write of a row."
@@ -66,8 +62,27 @@
 
 (quick-task/register-submission-wrapper! ::outside-batch
                                          (fn [thunk]
-                                           (binding [*batch* nil *context* nil]
+                                           (binding [*context* nil]
                                              (thunk))))
+
+(def ^:private empty-batch
+  "The batch before anything is collected: `{:events [collected-event ...], :pending [delete-event ...], :captures
+  {[model id] {consumer-key value}}, :sinks {sink-key [item ...]}}`."
+  {:events [] :pending [] :captures {} :sinks {}})
+
+(defn- batch-state
+  "The transaction state of the app DB holding, under `::batch`, the batch that the writes of this thread join, or nil
+  outside a batch."
+  []
+  (when-let [state (mdb/transaction-state)]
+    (when (contains? @state ::batch)
+      state)))
+
+(defn- swap-batch!
+  "Apply `f` and `args` to the batch held in `state`, returning the transaction state before and after, as
+  `swap-vals!` does."
+  [state f & args]
+  (swap-vals! state #(apply update % ::batch f args)))
 
 (defonce ^:private owned-consumers
   (atom {}))
@@ -132,8 +147,8 @@
   batch."
   [sink-key :- :keyword
    item     :- [:map]]
-  (if-let [batch *batch*]
-    (swap! batch update-in [:sinks sink-key] (fnil conj []) item)
+  (if-let [state (batch-state)]
+    (swap-batch! state update-in [:sinks sink-key] (fnil conj []) item)
     ((get @sinks sink-key) [item]))
   nil)
 
@@ -161,12 +176,12 @@
   "Run the captures over the deletes of rows of `model` that the batch collected since the last call, before the
   DELETE statement that removes those rows runs."
   [model :- :keyword]
-  (when-let [batch *batch*]
-    (let [[old _] (swap-vals! batch update :pending #(filterv (fn [event] (not= model (:model event))) %))
-          events  (filterv #(= model (:model %)) (:pending old))]
+  (when-let [state (batch-state)]
+    (let [[old _] (swap-batch! state update :pending #(filterv (fn [event] (not= model (:model event))) %))
+          events  (filterv #(= model (:model %)) (:pending (::batch old)))]
       (when (seq events)
         (when-let [captured (not-empty (capture events))]
-          (swap! batch update-in [:captures (carrier events)] merge captured))))))
+          (swap-batch! state update-in [:captures (carrier events)] merge captured))))))
 
 (mu/defn register-statement-capture!
   "Have `capture`, a function of a model and of `select-rows`, called once per DELETE statement of that model, in its
@@ -184,7 +199,7 @@
   [model       :- :keyword
    pk          :- :keyword
    select-rows :- ifn?]
-  (when-let [batch (and (lifecycle-topic model :delete) *batch*)]
+  (when-let [state (and (lifecycle-topic model :delete) (batch-state))]
     (let [selected (atom nil)
           select   (fn [columns]
                      (reset! selected (select-rows (vec (distinct (cons pk columns))))))
@@ -194,7 +209,7 @@
                                    [consumer-key value])))
                          @statement-capturers)]
       (when-let [carrier-id (and (seq captured) (get (last @selected) pk))]
-        (swap! batch update-in [:captures [model carrier-id]] merge captured)))))
+        (swap-batch! state update-in [:captures [model carrier-id]] merge captured)))))
 
 (defn- ensure-topic!
   [topic]
@@ -269,17 +284,19 @@
       (handle owner-key owned events))))
 
 (defn- finish!
-  "Deliver what the batch collected, and what the delivery makes it collect, then flush its sinks, until nothing is
-  left."
-  [batch]
+  "Deliver what the batch in `state` collected, and what the delivery makes it collect, then flush its sinks, until
+  nothing is left."
+  [state]
   (loop []
-    (let [[old _] (swap-vals! batch assoc :events [] :captures {})]
-      (if (seq (:events old))
-        (do (deliver! (:events old) (:captures old))
+    (let [[old _] (swap-batch! state assoc :events [] :captures {})
+          batch   (::batch old)]
+      (if (seq (:events batch))
+        (do (deliver! (:events batch) (:captures batch))
             (recur))
-        (let [[old _] (swap-vals! batch assoc :sinks {})]
-          (when (seq (:sinks old))
-            (flush-sinks! (:sinks old))
+        (let [[old _] (swap-batch! state assoc :sinks {})
+              by-sink (:sinks (::batch old))]
+          (when (seq by-sink)
+            (flush-sinks! by-sink)
             (recur)))))))
 
 (mu/defn collect!
@@ -290,41 +307,36 @@
     (let [event   (assoc event :context *context*)
           delete? (= :delete (:operation event))]
       (ensure-topic! topic)
-      (if-let [batch *batch*]
-        (swap! batch #(cond-> (update % :events conj event)
-                        delete? (update :pending conj event)))
+      (if-let [state (batch-state)]
+        (swap-batch! state #(cond-> (update % :events conj event)
+                              delete? (update :pending conj event)))
         (deliver! [(cond-> event delete? (assoc :captures (capture [event])))] {})))))
 
 (defn- run-batch
-  "Run `thunk` in a batch, joining the batch there already is, in its transaction when `join-transaction?` and in a
-  nested one that rolls back alone otherwise. A joined `thunk` that throws leaves no events behind in the batch, for
-  the rows it wrote may be rolled back with a savepoint of its caller."
+  "Run `thunk` in the batch there already is, or else in a new batch that delivers its events when `thunk` returns, in
+  the transaction there already is when `join-transaction?` and in a nested one otherwise. A joined `thunk` that throws
+  keeps its events, which follow its rows: a savepoint or transaction rolled back drops both."
   [join-transaction? thunk]
   (let [run (fn []
-              (let [batch (atom {:events [] :pending [] :captures {} :sinks {}})]
-                (binding [*batch* batch]
+              (let [state (or (mdb/transaction-state)
+                              (throw (ex-info "A batch of events needs a transaction of the app DB" {})))]
+                (swap! state assoc ::batch empty-batch)
+                (try
                   (u/prog1 (thunk)
-                    (finish! batch)))))]
+                    (finish! state))
+                  (finally
+                    (swap! state dissoc ::batch)))))]
     (cond
-      *batch*           (let [batch   *batch*
-                              mark    (count (:events @batch))
-                              pending (count (:pending @batch))]
-                          (try
-                            (thunk)
-                            (catch Throwable e
-                              (swap! batch #(-> %
-                                                (update :events subvec 0 (min mark (count (:events %))))
-                                                (update :pending subvec 0 (min pending (count (:pending %))))))
-                              (throw e))))
+      (batch-state)     (thunk)
       join-transaction? (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
                           (run))
       :else             (t2.conn/with-transaction [_conn]
                           (run)))))
 
 (defn do-with-batched-events
-  "Run `thunk` in a transaction, with the events of the writes in it delivered once, merged per row, when it ends and
-  before the transaction commits, and not at all when it throws; inside another batch, join it, and inside another
-  transaction, have a nested one that rolls back alone."
+  "Run `thunk` with the events of the writes in it delivered once, merged per row, before the transaction commits, and
+  not at all when it throws; outside a batch, in a transaction, a savepoint of the one already open; inside a batch,
+  joining it, so that its events stay with its rows when it throws, and go with them when a savepoint rolls back."
   [thunk]
   (run-batch false thunk))
 
@@ -334,8 +346,7 @@
   (run-batch true thunk))
 
 (defmacro with-batched-events
-  "Run `body` in a transaction, with the events of the writes in it delivered once, merged per row, when it ends and
-  before the transaction commits."
+  "Run `body` as [[do-with-batched-events]] runs a thunk."
   [& body]
   `(do-with-batched-events (fn [] ~@body)))
 

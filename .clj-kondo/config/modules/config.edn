@@ -1121,8 +1121,7 @@
            metabase.events.hierarchy
            metabase.events.impl
            metabase.events.init}
-   :uses #{models
-           util}
+   :uses #{app-db models util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
