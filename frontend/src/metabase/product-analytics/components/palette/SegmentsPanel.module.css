@@ -60,3 +60,21 @@
 .section[data-drop-active="true"] * {
   pointer-events: none;
 }
+
+/*
+ * After the list, and pinned to the bottom of the panel while the list
+ * scrolls, so a long list doesn't hide it. It holds the panel's bottom
+ * padding, so nothing scrolls into view below it.
+ */
+.footer {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--mantine-spacing-xs);
+  padding-bottom: var(--mantine-spacing-md);
+  background-color: var(--mb-color-background_page-primary);
+}
+
+/* Scrolled into view clear of the pinned footer. */
+.row[data-landed="true"] {
+  scroll-margin-bottom: 4rem;
+}

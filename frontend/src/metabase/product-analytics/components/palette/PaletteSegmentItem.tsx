@@ -40,6 +40,7 @@ type PaletteSegmentItemProps = {
   onEditDraft?: () => void;
   /** Omitted without permission to write segments. */
   onSaveDraft?: () => void;
+  /** Omitted for a seed, which stays while its event name has values. */
   onDiscardDraft?: () => void;
   /** A saved segment's definition, shown below the row when expanded. */
   definition?: ReactNode;
@@ -79,6 +80,7 @@ export const PaletteSegmentItem = ({
       tabIndex={handleClick !== undefined ? 0 : undefined}
       aria-expanded={hasDefinition ? isExpanded : undefined}
       data-status={segment.status}
+      data-seed={segment.status === "draft" && segment.isSeed}
       data-dragging={isDragging}
       data-selectable={handleClick !== undefined}
       draggable
@@ -138,12 +140,14 @@ export const PaletteSegmentItem = ({
                 {t`Save as a segment…`}
               </Menu.Item>
             )}
-            <Menu.Item
-              leftSection={<Icon name="trash" />}
-              onClick={onDiscardDraft}
-            >
-              {t`Discard draft`}
-            </Menu.Item>
+            {onDiscardDraft !== undefined && (
+              <Menu.Item
+                leftSection={<Icon name="trash" />}
+                onClick={onDiscardDraft}
+              >
+                {t`Discard draft`}
+              </Menu.Item>
+            )}
           </RowMenu>
         )}
         {segment.status === "saved" && (

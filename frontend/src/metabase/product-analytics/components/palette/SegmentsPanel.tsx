@@ -23,15 +23,19 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Segment, Table } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type { FieldId, Segment, Table } from "metabase-types/api";
 
 import type { UsersTable } from "../../analyses/types";
+import { getEventNameFieldId, toSearchText } from "../../events/event-name";
+import type { EventDefinition } from "../../events/types";
 import { useEventDropTarget } from "../../segments/drag-context";
 import type {
   PaletteSegment,
   SegmentDraft,
   SegmentSource,
 } from "../../segments/types";
+import { useEventNameSeeds } from "../../segments/use-event-name-seeds";
 import { usePaletteSegments } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
 import { PanelCloseButton } from "../PanelCloseButton";
@@ -50,6 +54,11 @@ import S from "./SegmentsPanel.module.css";
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 480;
 const DEFAULT_WIDTH = 360;
+/** Brings an editor into view as it opens, e.g. at the end of a long list. */
+const scrollIntoView = (node: HTMLElement | null) => {
+  node?.scrollIntoView({ block: "nearest" });
+};
+
 /** Segments in the panel, drafts included, from which it gets a search box. */
 const SEARCH_THRESHOLD = 10;
 
@@ -103,7 +112,7 @@ export const SegmentsPanel = ({
         </Title>
         <PanelCloseButton onClose={onClose} />
       </Group>
-      <Box className={S.scroll} py="md">
+      <Box className={S.scroll} pt="md">
         {isPeople ? (
           <PeopleSection
             table={table}
@@ -163,6 +172,11 @@ type PaletteSectionProps = {
 
 type ModalState = { draft: SegmentDraft } | null;
 
+/**
+ * The table's saved segments, then the user's drafts, then for event segments
+ * a draft per event name not used yet. A new draft is drafted where it will
+ * land, after the user's other drafts.
+ */
 const PaletteSection = ({ source, table }: PaletteSectionProps) => {
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
@@ -173,34 +187,44 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
     source,
     drafts,
   );
-  const [isDrafting, setIsDrafting] = useState(false);
-  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
-  const [modal, setModal] = useState<ModalState>(null);
-  const findDraft = (key: string) => drafts.find((d) => d.id === key);
   // An event dragged out of the setup panel lands here as a draft.
   const takesEvents = source === "event";
+  const eventTable = takesEvents ? table : undefined;
+  const eventNameFieldId = getEventNameFieldId(eventTable);
+  const seeds = useEventNameSeeds({
+    table: eventTable,
+    tableQuery,
+    saved,
+    drafts,
+  });
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  // A draft that just landed, maybe far from where it was made, e.g. an
+  // edited seed. It's scrolled into view.
+  const [landedKey, setLandedKey] = useState<string | null>(null);
+  const [modal, setModal] = useState<ModalState>(null);
   const eventDrop = useEventDropTarget({
     onDrop: (event) => {
       if (takesEvents) {
-        addDraft(event);
+        setLandedKey(addDraft(event));
       }
     },
   });
   const eventDropProps = takesEvents ? eventDrop.dropProps : {};
-  const items: PaletteSegment[] = [...saved, ...drafted];
-  // A long list, drafts included, gets a search box at the top.
-  const isSearchable = saved.length + drafted.length >= SEARCH_THRESHOLD;
+
+  const userItems: PaletteSegment[] = [...saved, ...drafted];
+  const itemCount = userItems.length + seeds.length;
+  // A long list, seeds included, gets a search box at the top.
+  const isSearchable = itemCount >= SEARCH_THRESHOLD;
   const [searchText, setSearchText] = useState("");
-  const search = isSearchable ? searchText.trim().toLowerCase() : "";
-  const shownItems =
-    search === ""
-      ? items
-      : items.filter(
-          (segment) =>
-            // A draft being edited stays, even if its name stops matching.
-            segment.key === editingDraftId ||
-            segment.name.toLowerCase().includes(search),
-        );
+  const search = isSearchable ? toSearchText(searchText.trim()) : "";
+  const isShown = (segment: PaletteSegment) =>
+    search === "" ||
+    // A draft being edited stays, even if its name stops matching.
+    segment.key === editingKey ||
+    toSearchText(segment.name).includes(search);
+  const shownUserItems = userItems.filter(isShown);
+  const shownSeeds = seeds.filter(isShown);
   const canEdit = tableQuery !== undefined;
   // Who can create, edit or remove segments in Data Studio can do it from here.
   const canWriteSegments = useSelector((state) =>
@@ -208,6 +232,22 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
   );
   const hasDataStudioAccess = useSelector(canAccessDataStudio);
   const [updateSegment] = useUpdateSegmentMutation();
+
+  const findUserDraft = (key: string) => drafts.find((d) => d.id === key);
+  // A seed is edited and saved like a draft, under its key.
+  const findDraft = (key: string): SegmentDraft | undefined => {
+    const seed = seeds.find((seed) => seed.key === key);
+    return seed !== undefined
+      ? { id: seed.key, name: seed.name, query: seed.query }
+      : findUserDraft(key);
+  };
+  // The row being edited can go away under its editor, e.g. a seed hidden by a
+  // draft dropped onto the panel. Its editor closes, and doesn't come back
+  // if the row does.
+  const isEditing = editingKey !== null && findDraft(editingKey) !== undefined;
+  if (editingKey !== null && !isEditing) {
+    setEditingKey(null);
+  }
 
   const removeSegment = async (segment: Segment) => {
     const { error } = await updateSegment({
@@ -237,6 +277,55 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
     };
   };
 
+  const discardDraft = (draft: SegmentDraft) => {
+    removeDraft(draft.id);
+    sendToast({
+      message: t`Discarded the draft “${draft.name}”`,
+      actionLabel: t`Undo`,
+      action: () => restoreDraft(draft),
+    });
+  };
+
+  const getRowProps = (segment: PaletteSegment): SegmentRowProps => {
+    const draft =
+      segment.status === "draft" ? findDraft(segment.key) : undefined;
+    const userDraft =
+      segment.status === "draft" && !segment.isSeed
+        ? findUserDraft(segment.key)
+        : undefined;
+    return {
+      segment,
+      table,
+      tableQuery,
+      eventNameFieldId,
+      editingDraft: segment.key === editingKey ? draft : undefined,
+      savedActions:
+        segment.status === "saved"
+          ? getSavedActions(segment.segment)
+          : undefined,
+      hasLanded: segment.key === landedKey,
+      onLanded: () => setLandedKey(null),
+      onEdit: () => setEditingKey(segment.key),
+      onCancelEdit: () => setEditingKey(null),
+      onSubmitEdit: (event) => {
+        // An edited seed becomes one of the user's drafts.
+        if (userDraft !== undefined) {
+          updateDraft(userDraft.id, event);
+        } else {
+          setLandedKey(addDraft(event));
+        }
+        setEditingKey(null);
+      },
+      onSave:
+        canWriteSegments && draft !== undefined
+          ? () => setModal({ draft })
+          : undefined,
+      // A seed has nothing to discard; it's there while its event name is.
+      onDiscard:
+        userDraft !== undefined ? () => discardDraft(userDraft) : undefined,
+    };
+  };
+
   if (isLoading || error !== undefined) {
     return <SectionLoader error={error} />;
   }
@@ -257,93 +346,44 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
           {t`Drop to draft a segment from it`}
         </Text>
       )}
-      {shownItems.map((segment) => {
-        const editingDraft =
-          segment.status === "draft" && segment.key === editingDraftId
-            ? findDraft(segment.key)
-            : undefined;
-        if (editingDraft !== undefined && tableQuery !== undefined) {
-          return (
-            <EventDefinitionEditor
-              key={segment.key}
-              value={editingDraft}
-              tableQuery={tableQuery}
-              namePlaceholder={t`Name this draft`}
-              withDrafts={false}
-              onCancel={() => setEditingDraftId(null)}
-              onSubmit={(event) => {
-                updateDraft(editingDraft.id, event);
-                setEditingDraftId(null);
-              }}
-            />
-          );
-        }
-        return (
-          <PaletteSegmentItem
-            key={segment.key}
-            segment={segment}
-            definition={
-              segment.status === "saved" ? (
-                <SegmentDefinition segment={segment.segment} table={table} />
-              ) : undefined
-            }
-            savedActions={
-              segment.status === "saved"
-                ? getSavedActions(segment.segment)
-                : undefined
-            }
-            onEditDraft={() => setEditingDraftId(segment.key)}
-            onSaveDraft={
-              canWriteSegments
-                ? () => {
-                    const draft = findDraft(segment.key);
-                    if (draft !== undefined) {
-                      setModal({ draft });
-                    }
-                  }
-                : undefined
-            }
-            onDiscardDraft={() => {
-              const draft = findDraft(segment.key);
-              if (draft === undefined) {
-                return;
-              }
-              removeDraft(draft.id);
-              sendToast({
-                message: t`Discarded the draft “${draft.name}”`,
-                actionLabel: t`Undo`,
-                action: () => restoreDraft(draft),
-              });
+      {shownUserItems.map((segment) => (
+        <SegmentRow key={segment.key} {...getRowProps(segment)} />
+      ))}
+      {isDrafting && tableQuery !== undefined && (
+        <Box ref={scrollIntoView}>
+          <EventDefinitionEditor
+            value={null}
+            tableQuery={tableQuery}
+            eventNameFieldId={eventNameFieldId}
+            namePlaceholder={t`Name this draft`}
+            withDrafts={false}
+            onCancel={() => setIsDrafting(false)}
+            onSubmit={(event) => {
+              setLandedKey(addDraft(event));
+              setIsDrafting(false);
             }}
           />
-        );
-      })}
-      {items.length === 0 && !isDrafting && (
+        </Box>
+      )}
+      {shownSeeds.map((segment) => (
+        <SegmentRow key={segment.key} {...getRowProps(segment)} />
+      ))}
+      {itemCount === 0 && !isDrafting && (
         <Text px="xxs" c="text-secondary">
           {c("{0} is a table name")
             .t`No segments defined on ${table.display_name} yet.`}
         </Text>
       )}
-      {items.length > 0 && shownItems.length === 0 && (
-        <Text px="xxs" c="text-secondary">
-          {t`No segments match “${searchText.trim()}”.`}
-        </Text>
-      )}
-      {isDrafting && tableQuery !== undefined && (
-        <EventDefinitionEditor
-          value={null}
-          tableQuery={tableQuery}
-          namePlaceholder={t`Name this draft`}
-          withDrafts={false}
-          onCancel={() => setIsDrafting(false)}
-          onSubmit={(event) => {
-            addDraft(event);
-            setIsDrafting(false);
-          }}
-        />
-      )}
-      {!isDrafting && (
-        <Box>
+      {itemCount > 0 &&
+        shownUserItems.length === 0 &&
+        shownSeeds.length === 0 && (
+          <Text px="xxs" c="text-secondary">
+            {t`No segments match “${searchText.trim()}”.`}
+          </Text>
+        )}
+      {!isDrafting && !isEditing && (
+        // Stays in view at the bottom of a list long enough to scroll.
+        <Box className={S.footer}>
           <Button
             variant="light"
             leftSection={<Icon name="add" />}
@@ -368,6 +408,88 @@ const PaletteSection = ({ source, table }: PaletteSectionProps) => {
         />
       )}
     </Stack>
+  );
+};
+
+type SegmentRowProps = {
+  segment: PaletteSegment;
+  table: Table;
+  tableQuery: Lib.Query | undefined;
+  eventNameFieldId: FieldId | undefined;
+  /** The draft being edited in this row, if it is. */
+  editingDraft: SegmentDraft | undefined;
+  savedActions: SavedSegmentActions | undefined;
+  /** Just added, so it's scrolled into view, once. */
+  hasLanded: boolean;
+  onLanded: () => void;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (event: EventDefinition) => void;
+  /** Omitted without permission to write segments. */
+  onSave: (() => void) | undefined;
+  /** Omitted for a seed. */
+  onDiscard: (() => void) | undefined;
+};
+
+/** A segment in the list, or the editor while it's being edited. */
+const SegmentRow = ({
+  segment,
+  table,
+  tableQuery,
+  eventNameFieldId,
+  editingDraft,
+  savedActions,
+  hasLanded,
+  onLanded,
+  onEdit,
+  onCancelEdit,
+  onSubmitEdit,
+  onSave,
+  onDiscard,
+}: SegmentRowProps) => {
+  if (editingDraft !== undefined && tableQuery !== undefined) {
+    return (
+      <Box ref={scrollIntoView}>
+        <EventDefinitionEditor
+          value={editingDraft}
+          tableQuery={tableQuery}
+          eventNameFieldId={eventNameFieldId}
+          namePlaceholder={t`Name this draft`}
+          withDrafts={false}
+          onCancel={onCancelEdit}
+          onSubmit={onSubmitEdit}
+        />
+      </Box>
+    );
+  }
+  return (
+    <Box
+      ref={
+        hasLanded
+          ? (node: HTMLElement | null) => {
+              if (node !== null) {
+                scrollIntoView(node);
+                onLanded();
+              }
+            }
+          : undefined
+      }
+      className={S.row}
+      data-landed={hasLanded}
+    >
+      <PaletteSegmentItem
+        segment={segment}
+        definition={
+          segment.status === "saved" ? (
+            <SegmentDefinition segment={segment.segment} table={table} />
+          ) : undefined
+        }
+        savedActions={savedActions}
+        onEditDraft={onEdit}
+        onSaveDraft={onSave}
+        onDiscardDraft={onDiscard}
+      />
+    </Box>
   );
 };
 

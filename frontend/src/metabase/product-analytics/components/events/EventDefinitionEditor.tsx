@@ -6,6 +6,7 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { Button, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { FieldId } from "metabase-types/api";
 
 import { getConditionsName } from "../../events/conditions-name";
 import { readEventQuery } from "../../events/read-event-query";
@@ -21,6 +22,8 @@ type EventDefinitionEditorProps = {
   value: EventDefinition | null;
   tableQuery: Lib.Query;
   namePlaceholder?: string;
+  /** The event name column's field, so one condition on it names the event. */
+  eventNameFieldId?: FieldId;
   /** Lists this session's drafts in the condition picker, after saved segments. */
   withDrafts?: boolean;
   onCancel: () => void;
@@ -30,14 +33,16 @@ type EventDefinitionEditorProps = {
 /**
  * Edits a draft of an event's conditions and name until it's submitted, by the
  * Done button, Enter in the name, or a click outside the editor. A click
- * outside cancels it instead when it can't be submitted. The name follows the
- * conditions until the user changes it.
+ * outside cancels it instead when it can't be submitted. Submitting an event
+ * without changing it cancels too. The name follows the conditions until the
+ * user changes it.
  */
 export const EventDefinitionEditor = ({
   id,
   value,
   tableQuery,
   namePlaceholder = t`Give this set of conditions a name`,
+  eventNameFieldId,
   withDrafts = true,
   onCancel,
   onSubmit,
@@ -47,13 +52,17 @@ export const EventDefinitionEditor = ({
     () => (value && readEventQuery(metadataProvider, value)) ?? tableQuery,
   );
   const [customName, setCustomName] = useState(() =>
-    value && value.name !== getConditionsName(query) ? value.name : null,
+    value && value.name !== getConditionsName(query, eventNameFieldId)
+      ? value.name
+      : null,
   );
   // The name as typed, which EditableText only commits on blur. Enter is
   // handled before that blur commits, so it submits this instead.
   const [draftName, setDraftName] = useState<string | null>(null);
+  const [hasEditedConditions, setHasEditedConditions] = useState(false);
   const filters = Lib.filters(query, STAGE_INDEX);
-  const committedName = customName ?? getConditionsName(query);
+  const committedName =
+    customName ?? getConditionsName(query, eventNameFieldId);
   const name = draftName?.trim() || committedName;
   const canSubmit = name !== "" && filters.length > 0;
 
@@ -64,8 +73,17 @@ export const EventDefinitionEditor = ({
     }
   };
 
+  const handleConditionsChange = (newQuery: Lib.Query) => {
+    setQuery(newQuery);
+    setHasEditedConditions(true);
+  };
+
   const handleSubmit = () => {
-    if (canSubmit) {
+    const isUnchanged =
+      value !== null && !hasEditedConditions && name === value.name;
+    if (isUnchanged) {
+      onCancel();
+    } else if (canSubmit) {
       onSubmit({ name, query: Lib.toJsQuery(query) });
     }
   };
@@ -114,7 +132,7 @@ export const EventDefinitionEditor = ({
       </Group>
       <ConditionsEditor
         query={query}
-        onChange={setQuery}
+        onChange={handleConditionsChange}
         initialOpened={filters.length === 0}
         withDrafts={withDrafts}
       />

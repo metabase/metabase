@@ -20,7 +20,8 @@
   cursor: pointer;
 }
 
-.item[data-status="draft"] {
+/* A seed is a suggestion until the user edits or saves it. */
+.item[data-seed="true"] {
   border-style: dashed;
 }
 

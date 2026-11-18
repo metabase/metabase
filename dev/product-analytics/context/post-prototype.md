@@ -194,6 +194,20 @@ So that a saved analysis still works elsewhere, an analysis that uses a draft co
 
 After the prototype, drafts need a home on the server, per person, whether that's a draft state on the segment model or something of their own. An analysis could then keep a draft by id like a saved segment, and follow it when it's saved.
 
+### Seeded drafts
+
+With an event name column, the event segments panel suggests a draft per event name, so an event like `signup` is usable without defining a segment first (`segments/use-event-name-seeds.ts`). Seeds aren't stored: they're computed from the column's field values, after the saved segments and the user's drafts, and hidden when a saved segment or draft picks exactly that event name. Editing or saving one makes it the user's. Seeds are left out of the pickers, where picking the event name column and a value gets the same thing.
+
+Field values are a stand-in. They come from the scan, so:
+
+- **They can be missing.** A field marked "search" or "none", a hidden one, or a failed fetch has none, and the panel shows no seeds.
+- **They're capped and alphabetical.** At most 1000 distinct values, or about 100k characters, sorted by value, not by how often each event happens.
+- **They can be stale.** A new event appears after the next scan, a retired one lingers, and with scanning turned off values in active use may never refresh.
+
+A cached query like `SELECT event_name, count() … WHERE ts > now() - 30 days GROUP BY 1 ORDER BY 2 DESC LIMIT 200` would give fresh event names ordered by volume, drop dead ones, and not depend on scan settings.
+
+The panel gives no sign when seeds are missing or cut off: its search only filters what's listed. The query builder's value picker shows a way: it lists cached values when the list is complete, and searches the database (`GET /api/field/:id/search/:search-id`) when the field is search-only or its values have `has_more_values` (`querying/common/components/FieldValuePicker/utils.ts`). The panel's search could do the same, so a search for an event name not in the list still finds it as a seed.
+
 ## The people table
 
 People segments, person properties in the filter and breakout pickers, and person drills read a people table: the table the person column's foreign key points to (`getUsersTableLink` in `metabase/event-tables`). It stays a foreign key in table metadata, not a product analytics setting, so the rest of Metabase gets the implicit joins too: "Page views by company over time" in the query builder is something pure-play product analytics tools can't do.

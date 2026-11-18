@@ -6,6 +6,7 @@ import type { SettingWidgetProps } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import type { Table } from "metabase-types/api";
 
+import { getEventNameFieldId } from "../../events/event-name";
 import type { EventDefinition } from "../../events/types";
 import { useSegmentDrag } from "../../segments/drag-context";
 import {
@@ -47,6 +48,7 @@ export const EventDefinitionWidget = ({
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+  const eventNameFieldId = getEventNameFieldId(table);
 
   const handleSubmit = (newValue: EventDefinition) => {
     onChange(newValue);
@@ -68,7 +70,13 @@ export const EventDefinitionWidget = ({
       }
       return value === null
         ? segmentToEventDefinition(tableQuery, metadataProvider, segment)
-        : addSegmentToEvent(tableQuery, metadataProvider, value, segment);
+        : addSegmentToEvent(
+            tableQuery,
+            metadataProvider,
+            value,
+            segment,
+            eventNameFieldId,
+          );
     })();
     if (event === undefined) {
       sendToast({
@@ -87,6 +95,7 @@ export const EventDefinitionWidget = ({
         id={id}
         value={value}
         tableQuery={tableQuery}
+        eventNameFieldId={eventNameFieldId}
         onCancel={() => setIsEditing(false)}
         onSubmit={handleSubmit}
       />

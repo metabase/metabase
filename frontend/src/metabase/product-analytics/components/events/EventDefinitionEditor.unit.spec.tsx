@@ -96,8 +96,8 @@ describe("EventDefinitionEditor", () => {
     expect(getName()).toHaveValue("Big order");
   });
 
-  it("restores the name when it's cleared", async () => {
-    const { onSubmit } = setup({
+  it("restores the name when it's cleared, leaving the event unchanged", async () => {
+    const { onCancel, onSubmit } = setup({
       value: createMockEventDefinition({ name: "Big order", filters: FILTERS }),
     });
 
@@ -105,10 +105,10 @@ describe("EventDefinitionEditor", () => {
     await userEvent.tab();
     expect(getName()).toHaveValue("Big order");
 
+    // Submitting an unchanged event cancels the edit instead.
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Big order" }),
-    );
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("can't be submitted once its last condition is removed", async () => {

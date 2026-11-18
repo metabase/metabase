@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, FieldId } from "metabase-types/api";
 
 import { getConditionsName } from "../events/conditions-name";
 import { readEventQuery } from "../events/read-event-query";
@@ -61,6 +61,7 @@ export const addSegmentToEvent = (
   metadataProvider: Lib.MetadataProvider,
   event: EventDefinition,
   segment: PaletteSegment,
+  eventNameFieldId?: FieldId,
 ): EventDefinition | undefined => {
   const query = readEventQuery(metadataProvider, event);
   const filterables = segmentFilterables(tableQuery, metadataProvider, segment);
@@ -71,9 +72,11 @@ export const addSegmentToEvent = (
     (current, filterable) => Lib.filter(current, STAGE_INDEX, filterable),
     query,
   );
-  const isAutoNamed = event.name === getConditionsName(query);
+  const isAutoNamed = event.name === getConditionsName(query, eventNameFieldId);
   return {
-    name: isAutoNamed ? getConditionsName(nextQuery) : event.name,
+    name: isAutoNamed
+      ? getConditionsName(nextQuery, eventNameFieldId)
+      : event.name,
     query: Lib.toJsQuery(nextQuery),
   };
 };
