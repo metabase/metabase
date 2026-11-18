@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -484,7 +485,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (sync/schedule-table-sync! (:id table)))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

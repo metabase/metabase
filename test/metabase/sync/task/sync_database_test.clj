@@ -4,33 +4,79 @@
    [metabase.sync.analyze :as analyze]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-database :as task.sync-database]
-   [metabase.sync.task.util-test :as sync.task.util-test]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util.quick-task :as quick-task])
   (:import
    (metabase.sync.task.sync_database SyncDatabase)
-   (org.quartz Job)))
+   (org.quartz Job JobDataMap JobDetail JobExecutionContext SimpleTrigger Trigger)))
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel annotations-test
-  (is (.isAnnotationPresent SyncDatabase org.quartz.DisallowConcurrentExecution)))
+(defn- job-context
+  "A job context that carries `database-id`."
+  ^JobExecutionContext [database-id]
+  (reify JobExecutionContext
+    (getMergedJobDataMap [_] (JobDataMap. {"id" database-id}))))
 
-(deftest schedule-database-sync-uses-sync-database-job-test
-  (is (= {:job-class SyncDatabase, :id 7}
-         (sync.task.util-test/scheduled-run! #(task.sync-database/schedule-database-sync! 7)))))
+(deftest ^:parallel job-and-trigger-test
+  (let [^JobDetail job         (#'task.sync-database/job 7)
+        ^SimpleTrigger trigger (#'task.sync-database/trigger 7)]
+    (testing "job allows one run at a time"
+      (is (= SyncDatabase (.getJobClass job)))
+      (is (.isAnnotationPresent SyncDatabase org.quartz.DisallowConcurrentExecution)))
+    (testing "keys are fixed per Database"
+      (is (= "metabase.task.sync-database.job.7" (.getName (.getKey job))))
+      (is (= (.getKey job) (.getJobKey trigger)))
+      (is (= "metabase.task.sync-database.trigger.7" (.getName (.getKey trigger)))))
+    (testing "job carries Database id and is deleted with its last trigger"
+      (is (= 7 (get (.getJobDataMap job) "id")))
+      (is (not (.isDurable job))))
+    (testing "trigger fires once however long it waits"
+      (is (= 0 (.getRepeatCount trigger)))
+      (is (= Trigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY (.getMisfireInstruction trigger))))))
 
-(deftest sync-database-runs-in-job-and-without-scheduler-test
+(defn- sync-calls!
+  "Call `thunk` and return the calls of the Database sync steps that it made."
+  [thunk]
   (let [calls (atom [])]
-    (mt/with-temp [:model/Database {database-id :id} {}]
-      (mt/with-dynamic-fn-redefs [quick-task/submit-task!                  (fn [task] (task))
-                                  sync-metadata/sync-db-metadata-explicit! #(swap! calls conj [:sync %])
-                                  analyze/analyze-db-explicit!             #(swap! calls conj [:analyze %])]
-        (.execute ^Job (SyncDatabase.) (sync.task.util-test/job-context database-id))
-        (task.sync-database/schedule-database-sync! database-id)
-        (is (= [[:sync database-id] [:analyze database-id] [:sync database-id] [:analyze database-id]]
-               @calls))
-        (testing "Database that does not exist is skipped"
-          (reset! calls [])
-          (task.sync-database/schedule-database-sync! Integer/MAX_VALUE)
-          (is (= [] @calls)))))))
+    (mt/with-dynamic-fn-redefs [sync-metadata/sync-db-metadata-explicit! #(swap! calls conj [:sync %])
+                                analyze/analyze-db-explicit!             #(swap! calls conj [:analyze %])]
+      (thunk))
+    @calls))
+
+(deftest schedule-database-sync-with-scheduler-test
+  (let [scheduled (atom [])]
+    (mt/with-dynamic-fn-redefs [task/schedule-once! (fn [^JobDetail job ^Trigger trigger]
+                                                      (swap! scheduled conj [(.getName (.getKey job))
+                                                                             (.getName (.getKey trigger))])
+                                                      true)]
+      (is (= [] (sync-calls! #(task.sync-database/schedule-database-sync! (mt/id)))))
+      (is (= [[(format "metabase.task.sync-database.job.%d" (mt/id))
+               (format "metabase.task.sync-database.trigger.%d" (mt/id))]]
+             @scheduled)))))
+
+(deftest schedule-database-sync-without-scheduler-test
+  (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
+    (is (= [[:sync (mt/id)] [:analyze (mt/id)]]
+           (sync-calls! #(task.sync-database/schedule-database-sync! (mt/id)))))
+    (testing "Database that does not exist is skipped"
+      (is (= [] (sync-calls! #(task.sync-database/schedule-database-sync! Integer/MAX_VALUE)))))))
+
+(deftest sync-database-job-test
+  (is (= [[:sync (mt/id)] [:analyze (mt/id)]]
+         (sync-calls! #(.execute ^Job (SyncDatabase.) (job-context (mt/id))))))
+  (testing "thrown exception is rethrown"
+    (mt/with-dynamic-fn-redefs [sync-metadata/sync-db-metadata-explicit! (fn [_] (throw (ex-info "no connection" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no connection"
+                            (.execute ^Job (SyncDatabase.) (job-context (mt/id)))))))
+  (testing "sync is interrupted at timeout"
+    (let [interrupted (promise)]
+      (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms               (constantly 2000)
+                                  sync-metadata/sync-db-metadata-explicit! (fn [_]
+                                                                             (try
+                                                                               (Thread/sleep 60000)
+                                                                               (catch InterruptedException _
+                                                                                 (deliver interrupted true))))]
+        (.execute ^Job (SyncDatabase.) (job-context (mt/id))))
+      (is (true? (deref interrupted 5000 :not-interrupted))))))

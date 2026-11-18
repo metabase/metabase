@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-studio.db :as data-studio.db]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -211,7 +212,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (sync/schedule-table-sync! (:id table)))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.

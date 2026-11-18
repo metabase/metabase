@@ -162,7 +162,6 @@
     "metabase.sync.task.sync_database.SyncDatabase"
     "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"
     "metabase.sync.task.sync_databases.UpdateFieldValues"
-    "metabase.sync.task.sync_table.SyncTable"
     "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"
     "metabase.transforms.canceling.CancelOldTransformRuns"
     "metabase.transforms.notification.SendTransformFailureDigest"
