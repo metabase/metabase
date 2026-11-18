@@ -119,7 +119,8 @@
    :nfc_path          mi/transform-json
    :json_unfolding    mi/transform-boolean})
 
-(t2/deftransforms :model/Field field-transforms)
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (t2/deftransforms model field-transforms))
 
 (doto :model/Field
   (derive :metabase/model)
@@ -134,9 +135,27 @@
 (methodical/defmethod change-log/ignored-columns :model/Field [_model]
   #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
 
-(t2/define-after-select :model/Field
-  [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (t2/define-after-select model
+    [field]
+    (dissoc field :is_defective_duplicate :unique_field_helper)))
+
+;;; ----------------------------------------------------- Overlay ------------------------------------------------------
+
+(methodical/defmethod t2/table-name :model/FieldOverlay [_model] :v_field_overlay)
+
+(derive :model/FieldOverlay :metabase/model)
+
+(defn- read-only-overlay
+  "Throws for a write through :model/FieldOverlay, which reads the Fields users see from a view."
+  [_row]
+  (throw (ex-info (format "%s is read-only; write %s instead" :model/FieldOverlay :model/Field) {:model :model/FieldOverlay})))
+
+(t2/define-before-insert :model/FieldOverlay [row] (read-only-overlay row))
+
+(t2/define-before-update :model/FieldOverlay [row] (read-only-overlay row))
+
+(t2/define-before-delete :model/FieldOverlay [row] (read-only-overlay row))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
@@ -207,15 +226,17 @@
             (vary-meta field assoc k answer)
             (assoc field k answer)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :can_read]
-  "Whether the current user can read each of `fields`, which they can when they read its Table."
-  [_model k fields]
-  (hydrate-table-permission k fields))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :can_read]
+    "Whether the current user can read each of `fields`, which they can when they read its Table."
+    [_model k fields]
+    (hydrate-table-permission k fields)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :can_query]
-  "Whether the current user can query each of `fields`, which they can when they query its Table."
-  [_model k fields]
-  (hydrate-table-permission k fields))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :can_query]
+    "Whether the current user can query each of `fields`, which they can when they query its Table."
+    [_model k fields]
+    (hydrate-table-permission k fields)))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
@@ -227,13 +248,14 @@
     (and (collection/remote-sync-writable-table? table)
          (mi/superuser?))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
-  "Whether the current user can change the metadata of each of `fields`, their Tables hydrated first."
-  [_model k fields]
-  (let [writable (u/index-by :id (comp boolean current-user-can-write-field?) (t2/hydrate (remove nil? fields) :table))]
-    (for [field fields]
-      (when field
-        (assoc field k (boolean (get writable (:id field))))))))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :can_write]
+    "Whether the current user can change the metadata of each of `fields`, their Tables hydrated first."
+    [_model k fields]
+    (let [writable (u/index-by :id (comp boolean current-user-can-write-field?) (t2/hydrate (remove nil? fields) :table))]
+      (for [field fields]
+        (when field
+          (assoc field k (boolean (get writable (:id field)))))))))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -397,12 +419,13 @@
   [{:keys [table_id]}]
   (warehouse-schema.db/table table_id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :parent]
-  [_model k fields]
-  (mi/instances-with-hydrated-data
-   fields k
-   #(warehouse-schema.db/fields-by-id (map :parent_id fields))
-   :parent_id))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :parent]
+    [_model k fields]
+    (mi/instances-with-hydrated-data
+     fields k
+     #(warehouse-schema.db/fields-by-id (map :parent_id fields))
+     :parent_id)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

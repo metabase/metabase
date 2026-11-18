@@ -130,22 +130,23 @@
    :silver :final
    :gold   :final})
 
-(t2/deftransforms :model/Table
-  {:entity_type             mi/transform-keyword
-   :is_published            mi/transform-boolean
-   :show_in_getting_started mi/transform-boolean
-   :visibility_type         mi/transform-keyword
-   :data_layer              (mi/transform-validator-with-fixes
-                             mi/transform-keyword
-                             (partial mi/assert-optional-enum data-layers)
-                             (some-fn legacy-data-layer->current identity))
-   :field_order             mi/transform-keyword
-   :data_source             (mi/transform-validator-with-fixes
-                             mi/transform-keyword
-                             (partial mi/assert-optional-enum data-sources)
-                             (some-fn keyword identity))
-   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority          transform-data-authority})
+(doseq [model [:model/Table :model/TableOverlay]]
+  (t2/deftransforms model
+    {:entity_type             mi/transform-keyword
+     :is_published            mi/transform-boolean
+     :show_in_getting_started mi/transform-boolean
+     :visibility_type         mi/transform-keyword
+     :data_layer              (mi/transform-validator-with-fixes
+                               mi/transform-keyword
+                               (partial mi/assert-optional-enum data-layers)
+                               (some-fn legacy-data-layer->current identity))
+     :field_order             mi/transform-keyword
+     :data_source             (mi/transform-validator-with-fixes
+                               mi/transform-keyword
+                               (partial mi/assert-optional-enum data-sources)
+                               (some-fn keyword identity))
+     ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
+     :data_authority          transform-data-authority}))
 
 (mi/define-batched-hydration-method with-table
   :table
@@ -157,9 +158,27 @@
     (for [instance instances]
       (m/assoc-some instance :table (get id->table (:table_id instance))))))
 
-(t2/define-after-select :model/Table
-  [table]
-  (dissoc table :is_defective_duplicate :unique_table_helper))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (t2/define-after-select model
+    [table]
+    (dissoc table :is_defective_duplicate :unique_table_helper)))
+
+;;; ----------------------------------------------------- Overlay ------------------------------------------------------
+
+(methodical/defmethod t2/table-name :model/TableOverlay [_model] :v_table_overlay)
+
+(derive :model/TableOverlay :metabase/model)
+
+(defn- read-only-overlay
+  "Throws for a write through :model/TableOverlay, which reads the Tables users see from a view."
+  [_row]
+  (throw (ex-info (format "%s is read-only; write %s instead" :model/TableOverlay :model/Table) {:model :model/TableOverlay})))
+
+(t2/define-before-insert :model/TableOverlay [row] (read-only-overlay row))
+
+(t2/define-before-update :model/TableOverlay [row] (read-only-overlay row))
+
+(t2/define-before-delete :model/TableOverlay [row] (read-only-overlay row))
 
 (defn validate-user-changes!
   "Throw a 400 for a change in `changes` a user is not allowed to make to `original-table`."
@@ -342,31 +361,33 @@
                               (perms/at-least-as-permissive? :perms/create-queries (get create-queries %) :query-builder))))
           tables)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :can_read]
-  "Whether the current user can see the metadata of each of `tables`: those they can query, and those whose metadata
-  they manage."
-  [_model k tables]
-  (let [rows (into [] (remove nil?) tables)]
-    (run! check-permission-keys rows)
-    (let [queryable (queryable-table-ids rows)
-          others    (into [] (remove #(contains? queryable (:id %))) rows)
-          manage    (if (seq others)
-                      (table-permissions :perms/manage-table-metadata others)
-                      {})]
-      (for [table tables]
-        (when table
-          (vary-meta table assoc k (boolean (or (contains? queryable (:id table))
-                                                (= :yes (get manage (:id table)))))))))))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :can_read]
+    "Whether the current user can see the metadata of each of `tables`: those they can query, and those whose metadata
+    they manage."
+    [_model k tables]
+    (let [rows (into [] (remove nil?) tables)]
+      (run! check-permission-keys rows)
+      (let [queryable (queryable-table-ids rows)
+            others    (into [] (remove #(contains? queryable (:id %))) rows)
+            manage    (if (seq others)
+                        (table-permissions :perms/manage-table-metadata others)
+                        {})]
+        (for [table tables]
+          (when table
+            (vary-meta table assoc k (boolean (or (contains? queryable (:id table))
+                                                  (= :yes (get manage (:id table))))))))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :can_query]
-  "Whether the current user can run queries against each of `tables`."
-  [_model k tables]
-  (let [rows (into [] (remove nil?) tables)]
-    (run! check-permission-keys rows)
-    (let [queryable (queryable-table-ids rows)]
-      (for [table tables]
-        (when table
-          (assoc table k (contains? queryable (:id table))))))))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :can_query]
+    "Whether the current user can run queries against each of `tables`."
+    [_model k tables]
+    (let [rows (into [] (remove nil?) tables)]
+      (run! check-permission-keys rows)
+      (let [queryable (queryable-table-ids rows)]
+        (for [table tables]
+          (when table
+            (assoc table k (contains? queryable (:id table)))))))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
@@ -376,33 +397,35 @@
   (and (collection/remote-sync-writable-table? instance)
        (mi/superuser?)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
-  "Whether the current user can change the metadata of each of `tables`."
-  [_model k tables]
-  (let [publication (when (remote-sync/read-only?)
-                      (warehouse-schema.db/table-publication-columns (into [] (comp (keep :id) (distinct)) tables)))]
-    (for [table tables]
-      (when table
-        (check-permission-keys table)
-        (assoc table k (boolean (current-user-can-write-table? (merge table (get publication (:id table))))))))))
-
-(methodical/defmethod t2/batched-hydrate [:model/Table :owner]
-  "Add owner (user) to a table. If owner_user_id is set, fetches the user.
-   If owner_email is set instead, returns a map with just the email."
-  [_model _k tables]
-  (if-not (seq tables)
-    tables
-    (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
-          id->owner (when (seq owner-user-ids)
-                      (warehouse-schema.db/user-summaries-by-id owner-user-ids))]
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :can_write]
+    "Whether the current user can change the metadata of each of `tables`."
+    [_model k tables]
+    (let [publication (when (remote-sync/read-only?)
+                        (warehouse-schema.db/table-publication-columns (into [] (comp (keep :id) (distinct)) tables)))]
       (for [table tables]
-        (assoc table :owner
-               (cond
-                 (:owner_user_id table)
-                 (get id->owner (:owner_user_id table))
+        (when table
+          (check-permission-keys table)
+          (assoc table k (boolean (current-user-can-write-table? (merge table (get publication (:id table)))))))))))
 
-                 (:owner_email table)
-                 {:email (:owner_email table)}))))))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :owner]
+    "Add owner (user) to a table. If owner_user_id is set, fetches the user.
+     If owner_email is set instead, returns a map with just the email."
+    [_model _k tables]
+    (if-not (seq tables)
+      tables
+      (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
+            id->owner (when (seq owner-user-ids)
+                        (warehouse-schema.db/user-summaries-by-id owner-user-ids))]
+        (for [table tables]
+          (assoc table :owner
+                 (cond
+                   (:owner_user_id table)
+                   (get id->owner (:owner_user_id table))
+
+                   (:owner_email table)
+                   {:email (:owner_email table)})))))))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 
@@ -427,37 +450,40 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :field_values]
-  "Return the FieldValues for all Fields belonging to a single `table`."
-  [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   #(-> (group-by :table_id (warehouse-schema.db/full-field-values-for-tables (map :id tables)))
-        (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
-   :id))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :field_values]
+    "Return the FieldValues for all Fields belonging to a single `table`."
+    [_model k tables]
+    (mi/instances-with-hydrated-data
+     tables k
+     #(-> (group-by :table_id (warehouse-schema.db/full-field-values-for-tables (map :id tables)))
+          (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
+     :id)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :transform]
-  "Hydrate transforms that created the tables."
-  [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   #(let [transform-ids (->> tables (keep :transform_id) distinct)
-          id->transform (when (seq transform-ids)
-                          (warehouse-schema.db/transforms-by-id transform-ids))]
-      (into {}
-            (keep (fn [{:keys [id transform_id]}]
-                    (when transform_id
-                      [id (get id->transform transform_id)])))
-            tables))
-   :id
-   {:default nil}))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :transform]
+    "Hydrate transforms that created the tables."
+    [_model k tables]
+    (mi/instances-with-hydrated-data
+     tables k
+     #(let [transform-ids (->> tables (keep :transform_id) distinct)
+            id->transform (when (seq transform-ids)
+                            (warehouse-schema.db/transforms-by-id transform-ids))]
+        (into {}
+              (keep (fn [{:keys [id transform_id]}]
+                      (when transform_id
+                        [id (get id->transform transform_id)])))
+              tables))
+     :id
+     {:default nil})))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
-  [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   #(warehouse-schema.db/pk-field-ids-by-table (map :id tables))
-   :id))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :pk_field]
+    [_model k tables]
+    (mi/instances-with-hydrated-data
+     tables k
+     #(warehouse-schema.db/pk-field-ids-by-table (map :id tables))
+     :id)))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))

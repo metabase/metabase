@@ -1,0 +1,77 @@
+## Views of Tables and Fields as users see them: the values in metabase_table and metabase_field, overlaid with the ones
+## users set in metabase_table_user_settings and metabase_field_user_settings.
+
+databaseChangeLog:
+  - changeSet:
+      id: tfo1vw
+      author: ranquild
+      comment: Add v_field_overlay, metabase_field with the values users set in metabase_field_user_settings
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../overlay_views/field_overlay/v1/postgres-field_overlay.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../overlay_views/field_overlay/v1/mysql-field_overlay.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../overlay_views/field_overlay/v1/h2-field_overlay.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_field_overlay
+
+  - changeSet:
+      id: tfo2vw
+      author: ranquild
+      comment: Add v_table_overlay, metabase_table with the values users set in metabase_table_user_settings
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../overlay_views/table_overlay/v1/postgres-table_overlay.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../overlay_views/table_overlay/v1/mysql-table_overlay.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../overlay_views/table_overlay/v1/h2-table_overlay.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_table_overlay
+
+  - changeSet:
+      id: tfo3vt
+      author: ranquild
+      comment: Update v_tables to show display_name, description, entity_type, visibility_type, owner_email and
+        owner_user_id as users see them, overlaying metabase_table_user_settings
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/tables/v4/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/tables/v4/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/tables/v4/h2-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/tables/v3/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/tables/v3/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/tables/v3/h2-tables.sql
+            relativeToChangelogFile: true

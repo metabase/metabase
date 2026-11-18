@@ -367,6 +367,7 @@
     :model/ExplorationQueryResult
     :model/ExplorationThread
     :model/ExplorationThreadTimeline
+    :model/FieldOverlay
     :model/FieldValues
     :model/Glossary
     :model/ImpersonationQueryCache
@@ -432,6 +433,7 @@
     :model/StoredResultUse
     :model/SupportAccessGrantLog
     :model/TableIndex
+    :model/TableOverlay
     :model/TableRemapping
     :model/TableUserSettings
     :model/TaskHistory
