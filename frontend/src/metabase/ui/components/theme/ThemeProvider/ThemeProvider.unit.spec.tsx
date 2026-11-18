@@ -85,9 +85,10 @@ describe("ThemeProvider theme override", () => {
     expect(theme.colors["text-primary"]).toEqual(
       METABASE_THEME.colors!["text-primary"],
     );
-    expect(theme.other.popover.zIndex).toBe(
-      DEFAULT_METABASE_COMPONENT_THEME.popover.zIndex,
-    );
+    const popover: unknown = theme.other.popover;
+    expect(popover).toMatchObject({
+      zIndex: DEFAULT_METABASE_COMPONENT_THEME.popover.zIndex,
+    });
   });
 
   it("replaces primitives and colour tuples from the override", () => {
@@ -111,7 +112,8 @@ describe("ThemeProvider theme override", () => {
     expect(theme.colors["text-secondary"]).toEqual(
       METABASE_THEME.colors!["text-secondary"],
     );
-    expect(theme.components.Popover.defaultProps.radius).toBe("md");
+    const popoverProps: unknown = theme.components.Popover.defaultProps;
+    expect(popoverProps).toMatchObject({ radius: "md" });
   });
 
   it("merges nested objects key by key", () => {
@@ -122,7 +124,7 @@ describe("ThemeProvider theme override", () => {
       colors: { "text-primary": tuple },
       other: { popover: { zIndex: 9999 } },
       components: {
-        Popover: { defaultProps: { portalProps } },
+        Tooltip: { defaultProps: { portalProps, events: { focus: false } } },
       },
     });
 
@@ -131,14 +133,18 @@ describe("ThemeProvider theme override", () => {
     expect(theme.colors["text-secondary"]).toEqual(
       METABASE_THEME.colors!["text-secondary"],
     );
-    expect(theme.other.popover.zIndex).toBe(9999);
-    expect(theme.other.collectionBrowser).toEqual(
-      METABASE_THEME.other!.collectionBrowser,
+    const popover: unknown = theme.other.popover;
+    const collectionBrowser: unknown = theme.other.collectionBrowser;
+    const tooltipProps: unknown = theme.components.Tooltip.defaultProps;
+    expect(popover).toMatchObject({ zIndex: 9999 });
+    expect(collectionBrowser).toEqual(
+      DEFAULT_METABASE_COMPONENT_THEME.collectionBrowser,
     );
-    expect(theme.components.Popover.defaultProps.portalProps).toEqual(
+    expect(tooltipProps).toMatchObject({
       portalProps,
-    );
-    expect(theme.components.Popover.defaultProps.radius).toBe("md");
-    expect(theme.components.Popover.defaultProps.withinPortal).toBe(true);
+      events: { hover: true, focus: false, touch: true },
+      transitionProps: { transition: "fade" },
+      withinPortal: true,
+    });
   });
 });
