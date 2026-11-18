@@ -47,15 +47,10 @@
   "A goal is a single value, so its source must produce one row."
   1)
 
-(def ^:private model->query-key
-  "Where each goal source model keeps its runnable query."
-  {:model/Card    :dataset_query
-   :model/Measure :definition})
-
 (def ^:private source-models
-  "`{:model :query-key}` per source type, for the types a dynamic goal can reference."
+  "`{:model :query-key}` per source type a dynamic goal can reference; `:query-key` is where the model keeps its query."
   (update-vals viz.dynamic-goals/goal-entity-models
-               (fn [model] {:model model, :query-key (model->query-key model)})))
+               (fn [model] {:model model, :query-key ({:model/Card :dataset_query, :model/Measure :definition} model)})))
 
 (def sources-schema
   "Schema for the sources a client asks [[goal-values]] for."
@@ -233,10 +228,14 @@
         (let [message (tru "Could not check whether this goal source may be used.")]
           (into {} (map (fn [{source-type :type, :keys [id]}] [[source-type id] message])) sources))))))
 
-(defn- run-sources
-  "Results of `sources` as `{type-string {id-string result}}`, one source at a time. Past [[max-sources]] a source fails
-  with `too-many-sources`; once the caller is canceled the rest get no entry."
-  [sources {:keys [check-sources] :as opts}]
+(defn goal-values
+  "Results of `sources` as `{type-string {id-string result}}`, one source at a time under the caller's bindings, each
+  read-checked. Past [[max-sources]] a source fails with `too-many-sources`; once the caller is canceled the rest get no
+  entry.
+
+  `:check-sources` returns `{[type id] message}` for the deduped sources that may not run (data-app refusals),
+  `:dashboard-id` picks card cache strategies and is recorded with each run, `:ignore-cache?` skips cached results."
+  [sources & {:keys [check-sources] :as opts}]
   (let [sources         (dedupe-sources sources)
         [allowed extra] (split-at max-sources sources)
         refused         (refusals check-sources allowed)
@@ -250,16 +249,6 @@
     (merge-with merge
                 (results-map allowed results)
                 (results-map extra (map over-the-limit extra)))))
-
-(defn goal-values
-  "Signed-in path. Runs `sources` as the current user, read-checking each one.
-
-  `:check-sources` returns `{[type id] message}` for the deduped sources that may not run (data-app refusals),
-  `:dashboard-id` picks card cache strategies and is recorded with each run, `:ignore-cache?` skips cached results."
-  [sources & {:keys [dashboard-id ignore-cache? check-sources]}]
-  (run-sources sources {:dashboard-id  dashboard-id
-                        :ignore-cache? ignore-cache?
-                        :check-sources check-sources}))
 
 ;;; ------------------------------------------------- Chart sources --------------------------------------------------
 
@@ -298,16 +287,14 @@
   "In-process callers (notifications, dashboard PDF, slackbot, static viz): goals `card` draws on `dashcard`, run under
   the caller's current bindings. `:anonymous?` replaces error texts with a generic one."
   [card dashcard & {:keys [dashboard-id ignore-cache? anonymous?]}]
-  (cond-> (run-sources (chart-goal-sources card dashcard) {:dashboard-id  dashboard-id
-                                                          :ignore-cache? ignore-cache?})
+  (cond-> (goal-values (chart-goal-sources card dashcard) :dashboard-id dashboard-id :ignore-cache? ignore-cache?)
     anonymous? scrub-errors))
 
 (defn assoc-chart-goal-values
   "`result` (a completed QP result for `card` on `dashcard`) with its [[chart-goal-values]] under
   `[:data :referenced_entities]`, where static rendering reads them. Never throws; a chart with no goals runs nothing."
   [result card dashcard & {:as opts}]
-  (if (and (= :completed (:status result))
-           (seq (chart-goal-sources card dashcard)))
+  (if (= :completed (:status result))
     (try
       (if-let [values (not-empty (chart-goal-values card dashcard opts))]
         (assoc-in result [:data :referenced_entities] values)
