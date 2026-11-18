@@ -6,7 +6,9 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.pulse.core :as pulse]
+   [metabase.util :as u]
    [metabase.util.events :as u.events]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -27,11 +29,60 @@
   operation without being what it is about."
   #{:model/ApiKey :model/CacheConfig :model/Database})
 
+(def ^:private ignored-columns
+  "For each model, the columns whose change alone is not a user action to record, `:default` being the counters and
+  timestamps that every model has."
+  {:default         #{:updated_at :view_count :last_used_at :last_viewed_at :cache_invalidated_at :last_query_start
+                      :collection_position :entity_id}
+   :model/Dashboard #{:position}
+   :model/Database  #{:initial_sync_status :dbms_version :timezone}
+   :model/Measure   #{:dimensions :dimension_mappings}
+   :model/Transform #{:last_checkpoint_value :target_table_id :table_dependencies}
+   :model/User      #{:last_login :deactivated_at :is_active :password :password_salt :reset_token :reset_triggered
+                      :is_qbnewb :settings}})
+
+(defn- ignored-column?
+  [model column]
+  (or (contains? (ignored-columns :default) column)
+      (contains? (get ignored-columns model) column)))
+
+(defn- model-overrides
+  "The overrides that a user can set in the columns of `metadata` that `other` has too, by column name."
+  [metadata other]
+  (let [names (into #{} (map :name) other)
+        keys* (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false))]
+    (into {}
+          (comp (filter (comp names :name))
+                (map (juxt :name #(select-keys % keys*))))
+          metadata)))
+
+(defn- edited-column?
+  "Whether the change of `column` in the update `event` of a row of `model` is one a user can make: the result metadata
+  of a model changes by what a user sets in it, and of any other card by nothing, for the product recomputes it."
+  [model column {:keys [object previous-object]}]
+  (if (and (= :model/Card model) (= :result_metadata column))
+    (let [previous (:result_metadata previous-object)
+          current  (:result_metadata object)]
+      (boolean (and (= :model (keyword (:type object)))
+                    (seq previous)
+                    (not= (model-overrides previous current) (model-overrides current previous)))))
+    true))
+
+(defn- user-edit?
+  "Whether the lifecycle `event` is a write whose row should say a user made it: not one that the archive or restore of
+  another entity carried to its row, nor an update that changes nothing but ignored columns."
+  [{:keys [context object previous-object] :as event}]
+  (and (nil? (:archived-with context))
+       (or (not (and object previous-object))
+           (let [model (u.events/model-of event)]
+             (boolean (some #(and (not (ignored-column? model %)) (edited-column? model % event))
+                            (u.events/changed-keys event)))))))
+
 (defn- record-lifecycle!
   "Record the lifecycle `event` of a write by a user under `stored-topic`, with the changes of an update when
   `previous?`, and nothing for a write without a user or one that is no edit by a user."
   [stored-topic {:keys [user-id object previous-object context] :as event} previous?]
-  (when (and user-id (u.events/user-edit? event))
+  (when (and user-id (user-edit? event))
     (record! stored-topic
              (cond-> {:object (or object previous-object) :user-id user-id}
                (and previous? object previous-object) (assoc :previous-object previous-object)
@@ -47,7 +98,7 @@
 (defn- card-archive-only?
   "Whether `event` is an update that only archives or restores the Card directly, which records no row."
   [event]
-  (let [changed (set/difference (u.events/changed-keys event) (u.events/bookkeeping-columns :model/Card))]
+  (let [changed (set/difference (u.events/changed-keys event) (ignored-columns :default))]
     (and (contains? changed :archived)
          (set/subset? changed #{:archived :archived_directly}))))
 
@@ -73,8 +124,7 @@
 (defn- record-dashcards!
   "Record that the cards of `events`, the DashboardCards added to or removed from one Dashboard, were."
   [[dashboard-id operation] events all-events]
-  (when-let [user-id (and (not (some #(get-in % [:context :reverting?]) events))
-                          (not (some #(and (= :model/Dashboard (:model %))
+  (when-let [user-id (and (not (some #(and (= :model/Dashboard (:model %))
                                            (= :create (:operation %))
                                            (= dashboard-id (:id %)))
                                      all-events))
@@ -97,28 +147,9 @@
 
 (events/register-owned-consumer! ::dashcards dashcards-owner record-dashcards!)
 
-(events/derive! ::publicize ::event)
-(events/derive! ::publicize-card ::publicize)
-(events/derive! ::publicize-dashboard ::publicize)
-(events/derive! :event/card-public-link-created ::publicize-card)
-(events/derive! :event/card-public-link-deleted ::publicize-card)
-(events/derive! :event/dashboard-public-link-created ::publicize-dashboard)
-(events/derive! :event/dashboard-public-link-deleted ::publicize-dashboard)
-
-(methodical/defmethod events/publish-event! ::publicize
-  [topic {:keys [user-id object-id] :as _event}]
-  (record! topic
-           {:user-id  user-id
-            :model    (if (events/isa? topic ::publicize-dashboard)
-                        :model/Dashboard
-                        :model/Card)
-            :model-id object-id}))
-
 (events/derive! ::table-event ::event)
 (events/derive! :event/table-manual-scan ::table-event)
 (events/derive! :event/table-manual-sync ::table-event)
-(events/derive! :event/table-publish ::table-event)
-(events/derive! :event/table-unpublish ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
@@ -196,7 +227,7 @@
     (doseq [[pulse-id pulse-events] (group-by pulse-id-of events)
             :when (and pulse-id
                        (some :user-id pulse-events)
-                       (some u.events/user-edit? pulse-events)
+                       (some user-edit? pulse-events)
                        (not-any? #(and (= :model/Pulse (:model %)) (= :delete (:operation %))) pulse-events))
             :let  [[topic params] (pulse-row pulse-id pulse-events)]
             :when topic]
@@ -256,8 +287,6 @@
 
 (events/derive! ::user-event ::event)
 (events/derive! :event/user-invited ::user-event)
-(events/derive! :event/user-deactivated ::user-event)
-(events/derive! :event/user-reactivated ::user-event)
 (events/derive! :event/password-reset-initiated ::user-event)
 (events/derive! :event/password-reset-successful ::user-event)
 (events/derive! :event/password-changed ::user-event)
@@ -355,7 +384,6 @@
 (events/derive! ::api-key-event ::event)
 (events/derive! :event/api-key-create ::api-key-event)
 (events/derive! :event/api-key-update ::api-key-event)
-(events/derive! :event/api-key-regenerate ::api-key-event)
 (events/derive! :event/api-key-delete ::api-key-event)
 
 (defn- hydrate-api-key

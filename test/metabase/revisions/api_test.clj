@@ -12,6 +12,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -43,7 +44,7 @@
     (dissoc revision :timestamp :id)))
 
 (defn- create-card-revision! [card-id is-creation? user]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Card :id card-id)
     :entity       :model/Card
     :id           card-id
@@ -53,7 +54,7 @@
 (defn- create-dashboard-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation? user]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Dashboard :id dash-id)
     :entity       :model/Dashboard
     :id           dash-id
@@ -61,7 +62,7 @@
     :is-creation? is-creation?}))
 
 (defn- create-transform-revision! [transform-id is-creation? user]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Transform :id transform-id)
     :entity       :model/Transform
     :id           transform-id

@@ -16,7 +16,6 @@
    [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -299,10 +298,6 @@
    :is_reversion false
    :message      message})
 
-(defn- insert-revision!
-  [info serialized-object]
-  (revisions.db/insert-revisions! [(row info serialized-object)]))
-
 (defn row-changed?
   "Whether the update of the row of `entity` with `id` from `before` to `after` changes what its Revision records,
   comparing the row alone, without the parts of an aggregate such as a Dashboard's dashcards."
@@ -320,23 +315,6 @@
   [rows]
   (revisions.db/insert-revisions! rows))
 
-(mu/defn push-revision!
-  "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
-  Returns `object` or `nil` if the object does not changed."
-  [{:keys [id entity object] :as info} :- PushRevisionInput]
-  (let [serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (revisions.db/latest-revision-object (name entity) id)]
-    ;; make sure we still have a map after calling out serialization function
-    (assert (map? serialized-object))
-    ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
-    ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
-    ;; E.g: Cards inside Dashboard will not be transformed
-    ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/encode (for-comparison entity serialized-object))
-                 (json/encode (for-comparison entity last-object)))
-      (insert-revision! info serialized-object)
-      object)))
-
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
   [info :- [:map {:closed true}
@@ -349,21 +327,21 @@
         serialized-instance (revisions.db/revision-object model-name id revision-id)]
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
-                                        (revisions.db/latest-revision-object model-name id))]
-        ;; Do the reversion of the object, and push a new revision to record it before the batch delivers its events,
-        ;; so that what they read, as the search index does, sees it
-        (let [[last-revision new-revision]
-              (events/with-event-context {:reverting? true}
-                (events/with-batched-events
-                  (revert-to-revision! entity id user-id serialized-instance)
-                  [(revisions.db/latest-revision model-name id)
-                   (when-not already-in-target-state?
-                     (revisions.db/insert-revision-returning! {:model        model-name
-                                                               :model_id     id
-                                                               :user_id      user-id
-                                                               :object       serialized-instance
-                                                               :is_creation  false
-                                                               :is_reversion true}))]))]
-          (if new-revision
-            (add-revision-details entity new-revision last-revision)
-            last-revision))))))
+                                        (revisions.db/latest-revision-object model-name id))
+            ;; Do the reversion of the object, and push a new revision to record it before the batch delivers its
+            ;; events, so that what they read, as the search index does, sees it
+            [last-revision new-revision]
+            (events/with-event-context {:reverting? true}
+              (events/with-batched-events
+                (revert-to-revision! entity id user-id serialized-instance)
+                [(revisions.db/latest-revision model-name id)
+                 (when-not already-in-target-state?
+                   (revisions.db/insert-revision-returning! {:model        model-name
+                                                             :model_id     id
+                                                             :user_id      user-id
+                                                             :object       serialized-instance
+                                                             :is_creation  false
+                                                             :is_reversion true}))]))]
+        (if new-revision
+          (add-revision-details entity new-revision last-revision)
+          last-revision)))))

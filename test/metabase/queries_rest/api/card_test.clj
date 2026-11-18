@@ -40,6 +40,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
@@ -590,14 +591,14 @@
                  :model/Card {card-2-id :id} {:name "Card 2"}]
     (with-cards-in-readable-collection! [card-1-id card-2-id]
       (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
-        (revision/push-revision!
+        (revisions.tu/push-revision!
          {:entity       :model/Card
           :id           card-1-id
           :user-id      user-id
           :is-creation? true
           :object {:id card-1-id}}))
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
-        (revision/push-revision!
+        (revisions.tu/push-revision!
          {:entity       :model/Card
           :id           card-2-id
           :user-id      user-id

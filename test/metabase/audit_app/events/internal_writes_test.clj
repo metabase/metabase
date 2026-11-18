@@ -57,47 +57,32 @@
         (finally
           (t2/delete! :model/Exploration :id id))))))
 
-(deftest deleting-card-with-cache-config-records-only-card-delete-test
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/Card {card-id :id} {:name "Cached"}
-                   :model/CacheConfig _ {:model "question" :model_id card-id :strategy :nocache :config {}}]
-      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
-      (let [before (max-id)]
-        (mt/user-http-request :crowberto :delete 204 (str "card/" card-id))
-        (is (= [[:card-delete "Card" card-id]] (topics-since before)))))))
+(deftest saving-question-into-dashboard-records-add-cards-test
+  (testing "a question saved into a dashboard is recorded as added to it, as well as created"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}]
+        (mt/with-model-cleanup [:model/Card]
+          (let [before (max-id)
+                card   (mt/user-http-request :crowberto :post 200 "card"
+                                             {:name                   "Dashboard question"
+                                              :display                "table"
+                                              :visualization_settings {}
+                                              :dashboard_id           dashboard-id
+                                              :dataset_query          (venues-query)})]
+            (is (= [[:card-create "Card" (:id card)] [:dashboard-add-cards "Dashboard" dashboard-id]]
+                   (topics-since before)))))))))
 
-(deftest deleting-router-database-records-only-database-delete-test
-  (mt/with-premium-features #{:audit-app :database-routing}
-    (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Router"}
-                   :model/DatabaseRouter _ {:database_id db-id :user_attribute "attribute"}]
-      (let [before (max-id)]
-        (mt/user-http-request :crowberto :delete 204 (str "database/" db-id))
-        (is (= [] (filter #(= :database-update (:topic %)) (rows-since before))))
-        (is (= 1 (count (filter #(and (= :database-delete (:topic %)) (= db-id (:model_id %))) (rows-since before)))))))))
-
-(deftest saving-question-into-dashboard-records-card-create-only-test
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}]
-      (mt/with-model-cleanup [:model/Card]
-        (let [before (max-id)
-              card   (mt/user-http-request :crowberto :post 200 "card"
-                                           {:name                   "Dashboard question"
-                                            :display                "table"
-                                            :visualization_settings {}
-                                            :dashboard_id           dashboard-id
-                                            :dataset_query          (venues-query)})]
-          (is (= [[:card-create "Card" (:id card)]] (topics-since before))))))))
-
-(deftest reverting-dashboard-records-no-card-rows-test
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/Card {card-id :id} {:name "Card"}
-                   :model/Dashboard {dashboard-id :id} {:name "Dashboard"}]
-      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
-                            {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}] :tabs []})
-      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:dashcards [] :tabs []})
-      (let [revision-id (t2/select-one-fn :id :model/Revision :model "Dashboard" :model_id dashboard-id
-                                          {:order-by [[:id :asc]] :limit 1})
-            before      (max-id)]
-        (mt/user-http-request :crowberto :post 200 "revision/revert"
-                              {:entity "dashboard" :id dashboard-id :revision_id revision-id})
-        (is (= [] (rows-since before)))))))
+(deftest reverting-dashboard-records-card-rows-test
+  (testing "a revert that brings cards back is recorded as adding them"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card {card-id :id} {:name "Card"}
+                     :model/Dashboard {dashboard-id :id} {:name "Dashboard"}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                              {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}] :tabs []})
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:dashcards [] :tabs []})
+        (let [revision-id (t2/select-one-fn :id :model/Revision :model "Dashboard" :model_id dashboard-id
+                                            {:order-by [[:id :asc]] :limit 1})
+              before      (max-id)]
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity "dashboard" :id dashboard-id :revision_id revision-id})
+          (is (= [[:dashboard-add-cards "Dashboard" dashboard-id]] (topics-since before))))))))

@@ -176,7 +176,7 @@
                                                     {:name          "pulse-name"
                                                      :creator_id    (mt/user->id :rasta)
                                                      :skip_if_empty false}))]
-            (is (= {:topic    :subscription-create
+            (is (= {:topic    :pulse-create
                     :user_id  (mt/user->id :rasta)
                     :model    "Pulse"
                     :model_id (u/the-id pulse)
@@ -187,7 +187,7 @@
                                :channel      ["email"],
                                :schedule     ["daily"],
                                :recipients   [[{:email "foo@bar.com"}]]}}
-                   (mt/latest-audit-log-entry :subscription-create (u/the-id pulse))))))))))
+                   (mt/latest-audit-log-entry :pulse-create (u/the-id pulse))))))))))
 
 (deftest create-dashboard-subscription-test
   (testing "Make sure that the dashboard_id is set correctly when creating a Dashboard Subscription pulse"

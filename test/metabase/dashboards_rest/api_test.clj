@@ -42,6 +42,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -281,7 +282,7 @@
                                               :collection_id     (:id (collection/user->personal-collection (mt/user->id :crowberto)))
                                               :creator_id        (mt/user->id :crowberto)}]
     (testing "should include creator info and last edited info"
-      (revision/push-revision!
+      (revisions.tu/push-revision!
        {:entity       :model/Dashboard
         :id           crowberto-dash-id
         :user-id      (mt/user->id :crowberto)
