@@ -1,12 +1,7 @@
-import _ from "underscore";
-
-import type { SummaryGeneratedExpression } from "metabase/redux/store";
 import { Ellipsified } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import { makeSummaryFormula } from "../../../../../utils/summary-formulas";
 import type {
   SummaryBucketOption,
   SummaryDimensionItem,
@@ -22,7 +17,6 @@ type DimensionChipProps = {
   query: Lib.Query;
   stageIndex: number;
   item: SummaryDimensionItem;
-  generatedExpressions: SummaryGeneratedExpression[];
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
   onRemove: () => void;
 };
@@ -31,7 +25,6 @@ export function DimensionChip({
   query,
   stageIndex,
   item,
-  generatedExpressions,
   onChange,
   onRemove,
 }: DimensionChipProps) {
@@ -44,15 +37,8 @@ export function DimensionChip({
 
   const getFormulaRename = (
     expression: Lib.ExpressionClause,
-  ): WellChipRename | undefined => {
+  ): WellChipRename => {
     const { displayName } = Lib.displayInfo(query, stageIndex, expression);
-    const formula = makeSummaryFormula(query, stageIndex, displayName);
-    const isOwned =
-      isNotNull(formula) &&
-      generatedExpressions.some((owned) => _.isEqual(owned, formula));
-    if (!isOwned) {
-      return undefined;
-    }
     return {
       name: displayName,
       onRename: (name) => {

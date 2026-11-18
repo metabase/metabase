@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { SummaryGeneratedExpression } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -34,7 +33,6 @@ type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
-  generatedExpressions: SummaryGeneratedExpression[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
   draftFormula?:
     | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
@@ -48,7 +46,6 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
-  generatedExpressions,
   formulaInputs,
   draftFormula,
   draggedItem,
@@ -146,7 +143,6 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
-              generatedExpressions={generatedExpressions}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
             />

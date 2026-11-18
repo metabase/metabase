@@ -180,7 +180,6 @@ export function SummarySidebar({
             query={query}
             stageIndex={stageIndex}
             sections={sections}
-            generatedExpressions={generatedExpressions}
             draggedItem={draggedItem}
             formulaInputs={formulaInputs}
             draftFormula={draftFormula}

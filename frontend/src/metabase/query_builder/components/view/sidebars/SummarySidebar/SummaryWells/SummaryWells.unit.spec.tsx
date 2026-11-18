@@ -7,13 +7,11 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { makeSummaryFormula } from "../../../../../utils/summary-formulas";
 import type {
   SummaryField,
   SummaryQueryChangeOptions,
@@ -44,16 +42,9 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
-  /** Custom columns the wells created, on `formulaStageIndex`. */
-  formulaNames?: string[];
-  formulaStageIndex?: number;
 };
 
-function setup({
-  spec = SUMMARIZED_QUERY,
-  formulaNames = [],
-  formulaStageIndex = STAGE_INDEX,
-}: SetupOpts = {}) {
+function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
@@ -62,9 +53,6 @@ function setup({
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
-      generatedExpressions={formulaNames
-        .map((name) => makeSummaryFormula(query, formulaStageIndex, name))
-        .filter(isNotNull)}
       draggedItem={null}
       onPick={onPick}
       onChange={onChange}
@@ -585,11 +573,8 @@ describe("SummaryWells", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it("renames a grouping formula with its unit and hands the new name over", async () => {
-      const { onChange, getLastChange } = setup({
-        spec,
-        formulaNames: ["Next day"],
-      });
+    it("renames a custom column grouping with its unit and hands the new name over", async () => {
+      const { onChange, getLastChange } = setup({ spec });
 
       await renameChip("Next day: Month", "Next day", "{Enter}");
 
@@ -602,50 +587,13 @@ describe("SummaryWells", () => {
       });
     });
 
-    it("offers no renaming to columns or to custom columns made elsewhere", async () => {
+    it("offers no renaming to a column grouping", async () => {
       setup({ spec });
 
       await userEvent.dblClick(screen.getByText("Created At: Month"));
-      await userEvent.dblClick(screen.getByText("Next day: Month"));
 
       expect(
         screen.queryByRole("textbox", { name: /^Rename/ }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("offers no renaming to a custom column with the name of a formula on another stage", async () => {
-      const stagedSpec: TestQuerySpec = {
-        stages: [
-          {
-            source: { type: "table", id: ORDERS_ID },
-            expressions: [
-              { name: "Bonus", value: { type: "column", name: "TOTAL" } },
-            ],
-            aggregations: [{ type: "operator", operator: "count" }],
-            breakouts: [{ type: "column", name: "Bonus" }],
-          },
-          { aggregations: [{ type: "operator", operator: "count" }] },
-          {
-            expressions: [
-              { name: "Bonus", value: { type: "literal", value: 10 } },
-            ],
-            aggregations: [{ type: "operator", operator: "count" }],
-            breakouts: [{ type: "column", name: "Bonus" }],
-          },
-        ],
-      };
-      setup({
-        spec: stagedSpec,
-        formulaNames: ["Bonus"],
-        formulaStageIndex: 0,
-      });
-
-      await userEvent.dblClick(
-        within(screen.getByTestId("summary-well-columns")).getByText("Bonus"),
-      );
-
-      expect(
-        screen.queryByRole("textbox", { name: "Rename Bonus" }),
       ).not.toBeInTheDocument();
     });
   });

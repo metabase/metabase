@@ -238,6 +238,30 @@ describe("summary formula handoff", () => {
     expect(Lib.expressions(query, -1)).toHaveLength(0);
   });
 
+  it("renames a grouping formula after the question is loaded again", async () => {
+    const { onQueryChange, reloadQuestion } = await setup();
+    fireEvent.change(getInput("columns"), {
+      target: { value: "=[Total] + 10" },
+    });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    reloadQuestion();
+    await userEvent.dblClick(
+      within(screen.getByTestId("summary-well-columns")).getByText(
+        "Total + 10",
+      ),
+    );
+    const input = screen.getByRole("textbox", { name: "Rename Total + 10" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "Bonus{Enter}");
+    expect(onQueryChange).toHaveBeenCalledTimes(2);
+    const [query] = onQueryChange.mock.calls[1];
+    expect(getDimensionItems(query, -1).map((item) => item.label)).toEqual([
+      "Bonus",
+    ]);
+  });
+
   it("removes a chip whose name is being edited on the first Remove click", async () => {
     const { onQueryChange } = await setup();
     fireEvent.change(getInput("columns"), {
