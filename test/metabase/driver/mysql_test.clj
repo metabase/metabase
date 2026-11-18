@@ -228,6 +228,68 @@
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
                  (into #{} (map :name) (driver/describe-fields :mysql (driver.u/ensure-lib-database database))))))))))
 
+(deftest ^:parallel describe-fields-boolean-metadata-test
+  (let [flag-keys [:pk? :database-required :database-is-auto-increment
+                   :database-is-nullable :database-is-generated]
+        row       (assoc (zipmap flag-keys (repeat false)) :name "birds")
+        xf        (sql-jdbc.sync/describe-fields-pre-process-xf :mysql nil)]
+    (doseq [flag-key flag-keys
+            [input expected] [[0 false] [1 true] [(int 0) false] [(int 1) true] [false false] [true true]]]
+      (testing (str flag-key " returned as " (pr-str input) " (" (class input) ")")
+        (is (= [(assoc row flag-key expected)]
+               (into [] xf [(assoc row flag-key input)])))))
+    (testing "A single metadata row can contain both JDBC booleans and numeric flags"
+      (is (= [(merge row {:pk? false, :database-required true, :database-is-auto-increment true
+                         :database-is-nullable false, :database-is-generated false})]
+             (into [] xf [(merge row (zipmap flag-keys [0 true 1 false 0]))]))))))
+
+(deftest describe-fields-without-generation-expression-test
+  (mt/test-driver :mysql
+    (testing "Sync works when metadata has EXTRA but no GENERATION_EXPRESSION (AnalyticDB)"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "adb_metadata")
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "adb_metadata"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+        (jdbc/execute! spec
+                       [(str "CREATE TABLE metadata_columns (column_name VARCHAR(64), ordinal_position INTEGER, "
+                             "table_schema VARCHAR(64), table_name VARCHAR(64), data_type VARCHAR(64), "
+                             "column_type VARCHAR(64), extra VARCHAR(128), column_default VARCHAR(64), "
+                             "is_nullable VARCHAR(3), column_key VARCHAR(3), column_comment VARCHAR(64))")])
+        (doseq [[position column-name extra] [[1 "ordinary" ""]
+                                             [2 "identity" "auto_increment"]
+                                             [3 "default_expression" "DEFAULT_GENERATED"]
+                                             [4 "virtual_column" "VIRTUAL GENERATED"]
+                                             [5 "stored_column" "STORED GENERATED"]
+                                             [6 "invisible_virtual" "VIRTUAL GENERATED INVISIBLE"]]]
+          (jdbc/insert! spec :metadata_columns
+                        {:column_name column-name, :ordinal_position position, :table_schema "adb_metadata"
+                         :table_name "ad_account", :data_type "int", :column_type "int", :extra extra
+                         :column_default nil, :is_nullable "YES", :column_key "", :column_comment ""}))
+        (let [[query & params] (sql-jdbc.sync/describe-fields-sql :mysql
+                                                               :details details
+                                                               :table-names #{"ad_account"})
+              metadata-query  (str/replace query "`information_schema`.`columns`" "`metadata_columns`")]
+          (is (not (str/includes? (str/lower-case query) "generation_expression")))
+          (is (= {"ordinary" false, "identity" false, "default_expression" false
+                  "virtual_column" true, "stored_column" true, "invisible_virtual" true}
+                 (into {} (map (juxt :name (comp pos? :database-is-generated)))
+                       (jdbc/query spec (into [metadata-query] params))))))))))
+
+(deftest describe-fields-generated-columns-test
+  (mt/test-driver :mysql
+    (testing "MySQL and MariaDB generated columns remain distinguishable from ordinary columns"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "generated_column_metadata")
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "generated_column_metadata"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+        (jdbc/execute! spec
+                       [(str "CREATE TABLE birds (id INTEGER AUTO_INCREMENT PRIMARY KEY, wings INTEGER DEFAULT 2, "
+                             "virtual_wings INTEGER GENERATED ALWAYS AS (wings + 1) VIRTUAL, "
+                             "stored_wings INTEGER GENERATED ALWAYS AS (wings + 2) STORED)")])
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
+          (is (= {"id" false, "wings" false, "virtual_wings" true, "stored_wings" true}
+                 (into {} (map (juxt :name :database-is-generated))
+                       (driver/describe-fields :mysql (driver.u/ensure-lib-database database)
+                                               {:table-names #{"birds"}})))))))))
+
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
                 "fields referenced by name from a source query, #75193) should use the TIME-only format "
