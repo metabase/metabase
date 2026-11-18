@@ -271,9 +271,20 @@
       (ws.settings/instance-workspace! nil)))
   nil)
 
+(defn current-workspace
+  "The workspace the current thread works in, or nil. Today that is only `{:mode :sidecar}`, while the
+   `workspaces-enabled` setting makes this whole instance a workspace: each Database then names its output schema in
+   its `database-workspace-schema` setting, and connects with its own details.
+
+   [[workspace-mode?]], [[db-workspace-namespace]] and [[workspace-connection-details]] read this, so a workspace that
+   only some threads work in changes this one function."
+  []
+  (when (ws.settings/workspaces-enabled)
+    {:mode :sidecar}))
+
 (defenterprise workspace-mode?
-  "EE impl: true iff this instance is a workspace (the `workspaces-enabled` setting
-   is on). Single source of truth for gating features that conflict with workspace
+  "EE impl: true iff the current thread works in a workspace ([[current-workspace]]), which today means the
+   `workspaces-enabled` setting is on. Single source of truth for gating features that conflict with workspace
    remapping (DB routing, impersonation, writeback, CSV upload, model persistence).
    Use [[db-workspace-namespace]] when you need per-database scoping.
 
@@ -282,7 +293,17 @@
    we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (ws.settings/workspaces-enabled))
+  (some? (current-workspace)))
+
+(defenterprise workspace-connection-details
+  "EE impl: the connection details the current workspace uses for the Database with `database-id`, over that
+   Database's own details, or nil. A sidecar's Databases already hold its workspace's login, so this is nil today.
+   Ungated like [[workspace-mode?]]."
+  :feature :none
+  [_database-id]
+  (when-let [{:keys [mode]} (current-workspace)]
+    (case mode
+      :sidecar nil)))
 
 (defenterprise workspace-database-exists?
   "EE impl: whether any WorkspaceDatabase row references the Database with `database-id`.
@@ -294,14 +315,15 @@
 
 (defn db-workspace-namespace
   "Return the workspace output namespace map `{:db ?, :schema ?}` for `db-id`, or
-   `nil` when this instance is not a workspace or the database has no
+   `nil` when the current thread works in no workspace ([[current-workspace]]) or the database has no
    `database-workspace-schema`. Either key may be absent depending on the driver's
    `qualified-name-components`."
   [db-id]
-  (when (ws.settings/workspaces-enabled)
-    (when-let [database (ws.db/database db-id)]
-      (some->> (database-workspace-schema database)
-               (expand-output-namespace database)))))
+  (when-let [{:keys [mode]} (current-workspace)]
+    (case mode
+      :sidecar (when-let [database (ws.db/database db-id)]
+                 (some->> (database-workspace-schema database)
+                          (expand-output-namespace database))))))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."

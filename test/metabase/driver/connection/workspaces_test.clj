@@ -1,7 +1,24 @@
 (ns metabase.driver.connection.workspaces-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.connection.workspaces :as driver.w]))
+   [metabase.driver.connection.workspaces :as driver.w]
+   [metabase.test :as mt]
+   [metabase.workspaces.core :as workspaces]))
+
+(deftest workspace-connection-details-test
+  (mt/with-dynamic-fn-redefs [workspaces/workspace-connection-details (fn [database-id]
+                                                                        (when (= 1 database-id)
+                                                                          {:user "ws-user" :password "ws-pass"}))]
+    (testing "the details of the current workspace count as a swap for their database"
+      (is (driver.w/has-connection-swap? 1))
+      (is (not (driver.w/has-connection-swap? 2))))
+    (testing "the details of the current workspace are merged into the database's details"
+      (is (= {:host "localhost" :user "ws-user" :password "ws-pass"}
+             (driver.w/maybe-swap-details 1 {:host "localhost" :user "original-user" :password "original-pass"}))))
+    (testing "a swap goes on top of the details of the current workspace, without counting as nested"
+      (driver.w/with-swapped-connection-details 1 {:db "iso_db"}
+        (is (= {:host "localhost" :user "ws-user" :password "ws-pass" :db "iso_db"}
+               (driver.w/maybe-swap-details 1 {:host "localhost" :user "original-user" :db "canonical_db"})))))))
 
 (deftest ^:parallel maybe-swap-details-test
   (testing "maybe-swap-details merges swap map into details"

@@ -53,6 +53,13 @@
   []
   false)
 
+(defenterprise workspace-connection-details
+  "The connection details the current workspace uses for the Database with `database-id`, which go over that
+   Database's own details, or nil when they are the Database's own. The OSS fallback returns nil."
+  metabase-enterprise.workspaces.core
+  [_database-id]
+  nil)
+
 (defenterprise workspace-database-exists?
   "True if any workspace has a database row for the Database with `database-id`. The OSS
    fallback returns false, since OSS has no workspaces."

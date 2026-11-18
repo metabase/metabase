@@ -66,6 +66,24 @@
       (is (= {:schema "ws_scratch"} (ws/db-workspace-namespace db-id)))
       (is (nil? (ws/db-workspace-namespace other-id))))))
 
+(deftest current-workspace-test
+  (testing "current-workspace is the instance's own workspace while workspaces-enabled is on, else none"
+    (is (nil? (ws/current-workspace)))
+    (ws.settings/workspaces-enabled! true)
+    (is (= {:mode :sidecar} (ws/current-workspace))))
+  (testing "a sidecar's databases connect with their own details"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings {:database-workspace-schema "ws_scratch"}}]
+      (ws.settings/workspaces-enabled! true)
+      (is (nil? (ws/workspace-connection-details db-id))))))
+
+(deftest workspace-mode-follows-current-workspace-test
+  (testing "workspace-mode? and db-workspace-namespace read current-workspace, not the setting itself"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings {:database-workspace-schema "ws_scratch"}}]
+      (is (false? (ws.settings/workspaces-enabled)))
+      (mt/with-dynamic-fn-redefs [ws/current-workspace (constantly {:mode :sidecar})]
+        (is (true? (ws/workspace-mode?)))
+        (is (= {:schema "ws_scratch"} (ws/db-workspace-namespace db-id)))))))
+
 (deftest workspaces-enabled-env-var-test
   (testing "MB_WORKSPACES_ENABLED turns workspace mode on, and clear-instance-workspace! throws while it is set"
     (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]

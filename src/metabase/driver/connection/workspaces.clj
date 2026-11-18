@@ -1,6 +1,8 @@
 (ns metabase.driver.connection.workspaces
   (:require
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
+   [metabase.workspaces.core :as workspaces]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *swapped-connection-details*
@@ -32,24 +34,32 @@
    details
    swap-map))
 
-(defn has-connection-swap?
-  "Returns true if there is an active connection detail swap for `database-id`."
+(defn- swaps
+  "The swap maps for `database-id`, in the order they apply: the details of the current workspace
+  ([[workspaces/workspace-connection-details]]), then the swap of [[*swapped-connection-details*]]."
   [database-id]
-  (contains? *swapped-connection-details* database-id))
+  (perf/not-empty (into [] (remove nil?) [(workspaces/workspace-connection-details database-id)
+                                          (get *swapped-connection-details* database-id)])))
+
+(defn has-connection-swap?
+  "Returns true if there is an active connection detail swap for `database-id`, or the current workspace has its own
+  details for it."
+  [database-id]
+  (some? (swaps database-id)))
 
 (defn maybe-swap-details
-  "Returns the database details with any swaps applied from [[*swapped-connection-details*]].
-  If no swap exists for `database-id`, returns `details` unchanged.
+  "Returns the database details with the details of the current workspace, then any swap from
+  [[*swapped-connection-details*]], applied. If neither exists for `database-id`, returns `details` unchanged.
 
   Drivers should call this function when creating connections to apply any active swaps.
   For JDBC drivers, this is called in [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]].
   For other drivers (e.g., MongoDB), this should be called in their connection creation logic."
   [database-id details]
-  (if-let [swap-map (get *swapped-connection-details* database-id)]
+  (if-let [swap-maps (swaps database-id)]
     (do
       (log/debugf "Applying swapped connection details for database %d, swap keys: %s"
-                  database-id (keys swap-map))
-      (apply-detail-swaps details swap-map))
+                  database-id (mapcat keys swap-maps))
+      (reduce apply-detail-swaps details swap-maps))
     details))
 
 (defn do-with-swapped-connection-details
