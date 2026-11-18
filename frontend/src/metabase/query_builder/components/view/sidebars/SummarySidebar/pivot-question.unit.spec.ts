@@ -11,7 +11,11 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getPivotRowKeys, getSummaryQuestion } from "./pivot-question";
+import {
+  canPivotSummary,
+  getPivotRowKeys,
+  getSummaryQuestion,
+} from "./pivot-question";
 
 const STAGE_INDEX = -1;
 
@@ -28,8 +32,11 @@ const PRODUCTS_CREATED_AT: TestBreakoutSpec = {
   unit: "month",
 };
 
-function createQuestion(card: Parameters<typeof createMockCard>[0] = {}) {
-  const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
+function createQuestion(
+  card: Parameters<typeof createMockCard>[0] = {},
+  database = createSampleDatabase(),
+) {
+  const metadata = createMockMetadata({ databases: [database] });
   return new Question(
     createMockCard({
       dataset_query: Lib.toJsQuery(
@@ -164,5 +171,54 @@ describe("getPivotRowKeys", () => {
         }),
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("canPivotSummary", () => {
+  const twoStageQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [ORDERS_CREATED_AT],
+      },
+      {
+        filters: [
+          {
+            type: "operator",
+            operator: ">",
+            args: [
+              { type: "column", name: "count" },
+              { type: "literal", value: 10 },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  it("is possible for a summary in the last stage", () => {
+    const question = createQuestion();
+
+    expect(canPivotSummary(question, -1)).toBe(true);
+    expect(canPivotSummary(question, 0)).toBe(true);
+  });
+
+  it("is not possible when a stage comes after the summary", () => {
+    const question = createQuestion({
+      dataset_query: Lib.toJsQuery(twoStageQuery),
+    });
+
+    expect(canPivotSummary(question, 0)).toBe(false);
+    expect(canPivotSummary(question, 1)).toBe(true);
+  });
+
+  it("is not possible when the database does not support pivot tables", () => {
+    const question = createQuestion(
+      {},
+      createSampleDatabase({ features: ["expressions"] }),
+    );
+
+    expect(canPivotSummary(question, -1)).toBe(false);
   });
 });

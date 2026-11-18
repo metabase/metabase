@@ -4,6 +4,7 @@ import {
   type DragStartEvent,
   pointerWithin,
 } from "@dnd-kit/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useId, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -51,6 +52,7 @@ import {
 } from "./utils";
 
 const DRAG_ACTIVATION_DISTANCE_PX = 5;
+const NO_ROW_KEYS: string[] = [];
 
 function translateSections(
   sections: SummaryFieldSection[],
@@ -79,6 +81,7 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 }
 
 type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
+  canPivot?: boolean;
   pivotRowKeys?: string[];
   onQueryChange: (
     nextQuery: Lib.Query,
@@ -88,20 +91,24 @@ type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
 
 export function SummarySidebar({
   query,
+  canPivot = true,
   pivotRowKeys,
   onQueryChange,
   stageIndex,
 }: SummarySidebarProps) {
   const dispatch = useDispatch();
   const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
-  const [isPivotToggled, setIsPivotToggled] = useState(false);
+  const [
+    isPivotToggled,
+    { open: turnPivotToggleOn, close: turnPivotToggleOff },
+  ] = useDisclosure(false);
   const [storedRowKeys, setStoredRowKeys] = useState<string[]>([]);
-  const rowKeys = pivotRowKeys ?? storedRowKeys;
+  const rowKeys = canPivot ? (pivotRowKeys ?? storedRowKeys) : NO_ROW_KEYS;
   const { rowItems, columnItems } = useMemo(
     () => getRowAndColumnItems(query, stageIndex, rowKeys),
     [query, stageIndex, rowKeys],
   );
-  const isPivotMode = isPivotToggled || rowItems.length > 0;
+  const isPivotMode = canPivot && (isPivotToggled || rowItems.length > 0);
   const pivotSplit = useMemo(
     () => getPivotSplit(query, stageIndex, rowKeys),
     [query, stageIndex, rowKeys],
@@ -201,7 +208,11 @@ export function SummarySidebar({
   };
 
   const handlePivotToggle = () => {
-    setIsPivotToggled(!isPivotMode);
+    if (isPivotMode) {
+      turnPivotToggleOff();
+    } else {
+      turnPivotToggleOn();
+    }
     handleRowKeysChange([]);
   };
 
@@ -265,6 +276,7 @@ export function SummarySidebar({
             formulaInputs={formulaInputs}
             draftFormula={draftFormula}
             editingFormulaUuid={editingFormulaUuid}
+            canPivot={canPivot}
             isPivotMode={isPivotMode}
             rowItems={rowItems}
             columnItems={columnItems}
