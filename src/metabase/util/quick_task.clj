@@ -29,13 +29,22 @@
   []
   (u/minutes->ms (or (config/config-int :mb-quick-task-timeout-minutes) 120)))
 
-(defn submit-task!
-  "Submit a task to the single thread executor. Each task is run on a separate thread with a timeout
-   controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
-   the timeout, it is cancelled and the executor moves on to the next queued task. This prevents a
-   single stuck task from blocking all subsequent tasks."
+(defonce ^:private submission-wrappers
+  (atom []))
+
+(defn register-submission-wrapper!
+  "Have `wrap`, a function of a thunk that it calls, run around the submission of every task under the key `k`, the
+  first registered outermost, so that a task conveys the bindings of the submitting thread as `wrap` leaves them."
+  [k wrap]
+  (swap! submission-wrappers
+         (fn [wrappers]
+           (if-let [i (first (keep-indexed (fn [i [k' _]] (when (= k k') i)) wrappers))]
+             (assoc wrappers i [k wrap])
+             (conj wrappers [k wrap]))))
+  nil)
+
+(defn- submit-now!
   ^Future [^Callable f]
-  {:pre [(some? f)]}
   (let [timeout-ms (long (task-timeout-ms))
         task       (bound-fn* f)
         wrapped    (fn []
@@ -52,3 +61,17 @@
                          (catch Exception e
                            (log/warnf "quick-task threw exception: %s" (ex-message e))))))]
     (.submit ^ExecutorService @executor ^Callable wrapped)))
+
+(defn submit-task!
+  "Submit a task to the single thread executor. Each task is run on a separate thread with a timeout
+   controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
+   the timeout, it is cancelled and the executor moves on to the next queued task. This prevents a
+   single stuck task from blocking all subsequent tasks. The task conveys the bindings of the submitting thread as
+   the [[register-submission-wrapper!]] wrappers leave them, so a task submitted inside a transaction of the app DB
+   runs outside it, on a connection of its own. Returns the `Future` of the task."
+  ^Future [^Callable f]
+  {:pre [(some? f)]}
+  (let [result (volatile! nil)
+        submit (fn [] (vreset! result (submit-now! f)))]
+    ((reduce (fn [thunk [_k wrap]] #(wrap thunk)) submit (rseq @submission-wrappers)))
+    @result))

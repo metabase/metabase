@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
@@ -593,10 +594,8 @@
     (mt/with-temp [:model/User u {:email "segments@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment internal {:name       "internal"
-                                            :table_id   (mt/id :venues)
                                             :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
                    :model/Segment premium  {:name       "premium"
-                                            :table_id   (mt/id :venues)
                                             :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body    {:name       "fan-out"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
@@ -629,7 +628,6 @@
     (mt/with-temp [:model/User u {:email "seg-scope@example.com"}
                    :model/Card metric (venues-metric-card (:id u))
                    :model/Segment _other {:name       "users-only"
-                                          :table_id   (mt/id :users)
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :users))) (lib/filter (lib/not-null (lib.metadata/field mp (mt/id :users :id)))))))}]
       (let [body    {:name       "scope"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
@@ -767,7 +765,6 @@
     (mt/with-temp [:model/User u {:email "facet-no-seg@example.com"}
                    :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")
                    :model/Segment s {:name       "premium"
-                                     :table_id   (mt/id :products)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50)))))}]
       (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
@@ -792,7 +789,6 @@
     (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment s {:name       "cheap"
-                                     :table_id   (mt/id :venues)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
       (let [mapping [{:dimension_id (duid "created")
                       ;; a mapping's :table_id is the table of the *target* column (see
@@ -1668,7 +1664,7 @@
                                            (format "exploration/%d/summary/append" eid)
                                            (assoc append-display+viz :exploration_query_ids [qid]))
               card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
-                          :content last :content first :attrs (get "id"))
+                          :content last :content first :attrs (get :id))
               use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)
               attrs   (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                           :content last :content first :attrs)]
@@ -1678,13 +1674,13 @@
               "appending records a stored_result_use row for the source snapshot")
           (is (nil? (:exploration_id use-row))
               "the card-use row has no exploration_id")
-          (is (= sr-id (get attrs "stored_result_id")))
-          (is (string? (get attrs "chart_href")))
-          (is (string? (get attrs "child_target_id")))
-          (is (= [qid] (get-in attrs ["host_data" :query_ids])))
-          (is (nil? (get-in attrs ["host_data" :explore_filters]))
+          (is (= sr-id (get attrs :stored_result_id)))
+          (is (string? (get attrs :chart_href)))
+          (is (string? (get attrs :child_target_id)))
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (nil? (get-in attrs [:host_data :explore_filters]))
               "unfiltered charts omit explore_filters from host_data")
-          (is (uuid? (parse-uuid (str (get attrs "_id"))))
+          (is (uuid? (parse-uuid (str (get attrs :_id))))
               "_id is stamped for per-node identity (string after JSON round-trip)")
           (is (false? (:is_placeholder doc))
               "first append clears is_placeholder"))))))
@@ -1724,12 +1720,12 @@
                                           (assoc append-display+viz :exploration_query_ids [qid]))
               attrs (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                         :content last :content first :attrs)]
-          (is (= [qid] (get-in attrs ["host_data" :query_ids])))
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
           (is (=? [{:operator       "="
                     :value          filter-value
                     :dimension_name "Price"
                     :display_value  "2"}]
-                  (get-in attrs ["host_data" :explore_filters]))))))))
+                  (get-in attrs [:host_data :explore_filters]))))))))
 
 (deftest exploration-append-rolls-back-on-failure-test
   (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
@@ -1832,8 +1828,8 @@
                               (assoc append-display+viz :exploration_query_ids [qid]))
         (let [attrs   (-> (t2/select-one-fn :document :model/Document :id doc-id)
                           :content last :content first :attrs)
-              sr-id   (get attrs "stored_result_id")
-              old-card-id (get attrs "id")
+              sr-id   (get attrs :stored_result_id)
+              old-card-id (get attrs :id)
               draft-id -10
               ;; Simulate the editor forking the embed into a negative-id draft card on save.
               updated (mt/user-http-request u :put 200 (format "document/%d" doc-id)
@@ -1911,6 +1907,42 @@
         (let [d (t2/select-one :model/Document :id (:id user-archived))]
           (is (true? (:archived d)))
           (is (true? (:archived_directly d))))))))
+
+(deftest exploration-summary-updates-publish-event-and-record-no-revision-test
+  (testing "Archiving and moving an exploration publishes an event for the Summary it carries and records no revision of it"
+    (mt/with-temp [:model/Collection c {}
+                   :model/Collection dest {}
+                   :model/Exploration e {:name "to-archive"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document live {:name "Summary"
+                                         :document {:type "doc" :content []}
+                                         :content_type "application/json+vnd.prose-mirror"
+                                         :creator_id (mt/user->id :crowberto)
+                                         :collection_id (:id c)
+                                         :exploration_id (:id e)}
+                   :model/Document user-archived {:name "user-archived"
+                                                  :document {:type "doc" :content []}
+                                                  :content_type "application/json+vnd.prose-mirror"
+                                                  :creator_id (mt/user->id :crowberto)
+                                                  :collection_id (:id c)
+                                                  :exploration_id (:id e)
+                                                  :archived true
+                                                  :archived_directly true}]
+      (let [published (atom [])
+            original  (mt/original-fn #'events/publish-event!)]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! published conj [topic (some-> event :object :id)])
+                                              (original topic event))]
+          (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                                {:collection_id (:id dest)})
+          (is (some #{[:event/document-update (:id live)]} @published))
+          (reset! published [])
+          (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                                {:archived true})
+          (is (some #{[:event/document-update (:id live)]} @published))
+          (is (not-any? #{[:event/document-update (:id user-archived)]} @published)))
+        (is (zero? (t2/count :model/Revision :model "Document" :model_id (:id live))))))))
 
 (deftest exploration-get-hydrates-summary-when-trashed-test
   (testing "GET /:id still hydrates the Summary after the exploration is trashed, so Trash view keeps the document."
@@ -2119,10 +2151,8 @@
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment _seg-a {:name "alpha"
-                                          :table_id (mt/id :venues)
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}
                    :model/Segment _seg-b {:name "beta"
-                                          :table_id (mt/id :venues)
                                           :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4)))))}]
       (let [body {:name "groups"
                   :metrics    [{:card_id (:id metric)

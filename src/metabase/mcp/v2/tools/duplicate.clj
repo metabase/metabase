@@ -74,11 +74,11 @@
   (let [new-card (-> card
                      (assoc :name new-name :collection_id collection-id)
                      (dissoc :dashboard_id :collection_position))]
-    (api/create-check :model/Card {:collection_id collection-id})
     ;; Copy semantics for timelines too: an inherited selection the caller cannot read is preserved, as in
     ;; `POST /api/card/:id/copy`, while any change to it is still checked.
     (queries/with-copy-source-card card
-      (queries/create-card! new-card @api/*current-user*))))
+      (api/create-check :model/Card new-card))
+    (queries/create-card! new-card @api/*current-user*)))
 
 (defn- fetch-dashboard
   [id-or-eid]

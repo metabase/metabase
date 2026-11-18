@@ -6,7 +6,6 @@
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
-   [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.sample-data.core :as sample-data]
@@ -154,8 +153,6 @@
                                                    (:is_attached_dwh database) strip-attached-dwh-update-ks
                                                    (:is_stub existing)         (assoc :is_stub             false
                                                                                       :initial_sync_status "incomplete")))
-            ;; A changed `database-workspace-schema` leaves remap rows pointing at the old schema.
-            (ws/delete-stale-table-remappings! previous (advanced-config.db/database (:id existing)))
             (when (:is_stub existing)
               (sync-if-configured! (advanced-config.db/database (:id existing)))))
 

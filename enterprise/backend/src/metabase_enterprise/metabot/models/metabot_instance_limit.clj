@@ -9,7 +9,9 @@
 
 (doto :model/MetabotInstanceLimit
   (derive :metabase/model)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
 
 (defn instance-limit
   "Returns the limit for a given tenant, or the instance-wide limit when `tenant-id` is nil.

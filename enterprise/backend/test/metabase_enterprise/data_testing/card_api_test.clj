@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -251,3 +252,60 @@
                   (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)
                   (when (seq @created)
                     (t2/delete! :model/CardTest :id [:in @created])))))))))))
+
+(deftest a-test-whose-input-lacks-a-column-the-card-reads-is-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {card-id :id} (card)]
+      (testing "create refuses an input lacking a column the card's query reads, naming it, and saves nothing"
+        (is (=? {:error-code "card-test.missing-input-columns"
+                 :columns    {:PUBLIC.PEOPLE ["NAME"]}}
+                (mt/user-http-request :crowberto :post 400 "ee/card-test"
+                                      (assoc (body card-id)
+                                             :name   "id only"
+                                             :inputs [(assoc (first inputs)
+                                                             :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                             :rows    [{"ID" 1}])]))))
+        (is (not (t2/exists? :model/CardTest :name "id only"))))
+      (testing "control: an input declaring every column the card's query reads is saved"
+        (t2/delete! :model/CardTest :id (:id (mt/user-http-request :crowberto :post 200 "ee/card-test" (body card-id)))))
+      (testing "the input's table is found in Metabase's metadata whatever the case of its name"
+        (is (=? {:error-code "card-test.missing-input-columns"
+                 :columns    {:PUBLIC.people ["NAME"]}}
+                (mt/user-http-request :crowberto :post 400 "ee/card-test"
+                                      (assoc (body card-id) :inputs [(-> (first inputs)
+                                                                         (assoc-in [:table :name] "people")
+                                                                         (assoc :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                                :rows    [{"ID" 1}]))]))))))))
+
+(deftest the-missing-columns-check-skips-a-table-that-metabase-hides-test
+  ;; Pins the documented exception: the check reads metadata that leaves hidden tables out. Turns red when the check
+  ;; covers them.
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {card-id :id} (card)]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden"}
+        (testing "an input for a table that Metabase hides, lacking a column the card reads, is saved"
+          (t2/delete! :model/CardTest
+                      :id (:id (mt/user-http-request :crowberto :post 200 "ee/card-test"
+                                                     (assoc (body card-id)
+                                                            :inputs [(assoc (first inputs)
+                                                                            :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                            :rows    [{"ID" 1}])])))))))))
+
+(deftest the-database-s-case-rule-decides-whether-a-declared-column-name-matches-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {card-id :id} (card)]
+      (let [lower-case [(assoc (first inputs)
+                               :columns [{:name "id" :cast_type "INTEGER"} {:name "name" :cast_type "VARCHAR"}]
+                               :rows    [{"id" 1 "name" "abc"}])]
+            create     (fn [status]
+                         (mt/user-http-request :crowberto :post status "ee/card-test"
+                                               (assoc (body card-id) :name "lower case" :inputs lower-case)))]
+        (testing "on H2, which keeps the case of column names, names that differ from the table's only in case are missing"
+          (is (=? {:error-code "card-test.missing-input-columns"
+                   :columns    {:PUBLIC.PEOPLE ["ID" "NAME"]}}
+                  (create 400)))
+          (is (not (t2/exists? :model/CardTest :name "lower case"))))
+        (testing "on a database that ignores case, the same names are the table's columns, and the test is saved"
+          ;; Stands in for the databases that ignore case in column names, which no test of this namespace runs on.
+          (with-redefs [data-testing.u/column-names-ignore-case? (constantly true)]
+            (t2/delete! :model/CardTest :id (:id (create 200)))))))))

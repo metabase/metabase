@@ -1,6 +1,8 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
+import type { SdkComponentPerformance } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
+import { useSdkComponentPerformance } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/react";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -20,6 +22,7 @@ import { isAbortError } from "metabase/api/client";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  Dataset,
   ParameterValuesMap,
   QueryVisualizationDisplayType,
 } from "metabase-types/api";
@@ -87,6 +90,7 @@ export function useLoadQuestion({
     questionState;
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const componentPerformance = useSdkComponentPerformance();
 
   /**
    * Token change isn't an indicator to re-run the query. When users are refreshing
@@ -143,6 +147,7 @@ export function useLoadQuestion({
       );
 
       mergeQuestionState(questionState);
+      componentPerformance?.recordMark("metadata_end");
 
       const results = await runQuestionQuerySdk({
         question: questionState.question,
@@ -153,6 +158,9 @@ export function useLoadQuestion({
         signal: nextSignal(),
         dispatch,
         initialVisualization,
+        onQueryStart: () => componentPerformance?.recordMark("query_start"),
+        onQueryEnd: (result) =>
+          finishSdkComponentPerformanceAtQueryEnd(componentPerformance, result),
       });
 
       mergeQuestionState(results);
@@ -197,6 +205,7 @@ export function useLoadQuestion({
     questionId,
     targetDashboardId,
     initialVisualization,
+    componentPerformance,
   ]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(
@@ -354,6 +363,19 @@ export function useLoadQuestion({
     updateParameterValues,
     navigateToNewCard,
   };
+}
+
+// The query end is the last mark of the performance event, so we send the event there
+function finishSdkComponentPerformanceAtQueryEnd(
+  componentPerformance: SdkComponentPerformance | null,
+  result: Dataset,
+) {
+  componentPerformance?.recordMark("query_end");
+  componentPerformance?.finish(
+    result.error != null
+      ? { result: "failure", error: "query" }
+      : { result: "success" },
+  );
 }
 
 const questionReducer = (state: SdkQuestionState, next: SdkQuestionState) => ({

@@ -500,6 +500,22 @@
     {:clause [:value false], :options {:effective-type :type/Boolean}, :name "false"}
     {:clause [:value true], :options {:effective-type :type/Boolean}, :name "true"}]))
 
+(deftest ^:parallel boolean-literal-expression-filter-display-names-test
+  (testing "filters on boolean literal custom columns are named after the columns"
+    (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                     (lib/expression "TrueColumn" (lib.expression/value true))
+                     (lib/expression "FalseColumn" (lib.expression/value false)))
+          true-  (lib/expression-ref base "TrueColumn")
+          false- (lib/expression-ref base "FalseColumn")]
+      (doseq [[clause expected] [[true-                 "TrueColumn"]
+                                 [false-                "FalseColumn"]
+                                 [(lib/or true- false-) "TrueColumn or FalseColumn"]
+                                 [(lib/= true- false-)  "TrueColumn is FalseColumn"]]]
+        (testing expected
+          (let [query (lib/filter base clause)]
+            (is (= expected
+                   (lib/display-name query -1 (first (lib/filters query)))))))))))
+
 (deftest ^:parallel number-frontend-filter-display-names-test
   (let [tax (meta/field-metadata :orders :tax)]
     (check-display-names

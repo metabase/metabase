@@ -446,52 +446,53 @@
   (testing "Don't try to generate queries with SELECT (...) AS source, Oracle hates `AS`"
     ;; TODO -- seems WACK that we actually have to create objects for this to work and can't just stick them in the QP
     ;; store.
-    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      {:database {:id     1
-                                                  :name   "db"
-                                                  :engine :oracle}
-                                       :tables   [{:id     1
-                                                   :db-id  1
-                                                   :schema "public"
-                                                   :name   "table"}]
-                                       :fields   [{:id            1
-                                                   :table-id      1
-                                                   :name          "field"
-                                                   :display-name  "Field"
-                                                   :database-type "char"
-                                                   :base-type     :type/Text}]})
-      (let [hsql (sql.qp/mbql->honeysql :oracle
-                                        {:database 1
-                                         :type     :query
-                                         :query {:source-query {:source-table 1
-                                                                :expressions  {"s" [:substring [:field 1 nil] 2]}
-                                                                :fields       [[:field 1 nil]
-                                                                               [:expression "s"]]}
-                                                 :fields       [[:field "s" {:base-type :type/Text}]]
-                                                 :limit        3}})]
-        (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
-          (is (= [["WITH \"__mb_stage_0\" AS ("
-                   "  SELECT"
-                   "    \"public\".\"table\".\"field\" \"field\","
-                   "    SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
-                   "  FROM"
-                   "    \"public\".\"table\""
-                   ")"
-                   "SELECT"
-                   "  *"
-                   "FROM"
-                   "  ("
-                   "    SELECT"
-                   "      \"__mb_source\".\"s\" \"s\""
-                   "    FROM"
-                   "      \"__mb_stage_0\" \"__mb_source\""
-                   "  )"
-                   "WHERE"
-                   "  rownum <= 3"]]
-                 (-> (sql.qp/format-honeysql :oracle hsql)
-                     vec
-                     (update 0 (partial driver/prettify-native-form :oracle))
-                     (update 0 str/split-lines)))))))))
+    (let [mp    (lib.tu/mock-metadata-provider
+                 {:database {:id     1
+                             :name   "db"
+                             :engine :oracle}
+                  :tables   [{:id     1
+                              :db-id  1
+                              :schema "public"
+                              :name   "table"}]
+                  :fields   [{:id            1
+                              :table-id      1
+                              :name          "field"
+                              :display-name  "Field"
+                              :database-type "char"
+                              :base-type     :type/Text}]})
+          query (as-> (lib/query mp (lib.metadata/table mp 1)) query
+                  (lib/expression query "s" (lib/expression-clause :substring [(lib.metadata/field mp 1) 2] nil))
+                  (lib/with-fields query [(lib.metadata/field mp 1)
+                                          (lib/expression-ref query "s")])
+                  (lib/append-stage query)
+                  (lib/with-fields query [(lib.tu.notebook/find-col-with-spec
+                                           query (lib/fieldable-columns query) {} {:display-name "s"})])
+                  (lib/limit query 3))]
+      (qp.store/with-metadata-provider mp
+        (let [hsql (sql.qp/mbql->honeysql :oracle query)]
+          (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
+            (is (= [["WITH \"__mb_stage_0\" AS ("
+                     "  SELECT"
+                     "    \"public\".\"table\".\"field\" \"field\","
+                     "    SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
+                     "  FROM"
+                     "    \"public\".\"table\""
+                     ")"
+                     "SELECT"
+                     "  *"
+                     "FROM"
+                     "  ("
+                     "    SELECT"
+                     "      \"__mb_source\".\"s\" \"s\""
+                     "    FROM"
+                     "      \"__mb_stage_0\" \"__mb_source\""
+                     "  )"
+                     "WHERE"
+                     "  rownum <= 3"]]
+                   (-> (sql.qp/format-honeysql :oracle hsql)
+                       vec
+                       (update 0 (partial driver/prettify-native-form :oracle))
+                       (update 0 str/split-lines))))))))))
 
 (deftest return-clobs-as-text-test
   (mt/test-driver :oracle

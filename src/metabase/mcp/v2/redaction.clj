@@ -114,9 +114,7 @@
    compiled one.
    The stored settings and filter mappings that describe a hidden card are removed with it."
   [dash]
-  (let [readable (into #{}
-                       (comp (filter mi/can-read?) (map :id))
-                       (t2/hydrate (dashcard-card-rows (:dashcards dash)) :can_read))]
+  (let [readable (into #{} (map :id) (mi/readable (dashcard-card-rows (:dashcards dash))))]
     (update dash :dashcards (partial mapv #(redact-dashcard readable %)))))
 
 ;;; ------------------------------------------------ notification --------------------------------------------------

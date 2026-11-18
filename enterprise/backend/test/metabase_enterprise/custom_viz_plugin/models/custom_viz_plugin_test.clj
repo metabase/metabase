@@ -4,12 +4,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -207,3 +209,8 @@
                    :status        :error
                    :error_message #(str/includes? % "does not match")}
                   (t2/select-one :model/CustomVizPlugin :id id))))))))
+
+(deftest identifier-must-not-contain-colon-test
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "colon:insert"})))
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier " "})))
+  (is (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "plain-identifier"})))
