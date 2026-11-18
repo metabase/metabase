@@ -31,10 +31,9 @@
    Idempotent — 0 rows deleted is a valid outcome when nothing was registered
    (e.g. a workspace_database that was provisioned but never had a transform run).
 
-   Scope rationale: the unique constraint on `(database_id, from_db, from_schema,
-   from_table_name)` prevents two workspaces on the same metabase_database from
-   remapping the same canonical table. So deleting by iso namespace is enough
-   to avoid clobbering another workspace's rows on the same database_id.
+   Scope rationale: each workspace has iso namespaces of its own, so deleting by
+   iso namespace, in every workspace that a request can name and in the
+   instance's own, deletes this workspace's rows and no other workspace's.
 
    Returns the count of rows deleted."
   [database database-id output-namespace]

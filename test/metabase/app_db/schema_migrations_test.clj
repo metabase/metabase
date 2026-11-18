@@ -5471,3 +5471,35 @@
           (testing (name table)
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
+
+(deftest request-workspaces-test
+  (impl/test-migrations ["pb1zul"] [migrate!]
+    (let [db-id     (t2/insert-returning-pk! :metabase_database {:name "db" :engine "postgres" :details "{}"
+                                                                 :created_at :%now :updated_at :%now})
+          remapping (fn [workspace-id to-table]
+                      (cond-> {:database_id db-id
+                               :from_db "" :from_schema "public" :from_table_name "orders"
+                               :to_db "" :to_schema (str "mb__isolation_" workspace-id) :to_table_name to-table}
+                        workspace-id (assoc :workspace_id workspace-id)))
+          boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                      (liquibase/with-liquibase [liquibase conn]
+                        (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+      (t2/insert! :table_remapping (remapping nil "public__orders"))
+      (migrate!)
+      (testing "an existing remapping is the instance's own"
+        (is (= [0] (t2/select-fn-vec :workspace_id :table_remapping))))
+      (testing "each workspace can remap a source table once"
+        (t2/insert! :table_remapping (remapping 1 "public__orders"))
+        (t2/insert! :table_remapping (remapping 2 "public__orders"))
+        (is (thrown? Exception (t2/insert! :table_remapping (remapping 1 "public__orders_2"))))
+        (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping 0 "public__orders_2")
+                                                                   :to_schema "other")))))
+      (with-open [conn (.getConnection (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase conn]
+          (rollback/rollback-to-deployment! conn liquibase boundary)))
+      (testing "rollback keeps only the instance's own remappings, and drops the column"
+        (is (= [{:to_schema "mb__isolation_"}] (t2/select [:table_remapping :to_schema])))
+        (is (not (contains? (t2/select-one :table_remapping) :workspace_id))))
+      (testing "rollback restores the unique key of a source table"
+        (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping nil "public__orders_2")
+                                                                   :to_schema "other"))))))))

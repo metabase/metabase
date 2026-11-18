@@ -273,52 +273,76 @@
   (t2/delete! :model/WorkspaceDatabase :database_id database-id :status :unprovisioned))
 
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
+;;;
+;;; Each workspace that a request names has its own TableRemappings, with its id in `workspace_id`. The instance's own
+;;; have 0 there, which these functions take as a nil `workspace-id`.
+
+(mr/def ::workspace-id
+  "The workspace that a request names, or nil for the instance's own TableRemappings."
+  [:maybe ms/PositiveInt])
+
+(defn- remapping-workspace-id
+  "The `workspace_id` of the TableRemappings of `workspace-id`."
+  [workspace-id]
+  (or workspace-id 0))
 
 (mu/defn table-remappings
-  "Every TableRemapping, ordered by id."
-  []
-  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+  "The TableRemappings of `workspace-id`, ordered by id."
+  [workspace-id :- ::workspace-id]
+  (t2/select :model/TableRemapping
+             :workspace_id [:auto/param (remapping-workspace-id workspace-id)]
+             {:order-by [[:id :asc]]}))
 
 (mu/defn table-remapping-database-ids :- [:set ::lib.schema.id/database]
-  "The ids of the Databases that have a TableRemapping."
+  "The ids of the Databases that have a TableRemapping of the instance's own."
   []
   ;; `select-fn-set` returns nil, not #{}, when there are no rows
-  (set (t2/select-fn-set :database_id :model/TableRemapping)))
+  (set (t2/select-fn-set :database_id :model/TableRemapping :workspace_id 0)))
 
 (mu/defn table-remappings-exist?
-  "Whether the Database with `database-id` has a TableRemapping."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/TableRemapping :database_id database-id))
+  "Whether the Database with `database-id` has a TableRemapping of `workspace-id`."
+  [database-id  :- ::lib.schema.id/database
+   workspace-id :- ::workspace-id]
+  (t2/exists? :model/TableRemapping
+              :database_id  database-id
+              :workspace_id [:auto/param (remapping-workspace-id workspace-id)]))
 
 (mu/defn table-remappings-of-database
-  "The TableRemappings of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select :model/TableRemapping :database_id database-id))
+  "The TableRemappings of `workspace-id` of the Database with `database-id`."
+  [database-id  :- ::lib.schema.id/database
+   workspace-id :- ::workspace-id]
+  (t2/select :model/TableRemapping
+             :database_id  database-id
+             :workspace_id [:auto/param (remapping-workspace-id workspace-id)]))
 
 (mu/defn table-remapping
-  "The TableRemapping of the Database with `database-id` whose source is `from-spec`, or nil."
-  [database-id :- ::lib.schema.id/database
-   from-spec   :- ::table-spec]
+  "The TableRemapping of `workspace-id` of the Database with `database-id` whose source is `from-spec`, or nil."
+  [database-id  :- ::lib.schema.id/database
+   workspace-id :- ::workspace-id
+   from-spec    :- ::table-spec]
   (t2/select-one :model/TableRemapping
                  :database_id     database-id
+                 :workspace_id    [:auto/param (remapping-workspace-id workspace-id)]
                  :from_db         (:db from-spec)
                  :from_schema     (:schema from-spec)
                  :from_table_name (:table from-spec)))
 
 (mu/defn upsert-table-remapping!
-  "Make the TableRemapping from `from-spec` point at `to-spec`: insert it, or update one that points elsewhere, such as
-  a row left from an earlier workspace schema. Leaves a row that already points at `to-spec` untouched. Keyed on the
-  unique constraint `(database_id, from_db, from_schema, from_table_name)`: [[app-db/update-or-insert!]] retries the
-  lookup when a concurrent insert wins the race."
-  [database-id :- ::lib.schema.id/database
-   from-spec   :- ::table-spec
-   to-spec     :- ::table-spec]
+  "Make the TableRemapping of `workspace-id` from `from-spec` point at `to-spec`: insert it, or update one that points
+  elsewhere, such as a row left from an earlier workspace schema. Leaves a row that already points at `to-spec`
+  untouched. Keyed on the unique constraint `(database_id, from_db, from_schema, from_table_name, workspace_id)`:
+  [[app-db/update-or-insert!]] retries the lookup when a concurrent insert wins the race."
+  [database-id  :- ::lib.schema.id/database
+   workspace-id :- ::workspace-id
+   from-spec    :- ::table-spec
+   to-spec      :- ::table-spec]
   (let [to-columns {:to_db         (:db to-spec)
                     :to_schema     (:schema to-spec)
                     :to_table_name (:table to-spec)}]
     (app-db/update-or-insert!
      :model/TableRemapping
      {:database_id     database-id
+      :workspace_id    (remapping-workspace-id workspace-id)
       :from_db         (:db from-spec)
       :from_schema     (:schema from-spec)
       :from_table_name (:table from-spec)}
@@ -327,24 +351,36 @@
          to-columns)))))
 
 (mu/defn delete-table-remapping!
-  "Delete the TableRemapping of the Database with `database-id` whose source is `from-spec`. Returns the number of
-  rows deleted."
-  [database-id :- ::lib.schema.id/database
-   from-spec   :- ::table-spec]
+  "Delete the TableRemapping of `workspace-id` of the Database with `database-id` whose source is `from-spec`.
+  Returns the number of rows deleted."
+  [database-id  :- ::lib.schema.id/database
+   workspace-id :- ::workspace-id
+   from-spec    :- ::table-spec]
   (t2/delete! :model/TableRemapping
               :database_id     database-id
+              :workspace_id    [:auto/param (remapping-workspace-id workspace-id)]
               :from_db         (:db from-spec)
               :from_schema     (:schema from-spec)
               :from_table_name (:table from-spec)))
 
 (mu/defn delete-table-remappings-of-database!
-  "Delete the TableRemappings of the Database with `database-id`. Returns the number of rows deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/TableRemapping :database_id database-id))
+  "Delete the TableRemappings of `workspace-id` of the Database with `database-id`. Returns the number of rows
+  deleted."
+  [database-id  :- ::lib.schema.id/database
+   workspace-id :- ::workspace-id]
+  (t2/delete! :model/TableRemapping
+              :database_id  database-id
+              :workspace_id [:auto/param (remapping-workspace-id workspace-id)]))
+
+(mu/defn delete-workspace-table-remappings!
+  "Delete the TableRemappings of the workspace with `workspace-id`. Returns the number of rows deleted."
+  [workspace-id :- ms/PositiveInt]
+  (t2/delete! :model/TableRemapping :workspace_id [:auto/param workspace-id]))
 
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
-  namespace. Returns the number of rows deleted."
+  namespace, in every workspace: each workspace has isolation schemas of its own. Returns the number of rows
+  deleted."
   [database-id :- ::lib.schema.id/database
    to-db       :- :string
    to-schema   :- :string]

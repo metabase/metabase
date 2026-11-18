@@ -3,6 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
+   [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
+   [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sync :as driver.sync]
    [metabase.query-processor.middleware.cache :as qp.cache]
@@ -129,3 +133,68 @@
        (testing "a sync writes the metadata that every workspace shares, so it lists no workspace's isolation schemas"
          (is (false? (driver.sync/include-schema? nil nil "mb__isolation_abc_1")))
          (is (true? (driver.sync/include-schema? nil nil "public"))))))))
+
+(def ^:private orders {:db "" :schema "public" :table "orders"})
+
+(defn- remap-orders!
+  "Remap `orders` of the Database with `db-id` into `schema`, in the current workspace."
+  [db-id schema]
+  (ws.remapping/insert-mapping! db-id orders {:db "" :schema schema :table "public__orders"}))
+
+(defn- orders-target
+  "The schema `orders` of the Database with `db-id` is remapped to in the current workspace, or nil."
+  [db-id]
+  (:schema (ws.remapping/get-mapping db-id orders)))
+
+(deftest table-remappings-of-a-request-workspace-test
+  (do-with-request-workspace
+   (fn [{:keys [workspace-id db-id]}]
+     (mt/with-temp [:model/Workspace {other-id :id} {:name "other"}]
+       (try
+         (workspaces/with-workspace-id workspace-id
+           (remap-orders! db-id "mb__isolation_test"))
+         (testing "a remapping made in a workspace that a request names belongs to that workspace"
+           (workspaces/with-workspace-id workspace-id
+             (is (= "mb__isolation_test" (orders-target db-id)))
+             (is (true? (ws.remapping/enabled-for-db? db-id)))
+             (is (= {orders {:db "" :schema "mb__isolation_test" :table "public__orders"}}
+                    (ws.remapping/remappings-for-db db-id)))
+             (is (= [db-id] (map :database_id (ws/list-remappings))))))
+         (testing "another workspace and the instance's own do not see it"
+           (workspaces/with-workspace-id other-id
+             (is (nil? (orders-target db-id)))
+             (is (= {} (ws.remapping/remappings-for-db db-id)))
+             (is (empty? (ws/list-remappings))))
+           (is (nil? (orders-target db-id)))
+           (is (empty? (ws/list-remappings))))
+         (testing "the instance's cache of the Databases with remappings has only the instance's own"
+           (table-remapping/invalidate-database-ids!)
+           (is (not (contains? (table-remapping/database-ids-with-remappings) db-id))))
+         (testing "another workspace can remap the same table to its own schema"
+           (workspaces/with-workspace-id other-id
+             (remap-orders! db-id "mb__isolation_other")
+             (is (= "mb__isolation_other" (orders-target db-id))))
+           (workspaces/with-workspace-id workspace-id
+             (is (= "mb__isolation_test" (orders-target db-id)))))
+         (testing "removing a workspace's remappings leaves the others' alone"
+           (workspaces/with-workspace-id other-id
+             (ws.remapping/clear-for-db! db-id))
+           (workspaces/with-workspace-id workspace-id
+             (is (= "mb__isolation_test" (orders-target db-id)))))
+         (testing "the cleanup of a workspace's isolation schema deletes its remappings"
+           (ws.remapping-cleanup/clear-mappings-for-iso! {:engine :postgres} db-id "mb__isolation_test")
+           (workspaces/with-workspace-id workspace-id
+             (is (nil? (orders-target db-id)))))
+         (finally
+           (t2/delete! :model/TableRemapping :database_id db-id)))))))
+
+(deftest deleting-a-workspace-deletes-its-table-remappings-test
+  (do-with-request-workspace
+   (fn [{:keys [workspace-id db-id]}]
+     (try
+       (workspaces/with-workspace-id workspace-id
+         (remap-orders! db-id "elsewhere"))
+       (ws.db/delete-workspace-table-remappings! workspace-id)
+       (is (not (t2/exists? :model/TableRemapping :database_id db-id)))
+       (finally
+         (t2/delete! :model/TableRemapping :database_id db-id))))))

@@ -1,0 +1,47 @@
+## Workspaces that a request names with its X-Metabase-Workspace-Id header: each such workspace has its own table
+## remappings, keyed by table_remapping.workspace_id. 0 stands for the instance's own remappings: a unique key needs a
+## value that is not null, as from_db's empty string is.
+
+databaseChangeLog:
+  - changeSet:
+      id: pb1zul
+      author: nvoxland
+      comment: Add table_remapping.workspace_id, the workspace that a request names whose remapping it is, or 0 for the instance's own
+      changes:
+        - addColumn:
+            tableName: table_remapping
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that a request names whose remapping this is, or 0 for the instance's own
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: bl0f8r
+      author: nvoxland
+      comment: A source table has one remapping in each workspace
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_workspace_source
+            columnNames: database_id, from_db, from_schema, from_table_name, workspace_id
+
+  - changeSet:
+      id: szkprm
+      author: nvoxland
+      comment: Drop the unique key of a source table across workspaces, which idx_unique_table_remapping_workspace_source replaces
+      changes:
+        - dropUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+      rollback:
+        # The old key allows one remapping of a source table in all: keep the instance's own.
+        - sql:
+            sql: DELETE FROM table_remapping WHERE workspace_id <> 0
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_db, from_schema, from_table_name

@@ -80,24 +80,25 @@
       (contains? (table-remapping/database-ids-with-remappings) db-id)))
 
 (defrecord AppDBRemappingStore []
+  ;; Each workspace that a request names has its own remappings ([[ws/current-workspace-id]]).
   RemappingStore
   (enabled-for-db?* [_ db-id]
     (and (may-have-remappings? db-id)
-         (ws.db/table-remappings-exist? db-id)))
+         (ws.db/table-remappings-exist? db-id (ws/current-workspace-id))))
   (remappings-for-db* [_ db-id]
     (if (may-have-remappings? db-id)
-      (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id))
+      (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id (ws/current-workspace-id)))
       {}))
   (get-mapping* [_ db-id {:keys [db schema table]}]
     (when (may-have-remappings? db-id)
-      (when-let [row (ws.db/table-remapping db-id {:db db :schema schema :table table})]
+      (when-let [row (ws.db/table-remapping db-id (ws/current-workspace-id) {:db db :schema schema :table table})]
         {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)})))
   (insert-mapping!* [_ db-id from-spec to-spec]
-    (ws.db/upsert-table-remapping! db-id from-spec to-spec))
+    (ws.db/upsert-table-remapping! db-id (ws/current-workspace-id) from-spec to-spec))
   (remove-mapping!* [_ db-id {:keys [db schema table]}]
-    (long (ws.db/delete-table-remapping! db-id {:db db :schema schema :table table})))
+    (long (ws.db/delete-table-remapping! db-id (ws/current-workspace-id) {:db db :schema schema :table table})))
   (clear-for-db!* [_ db-id]
-    (long (ws.db/delete-table-remappings-of-database! db-id))))
+    (long (ws.db/delete-table-remappings-of-database! db-id (ws/current-workspace-id)))))
 
 (def app-db-store
   "Default remapping store backed by the `table_remapping` app-DB table."

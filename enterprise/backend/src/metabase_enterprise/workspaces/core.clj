@@ -214,7 +214,7 @@
                                                 (assoc settings :database-workspace-schema schema)
                                                 (dissoc settings :database-workspace-schema)))
           ;; Rows pointing at the old schema would keep redirecting reads there.
-          (ws.db/delete-table-remappings-of-database! id))
+          (ws.db/delete-table-remappings-of-database! id nil))
         (ws.settings/workspaces-enabled! true)))
     (catch Throwable e
       ;; The setter puts the flag in this process's settings cache before the commit, and a rollback does not
@@ -231,7 +231,7 @@
   [previous-database database]
   (when (and (some? (database-workspace-schema previous-database))
              (not= (database-workspace-schema previous-database) (database-workspace-schema database)))
-    (ws.db/delete-table-remappings-of-database! (:id database)))
+    (ws.db/delete-table-remappings-of-database! (:id database) nil))
   nil)
 
 (defn clear-instance-workspace!
@@ -375,9 +375,10 @@
                    (expand-output-namespace database output-namespace))))))
 
 (defn list-remappings
-  "Return all TableRemapping rows, ordered by id."
+  "Return the TableRemapping rows of the current workspace, ordered by id: those of the workspace that the request
+   names, or else the instance's own."
   []
-  (ws.db/table-remappings))
+  (ws.db/table-remappings (workspaces/current-workspace-id)))
 
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 
@@ -794,5 +795,7 @@
   [id]
   (assert-workspace-exists id)
   (teardown-workspace-databases! id)
+  ;; The teardown clears the remappings into each isolation schema. Any other row of the workspace goes with it too.
+  (ws.db/delete-workspace-table-remappings! id)
   (workspace/delete-workspace! id)
   nil)
