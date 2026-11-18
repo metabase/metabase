@@ -187,13 +187,15 @@ describe("ExpressionWidget > help text", () => {
     await typeText("rou");
     await waitForCompletions();
     await pressKey("Enter");
-    expect(await screen.findByTestId("expression-helper")).toHaveTextContent(
+    await assertHelpTextIsVisible();
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(
       "round([Temperature])",
     );
 
     await typeText("1.5");
     await pressKey("ArrowLeft");
-    expect(screen.getByTestId("expression-helper")).toHaveTextContent(
+    await assertHelpTextIsVisible();
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(
       "round([Temperature])",
     );
 
@@ -203,7 +205,8 @@ describe("ExpressionWidget > help text", () => {
 
     await act(async () => getEditorView().focus());
     await pressKey("ArrowLeft");
-    expect(await screen.findByTestId("expression-helper")).toHaveTextContent(
+    await assertHelpTextIsVisible();
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(
       "round([Temperature])",
     );
 
