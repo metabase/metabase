@@ -11,6 +11,7 @@
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
@@ -225,7 +226,7 @@
   its output when that changes, returning whether a column some job reads changed."
   [batched :- Marks
    {:keys [model object previous-object] :as event} :- [:map]]
-  (let [entity-type (deps.dependency-types/model->dependency-type model)
+  (let [entity-type (dependencies/model-type model)
         own         {entity-type #{(:id object)}}
         dependency? (u.events/changed-any? event (dependency-columns model))
         analysis?   (u.events/changed-any? event (analysis-columns model))
@@ -297,7 +298,7 @@
     :model/Field                (mark-remap-targets! batched #{(:id row)})
     :model/FieldUserSettings    (mark-remap-targets! batched #{(:field_id row)})
     nil)
-  (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
+  (when-let [entity-type (dependencies/model-type model)]
     (mark-output-changed! batched entity-type row)))
 
 (def ^:private tracked-models

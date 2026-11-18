@@ -15,6 +15,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
@@ -37,6 +38,7 @@
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.dependencies :as queries.dependencies]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
@@ -1921,3 +1923,9 @@
   [_model]
   {:synced-items         queries.db/synced-card-items
    :synced-filter-clause queries.db/synced-cards-clause})
+
+(defmethod dependencies/spec :model/Card [_model]
+  {:type :card
+
+   :hydrate      queries.dependencies/hydrate
+   :dependencies queries.dependencies/dependencies})

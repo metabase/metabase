@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.data-apps.core :as data-apps]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -164,7 +165,7 @@
                       [:and
                        [:= entity-type-field (name entity-type)]
                        [:in entity-id-field visible-ids]])))))
-        deps.dependency-types/dependency-type->model))
+        (dependencies/type->model)))
 
 (mu/defn- broken-entities-expr :- ::h2x/honeysql-expr
   "Matches entities at `entity-type-field`/`entity-id-field` that have failed analysis (an AnalysisFinding with
@@ -182,7 +183,7 @@
                    :where  [:and
                             [:= :analysis_finding.entity_type (name entity-type)]
                             [:= :analysis_finding.result false]]}]]))
-        deps.dependency-types/dependency-type->model))
+        (dependencies/type->model)))
 
 (mu/defn- allowed-entity-types-expr :- ::h2x/honeysql-expr
   "Matches entities at `entity-type-field` whose type is one of `entity-types`."
@@ -627,7 +628,7 @@
   whose rows hold only those columns."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
-  (let [model (deps.dependency-types/dependency-type->model entity-type)]
+  (let [model (dependencies/entity-model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
 (mu/defn entity
@@ -641,7 +642,7 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
+  (t2/select (into [(dependencies/entity-model entity-type)] columns)
              :id [:in ids]))
 
 (mu/defn entity-with-columns
@@ -649,24 +650,8 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
+  (t2/select-one (into [(dependencies/entity-model entity-type)] columns)
                  :id id))
-
-(mu/defn implicit-action-table-ids
-  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
-
-(mu/defn query-action-queries
-  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
-
-(mu/defn ids-in-collections
-  "The `:id` and `:collection_id` of the `model` rows in the Collections with `collection-ids`."
-  [model          :- [:enum :model/Card :model/Action]
-   collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -677,11 +662,6 @@
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
-
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
@@ -759,24 +739,27 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in entity-ids]))
 
-(mu/defn downstream-table-ids-of-transform
-  "The IDs of the Tables that depend on the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-fn-set :from_entity_id :model/Dependency
-                    :from_entity_type :table
-                    :to_entity_type   :transform
-                    :to_entity_id     transform-id))
+(mu/defn direct-dependent-ids :- ::dependencies.schema/type->ids
+  "The entities that directly depend on the entity `entity-type` `entity-id`, as `{entity-type #{entity-id}}`."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-id   :- ms/PositiveInt]
+  (u/group-by :from_entity_type :from_entity_id conj #{}
+              (t2/select [:model/Dependency :from_entity_type :from_entity_id]
+                         :to_entity_type entity-type
+                         :to_entity_id   entity-id)))
 
-(mu/defn delete-table-dependencies-on-transform!
-  "Delete the Dependencies of the Tables with `table-ids` on the Transform with `transform-id`, returning the
+(mu/defn delete-dependencies-on!
+  "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
   number deleted."
-  [table-ids    :- [:sequential ::lib.schema.id/table]
-   transform-id :- ::lib.schema.id/transform]
+  [from-type :- ::dependencies.schema/entity-type
+   from-ids  :- [:sequential ms/PositiveInt]
+   to-type   :- ::dependencies.schema/entity-type
+   to-id     :- ms/PositiveInt]
   (t2/delete! :model/Dependency
-              :from_entity_type :table
-              :from_entity_id   [:in table-ids]
-              :to_entity_type   :transform
-              :to_entity_id     transform-id))
+              :from_entity_type from-type
+              :from_entity_id   [:in from-ids]
+              :to_entity_type   to-type
+              :to_entity_id     to-id))
 
 ;;; -------------------------------------------- Statuses, shared by the jobs --------------------------------------------
 
@@ -911,7 +894,7 @@
    {:keys [user-mbql-only? dependency-version]} :- [:map {:closed true}
                                                     [:user-mbql-only?    {:optional true} :boolean]
                                                     [:dependency-version {:optional true} ms/PositiveInt]]]
-  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))
+  (let [table-name (t2/table-name (dependencies/entity-model entity-type))
         id-field   (u/qualified-key table-name :id)
         outdated   [:< :status.analysis_version current-version]]
     (mapv #(select-keys % [:entity_id :stale])
@@ -956,7 +939,7 @@
   [status-model :- StatusModel
    entity-type  :- ::deps.dependency-types/dependency-types
    batch-size   :- ms/PositiveInt]
-  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
+  (let [table-name (t2/table-name (dependencies/entity-model entity-type))]
     (mapv :entity_id (t2/query {:select [:status.entity_id]
                                 :from   [[(t2/table-name status-model) :status]]
                                 :where  [:and

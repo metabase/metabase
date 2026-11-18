@@ -1,12 +1,12 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -21,43 +21,6 @@
 
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
-
-(defmulti hydrate-for-deps
-  "Hydrate a batch of entities with data needed for dependency calculation.
-  Dispatches on entity-type keyword. Default is identity (no hydration needed)."
-  {:arglists '([entity-type entities])}
-  (fn [entity-type _entities] entity-type))
-
-(defmethod hydrate-for-deps :default [_ entities] entities)
-
-(defmethod hydrate-for-deps :dashboard [_ entities]
-  (t2/hydrate entities [:dashcards :series]))
-
-(defmethod hydrate-for-deps :action [_ entities]
-  (let [action-ids (mapv :id entities)
-        queries    (when (seq action-ids)
-                     (dependencies.db/query-action-queries action-ids))
-        table-ids  (when (seq action-ids)
-                     (dependencies.db/implicit-action-table-ids action-ids))]
-    (mapv (fn [{:keys [id] :as action}]
-            (cond-> action
-              (contains? queries id)   (assoc :dataset_query (queries id))
-              (contains? table-ids id) (assoc :table_id (table-ids id))))
-          entities)))
-
-(defmethod hydrate-for-deps :data-app [_ entities]
-  (let [collection-ids    (into [] (keep :resource_collection_id) entities)
-        ids-by-collection (fn [rows]
-                            (u/group-by :collection_id :id conj #{} rows))
-        card-ids          (when (seq collection-ids)
-                            (ids-by-collection (dependencies.db/ids-in-collections :model/Card collection-ids)))
-        action-ids        (when (seq collection-ids)
-                            (ids-by-collection (dependencies.db/ids-in-collections :model/Action collection-ids)))]
-    (mapv (fn [{collection-id :resource_collection_id :as app}]
-            (assoc app
-                   :card_ids   (get card-ids collection-id #{})
-                   :action_ids (get action-ids collection-id #{})))
-          entities)))
 
 (mu/defn take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of `entity-type` whose dependencies a write changed, are not computed yet, or were
@@ -85,4 +48,4 @@
            (or (dependencies.db/dependency-pending?
                 entity-type models.dependency/current-dependency-analysis-version)
                (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
-         deps.dependency-types/backfillable-dependency-types)))
+         (deps.calculation/computed-types))))

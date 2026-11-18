@@ -4,11 +4,13 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
+   [metabase.native-query-snippets.dependencies :as native-query-snippets.dependencies]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.native-query-snippets.serialization :as native-query-snippets.serialization]
@@ -230,3 +232,9 @@
   [_model]
   {:synced-items         native-query-snippets.db/synced-snippet-items
    :synced-filter-clause native-query-snippets.db/synced-snippets-clause})
+
+(defmethod dependencies/spec :model/NativeQuerySnippet [_model]
+  {:type     :snippet
+   :inlined? true
+
+   :dependencies native-query-snippets.dependencies/dependencies})

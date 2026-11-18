@@ -286,3 +286,13 @@
         (->> (mapv (fn [action]
                      (-> (collection.root/hydrate-root-collection action (if (:model_id action) root actions-root))
                          (update :model #(some-> % (collection.root/hydrate-root-collection root))))))))))
+
+(mu/defn query-action-queries :- [:map-of ::lib.schema.id/action :map]
+  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+
+(mu/defn implicit-action-table-ids :- [:map-of ::lib.schema.id/action [:maybe ::lib.schema.id/table]]
+  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))

@@ -113,6 +113,16 @@
   [collection-id]
   (t2/select-pks-vec :model/Action :collection_id collection-id))
 
+(mu/defn cards-in-collections :- [:sequential [:map [:id ms/PositiveInt] [:collection_id ms/PositiveInt]]]
+  "The `:id` and `:collection_id` of the Cards in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Card :id :collection_id] :collection_id [:in collection-ids]))
+
+(mu/defn actions-in-collections :- [:sequential [:map [:id ms/PositiveInt] [:collection_id ms/PositiveInt]]]
+  "The `:id` and `:collection_id` of the Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Action :id :collection_id] :collection_id [:in collection-ids]))
+
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
   [collection-id]

@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.dashboards.audit :as dashboards.audit]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.dashboards.dependencies :as dashboards.dependencies]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.revisions :as dashboards.revisions]
@@ -18,6 +19,7 @@
    [metabase.dashboards.serialization :as dashboards.serialization]
    [metabase.dashboards.staleness :as dashboards.staleness]
    [metabase.dashboards.xrays :as dashboards.xrays]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -586,3 +588,9 @@
   {:candidates dashboards.db/stale-dashboard-candidates
    :load       dashboards.staleness/load-items
    :render     dashboards.staleness/render})
+
+(defmethod dependencies/spec :model/Dashboard [_model]
+  {:type :dashboard
+
+   :hydrate      dashboards.dependencies/hydrate
+   :dependencies dashboards.dependencies/dependencies})

@@ -117,6 +117,7 @@
            api.eid-translation
            app-db
            collections
+           dependencies
            driver
            events
            lib
@@ -827,6 +828,7 @@
            change-log
            collections
            content-verification
+           dependencies
            embedding
            events
            lib
@@ -938,6 +940,15 @@
    :api  #{metabase.database-routing.core}
    :uses #{lib.schema premium-features}}
 
+  dependencies
+  {:team "Data Apps"
+   :api  #{metabase.dependencies.core}
+   :uses #{lib
+           lib.schema
+           models
+           premium-features
+           util}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -953,6 +964,7 @@
            audit-app.view-log
            batch-processing
            collections
+           dependencies
            events
            lib
            lib.be
@@ -1565,6 +1577,7 @@
            app-db
            audit-app
            collections
+           dependencies
            events
            lib
            lib.be
@@ -1946,6 +1959,7 @@
            app-db
            change-log
            collections
+           dependencies
            events
            lib
            lib.be
@@ -2283,6 +2297,7 @@
            collections
            content-verification
            dashboards
+           dependencies
            documents
            embedding
            events
@@ -2704,6 +2719,7 @@
            app-db
            audit-app
            collections
+           dependencies
            events
            lib
            lib.be
@@ -3202,6 +3218,7 @@
            channel
            collections
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3603,6 +3620,7 @@
            change-log
            collections
            database-routing
+           dependencies
            driver
            events
            lib
@@ -4055,6 +4073,7 @@
            audit-app
            collections
            data-apps
+           dependencies
            events
            lib
            lib.be
@@ -4192,13 +4211,13 @@
            collections
            data-apps
            database-routing
+           dependencies
            documents
            driver
            events
            lib
            lib.be
            lib.metadata
-           lib.metric
            lib.schema
            lib.types
            measures.schema
@@ -4214,7 +4233,6 @@
            settings
            sql-tools
            task
-           transforms
            transforms.base
            transforms.schema
            util
@@ -4526,6 +4544,7 @@
            api-scope
            app-db
            audit-app
+           dependencies
            driver
            events
            lib

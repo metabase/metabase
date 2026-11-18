@@ -3,11 +3,13 @@
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
+   [metabase.actions.dependencies :as actions.dependencies]
    [metabase.actions.schema :as actions.schema]
    [metabase.actions.serialization :as actions.serialization]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -840,3 +842,9 @@
     :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                    :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
                    :collection   [:model/Collection [:= :collection.id :this.collection_id]]}}})
+
+(defmethod dependencies/spec :model/Action [_model]
+  {:type :action
+
+   :hydrate      actions.dependencies/hydrate
+   :dependencies actions.dependencies/dependencies})

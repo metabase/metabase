@@ -9,10 +9,12 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.sandbox.db :as sandbox.db]
+   [metabase-enterprise.sandbox.dependencies :as sandbox.dependencies]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -329,3 +331,8 @@
            (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (sandbox.db/sandbox id))
        (sandbox.db/insert-sandbox! sandbox)))))
+
+(defmethod dependencies/spec :model/Sandbox [_model]
+  {:type :sandbox
+
+   :dependencies sandbox.dependencies/dependencies})

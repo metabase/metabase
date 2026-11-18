@@ -5,6 +5,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -17,6 +18,7 @@
    [metabase.search.core :as search]
    [metabase.segments.audit :as segments.audit]
    [metabase.segments.db :as segments.db]
+   [metabase.segments.dependencies :as segments.dependencies]
    [metabase.segments.schema :as segments.schema]
    [metabase.segments.serialization :as segments.serialization]
    [metabase.segments.xrays :as segments.xrays]
@@ -227,3 +229,8 @@
                          [:and
                           [:= :table.is_published true]
                           [:= :collection.id :table.collection_id]]]}}})
+
+(defmethod dependencies/spec :model/Segment [_model]
+  {:type :segment
+
+   :dependencies segments.dependencies/dependencies})

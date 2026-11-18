@@ -6,6 +6,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -636,3 +637,6 @@
                    [:not= :this.db_id [:inline audit/audit-db-id]]]
     :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
                    :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}}})
+
+(defmethod dependencies/spec :model/Table [_model]
+  {:type :table})

@@ -5,6 +5,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -12,6 +13,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
+   [metabase.measures.dependencies :as measures.dependencies]
    [metabase.measures.schema :as measures.schema]
    [metabase.measures.serialization :as measures.serialization]
    [metabase.metrics.core :as metrics]
@@ -217,3 +219,9 @@
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+
+(defmethod dependencies/spec :model/Measure [_model]
+  {:type     :measure
+   :inlined? true
+
+   :dependencies measures.dependencies/dependencies})

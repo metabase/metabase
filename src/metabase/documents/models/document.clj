@@ -4,8 +4,10 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.documents.audit :as documents.audit]
    [metabase.documents.db :as documents.db]
+   [metabase.documents.dependencies :as documents.dependencies]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.documents.search :as documents.search]
@@ -605,3 +607,8 @@
 
 (defmethod staleness/spec :model/Document [_model]
   {:candidates documents.db/stale-document-candidates})
+
+(defmethod dependencies/spec :model/Document [_model]
+  {:type :document
+
+   :dependencies documents.dependencies/dependencies})

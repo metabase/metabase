@@ -16,7 +16,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -25,57 +24,32 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private entity-types
-  "The list of entity types whose dependencies the job computes, snippets first, so that the snippets the entities
-  using them expand are known when those are computed.
-
-  This is not the same as deps.dependency-types/dependency-types, because tables have no dependencies of their
-  own. Instead, links involving tables are found via analysis of the other side of the relation."
-  (vec (sort-by #(not= :snippet %) deps.dependency-types/backfillable-dependency-types)))
-
 (def ^:private Entity
   "An entity whose dependencies the job computes, as the app DB holds it."
   [:fn {:error/message "a Toucan entity"} t2/instance?])
 
-;;; ------------------------------ Post-deps cleanup multimethod ------------------------------
-
-(defmulti post-deps-cleanup!
-  "Perform entity-specific cleanup after dependencies have been replaced.
-  For example, transforms need to clean up outdated downstream table->transform dependencies.
-  Default is no-op."
-  {:arglists '([entity-type entity])}
-  (fn [entity-type _entity] entity-type))
-
-(defmethod post-deps-cleanup! :default [_ _entity] nil)
-
-(defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
-  (let [db-id                (transforms/transform-source-database transform)
-        downstream-table-ids (dependencies.db/downstream-table-ids-of-transform id)
-        downstream-tables    (when (seq downstream-table-ids)
-                               (dependencies.db/tables downstream-table-ids))
-        outdated-tables      (remove (fn [table]
-                                       (and (= (:schema table) (:schema target))
-                                            (= (:name   table) (:name   target))
-                                            (or (not db-id)
-                                                (= db-id (:db_id table)))))
-                                     downstream-tables)
-        not-found-table-ids  (remove (into #{} (map :id) downstream-tables)
-                                     downstream-table-ids)]
-    (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
-                                                        (map :id) outdated-tables))]
-      (dependencies.db/delete-table-dependencies-on-transform! outdated-downstream-table-ids id))))
+(mu/defn- drop-stale-dependents!
+  "Drop the edges to the `entity` of `entity-type` from its dependents that its spec's `:after-dependencies` says no
+  longer hold."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity      :- Entity]
+  (when-let [after-dependencies (deps.calculation/after-dependencies entity-type)]
+    (doseq [[dependent-type dependent-ids] (after-dependencies
+                                            entity
+                                            (dependencies.db/direct-dependent-ids entity-type (:id entity)))
+            :when (seq dependent-ids)]
+      (dependencies.db/delete-dependencies-on! dependent-type (vec dependent-ids) entity-type (:id entity)))))
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
 (mu/defn- hydrated-entities :- [:sequential Entity]
-  "The entities of `entity-type` with `entity-ids`, hydrated for computing their dependencies."
+  "The entities of `entity-type` with `entity-ids`, hydrated by their spec for computing their dependencies."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-ids  :- [:set ms/PositiveInt]]
-  (vec (deps.dependency-status/hydrate-for-deps
-        entity-type (vec (dependencies.db/entities entity-type entity-ids)))))
+  (deps.calculation/hydrate-entities entity-type (dependencies.db/entities entity-type entity-ids)))
 
 (mu/defn- compute-deps-for-entity! :- :any
-  "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
+  "Compute and store the dependencies of an `entity` hydrated by [[hydrated-entities]], marking
   an entity with a new upstream stale for its result metadata and analysis, or for a snippet the analysis of what
   expands it, which an upstream change made before the edge existed never marked."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -93,7 +67,7 @@
           (dependencies.db/mark-analysis-finding-statuses-stale!
            (models.dependency/transitive-dependents {:snippet [entity]}))))
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
-      (post-deps-cleanup! entity-type entity))))
+      (drop-stale-dependents! entity-type entity))))
 
 (mu/defn- remove-deleted-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
@@ -148,7 +122,7 @@
                                      (log/debug "Updated" processed "entities."))
                                    (- remaining removed processed))))
                              batch-size
-                             entity-types)]
+                             (deps.calculation/computed-types))]
       (when (< remaining batch-size)
         (task.analysis-finding/trigger-analysis-finding-job!)
         (task.result-metadata/trigger-result-metadata-job!)

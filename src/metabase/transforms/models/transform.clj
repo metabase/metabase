@@ -6,6 +6,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
@@ -25,6 +26,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.audit :as transforms.audit]
    [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.dependencies :as transforms.dependencies]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.search :as transforms.search]
@@ -574,3 +576,10 @@
 
 (defmethod staleness/spec :model/Transform [_model]
   {:candidates transforms.staleness/stale-transform-candidates})
+
+(defmethod dependencies/spec :model/Transform [_model]
+  {:type :transform
+
+   :hydrate            transforms.dependencies/hydrate
+   :dependencies       transforms.dependencies/dependencies
+   :after-dependencies transforms.dependencies/after-dependencies})

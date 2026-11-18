@@ -2,9 +2,11 @@
   (:require
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.dependencies :as data-apps.dependencies]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -289,3 +291,9 @@
   [_model]
   {:name         :slug
    :synced-items data-apps.db/synced-data-app-items})
+
+(defmethod dependencies/spec :model/DataApp [_model]
+  {:type :data-app
+
+   :hydrate      data-apps.dependencies/hydrate
+   :dependencies data-apps.dependencies/dependencies})

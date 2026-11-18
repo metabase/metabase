@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
@@ -338,3 +339,11 @@
                    :table   {:table (:table-id %)}
                    nil))
           (lib/all-template-tags query))))
+
+(defenterprise native-query-dependencies
+  "The dependencies of the native-only `query` as `{entity-type #{entity-id}}`, leaving out the tables it names that
+  resolve to none."
+  :feature :none
+  [query]
+  (let [driver (:engine (lib.metadata/database query))]
+    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table (native-query-deps driver query)))))

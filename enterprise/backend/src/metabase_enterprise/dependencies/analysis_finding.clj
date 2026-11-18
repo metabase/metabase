@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.util.log :as log]
@@ -41,7 +42,7 @@
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
   (lib-be/with-metadata-provider-cache
     (let [model       (t2/model entity)
-          entity-type (deps.dependency-types/model->dependency-type model)
+          entity-type (dependencies/model-type model)
           entity-id   (:id entity)]
       (if-let [db-id (entity-db-id entity)]
         (let [mp (lib-be/application-database-metadata-provider db-id)
@@ -64,7 +65,7 @@
                      (t2/model entity) (:id entity) (ex-message e))
          (try
            (models.analysis-finding/upsert-analysis!
-            (deps.dependency-types/model->dependency-type (t2/model entity)) (:id entity) false
+            (dependencies/model-type (t2/model entity)) (:id entity) false
             #{(lib/validation-exception-error (ex-message e))})
            (catch Exception record-e
              (log/errorf "Recording the failure of entity %s %s failed: %s"
