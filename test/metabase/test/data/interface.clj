@@ -907,7 +907,13 @@
 
 (mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
-  comsumption by various test-data-loading methods."
+  consumption by various test-data-loading methods.
+  The `:static` option can be used by cloud drivers to reduce load on a shared testing instance. When `:static` is
+  true, the database name is a hash of the dataset definition, so every CI job with the same dataset definition re-uses
+  the same database. These databases are not dropped after test runs, so they don't need to recreated for every CI job.
+  Editing the dataset definition will result in a new hash, and thus a new database being created. When `:static` is
+  false, databases get a unique name per test run and are created/dropped each time. This the only dataset definition
+  method that allows specifying the `:static` option, all other methods are static by default."
   ([database-name :- ms/NonBlankString
     table-definitions :- [:sequential DatasetTableDefinition]]
    (dataset-definition database-name table-definitions {}))
@@ -941,17 +947,17 @@
     [[\"House Finch\"]
      [\"Mourning Dove\"]]]]
 
-  Refer to the EDN definitions (e.g. `test-data.edn`) for more examples."
+  Refer to the EDN definitions (e.g. `test-data.edn`) for more examples.
+
+  Datasets created with this macro are static by default, see [[dataset-definition]] for details."
   ([dataset-name definition]
    `(defdataset ~dataset-name nil ~definition))
 
   ([dataset-name docstring definition]
-   `(defdataset ~dataset-name ~docstring ~definition {:static true}))
-  ([dataset-name docstring definition options]
    {:pre [(symbol? dataset-name)]}
    `(~(if config/is-dev? 'def 'defonce)
      ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-     (dataset-definition ~(name dataset-name) ~definition ~options))))
+     (dataset-definition ~(name dataset-name) ~definition {:static true}))))
 
 (p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
   pretty/PrettyPrintable
@@ -1015,7 +1021,8 @@
 
 (defmacro defdataset-edn
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
-  directory. (Filename should be `dataset-name` + `.edn`.)"
+  directory. (Filename should be `dataset-name` + `.edn`.)
+  Datasets created with this macro are static by default, see [[dataset-definition]] for details."
   [dataset-name & [docstring]]
   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `EDNDatasetDefinition)
      (edn-dataset-definition ~(name dataset-name) {:static true})))
