@@ -84,6 +84,7 @@ describe("scenarios > admin > fonts", () => {
     const loadedByScript: string[] = [];
     const everInPage: string[] = [];
     const fontLoads: string[] = [];
+    const canvasCalls: string[] = [];
     cy.visit("/", {
       onBeforeLoad: (win) => {
         const recordText = (target: object, method: string) => {
@@ -96,6 +97,9 @@ describe("scenarios > admin > fonts", () => {
             method,
             function (this: unknown, ...args: unknown[]) {
               measuredOnCanvas.push(String(args[0]));
+              canvasCalls.push(
+                `${method} ${JSON.stringify(args[0])} in ${Reflect.get(this ?? {}, "font")}`,
+              );
               return Reflect.apply(original, this, args);
             },
           );
@@ -128,7 +132,7 @@ describe("scenarios > admin > fonts", () => {
         });
         win.document.fonts.addEventListener("loading", () => {
           fontLoads.push(
-            `started at ${Math.round(win.performance.now())}ms with "${win.document.body?.innerText.slice(0, 80).replace(/\n/g, " | ")}"`,
+            `started at ${Math.round(win.performance.now())}ms, body ${win.document.body?.innerHTML.slice(0, 300)}, canvas calls so far ${canvasCalls.slice(0, 12).join(" ; ")}`,
           );
         });
         win.document.fonts.addEventListener("loadingdone", (event) => {
