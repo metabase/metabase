@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupBookmarksEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -8,7 +9,6 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupUserAttributesEndpoint,
@@ -26,12 +26,15 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
@@ -257,6 +260,29 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
     () => persistedDashboard,
     { name: "get-dashboard" },
   );
+  // Like the real API, the metadata lists the saved questions that the stored
+  // click behaviors link to
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}/query_metadata`,
+    () => {
+      const linkedCardIds = persistedDashboard.dashcards.flatMap(
+        ({ visualization_settings }) => {
+          const clickBehavior: unknown = visualization_settings?.click_behavior;
+          return isObject(clickBehavior) &&
+            clickBehavior.type === "link" &&
+            clickBehavior.linkType === "question" &&
+            typeof clickBehavior.targetId === "number"
+            ? [clickBehavior.targetId]
+            : [];
+        },
+      );
+      return createMockDashboardQueryMetadata({
+        databases: [DATABASE],
+        cards: CARDS.filter(({ id }) => linkedCardIds.includes(id)),
+      });
+    },
+    { name: "dashboard-query-metadata" },
+  );
   fetchMock.put(
     `path:/api/dashboard/${dashboard.id}`,
     (call) => {
@@ -290,10 +316,6 @@ function setup({ dashcards }: { dashcards: DashboardCard[] }) {
   setupNotificationChannelsEndpoints({});
   setupDatabasesEndpoints([DATABASE]);
   setupPersistedDashboardEndpoints(dashboard);
-  setupDashboardQueryMetadataEndpoint(
-    dashboard,
-    createMockDashboardQueryMetadata({ databases: [DATABASE] }),
-  );
   setupCollectionsEndpoints({ collections: [rootCollection] });
   setupCollectionItemsEndpoint({
     collection: rootCollection,
@@ -324,8 +346,11 @@ function setup({ dashcards }: { dashcards: DashboardCard[] }) {
   setupUserAttributesEndpoint([]);
   setupQueryEndpoints();
 
-  renderWithProviders(
-    <Route path="/dashboard/:slug" element={<DashboardApp />} />,
+  const { router } = renderWithProviders(
+    <>
+      <Route path="/dashboard/:slug" element={<DashboardApp />} />
+      <Route path="/question" element={<div data-testid="question-page" />} />
+    </>,
     {
       initialRoute: `/dashboard/${DASHBOARD_ID}`,
       withRouter: true,
@@ -334,10 +359,13 @@ function setup({ dashcards }: { dashcards: DashboardCard[] }) {
         currentUser: CURRENT_USER,
         dashboard: createMockDashboardState(),
         entities: createMockEntitiesState({ databases: [DATABASE] }),
-        settings: mockSettings({ "site-url": "http://localhost:3000" }),
+        // The jsdom origin, so a question link opens in the app router
+        settings: mockSettings({ "site-url": "http://localhost" }),
       },
     },
   );
+
+  return { router: checkNotNull(router) };
 }
 
 function setupMetricSearchEndpoint() {
@@ -541,19 +569,19 @@ describe("DashboardApp > metrics", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("saves a click behavior that sends a metric value to a saved question filter", async () => {
-    setup({
+  it("opens the saved question filtered by the clicked metric value after saving a click behavior", async () => {
+    const { router } = setup({
       dashcards: [
-        createDashcard(10, SCALAR_METRIC, 0),
-        createDashcard(11, TIMESERIES_METRIC, 4),
+        createDashcard(10, PRODUCTS_QUESTION, 0),
+        createDashcard(11, SCALAR_METRIC, 4),
       ],
     });
     await waitForDashboardToLoad();
     await userEvent.click(screen.getByLabelText("Edit dashboard"));
 
-    const timeseriesDashcard = getDashcards()[1];
+    const getScalarDashcard = () => getDashcards()[1];
     await userEvent.click(
-      within(timeseriesDashcard).getByLabelText("Click behavior"),
+      within(getScalarDashcard()).getByLabelText("Click behavior"),
     );
     const sidebar = await screen.findByTestId("click-behavior-sidebar");
     await userEvent.click(
@@ -592,7 +620,7 @@ describe("DashboardApp > metrics", () => {
       }),
       expect.objectContaining({
         id: 11,
-        card_id: TIMESERIES_METRIC.id,
+        card_id: SCALAR_METRIC.id,
         visualization_settings: expect.objectContaining({
           click_behavior: {
             type: "link",
@@ -613,6 +641,35 @@ describe("DashboardApp > metrics", () => {
         }),
       }),
     ]);
+
+    // Saving reloads the link targets, then the saved dashcard renders
+    // through the metric display projection, which has to keep the click
+    // behavior for the click to drill
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("dashboard-query-metadata"),
+      ).toHaveLength(2),
+    );
+    await waitForDashboardToLoad();
+    expect(screen.getByLabelText("Edit dashboard")).toBeInTheDocument();
+    await userEvent.click(
+      within(getScalarDashcard()).getByTestId("scalar-value"),
+    );
+
+    expect(await screen.findByTestId("question-page")).toBeInTheDocument();
+    const { pathname, hash } = router.location;
+    expect(pathname).toBe("/question");
+    const drilledQuestion = new Question(
+      deserializeCardFromUrl(hash.replace(/^#/, "")),
+      createMockMetadata({ databases: [DATABASE] }),
+    );
+    expect(drilledQuestion.card().original_card_id).toBe(ORDERS_QUESTION.id);
+    const drilledQuery = drilledQuestion.query();
+    expect(
+      Lib.filters(drilledQuery, 0).map(
+        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
+      ),
+    ).toEqual(["User ID is 18760"]);
   });
 });
 
