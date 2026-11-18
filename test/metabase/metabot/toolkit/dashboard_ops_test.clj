@@ -1491,6 +1491,14 @@
            (dropped-connections (assoc (p1-dash (assoc series-connected-dashcard :dashboard_tab_id 5))
                                        :tabs [{:id 5 :name "One"} {:id 6 :name "Two"}])
                                 [{:op "remove_tab" :tab_id 5}]))))
+  (testing "a patch_dashcard that sets the mappings drops the old ones on purpose, so they aren't reported"
+    (is (= []
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}]))))
+  (testing "a mapping stored without a card id filters the dashcard's own card, so losing it is reported"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(dissoc (p1-mapping 9) :card_id)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 99}]))))
   (testing "a stored mapping onto a card the dashcard doesn't show is not reported, even once the card is shown"
     (doseq [card-id [99 77]]
       (testing (str "replaced by card " card-id)

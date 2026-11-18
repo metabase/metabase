@@ -1008,8 +1008,9 @@
    nil when the dashcard doesn't show it."
   [{:keys [card_id series]} card-id]
   (cond
-    (= card-id card_id)                 :card
-    (some #(= card-id (:id %)) series) card-id))
+    ;; A mapping saved without a card id filters the dashcard's own card.
+    (or (nil? card-id) (= card-id card_id)) :card
+    (some #(= card-id (:id %)) series)      card-id))
 
 (defn- connections
   "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id card-id]`."
@@ -1019,26 +1020,31 @@
               {:keys [parameter_id card_id]}                parameter_mappings]
           [parameter_id dashcard-id card_id])))
 
-(defn- unwired-connections
-  "The connections the `unwire_parameter` ops in `ops` drop, as a set of `[parameter-id dashcard-id]`.
-   A nil dashcard id stands for every dashcard."
+(defn- asked-to-drop
+  "The connections `ops` drop on purpose, as a set of `[parameter-id dashcard-id]`.
+   An `unwire_parameter` op names its filter, with a nil dashcard id standing for every dashcard.
+   A `patch_dashcard` op that sets `parameter_mappings` replaces them all, so it stands for every filter, as a
+   `::any-parameter` parameter id."
   [ops]
   (into #{}
-        (for [{:keys [op parameter_id dashcard_id]} ops
-              :when (= "unwire_parameter" op)]
-          [parameter_id dashcard_id])))
+        (keep (fn [{:keys [op parameter_id dashcard_id patch]}]
+                (case op
+                  "unwire_parameter" [parameter_id dashcard_id]
+                  "patch_dashcard"   (when (contains? patch :parameter_mappings) [::any-parameter dashcard_id])
+                  nil)))
+        ops))
 
 (defn- dropped-connections
   "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id :series}`
    maps.
    The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
    A connection counts only when its filter and its dashcard survive, its card is still on the dashcard or was
-   replaced, and no `unwire_parameter` op in `ops` dropped it."
+   replaced, and no op in `ops` dropped it on purpose, as [[asked-to-drop]] judges."
   [current payload ops]
   (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
         stored-dashcards     (u/index-by :id (:dashcards current))
         saved-dashcards      (u/index-by :id (:dashcards payload))
-        unwired              (unwired-connections ops)
+        asked                (asked-to-drop ops)
         after                (into #{}
                                    (for [[parameter-id dashcard-id card-id] (connections (:dashcards payload))]
                                      [parameter-id dashcard-id (slot (saved-dashcards dashcard-id) card-id)]))]
@@ -1054,8 +1060,9 @@
                :when (and (surviving-parameter? parameter-id)
                           new-slot
                           (not (contains? after [parameter-id dashcard-id new-slot]))
-                          (not (contains? unwired [parameter-id dashcard-id]))
-                          (not (contains? unwired [parameter-id nil])))]
+                          (not-any? asked [[parameter-id dashcard-id]
+                                           [parameter-id nil]
+                                           [::any-parameter dashcard-id]]))]
            {:parameter_id parameter-id
             :dashcard_id  dashcard-id
             :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
