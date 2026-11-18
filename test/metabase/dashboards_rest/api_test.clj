@@ -6888,3 +6888,20 @@
                   (is (=? {:message #"(?i).*No destination parameter found.*"}
                           (mt/user-http-request :crowberto :post 400 execute-path
                                                 {:parameters {"id" 1 "name" "Store" "old_name" "Shop"}}))))))))))))
+
+(deftest copy-dashboard-records-one-revision-and-one-audit-row-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:name "C1" :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {dashboard-id :id} {:name "Original"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id}]
+      (mt/with-model-cleanup [:model/Dashboard :model/Card]
+        (doseq [deep? [false true]]
+          (testing (str (if deep? "deep" "shallow") " copy")
+            (let [audit-before (or (t2/select-one-fn :id :model/AuditLog {:order-by [[:id :desc]]}) 0)
+                  copy-id      (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" dashboard-id "/copy")
+                                                          {:name (str "Copy " deep?) :is_deep_copy deep?}))
+                  topics       (map :topic (t2/select :model/AuditLog :id [:> audit-before] {:order-by [[:id :asc]]}))]
+              (is (=? [{:is_creation true :object {:cards [{}]}}]
+                      (t2/select :model/Revision :model "Dashboard" :model_id copy-id)))
+              (is (= 1 (count (filter #{:dashboard-create} topics))))
+              (is (empty? (filter #{:dashboard-add-cards} topics))))))))))

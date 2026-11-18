@@ -551,26 +551,27 @@
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
         dashboard      (t2/with-transaction [_conn]
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                         ;; Ok, now save the Dashboard
-                         (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
-                               {id->new-card :copied
-                                id->referenced-card :referenced
-                                uncopied :discarded}
-                               (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+                         (events/with-batched-events
+                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                           ;; collection to change position, check that and fix up if needed
+                           (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                           ;; Ok, now save the Dashboard
+                           (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
+                                 {id->new-card :copied
+                                  id->referenced-card :referenced
+                                  uncopied :discarded}
+                                 (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
 
-                               id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
-                                                (duplicate-tabs dash existing-tabs))]
-                           (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
-                                                                            id->new-card
-                                                                            id->referenced-card
-                                                                            id->new-tab-id))]
-                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (cond-> dash
-                             (seq uncopied)
-                             (assoc :uncopied uncopied))))]
+                                 id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
+                                                  (duplicate-tabs dash existing-tabs))]
+                             (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
+                                                                              id->new-card
+                                                                              id->referenced-card
+                                                                              id->new-tab-id))]
+                               (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                             (cond-> dash
+                               (seq uncopied)
+                               (assoc :uncopied uncopied)))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
