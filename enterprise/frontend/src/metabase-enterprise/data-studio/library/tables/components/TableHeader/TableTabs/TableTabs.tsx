@@ -4,6 +4,7 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
+import { isEventTable } from "metabase/data-studio/data-model/pages/DataModel/TableSection/EventSettings";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -29,6 +30,14 @@ function getTabs(
     label: t`Overview`,
     to: Urls.dataStudioTable(table.id),
   });
+
+  const eventsUrl = Urls.dataStudioTableEvents(table.id);
+  if (isEventTable(table) || location.pathname === eventsUrl) {
+    tabs.push({
+      label: t`Events`,
+      to: eventsUrl,
+    });
+  }
 
   tabs.push({
     label: t`Fields`,

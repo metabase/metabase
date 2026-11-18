@@ -34,6 +34,11 @@ import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { dependencyGraph } from "metabase/urls/dependencies";
 import type { FieldId, Table } from "metabase-types/api";
 
+import {
+  EventSettings,
+  isEventTable,
+  isEventTableSetUp,
+} from "./EventSettings";
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableActionsMenu } from "./TableActionsMenu";
@@ -72,6 +77,13 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  // A link can open the tab on a table that isn't an event table yet, to set
+  // it up. The tab stays while the table is open, so navigating to a different
+  // tab doesn't take it away.
+  const [wasOpenedOnEvents] = useState(activeTab === "events");
+  const hasEventsTab =
+    isEventTable(table) || wasOpenedOnEvents || activeTab === "events";
+  const isMissingEventSetup = hasEventsTab && !isEventTableSetUp(table);
   const readOnly = !table.can_write;
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
@@ -138,8 +150,18 @@ const TableSectionBase = ({
     <Stack data-testid="table-section" gap="lg" pb="xxl">
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="lg">
+          <Tabs.List className={S.tabsList} mb="lg">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+            {hasEventsTab && (
+              <Tabs.Tab
+                value="events"
+                rightSection={
+                  isMissingEventSetup && (
+                    <Icon name="warning" c="feedback-warning" />
+                  )
+                }
+              >{t`Events`}</Tabs.Tab>
+            )}
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
@@ -208,6 +230,12 @@ const TableSectionBase = ({
               {table.is_published && <TableCollection table={table} />}
             </Stack>
           </Tabs.Panel>
+
+          {hasEventsTab && (
+            <Tabs.Panel value="events">
+              <EventSettings table={table} />
+            </Tabs.Panel>
+          )}
 
           <Tabs.Panel value="field">
             <Stack gap="lg">

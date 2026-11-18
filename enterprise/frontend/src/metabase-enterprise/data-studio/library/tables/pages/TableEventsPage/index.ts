@@ -1,0 +1,1 @@
+export { TableEventsPage } from "./TableEventsPage";
