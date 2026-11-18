@@ -89,17 +89,19 @@ const ROBERT = createMockUserListResult({
 const TWO_USERS = [BOBBY, ROBERT];
 const TEST_COLLECTION = createMockCollection();
 
+interface SetupOpts {
+  searchText: string;
+  searchFilters?: SearchFilters;
+  searchItems?: SearchResult[];
+  users?: UserListResult[];
+}
+
 const setup = async ({
   searchText,
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
   users = TEST_USER_LIST,
-}: {
-  searchText: string;
-  searchFilters?: SearchFilters;
-  searchItems?: SearchResult[];
-  users?: UserListResult[];
-}) => {
+}: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
