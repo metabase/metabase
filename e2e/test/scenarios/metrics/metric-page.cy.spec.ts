@@ -32,7 +32,7 @@ describe("scenarios > metrics > metric page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should save a definition change, bookmark, duplicate and move a metric to trash", () => {
+  it("should chart the seeded dimensions, save a definition change, bookmark, duplicate and move a metric to trash", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("POST", "/api/card").as("createCard");
 
@@ -47,6 +47,23 @@ describe("scenarios > metrics > metric page", () => {
         .and("have.attr", "data-viz-ui-name", "Number");
       cy.findByTestId("scalar-value").should("have.text", "18,760");
     });
+
+    cy.log(
+      "the overview charts the seeded dimensions and loads more on scroll",
+    );
+    H.MetricPage.overviewTab().click();
+    H.MetricPage.overviewPage().within(() => {
+      cy.findAllByText(/^By /).then(($cards) => {
+        expect($cards.map((_, card) => card.textContent).get()).to.deep.equal([
+          "By Subtotal",
+          "By Tax",
+          "By Total",
+          "By Discount",
+        ]);
+      });
+    });
+    H.MetricPage.overviewPage().realMouseWheel({ deltaY: 100 });
+    H.MetricPage.overviewPage().findAllByText(/^By /).should("have.length", 6);
 
     cy.log("save a definition change");
     H.MetricPage.definitionTab().click();

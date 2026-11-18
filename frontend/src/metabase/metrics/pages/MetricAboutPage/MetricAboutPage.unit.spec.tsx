@@ -315,7 +315,18 @@ describe("metric pages", () => {
       expect(await header.findByRole("tab", { name: tab })).toBeInTheDocument();
     }
 
-    await userEvent.click(header.getByRole("tab", { name: "Definition" }));
+    await userEvent.click(header.getByRole("tab", { name: "Overview" }));
+    const overviewPage = within(
+      await screen.findByTestId("metric-overview-page"),
+    );
+    expect(router?.location.pathname).toBe(`/metric/${CARD_ID}/overview`);
+    expect(await overviewPage.findByText("By Created At")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("metric-header")).getByRole("tab", {
+        name: "Definition",
+      }),
+    );
     const queryEditor = within(
       await screen.findByTestId("metric-query-editor"),
     );
@@ -429,9 +440,14 @@ describe("metric pages", () => {
 
     await screen.findByTestId("metric-about-page");
     await userEvent.click(screen.getByRole("button", { name: "More options" }));
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Create an alert/ }),
-    );
+    const createAlertItem = await screen.findByRole("menuitem", {
+      name: /Create an alert/,
+    });
+    // The item is disabled until the metric's alerts have loaded
+    await waitFor(() => {
+      expect(createAlertItem).toBeEnabled();
+    });
+    await userEvent.click(createAlertItem);
 
     const modal = within(await screen.findByRole("dialog"));
     expect(
