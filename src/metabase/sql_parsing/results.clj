@@ -3,7 +3,9 @@
   the same data with keyword keys in snake case, but Python's errors arrive as lists of key-value pairs.
   [[metabase.sql-parsing.shadow]] compares parsers on the same values."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import
+   (java.util IdentityHashMap)))
 
 (set! *warn-on-reflection* true)
 
@@ -28,6 +30,15 @@
         {:type (keyword err-type)}
         error))))
 
+(defn cached-by-identity!
+  "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`."
+  [^IdentityHashMap cache k compute]
+  (if (.containsKey cache k)
+    (.get cache k)
+    (let [result (compute)]
+      (.put cache k result)
+      result)))
+
 (defn- convert-table
   "The table of an all-columns field, without its empty keys."
   [{:keys [table schema database table_alias]}]
@@ -38,8 +49,8 @@
     table_alias (assoc :table-alias table_alias)))
 
 (defn- convert-field
-  "A parser field in the Metabase format."
-  [field]
+  "A parser field in the Metabase format. `cache` holds the composite fields converted so far."
+  [cache field]
   (when field
     (let [field-type (some-> (:type field) convert-field-type)]
       (case field-type
@@ -47,21 +58,24 @@
         {:type           :single-column
          :column         (:column field)
          :alias          (:alias field)
-         :source-columns (mapv #(mapv convert-field %) (:source_columns field))}
+         :source-columns (mapv #(mapv (partial convert-field cache) %) (:source_columns field))}
 
         :all-columns
         {:type  :all-columns
          :table (convert-table (:table field))}
 
         :custom-field
-        {:type        :custom-field
-         :alias       (:alias field)
-         :used-fields (into #{} (map convert-field) (:used_fields field))}
+        {:type  :custom-field
+         :alias (:alias field)}
 
         :composite-field
-        {:type          :composite-field
-         :alias         (:alias field)
-         :member-fields (mapv convert-field (:member_fields field))}
+        (cached-by-identity!
+         cache
+         field
+         (fn []
+           {:type          :composite-field
+            :alias         (:alias field)
+            :member-fields (mapv (partial convert-field cache) (:member_fields field))}))
 
         :unknown-columns
         {:type :unknown-columns}
@@ -72,6 +86,7 @@
   "The `field-references` value callers get from a parser's raw `field-references` result: `:used-fields` and
   `:errors` as sets, `:returned-fields` in order."
   [{:keys [used_fields returned_fields errors]}]
-  {:used-fields     (into #{} (map convert-field) used_fields)
-   :returned-fields (mapv convert-field returned_fields)
-   :errors          (into #{} (map convert-error) errors)})
+  (let [cache (IdentityHashMap.)]
+    {:used-fields     (into #{} (map (partial convert-field cache)) used_fields)
+     :returned-fields (mapv (partial convert-field cache) returned_fields)
+     :errors          (into #{} (map convert-error) errors)}))

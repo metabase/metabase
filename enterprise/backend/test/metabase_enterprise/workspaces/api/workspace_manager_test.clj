@@ -4,8 +4,10 @@
    verify routing, request/response shape, and that the model-level permission predicates
    are wired into the endpoints (one 403 spot-check is enough)."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -1036,3 +1038,106 @@
         (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
         (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))
+
+(deftest contract-version-header-test
+  (testing "GET /api/ee/workspace-manager/ carries X-Metabase-Workspaces-Version: 2 on a 200 and on the 401, and GET of a missing workspace carries it on its 404"
+    (testing "on success"
+      (is (= "2" (get-in (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-manager/")
+                         [:headers "X-Metabase-Workspaces-Version"]))))
+    (testing "on the 401 the auth wrapper answers"
+      (is (= "2" (get-in (mt/client-full-response :get 401 "ee/workspace-manager/")
+                         [:headers "X-Metabase-Workspaces-Version"]))))
+    (testing "on an error an endpoint throws"
+      (is (= "2" (get-in (mt/user-http-request-full-response :crowberto :get 404 "ee/workspace-manager/13371337")
+                         [:headers "X-Metabase-Workspaces-Version"]))))))
+
+(deftest contract-version-header-every-route-test
+  (testing "every workspace-manager route sends X-Metabase-Workspaces-Version: 2 on its success status"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))
+                created (mt/user-http-request-full-response :crowberto :post 200 "ee/workspace-manager/"
+                                                            {:name "Header" :database_ids [db-id]})
+                ws-id   (get-in created [:body :id])]
+            (testing "POST / 200"
+              (is (= "2" (version created))))
+            (testing "GET /:id 200"
+              (is (= "2" (version (mt/user-http-request-full-response :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))))
+            (testing "PUT /:id 200"
+              (is (= "2" (version (mt/user-http-request-full-response :crowberto :put 200 (str "ee/workspace-manager/" ws-id)
+                                                                      {:name "Renamed"})))))
+            (testing "GET /:id/config 200 keeps the endpoint's own headers and adds the version"
+              (is (=? {"X-Metabase-Workspaces-Version" "2"
+                       "Content-Type"                  "application/x-yaml"
+                       "Content-Disposition"           "attachment; filename=\"config.yml\""}
+                      (:headers (mt/user-http-request-full-response :crowberto :get 200
+                                                                    (str "ee/workspace-manager/" ws-id "/config"))))))
+            (testing "DELETE /:id 204, an endpoint that returns nil"
+              (is (= "2" (version (mt/user-http-request-full-response :crowberto :delete 204
+                                                                      (str "ee/workspace-manager/" ws-id))))))))))))
+
+(deftest contract-version-header-absent-outside-the-routes-test
+  (testing "characterization: responses built outside the workspace-manager routes have no header"
+    (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
+      (testing "the premium-feature 402"
+        (mt/with-premium-features #{}
+          (is (nil? (version (mt/user-http-request-full-response :crowberto :get 402 "ee/workspace-manager/"))))))
+      (testing "the 404 of a path no route matches"
+        (is (nil? (version (mt/user-http-request-full-response :crowberto :get 404
+                                                               "ee/workspace-manager/1/no-such-route"))))))))
+
+(deftest contract-version-header-on-thrown-errors-test
+  (testing "errors a workspace-manager endpoint throws carry X-Metabase-Workspaces-Version: 2, with the status and body they had without it"
+    (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))
+          get!    (fn [user status url] (mt/user-http-request-full-response user :get status url))]
+      (testing "403"
+        (let [resp (get! :rasta 403 "ee/workspace-manager/")]
+          (is (= "You don't have permissions to do that." (:body resp)))
+          (is (= "2" (version resp)))))
+      (testing "400 from request validation"
+        (let [resp (mt/user-http-request-full-response :crowberto :post 400 "ee/workspace-manager/" {:name 1})]
+          (is (=? {:errors {:name string?}} (:body resp)))
+          (is (= "2" (version resp)))))
+      (testing "404 for a missing workspace"
+        (let [resp (get! :crowberto 404 "ee/workspace-manager/13371337")]
+          (is (= "Not found." (:body resp)))
+          (is (= "2" (version resp)))))
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {:additional-options "user=parent_admin"}}
+                     :model/Workspace {ws-id :id} {:name "Header errors"}
+                     :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                 :database_id      db-id
+                                                 :database_details {}
+                                                 :output_namespace ""
+                                                 :input_schemas    ["public"]
+                                                 :status           :provisioned}]
+        (testing "422"
+          (let [resp (get! :crowberto 422 (str "ee/workspace-manager/" ws-id "/config"))]
+            (is (string? (:body resp)))
+            (is (= "2" (version resp)))))
+        (testing "409"
+          (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
+          (let [resp (get! :crowberto 409 (str "ee/workspace-manager/" ws-id "/config"))]
+            (is (= "Cannot build config while workspace has databases that are not :provisioned" (:body resp)))
+            (is (= "2" (version resp))))))
+      (testing "500"
+        (mt/with-dynamic-fn-redefs [ws/list-workspaces (fn [] (throw (ex-info "boom" {})))]
+          (let [resp (get! :crowberto 500 "ee/workspace-manager/")]
+            (is (=? {:message "boom"} (:body resp)))
+            (is (= "2" (version resp)))))))))
+
+(deftest contract-version-header-error-keeps-standard-headers-test
+  (testing "a thrown error of a workspace-manager route has the headers of any other thrown API error, CORS headers included, plus the version"
+    (let [options  {:request-options {:headers {"origin" "http://localhost:3000"}}}
+          headers  (fn [url] (:headers (mt/user-http-request-full-response :rasta :get 403 url options)))
+          ws       (headers "ee/workspace-manager/")
+          standard (headers "setting")
+          volatile ["Date" "Last-Modified" "Set-Cookie" "X-Metabase-Workspaces-Version"]]
+      (is (= "http://localhost:3000" (get standard "Access-Control-Allow-Origin")) "premise: CORS headers are sent")
+      (is (= "2" (get ws "X-Metabase-Workspaces-Version")))
+      (is (= (apply dissoc standard volatile) (apply dissoc ws volatile)))
+      (is (contains? (set (str/split (get ws "Access-Control-Expose-Headers") #",\s*"))
+                     "X-Metabase-Workspaces-Version")))))

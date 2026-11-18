@@ -449,6 +449,10 @@
   [parser dialect sql table-name]
   (protocol/add-insert-clause parser dialect sql table-name))
 
+(def ^{:arglists '([cache k compute])} cached-by-identity!
+  "Same as [[results/cached-by-identity!]]."
+  results/cached-by-identity!)
+
 (defn field-references
   "Extract field references from SQL, returning used and returned fields.
 
@@ -464,7 +468,6 @@
    - :alias - column alias (nil if none)
    - :source-columns - nested list of possible source columns
    - :table - table info (for all-columns)
-   - :used-fields - set of fields used (for custom-field)
    - :member-fields - list of fields (for composite-field)
 
    On timeout, returns an error map instead of throwing, consistent with the
