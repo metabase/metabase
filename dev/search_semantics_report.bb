@@ -24,8 +24,9 @@
 (let [output (or (first *command-line-args*) "target/search-semantics-report/index.html")
       frozen (-> "search/arctic_embed_l_v2_vectors.edn" io/resource slurp edn/read-string)
       html   (slurp "dev/resources/dev/search_semantics_report.html")
+      model  (slurp "dev/resources/dev/search_semantics_report_model.mjs")
       data   (report/report-data fixtures/cases frozen (provenance))
-      page   (report/render html (json/generate-string data))]
+      page   (report/render html (json/generate-string data) model)]
   (io/make-parents output)
   (spit output page)
   (println "Wrote" (.getCanonicalPath (io/file output))))

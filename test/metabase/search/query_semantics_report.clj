@@ -113,7 +113,7 @@
   "Render a report problem as a diagnostic with its affected input."
   [{problem-type :type
     case-id      :case
-    :keys        [engine label expected actual input reason repeated unknown missing invalid]}]
+    :keys        [engine label expected actual input reason repeated unknown missing invalid placeholder]}]
   (case problem-type
     :scenario-ids (str "Scenario IDs must be unique nonblank strings. Repeated: " (pr-str repeated)
                        "; invalid: " (pr-str invalid) ".")
@@ -130,7 +130,7 @@
                          ". Regenerate with query-semantics-vectors/freeze!.")
     :invalid-vector (str "Invalid frozen vector for " (pr-str input) ": " (name reason) ".")
     :vector-hits (str "Frozen-vector distances disagree with recorded hits for " (pr-str input) ".")
-    :missing-placeholder "Report template has no __REPORT_DATA__ placeholder."
+    :missing-placeholder (str "Report template has no " placeholder " placeholder.")
     (str "Invalid search report input: " problem-type ".")))
 
 (defn- failure [problem]
@@ -332,9 +332,15 @@
                        :cases   (mapv (partial row-data context :translations) translations)}}))))
 
 (defn render
-  "Insert serialized report data into the HTML template, escaping script delimiters.
-  A missing placeholder throws an ExceptionInfo with type :missing-placeholder."
-  [html json]
-  (when-not (str/includes? html "__REPORT_DATA__")
-    (throw (failure {:type :missing-placeholder})))
-  (str/replace html "__REPORT_DATA__" (str/replace json "<" "\\u003c")))
+  "Insert report data and optional scoring code into the standalone HTML template.
+  JSON script delimiters are escaped.
+  A missing placeholder throws an ExceptionInfo with type :missing-placeholder and the placeholder name."
+  ([html json]
+   (render html json nil))
+  ([html json model]
+   (let [replacements (cond-> {"__REPORT_DATA__" (str/replace json "<" "\\u003c")}
+                        model (assoc "__REPORT_MODEL__" model))]
+     (doseq [placeholder (keys replacements)]
+       (when-not (str/includes? html placeholder)
+         (throw (failure {:type :missing-placeholder, :placeholder placeholder}))))
+     (str/replace html #"__REPORT_(?:DATA|MODEL)__" #(get replacements % %)))))
