@@ -28,8 +28,8 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
-;; Dynamic because its readers, the current-time hook of the SQL compiler and [[now]], run deep inside a compile and
-;; cannot take the pin as an argument.
+;; Dynamic because its readers, [[metabase.driver.sql.query-processor/current-datetime-honeysql-form]]'s dispatch and
+;; [[now]], run deep inside a compile and cannot take the pin as an argument.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *pinned-now* nil)
 

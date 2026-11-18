@@ -143,15 +143,15 @@
 
 (deftest pinned-run-reads-the-day-in-the-report-timezone-test
   (mt/test-drivers #{:postgres}
-    ;; pgjdbc starts a session in the JVM's timezone, so the report timezone must put the pinned moment on another day
-    ;; than the JVM's timezone does, for a session that was never set to show. Tokyo and Honolulu put it on different
+    ;; pgjdbc starts a session in the JVM's timezone. For a session nothing set to fail this test, the report timezone
+    ;; must put the pinned moment on another day than the JVM's timezone does. Tokyo and Honolulu put it on different
     ;; days, so one of them always does.
     (let [pinned    (t/instant "2020-06-17T20:00:00Z")
           day-in    (fn [moment zone] (t/local-date (t/zoned-date-time moment (t/zone-id zone))))
           jvm-zone  (str (t/zone-id))
           report-tz (first (remove #(= (day-in pinned %) (day-in pinned jvm-zone)) ["Asia/Tokyo" "Pacific/Honolulu"]))
-          ;; A moment, on the hour, near the pinned one, that is on `zone`'s day of the pinned moment and on no other
-          ;; zone's day of it.
+          ;; A moment on the hour, within 36 hours of the pinned one, that is on `zone`'s day of the pinned moment and not
+          ;; on `other-zone`'s.
           on-the-day-of (fn [zone other-zone]
                           (first (for [hours (range -36 37)
                                        :let  [moment (t/plus pinned (t/hours hours))]
@@ -244,8 +244,8 @@
             (is (nil? (refusal definition)))))))))
 
 (deftest every-test-runs-in-the-report-timezone-test
-  ;; pgjdbc starts a session in the JVM's default timezone, so the report timezone must differ from it for a session
-  ;; that was never set to show.
+  ;; pgjdbc starts a session in the JVM's default timezone. For a session nothing set to fail this test, the report
+  ;; timezone must differ from it.
   (let [report-tz (if (= "Asia/Tokyo" (str (t/zone-id))) "America/Sao_Paulo" "Asia/Tokyo")]
     (mt/test-drivers #{:postgres}
       (mt/with-temporary-setting-values [report-timezone report-tz]

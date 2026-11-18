@@ -14,8 +14,8 @@ summary: Changes to the Metabase driver interface, listed by release.
   `datetime`, and an instant otherwise.
 
 - The `:sql-jdbc` implementation of `metabase.driver/do-with-test-connection` sets the session timezone to the report
-  timezone when the driver supports one. A driver that overrides the method without calling the `:sql-jdbc` one should
-  set it too, or a data test reads dates in whatever timezone its pooled connection last had.
+  timezone when the database supports `:set-timezone`. A driver that overrides the method without calling the
+  `:sql-jdbc` one should set it too, or a data test reads dates in whatever timezone its pooled connection last had.
 
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
