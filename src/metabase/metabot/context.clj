@@ -262,6 +262,8 @@
    [:user_recently_viewed       {:optional true} [:maybe [:sequential ::recently-viewed-item]]]
    [:current_time_with_timezone {:optional true} [:maybe :string]]
    [:current_user_time          {:optional true} [:maybe :string]]
+   ;; The agent reads the first day of the week from the start-of-week setting, so a value sent by the client has no
+   ;; effect.
    [:first_day_of_week          {:optional true} [:maybe :string]]
    [:capabilities               {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]
    [:slack_channel_id           {:optional true} [:maybe :string]]
@@ -392,7 +394,7 @@
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 
 (def ^:private profiles-excluding-recent-views
-  "Profiles for which recent views are never injected.
+  "Profiles for which a turn's context gets no recent views.
 
   The nlq profile discovers data through the curated library tool rather than general instance search, so arbitrary
   recently-viewed items (which may not be curated) would undermine that guarantee. (A :nlq request served the
@@ -413,8 +415,11 @@
   Skips recents entirely for profiles in [[profiles-excluding-recent-views]]."
   [context {:keys [metabot profile-id] :as _opts}]
   (try
-    ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so recent
-    ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
+    ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so this turn's
+    ;; context has no recent views, even for a caller-supplied context that already carries the key.
+    ;; This does not change the history: a full `<context>` block that an earlier turn stored replays with the
+    ;; recent views it was sent with, also after a profile switch (`/profile`) or a setting change
+    ;; (see `metabase.metabot.persistence/replays-full-context?`).
     (if (or (not (metabot.settings/metabot-recent-views-enabled?))
             (contains? profiles-excluding-recent-views profile-id))
       (dissoc context :user_recently_viewed)

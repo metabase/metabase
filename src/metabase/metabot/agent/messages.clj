@@ -151,22 +151,46 @@
   [steps]
   (into [] (mapcat step->parts) steps))
 
-(defn render-context-block
-  "The `<context>` block for the most recent input message, rendered from `context`, or nil when that message is not
-  the user's or the context has nothing to show. This reads the app DB: the agent renders it once per turn and keeps
-  it in memory (see [[memory/set-context-block]]).
+(defn- later-turn-context
+  "The template variables of a later turn's `<context>` block: the current time and what the user is viewing."
+  [context]
+  (assoc (user-context/time-context context)
+         :viewing_context
+         ;; The history replays the block of each earlier turn, and that block can name an item that the user no
+         ;; longer views. So say that the user views no item. Decide from the items, not from the formatted text:
+         ;; the text is blank also when every item fails to format, and then the user does view an item.
+         (if (empty? (:user_is_viewing context))
+           "The user is not looking at any item now."
+           (user-context/format-viewing-context context))))
 
-  A `full?` block holds all of the context: the current time, the user and the glossary, what the user is viewing,
-  and the recent views. The first turn of a conversation sends it. A later turn sends only what the user is viewing,
-  because the history replays the first block and the rest of the context does not change materially from turn to
-  turn."
+(defn render-context-block
+  "The `<context>` block for the most recent input message, rendered from `context`, as `{:block <block> :full?
+  <whether it holds all of the context>}`, or nil when that message is not the user's. The agent renders it once per
+  turn and keeps it in memory (see [[memory/set-context-block]]).
+
+  When `full?` is true (the default), the block holds all of the context: the current time, the user and the
+  glossary, what the user is viewing, and the recent views. It reads the app DB. The result is `:full?` only when the
+  block holds the user information.
+
+  When `full?` is false, the block holds only the date lines (see [[user-context/time-context]]) and what the user is
+  viewing. When the user views no item, it says so.
+
+  Only the web chat stores and replays the block. It sends a full block on each turn where
+  `metabase.metabot.persistence/replays-full-context?` is false, for example on the first turn of a conversation.
+  Slack Metabot sends a full block on every turn."
   ([context memory]
    (render-context-block context memory true))
   ([context memory full?]
    (when (= :user (:role (last (memory/get-input-messages memory))))
-     (prompts/context-injection (if full?
-                                  (user-context/enrich-context-for-template context)
-                                  {:viewing_context (user-context/format-viewing-context context)})))))
+     ;; The history replays the full block of an earlier turn, and the rest of the context does not change
+     ;; materially from turn to turn. So a later turn sends less. A full block without the user information does not
+     ;; count as full, so that the next turn sends one again.
+     (if full?
+       (let [template-context (user-context/enrich-context-for-template context)]
+         {:block (prompts/context-injection template-context)
+          :full? (some? (:current_user_info template-context))})
+       {:block (prompts/context-injection (later-turn-context context))
+        :full? false}))))
 
 (defn- messages-with-injected-context
   "Returns messages from memory with the turn's `<context>` block put before the most recent one. The block is the
@@ -175,7 +199,7 @@
   (let [all-messages (vec (memory/get-input-messages memory))
         block        (if (memory/context-block-rendered? memory)
                        (memory/context-block memory)
-                       (render-context-block context memory))]
+                       (:block (render-context-block context memory)))]
     (cond-> all-messages
       block (update (dec (count all-messages)) update :content #(str block %)))))
 

@@ -150,8 +150,8 @@
   preloaded into the message stream (see `metabase.metabot.skills`), not here.
 
   Per-request user context (current time, user info, viewing context, recent
-  views) is injected into the last user message via [[inject-context]], not
-  rendered here to help keep the system prompt cacheable.
+  views) is not rendered here. It goes before the last user message, through
+  [[metabase.metabot.agent.messages/render-context-block]]. This keeps the system prompt cacheable.
 
   Returns rendered system message string."
   [{:keys [prompt-template] :as profile} context tools capabilities]
@@ -221,17 +221,11 @@
 (defn context-injection
   "The formatted context block that goes before the user's message, or nil when `context` has nothing to show."
   [context]
-  ;; Injection is performed only when the hardcoded keys are present in in context to avoid
-  ;; insertion e.g. insertion of blank xml tags.
+  ;; Render only when one of these keys holds a non-empty string, so that the block never holds empty XML tags.
   (when (some #(string? (not-empty (get context %)))
               [:viewing_context :current_time :current_user_info :recent_views])
     (selmer/render (get-cached-message-injection-template)
                    context)))
-
-(defn inject-context
-  "Prepends a formatted context to a string, message."
-  [context str*]
-  (str (context-injection context) str*))
 
 (comment
   ;; Development examples

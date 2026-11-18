@@ -145,14 +145,23 @@
 
 (defn set-context-block
   "Keep `block`, the `<context>` block rendered for this turn's user message, or nil when the message gets none.
-  The turn sends it with the message, and it is stored so later turns send the same bytes."
-  [memory block]
-  (assoc memory :context-block block))
+  The turn sends it with the message. The web chat also stores it, so that later turns send the same bytes. `full?`
+  tells whether the block holds all of the context, so that later web chat turns can send less. Slack Metabot does
+  not store the block."
+  [memory {:keys [block full?]}]
+  (assoc memory
+         :context-block       block
+         :context-block-full? (boolean full?)))
 
 (defn context-block
   "The `<context>` block kept with [[set-context-block]], or nil."
   [memory]
   (:context-block memory))
+
+(defn context-block-full?
+  "Whether the `<context>` block kept with [[set-context-block]] holds all of the context."
+  [memory]
+  (boolean (:context-block-full? memory)))
 
 (defn context-block-rendered?
   "Whether [[set-context-block]] has kept this turn's block, even a nil one."

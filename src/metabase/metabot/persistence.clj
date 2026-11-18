@@ -606,12 +606,24 @@
               (assistant-row->llm-messages reply)))))
 
 (defn replays-full-context?
-  "Whether the [[history]] of `messages` replays a full `<context>` block, one that holds all of the context. The
-  agent sends that block in the first turn of a conversation. Later turns send only what the user is viewing (see
-  `metabase.metabot.agent.messages/render-context-block`). A history has no full block when the conversation is new,
-  when its first turn failed, or when its earlier turns were stored before the agent stored their blocks: then the
-  next turn sends one."
+  "Whether the [[history]] of `messages` replays a full `<context>` block.
+
+  A full block holds all of the context. The agent sends that block in the first turn of a conversation. Later turns
+  send only the time and what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`). A
+  history has no full block when the conversation is new, when its first turn failed or could not read the user
+  information, or when its earlier turns were stored before the agent stored their blocks: then the next turn sends
+  one."
   [messages]
+  ;; The web chat supports one user per conversation. So this function assumes that the full block in the history
+  ;; was rendered for the user who sends this turn. It does not check whose block it is.
+  ;; Warning: multi-user conversations break this assumption. Examples are a superuser who posts in another user's
+  ;; conversation, a retry by another user, or a fork of another user's conversation. Then the model can take another
+  ;; user's details and recent views as those of the user who sends this turn. To fix it, store the user id with the
+  ;; block. Then count only the newest full block, and only when it was rendered for the current user. That fix was
+  ;; proposed in review and reverted, because the scenario is not supported
+  ;; (https://github.com/metabase/metabase/pull/87316).
+  ;; Slack Metabot does not store or replay the block. It sends the full context on every turn (see
+  ;; `metabase.slackbot.streaming`). To store and replay the block there too is a possible improvement.
   (boolean (some (fn [turn-rows]
                    (some-> (replayable-turn turn-rows) :reply stored-context :full))
                  (rows->turns messages))))

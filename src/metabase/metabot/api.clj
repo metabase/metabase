@@ -202,8 +202,8 @@
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state.
   `:full-context-replayed?` is true when `:history` replays a full `<context>` block
-  (see [[metabot.persistence/replays-full-context?]]), so this turn sends only what the
-  user is viewing."
+  (see [[metabot.persistence/replays-full-context?]]), so this turn sends only the time
+  and what the user is viewing."
   [{:keys [metabot profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id title-job full-context-replayed?]}]
   (let [enriched-context (metabot.context/create-context
@@ -299,7 +299,7 @@
                  :error                 error-data
                  :turn-state            (some-> @memory-atom memory/turn-state)
                  :context-block         (some-> @memory-atom memory/context-block)
-                 :full-context?         (not full-context-replayed?)
+                 :full-context?         (some-> @memory-atom memory/context-block-full?)
                  :context-window-tokens window))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"
