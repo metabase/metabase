@@ -171,6 +171,12 @@
   }
 }
 
+.inlinePromptIcon {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 6px;
+}
+
 .inlinePromptInput {
   min-width: 0;
   border: none;

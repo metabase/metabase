@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import S from "./Editor.module.css";
 import ErrorsS from "./Errors/Errors.module.css";
-import { PROMPT_TRIGGER } from "./inline-prompt";
+import AiIcon from "./ai.svg?component";
 import LoadingDots from "./loading-dots.svg?component";
 
 type InlinePromptProps = {
@@ -13,7 +13,10 @@ type InlinePromptProps = {
   onClose: () => void;
 };
 
-/** A prompt to the AI inside the code, at the place where the user typed "?". */
+/**
+ * A prompt to the AI inside the code, at the place where the user typed "?".
+ * An icon shows in place of the "?".
+ */
 export function InlinePrompt({
   isLoading,
   onSubmit,
@@ -39,14 +42,14 @@ export function InlinePrompt({
   };
 
   // An empty prompt still works: Enter asks the AI to finish the expression.
-  const placeholder = t`add prompt`;
+  const placeholder = t`Ask AI`;
 
   return (
     <span
       className={cx(S.inlinePrompt, { [S.loading]: isLoading })}
       data-testid="expression-inline-prompt"
     >
-      {PROMPT_TRIGGER}
+      <AiIcon className={S.inlinePromptIcon} aria-hidden />
       <input
         className={S.inlinePromptInput}
         aria-label={t`Ask AI`}
