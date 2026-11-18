@@ -15,9 +15,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.change-log.core :as change-log]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.search.core :as search]
@@ -324,13 +324,13 @@
 
 (defn- after-insert!
   "Do for the new `tables` of the Database with `database-id`, all at once, what the Table and Field models' insert
-  hooks do for each row: the default permissions, the change log, the dependency jobs and the search index."
+  hooks and the consumers of their events do for each row: the default permissions, the change log and the search
+  index. The dependency jobs need nothing: they compute nothing for a Table, and a new Table has no dependents."
   [database-id tables]
   (table/set-new-tables-permissions! database-id tables)
   (doseq [batch (partition-all pages/query-batch-size (map :id tables))]
     (change-log/log-rows! :model/Table :insert :id [:in batch])
     (change-log/log-rows! :model/Field :insert :table_id [:in batch]))
-  (run! #(dependencies.hooks/before-insert :model/Table %) tables)
   (search/bulk-update! tables))
 
 (defn- apply-tables!
@@ -573,7 +573,7 @@
   [database batches]
   (try
     (t2/with-transaction [_conn]
-      (dependencies.hooks/with-batched-marks
+      (events/with-batched-events
         (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches)))
     (catch Exception e
       (throw (ex-info (tru "The answer of the other Metabase could not be applied, and nothing of it was written.")
