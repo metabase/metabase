@@ -384,8 +384,7 @@
                                                :display                "table"
                                                :visualization_settings {}})
           get-card      #(mt/user-http-request :crowberto :get 200 (str "card/" card-id))
-          run!          #(do (mt/user-http-request :crowberto :post 202 (str "card/" card-id "/query"))
-                             (Thread/sleep (long 1000)))
+          run!          #(mt/user-http-request :crowberto :post 202 (str "card/" card-id "/query"))
           edit!         (fn [column-name f]
                           (let [card (get-card)]
                             (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
