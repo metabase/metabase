@@ -398,7 +398,7 @@ describe("DashboardGrid placeholder question picker", () => {
       setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
       setupDashcardQueryEndpoints(
         DASHBOARD_ID,
-        { ...PLACEHOLDER_DASHCARD, card_id: id },
+        createDashcard(PLACEHOLDER_DASHCARD.id, card),
         createMockDataset({
           data: createMockDatasetData({
             rows: [[7]],

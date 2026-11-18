@@ -264,14 +264,19 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       cy.log("move the question to a collection from the search results");
+      cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateCard");
       H.entityPickerModal().within(() => {
         findSearchItem("No collection personal collection 2").click();
         cy.button("Move").click();
       });
+      cy.wait("@updateCard").its("response.statusCode").should("eq", 200);
       H.undoToast()
         .findByText("No collection personal collection 2")
         .should("be.visible");
-      cy.reload();
+
+      // visitQuestion loads the page again and closes the navbar, which hides
+      // the app bar breadcrumbs while it is open
+      H.visitQuestion(ORDERS_QUESTION_ID);
       H.appBar()
         .findByText("No collection personal collection 2")
         .should("be.visible");
