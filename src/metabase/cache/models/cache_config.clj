@@ -44,7 +44,6 @@
   {:track            []
    :track-redacted   [:config :invalidated_at :model :model_id :next_run_at :refresh_automatically :state :strategy]
    :skip             []
-   :changes?         false
    :context-details? true
    :topics           {:create :cache-config-update
                       :update :cache-config-update

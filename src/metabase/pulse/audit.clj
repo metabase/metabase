@@ -16,14 +16,15 @@
 
 (defn details
   "The details to store for the Pulse `row`: its name, its Dashboard, its parameters, and the channels, schedules and
-  recipients it has."
-  [{:keys [id]} _event]
+  recipients it has, the columns being those of the row before the write when the `event` has it as its previous row."
+  [{:keys [id] :as row} {:keys [previous-object]}]
   (when-let [pulse (some-> (pulse.db/pulse id) (t2/hydrate :cards [:channels :recipients]))]
     (let [channels (:channels pulse)]
-      {:archived     (:archived pulse)
-       :name         (:name pulse)
-       :dashboard_id (:dashboard_id pulse)
-       :parameters   (:parameters pulse)
-       :channel      (map :channel_type channels)
-       :schedule     (map :schedule_type channels)
-       :recipients   (map :recipients channels)})))
+      (cond-> {:archived     (:archived pulse)
+               :name         (:name pulse)
+               :dashboard_id (:dashboard_id pulse)
+               :parameters   (:parameters pulse)
+               :channel      (map :channel_type channels)
+               :schedule     (map :schedule_type channels)
+               :recipients   (map :recipients channels)}
+        (identical? row previous-object) (merge (select-keys row [:archived :name :dashboard_id :parameters]))))))

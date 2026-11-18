@@ -32,7 +32,6 @@
   {:track          []
    :track-redacted [:database_id :user_attribute]
    :skip           []
-   :changes?       false
    :details        database-routing.audit/details
    :subject        database-routing.audit/subject
    :topics         {:create :database-update

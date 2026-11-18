@@ -37,8 +37,7 @@
 (defmethod audit/spec :model/CardTest [_model]
   {:track          [:card_id :name :description]
    :track-redacted [:creator_id :expectations :inputs]
-   :skip           [:entity_id]
-   :changes?       false})
+   :skip           [:entity_id]})
 
 (defmethod app-db-copy/spec :model/CardTest [_model]
   {:skip? false})

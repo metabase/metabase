@@ -63,7 +63,6 @@
    :track-redacted [:collection_id :creator_id :owner_email :owner_user_id :source :source_database_id :source_type
                     :target_db_id]
    :skip           [:entity_id :last_checkpoint_value :table_dependencies :target_table_id]
-   :changes?       false
    :details        transforms.audit/details
    :topics         {:create :transform-create
                     :update :update-transform

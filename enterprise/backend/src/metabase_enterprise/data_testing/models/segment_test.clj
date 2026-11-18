@@ -37,8 +37,7 @@
 (defmethod audit/spec :model/SegmentTest [_model]
   {:track          [:segment_id :name :description]
    :track-redacted [:creator_id :expectations :inputs]
-   :skip           [:entity_id]
-   :changes?       false})
+   :skip           [:entity_id]})
 
 (defmethod app-db-copy/spec :model/SegmentTest [_model]
   {:skip? false})

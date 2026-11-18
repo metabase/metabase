@@ -57,8 +57,7 @@
 (defmethod audit/spec :model/Measure [_model]
   {:track          []
    :track-redacted [:archived :creator_id :definition :description :name :table_id]
-   :skip           [:dimension_mappings :dimensions :entity_id]
-   :changes?       false})
+   :skip           [:dimension_mappings :dimensions :entity_id]})
 
 (defmethod revisions/spec :model/Measure [_model]
   {:track        [:name :description :definition :archived :table_id]

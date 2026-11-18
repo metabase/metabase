@@ -65,7 +65,6 @@
    :track-redacted [:archived :archived_directly :content_type :creator_id :document :exploration_id :is_placeholder
                     :made_public_by_id :public_uuid :public_uuid_prefix]
    :skip           [:collection_position :entity_id :last_viewed_at :view_count]
-   :changes?       false
    :topics         {:create documents.audit/create-topic
                     :update documents.audit/update-topic
                     :delete documents.audit/delete-topic}})

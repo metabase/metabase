@@ -42,8 +42,7 @@
 (defmethod audit/spec :model/TransformTest [_model]
   {:track          [:transform_id :name :description]
    :track-redacted [:creator_id :expectations :inputs]
-   :skip           [:entity_id]
-   :changes?       false})
+   :skip           [:entity_id]})
 
 (defmethod app-db-copy/spec :model/TransformTest [_model]
   {:skip? false})

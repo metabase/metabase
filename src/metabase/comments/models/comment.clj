@@ -32,7 +32,6 @@
   {:track          [:target_type :target_id :child_target_id :parent_comment_id]
    :track-redacted [:content :content_html :context :creator_id :deleted_at :is_resolved]
    :skip           []
-   :changes?       false
    :topics         {:create :comment-create
                     :update comments.audit/update-topic
                     :delete :comment-delete}})

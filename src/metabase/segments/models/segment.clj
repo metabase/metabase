@@ -57,7 +57,6 @@
   {:track          [:name :description :table_id]
    :track-redacted [:archived :caveats :creator_id :definition :points_of_interest :show_in_getting_started]
    :skip           [:entity_id]
-   :changes?       false
    :details        segments.audit/details})
 
 (defmethod revisions/spec :model/Segment [_model]

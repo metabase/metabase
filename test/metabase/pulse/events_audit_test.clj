@@ -51,7 +51,7 @@
                                      :channels [(assoc email-channel :schedule_hour 8
                                                        :recipients [{:id (mt/user->id :crowberto)}])]})
               (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id rasta
-                        :details {:name "Renamed" :channel ["email"] :schedule ["daily"]}}]
+                        :details {:previous {:name "Subscription"} :new {:name "Renamed"}}}]
                       (rows-since before)))))
           (testing "changing only the channels stores one row"
             (let [before (max-id)]
@@ -92,7 +92,7 @@
       (let [before (max-id)]
         (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id) {:name "Renamed"})
         (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id (mt/user->id :rasta)
-                  :details {:name "Renamed" :dashboard_id dashboard-id :channel ["email"]}}]
+                  :details {:previous {:name "Dashboard"} :new {:name "Renamed"}}}]
                 (rows-since before)))))))
 
 (deftest renaming-or-moving-dashboard-records-no-subscription-update-test

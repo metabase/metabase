@@ -72,7 +72,6 @@
    :track-redacted [:alert_above_goal :alert_condition :alert_first_only :archived :archived_directly :collection_id
                     :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
    :skip           [:collection_position :entity_id]
-   :changes?       false
    :details        pulse.audit/details
    :topics         {:create pulse.audit/create-topic
                     :update :subscription-update}})

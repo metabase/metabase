@@ -13,8 +13,6 @@
   Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists. All
   the other keys are optional:
 
-  - `:changes?`, false for a model whose update stores the details of the new row rather than the changes, true by
-    default.
   - `:details`, a fn of a row and the lifecycle event returning the details to store beside the tracked columns, which
     it overrides, for what the columns alone do not say.
   - `:same?`, a map from a column to a fn of the row before and the row after, true when the column is unchanged, `=`
@@ -48,7 +46,6 @@
    [:track           [:sequential :keyword]]
    [:track-redacted  [:sequential :keyword]]
    [:skip            [:sequential :keyword]]
-   [:changes?        {:optional true} :boolean]
    [:details         {:optional true} fn?]
    [:same?           {:optional true} [:map-of :keyword fn?]]
    [:topics          {:optional true} [:map-of Operation [:or :keyword fn?]]]

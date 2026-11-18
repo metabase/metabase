@@ -260,11 +260,9 @@
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
                 :model_id    (:id segment)
-                :details     {:name             "Renamed segment"
-                              :description      (:description segment)
-                              :revision-message "update this mofo"
-                              :database_id      (mt/id)
-                              :table_id         (mt/id :checkins)}}
+                :details     {:previous         {:name (:name segment)}
+                              :new              {:name "Renamed segment"}
+                              :revision-message "update this mofo"}}
                (mt/latest-audit-log-entry "segment-update" (:id segment))))))))
 
 (deftest segment-delete-event-test
@@ -429,8 +427,8 @@
          (t2/update! :model/Document :id (:id document) {:name "Updated Document"})
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
-                 :details {:name "Updated Document"
-                           :collection_id nil}
+                 :details {:previous {:name "Test Document"}
+                           :new      {:name "Updated Document"}}
                  :topic :document-update
                  :model "Document"}
                 (mt/latest-audit-log-entry :document-update (:id document)))))
@@ -499,7 +497,8 @@
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
-               :details {:name "Updated Transform"}
+               :details {:previous {:name "Test Transform"}
+                         :new      {:name "Updated Transform"}}
                :topic :update-transform
                :model "Transform"}
               (mt/latest-audit-log-entry :update-transform (:id transform)))))
@@ -725,6 +724,14 @@
              (is (= {:model_id db-id
                      :user_id  (mt/user->id :crowberto)
                      :details  {:db_routing "enabled" :routing_attribute "tenant"}
+                     :topic    :database-update
+                     :model    "Database"}
+                    (mt/latest-audit-log-entry :database-update db-id))))
+           (testing "changing the attribute of a router is recorded as an update of its database with the change"
+             (t2/update! :model/DatabaseRouter :id router-id {:user_attribute "other"})
+             (is (= {:model_id db-id
+                     :user_id  (mt/user->id :crowberto)
+                     :details  {:previous {:routing_attribute "tenant"} :new {:routing_attribute "other"}}
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))

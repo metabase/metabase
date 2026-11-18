@@ -63,7 +63,7 @@
 (defn- event-details
   "The details of the row that the lifecycle `event` records: the changes of an update, or the details of the row."
   [{:keys [model object previous-object] :as event}]
-  (if (and (get (audit.spec/spec model) :changes? true) object (not-empty previous-object))
+  (if (and object (not-empty previous-object))
     (audit-log/update-details (details-of model object event) (details-of model previous-object event))
     (details-of model (row-of event) event)))
 
