@@ -3,14 +3,14 @@ import type {
   NavigatedEntityParameters,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
-import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
-import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import {
   getDataAppEmbedUrl,
   getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
   validateDataAppPath,
-} from "embedding-sdk-shared/lib/embedded-data-app-path";
+} from "embedding-sdk-shared/data-apps/embedded-data-app-path";
+import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
+import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {

@@ -292,7 +292,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
   // Saving a card finishes asynchronously. A `route.lazy` destination keeps the
   // query builder mounted while its chunk loads, so this can run after the user
   // has been sent elsewhere, and a navigation here would replace that pending
-  // one. See dashboard-questions.cy.spec.js, which caught it.
+  // one. See dashboard-questions.cy.spec.ts, which caught it.
   it("does not navigate while a navigation to a different path is pending", async () => {
     jest.mocked(getPendingNavigationPath).mockReturnValue("/dashboard/1");
 

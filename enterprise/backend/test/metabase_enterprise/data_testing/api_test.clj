@@ -13,8 +13,8 @@
 (def ^:private inputs
   [{:table   {:schema "PUBLIC" :name "PEOPLE"}
     :format  "rows"
-    :columns [{:name "ID" :cast_type "INTEGER"}]
-    :rows    [{"ID" 1}]}])
+    :columns [{:name "ID" :cast_type "INTEGER"} {:name "NAME" :cast_type "VARCHAR"}]
+    :rows    [{"ID" 1 "NAME" "abc"}]}])
 
 (def ^:private expectations
   [{:type "empty" :name "no rows" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID IS NULL"}])
@@ -71,7 +71,9 @@
                      :creator_id   (mt/user->id :crowberto)
                      :name         "My test"
                      :description  "abc"
-                     :inputs       [{:format "rows" :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{:ID 1}]}]
+                     :inputs       [{:format  "rows"
+                                     :columns [{:name "ID" :cast_type "INTEGER"} {:name "NAME" :cast_type "VARCHAR"}]
+                                     :rows    [{:ID 1 :NAME "abc"}]}]
                      :expectations expectations}
                     created)))
           (testing "GET returns the test"
@@ -93,7 +95,7 @@
 (deftest rows-cells-keep-request-values-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)]
-      (let [cells   {"ID" 1 "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
+      (let [cells   {"ID" 1 "NAME" "abc" "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
             columns (mapv (fn [column] {:name column :cast_type "VARCHAR"}) (keys cells))
             created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
                                           {:transform_id transform-id
@@ -367,3 +369,50 @@
       (testing "a single test carries its newest run"
         (is (=? {:id test-id :last_run {:id new-id}}
                 (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" test-id))))))))
+
+(deftest a-test-whose-input-lacks-a-column-the-transform-reads-is-refused-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {transform-id :id} (transform)
+                   :model/TransformTest {saved-id :id}     {:transform_id transform-id
+                                                            :inputs       [(assoc (first inputs)
+                                                                                  :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                                  :rows    [{"ID" 1}])]
+                                                            :expectations expectations}]
+      (let [id-only [(assoc (first inputs) :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{"ID" 1}])]]
+        (testing "create refuses an input lacking a column the transform reads, naming it"
+          (is (=? {:error-code "transform-test.missing-input-columns"
+                   :columns    {:PUBLIC.PEOPLE ["NAME"]}}
+                  (mt/user-http-request :crowberto :post 400 "ee/transform-test"
+                                        {:transform_id transform-id :name "id only" :inputs id-only
+                                         :expectations expectations})))
+          (is (not (t2/exists? :model/TransformTest :name "id only"))))
+        (testing "a saved test with such an input is refused when it runs"
+          (is (= "transform-test.missing-input-columns"
+                 (:error-code (mt/user-http-request :crowberto :post 400 (str "ee/transform-test/" saved-id "/run"))))))
+        (testing "control: an input declaring every column the transform reads is saved"
+          (let [created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
+                                              {:transform_id transform-id :name "complete" :inputs inputs
+                                               :expectations expectations})]
+            (t2/delete! :model/TransformTest :id (:id created))))))))
+
+(deftest an-input-without-a-schema-is-checked-against-the-table-in-the-default-schema-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {transform-id :id} (assoc-in (transform) [:source :query]
+                                                                 (lib/native-query (mt/metadata-provider)
+                                                                                   "SELECT ID, NAME FROM PEOPLE"))]
+      (let [no-schema (fn [& column-names]
+                        [{:table   {:name "PEOPLE"}
+                          :format  "rows"
+                          :columns (mapv (fn [n] {:name n :cast_type "VARCHAR"}) column-names)
+                          :rows    []}])
+            create    (fn [status test-name test-inputs]
+                        (mt/user-http-request :crowberto :post status "ee/transform-test"
+                                              {:transform_id transform-id :name test-name :inputs test-inputs
+                                               :expectations expectations}))]
+        (testing "an input naming its table without a schema, lacking a column the transform reads, is refused, naming the column"
+          (is (=? {:error-code "transform-test.missing-input-columns"
+                   :columns    {:PEOPLE ["NAME"]}}
+                  (create 400 "id only" (no-schema "ID"))))
+          (is (not (t2/exists? :model/TransformTest :name "id only"))))
+        (testing "control: the same input declaring every column the transform reads is saved"
+          (t2/delete! :model/TransformTest :id (:id (create 200 "complete" (no-schema "ID" "NAME")))))))))

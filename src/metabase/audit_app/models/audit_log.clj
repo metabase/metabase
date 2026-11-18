@@ -42,7 +42,9 @@
 
 (defmethod model-details :model/ApiKey
   [entity _event-type]
-  (select-keys entity [:name :group :key_prefix :user_id]))
+  ;; only scoped keys carry a scope, so an auditor can tell a narrow key from a whole-API key
+  (cond-> (select-keys entity [:name :group :key_prefix :user_id])
+    (:scope entity) (assoc :scope (:scope entity))))
 
 (defmethod model-details :model/Card
   [{card-type :type, :as card} _event-type]

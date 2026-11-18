@@ -1305,7 +1305,8 @@
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
-  Returns a map with `:structured-output` and `:instructions` keys. Throws with an
+  Returns a map with `:structured-output` and `:instructions` keys. `:repairs` in `:structured-output` names the
+  repair passes that changed the query ([[repr.repair/repairs]]). Throws with an
   `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
   surface a helpful message to the LLM without a stack trace.
 
@@ -1381,7 +1382,10 @@
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
                              :query-json     exported-repr
-                             :result-columns (result-columns-for-query pmbql-query mp)}
+                             :result-columns (result-columns-for-query pmbql-query mp)
+                             ;; For the `agent_used_tool` event only. The model reads `:output`, which does
+                             ;; not hold it, and persistence does not store it.
+                             :repairs        (repr.repair/repairs repaired)}
          :instructions      (instructions/query-created-instructions-for query-id false)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so

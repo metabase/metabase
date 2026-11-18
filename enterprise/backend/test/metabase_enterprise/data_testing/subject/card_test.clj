@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -159,15 +160,6 @@
         (is (= #{(table-ref :venues)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card over-model-id) empty-definition))))))))
 
-(defn- refusal
-  "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      {:error-type (:error-type (ex-data e)) :message (ex-message e)})))
-
 (deftest card-with-a-parameter-that-needs-a-value-is-refused-test
   (mt/test-driver :h2
     (let [{:keys [schema name]} (table-ref :people)
@@ -179,7 +171,7 @@
                                     {:type :card :name tag-name :display-name tag-name :card-id card-id}))
           plan-of               (fn [query]
                                   (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-                                    (refusal #(data-testing.subject/subject-plan :card (saved-card card-id) empty-definition))))
+                                    (data-testing.test-util/refusal #(data-testing.subject/subject-plan :card (saved-card card-id) empty-definition))))
           needs-a-value         (fn [tag-names]
                                   {:error-type ::data-testing.errors/uncompilable-subject
                                    :message    (str "This card's query has a parameter that needs a value and has no "

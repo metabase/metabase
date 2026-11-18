@@ -343,7 +343,8 @@
   {:team "Security Engineering"
    :api  #{metabase.api-scope.core
            metabase.api-scope.data-app
-           metabase.api-scope.init}
+           metabase.api-scope.init
+           metabase.api-scope.workspace-manager}
    :uses #{util}}
 
   api.eid-translation
@@ -538,6 +539,17 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database}}
+
+  change-log
+  {:team "Cloud"
+   :api  #{metabase.change-log.core
+           metabase.change-log.init}
+   :uses #{app-db
+           global-system
+           premium-features
+           task
+           util
+           util.config}}
 
   ;; TODO -- way too many API namespaces.
   channel
@@ -807,6 +819,7 @@
            analytics
            api
            app-db
+           change-log
            collections
            content-verification
            embedding
@@ -1610,6 +1623,7 @@
               api-scope
               app-db
               audit-app
+              change-log
               channel
               collections
               data-apps
@@ -1628,6 +1642,7 @@
               metabot.slackbot
               metabot.toolkit
               metrics
+              model-persistence
               models
               native-query-snippets
               notification
@@ -1673,6 +1688,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/ModerationReview
+                    :model/NativeQuerySnippet
                     :model/QueryTable
                     :model/Segment
                     :model/Table
@@ -2063,6 +2079,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            events
            lib.metadata
@@ -2086,6 +2103,7 @@
                     :model/Database
                     :model/Field
                     :model/Table
+                    :model/Tenant
                     :model/User}}
 
   permissions.rest
@@ -2209,6 +2227,7 @@
            metabase.pulse.init}
    :uses #{api
            app-db
+           change-log
            channel
            collections
            driver
@@ -2254,6 +2273,7 @@
            audit-app
            audit-app.view-log
            cache
+           change-log
            channel
            collections
            content-verification
@@ -2562,6 +2582,7 @@
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment
+                    :model/SegmentTest
                     :model/Transform
                     :model/TransformTest}}
 
@@ -2759,6 +2780,7 @@
   {:team "UX West"
    :api  #{metabase.server.core
            metabase.server.init
+           metabase.server.middleware.exceptions
            metabase.server.middleware.security
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
@@ -2989,6 +3011,7 @@
            api
            app-db
            audit-app
+           change-log
            database-routing
            dependencies
            driver
@@ -3296,7 +3319,8 @@
            transforms.base
            transforms.schema
            util}
-   :model-imports #{:model/Transform
+   :model-imports #{:model/Collection
+                    :model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
@@ -3485,6 +3509,7 @@
            app-db
            audit-app
            driver
+           lib
            lib.schema
            models
            permissions
@@ -3528,7 +3553,8 @@
            util.config
            warehouses
            warehouses.schema
-           warehouses.secrets}
+           warehouses.secrets
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3555,6 +3581,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            database-routing
            driver
@@ -3641,8 +3668,7 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -4061,7 +4087,8 @@
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
           metabase-enterprise.data-testing.run-api
-          metabase-enterprise.data-testing.schema}
+          metabase-enterprise.data-testing.schema
+          metabase-enterprise.data-testing.segment-api}
    :uses #{api
            audit-app
            collections
@@ -4069,6 +4096,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            model-persistence
            models
@@ -4080,6 +4108,7 @@
            request
            revisions
            run-tracking
+           segments.schema
            serialization
            sql-tools
            sql-tools.parsing
@@ -4087,12 +4116,13 @@
            transforms.base
            transforms.schema
            util}
-   :model-exports #{:model/CardTest :model/TransformTest}
+   :model-exports #{:model/CardTest :model/SegmentTest :model/TransformTest}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
                     :model/Document
+                    :model/Segment
                     :model/Transform
                     :model/User}}
 
@@ -4886,10 +4916,12 @@
            metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
+           api-scope
            app-db
            cache
            database-routing
            driver
+           events
            lib.metadata
            lib.schema
            models
@@ -4897,6 +4929,7 @@
            premium-features
            query-processor
            sample-data
+           server
            settings
            sql-tools
            util
