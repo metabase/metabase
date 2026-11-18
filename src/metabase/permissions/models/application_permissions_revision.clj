@@ -20,7 +20,7 @@
 
 (t2/define-before-update :model/ApplicationPermissionsRevision
   [_]
-  (throw (Exception. (tru "You cannot update a PermissionsRevision!"))))
+  (throw (ex-info (tru "You cannot update a PermissionsRevision!") {:status-code 400})))
 
 (defn latest-id
   "Return the ID of the newest `ApplicationPermissionsRevision`, or zero if none have been made yet.

@@ -120,8 +120,9 @@
 
 (deftest a-test-of-a-segment-with-no-definition-is-refused-test
   (mt/with-premium-features #{:transforms-testing}
-    (mt/with-temp [:model/Segment     {segment-id :id} {:table_id (mt/id :people) :definition {}}
+    (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+      (data-testing.test-util/empty-segment-definition! segment-id)
       (testing "POST refuses a test of a segment with no definition, as one whose query cannot be compiled"
         (is (=? {:error-code "segment-test.uncompilable-subject"}
                 (mt/user-http-request :crowberto :post 422 "ee/segment-test" (body segment-id)))))

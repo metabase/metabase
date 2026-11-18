@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn cast-types
   "An integer and a text `cast_type` the current driver accepts as a `CAST` target.
@@ -53,6 +54,20 @@
      :table_id   (mt/id :people)
      :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
                              (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
+
+(defn segment-on
+  "Segment attributes for a segment named `segment-name` on the table `table-id`, selecting every row."
+  [table-id segment-name]
+  (let [mp (mt/metadata-provider)]
+    {:name       segment-name
+     :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                             (lib/= 1 1))}))
+
+(defn empty-segment-definition!
+  "Stores an empty definition on the segment `segment-id`, which the model refuses to save but older segments still
+  have."
+  [segment-id]
+  (t2/query-one {:update :segment :set {:definition "{}"} :where [:= :id segment-id]}))
 
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."

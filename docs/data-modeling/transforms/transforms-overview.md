@@ -174,6 +174,8 @@ You can run a transform manually or schedule the transform using tags and jobs.
 
 Running a transform for the first time will create and sync the table created by the transform, and you'll be able to edit the table's [metadata](../metadata/metadata-editing.md) and [permissions](../../permissions/data.md). Subsequent runs will drop and recreate the table, unless you use [Incremental transforms](#incremental-transforms).
 
+The transform's table doesn't inherit [row and column security](../../permissions/row-and-column-security.md) from the transform's source tables. If a source table has row and column security policies, set up new policies on the transform's table.
+
 You can see the time and status of the latest transform run on the transform's page, or in the [Runs view](./jobs-and-runs.md). The time of the run is given in the system's timezone.
 
 For Python transforms, you'll also see the transform's execution logs.

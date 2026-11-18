@@ -2,16 +2,18 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;; ## Static Definitions
+;;; ------------------------------------------------------- Setup --------------------------------------------------------
 
 (def days-of-week
   "Simple `vector` of the days in the week used for reference and lookups.
@@ -26,54 +28,6 @@
    {:id "fri", :name "Fri"},
    {:id "sat", :name "Sat"},
    {:id "sun", :name "Sun"}])
-
-(def ^{:arglists '([day])} day-of-week?
-  "Is `day` a valid `day-of-week` choice?"
-  (partial contains? (set (map :id days-of-week))))
-
-(defn hour-of-day?
-  "Is `hour` is a valid hour of the day (24 hour)?"
-  [hour]
-  (and (integer? hour) (<= 0 hour 23)))
-
-(def ^:private schedule-frames
-  "Set of possible schedule-frames allow for a PulseChannel."
-  #{:first :mid :last})
-
-(defn schedule-frame?
-  "Is `frame` a valid schedule frame?"
-  [frame]
-  (contains? schedule-frames frame))
-
-(def ^:private schedule-types
-  "Set of the possible schedule-types allowed for a PulseChannel."
-  #{:hourly :daily :weekly :monthly})
-
-(defn schedule-type?
-  "Is `schedule-type` a valid PulseChannel schedule type?"
-  [schedule-type]
-  (contains? schedule-types schedule-type))
-
-(defn valid-schedule?
-  "Is this combination of scheduling choices valid?"
-  [schedule-type schedule-hour schedule-day schedule-frame]
-  (or
-   ;; hourly schedule does not care about other inputs
-   (= schedule-type :hourly)
-   ;; daily schedule requires a valid `hour`
-   (and (= schedule-type :daily)
-        (hour-of-day? schedule-hour))
-   ;; weekly schedule requires a valid `hour` and `day`
-   (and (= schedule-type :weekly)
-        (hour-of-day? schedule-hour)
-        (day-of-week? schedule-day))
-   ;; monthly schedule requires a valid `hour` and `frame`.  also a `day` if frame = first or last
-   (and (= schedule-type :monthly)
-        (schedule-frame? schedule-frame)
-        (hour-of-day? schedule-hour)
-        (or (contains? #{:first :last} schedule-frame)
-            (and (= :mid schedule-frame)
-                 (nil? schedule-day))))))
 
 (def channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
@@ -100,17 +54,10 @@
            :allows_recipients false
            :schedules         [:hourly :daily :weekly :monthly]}})
 
-(defn channel-type?
-  "Is `channel-type` a valid value as a channel type? :tv:"
-  [channel-type]
-  (contains? (set (keys channel-types)) channel-type))
-
 (defn supports-recipients?
   "Does given `channel` type support a list of recipients? :tv:"
   [channel]
   (boolean (:allows_recipients (get channel-types channel))))
-
-;; ## Entity
 
 (methodical/defmethod t2/table-name :model/PulseChannel [_model] :pulse_channel)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
@@ -121,7 +68,13 @@
   (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser)
-  (derive :hook/change-log))
+  (derive :hook/events))
+
+(defmethod events/spec :model/PulseChannel
+  [_model]
+  {:create :event/pulse-channel-create
+   :update :event/pulse-channel-update
+   :delete :event/pulse-channel-delete})
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")
@@ -129,17 +82,7 @@
    :schedule_type mi/transform-keyword
    :schedule_frame mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:default :recipients]
-  [_model _k pcs]
-  (when (seq pcs)
-    (let [pcid->recipients (-> (group-by :pulse_channel_id
-                                         (pulse.db/active-recipients-for-channels (map :id pcs)))
-                               (update-vals #(map (fn [user] (dissoc user :pulse_channel_id)) %)))]
-      (for [pc pcs]
-        (assoc pc :recipients (concat
-                               (for [email (get-in pc [:details :emails] [])]
-                                 {:email email})
-                               (get pcid->recipients (:id pc))))))))
+;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
@@ -195,8 +138,13 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
+(def ^:private schedule-columns
+  "The columns that decide when a PulseChannel is sent."
+  #{:schedule_type :schedule_hour :schedule_day :schedule_frame})
+
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
+  (pulse.schema/check-schedule (merge (zipmap schedule-columns (repeat nil)) pulse-channel))
   (validate-email-domains pulse-channel))
 
 (t2/define-after-insert :model/PulseChannel
@@ -205,13 +153,23 @@
     (when (:enabled pulse-channel)
       (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id}))))
 
-(t2/define-before-update :model/PulseChannel
+(defn- check-channel-update
+  "Throws unless `pulse-channel`, a row an UPDATE writes, has valid columns after its changes."
+  [pulse-channel]
+  (let [changes (t2/changes pulse-channel)]
+    (when (some #(contains? changes %) schedule-columns)
+      (pulse.schema/check-schedule pulse-channel))
+    (when (contains? changes :details)
+      (validate-email-domains pulse-channel))))
+
+(defn- update-send-pulse-triggers
+  "Move the Quartz trigger of `pulse-channel`, a row an UPDATE writes, to its new schedule and enabled state."
   [{:keys [pulse_id id] :as pulse-channel}]
   ;; IT's really best if this is done in after-update
   (let [changes (t2/changes pulse-channel)]
     ;; if there are changes in schedule
     ;; better be done in after-update, but t2/changes isn't available in after-update yet See toucan2#129
-    (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame} %) (keys changes))
+    (when (some #(contains? changes %) schedule-columns)
       ;; need to remove this PC from the existing trigger
       (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
                                                                      :remove-pc-ids #{(:id pulse-channel)})
@@ -224,9 +182,28 @@
                                                                        :add-pc-ids #{(:id pulse-channel)})
         (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
                                                                        :remove-pc-ids #{(:id pulse-channel)}))))
-  (validate-email-domains (mi/changes-with-pk pulse-channel)))
+  pulse-channel)
 
-;; ## Persistence Functions
+(t2/define-before-update :model/PulseChannel
+  [pulse-channel]
+  (check-channel-update pulse-channel)
+  (update-send-pulse-triggers pulse-channel))
+
+;;; ----------------------------------------------------- Hydration -----------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:default :recipients]
+  [_model _k pcs]
+  (when (seq pcs)
+    (let [pcid->recipients (-> (group-by :pulse_channel_id
+                                         (pulse.db/active-recipients-for-channels (map :id pcs)))
+                               (update-vals #(map (fn [user] (dissoc user :pulse_channel_id)) %)))]
+      (for [pc pcs]
+        (assoc pc :recipients (concat
+                               (for [email (get-in pc [:details :emails] [])]
+                                 {:email email})
+                               (get pcid->recipients (:id pc))))))))
+
+;;; ------------------------------------------------ Persistence Functions ------------------------------------------------
 
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for `pulse-CHANNEL`.
@@ -255,10 +232,7 @@
     :or   {details          {}
            recipients       []}}]
   {:pre [(integer? id)
-         (channel-type? channel_type)
          (m/boolean? enabled)
-         (schedule-type? schedule_type)
-         (valid-schedule? schedule_type schedule_hour schedule_day schedule_frame)
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
@@ -282,11 +256,8 @@
   [{:keys [channel_type channel_id details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
-  {:pre [(channel-type? channel_type)
-         (integer? pulse_id)
+  {:pre [(integer? pulse_id)
          (boolean? enabled)
-         (schedule-type? schedule_type)
-         (valid-schedule? schedule_type schedule_hour schedule_day schedule_frame)
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))

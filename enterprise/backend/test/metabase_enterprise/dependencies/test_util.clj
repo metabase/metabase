@@ -8,7 +8,6 @@
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
@@ -146,7 +145,7 @@
                               :type     :native
                               :native   {:query         query
                                          :template-tags (lib/extract-template-tags metadata-provider query)}}
-                             (lib.convert/->legacy-MBQL query))
+                             query)
           :name            (str (gensym))
           :result-metadata (when (not (string? query))
                              (->> (lib/returned-columns query)

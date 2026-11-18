@@ -3,7 +3,6 @@
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -147,15 +146,19 @@
             :type :metric
             :dataset_query (let [mp (mt/metadata-provider)]
                              (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/aggregate (lib/count))
-                                 lib.convert/->legacy-MBQL))}
+                                 (lib/aggregate (lib/count))))}
            :model/Card
            {b-id :id}
            {:name "Metric B"
             :type :metric
-            :dataset_query (metric-query a-id)}]
-          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
+            :dataset_query (metric-query a-id)}
+           :model/Card
+           {c-id :id}
+           {:name "Metric C"
+            :type :metric
+            :dataset_query (metric-query b-id)}]
+          ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
+          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/spec "card")
                         {:dataset_query (json/encode (metric-query a-id))

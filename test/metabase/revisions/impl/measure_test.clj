@@ -6,7 +6,8 @@
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (comment metabase.revisions.init/keep-me)
 
@@ -46,3 +47,17 @@
           "diff-map does track the definition change...")
       (is (nil? (u/build-sentence (diff-strings :model/Measure before after)))
           "...but diff-strings has no wording for it, so no sentence is produced"))))
+
+(deftest measure-revisions-hold-and-revert-no-dimensions-test
+  (mt/with-temp [:model/Measure {id :id :as measure} {:name       "Measure"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition (measure-definition lib/sum :price)}]
+    (testing "the serialized measure has no dimension"
+      (let [serialized (revision/serialize-instance :model/Measure id (t2/select-one :model/Measure :id id))]
+        (is (not-any? #(contains? serialized %) [:dimensions :dimension_mappings]))))
+    (testing "reverting a stored revision that holds dimensions does not write them back"
+      (let [stored (assoc (revision/serialize-instance :model/Measure id measure)
+                          :name "Reverted" :dimensions [{:id (str (random-uuid)) :name "stale" :status :status/active}] :dimension_mappings [])]
+        (revision/revert-to-revision! :model/Measure id (mt/user->id :crowberto) stored)
+        (is (=? {:name "Reverted" :dimensions nil}
+                (t2/select-one :model/Measure :id id)))))))

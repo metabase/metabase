@@ -10,9 +10,7 @@
 (events/derive! :event/card-update.notification-deleted.card-changed ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  "When a Card is saved and associated Alerts are deleted send email notifications to recipients of that alert. At the
-  time of this writing this is triggered by [[metabase.queries.models.card/delete-alerts-if-needed!]] and
-  by [[metabase.collections-rest.api/maybe-send-archived-notifications!]]."
+  "Emails the recipients of the alerts that the save of a Card deleted."
   [topic {:keys [notifications card actor], :as _event}]
   (try
     (let [send-message! (case topic

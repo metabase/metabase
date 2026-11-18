@@ -7,6 +7,11 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
+  engine and the host, and ignores a value in the request.
+
+- `PUT /api/database/:id` on the Sample Database answers `403 Forbidden` instead of `400 Bad Request`.
+
 - `POST /api/ee/transform-test`, `PUT /api/ee/transform-test/:id` and `POST /api/ee/transform-test/:id/run` refuse a
   test whose input, given as rows, lacks a column that the transform's query reads from the input's table, with `400`
   and the `error-code` `transform-test.missing-input-columns`; the response's `columns` names the missing columns of

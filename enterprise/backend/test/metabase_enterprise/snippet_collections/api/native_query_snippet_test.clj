@@ -217,3 +217,23 @@
               (is (true? (can-see-snippet?)))
               (perms/revoke-collection-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?))))))))))
+
+(deftest archive-snippet-folder-needs-curate-test
+  (testing "PUT /api/collection/:id archives and restores a snippet folder, with its snippets, for a user who curates it
+            without native query access"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection         folder  {:namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id folder) :content "1" :name (mt/random-name)}]
+            (testing "a user who only reads the folder is refused"
+              (perms/grant-collection-read-permissions! (perms-group/all-users) folder)
+              (mt/user-http-request :rasta :put 403 (str "collection/" (:id folder)) {:archived true})
+              (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet)))))
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) folder)
+            (mt/user-http-request :rasta :put 200 (str "collection/" (:id folder)) {:archived true})
+            (is (true? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
+            (mt/user-http-request :rasta :put 200 (str "collection/" (:id folder)) {:archived false})
+            (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
+            (testing "archiving the snippet itself still needs native query access, as before"
+              (mt/user-http-request :rasta :put 403 (str "native-query-snippet/" (:id snippet)) {:archived true}))))))))
