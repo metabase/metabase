@@ -30,6 +30,11 @@
                             (map (juxt :model :model_id)))
                       (t2/query {:select [:model :model_id] :from [:revision] :where [:> :id revision]}))}))
 
+(defn- archived-states
+  "The `:archived` of each `[model id]` of `rows`, as booleans."
+  [rows]
+  (mapv (fn [[model id]] (boolean (t2/select-one-fn :archived model :id id))) rows))
+
 (deftest collection-archive-records-nothing-for-carried-items-test
   (testing "a Collection's archive and restore record nothing for the rows they carry, whatever their model"
     (mt/with-premium-features #{:audit-app}
@@ -46,11 +51,16 @@
                      :model/Pulse      {pulse :id} {:collection_id coll}]
         (let [entities #{["Collection" coll] ["Collection" child] ["Card" card] ["Card" nested] ["Dashboard" dash]
                          ["Card" dq] ["Document" doc] ["Card" dc] ["Timeline" tl] ["TimelineEvent" te] ["Pulse" pulse]}
+              carried  [[:model/Collection child] [:model/Card card] [:model/Card nested] [:model/Dashboard dash]
+                        [:model/Card dq] [:model/Document doc] [:model/Card dc] [:model/Timeline tl]
+                        [:model/Pulse pulse]]
               expected {:audit #{} :revisions #{}}]
           (is (= expected
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "collection/" coll) {:archived true}))))
+          (is (every? true? (archived-states carried)))
           (is (= expected
-                 (records entities #(mt/user-http-request :crowberto :put 200 (str "collection/" coll) {:archived false})))))))))
+                 (records entities #(mt/user-http-request :crowberto :put 200 (str "collection/" coll) {:archived false}))))
+          (is (every? false? (archived-states carried))))))))
 
 (deftest dashboard-archive-records-only-dashboard-test
   (testing "a Dashboard's archive and restore record its Revision and nothing for its dashboard questions, which they
@@ -63,8 +73,10 @@
               expected {:audit #{} :revisions #{["Dashboard" dash]}}]
           (is (= expected
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "dashboard/" dash) {:archived true}))))
+          (is (= [true true] (archived-states [[:model/Dashboard dash] [:model/Card dq]])))
           (is (= expected
-                 (records entities #(mt/user-http-request :crowberto :put 200 (str "dashboard/" dash) {:archived false})))))))))
+                 (records entities #(mt/user-http-request :crowberto :put 200 (str "dashboard/" dash) {:archived false}))))
+          (is (= [false false] (archived-states [[:model/Dashboard dash] [:model/Card dq]]))))))))
 
 (deftest document-archive-records-only-document-test
   (testing "a Document's archive and restore record it and nothing for its cards, which they carry"
@@ -74,8 +86,10 @@
         (let [entities #{["Document" doc] ["Card" dc]}]
           (is (= {:audit #{["document-delete" "Document" doc]} :revisions #{["Document" doc]}}
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "document/" doc) {:archived true}))))
+          (is (= [true true] (archived-states [[:model/Document doc] [:model/Card dc]])))
           (is (= {:audit #{["document-update" "Document" doc]} :revisions #{["Document" doc]}}
-                 (records entities #(mt/user-http-request :crowberto :put 200 (str "document/" doc) {:archived false})))))))))
+                 (records entities #(mt/user-http-request :crowberto :put 200 (str "document/" doc) {:archived false}))))
+          (is (= [false false] (archived-states [[:model/Document doc] [:model/Card dc]]))))))))
 
 (deftest cascade-revisions-are-one-insert-test
   (testing "the Revisions of a batch are written by one statement"

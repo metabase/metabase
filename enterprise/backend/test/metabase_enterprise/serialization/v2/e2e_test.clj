@@ -21,12 +21,15 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.queries.card-schema :as card-schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.sync.core :as sync]
+   [metabase.sync.sync :as sync.sync]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.malli.registry :as mr]
@@ -1726,6 +1729,88 @@
                                   @published))))
               (testing "no CardTest audit row is written"
                 (is (= audit-rows (t2/count :model/AuditLog :model "CardTest")))))))))))
+
+(defn- export-cards-dashboard-and-model!
+  "Create, in the current app DB, two questions, a model and a Dashboard on a new Database, and a second Database, and
+  dump them to `dump-dir`."
+  [dump-dir]
+  (let [db      (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
+        _       (ts/create! :model/Database :name "other-db")
+        coll    (ts/create! :model/Collection :name "Finance")
+        creator (ts/create! :model/User :email "creator@example.com")
+        card    (fn [card-name card-type]
+                  (ts/create! :model/Card
+                              :name          card-name
+                              :type          card-type
+                              :database_id   (:id db)
+                              :creator_id    (:id creator)
+                              :collection_id (:id coll)
+                              :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db))
+                                                               "SELECT 1 AS ID")))
+        orders  (card "Orders" :question)
+        _       (card "Refunds" :question)
+        _       (card "Revenue model" :model)
+        dash    (ts/create! :model/Dashboard :name "Finance" :creator_id (:id creator) :collection_id (:id coll))]
+    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id orders))
+    (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+
+(defn- records-of-import!
+  "What the import of `dump-dir`, run as `user-id`, records in the current app DB: the Revisions and audit rows of its
+  Cards and Dashboards by model and the PersistedInfos of its Cards, and how many database syncs it started."
+  [dump-dir user-id]
+  (let [syncs (atom 0)
+        count-sync (fn [& _] (swap! syncs inc) nil)]
+    (mt/with-dynamic-fn-redefs [sync/start-initial-sync!      count-sync
+                                sync.sync/start-initial-sync! count-sync]
+      (let [load! #(is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))]
+        (if user-id
+          (mt/with-current-user user-id (load!))
+          (load!))))
+    {:revisions     (frequencies (map (juxt :model :is_creation :user_id)
+                                      (t2/query {:select [:model :is_creation :user_id]
+                                                 :from   [:revision]
+                                                 :where  [:in :model ["Card" "Dashboard"]]})))
+     :audit         (frequencies (map (juxt :topic :user_id)
+                                      (t2/query {:select [:topic :user_id]
+                                                 :from   [:audit_log]
+                                                 :where  [:in :model ["Card" "Dashboard"]]})))
+     :persisted     (set (t2/select-fn-vec :card_id :model/PersistedInfo))
+     :syncs         @syncs}))
+
+(deftest import-by-user-records-as-user-edits-test
+  (testing "An import started by a user records its Cards and Dashboards as that user's creations, and starts no sync"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (export-cards-dashboard-and-model! dump-dir))
+          (ts/with-db dest-db
+            (mt/with-dynamic-fn-redefs [model-persistence.settings/persisted-models-enabled (constantly true)]
+              (let [importer (:id (ts/create! :model/User :email "importer@example.com"))
+                    _        (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
+                    records  (records-of-import! dump-dir importer)
+                    model-id (t2/select-one-pk :model/Card :name "Revenue model")]
+                (is (= {["Card" true importer]      3
+                        ["Dashboard" true importer] 1}
+                       (:revisions records)))
+                (is (= {["card-create" importer]      3
+                        ["dashboard-create" importer] 1}
+                       (:audit records)))
+                (is (= 0 (:syncs records)))
+                (is (= #{model-id} (:persisted records)))))))))))
+
+(deftest import-without-user-records-nothing-test
+  (testing "An import that no user started records no Revision, audit row or PersistedInfo, and starts no sync"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (export-cards-dashboard-and-model! dump-dir))
+          (ts/with-db dest-db
+            (mt/with-dynamic-fn-redefs [model-persistence.settings/persisted-models-enabled (constantly true)]
+              (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
+              (is (= {:revisions {} :audit {} :persisted #{} :syncs 0}
+                     (records-of-import! dump-dir nil))))))))))
 
 (deftest first-import-publishes-no-saved-test-event-test
   (testing "An import that inserts a card test and a transform test publishes no event and writes no audit or revision row for them"

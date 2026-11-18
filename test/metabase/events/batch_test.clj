@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.events.models.events-test-timeline]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.resolution :as models.resolution]
    [metabase.test :as mt]
    [metabase.util.quick-task :as quick-task]
@@ -156,16 +157,19 @@
 (deftest savepoint-rollback-restores-sinks-test
   (let [flushed (atom [])]
     (events/register-sink! ::sink #(swap! flushed into %))
-    (testing "the items given to a sink in a savepoint that rolls back are not flushed"
-      (t2/with-transaction [_conn nil {:rollback-only true}]
-        (events/with-batched-events
-          (events/add-to-sink! ::sink {:item 1})
-          (try
-            (t2/with-transaction [_conn]
-              (events/add-to-sink! ::sink {:item 2})
-              (throw (ex-info "boom" {})))
-            (catch Exception _ nil))))
-      (is (= [{:item 1}] @flushed)))))
+    (try
+      (testing "the items given to a sink in a savepoint that rolls back are not flushed"
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (events/with-batched-events
+            (events/add-to-sink! ::sink {:item 1})
+            (try
+              (t2/with-transaction [_conn]
+                (events/add-to-sink! ::sink {:item 2})
+                (throw (ex-info "boom" {})))
+              (catch Exception _ nil))))
+        (is (= [{:item 1}] @flushed)))
+      (finally
+        (events.tu/unregister! ::sink)))))
 
 (deftest savepoint-rollback-restores-captures-test
   (let [calls    (atom 0)
@@ -194,8 +198,7 @@
             (is (= 2 @calls))
             (is (= [nil] @captured)))))
       (finally
-        (events/register-capture! ::capture-once (constantly nil))
-        (events/register-owned-consumer! ::capture-once (constantly nil) (constantly nil))))))
+        (events.tu/unregister! ::capture-once)))))
 
 (deftest owned-consumer-test
   (let [calls (atom [])]
@@ -209,7 +212,29 @@
           (t2/insert! :model/EventsTestTimeline {:name "b" :icon "cake" :creator_id creator})))
       (is (= [[(mt/user->id :rasta) 2]] @calls))
       (finally
-        (events/register-owned-consumer! ::owned (constantly nil) (constantly nil))))))
+        (events.tu/unregister! ::owned)))))
+
+(deftest throwing-consumer-fails-write-test
+  (let [recorded (atom [])
+        owner    (fn [{:keys [model]}] (when (= :model/EventsTestTimeline model) :timeline))]
+    (events/register-sink! ::recorded #(swap! recorded into %))
+    (events/register-owned-consumer! ::records owner (fn [_owner events _all]
+                                                       (doseq [event events]
+                                                         (events/add-to-sink! ::recorded {:id (:id event)}))))
+    (events/register-owned-consumer! ::throws owner (fn [_owner _events _all]
+                                                      (throw (ex-info "consumer boom" {}))))
+    (try
+      (testing "a consumer that throws fails the write that its event belongs to"
+        (is (thrown-with-msg? Exception #"consumer boom"
+                              (t2/insert! :model/EventsTestTimeline (row "batch-test-throws")))))
+      (testing "the row is not stored"
+        (is (not (t2/exists? :model/EventsTestTimeline :name "batch-test-throws"))))
+      (testing "no other consumer leaves a record of the write"
+        (is (= [] @recorded)))
+      (finally
+        (events.tu/unregister! ::records)
+        (events.tu/unregister! ::throws)
+        (events.tu/unregister! ::recorded)))))
 
 (deftest where-clause-writes-publish-per-row-test
   (let [creator (mt/user->id :rasta)
@@ -295,9 +320,7 @@
             (is (= {::statement-rows {:ids (sort [old fresh])}}
                    (select-keys (:captures (first @deletes)) [::statement-rows])))))
         (finally
-          (events/register-capture! ::statement-rows (constantly nil))
-          (events/register-statement-capture! ::statement-rows (constantly nil))
-          (events/register-owned-consumer! ::statement-rows (constantly nil) (constantly nil)))))))
+          (events.tu/unregister! ::statement-rows))))))
 
 (defn- logged-by
   "The `[table row-id action]`s that the change log records while `thunk` runs."
@@ -345,4 +368,4 @@
                                 (t2/insert! :model/EventsTestTimeline (row "batch-test-first")))))
         (is (not (t2/exists? :model/EventsTestTimeline :name [:in ["batch-test-first" "batch-test-again"]]))))
       (finally
-        (events/register-owned-consumer! ::endless (constantly nil) (constantly nil))))))
+        (events.tu/unregister! ::endless)))))
