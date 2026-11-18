@@ -40,6 +40,22 @@ const SANDY_PREVIEW: WhyPreview = { userId: SANDY.id, previewId: "preview-1" };
 
 const SALES_COLLECTION_ID = 5;
 
+const PERSONAL_COLLECTION_ID = 10;
+
+/** What the backend returns for a user's own personal collection: Curate from ownership, never from a group. */
+const PERSONAL_COLLECTION: PreviewCollection = {
+  id: PERSONAL_COLLECTION_ID,
+  name: "Their personal collection",
+  depth: 0,
+  source: "personal",
+  access: {
+    value: "write",
+    group_id: null,
+    groups: [],
+    note: "Everyone has Curate access to their own personal collection, whatever their groups.",
+  },
+};
+
 const ORDERS_SANDBOX: PreviewSecurity = {
   kind: "sandbox",
   group_id: 5,
@@ -305,6 +321,29 @@ describe("useWhyList", () => {
       );
     });
 
+    it("names a tenant user's personal collection and says they curate it, though the main tab doesn't apply to them", async () => {
+      const { result } = setup({
+        path: `/collection/${PERSONAL_COLLECTION_ID}`,
+        isTenantUser: true,
+        collections: { default: [PERSONAL_COLLECTION] },
+      });
+
+      await waitFor(() =>
+        expect(result.current?.page).toMatchObject({
+          kind: "collection",
+          name: "Sandy Sales's personal collection",
+          verdict: {
+            kind: "allowed",
+            text: "Sandy Sales can curate this collection.",
+          },
+          target: {
+            title: "Sandy Sales's personal collection",
+            cell: { value: "write" },
+          },
+        }),
+      );
+    });
+
     it("lists on Our analytics the collections right in it that the person can open, as the frame does", async () => {
       const { result } = setup({
         path: "/collection/root",
@@ -375,6 +414,30 @@ describe("useWhyList", () => {
         expect(getPageCollections(result.current)).toEqual([
           "Our analytics",
           "Onboarding kit",
+          "Sandy Sales's personal collection",
+        ]),
+      );
+    });
+
+    it("lists a tenant user's personal collection after their tenant's collection", async () => {
+      const { result } = setup({
+        path: "/",
+        isAllCollections: true,
+        isTenantUser: true,
+        collections: {
+          default: [PERSONAL_COLLECTION],
+          tenant: [
+            {
+              ...getCollection(9, "Tenant Collection: Acme", 0, "write"),
+              source: "tenant",
+            },
+          ],
+        },
+      });
+
+      await waitFor(() =>
+        expect(getPageCollections(result.current)).toEqual([
+          "Tenant Collection: Acme",
           "Sandy Sales's personal collection",
         ]),
       );
@@ -470,6 +533,8 @@ type SetupOpts = {
     Record<CollectionNamespace, PreviewCollection[] | null>
   >;
   isAllCollections?: boolean;
+  /** A tenant user: the main tab doesn't apply to them, though it still holds their personal collection. */
+  isTenantUser?: boolean;
 };
 
 function setup({
@@ -483,6 +548,7 @@ function setup({
   query = ALLOW,
   collections,
   isAllCollections,
+  isTenantUser = false,
 }: SetupOpts) {
   const collection = getCollection(
     SALES_COLLECTION_ID,
@@ -500,6 +566,7 @@ function setup({
           : namespace === collectionNamespace
             ? [collection]
             : null,
+        isTenantUser && namespace === "default" ? false : undefined,
       ),
     ),
   );
@@ -585,14 +652,15 @@ function getPageCollections(list: WhyList | null) {
     : undefined;
 }
 
-/** One tab's collections; `null` for a tab that doesn't apply to the person. */
+/** One tab's collections; `null` for a tab that doesn't apply to the person, which can still hold some. */
 function getCollections(
   collections: PreviewCollection[] | null,
+  isApplied = collections != null,
 ): PreviewCollectionsResponse {
   return {
     principal: SANDY,
-    applies: collections != null,
-    reason: collections != null ? null : "Not in a tenant.",
+    applies: isApplied,
+    reason: isApplied ? null : "Not in a tenant.",
     collections: collections ?? [],
   };
 }

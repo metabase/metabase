@@ -8,7 +8,8 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -204,7 +205,11 @@
                 (is (=? {:source "tenant" :access {:value "write" :groups []}} (by-id own-collection-id)))
                 (is (=? {:source "other-tenant" :access {:value "none"}} (by-id other-collection-id)))))
             (testing "doesn't get the main collections or application permissions, with the reason"
-              (is (=? {:applies false :reason string? :collections []}
+              (is (=? {:applies false :reason string? :collections (if (= principal-type "user")
+                                                                     [{:id     (t2/select-one-pk :model/Collection :personal_owner_id principal-id)
+                                                                       :source "personal"
+                                                                       :access {:value "write" :groups []}}]
+                                                                     [])}
                       (preview "collections" principal-type principal-id :namespace "default")))
               (is (=? {:applies false :reason string? :permissions []}
                       (preview "application" principal-type principal-id))))))))))

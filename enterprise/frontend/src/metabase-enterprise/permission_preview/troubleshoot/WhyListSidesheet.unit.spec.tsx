@@ -46,6 +46,7 @@ const Q4_PIPELINE_ID = 15;
 const ORDERS_ID = 2;
 const REVIEWS_ID = 3;
 const ACCOUNTS_ID = 4;
+const PERSONAL_COLLECTION_ID = 10;
 
 const COLLECTIONS: PreviewCollectionsResponse = {
   principal: SANDY,
@@ -624,6 +625,46 @@ describe("WhyListSidesheet", () => {
     expect(screen.getByText("Explain access")).toBeInTheDocument();
   });
 
+  it("names a tenant user's personal collection, says they curate it, and gives the reason in its detail", async () => {
+    setup({
+      openedItem: { type: "collection", id: PERSONAL_COLLECTION_ID },
+      mainCollections: {
+        ...NO_COLLECTIONS,
+        collections: [
+          {
+            id: PERSONAL_COLLECTION_ID,
+            name: "Their personal collection",
+            depth: 0,
+            source: "personal",
+            access: {
+              value: "write",
+              group_id: null,
+              groups: [],
+              note: "Everyone has Curate access to their own personal collection, whatever their groups.",
+            },
+          },
+        ],
+      },
+    });
+    const verdict = await screen.findByTestId("why-verdict");
+    expect(verdict).toHaveTextContent(
+      "Sandy Sales can curate this collection.",
+    );
+    expect(
+      screen.getByText("Sandy Sales's personal collection"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(verdict).getByRole("button", { name: /Curate/ }),
+    );
+
+    expect(
+      screen.getByText(
+        "Everyone has Curate access to their own personal collection, whatever their groups.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows in the page as a panel named Explain access, not a sheet over it, with Back and Close", async () => {
     const onClose = jest.fn();
     setup({
@@ -807,15 +848,16 @@ function setup({
     },
     dashboardQuery,
   );
-  [SALES_REPORTS_ID, Q4_PIPELINE_ID].forEach((collectionId) =>
-    setupPermissionDebugEndpoint(
-      {
-        userId: SANDY.id,
-        modelId: collectionId,
-        actionType: "collection/read",
-      },
-      ALLOW,
-    ),
+  [SALES_REPORTS_ID, Q4_PIPELINE_ID, PERSONAL_COLLECTION_ID].forEach(
+    (collectionId) =>
+      setupPermissionDebugEndpoint(
+        {
+          userId: SANDY.id,
+          modelId: collectionId,
+          actionType: "collection/read",
+        },
+        ALLOW,
+      ),
   );
 
   return renderWithProviders(

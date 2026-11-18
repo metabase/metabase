@@ -522,6 +522,11 @@
    :source source
    :access {:value value :group_id nil :groups [] :note note}})
 
+(defn- personal-collection-row
+  [personal-collection-id]
+  (membership-row personal-collection-id (tru "Their personal collection") 0 "personal" "write"
+                  (tru "Everyone has Curate access to their own personal collection, whatever their groups.")))
+
 (defn- main-collection-rows
   [{p-type :type :keys [personal-collection-id] :as p} graph]
   (let [collections (tree-order (without-personal (permission-debug.db/collections-in-namespace nil)) 1)]
@@ -531,8 +536,7 @@
        (group-collection-row p graph id name depth))
      (case p-type
        "user"  (when personal-collection-id
-                 [(membership-row personal-collection-id (tru "Their personal collection") 0 "personal" "write"
-                                  (tru "Everyone has Curate access to their own personal collection, whatever their groups."))])
+                 [(personal-collection-row personal-collection-id)])
        "group" [(membership-row nil (tru "Each member''s personal collection") 0 "personal" "write"
                                 (tru "Everyone has Curate access to their own personal collection, whatever their groups."))]
        nil))))
@@ -581,12 +585,14 @@
      :applies     applies?
      :reason      (when-not applies?
                     (tru "Tenant users can''t see the collections on this tab, because tenant groups can''t get access to them. Check the Shared collections and Tenant collections tabs instead."))
-     :collections (if applies?
-                    (vec (case collection-namespace
+     ;; a tenant user's own personal collection is the one main collection they can open
+     :collections (vec (if applies?
+                         (case collection-namespace
                            "default" (main-collection-rows p graph)
                            "shared"  (shared-collection-rows p graph)
-                           "tenant"  (tenant-collection-rows p graph)))
-                    [])}))
+                           "tenant"  (tenant-collection-rows p graph))
+                         (when-let [personal-collection-id (:personal-collection-id p)]
+                           [(personal-collection-row personal-collection-id)])))}))
 
 ;;; ---------------------------------------------- Application access ---------------------------------------------
 

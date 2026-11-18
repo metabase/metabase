@@ -161,9 +161,9 @@ export function useWhyList(
     main: mainCollections,
     shared: sharedCollections,
     tenant: tenantCollections,
-    all: [mainCollections, sharedCollections, tenantCollections]
-      .filter((list) => list.applies)
-      .flatMap((list) => list.collections),
+    all: [mainCollections, sharedCollections, tenantCollections].flatMap(
+      (list) => list.collections,
+    ),
   };
   const summary = getSummaryPage(who, collections, dataPreview);
   if (item == null) {
@@ -205,7 +205,7 @@ export function useWhyList(
   };
 }
 
-/** Each tab's collections, and those of every tab that applies to the person; the main tab holds the root collection. */
+/** Each tab's collections, and all of them together; the main tab holds the root collection. */
 type CollectionLists = {
   main: PreviewCollectionsResponse;
   shared: PreviewCollectionsResponse;
@@ -223,7 +223,7 @@ function getAllCollectionsList({
   shared,
   tenant,
 }: CollectionLists): PreviewCollection[] {
-  const mainCollections = main.applies ? main.collections : [];
+  const mainCollections = main.collections;
   const root = mainCollections.find(({ id }) => id === "root");
   const ourAnalytics =
     root == null
