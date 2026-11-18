@@ -186,7 +186,11 @@ describe("App", () => {
     it("opens from the command palette", async () => {
       setupRecentViewsEndpoints([]);
       visit("/", ADMIN);
-      await userEvent.keyboard("{Control>}k{/Control}");
+      await userEvent.click(
+        within(await screen.findByTestId("app-bar")).getByRole("button", {
+          name: /Search|Ask Metabot or search/,
+        }),
+      );
       await userEvent.type(
         await screen.findByPlaceholderText(/search for anything/i),
         "Error",
