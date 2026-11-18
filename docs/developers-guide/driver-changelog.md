@@ -40,6 +40,9 @@ summary: Changes to the Metabase driver interface, listed by release.
   `aggregation-at-index`, `assoc-field-options`, `expression-with-name`, `field-options`, `normalize-token`,
   `query->source-table-id`, and `update-field-options`.
 
+- `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends.
+  If your driver derives from `:postgres` and overrides the method, extend `:postgres`'s list rather than `:sql-jdbc`'s.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
