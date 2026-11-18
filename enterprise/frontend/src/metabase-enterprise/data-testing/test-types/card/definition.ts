@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
-import { useListDatabasesQuery } from "metabase/api/database";
-import { hasNativeWritePermissions } from "metabase/common/utils/database";
+import { skipToken } from "metabase/api";
 import * as Urls from "metabase/urls";
 import {
   useGetCardTestQuery,
@@ -27,26 +25,12 @@ function useListCardTestsBySubjectQuery(cardId: CardId | typeof skipToken) {
 }
 
 function useCardReadOnly(
-  cardId: CardId | typeof skipToken,
+  _cardId: CardId | typeof skipToken,
+  tests: readonly CardTest[],
 ): DataTestReadOnlyResult {
-  const {
-    data: card,
-    isLoading: isLoadingCard,
-    error: cardError,
-  } = useGetCardQuery(cardId === skipToken ? skipToken : { id: cardId });
-  const {
-    data: databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useListDatabasesQuery();
-  const database = databases?.data.find(
-    (database) => database.id === card?.database_id,
-  );
-
   return {
-    readOnly: database == null || !hasNativeWritePermissions(database),
-    isLoading: isLoadingCard || isLoadingDatabases,
-    error: cardError ?? databasesError,
+    readOnly: !tests.some((test) => test.can_run),
+    isLoading: false,
   };
 }
 

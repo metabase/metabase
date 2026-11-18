@@ -2,6 +2,7 @@
   "`/api/ee/card-test`."
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.lib.core :as lib]
@@ -65,8 +66,8 @@
                      :inputs       [{:format "rows" :rows [{:ID 1 :NAME "abc"}]}]
                      :expectations expectations}
                     created)))
-          (testing "GET returns the test with its newest run"
-            (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
+          (testing "GET returns the test with its newest run and whether the user may run it"
+            (is (= (assoc created :last_run nil :can_run true) (mt/user-http-request :crowberto :get 200 path))))
           (testing "GET / filters by card"
             (is (= [(:id created)]
                    (map :id (mt/user-http-request :crowberto :get 200 "ee/card-test" :card-id card-id))))
@@ -210,6 +211,71 @@
                   (is (= test-id (:id (mt/user-http-request :rasta :get 200 path))))))
               (finally
                 (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)))))))))
+
+(defn- can-run-flags
+  "The `can_run` of the card test `test-id` as `user` gets it, and as `user` lists it among the tests of `card-id`."
+  [user card-id test-id]
+  {:get  (:can_run (mt/user-http-request user :get 200 (str "ee/card-test/" test-id)))
+   :list (:can_run (m/find-first #(= test-id (:id %))
+                                 (mt/user-http-request user :get 200 "ee/card-test" :card-id card-id)))})
+
+(deftest can-run-says-whether-the-run-endpoint-accepts-the-user-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection {coll-id :id}        {}
+                       :model/Collection {hidden-coll-id :id} {}
+                       :model/Card       {hidden-id :id}      (card hidden-coll-id)
+                       :model/Card       {card-id :id}        (card coll-id)
+                       :model/CardTest   {test-id :id}        {:card_id card-id :inputs inputs :expectations expectations}
+                       :model/CardTest   _                    {:card_id card-id :inputs inputs :expectations expectations}]
+          (let [tag (str "#" hidden-id "-people")]
+            (mt/with-temp [:model/Card     {outer-id :id}      {:name          "Outer"
+                                                                :collection_id coll-id
+                                                                :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                                     (str "SELECT * FROM {{" tag "}}"))
+                                                                                   (lib/with-template-tags
+                                                                                     {tag {:type         :card
+                                                                                           :name         tag
+                                                                                           :display-name tag
+                                                                                           :id           (str (random-uuid))
+                                                                                           :card-id      hidden-id}}))}
+                           :model/CardTest {outer-test-id :id} {:card_id outer-id :inputs inputs :expectations expectations}]
+              (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+              (mt/with-data-analyst-role! (mt/user->id :lucky)
+                (try
+                  (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                                :perms/create-queries :query-builder-and-native}
+                    (testing "a user who may read the card, run its query and write native queries: true, and the run is accepted"
+                      (is (= {:get true :list true} (can-run-flags :lucky card-id test-id)))
+                      (mt/user-http-request :lucky :post 200 (str "ee/card-test/" test-id "/run")))
+                    (testing "a user who may not run the card's query, which reads a card they cannot read: false, and the run is refused"
+                      (is (= {:get false :list false} (can-run-flags :lucky outer-id outer-test-id)))
+                      (mt/user-http-request :lucky :post 403 (str "ee/card-test/" outer-test-id "/run")))
+                    (testing "every listed test carries the flag"
+                      (is (= [true true]
+                             (map :can_run (mt/user-http-request :lucky :get 200 "ee/card-test" :card-id card-id))))))
+                  (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                                :perms/create-queries :query-builder}
+                    (testing "a user who may not write native queries on the card's database: false, and the run is refused"
+                      (is (= {:get false :list false} (can-run-flags :lucky card-id test-id)))
+                      (mt/user-http-request :lucky :post 403 (str "ee/card-test/" test-id "/run"))))
+                  (finally
+                    (t2/delete! :model/DataTestRun :test_type "card" :test_id [:in [test-id outer-test-id]])))))))))))
+
+(deftest can-run-of-a-list-loads-the-cards-at-once-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card     {card-id :id} (card)
+                   :model/CardTest test-1        {:card_id card-id}
+                   :model/CardTest test-2        {:card_id card-id}
+                   :model/CardTest test-3        {:card_id card-id}]
+      (mt/with-test-user :rasta
+        (let [calls (fn [card-tests]
+                      (t2/with-call-count [call-count]
+                        (doall (t2/hydrate card-tests :can_run))
+                        (call-count)))]
+          (calls [test-1])
+          (is (= (calls [test-1]) (calls [test-1 test-2 test-3]))))))))
 
 (deftest tests-of-a-card-referencing-an-unreadable-card-are-refused-test
   (mt/with-premium-features #{:transforms-testing}
