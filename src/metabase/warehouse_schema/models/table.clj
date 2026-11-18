@@ -567,44 +567,45 @@
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 
-(search.spec/define-spec "table"
-  {:model        :model/Table
-   :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
-                  ;; so we moved that to the where clause
-                  :archived        false
-                  ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id   true
-                  :creator-id      false
-                  :database-id     :db_id
-                  :view-count      true
-                  :created-at      true
-                  :updated-at      true
-                  :is-published        :is_published
-                  :collection-type     :collection.type
-                  :collection-location :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}
-                  :data-layer          :data_layer
-                  :data-authority      :data_authority}
-   :search-terms {:name         search.spec/explode-camel-case
-                  :display_name true
-                  :description  true}
-   :render-terms {:initial-sync-status        true
-                  :table-id                   :id
-                  :table-description          :description
-                  :table-name                 :name
-                  :table-schema               :schema
-                  :database-name              :db.name
-                  :collection-authority_level :collection.authority_level
-                  ;; For published tables with no collection, show "Our analytics" as the collection name
-                  :collection-name            [:coalesce :collection.name
-                                               [:case
-                                                [:and :this.is_published
-                                                 [:= :this.collection_id nil]] "Our analytics"
-                                                :else nil]]}
-   :where        [:and
-                  :this.active
-                  [:= :this.visibility_type nil]
-                  [:= :db.router_database_id nil]
-                  [:not= :this.db_id [:inline audit/audit-db-id]]]
-   :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
+(defmethod search.spec/spec :model/Table
+  [_model]
+  {"table"
+   {:attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
+                   ;; so we moved that to the where clause
+                   :archived        false
+                   ;; For published tables with no collection, we want to show "root" as the collection id
+                   :collection-id   true
+                   :creator-id      false
+                   :database-id     :db_id
+                   :view-count      true
+                   :created-at      true
+                   :updated-at      true
+                   :is-published        :is_published
+                   :collection-type     :collection.type
+                   :collection-location :collection.location
+                   :root-collection-type {:fn collection/root-collection-type}
+                   :data-layer          :data_layer
+                   :data-authority      :data_authority}
+    :search-terms {:name         search.spec/explode-camel-case
+                   :display_name true
+                   :description  true}
+    :render-terms {:initial-sync-status        true
+                   :table-id                   :id
+                   :table-description          :description
+                   :table-name                 :name
+                   :table-schema               :schema
+                   :database-name              :db.name
+                   :collection-authority_level :collection.authority_level
+                   ;; For published tables with no collection, show "Our analytics" as the collection name
+                   :collection-name            [:coalesce :collection.name
+                                                [:case
+                                                 [:and :this.is_published
+                                                  [:= :this.collection_id nil]] "Our analytics"
+                                                 :else nil]]}
+    :where        [:and
+                   :this.active
+                   [:= :this.visibility_type nil]
+                   [:= :db.router_database_id nil]
+                   [:not= :this.db_id [:inline audit/audit-db-id]]]
+    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
+                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}}})

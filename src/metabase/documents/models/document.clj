@@ -5,6 +5,7 @@
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
+   [metabase.documents.search :as documents.search]
    [metabase.documents.serialization :as documents.serialization]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -18,7 +19,6 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
-   [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -26,7 +26,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -559,52 +558,31 @@
 
 ;;; ---------- Search --------------------------------------------------------------------------------------------
 
-(defn- document->search-text
-  "Extract the plain searchable text from a document's prose-mirror body for the search index.
-
-  Receives the raw `:document` value as it comes off the ingestion query (a JSON string), which it parses and
-  normalizes before `ast->text` reads it. Returns nil if it can't be parsed, so a
-  malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
-  [document]
-  (when document
-    (try
-      (-> (cond-> document (string? document) json/decode+kw)
-          prose-mirror/normalize-document
-          prose-mirror/ast->text
-          not-empty)
-      (catch Throwable _ nil))))
-
-;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
-;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
-;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
-(defmethod search.config/column->string [:document :document]
-  [value _model _column]
-  (or (document->search-text value) ""))
-
-(search.spec/define-spec "document"
-  {:model :model/Document
-   :attrs {:archived true
-           :collection-id :collection_id
-           :creator-id :creator_id
-           :exploration-id :exploration_id
-           :view-count :view_count
-           :created-at :created_at
-           :updated-at :updated_at
-           :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms {:name true
-                  :document document->search-text}
-   :embedding-exclude #{:document}
-   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
-   :render-terms {:document-name :name
-                  :document-id :id
-                  :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :collection-type            :collection.type
-                  :archived-directly          true}})
+(defmethod search.spec/spec :model/Document
+  [_model]
+  {"document"
+   {:attrs {:archived true
+            :collection-id :collection_id
+            :creator-id :creator_id
+            :exploration-id :exploration_id
+            :view-count :view_count
+            :created-at :created_at
+            :updated-at :updated_at
+            :last-viewed-at :last_viewed_at
+            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+    :search-terms {:name true
+                   :document documents.search/document->search-text}
+    :embedding-exclude #{:document}
+    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
+    :render-terms {:document-name :name
+                   :document-id :id
+                   :collection-authority_level :collection.authority_level
+                   :collection-location        :collection.location
+                   :collection-name            :collection.name
+                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                   :collection-position        true
+                   :collection-type            :collection.type
+                   :archived-directly          true}}})
 
 ;;; ------------------------------------------------- Staleness ---------------------------------------------------
 

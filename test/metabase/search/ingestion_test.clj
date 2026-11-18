@@ -42,7 +42,7 @@
                    :name        "Test Name"
                    :description "Test Description"
                    :other-field "Other Value"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "Test Name Test Description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text with map format and transforms"
@@ -51,7 +51,7 @@
           record               {:model       "test"
                                 :name        "CamelCaseTest"
                                 :description "Simple description"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "CamelCaseTest Camel Case Test Simple description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text filters out blank values"
@@ -60,7 +60,7 @@
                    :name        "Test Name"
                    :description "  " ;; whitespace only
                    :empty-field nil}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "Test Name"
                (#'search.ingestion/searchable-text record)))))))
 
@@ -71,7 +71,7 @@
                    :name        "Sales Dashboard"
                    :description "Shows quarterly sales data"
                    :other-field "Other Value"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text with map format"
@@ -80,7 +80,7 @@
           record  {:model       "dashboard"
                    :name        "Test Dashboard"
                    :description "A test dashboard"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text filters out blank values"
@@ -89,14 +89,14 @@
                    :name        "Test Card"
                    :description "  "
                    :empty-field nil}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[card]\nname: Test Card"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
                    :name  "CamelCaseTest"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search"))))
@@ -106,7 +106,7 @@
           record  {:model    "document"
                    :name     "Q3 Planning"
                    :document "the full document body"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[document]\nname: Q3 Planning"
                (#'search.ingestion/embeddable-text record))
             "Excluded fields must not appear in the semantic-search embedding text")
@@ -162,7 +162,7 @@
           ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
           (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
-                        (search.spec/spec "card")
+                        (search.spec/search-model-spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
                          :query_type    "query"})]
             (is (map? result))

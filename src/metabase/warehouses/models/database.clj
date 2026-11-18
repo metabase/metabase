@@ -766,19 +766,20 @@
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 
-(search.spec/define-spec "database"
-  {:model        :model/Database
-   :attrs        {:archived      false
-                  :collection-id false
-                  :creator-id    false
-                  ;; not sure if this is another bug
-                  :database-id   false
-                  :created-at    true
-                  :updated-at    true}
-   :search-terms {:name        search.spec/explode-camel-case
-                  :description true}
-   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
-   :render-terms {:initial-sync-status true}})
+(defmethod search.spec/spec :model/Database
+  [_model]
+  {"database"
+   {:attrs        {:archived      false
+                   :collection-id false
+                   :creator-id    false
+                   ;; not sure if this is another bug
+                   :database-id   false
+                   :created-at    true
+                   :updated-at    true}
+    :search-terms {:name        search.spec/explode-camel-case
+                   :description true}
+    :where [:and [:= :router_database_id nil] [:= :is_stub false]]
+    :render-terms {:initial-sync-status true}}})
 
 ;;; ------------------------------------------------- Health checks --------------------------------------------------
 

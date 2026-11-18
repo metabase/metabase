@@ -2492,38 +2492,39 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(search.spec/define-spec "collection"
-  {:model        :model/Collection
-   :attrs        {:collection-id        :id
-                  :collection-type      :type
-                  :collection-location  :location
-                  :root-collection-type {:fn root-collection-type}
-                  :creator-id           false
-                  :database-id          false
-                  :archived             true
-                  :created-at           true
-                  ;; intentionally not tracked
-                  :updated-at           false}
-   :search-terms [:name]
-   :render-terms {:archived-directly          true
-                  ;; Why not make this a search term? I suspect it was just overlooked before.
-                  :description                true
-                  :collection_authority_level :authority_level
-                  :collection_name            :name
-                  ;; `:location` is read by the toucan2 effective-location hydration when collection
-                  ;; results pass through `metabase.search.impl/add-collection-effective-location`.
-                  ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
-                  :location                   true}
-   :where [:or [:= :namespace nil]
-           [:= :namespace "analytics"]
-           [:= :namespace "shared-tenant-collection"]
-           [:= :namespace "tenant-specific"]]
-   ;; depends on the current user, used for rendering and ranking
-   ;; TODO not sure this is what it'll look like
-   :bookmark     [:model/CollectionBookmark [:and
-                                             [:= :bookmark.collection_id :this.id]
-                                             ;; a magical alias, or perhaps this clause can be implicit
-                                             [:= :bookmark.user_id :current_user/id]]]})
+(defmethod search.spec/spec :model/Collection
+  [_model]
+  {"collection"
+   {:attrs        {:collection-id        :id
+                   :collection-type      :type
+                   :collection-location  :location
+                   :root-collection-type {:fn root-collection-type}
+                   :creator-id           false
+                   :database-id          false
+                   :archived             true
+                   :created-at           true
+                   ;; intentionally not tracked
+                   :updated-at           false}
+    :search-terms [:name]
+    :render-terms {:archived-directly          true
+                   ;; Why not make this a search term? I suspect it was just overlooked before.
+                   :description                true
+                   :collection_authority_level :authority_level
+                   :collection_name            :name
+                   ;; `:location` is read by the toucan2 effective-location hydration when collection
+                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
+                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
+                   :location                   true}
+    :where [:or [:= :namespace nil]
+            [:= :namespace "analytics"]
+            [:= :namespace "shared-tenant-collection"]
+            [:= :namespace "tenant-specific"]]
+    ;; depends on the current user, used for rendering and ranking
+    ;; TODO not sure this is what it'll look like
+    :bookmark     [:model/CollectionBookmark [:and
+                                              [:= :bookmark.collection_id :this.id]
+                                              ;; a magical alias, or perhaps this clause can be implicit
+                                              [:= :bookmark.user_id :current_user/id]]]}})
 
 (defn is-library-collection?
   "Return true if the given collection ID corresponds to a collection in the library."

@@ -1,6 +1,8 @@
 (ns metabase.models.resolution
   (:require
+   [clojure.string :as str]
    [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
@@ -179,6 +181,13 @@
 ;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+(defn- require-model-namespace
+  "Require the namespace `nspace` of a model. The registry selects the namespace dynamically, so this uses
+  [[classloader/require]] for thread safety."
+  [nspace]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (classloader/require nspace))
+
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
   need to require the model namespaces in order to use it."
@@ -187,9 +196,7 @@
     ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
     ;; before side effects like `deftransforms` and `define-before-insert` have run
     (when-let [nspace (get model->namespace x)]
-      ;; The registry selects the namespace dynamically; use [[classloader/require]] for thread safety.
-      #_{:clj-kondo/ignore [:metabase/modules]}
-      (classloader/require nspace)))
+      (require-model-namespace nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
@@ -215,3 +222,27 @@
       ;; loading the model namespace by calling `resolve-model` can add a new implementation to `table-name`, and
       ;; apparently we need to refer back to the var to pick up the updated multimethod.
       (#'t2.model/table-name (t2.model/resolve-model model)))))
+
+(defn load-all-models!
+  "Require the namespace of every known model, skipping the enterprise ones unless the build has them."
+  []
+  (doseq [nspace (distinct (vals model->namespace))
+          :when  (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+    (require-model-namespace nspace)))
+
+(defn spec-entries-by-name
+  "The entries that the methods of the multimethod `spec-multifn`, which dispatches on a model and returns a map from name
+  to entry, define, as `{name [model entry]}`, after loading every model namespace. Throws when two models define the
+  same name."
+  [spec-multifn]
+  (load-all-models!)
+  (reduce (fn [acc [model method]]
+            (reduce-kv (fn [acc entry-name entry]
+                         (when-let [[other] (get acc entry-name)]
+                           (throw (ex-info (str "Two models define " (pr-str entry-name))
+                                           {:name entry-name :models [other model]})))
+                         (assoc acc entry-name [model entry]))
+                       acc
+                       (method model)))
+          {}
+          (dissoc (methods spec-multifn) :default)))

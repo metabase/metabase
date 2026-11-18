@@ -166,15 +166,16 @@
   [app]
   (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!))
 
-(search/define-spec "data-app"
-  {:model        :model/DataApp
-   :attrs        {:archived      false
-                  :collection-id false
-                  :created-at    true
-                  :updated-at    true}
-   :search-terms [:slug :name :description]
-   ;; A result's `name` can be its display name, and the app's URL needs its slug.
-   :render-terms {:data-app-slug :slug}})
+(defmethod search/spec :model/DataApp
+  [_model]
+  {"data-app"
+   {:attrs        {:archived      false
+                   :collection-id false
+                   :created-at    true
+                   :updated-at    true}
+    :search-terms [:slug :name :description]
+    ;; A result's `name` can be its display name, and the app's URL needs its slug.
+    :render-terms {:data-app-slug :slug}}})
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."

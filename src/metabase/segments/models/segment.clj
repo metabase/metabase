@@ -175,32 +175,33 @@
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 
-(search/define-spec "segment"
-  {:model :model/Segment
-   :attrs {:archived true
-           :collection-id false
-           :creator-id false
-           :database-id :table.db_id
-           ;; should probably change this, but will break legacy search tests
-           :created-at false
-           :updated-at true
-           ;; A segment on a Library table inherits the table's library ranking boost and curated status.
-           :root-collection-type {:fn collection/table-root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:table-id                  :table_id
-                  :table_description         :table.description
-                  :table_name                :table.name
-                  :table_display_name        :table.display_name
-                  :table_schema              :table.schema
-                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
-                  :table-collection-id       :table.collection_id
-                  :table-is-published        :table.is_published
-                  :table-collection-location :collection.location
-                  :table-collection-type     :collection.type}
-   ;; Only published tables count as library content, matching the table spec's own collection join.
-   :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :collection [:model/Collection
-                        [:and
-                         [:= :table.is_published true]
-                         [:= :collection.id :table.collection_id]]]}})
+(defmethod search/spec :model/Segment
+  [_model]
+  {"segment"
+   {:attrs {:archived true
+            :collection-id false
+            :creator-id false
+            :database-id :table.db_id
+            ;; should probably change this, but will break legacy search tests
+            :created-at false
+            :updated-at true
+            ;; A segment on a Library table inherits the table's library ranking boost and curated status.
+            :root-collection-type {:fn collection/table-root-collection-type}}
+    :search-terms [:name :description]
+    :render-terms {:table-id                  :table_id
+                   :table_description         :table.description
+                   :table_name                :table.name
+                   :table_display_name        :table.display_name
+                   :table_schema              :table.schema
+                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                   ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
+                   :table-collection-id       :table.collection_id
+                   :table-is-published        :table.is_published
+                   :table-collection-location :collection.location
+                   :table-collection-type     :collection.type}
+    ;; Only published tables count as library content, matching the table spec's own collection join.
+    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
+            :collection [:model/Collection
+                         [:and
+                          [:= :table.is_published true]
+                          [:= :collection.id :table.collection_id]]]}}})

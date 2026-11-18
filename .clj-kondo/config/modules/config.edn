@@ -1874,7 +1874,8 @@
            lib.legacy-mbql
            lib.schema
            util
-           util.classloader}
+           util.classloader
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel

@@ -15,7 +15,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search.core]
-   [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -25,6 +24,7 @@
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.search :as transforms.search]
    [metabase.transforms.serialization :as transforms.serialization]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -533,38 +533,23 @@
 
 ;;; ---------------------------------------------------- Search ------------------------------------------------------
 
-(mu/defn- maybe-extract-transform-query-text :- [:maybe :string]
-  "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
-  Extracts SQL from query-type transforms and Python code from python-type transforms."
-  [{transform-source-type :source_type source :source}
-   :- [:map {:closed true}
-       [:source_type [:maybe [:or :keyword :string]]]
-       [:source      [:or :string [:fn map?]]]]]
-  (let [source-data (transform-source-out source)
-        ;; Use the top-level :source_type field since it differentiates between MBQL vs native transforms
-        query-text (case (keyword transform-source-type)
-                     :native (lib/raw-native-query (:query source-data))
-                     :python (:body source-data)
-                     nil)]
-    (when query-text
-      (subs query-text 0 (min (count query-text) search.core/max-searchable-value-length)))))
-
-(search.spec/define-spec "transform"
-  {:model        :model/Transform
-   :visibility   :superuser
-   :attrs        {:archived      false
-                  :collection-id false
-                  :creator-id    false
-                  :created-at    true
-                  :updated-at    true
-                  :view-count    false
-                  :native-query  {:fn maybe-extract-transform-query-text
-                                  :fields [:source :source_type]}
-                  :database-id   :source_database_id
-                  :source-type   true}
-   :search-terms [:name :description]
-   :render-terms {:transform-name :name
-                  :transform-id   :id}})
+(defmethod search.core/spec :model/Transform
+  [_model]
+  {"transform"
+   {:visibility   :superuser
+    :attrs        {:archived      false
+                   :collection-id false
+                   :creator-id    false
+                   :created-at    true
+                   :updated-at    true
+                   :view-count    false
+                   :native-query  {:fn transforms.search/maybe-extract-transform-query-text
+                                   :fields [:source :source_type]}
+                   :database-id   :source_database_id
+                   :source-type   true}
+    :search-terms [:name :description]
+    :render-terms {:transform-name :name
+                   :transform-id   :id}}})
 
 ;;; ------------------------------------------------- Staleness ------------------------------------------------
 

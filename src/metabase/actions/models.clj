@@ -805,21 +805,22 @@
 
 ;;; ---------------------------------------------------- Search ------------------------------------------------------
 
-(search/define-spec "action"
-  {:model        :model/Action
-   :attrs        {:archived       true
-                  :collection-id  true
-                  :creator-id     true
-                  :database-id    :query_action.database_id
-                  :native-query   :query_action.dataset_query
-                  ;; workaround for actions not having revisions (yet)
-                  :last-edited-at :updated_at
-                  :created-at     true
-                  :updated-at     true}
-   :search-terms [:name :description]
-   :render-terms {:model-id   :model.id
-                  :model-name :model.name}
-   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
-   :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
-                  :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
-                  :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})
+(defmethod search/spec :model/Action
+  [_model]
+  {"action"
+   {:attrs        {:archived       true
+                   :collection-id  true
+                   :creator-id     true
+                   :database-id    :query_action.database_id
+                   :native-query   :query_action.dataset_query
+                   ;; workaround for actions not having revisions (yet)
+                   :last-edited-at :updated_at
+                   :created-at     true
+                   :updated-at     true}
+    :search-terms [:name :description]
+    :render-terms {:model-id   :model.id
+                   :model-name :model.name}
+    :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
+    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
+                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
+                   :collection   [:model/Collection [:= :collection.id :this.collection_id]]}}})

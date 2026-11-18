@@ -516,45 +516,46 @@
 
 ;;; ---------------------------------------------------- Search ------------------------------------------------------
 
-(search/define-spec "dashboard"
-  {:model        :model/Dashboard
-   :attrs        {:archived       true
-                  :collection-id  true
-                  :creator-id     true
-                  :database-id    false
-                  :last-editor-id :r.user_id
-                  :last-edited-at :r.timestamp
-                  :last-viewed-at true
-                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified       [:= "verified" :mr.status]
-                  :official-collection [:= "official" :collection.authority_level]
-                  :view-count     true
-                  :created-at     true
-                  :updated-at     true
-                  :collection-type :collection.type
-                  :collection-location :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :moderated-status           :mr.status}
-   :where        []
-   :bookmark     [:model/DashboardBookmark [:and
-                                            [:= :bookmark.dashboard_id :this.id]
-                                            ;; a magical alias, or perhaps this clause can be implicit
-                                            [:= :bookmark.user_id :current_user/id]]]
-   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
-                  :r          [:model/Revision [:and
-                                                [:= :r.model_id :this.id]
-                                                [:= :r.model "Dashboard"]
-                                                (revisions.sql/newest-revision-clause :r "Dashboard" :this.id)]]
-                  :mr         [:model/ModerationReview [:and
-                                                        [:= :mr.moderated_item_type "dashboard"]
-                                                        [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]}})
+(defmethod search/spec :model/Dashboard
+  [_model]
+  {"dashboard"
+   {:attrs        {:archived       true
+                   :collection-id  true
+                   :creator-id     true
+                   :database-id    false
+                   :last-editor-id :r.user_id
+                   :last-edited-at :r.timestamp
+                   :last-viewed-at true
+                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                   :verified       [:= "verified" :mr.status]
+                   :official-collection [:= "official" :collection.authority_level]
+                   :view-count     true
+                   :created-at     true
+                   :updated-at     true
+                   :collection-type :collection.type
+                   :collection-location :collection.location
+                   :root-collection-type {:fn collection/root-collection-type}}
+    :search-terms [:name :description]
+    :render-terms {:archived-directly          true
+                   :collection-authority_level :collection.authority_level
+                   :collection-name            :collection.name
+                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                   :collection-position        true
+                   :moderated-status           :mr.status}
+    :where        []
+    :bookmark     [:model/DashboardBookmark [:and
+                                             [:= :bookmark.dashboard_id :this.id]
+                                             ;; a magical alias, or perhaps this clause can be implicit
+                                             [:= :bookmark.user_id :current_user/id]]]
+    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                   :r          [:model/Revision [:and
+                                                 [:= :r.model_id :this.id]
+                                                 [:= :r.model "Dashboard"]
+                                                 (revisions.sql/newest-revision-clause :r "Dashboard" :this.id)]]
+                   :mr         [:model/ModerationReview [:and
+                                                         [:= :mr.moderated_item_type "dashboard"]
+                                                         [:= :mr.moderated_item_id :this.id]
+                                                         [:= :mr.most_recent true]]]}}})
 
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]

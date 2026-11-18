@@ -4,7 +4,6 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
@@ -41,10 +40,10 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.revisions :as queries.revisions]
    [metabase.queries.schema :as queries.schema]
+   [metabase.queries.search :as queries.search]
    [metabase.queries.serialization :as queries.serialization]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
-   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -1876,82 +1875,11 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defn- maybe-extract-native-query
-  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil.
-  Uses `query_type` to short-circuit without parsing JSON for non-native cards."
-  [{:keys [dataset_query query_type]}]
-  (when (= query_type "native")
-    (let [query      ((:out lib-be/transform-query) dataset_query)
-          query-text (:native (lib/query-stage query 0))]
-      (when query-text
-        (subs query-text 0 (min (count query-text) search/max-searchable-value-length))))))
-
-(defn ^:private base-search-spec
-  []
-  {:model        :model/Card
-   :attrs        {:archived             true
-                  :collection-id        true
-                  :creator-id           true
-                  :dashboard-id         true
-                  :dashboardcard-count  ^:allow-subquery {:select [:%count.*]
-                                                          :from   [:report_dashboardcard]
-                                                          :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id          true
-                  :last-viewed-at       :last_used_at
-                  :native-query         {:fn maybe-extract-native-query
-                                         :fields [:dataset_query :query_type]}
-                  :official-collection  [:= "official" :collection.authority_level]
-                  :last-edited-at       :r.timestamp
-                  :last-editor-id       :r.user_id
-                  :pinned               [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified             [:= "verified" :mr.status]
-                  :view-count           true
-                  :created-at           true
-                  :updated-at           true
-                  :display-type         :this.display
-                  :collection-type      :collection.type
-                  :collection-location  :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  ;; This field can become stale, unless we change to calculate it just-in-time.
-                  :display                    true
-                  :moderated-status           :mr.status}
-   :bookmark     [:model/CardBookmark [:and
-                                       [:= :bookmark.card_id :this.id]
-                                       [:= :bookmark.user_id :current_user/id]]]
-   :where [:and [:or [:= :collection.namespace nil]
-                 [:= :collection.namespace "shared-tenant-collection"]
-                 [:= :collection.namespace "tenant-specific"]]
-           [:= :this.document_id nil]]
-   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
-                  :r          [:model/Revision [:and
-                                                [:= :r.model_id :this.id]
-                                                [:= :r.model "Card"]
-                                                (revisions.sql/newest-revision-clause :r "Card" :this.id)]]
-                  :mr         [:model/ModerationReview [:and
-                                                        [:= :mr.moderated_item_type "card"]
-                                                        [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]}
-   ;; Workaround for dataflow :((((((
-   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
-   ;;       and could cause a large increase in the query count for dashboard updates.
-   ;;       (see the test failures when this hook is added back)
-   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
-   #_:end})
-
-(search/define-spec "card"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
-
-(search/define-spec "dataset"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
-
-(search/define-spec "metric"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
+(defmethod search/spec :model/Card
+  [_model]
+  {"card"    (queries.search/card-search-spec "question")
+   "dataset" (queries.search/card-search-spec "model")
+   "metric"  (queries.search/card-search-spec "metric")})
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]

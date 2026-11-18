@@ -47,9 +47,10 @@
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec
+  indexed-model?
+  search-model-spec
   spec
-  specifications
-  define-spec]
+  specifications]
  [search.util
   collapse-id
   indexed-entity-id->model-index-id

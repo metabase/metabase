@@ -142,21 +142,22 @@
 
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
-(search.spec/define-spec "exploration"
-  {:model :model/Exploration
-   :attrs {:archived :archived
-           :collection-id :collection_id
-           :creator-id :creator_id
-           :created-at :created_at
-           :updated-at :updated_at
-           :exploration-id false
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name :description]
-   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
-   :render-terms {:exploration-name :name
-                  :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
-                  :collection-name            :collection.name
-                  :collection-position        true
-                  :collection-type            :collection.type
-                  :archived-directly          true}})
+(defmethod search.spec/spec :model/Exploration
+  [_model]
+  {"exploration"
+   {:attrs {:archived :archived
+            :collection-id :collection_id
+            :creator-id :creator_id
+            :created-at :created_at
+            :updated-at :updated_at
+            :exploration-id false
+            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+    :search-terms [:name :description]
+    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
+    :render-terms {:exploration-name :name
+                   :collection-authority_level :collection.authority_level
+                   :collection-location        :collection.location
+                   :collection-name            :collection.name
+                   :collection-position        true
+                   :collection-type            :collection.type
+                   :archived-directly          true}}})
