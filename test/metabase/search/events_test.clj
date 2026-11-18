@@ -663,3 +663,26 @@
           (is (= 1 (count calls)))
           (finally
             (t2/delete! :model/Card :id [:in @ids])))))))
+
+(defn- indexed-editor [search-model id]
+  (t2/select-one-fn :last_editor_id (search.index/active-table) :model search-model :model_id (str id)))
+
+(deftest revert-refreshes-indexed-last-editor-test
+  (search.tu/with-appdb-search-if-available-without-fallback
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [card-id (:id (mt/user-http-request :rasta :post 200 "card"
+                                                 {:name "Reverted card" :display "scalar" :visualization_settings {}
+                                                  :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}))
+              dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name "Reverted dashboard"}))]
+          (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited"})
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:description "edited"})
+          (testing "the editor is the one of the last edit"
+            (is (= [(mt/user->id :crowberto) (mt/user->id :crowberto)]
+                   [(indexed-editor "card" card-id) (indexed-editor "dashboard" dash-id)])))
+          (doseq [[entity id] [["card" card-id] ["dashboard" dash-id]]]
+            (let [first-revision (t2/select-one-fn :id :model/Revision :model (str/capitalize entity) :model_id id {:order-by [[:id :asc]]})]
+              (mt/user-http-request :rasta :post 200 "revision/revert" {:entity entity :id id :revision_id first-revision})))
+          (testing "a revert makes its user the indexed editor"
+            (is (= [(mt/user->id :rasta) (mt/user->id :rasta)]
+                   [(indexed-editor "card" card-id) (indexed-editor "dashboard" dash-id)]))))))))

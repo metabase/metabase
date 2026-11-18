@@ -409,9 +409,11 @@
    :uses #{api
            app-db
            events
+           lib
            lib.schema
            models
            premium-features
+           pulse
            settings
            task
            task.history
@@ -419,6 +421,7 @@
            util}
    :model-exports #{:model/AuditLog}
    :model-imports #{:model/ApiKey
+                    :model/CacheConfig
                     :model/Card
                     :model/Channel
                     :model/Collection
@@ -429,11 +432,15 @@
                     :model/Database
                     :model/Document
                     :model/Glossary
+                    :model/Measure
                     :model/Notification
                     :model/NotificationHandler
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
                     :model/QueryExecution
                     :model/RemoteSyncTask
                     :model/Segment
@@ -694,6 +701,7 @@
            queries
            remote-sync
            request
+           revisions
            revisions.schema
            search
            serialization
@@ -860,6 +868,7 @@
            query-permissions
            query-processor
            remote-sync
+           revisions
            search
            serialization
            settings
@@ -2299,6 +2308,7 @@
            query-processor
            remote-sync
            request
+           revisions
            search
            serialization
            settings
@@ -2552,13 +2562,15 @@
    :api  #{metabase.revisions.api
            metabase.revisions.core
            metabase.revisions.init
-           metabase.revisions.models.revision}
+           metabase.revisions.models.revision
+           metabase.revisions.sql}
    :uses #{api
            app-db
            batch-processing
            dashboards
            events
            explorations.schema
+           lib
            lib.schema
            measures.schema
            models
@@ -2651,6 +2663,7 @@
            queries
            query-processor
            request
+           revisions
            settings
            startup
            task

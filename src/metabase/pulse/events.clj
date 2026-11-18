@@ -4,6 +4,7 @@
   so Tabs and series do not matter."
   (:require
    [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -47,58 +48,10 @@
                                       :dashboard_card_id dashcard-id
                                       :position          position})]
           (t2/with-transaction [_conn]
-            (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
+            (binding [models.pulse/*allow-moving-dashboard-subscriptions* true
+                      api/*current-user-id*                               nil]
               (pulse.db/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
                                                                    :collection_id (:collection_id dashboard)})
               (pulse-card/bulk-create! new-pulse-cards))))))))
 
 (events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)
-
-(defn- pulse-owner
-  "The id of the Pulse that the `event` of a write of it, of its cards, its channels or their recipients is about."
-  [{:keys [model object previous-object]}]
-  (let [row (or object previous-object)]
-    (case model
-      :model/Pulse                 (:id row)
-      (:model/PulseCard
-       :model/PulseChannel)        (:pulse_id row)
-      :model/PulseChannelRecipient (some-> (:pulse_channel_id row) pulse.db/pulse-id-of-channel)
-      nil)))
-
-(def ^:private unrecorded-pulse-columns
-  "The columns of a Pulse whose update alone records nothing."
-  #{:updated_at :collection_position :entity_id})
-
-(defn- recorded?
-  "Whether `event`, a write of a Pulse or of one of its parts, records a change of the Pulse: not one that changes only
-  bookkeeping columns, nor one that the archive or restore of another entity carried to it."
-  [{:keys [model operation context] :as event}]
-  (and (nil? (:archived-with context))
-       (or (not= :model/Pulse model)
-           (not= :update operation)
-           (not (every? unrecorded-pulse-columns (u.events/changed-keys event))))))
-
-(defn- record-pulse!
-  "Publish the creation or the update of the Pulse `pulse-id`, as the Alert or the Subscription it is, once for the
-  `events` of a batch, as the user who wrote it."
-  [pulse-id events _all-events]
-  (when-let [user-id (some :user-id events)]
-    (let [pulse-event? #(= :model/Pulse (:model %))
-          created?     (some #(and (pulse-event? %) (= :create (:operation %))) events)
-          deleted?     (some #(and (pulse-event? %) (= :delete (:operation %))) events)
-          pulse-row    (some #(when (pulse-event? %) (:object %)) events)
-          subscription (fn []
-                         (when-let [pulse (models.pulse/retrieve-pulse pulse-id)]
-                           (if created?
-                             (do (events/publish-event! :event/subscription-create {:object pulse :user-id user-id})
-                                 (events/publish-event! :event/pulse-create {:object pulse :user-id user-id}))
-                             (events/publish-event! :event/subscription-update {:object pulse :user-id user-id}))))]
-      (when (and (not deleted?) (some recorded? events))
-        (if (and pulse-row (nil? (:alert_condition pulse-row)))
-          (subscription)
-          (if-let [alert (models.pulse/retrieve-alert pulse-id)]
-            (when-not created?
-              (events/publish-event! :event/alert-update {:object alert :user-id user-id}))
-            (subscription)))))))
-
-(events/register-owned-consumer! ::pulse-records pulse-owner record-pulse!)

@@ -422,7 +422,8 @@
   (api/let-404 [pulse-id (pulse.db/pulse-id id)
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)
                 pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
-    (pulse.db/delete-pulse-channel-recipient! pcr-id))
+    (binding [api/*current-user-id* nil]
+      (pulse.db/delete-pulse-channel-recipient! pcr-id)))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

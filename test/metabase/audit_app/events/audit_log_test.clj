@@ -176,86 +176,6 @@
             :details     {}}
            (mt/latest-audit-log-entry "install")))))
 
-(deftest subscription-events-test
-  (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
-                 :model/Pulse          pulse {:archived     false
-                                              :name         "name"
-                                              :dashboard_id dashboard-id
-                                              :parameters   ()}]
-    (let [recipients [{:email "test@metabase.com"}
-                      {:id    (mt/user->id :rasta)
-                       :email "rasta@metabase.com"}]
-          pulse      (assoc pulse
-                            :channels [{:channel_type  :email
-                                        :schedule_type :daily
-                                        :recipients    recipients}])]
-      (testing :subscription-update
-        (is (= {:object pulse :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/subscription-update {:object pulse :user-id (mt/user->id :rasta)})))
-        (is (= {:topic       :subscription-update
-                :user_id     (mt/user->id :rasta)
-                :model       "Pulse"
-                :model_id    (:id pulse)
-                :details     {:archived     false
-                              :name         "name"
-                              :dashboard_id dashboard-id
-                              :parameters   []
-                              :channel      ["email"]
-                              :schedule     ["daily"]
-                              :recipients   [recipients]}}
-               (mt/latest-audit-log-entry "subscription-update" (:id pulse)))))
-      (testing :subscription-create
-        (is (= {:object pulse :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/subscription-create {:object pulse :user-id (mt/user->id :rasta)})))
-        (is (= {:topic       :subscription-create
-                :user_id     (mt/user->id :rasta)
-                :model       "Pulse"
-                :model_id    (:id pulse)
-                :details     {:archived     false
-                              :name         "name"
-                              :dashboard_id dashboard-id
-                              :parameters   []
-                              :channel      ["email"]
-                              :schedule     ["daily"]
-                              :recipients   [recipients]}}
-               (mt/latest-audit-log-entry "subscription-create" (:id pulse))))))))
-
-(deftest alert-events-test
-  (mt/with-temp [:model/Dashboard      {dashboard-id :id} {}
-                 :model/Card           card {:name "card-name"}
-                 :model/Pulse          pulse {:archived     false
-                                              :name         "name"
-                                              :dashboard_id dashboard-id
-                                              :parameters   ()}]
-    (let [pulse (-> pulse
-                    (assoc :card card)
-                    (assoc :channels [{:channel_type  :email
-                                       :schedule_type :daily
-                                       :recipients    [{:email "test@metabase.com"}
-                                                       {:id    (mt/user->id :rasta)
-                                                        :email "rasta@metabase.com"}]}
-                                      {:channel_type  :slack
-                                       :schedule_type :hourly
-                                       :recipients    [{:id (mt/user->id :rasta)}]}]))]
-      (testing :alert-update
-        (is (= {:object pulse :user-id (mt/user->id :rasta)}
-               (events/publish-event! :event/alert-update {:object pulse :user-id (mt/user->id :rasta)})))
-        (is (= {:topic       :alert-update
-                :user_id     (mt/user->id :rasta)
-                :model       "Card"
-                :model_id    (:id pulse)
-                :details     {:archived   false
-                              :name       "card-name"
-                              :card_id    (:id card)
-                              :parameters []
-                              :channel    ["email" "slack"]
-                              :schedule   ["daily" "hourly"]
-                              :recipients [[{:email "test@metabase.com"}
-                                            {:id    (mt/user->id :rasta)
-                                             :email "rasta@metabase.com"}]
-                                           [{:id (mt/user->id :rasta)}]]}}
-               (mt/latest-audit-log-entry "alert-update" (:id pulse))))))))
-
 (deftest subscription-unsubscribe-event-test
   (testing :subscription-unsubscribe
     (mt/with-test-user :rasta
@@ -424,32 +344,6 @@
               :topic    :user-update
               :model    "User"}
              (mt/latest-audit-log-entry :user-update (mt/user->id :lucky))))))))
-
-(deftest user-deactivated-event-test
-  (testing :event/user-deactivated
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [user (mt/fetch-user :lucky)]
-        (is (= {:object user}
-               (events/publish-event! :event/user-deactivated {:object user})))
-        (is (= {:model_id (mt/user->id :lucky)
-                :user_id  (mt/user->id :rasta)
-                :details  {}
-                :topic    :user-deactivated
-                :model    "User"}
-               (mt/latest-audit-log-entry :user-deactivated (mt/user->id :lucky))))))))
-
-(deftest user-reactivated-event-test
-  (testing :event/user-reactivated
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [user (mt/fetch-user :lucky)]
-        (is (= {:object user}
-               (events/publish-event! :event/user-reactivated {:object user})))
-        (is (= {:model_id (mt/user->id :lucky)
-                :user_id  (mt/user->id :rasta)
-                :details  {}
-                :topic    :user-reactivated
-                :model    "User"}
-               (mt/latest-audit-log-entry :user-reactivated (mt/user->id :lucky))))))))
 
 (deftest password-reset-initiated-event-test
   (testing :event/password-reset-initiated
@@ -790,32 +684,6 @@
                :model_id 123}
               (mt/latest-audit-log-entry :table-data-edit)))))))
 
-(deftest table-publish-event-test
-  (testing ":event/table-publish event"
-    (mt/with-temp [:model/Table table {:name "My Cool Table"}]
-      (is (= {:object table :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/table-publish {:object table :user-id (mt/user->id :rasta)})))
-      (is (=?
-           {:topic    :table-publish
-            :user_id  (mt/user->id :rasta)
-            :model    "Table"
-            :model_id (:id table)
-            :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
-           (mt/latest-audit-log-entry "table-publish" (:id table)))))))
-
-(deftest table-unpublish-event-test
-  (testing ":event/table-unpublish event"
-    (mt/with-temp [:model/Table table {:name "My Cool Table"}]
-      (is (= {:object table :user-id (mt/user->id :rasta)}
-             (events/publish-event! :event/table-unpublish {:object table :user-id (mt/user->id :rasta)})))
-      (is (=?
-           {:topic    :table-unpublish
-            :user_id  (mt/user->id :rasta)
-            :model    "Table"
-            :model_id (:id table)
-            :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
-           (mt/latest-audit-log-entry "table-unpublish" (:id table)))))))
-
 (deftest batch-of-audited-writes-is-one-insert-test
   (testing "the audit rows of a batch of writes by a user are inserted by one statement, in the order of the writes"
     (mt/with-temp [:model/Card {a :id} {:name "A"}
@@ -837,3 +705,37 @@
                                 :from     [:audit_log]
                                 :where    [:and [:> :id before] [:in :model_id [a b c]] [:= :model "Card"]]
                                 :order-by [[:id :asc]]}))))))))
+
+(deftest user-activation-is-recorded-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (t2/update! :model/User :id user-id {:is_active false})
+      (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-deactivated :model "User"}
+             (mt/latest-audit-log-entry :user-deactivated user-id)))
+      (t2/update! :model/User :id user-id {:is_active true})
+      (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-reactivated :model "User"}
+             (mt/latest-audit-log-entry :user-reactivated user-id))))))
+
+(deftest table-publication-is-recorded-test
+  (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
+        (t2/update! :model/Table :id (:id table) {:is_published published?})
+        (is (=? {:topic    topic
+                 :user_id  (mt/user->id :rasta)
+                 :model    "Table"
+                 :model_id (:id table)
+                 :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
+                (mt/latest-audit-log-entry topic (:id table))))))))
+
+(deftest public-links-are-recorded-test
+  (mt/with-temp [:model/Card      {card-id :id}      {}
+                 :model/Dashboard {dashboard-id :id} {}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[model id prefix] [[:model/Card card-id "card"] [:model/Dashboard dashboard-id "dashboard"]]]
+        (t2/update! model :id id {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :rasta)})
+        (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-created")) id))
+            "created")
+        (t2/update! model :id id {:public_uuid nil :made_public_by_id nil})
+        (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-deleted")) id))
+            "deleted")))))

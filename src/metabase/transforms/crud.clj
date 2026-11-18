@@ -213,8 +213,6 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (when (seq (written-parts body))
-                        (transform.model/check-cycle new))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
@@ -226,12 +224,6 @@
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (-> transform
         transforms.u/add-source-readable)))
-
-(mu/defn publish-update-event! :- :nil
-  "Publishes the update event of `transform`, which the audit log records, for a moment that writes no row of it."
-  [transform :- ::transforms.schema/transform]
-  (events/publish-event! :event/update-transform {:object transform})
-  nil)
 
 (mu/defn delete-transform! :- :nil
   "Delete a transform."

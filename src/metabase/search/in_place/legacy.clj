@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -268,13 +269,10 @@
       (replace-select :last_edited_at :r.timestamp)
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                              [:not [:exists ^:allow-subquery {:select [1]
-                                                               :from   [[:revision :newer]]
-                                                               :where  [:and
-                                                                        [:= :newer.model :r.model]
-                                                                        [:= :newer.model_id :r.model_id]
-                                                                        [:> :newer.id :r.id]]}]]
-                              [:= :r.model (search-model/search-model->revision-model model)]])))
+                              [:= :r.model (search-model/search-model->revision-model model)]
+                              (revisions.sql/newest-revision-clause :r
+                                                                    (search-model/search-model->revision-model model)
+                                                                    (search.config/column-with-model-alias model :id))])))
 
 (mu/defn- with-moderated-status :- :map
   [query :- HoneySQLQuery

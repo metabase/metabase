@@ -4,6 +4,7 @@
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -70,6 +71,11 @@
   (t2/select-fn-vec :card_id :model/ParameterCard
                     :parameterized_object_type parameterized-object-type
                     :parameterized_object_id   parameterized-object-id))
+
+(mu/defn dashboard-id-of-dashcard
+  "The id of the Dashboard that the DashboardCard with `dashcard-id` belongs to, or nil when it is gone."
+  [dashcard-id :- [:maybe ms/PositiveInt]]
+  (t2/select-one-fn :dashboard_id :model/DashboardCard :id [:auto/param dashcard-id]))
 
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
@@ -210,11 +216,6 @@
                                                                     [:> :newer.id :r.id]]}]]}
                               :old]]}]))
 
-(defn- newest-revision-clause
-  "The where-clause true when the Revision under `alias` is the newest of its row, read without the `most_recent` flag."
-  [alias]
-  [:not (newer-revision-exists alias)])
-
 (mu/defn revisions
   "The Revisions of the `model-name` row with `model-id`, newest first."
   [model-name :- :string
@@ -330,7 +331,7 @@
     :where     [:and
                 [:= :r.model db-model]
                 [:in :r.model_id ids]
-                (newest-revision-clause :r)]}))
+                (revisions.sql/newest-revision-clause :r db-model :r.model_id)]}))
 
 (mu/defn latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
@@ -341,9 +342,11 @@
                          :r.model :r.model_id :r.timestamp]
              :from      [[:revision :r]]
              :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-             :where     [:and (newest-revision-clause :r)
-                         (into [:or]
-                               (keep (fn [[model-name ids]]
-                                       (when (seq ids)
-                                         [:and [:= :r.model model-name] [:in :r.model_id ids]])))
-                               [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))
+             :where     (into [:or]
+                              (keep (fn [[model-name ids]]
+                                      (when (seq ids)
+                                        [:and
+                                         [:= :r.model model-name]
+                                         [:in :r.model_id ids]
+                                         (revisions.sql/newest-revision-clause :r model-name :r.model_id)])))
+                              [["Card" card-ids] ["Dashboard" dashboard-ids]])}))

@@ -20,7 +20,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -328,19 +328,19 @@
             (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dataset_query (mt/mbql-query venues {:limit 1})})
             (is (= query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
           (testing "POST /api/revision/revert"
-            (revision/push-revision! {:object       (t2/select-one :model/Card :id card-id)
-                                      :entity       :model/Card
-                                      :id           card-id
-                                      :user-id      (mt/user->id :crowberto)
-                                      :is-creation? true})
-            (let [first-revision-id (t2/select-one-fn :id :model/Revision :model "Card" :model_id card-id)]
-              (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:limit 2})})
-              (let [changed (t2/select-one-fn :dataset_query :model/Card :id card-id)]
-                (revision/push-revision! {:object       (t2/select-one :model/Card :id card-id)
+            (revisions.tu/push-revision! {:object       (t2/select-one :model/Card :id card-id)
                                           :entity       :model/Card
                                           :id           card-id
                                           :user-id      (mt/user->id :crowberto)
-                                          :is-creation? false})
+                                          :is-creation? true})
+            (let [first-revision-id (t2/select-one-fn :id :model/Revision :model "Card" :model_id card-id)]
+              (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:limit 2})})
+              (let [changed (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                (revisions.tu/push-revision! {:object       (t2/select-one :model/Card :id card-id)
+                                              :entity       :model/Card
+                                              :id           card-id
+                                              :user-id      (mt/user->id :crowberto)
+                                              :is-creation? false})
                 (mt/user-http-request :rasta :post 403 "revision/revert" {:entity      :card
                                                                           :id          card-id
                                                                           :revision_id first-revision-id})

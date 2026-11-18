@@ -226,7 +226,7 @@
                                    object-details)))})))
 
 (mu/defn audit-row :- [:maybe :map]
-  "The Audit Log row that [[record-event!]] would insert for `topic` and `params`, or nil when it would insert none."
+  "The Audit Log row that [[record-rows!]] inserts for `topic` and `params`, or nil when it would insert none."
   [topic :- :keyword
    params :- ::event-params]
   (when (premium-features/log-enabled?)
@@ -237,38 +237,6 @@
        :model    model-name
        :model_id model-id
        :user_id  user-id})))
-
-(mu/defn record-event!
-  "Records an event in the Audit Log.
-
-  `topic` is a keyword representing the type of event being recorded, e.g. `:dashboard-create`. If the keyword is
-  namespaced (e.g. `:event/dashboard-create`) the namespace is stripped before the event is recorded.
-
-  `params` is a map that can optionally include the following fields:
-  - `:object`: the object the event is acting on, e.g. a `Card` instance
-  - `:previous-object`: the previous version of the object, for update events
-  - `:user-id`: the user ID that initiated the event (defaults: `api/*current-user-id*`)
-  - `:model`: the name of the model the event is acting on, e.g. `:model/Card` or \"Card\" (default: model of `:object`)
-  - `:model-id`: the ID of the model the event is acting on (default: ID of `:object`)
-  - `:details`: a map of arbitrary details relevant to the event, which is recorded as-is (default: {})
-
-  `:object` and `:previous-object` both have `model-details` called on them to determine which fields should be audited,
-  then they are added to `:details` before the event is recorded. `:previous-object` is only included if any audited fields
-  were updated.
-
-  Under certain conditions this function does _not_ insert anything into the audit log.
-  - If nothing is logged, returns nil
-  - Otherwise, returns the audit logged row."
-  [topic :- :keyword
-   params :- ::event-params]
-  (when (premium-features/log-enabled?)
-    (span/with-span!
-      {:name       "record-event!"
-       :attributes (cond-> {}
-                     (:model-id params) (assoc :model/id (:model-id params))
-                     (:user-id params) (assoc :user/id (:user-id params))
-                     (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
-      (audit-app.db/insert-audit-logs! [(audit-row topic params)]))))
 
 (defn record-rows!
   "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."

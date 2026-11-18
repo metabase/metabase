@@ -16,6 +16,7 @@
   card->ref
   maybe-filter-pulse-recipients
   maybe-strip-sensitive-metadata
+  retrieve-alert
   retrieve-alerts-for-cards
   retrieve-pulse
   update-pulse!]

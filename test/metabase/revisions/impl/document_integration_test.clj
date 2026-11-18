@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -20,7 +21,7 @@
 (defn- create-document-revision!
   "Helper function to create a Document revision manually for testing."
   [document-id is-creation? user]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object (t2/select-one :model/Document :id document-id)
     :entity :model/Document
     :id document-id

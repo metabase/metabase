@@ -701,6 +701,22 @@
           (is (not= (cache/bytes-hash (.getBytes "old" "UTF-8")) (get-in entry [:details :new :bundle_hash]))
               "new bundle_hash differs from the old one"))))))
 
+(deftest audit-log-update-of-any-column-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (with-dev-mode-enabled
+      (testing "setting the dev url of a plugin records a custom-viz-plugin-update audit event"
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "audit-dev-url-viz"
+                                                        :display_name "audit-dev-url-viz"
+                                                        :status       :active}]
+          (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                {:dev_bundle_url "http://localhost:5174"})
+          (is (partial=
+               {:topic    :custom-viz-plugin-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "CustomVizPlugin"
+                :model_id id}
+               (mt/latest-audit-log-entry "custom-viz-plugin-update" id))))))))
+
 ;;; ------------------------------------------------ Dev Mode Gating ------------------------------------------------
 
 (deftest dev-mode-gating-test

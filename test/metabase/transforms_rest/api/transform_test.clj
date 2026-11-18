@@ -2362,3 +2362,48 @@
                                             (format "transform/collection/%d?delete-tables=true" dropped-folder-id))
                       (is (false? (t2/exists? :model/Transform :id (:id dropped))))
                       (is (false? (transforms-base.u/target-table-exists? dropped))))))))))))))
+
+(deftest transform-run-bookkeeping-records-no-audit-row-or-revision-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (mt/with-temp [:model/Table {table-id :id} {}
+                     :model/Transform {id :id} {:name "Bookkept"}]
+        (let [audit-rows (fn [] (t2/count :model/AuditLog :model "Transform" :model_id id))
+              revisions  (fn [] (t2/count :model/Revision :model "Transform" :model_id id))
+              before     [(audit-rows) (revisions)]]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "a run saving its checkpoint and its target table"
+              (t2/update! :model/Transform :id id {:last_checkpoint_value "5"})
+              (t2/update! :model/Transform :id id {:target_table_id table-id})
+              (is (= before [(audit-rows) (revisions)]))))
+          (testing "resetting the checkpoint"
+            (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" id))
+            (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id id)))
+            (is (= before [(audit-rows) (revisions)])))
+          (testing "an edit by a user still records"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (t2/update! :model/Transform :id id {:name "Renamed"}))
+            (is (= [(inc (first before)) (inc (second before))] [(audit-rows) (revisions)]))))))))
+
+(deftest reverting-transform-keeps-computed-columns-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Table {table-id :id} {}
+                     :model/Transform {id :id} {:name "Original"}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (t2/update! :model/Transform :id id {:name "Edited"}))
+        (let [revision (t2/select-one :model/Revision :model "Transform" :model_id id {:order-by [[:id :desc]]})]
+          (testing "a revision holds no computed column"
+            (is (not-any? #(contains? (:object revision) %) [:last_checkpoint_value :target_table_id :table_dependencies])))
+          (t2/update! :model/Transform :id id {:last_checkpoint_value "9" :target_table_id table-id})
+          (mt/with-current-user (mt/user->id :crowberto)
+            (t2/update! :model/Transform :id id {:name "Edited again"}))
+          (testing "reverting an old revision that holds computed columns does not write them back"
+            (let [legacy-id (t2/insert-returning-pk! :model/Revision
+                                                     {:model "Transform" :model_id id :user_id (mt/user->id :crowberto)
+                                                      :object (assoc (:object revision) :last_checkpoint_value "old" :target_table_id nil)
+                                                      :is_creation false :is_reversion false})]
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "transform" :id id :revision_id legacy-id})
+              (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
+                      (t2/select-one :model/Transform :id id))))))))))

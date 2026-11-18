@@ -22,7 +22,6 @@ the user-facing ones. Put a rule every writer must obey in a hook and a rule onl
 | Reads another entity's column that can change | freeze it, cascade from it, or check at use (below) |
 | Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change` for `archived`, else `before-update` / `before-delete` |
 | Shapes a request (required key, friendly message, status order) | the write function or endpoint |
-| Can only be known when the entity is used | the code that uses it |
 
 A rule is an invariant only if every stored row satisfies it and no sanctioned writer needs an exception. If stored
 rows break it, a data migration fixes them first (rename duplicates, rewrite a legacy shape) or the rule is a request
@@ -127,16 +126,19 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
   (`::events.schema/lifecycle`): a create has `:object` only, a delete `:previous-object` only. Compare columns with
   `u.events/changed?`, `changed-any?` and `changed-keys` (`metabase.util.events`): a merged batch has no "changes".
 - `events/register-capture!` (a DELETE's events, after its before-delete hooks) and `register-statement-capture!` (its
-  rows, before them) run once per statement to read rows `ON DELETE CASCADE` removes, for the handler's `:captures`. The change
-  log and the search index are consumers: they list their models by tag and derive `:hook/events` on them.
+  rows, before them) run once per statement to read rows `ON DELETE CASCADE` removes, for the handler's `:captures`. The
+  change log and the search index list their models by tag and derive `:hook/events` on them.
 - A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
-  call per owner per batch. Work that needs committed rows goes in `mdb/do-after-commit` inside the handler.
+  call per owner per batch. Work that needs committed rows goes in `mdb/do-after-commit`.
 - Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
   runs for every writer; a writer calls what only it starts (the database API, `sync/start-initial-sync!`). Records
   (revision, audit row) need a non-nil `:user-id`; archive cascade writes carry `:archived-with [model id]` in context.
+- A user's update of an audited model always records an audit row; only a consumer's `ignored-columns` (`{:default #{..}
+  :model/X #{..}}` in its `events.clj`, plus a comparator when membership is not enough) and archive-carried writes do
+  not. A write the product makes in a user's request is no user action: list its columns there, or bind
+  `api/*current-user-id*` to nil.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
-- App-DB queries live in `<module>.db`, caller values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 
 ## Archiving
 
@@ -161,15 +163,14 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
 
 ## Lay out a model file
 
-Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup`, `Hooks`,
-`Permissions`, `Hydration`, `Writes`, `Revisions`, `Serialization`, `Remote sync`, `Search`.
+Banners `;;; ---- Hooks ----` padded with dashes to 120 columns, in this order: `Model setup`, `Hooks`, `Permissions`,
+`Hydration`, `Writes`, `Revisions`, `Serialization`, `Remote sync`, `Search`.
 
 ## Tests
 
-- One `with-temp` default per model in `with-temp-defaults-fns` (`test/metabase/test/util.clj`) that passes its hooks;
-  a fixture overrides a column only when the test depends on it. Build queries with `metabase.lib`.
-- Test a hook through `t2/insert!` / `t2/update!`; a permission rule through `api/create-check` / `api/update-check`
-  as each kind of user.
-- Assert a list endpoint stays batched with `t2/with-call-count` at two sizes. Test an event consumer by writing the
-  row, not by publishing the event. Run the enumeration tests (entity ids, SerDes specs, stats) for a new model.
+- One `with-temp` default per model in `with-temp-defaults-fns` that passes its hooks; a fixture overrides a column only
+  when the test depends on it. Build queries with `metabase.lib`.
+- Test a hook through `t2/insert!` / `t2/update!`; a permission rule through `api/create-check` / `api/update-check` as
+  each kind of user; an event consumer by writing the row, not by publishing the event; a list endpoint with
+  `t2/with-call-count` at two sizes. Run the enumeration tests (entity ids, SerDes specs, stats) for a new model.
 Before handing off: `./bin/mage kondo <file>`, `./bin/mage fix-modules-config`, and the tests of each writer you touched.

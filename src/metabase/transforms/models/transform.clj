@@ -146,7 +146,7 @@
   (let [changes (t2/changes transform)]
     (or (contains? changes :source) (contains? changes :target))))
 
-(defn check-cycle
+(defn- check-cycle
   "Throws a 400 when the query transform `transform` has become part of a cycle of transforms feeding one another."
   [transform]
   (when (transforms-base.u/query-transform? transform)

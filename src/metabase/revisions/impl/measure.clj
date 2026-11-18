@@ -4,12 +4,21 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.revisions.models.revision :as revision]))
 
+(def ^:private computed-columns
+  "The columns that the product recomputes whenever a Measure is read, which a revision neither records nor reverts."
+  #{:dimensions :dimension_mappings})
+
 (def ^:private excluded-columns-for-measure-revision
-  #{:created_at :updated_at})
+  (into #{:created_at :updated_at} computed-columns))
 
 (defmethod revision/serialize-instance :model/Measure
   [_model _id instance]
   (apply dissoc instance excluded-columns-for-measure-revision))
+
+(defmethod revision/revert-to-revision! :model/Measure
+  [model id user-id serialized-instance]
+  ((get-method revision/revert-to-revision! :default)
+   model id user-id (apply dissoc serialized-instance computed-columns)))
 
 (defn- normalize-measure
   [measure]

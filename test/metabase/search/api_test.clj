@@ -19,7 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.search.api :as search.api]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.appdb.index :as search.index]
@@ -296,7 +296,7 @@
 (defn- push-revision-and-reindex!
   "Record a Revision of an entity as a write of it by a user does, with the reindex of its document the write makes."
   [{:keys [entity id] :as info}]
-  (revision/push-revision! info)
+  (revisions.tu/push-revision! info)
   (search/update! (t2/instance entity {:id id}) true))
 
 (defn- make-search-request [user-kwd params]

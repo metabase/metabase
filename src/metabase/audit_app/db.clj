@@ -82,3 +82,10 @@
   (t2/query-one {:delete-from table
                  :where [:<= time-column cutoff]
                  :limit batch-size}))
+
+(mu/defn pulse-ids-of-channels
+  "A map of the id of each PulseChannel of `channel-ids` to the id of its Pulse."
+  [channel-ids :- [:set ms/PositiveInt]]
+  (if (seq channel-ids)
+    (t2/select-pk->fn :pulse_id :model/PulseChannel :id [:in channel-ids])
+    {}))

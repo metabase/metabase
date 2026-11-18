@@ -21,6 +21,7 @@
    [metabase.queries.models.card :as card]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -4267,11 +4268,11 @@
                      :model/Exploration e    {:name          "Created"
                                               :creator_id    (mt/user->id :crowberto)
                                               :collection_id (:id coll)}]
-        (revision/push-revision! {:entity       :model/Exploration
-                                  :id           (:id e)
-                                  :object       (t2/select-one :model/Exploration :id (:id e))
-                                  :user-id      (mt/user->id :crowberto)
-                                  :is-creation? true})
+        (revisions.tu/push-revision! {:entity       :model/Exploration
+                                      :id           (:id e)
+                                      :object       (t2/select-one :model/Exploration :id (:id e))
+                                      :user-id      (mt/user->id :crowberto)
+                                      :is-creation? true})
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]
@@ -4300,7 +4301,7 @@
                                               :document       {:type "doc" :content []}}]
         ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
         ;; Insert directly so we control timestamps — within a `with-temp` transaction
-        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
+        ;; the DB-side NOW() is frozen, so a revision recorded by a write would carry
         ;; identical timestamps and tiebreak non-deterministically.
         (let [t (java.time.OffsetDateTime/now)]
           (t2/insert! :model/Revision
