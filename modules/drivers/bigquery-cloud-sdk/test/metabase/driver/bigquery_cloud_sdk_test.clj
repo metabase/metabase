@@ -1273,6 +1273,16 @@
                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
                                        "Cash"]
                               :limit  1}))))))
+          (testing " for field values (#86111)"
+            (let [field-id (mt/id :taxi_trips :payment_type)
+                  table    (t2/select-one :model/Table :id (mt/id :taxi_trips))]
+              (testing "uses the batched path"
+                (is (true? (#'sync.field-values/can-batch-distinct? (lib.metadata/database (mt/metadata-provider)) table))))
+              (t2/update! :model/Field :id field-id {:has_field_values :list})
+              (t2/delete! :model/FieldValues :field_id field-id)
+              (sync.field-values/sync-fields-grouped-by-table! [(t2/select-one :model/Field :id field-id)])
+              (is (contains? (set (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))
+                             "Cash"))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
