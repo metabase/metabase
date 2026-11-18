@@ -1269,6 +1269,9 @@ describe("scenarios > dashboard > entity id support", () => {
   });
 });
 
+const IFRAME_SANDBOX =
+  "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts";
+
 describe("issue 43219", () => {
   const questionDetails: StructuredQuestionDetails = {
     display: "line",
