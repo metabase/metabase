@@ -298,8 +298,7 @@
      (select-keys notification [:id :payload_type :payload_id :creator_id :active])
      {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
       :handlers      (map (fn [handler]
-                            (merge (select-keys [:id :channel_type :channel_id :template_id :active]
-                                                handler)
+                            (merge (select-keys handler [:id :channel_type :channel_id :template_id :active])
                                    {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details])
                                                      (:recipients handler))}))
                           handlers)})
