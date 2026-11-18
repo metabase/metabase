@@ -543,6 +543,8 @@ Syntax: `domain(urlOrEmail)`
 
 Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
 
+Databases that don't support `domain`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
+
 Related: [host](#host), [path](#path), [subdomain](#subdomain).
 
 ### endsWith
@@ -577,6 +579,8 @@ Extracts the host, which is the domain and the TLD, from a URL or email.
 Syntax: `host(urlOrEmail)`
 
 Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
+
+Databases that don't support `host`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
@@ -650,6 +654,8 @@ Extracts the pathname from a URL.
 Syntax: `path(url)`
 
 Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
+
+Databases that don't support `path`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
@@ -727,6 +733,8 @@ Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
 Syntax: `subdomain(url)`
 
 Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
+
+Databases that don't support `subdomain`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [domain](#domain), [host](#host), [path](#path).
 
@@ -1051,31 +1059,41 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here they are in summary:
 
-**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
+**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**BigQuery**: `Median`.
+**BigQuery**: `Median`, `domain`, `host`, `path`, `subdomain`.
+
+**ClickHouse**: `domain`, `host`, `path`, `subdomain`.
 
 **Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
 **Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
 
-**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`.
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**MariaDB**: `Median`, `Percentile`, `Offset`.
+**MotherDuck**: `domain`, `host`, `path`, `subdomain`.
+
+**MariaDB**: `Median`, `Percentile`, `Offset`, `domain`, `host`, `path`, `subdomain`.
 
 **MySQL**: `Median`, `Percentile`, `Offset`.
 
-**Oracle**: `date`, `datetime`, `float`, `splitPart`.
+**Oracle**: `date`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`. Only provides _approximate_ results for `Median` and `Percentile`.
+**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`. Only provides _approximate_ results for `Median` and `Percentile`.
+
+**Redshift**: `domain`, `host`, `path`, `subdomain`.
+
+**Snowflake**: `domain`, `host`, `path`, `subdomain`.
 
 **SparkSQL**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`.
+**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
+**SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
+**Starburst**: `domain`, `host`, `path`, `subdomain`.
+
+**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
 If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 
