@@ -25,6 +25,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -619,15 +620,8 @@
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
-                                                ;; Interesting for inversion, another condition on whether to update.
-                                                ;; For now, let's just swallow the extra update (2x amplification)
-                                                [:not [:exists ^:allow-subquery {:select [1]
-                                                                                 :from   [[:revision :newer]]
-                                                                                 :where  [:and
-                                                                                          [:= :newer.model :r.model]
-                                                                                          [:= :newer.model_id :r.model_id]
-                                                                                          [:> :newer.id :r.id]]}]]
-                                                [:= :r.model "Dashboard"]]]
+                                                [:= :r.model "Dashboard"]
+                                                (revisions.sql/newest-revision-clause :r "Dashboard" :this.id)]]
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "dashboard"]
                                                         [:= :mr.moderated_item_id :this.id]

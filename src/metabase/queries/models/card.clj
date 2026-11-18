@@ -41,6 +41,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -48,7 +49,6 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -1434,18 +1434,16 @@
                         cards-on-first-tab size_x size_y autoplace/default-grid-width)
                        (autoplace/get-position-for-new-dashcard
                         cards-on-first-tab (:display card)))]
-        (binding [api/*current-user-id* nil]
-          (queries.db/insert-dashcard! (assoc new-spot
-                                              :dashboard_tab_id (some-> first-tab :id)
-                                              :card_id (:id card)
-                                              :dashboard_id dashboard-id)))))))
+        (queries.db/insert-dashcard! (assoc new-spot
+                                            :dashboard_tab_id (some-> first-tab :id)
+                                            :card_id (:id card)
+                                            :dashboard_id dashboard-id))))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
-  (binding [api/*current-user-id* nil]
-    (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
-    (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-      (queries.db/delete-dashcard-series! (set dashcard-ids)))))
+  (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
+  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
+    (queries.db/delete-dashcard-series! (set dashcard-ids))))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
@@ -1498,10 +1496,9 @@
                delete-old-dashcards?)
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
-      (binding [api/*current-user-id* nil]
-        (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
-        (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-          (queries.db/delete-dashcard-series! ids))))))
+      (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
+      (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
+        (queries.db/delete-dashcard-series! ids)))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -1833,24 +1830,6 @@
   []
   (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
 
-(defn- model-overrides
-  "The overrides of the columns of `metadata` that are also in `other`, by column name."
-  [metadata other]
-  (let [names (into #{} (map :name) other)
-        keys* (model-override-keys)]
-    (into {}
-          (comp (filter (comp names :name))
-                (map (juxt :name #(select-keys % keys*))))
-          metadata)))
-
-(defmethod u.events/user-edited-column? [:model/Card :result_metadata]
-  [_model _column {:keys [object previous-object]}]
-  (let [previous (:result_metadata previous-object)
-        current  (:result_metadata object)]
-    (boolean (and (= :model (keyword (:type object)))
-                  (seq previous)
-                  (not= (model-overrides previous current) (model-overrides current previous))))))
-
 (defn- walk-export-result-metadata
   "The exported `result_metadata` of `card`, its ids replaced by what `visit` resolves them to. Native cards, models
   included, keep the keys of their columns, which can't be derived from the query without running it; other models
@@ -2037,15 +2016,8 @@
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
-                                                ;; Interesting for inversion, another condition on whether to update.
-                                                ;; For now, let's just swallow the extra update (2x amplification)
-                                                [:not [:exists ^:allow-subquery {:select [1]
-                                                                                 :from   [[:revision :newer]]
-                                                                                 :where  [:and
-                                                                                          [:= :newer.model :r.model]
-                                                                                          [:= :newer.model_id :r.model_id]
-                                                                                          [:> :newer.id :r.id]]}]]
-                                                [:= :r.model "Card"]]]
+                                                [:= :r.model "Card"]
+                                                (revisions.sql/newest-revision-clause :r "Card" :this.id)]]
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]

@@ -1,6 +1,7 @@
 (ns metabase.search.spec-test
   (:require
    [clojure.test :refer :all]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
@@ -81,13 +82,8 @@
                                       :fields       #{:user_id :timestamp},
                                       :where        [:and
                                                      [:= :updated.model_id :this.id]
-                                                     [:not [:exists {:select [1]
-                                                                     :from   [[:revision :newer]]
-                                                                     :where  [:and
-                                                                              [:= :newer.model :updated.model]
-                                                                              [:= :newer.model_id :updated.model_id]
-                                                                              [:> :newer.id :updated.id]]}]]
-                                                     [:= :updated.model "Card"]]}},
+                                                     [:= :updated.model "Card"]
+                                                     (revisions.sql/newest-revision-clause :updated "Card" :this.id)]}},
                  :ModerationReview #{{:search-model "card",
                                       :fields       #{:status},
                                       :where        [:and

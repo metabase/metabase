@@ -81,3 +81,25 @@
         (is (= [(mt/user->id :lucky)]
                (t2/select-fn-vec :last_editor_id (search.index/active-table)
                                  :model "dashboard" :model_id (str (:id dash)))))))))
+
+(deftest collection-explorations-last-edit-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Exploration {exploration-id :id} {:collection_id coll-id :name "Twice flagged exploration"}
+                 :model/Exploration {untouched-id :id} {:collection_id coll-id :name "Untouched exploration"}
+                 :model/Document {document-id :id} {:collection_id coll-id :name "Summary" :exploration_id exploration-id}]
+    (flag-two-revisions! "Exploration" exploration-id)
+    (testing "an exploration is listed once, with the editor of its newest Revision, the entities with none still listed"
+      (let [items (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models "exploration")
+                       :data
+                       (map (juxt :id (comp :id :last-edit-info))))]
+        (is (= #{[exploration-id (mt/user->id :lucky)] [untouched-id nil]} (set items)))
+        (is (= 2 (count items)))))
+    (testing "a Revision of its Summary document newer than its own is the last edit"
+      (t2/insert! :revision {:model "Document" :model_id document-id :user_id (mt/user->id :crowberto)
+                             :timestamp (t/offset-date-time 2022 1 1) :object "{}" :is_creation false
+                             :is_reversion false :most_recent true})
+      (is (= [(mt/user->id :crowberto)]
+             (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models "exploration")
+                  :data
+                  (filter #(= exploration-id (:id %)))
+                  (map (comp :id :last-edit-info))))))))

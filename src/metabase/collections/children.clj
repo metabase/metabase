@@ -30,6 +30,7 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.schema :as revisions.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.upload.core :as upload]
@@ -370,13 +371,8 @@
        :from [[:document :document]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :document.id]
-                                   [:not [:exists ^:allow-subquery {:select [1]
-                                                                    :from   [[:revision :newer]]
-                                                                    :where  [:and
-                                                                             [:= :newer.model :r.model]
-                                                                             [:= :newer.model_id :r.model_id]
-                                                                             [:> :newer.id :r.id]]}]]
-                                   [:= :r.model (h2x/literal "Document")]]
+                                   [:= :r.model (h2x/literal "Document")]
+                                   (revisions.sql/newest-revision-clause :r "Document" :document.id)]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
                (visible-items-clause :document.collection_id archived? {:root-namespace nil})
@@ -406,47 +402,45 @@
                     (update :archived_directly api/bit->boolean)))
               :can_write :can_restore :can_delete))
 
-(def ^:private exploration-recent-edits-subquery
-  ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
-  ;; revisions of its Summary Document. `rn = 1` picks the winner.
-  ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
-  ;; the attached Document, so "Last edited" must reflect both sources.
-  ^:allow-subquery
-  {:select [:exploration_id
-            :timestamp
-            :user_id
-            [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
-                                                     :order-by     [[:timestamp :desc]]}]] :rn]]
-   :from   [[^:allow-subquery {:union-all
-                               [^:allow-subquery
-                                {:select [[:r.model_id :exploration_id]
-                                          [:r.timestamp :timestamp]
-                                          [:r.user_id   :user_id]]
-                                 :from   [[:revision :r]]
-                                 :where  [:and
-                                          [:= :r.model (h2x/literal "Exploration")]
-                                          [:not [:exists ^:allow-subquery {:select [1]
-                                                                           :from   [[:revision :newer]]
-                                                                           :where  [:and
-                                                                                    [:= :newer.model :r.model]
-                                                                                    [:= :newer.model_id :r.model_id]
-                                                                                    [:> :newer.id :r.id]]}]]]}
-                                ^:allow-subquery
-                                {:select [[:d.exploration_id :exploration_id]
-                                          [:r.timestamp      :timestamp]
-                                          [:r.user_id        :user_id]]
-                                 :from   [[:revision :r]]
-                                 :join   [[:document :d] [:= :d.id :r.model_id]]
-                                 :where  [:and
-                                          [:= :r.model (h2x/literal "Document")]
-                                          [:not [:exists ^:allow-subquery {:select [1]
-                                                                           :from   [[:revision :newer]]
-                                                                           :where  [:and
-                                                                                    [:= :newer.model :r.model]
-                                                                                    [:= :newer.model_id :r.model_id]
-                                                                                    [:> :newer.id :r.id]]}]]
-                                          [:not= :d.exploration_id nil]]}]}
-             :all_edits]]})
+(defn- exploration-recent-edits-subquery
+  "Per-exploration latest edit of the explorations listed under `collection`, unioning the Exploration's own metadata
+  revisions with revisions of its Summary Document. `rn = 1` picks the winner.
+  The Exploration row is mostly inert post-creation; the meat of editing happens in the attached Document, so \"Last
+  edited\" must reflect both sources."
+  [collection]
+  (let [listed? (fn [alias]
+                  (if (collection/is-trash? collection)
+                    [:= (keyword (str alias ".archived_directly")) true]
+                    [:= (keyword (str alias ".collection_id")) (:id collection)]))]
+    ^:allow-subquery
+    {:select [:exploration_id
+              :timestamp
+              :user_id
+              [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
+                                                       :order-by     [[:timestamp :desc]]}]] :rn]]
+     :from   [[^:allow-subquery {:union-all
+                                 [^:allow-subquery
+                                  {:select [[:e.id        :exploration_id]
+                                            [:r.timestamp :timestamp]
+                                            [:r.user_id   :user_id]]
+                                   :from   [[:exploration :e]]
+                                   :join   [[:revision :r] [:and
+                                                            [:= :r.model_id :e.id]
+                                                            [:= :r.model (h2x/literal "Exploration")]
+                                                            (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
+                                   :where  (listed? "e")}
+                                  ^:allow-subquery
+                                  {:select [[:d.exploration_id :exploration_id]
+                                            [:r.timestamp      :timestamp]
+                                            [:r.user_id        :user_id]]
+                                   :from   [[:document :d]]
+                                   :join   [[:exploration :e] [:= :e.id :d.exploration_id]
+                                            [:revision :r] [:and
+                                                            [:= :r.model_id :d.id]
+                                                            [:= :r.model (h2x/literal "Document")]
+                                                            (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
+                                   :where  (listed? "e")}]}
+               :all_edits]]}))
 
 (defmethod collection-children-query :exploration
   [_ collection {:keys [archived? pinned-state]}]
@@ -465,7 +459,7 @@
                 [:ere.timestamp :last_edit_timestamp]
                 [(h2x/literal "exploration") :model]]
        :from [[:exploration :exploration]]
-       :left-join [[exploration-recent-edits-subquery :ere]
+       :left-join [[(exploration-recent-edits-subquery collection) :ere]
                    [:and
                     [:= :ere.exploration_id :exploration.id]
                     [:= :ere.rn [:inline 1]]]
@@ -604,13 +598,8 @@
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
-                                   [:not [:exists ^:allow-subquery {:select [1]
-                                                                    :from   [[:revision :newer]]
-                                                                    :where  [:and
-                                                                             [:= :newer.model :r.model]
-                                                                             [:= :newer.model_id :r.model_id]
-                                                                             [:> :newer.id :r.id]]}]]
-                                   [:= :r.model (h2x/literal "Card")]]
+                                   [:= :r.model (h2x/literal "Card")]
+                                   (revisions.sql/newest-revision-clause :r "Card" :c.id)]
                    [:moderation_review :mr] [:and
                                              [:= :mr.moderated_item_id :c.id]
                                              [:= :mr.most_recent true]
@@ -728,13 +717,8 @@
                                              [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
                    [:revision :r] [:and
                                    [:= :r.model_id :d.id]
-                                   [:not [:exists ^:allow-subquery {:select [1]
-                                                                    :from   [[:revision :newer]]
-                                                                    :where  [:and
-                                                                             [:= :newer.model :r.model]
-                                                                             [:= :newer.model_id :r.model_id]
-                                                                             [:> :newer.id :r.id]]}]]
-                                   [:= :r.model (h2x/literal "Dashboard")]]
+                                   [:= :r.model (h2x/literal "Dashboard")]
+                                   (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    (visible-items-clause :d.collection_id archived? {:root-namespace nil})
