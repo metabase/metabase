@@ -13,6 +13,8 @@ summary: A step-by-step guide to using an AI coding agent to build a data app wi
 
 This page is a step-by-step guide to using an AI coding agent to build a [data app](./build.md) with Metabase.
 
+{% include youtube.html id='pawLc4bT3WE' %}
+
 The basic workflow:
 
 - You build an app locally with an agent.

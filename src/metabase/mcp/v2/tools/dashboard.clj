@@ -15,6 +15,7 @@
    publishing are inherited, never reimplemented. This namespace words the pipeline's errors through
    [[metabase.mcp.v2.dashboard-errors]] and projects the result for the model."
   (:require
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
@@ -61,7 +62,7 @@
     [:maybe [:or
              [:int {:description "Numeric id of the dashboard to update."}]
              [:string {:description "21-character entity_id of the dashboard to update."}]]]]
-   [:name {:optional true} [:maybe [:string {:min 1 :description "Dashboard title."}]]]
+   [:name {:optional true :description "Dashboard title."} [:maybe ::dashboards.schema/dashboard.name]]
    [:description {:optional true} [:maybe [:string {:description "One or two sentences on what the dashboard answers."}]]]
    [:collection_id {:optional true}
     [:maybe [:or
@@ -69,9 +70,9 @@
              [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
    [:collection_position {:optional true}
     [:maybe [:int {:min 1 :description "Pin position within the collection; omit to leave it unpinned."}]]]
-   [:width {:optional true}
-    [:maybe [:enum {:description "\"fixed\" (default) centers the grid; \"full\" stretches it to the browser width."}
-             "fixed" "full"]]]
+   [:width {:optional true
+            :description "\"fixed\" (default) centers the grid; \"full\" stretches it to the browser width."}
+    [:maybe ::dashboards.schema/dashboard.width]]
    [:auto_apply_filters {:optional true}
     [:maybe [:boolean {:description "When false, filter changes wait for the viewer to press Apply. Default true."}]]]
    [:cache_ttl {:optional true} [:maybe [:int {:min 1 :description "Cache lifetime for this dashboard's results, in hours."}]]]

@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+import { createElement } from "react";
 import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
@@ -6,8 +8,9 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
-import { waitFor } from "__support__/ui";
-import type { StoreDashcard } from "metabase/redux/store";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { State, StoreDashcard } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -30,11 +33,19 @@ import {
 import { ORDERS, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
-import { getDashboard, getDashcards, getTabs } from "../selectors";
+import {
+  getCurrentDashcards,
+  getDashCardById,
+  getDashboard,
+  getDashcards,
+  getSelectedTabId,
+  getTabs,
+} from "../selectors";
 
+import { addLinkDashCardToDashboard } from "./cards-typed";
 import { setDashboardAttributes } from "./core";
 import { getIdFromSlug, moveTab, resetTempTabId, tabsReducer } from "./tabs";
-import { deleteTab, duplicateTab } from "./tabs-thunks";
+import { deleteTab, duplicateTab, moveDashCardToTab } from "./tabs-thunks";
 
 const ORDERS_CARD = createMockCard({
   id: 1,
@@ -470,6 +481,84 @@ describe("deleteTab", () => {
 
     expect(getTabs(store.getState()).map(({ id }) => id)).toEqual([1, 2]);
     expect(getDashboard(store.getState())?.parameters).toEqual(PARAMETERS);
+  });
+});
+
+describe("moveDashCardToTab", () => {
+  const ORDERS_DASHCARD = createMockDashboardCard({
+    id: 1,
+    dashboard_tab_id: 1,
+    card_id: ORDERS_CARD.id,
+    card: createMockCard({ ...ORDERS_CARD, name: "Orders" }),
+    row: 0,
+    col: 0,
+    // full width, so that the link card is placed in the row below it
+    size_x: 24,
+    size_y: 4,
+  });
+
+  function setupWithUndoListing(opts: SetupOpts) {
+    return renderWithProviders(createElement(UndoListing), {
+      storeInitialState: { dashboard: createDashboardState(opts) },
+    });
+  }
+
+  function getTabDashcards(store: { getState: () => State }) {
+    return _.groupBy(
+      getCurrentDashcards(store.getState()),
+      (dashcard) => dashcard.dashboard_tab_id ?? "none",
+    );
+  }
+
+  it("should move dashcards between tabs and restore their position on undo", async () => {
+    const { store } = setupWithUndoListing({
+      parameters: [],
+      dashcards: [ORDERS_DASHCARD],
+    });
+
+    store.dispatch(addLinkDashCardToDashboard({ dashId: 1, tabId: 1 }));
+    expect(getSelectedTabId(store.getState())).toBe(1);
+
+    const linkDashcard = checkNotNull(
+      getTabDashcards(store)[1].find(({ id }) => id !== ORDERS_DASHCARD.id),
+    );
+    const linkPosition = _.pick(linkDashcard, "row", "col");
+    expect(linkPosition).toEqual({ row: 4, col: 0 });
+
+    // Move the second card first so that their positions invert on the
+    // destination tab, which lets undo prove it restores the original one
+    store.dispatch(
+      moveDashCardToTab({ dashCardId: linkDashcard.id, destinationTabId: 2 }),
+    );
+    store.dispatch(
+      moveDashCardToTab({
+        dashCardId: ORDERS_DASHCARD.id,
+        destinationTabId: 2,
+      }),
+    );
+
+    expect(getTabDashcards(store)[1]).toBeUndefined();
+    expect(getTabDashcards(store)[2]).toHaveLength(2);
+    expect(getDashCardById(store.getState(), ORDERS_DASHCARD.id)).toMatchObject(
+      { size_x: 24, size_y: 4 },
+    );
+
+    const toasts = await screen.findAllByTestId("toast-undo");
+    expect(
+      toasts.map((toast) => within(toast).queryByText(/moved/)?.textContent),
+    ).toEqual(["Link card moved", "Card moved: Orders"]);
+
+    await userEvent.click(
+      within(toasts[0]).getByRole("button", { name: "Undo" }),
+    );
+
+    expect(getTabDashcards(store)[1]).toHaveLength(1);
+    expect(getTabDashcards(store)[2]).toHaveLength(1);
+    const restoredLink = getDashCardById(store.getState(), linkDashcard.id);
+    expect(restoredLink.dashboard_tab_id).toBe(1);
+    expect(restoredLink.col).toBe(linkPosition.col);
+    // the row is nudged up so that the grid places the card back in its cell
+    expect(restoredLink.row).toBeCloseTo(linkPosition.row, 0);
   });
 });
 

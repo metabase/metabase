@@ -64,6 +64,7 @@
    ::card.update
    [:map {:closed true}
     [:id                    {:optional true} [:maybe ::lib.schema.id/card]]
+    [:dataset_query         {:optional true} [:maybe ::card.dataset-query]]
     [:persisted/active      {:optional true} [:maybe :boolean]]
     [:persisted/definition  {:optional true} [:maybe :string]]
     [:persisted/query_hash  {:optional true} [:maybe :string]]
@@ -150,8 +151,12 @@
                                                  [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
 
 (mr/def ::card.dataset-query
-  "The `:dataset_query` column of a Card, decoded."
+  "The `:dataset_query` column of a Card as stored, decoded, which may be the empty query of an old row."
   ::lib-be.schema/maybe-legacy-or-empty-query)
+
+(mr/def ::card.dataset-query.write
+  "The `:dataset_query` a write of a Card gives: a real query, never an empty one."
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
@@ -173,15 +178,18 @@
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   ::lib-metric.schema/dimension-mapping)
 
+(mr/def ::card.name
+  ms/NonBlankString)
+
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
-   [:name                                      {:optional true} [:maybe :string]]
+   [:name                                      {:optional true} [:maybe ::card.name]]
    [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe ::lib.schema.common/keyword]]
-   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
+   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query.write]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id                               {:optional true} [:maybe ::lib.schema.id/database]]

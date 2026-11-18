@@ -31,12 +31,6 @@
            {:schema        ms/FieldTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Float "type/Float"]}
-           {:schema        ms/DatabaseDetails
-            :failed-cases  [[] 1 "a"]
-            :success-cases [{} {:a :b}]}
-           {:schema        ms/OpaqueJSONObject
-            :failed-cases  [[] 1 "a" {:a :b}]
-            :success-cases [{} {"a" {:b 1}}]}
            {:schema        ms/Email
             :failed-cases  ["abc.com" 1]
             :success-cases ["ngoc@metabase.com"]}

@@ -61,6 +61,20 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Exploration :id id))
 
+(mu/defn target
+  "The `model` row with `id` a Comment targets, or nil."
+  [model :- [:enum :model/Document :model/Exploration]
+   id    :- ms/PositiveInt]
+  (t2/select-one model :id id))
+
+(mu/defn targets
+  "The `model` rows with `ids` Comments target."
+  [model :- [:enum :model/Document :model/Exploration]
+   ids   :- [:set ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
+
 (mu/defn comment-by-id
   "The Comment with `id`, or nil."
   [id :- ms/PositiveInt]

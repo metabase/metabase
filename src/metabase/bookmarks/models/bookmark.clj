@@ -25,6 +25,18 @@
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
 
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-before-insert :model/CollectionBookmark [bookmark]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
+  bookmark)
+
+(t2/define-before-update :model/CollectionBookmark [model]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
+  model)
+
+;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
+
 (defn- unqualify-key
   [k]
   (-> (str/split (name k) #"\.") peek keyword))
@@ -90,11 +102,3 @@
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
-
-(t2/define-before-insert :model/CollectionBookmark [bookmark]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
-  bookmark)
-
-(t2/define-before-update :model/CollectionBookmark [model]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
-  model)
