@@ -4,8 +4,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DashboardCard, VisualizationDisplay } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 type Size = { width: number; height: number };
 
@@ -542,8 +546,27 @@ describe("issue 31628", () => {
     display: "smartscalar" as const,
   };
 
+  const provider = Lib.metadataProvider(SAMPLE_DB_ID, {
+    databases: { [SAMPLE_DB_ID]: createMockDatabase({ id: SAMPLE_DB_ID }) },
+    tables: {
+      [ORDERS_ID]: createMockTable({
+        id: ORDERS_ID,
+        db_id: SAMPLE_DB_ID,
+        name: "ORDERS",
+      }),
+    },
+    fields: {
+      [ORDERS.TOTAL]: createMockField({
+        id: ORDERS.TOTAL,
+        table_id: ORDERS_ID,
+        name: "TOTAL",
+        display_name: "Total",
+        base_type: "type/Float",
+      }),
+    },
+  });
   const trendDatasetQuery = Lib.toLegacyQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, {
+    Lib.createTestQuery(provider, {
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },
