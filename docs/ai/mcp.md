@@ -164,7 +164,7 @@ The consent page lists the permission scopes the client is asking for. Each [too
 
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
 
-### MCP requests run with your Metabase permissions
+## MCP requests run with your Metabase permissions
 
 The MCP server runs every request with the Metabase permissions of the person who signed in. In particular, the MCP server applies Metabase's [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md) to every tool call, so an AI client can only see or query what the person using it can see and query in Metabase itself.
 
