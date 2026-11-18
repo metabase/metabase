@@ -239,7 +239,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :joins])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :source-cte :joins])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
@@ -611,14 +611,15 @@
 
 (mr/def ::returned-columns-arg
   "Something [[returned-columns]] can calculate returned columns for: an integer stage number of `query`, the query
-  itself, one of its stages, a join, a card, or a table."
+  itself, one of its stages, a join, a card, a table, or a CTE definition."
   [:or
    :int
    ::lib.schema/query
    ::lib.schema/stage
    ::lib.schema.join/join
    ::lib.schema.metadata/card
-   ::lib.schema.metadata/table])
+   ::lib.schema.metadata/table
+   ::lib.schema/cte-definition])
 
 (mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or

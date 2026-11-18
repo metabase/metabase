@@ -20,6 +20,7 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -40,6 +41,13 @@
    (p/import-vars [clojure.core format])
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
+
+#?(:clj
+   (p/import-vars [metabase.lib.util.unique-name-generator unique-name-generator])
+   :cljs
+   (def unique-name-generator
+     "See [[metabase.lib.util.unique-name-generator/unique-name-generator]]."
+     metabase.lib.util.unique-name-generator/unique-name-generator))
 
 ;; AssertionError is recoverable too, not just Exception: callers run assert/:pre they don't own, and a
 ;; bad-data assert should degrade through `handler` like any other exception. Fatal Errors still propagate.
@@ -404,6 +412,16 @@
         stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
+
+(mu/defn query-for-join :- ::lib.schema/query
+  "A workable query whose shape is the stages of `join` executed in the scope of `outer-query`. Any CTEs declared on
+  the join replace the ones declared on `outer-query`, since the join introduces its own CTE scope."
+  [outer-query :- ::lib.schema/query
+   join        :- ::lib.schema.join/join]
+  (-> outer-query
+      (assoc :stages (:stages join))
+      (dissoc :ctes)
+      (m/assoc-some :ctes (:ctes join))))
 
 (mu/defn drop-later-stages :- ::lib.schema/query
   "Drop any stages in the `query` that come after `stage-number`."

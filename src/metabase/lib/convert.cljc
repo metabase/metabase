@@ -178,6 +178,12 @@
   [query]
   query)
 
+;;; CTE definitions stay in MBQL 5 form even inside legacy queries — the legacy `::ctes` schema references the MBQL 5
+;;; definition, so there's no "legacy CTE" shape to convert to or from.
+(defmethod ->mbql5 :mbql/cte
+  [cte]
+  cte)
+
 (def legacy-default-join-alias
   "In legacy MBQL, join `:alias` was optional, and if unspecified, this was the default alias used. In reality all joins
   normally had an explicit `:alias` since the QB would generate one and you generally need one to do useful things
@@ -703,6 +709,11 @@
     (> (count (get m mbql5-key)) 1) (m/update-existing mbql5-key #(into [:and] (map ->legacy-MBQL) %))
     :always (set/rename-keys {mbql5-key legacy-key})))
 
+;;; See [[->mbql5 :mbql/cte]].
+(defmethod ->legacy-MBQL :mbql/cte
+  [cte]
+  cte)
+
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
                    (and *clean-query*
@@ -725,7 +736,7 @@
                               {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566, QUE-1603)
-             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :source-metadata}))
+             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :source-cte :source-metadata}))
                {:source-query inner-query}
                inner-query)))))
 

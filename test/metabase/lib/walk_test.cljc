@@ -108,6 +108,58 @@
             (fn [_query path-type path stage-or-join]
               (assoc stage-or-join :path-type path-type, :path path, :order (swap! order inc))))))))
 
+(deftest ^:parallel walk-ctes-on-query-test
+  (testing "walks CTE body stages before main stages"
+    (let [query {:ctes   [{:cte-name "a"
+                           :query    {:stages [{:source-table 1}]}}]
+                 :stages [{:source-cte "uuid-a"}]}
+          visited (atom [])]
+      (lib.walk/walk
+       query
+       (fn [_query path-type path _stage-or-join]
+         (swap! visited conj [path-type path])
+         nil))
+      (is (= [[:lib.walk/stage [:ctes 0 :query :stages 0]]
+              [:lib.walk/stage [:stages 0]]]
+             @visited)))))
+
+(deftest ^:parallel query-for-path-with-ctes-test
+  (let [cte-body {:lib/type :mbql/query
+                  :stages [{:lib/type :mbql.stage/mbql :source-table 42}]}
+        mp meta/metadata-provider
+        query {:lib/type :mbql/query
+               :database 1
+               :lib/metadata mp
+               :ctes [{:lib/type :mbql/cte
+                       :lib/uuid "u"
+                       :cte-name "a"
+                       :query cte-body}]
+               :stages [{:lib/type :mbql.stage/mbql :source-cte "u"}]}]
+    (testing "a CTE body's stage resolves to the CTE body + stage number; outer :database and :lib/metadata are inherited"
+      (is (= {:query (assoc cte-body :database 1 :lib/metadata mp) :stage-number 0}
+             (lib.walk/query-for-path query [:ctes 0 :query :stages 0]))))
+    (testing "a main stage still resolves normally"
+      (is (= {:query query :stage-number 0}
+             (lib.walk/query-for-path query [:stages 0]))))))
+
+(deftest ^:parallel walk-ctes-on-join-test
+  (testing "walks CTEs on a join before the join's stages"
+    (let [query {:stages [{:source-table 1
+                           :joins [{:ctes   [{:cte-name "a"
+                                              :query    {:stages [{:source-table 2}]}}]
+                                    :stages [{:source-cte "uuid-a"}]}]}]}
+          visited (atom [])]
+      (lib.walk/walk
+       query
+       (fn [_query path-type path _stage-or-join]
+         (swap! visited conj [path-type path])
+         nil))
+      (is (= [[:lib.walk/stage [:stages 0 :joins 0 :ctes 0 :query :stages 0]]
+              [:lib.walk/stage [:stages 0 :joins 0 :stages 0]]
+              [:lib.walk/join  [:stages 0 :joins 0]]
+              [:lib.walk/stage [:stages 0]]]
+             @visited)))))
+
 (deftest ^:parallel splice-at-point-test
   (is (= {:stages [{:n 0} {:n 1}        ; before
                    {:x 1} {:x 2} {:x 3} ; new stuff replacing {:n 2}

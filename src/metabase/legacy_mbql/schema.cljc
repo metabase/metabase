@@ -2078,6 +2078,7 @@
   this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!"}
      [:ref ::SourceTable]]
     [:source-query {:optional true} [:ref ::SourceQuery]]
+    [:ctes         {:optional true} [:ref :metabase.lib.schema/ctes]]
     [:condition
      {:description
       "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
@@ -2228,6 +2229,7 @@
      {:closed true, :decode/normalize lib.schema.common/normalize-map}
      [:source-query {:optional true} [:ref ::SourceQuery]]
      [:source-table {:optional true} [:ref ::SourceTable]]
+     [:source-cte   {:optional true} [:ref :metabase.lib.schema.common/uuid]]
      [:aggregation  {:optional true} [:ref ::Aggregations]]
      [:breakout     {:optional true} [:ref ::Breakouts]]
      [:expressions  {:optional true} [:ref ::Expressions]]
@@ -2262,9 +2264,9 @@
    ;; CONSTRAINTS
    ;;
    [:fn
-    {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
+    {:error/message "Query must specify exactly one of `:source-table`, `:source-query`, or `:source-cte`."}
     (fn [query]
-      (= 1 (count (select-keys query [:source-query :source-table]))))]
+      (= 1 (count (select-keys query [:source-query :source-table :source-cte]))))]
    [:ref ::RemoveFieldRefsFromFieldsAlreadyInBreakout]
    ;; `disallowed-keys` will remove these keys if we see them automatically during normalization.
    (lib.schema.common/disallowed-keys
@@ -2380,6 +2382,7 @@
       :query :native]]
     [:native     {:optional true} [:ref ::TopLevelNativeInnerQuery]]
     [:query      {:optional true} [:ref ::MBQLInnerQuery]]
+    [:ctes       {:optional true} [:ref :metabase.lib.schema/ctes]]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS

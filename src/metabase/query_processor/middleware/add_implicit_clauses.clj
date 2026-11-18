@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [every? empty? not-empty])
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.walk :as lib.walk]
@@ -28,12 +29,20 @@
 (mu/defn- add-implicit-fields :- [:maybe ::lib.schema/stage]
   "For stages with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions defined in the stage."
-  [query                                      :- ::lib.schema/query
-   path                                       :- ::lib.walk/path
-   {source-table-id :source-table, :as stage} :- ::lib.schema/stage]
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/path
+   {source-table-id :source-table, source-cte-uuid :source-cte, :as stage} :- ::lib.schema/stage]
   (when (should-add-implicit-fields? stage)
-    (let [cols        (if source-table-id
+    (let [cols        (cond
+                        source-table-id
                         (lib/returned-columns query (lib.metadata/table query source-table-id))
+
+                        source-cte-uuid
+                        (for [col (lib/returned-columns
+                                   (lib.cte/query-for-cte-body query (lib.cte/find-cte query source-cte-uuid)))]
+                          (lib/update-keys-for-col-from-previous-stage col))
+
+                        :else
                         (for [col (lib.walk/apply-f-for-stage-at-path
                                    lib/returned-columns
                                    query

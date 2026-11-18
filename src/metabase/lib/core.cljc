@@ -62,6 +62,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.convert.metadata-to-legacy]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.database :as lib.database]
    [metabase.lib.dispatch]
    [metabase.lib.drill-thru :as lib.drill-thru]
@@ -178,6 +179,7 @@
          lib.common/keep-me
          lib.convert/keep-me
          metabase.lib.convert.metadata-to-legacy/keep-me
+         lib.cte/keep-me
          lib.database/keep-me
          metabase.lib.dispatch/keep-me
          lib.drill-thru.column-extract/keep-me
@@ -1525,6 +1527,12 @@
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
   lib-metadata-column-key->legacy-metadata-column-key]
+ [lib.cte
+  cte-by-name
+  cte-metadata
+  ctes
+  with-source-cte
+  wrap-as-cte]
  [lib.database
   database-id]
  [metabase.lib.dispatch

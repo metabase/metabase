@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata
-  (:refer-clojure :exclude [every? empty? not-empty #?(:clj doseq) get-in #?(:clj for)])
+  (:refer-clojure :exclude [every? empty? not-empty some #?(:clj doseq) get-in #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
@@ -15,7 +15,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [every? empty? not-empty #?(:clj doseq) get-in #?(:clj for)]]))
+   [metabase.util.performance :refer [every? empty? not-empty some #?(:clj doseq) get-in #?(:clj for)]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -208,22 +208,29 @@
     (card metadata-providerable card-id)
     (table metadata-providerable table-id)))
 
-(defn- editable-stages?
-  [query stages]
-  (let [{:keys [source-table source-card] :as stage0} (first stages)]
+(defn- editable-shape?
+  "`shape` is anything carrying `:stages` and optionally `:ctes` — the top-level query, a join, or a CTE body."
+  [query shape]
+  (let [{stages :stages, ctes :ctes} shape
+        {:keys [source-table source-card source-cte] :as stage0} (first stages)]
     (boolean (and (when-let [{:keys [id]} (database query)]
                     (= (:database query) id))
                   (or (and source-table (table query source-table))
                       (and source-card  (card  query source-card))
+                      ;; Can't use `lib.cte/find-cte` here — it would create a require cycle via
+                      ;; `lib.cte` → `lib.metadata.calculation`'s dispatch registration → `lib.metadata`. The check is
+                      ;; just a presence test anyway, and the walk below visits every CTE body so an inherited CTE
+                      ;; gets validated when we recurse into it.
+                      (and source-cte   (some #(= (:lib/uuid %) source-cte) ctes))
                       (and
                        (= (:lib/type stage0) :mbql.stage/native)
                        ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
                        ;; TODO Find a way to unify has-write-permissions and this function?
                        (= :write (:native-permissions (database query)))))
-                  (every? #(editable-stages? query %)
-                          (for [a-stage      stages
-                                a-join       (:joins a-stage)]
-                            (:stages a-join)))))))
+                  (every? #(editable-shape? query %)
+                          (concat
+                           (map :query ctes)
+                           (for [a-stage stages, a-join (:joins a-stage)] a-join)))))))
 
 (mu/defn editable? :- :boolean
   "Given a query, returns whether it is considered editable.
@@ -236,9 +243,8 @@
   If metadata for the `:source-table` or `:source-card` can be found, then the query is editable.
   The above conditions must hold for every joined source too."
   [query :- ::lib.schema/query]
-  (let [stages (:stages query)]
-    (mu/disable-enforcement
-      (editable-stages? query stages))))
+  (mu/disable-enforcement
+    (editable-shape? query query)))
 
 (mu/defn database-supports? :- :boolean
   "Does `metadata-providerable`'s [[database]] support the given `feature`?

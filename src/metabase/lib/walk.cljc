@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [mapv empty? get-in])
   (:require
    [medley.core :as m]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
@@ -48,9 +49,17 @@
     (walk-items-backward* query path-to-items walk-item-fn f)
     (walk-items-forward*  query path-to-items walk-item-fn f)))
 
+(declare walk-ctes*)
+
 (defn- walk-join* [query path-to-join f opts]
   (let [path-to-join-stages (conj (vec path-to-join) :stages)
-        query'              (walk-stages* query path-to-join-stages f opts)]
+        path-to-join-ctes   (conj (vec path-to-join) :ctes)
+        query' (cond-> query
+                 (seq (get-in query path-to-join-ctes))
+                 (walk-ctes* path-to-join-ctes f opts))
+        query' (cond-> query'
+                 (not (reduced? query'))
+                 (walk-stages* path-to-join-stages f opts))]
     (if (reduced? query')
       query'
       (f query' :lib.walk/join path-to-join))))
@@ -63,10 +72,10 @@
         path-to-joins (conj (vec path-to-stage) :joins)
         ;; only walk joins in MBQL stages, if someone tries to put them in a native stage ignore them since they're
         ;; not allowed there anyway.
-        query'        (if (and (= (:lib/type stage :mbql.stage/mbql) :mbql.stage/mbql)
-                               (seq (get-in query path-to-joins)))
-                        (walk-joins* query path-to-joins f opts)
-                        query)]
+        query' (cond-> query
+                 (and (= (:lib/type stage :mbql.stage/mbql) :mbql.stage/mbql)
+                      (seq (get-in query path-to-joins)))
+                 (walk-joins* path-to-joins f opts))]
     (if (reduced? query')
       query'
       (f query' :lib.walk/stage path-to-stage))))
@@ -74,8 +83,26 @@
 (defn- walk-stages* [query path-to-stages f opts]
   (walk-items* query path-to-stages #(walk-stage* %1 %2 %3 opts) f opts))
 
+(defn- walk-cte* [query path-to-cte f opts]
+  (let [path-to-cte-body-stages (conj (vec path-to-cte) :query :stages)
+        path-to-cte-body-ctes   (conj (vec path-to-cte) :query :ctes)
+        query' (cond-> query
+                 (seq (get-in query path-to-cte-body-ctes))
+                 (walk-ctes* path-to-cte-body-ctes f opts))]
+    (cond-> query'
+      (not (reduced? query'))
+      (walk-stages* path-to-cte-body-stages f opts))))
+
+(defn- walk-ctes* [query path-to-ctes f opts]
+  (walk-items* query path-to-ctes #(walk-cte* %1 %2 %3 opts) f opts))
+
 (defn- walk-query* [query f opts]
-  (walk-stages* query [:stages] f opts))
+  (let [query' (cond-> query
+                 (seq (:ctes query))
+                 (walk-ctes* [:ctes] f opts))]
+    (cond-> query'
+      (not (reduced? query'))
+      (walk-stages* [:stages] f opts))))
 
 (defn- splice-at-point
   "Splice multiple `new-items` into `m` at `path`.
@@ -209,13 +236,21 @@
    [:= :joins]
    nat-int?])
 
-;;; A path to a specific stage.
+(mr/def ::path.ctes-part
+  [:cat
+   [:= :ctes]
+   nat-int?
+   [:= :query]])
+
+;;; A path to a specific stage, possibly nested inside CTE bodies and/or joins.
 (mr/def ::stage-path
   [:cat
+   [:* ::path.ctes-part]
    ::path.stages-part
    [:*
     [:cat
      ::path.joins-part
+     [:* ::path.ctes-part]
      ::path.stages-part]]])
 
 ;; a path to a specific stage OR a specific join.
@@ -232,15 +267,21 @@
    A join path will return `0` for `stage-number`
 
    Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
-  [query      :- ::lib.schema/query
+  [query :- ::lib.schema/query
    stage-path :- ::path]
-  (let [[_stages stage-number & more] stage-path]
-    (if (empty? more)
-      {:query query, :stage-number stage-number}
-      (let [[_joins join-number & more] more
-            join                        (nth (lib.join/joins query stage-number) join-number)
-            query'                      (assoc query :stages (:stages join))]
-        (recur query' (if (empty? more) [:stages 0] more))))))
+  (case (first stage-path)
+    :ctes
+    (let [[_ctes cte-number _query-kw & more] stage-path]
+      (recur (lib.cte/query-for-cte-body query (nth (:ctes query) cte-number))
+             (if (empty? more) [:stages 0] more)))
+
+    :stages
+    (let [[_stages stage-number & more] stage-path]
+      (if (empty? more)
+        {:query query :stage-number stage-number}
+        (let [[_joins join-number & more] more
+              join (nth (lib.join/joins query stage-number) join-number)]
+          (recur (lib.util/query-for-join query join) (if (empty? more) [:stages 0] more)))))))
 
 (mr/def ::walked-clause
   "An MBQL clause, or a literal or keyword (e.g. a temporal unit) argument of one, as [[walk-clause]] visits it."
