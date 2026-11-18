@@ -21,10 +21,8 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -586,29 +584,5 @@
 
 ;;; ------------------------------------------------- Staleness ---------------------------------------------------
 
-(defmethod staleness/find-stale-query :model/Document
-  [_model args]
-  ^:allow-subquery
-  {:select [:document.id
-            [(h2x/literal "Document") :model]
-            [:document.name :name]
-            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
-            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
-            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
-            :document.collection_id]
-   :from :document
-   :left-join [:collection [:= :collection.id :document.collection_id]]
-   :where [:and
-           [:= :document.archived false]
-           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
-           [:or
-            [:<= :document.last_viewed_at (-> args :cutoff-date)]
-            [:and
-             [:= :document.view_count 0]
-             [:<= :document.created_at (-> args :cutoff-date)]]]
-           ;; only regular user collections (type nil), not system collections like
-           ;; `instance-analytics`, `trash`, or the `library` collections.
-           [:= :collection.type nil]
-           (when (setting/get :enable-public-sharing)
-             [:= :document.public_uuid nil])
-           (staleness/collection-filter :document.collection_id args)]})
+(defmethod staleness/spec :model/Document [_model]
+  {:candidates documents.db/stale-document-candidates})

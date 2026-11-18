@@ -21,14 +21,13 @@
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.search :as transforms.search]
    [metabase.transforms.serialization :as transforms.serialization]
+   [metabase.transforms.staleness :as transforms.staleness]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -553,27 +552,5 @@
 
 ;;; ------------------------------------------------- Staleness ------------------------------------------------
 
-(defmethod staleness/find-stale-query :model/Transform
-  [_model args]
-  ;; Run-based: a transform is stale when it has never run and was created on/before the cutoff,
-  ;; or when its most recent run started on/before the cutoff (failed runs still count). Transforms
-  ;; between fires of a slower-than-threshold schedule are not stale.
-  (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
-    ^:allow-subquery
-    {:select    [:transform.id
-                 [(h2x/literal "Transform") :model]
-                 [:transform.name :name]
-                 [:latest_run.last_start :last_used_at]
-                 :transform.collection_id]
-     :from      :transform
-     :left-join [[(transforms.db/latest-run-start-times-query) :latest_run]
-                 [:= :latest_run.transform_id :transform.id]]
-     :where     [:and
-                 [:or
-                  [:and
-                   [:= :latest_run.last_start nil]
-                   [:<= :transform.created_at (:cutoff-date args)]]
-                  [:<= :latest_run.last_start (:cutoff-date args)]]
-                 (when (seq schedule-fresh-ids)
-                   [:not [:in :transform.id schedule-fresh-ids]])
-                 (staleness/collection-filter :transform.collection_id args)]}))
+(defmethod staleness/spec :model/Transform [_model]
+  {:candidates transforms.staleness/stale-transform-candidates})

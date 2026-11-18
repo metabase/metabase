@@ -13,7 +13,7 @@
    [metabase.dashboards.revisions :as dashboards.revisions]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
-   [metabase.embedding.settings :as embed.settings]
+   [metabase.dashboards.staleness :as dashboards.staleness]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -31,7 +31,6 @@
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
@@ -557,32 +556,7 @@
                                                          [:= :mr.moderated_item_id :this.id]
                                                          [:= :mr.most_recent true]]]}}})
 
-(defmethod staleness/find-stale-query :model/Dashboard
-  [_model args]
-  ^:allow-subquery {:select [:report_dashboard.id
-                             [(h2x/literal "Dashboard") :model]
-                             [:report_dashboard.name :name]
-                             [:last_viewed_at :last_used_at]
-                             :report_dashboard.collection_id]
-                    :from :report_dashboard
-                    :left-join [:pulse [:and
-                                        [:= :pulse.archived false]
-                                        [:= :pulse.dashboard_id :report_dashboard.id]]
-                                :collection [:= :collection.id :report_dashboard.collection_id]
-                                :moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
-                    :where [:and
-                            [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_dashboard.archived false]
-                            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
-                            ;; find things only in regular collections, not the `instance-analytics` collection.
-                            [:= :collection.type nil]
-                            (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_dashboard.enable_embedding false])
-                            (when (setting/get :enable-public-sharing)
-                              [:= :report_dashboard.public_uuid nil])
-                            (staleness/collection-filter :report_dashboard.collection_id args)]})
+(defmethod staleness/spec :model/Dashboard [_model]
+  {:candidates dashboards.db/stale-dashboard-candidates
+   :load       dashboards.staleness/load-items
+   :render     dashboards.staleness/render})

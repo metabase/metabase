@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
@@ -13,6 +14,8 @@
    [metabase.query-processor.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -595,3 +598,74 @@
     (-> (t2/select [:model/Card :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn stale-card-candidates :- ::staleness/query
+  "The query of the Cards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
+  [opts :- ::staleness/candidates-options]
+  ^:allow-subquery {:select [:report_card.id
+                             [(h2x/literal "Card") :model]
+                             [:report_card.name :name]
+                             :last_used_at
+                             :report_card.collection_id]
+                    :from :report_card
+                    :left-join [:moderation_review [:and
+                                                    [:= :moderation_review.moderated_item_id :report_card.id]
+                                                    [:= :moderation_review.moderated_item_type (h2x/literal "card")]
+                                                    [:= :moderation_review.most_recent true]
+                                                    [:= :moderation_review.status (h2x/literal "verified")]]
+                                :pulse_card [:= :pulse_card.card_id :report_card.id]
+                                :pulse [:and
+                                        [:= :pulse_card.pulse_id :pulse.id]
+                                        [:= :pulse.archived false]]
+                                :sandboxes [:= :sandboxes.card_id :report_card.id]
+                                :collection [:= :collection.id :report_card.collection_id]]
+                    :where [:and
+                            [:= :sandboxes.id nil]
+                            [:= :pulse.id nil]
+                            [:= :moderation_review.id nil]
+                            [:= :report_card.archived false]
+                            [:<= :report_card.last_used_at (:cutoff-date opts)]
+                            [:= :collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_card.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_card.public_uuid nil])
+                            (staleness/collection-filter :report_card.collection_id opts)]})
+
+(mu/defn stale-card-items
+  "The listing columns of the Cards with `card-ids`, with the hydrations the stale content page shows. `:type` is read
+  to label each Card, and the columns after it are there for the Card schema upgrade, not for the listing."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (-> (t2/select [:model/Card
+                  :id
+                  :dashboard_id
+                  :description
+                  :collection_id
+                  :name
+                  :entity_id
+                  :archived
+                  :collection_position
+                  :display
+                  :database_id
+                  [nil :location]
+                  :dataset_query
+                  :card_schema
+                  :type
+                  :entity_id
+                  :result_metadata
+                  :dimensions
+                  :dimension_mappings
+                  :last_used_at
+                  [^:allow-subquery
+                   {:select   [:status]
+                    :from     [:moderation_review]
+                    :where    [:and
+                               [:= :moderated_item_type "card"]
+                               [:= :moderated_item_id :report_card.id]
+                               [:= :most_recent true]]
+                    :order-by [[:id :desc]]
+                    :limit    1}
+                   :moderated_status]]
+                 :id [:in card-ids])
+      (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count
+                  [:dashboard :moderation_status])))

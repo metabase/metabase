@@ -7,12 +7,15 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.serialization.core :as serialization]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -540,3 +543,52 @@
     (-> (t2/select [:model/Dashboard :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn stale-dashboard-candidates :- ::staleness/query
+  "The query of the Dashboards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
+  [opts :- ::staleness/candidates-options]
+  ^:allow-subquery {:select [:report_dashboard.id
+                             [(h2x/literal "Dashboard") :model]
+                             [:report_dashboard.name :name]
+                             [:last_viewed_at :last_used_at]
+                             :report_dashboard.collection_id]
+                    :from :report_dashboard
+                    :left-join [:pulse [:and
+                                        [:= :pulse.archived false]
+                                        [:= :pulse.dashboard_id :report_dashboard.id]]
+                                :collection [:= :collection.id :report_dashboard.collection_id]
+                                :moderation_review [:and
+                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                                    [:= :moderation_review.most_recent true]
+                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                    :where [:and
+                            [:= :pulse.id nil]
+                            [:= :moderation_review.id nil]
+                            [:= :report_dashboard.archived false]
+                            [:<= :report_dashboard.last_viewed_at (:cutoff-date opts)]
+                            [:= :collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_dashboard.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_dashboard.public_uuid nil])
+                            (staleness/collection-filter :report_dashboard.collection_id opts)]})
+
+(mu/defn stale-dashboard-items
+  "The listing columns of the Dashboards with `dashboard-ids`, with the hydrations the stale content page shows."
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
+  (-> (t2/select [:model/Dashboard
+                  :id
+                  :description
+                  :collection_id
+                  :name
+                  :entity_id
+                  :archived
+                  :collection_position
+                  [:last_viewed_at :last_used_at]
+                  ["dashboard" :model]
+                  [nil :dashboard_id]
+                  [nil :location]
+                  [nil :database_id]]
+                 :id [:in dashboard-ids])
+      (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location])))

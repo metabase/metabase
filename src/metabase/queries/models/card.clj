@@ -14,7 +14,6 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
@@ -42,11 +41,11 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.queries.search :as queries.search]
    [metabase.queries.serialization :as queries.serialization]
+   [metabase.queries.staleness :as queries.staleness]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
@@ -1881,38 +1880,10 @@
    "dataset" (queries.search/card-search-spec "model")
    "metric"  (queries.search/card-search-spec "metric")})
 
-(defmethod staleness/find-stale-query :model/Card
-  [_model args]
-  ^:allow-subquery {:select [:report_card.id
-                             [(h2x/literal "Card") :model]
-                             [:report_card.name :name]
-                             :last_used_at
-                             :report_card.collection_id]
-                    :from :report_card
-                    :left-join [:moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_card.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "card")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]
-                                :pulse_card [:= :pulse_card.card_id :report_card.id]
-                                :pulse [:and
-                                        [:= :pulse_card.pulse_id :pulse.id]
-                                        [:= :pulse.archived false]]
-                                :sandboxes [:= :sandboxes.card_id :report_card.id]
-                                :collection [:= :collection.id :report_card.collection_id]]
-                    :where [:and
-                            [:= :sandboxes.id nil]
-                            [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_card.archived false]
-                            [:<= :report_card.last_used_at (-> args :cutoff-date)]
-                            ;; find things only in regular collections, not the `instance-analytics` collection.
-                            [:= :collection.type nil]
-                            (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_card.enable_embedding false])
-                            (when (setting/get :enable-public-sharing)
-                              [:= :report_card.public_uuid nil])
-                            (staleness/collection-filter :report_card.collection_id args)]})
+(defmethod staleness/spec :model/Card [_model]
+  {:candidates queries.db/stale-card-candidates
+   :load       queries.staleness/load-items
+   :render     queries.staleness/render})
 
 (defmethod remote-sync/spec :model/Card
   [_model]

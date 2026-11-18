@@ -491,8 +491,8 @@
 (mu/defn latest-run-start-times-query
   "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
   `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
-  definition of the \"most recent run\" anchor - embedded as the staleness method's join subquery
-  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  definition of the \"most recent run\" anchor - embedded as the join subquery of the staleness candidates
+  ([[metabase.transforms.staleness/stale-transform-candidates]]) and realized by
   [[last-start-times]] for the schedule-freshness check, so the two can't drift apart."
   ([]
    (latest-run-start-times-query nil))

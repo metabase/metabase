@@ -12,7 +12,10 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -192,3 +195,28 @@
     (-> (t2/select [:model/Document :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn stale-document-candidates :- ::staleness/query
+  "The query of the Documents that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`:
+  those not viewed since the cutoff, or never viewed and created before it, in regular collections. `last_viewed_at`
+  is never null, so the recency is null for a Document that was never viewed."
+  [opts :- ::staleness/candidates-options]
+  ^:allow-subquery
+  {:select [:document.id
+            [(h2x/literal "Document") :model]
+            [:document.name :name]
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
+            :document.collection_id]
+   :from :document
+   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :where [:and
+           [:= :document.archived false]
+           [:or
+            [:<= :document.last_viewed_at (:cutoff-date opts)]
+            [:and
+             [:= :document.view_count 0]
+             [:<= :document.created_at (:cutoff-date opts)]]]
+           [:= :collection.type nil]
+           (when (setting/get :enable-public-sharing)
+             [:= :document.public_uuid nil])
+           (staleness/collection-filter :document.collection_id opts)]})

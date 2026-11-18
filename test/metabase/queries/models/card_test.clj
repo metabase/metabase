@@ -1926,16 +1926,15 @@
                  :dataset_query {:database db2-id}}
                 (t2/select-one :model/Card :id (:id question))))))))
 
-(deftest find-stale-query-test
-  (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
+(deftest stale-candidates-test
+  (testing "the Card staleness spec selects stale cards and applies the model's own exclusions"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Card {stale-id :id}    (stale-test/stale-card {:name "stale" :collection_id col-id})
                    :model/Card {fresh-id :id}    {:name "fresh" :collection_id col-id
                                                   :last_used_at (stale-test/datetime-months-ago 1)}
                    :model/Card {archived-id :id} (stale-test/stale-card {:name "archived" :collection_id col-id
                                                                          :archived true})]
-      (let [stale-ids (fn [] (set (map :id (t2/query (staleness/find-stale-query
-                                                      :model/Card
+      (let [stale-ids (fn [] (set (map :id (t2/query ((staleness/candidates-fn :model/Card)
                                                       {:collection-ids #{col-id}
                                                        :cutoff-date    (stale-test/date-months-ago 6)})))))]
         (testing "a stale, unarchived card is returned; recent and archived cards are not"

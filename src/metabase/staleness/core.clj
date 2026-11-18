@@ -1,16 +1,28 @@
 (ns metabase.staleness.core
-  "Central staleness contract. Each stale-eligible model defines its own `find-stale-query` method
-  in the model's own namespace. Consumers (the EE stale module's `find-candidates`) enumerate an
-  explicit set of models and call this multimethod per model.
+  "Central staleness contract. Each stale-eligible model gives a [[spec]] in the model's own namespace.
+  Consumers (the EE stale module's `find-candidates`) ask the spec of each model they cover.
 
   Kept dependency-light (no model requires) so model namespaces can require it without creating a
   load cycle."
   (:require
+   [metabase.staleness.spec]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [potemkin :as p]))
+
+(comment metabase.staleness.spec/keep-me)
+
+(p/import-vars
+ [metabase.staleness.spec
+  candidates-fn
+  load-fn
+  models
+  render-fn
+  rendered-models
+  spec])
 
 (mr/def ::predicate
-  "A HoneySQL boolean expression as used by [[find-stale-query]]'s `:where`/`:left-join` clauses: a bare
+  "A HoneySQL boolean expression as used by a `:candidates` query's `:where`/`:left-join` clauses: a bare
   column keyword, a scalar value, or an operator keyword applied to nested predicates/values."
   [:or
    :keyword
@@ -38,26 +50,21 @@
     [:where    {:optional true} ::predicate]]
    :keyword])
 
+(mr/def ::candidates-options
+  "What a `:candidates` fn takes: the collections to look in, a set (a nil member means the root) or `:all`, and the date
+  before which content that was last used is stale."
+  [:map {:closed true}
+   [:collection-ids [:or [:= :all] [:set [:maybe :int]]]]
+   [:cutoff-date    :time/local-date]])
+
 (mr/def ::query
-  "The shape [[find-stale-query]] must return, and [[metabase-enterprise.stale.db]] consumes: a HoneySQL
+  "The shape a `:candidates` fn must return, and [[metabase-enterprise.stale.db]] consumes: a HoneySQL
   map selecting `id`/`model`/`name`/`last_used_at` from a single table."
   [:map {:closed true}
    [:select    [:sequential ::select-entry]]
    [:from      :keyword]
    [:left-join {:optional true} [:sequential [:or :keyword ::derived-table ::predicate]]]
    [:where     {:optional true} ::predicate]])
-
-(defmulti find-stale-query
-  "Return a HoneySQL map selecting stale candidates for `model`:
-
-    {:select [<id> [\"Model\" :model] [<name> :name] [<recency-ts> :last_used_at]] :from … :where …}
-
-  `args` is `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}` (the same
-  `FindStaleContentArgs` map the EE stale module threads through). The returned maps are
-  UNION-ALL'd by the caller, so every method MUST select the same column shape:
-  `id`, `model`, `name`, `last_used_at`."
-  {:arglists '([model args])}
-  (fn [model _args] model))
 
 (defn collection-filter
   "HoneySQL condition scoping `collection-id-column` to `(:collection-ids args)`, or nil (no filtering)
