@@ -26,6 +26,25 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/metabot-analytics/conversations/${id}`,
       }),
     }),
+    // The detail's response text, unparsed: JSON.parse would round integers
+    // above 2^53, and an export must keep them exact.
+    getMetabotAnalyticsConversationText: builder.query<string, string>({
+      queryFn: async (id, _api, _extraOptions, baseQuery) => {
+        const { data, error } = await baseQuery({
+          method: "GET",
+          url: `/api/ee/metabot-analytics/conversations/${id}`,
+          rawResponse: true,
+        });
+        if (error) {
+          return { error };
+        }
+        if (!(data instanceof Response)) {
+          return { error: new Error("Expected the raw conversation response") };
+        }
+        return { data: await data.text() };
+      },
+      keepUnusedDataFor: 0,
+    }),
     getDataComplexityScores: builder.query<DataComplexityScoresResponse, void>({
       query: () => ({
         method: "GET",
@@ -52,6 +71,7 @@ export const {
   useListMetabotAnalyticsConversationsQuery,
   useLazyListMetabotAnalyticsConversationsQuery,
   useGetMetabotAnalyticsConversationQuery,
+  useLazyGetMetabotAnalyticsConversationTextQuery,
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
 } = metabotAnalyticsApi;

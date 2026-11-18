@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import type {
   ConversationDetail,
@@ -9,9 +9,41 @@ import type {
 export function setupMetabotConversationEndpoint(
   conversation: ConversationDetail,
 ) {
+  setupMetabotConversationRoute(conversation.conversation_id, conversation);
+}
+
+/**
+ * Serve the conversation detail as exactly `responseText`, for JSON that
+ * `JSON.stringify` can't produce, such as an integer above 2^53.
+ */
+export function setupMetabotConversationRawEndpoint(
+  conversationId: string,
+  responseText: string,
+) {
+  setupMetabotConversationRoute(conversationId, {
+    body: responseText,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/** Make the conversation detail fail from now on, replacing any earlier mock. */
+export function setupMetabotConversationEndpointError(
+  conversationId: string,
+  status = 500,
+) {
+  setupMetabotConversationRoute(conversationId, { status });
+}
+
+function setupMetabotConversationRoute(
+  conversationId: string,
+  response: RouteResponse,
+) {
+  const name = `metabot-analytics-conversation-${conversationId}`;
+  fetchMock.removeRoute(name);
   fetchMock.get(
-    `path:/api/ee/metabot-analytics/conversations/${conversation.conversation_id}`,
-    conversation,
+    `path:/api/ee/metabot-analytics/conversations/${conversationId}`,
+    response,
+    { name },
   );
 }
 
