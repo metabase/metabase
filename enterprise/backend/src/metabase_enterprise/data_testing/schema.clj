@@ -141,14 +141,15 @@
         (or (empty? names) (apply distinct? names))))]])
 
 (defn- ->offset-date-time
-  "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant or a
-  ZonedDateTime; otherwise `x` unchanged, for the schema to refuse."
+  "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant, a ZonedDateTime
+  or a `java.util.Date`, as YAML reads an unquoted date-time; otherwise `x` unchanged, for the schema to refuse."
   [x]
   (cond
-    (string? x)                         (try (t/offset-date-time x) (catch Exception _ x))
-    (instance? java.time.Instant x)     (t/offset-date-time x (t/zone-offset 0))
-    (instance? java.time.ZonedDateTime x) (t/offset-date-time x)
-    :else                               x))
+    (string? x)                (try (t/offset-date-time x) (catch Exception _ x))
+    (t/instant? x)             (t/offset-date-time x (t/zone-offset 0))
+    (instance? java.util.Date x) (t/offset-date-time (t/instant x) (t/zone-offset 0))
+    (t/zoned-date-time? x)     (t/offset-date-time x)
+    :else                      x))
 
 (def ^:private now-range
   "The first and last moments a MySQL app DB stores in a `TIMESTAMP` column, the narrowest range of the app DBs."
@@ -166,105 +167,121 @@
   as `2026-10-13T00:00:00Z`, that every app DB can store. SQL the test's author writes, in inputs and expectations,
   reads the database's own clock."
   ;; One check, so a refused value gets one message, the one for the reason it was refused.
-  (let [[first-moment last-moment] now-range
-        offset-message             (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z")
-        range-message              (deferred-tru "must be from {0} to {1}, inclusive" (str first-moment) (str last-moment))]
+  (let [[first-moment last-moment] (map str now-range)
+        offset-message             (deferred-tru
+                                    "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z")
+        range-message              (deferred-tru "must be from {0} to {1}, inclusive" first-moment last-moment)]
     [:fn
      {:decode/normalize ->offset-date-time
       :json-schema      {:type "string" :format "date-time"}
-      :description      (deferred-tru "an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z, from {0} to {1}, inclusive"
-                                      (str first-moment) (str last-moment))
+      :description      (deferred-tru
+                         "an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z, from {0} to {1}, inclusive"
+                         first-moment last-moment)
       :error/fn         (fn [{:keys [value]} _]
-                          (if (instance? java.time.OffsetDateTime value) range-message offset-message))}
-     #(and (instance? java.time.OffsetDateTime %) (in-now-range? %))]))
+                          (if (t/offset-date-time? value) range-message offset-message))}
+     #(and (t/offset-date-time? %) (in-now-range? %))]))
 
 (mr/def ::now-string
-  "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset."
-  [:and :string [:fn #(mr/validate ::now (->offset-date-time %))]])
+  "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset, or the date YAML reads from
+  such a string written without quotes."
+  [:and [:or :string inst?] [:fn #(mr/validate ::now (->offset-date-time %))]])
+
+(defn- with-now
+  "`map-schema`, a closed map schema of a test, with an optional `now` entry when `now?`: the test types whose subject
+  reads a pinned clock have one."
+  [map-schema now?]
+  (cond-> map-schema
+    now? (conj [:now {:optional true} [:maybe ::now]])))
+
+(defn- definition
+  "A test as a client writes it, without the subject it covers, with `now` when `now?`."
+  [now?]
+  (with-now [:map {:closed true}
+             [:name         ::lib.schema.common/non-blank-string]
+             [:description  {:optional true} [:maybe :string]]
+             [:inputs       ::inputs]
+             [:expectations ::expectations]]
+    now?))
 
 (mr/def ::test.definition
   "A test as a client writes it, without the subject it covers. Without `now`, the subject reads the real clock."
-  [:map {:closed true}
-   [:name         ::lib.schema.common/non-blank-string]
-   [:description  {:optional true} [:maybe :string]]
-   [:now          {:optional true} [:maybe ::now]]
-   [:inputs       ::inputs]
-   [:expectations ::expectations]])
+  (definition true))
 
 (defn- test-create
-  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`."
-  [subject-key subject-id-schema]
+  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`, and
+  `now` when `now?`."
+  [subject-key subject-id-schema now?]
   [:merge
    [:map {:closed true}
     [subject-key subject-id-schema]]
-   ::test.definition])
+   (definition now?)])
 
 (defn- saved-test
   "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
   hydrated under `subject`, of schema `subject-schema`, the inputs that stand in for the tables the subject reads, and
-  the expectations checked against its output."
-  [subject-key subject-id-schema subject subject-schema]
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:entity_id    {:optional true} :string]
-   [:name         {:optional true} ::lib.schema.common/non-blank-string]
-   [:description  {:optional true} [:maybe :string]]
-   [:now          {:optional true} [:maybe ::now]]
-   [:inputs       {:optional true} ::inputs]
-   [:expectations {:optional true} ::expectations]
-   [subject-key   {:optional true} subject-id-schema]
-   [subject       {:optional true} [:maybe subject-schema]]
-   [:creator_id   {:optional true} ::lib.schema.id/user]
-   [:created_at   {:optional true} ms/TemporalInstant]
-   [:updated_at   {:optional true} ms/TemporalInstant]])
+  the expectations checked against its output, and `now` when `now?`."
+  [subject-key subject-id-schema subject subject-schema now?]
+  (with-now [:map {:closed true}
+             [:id           ms/PositiveInt]
+             [:entity_id    {:optional true} :string]
+             [:name         {:optional true} ::lib.schema.common/non-blank-string]
+             [:description  {:optional true} [:maybe :string]]
+             [:inputs       {:optional true} ::inputs]
+             [:expectations {:optional true} ::expectations]
+             [subject-key   {:optional true} subject-id-schema]
+             [subject       {:optional true} [:maybe subject-schema]]
+             [:creator_id   {:optional true} ::lib.schema.id/user]
+             [:created_at   {:optional true} ms/TemporalInstant]
+             [:updated_at   {:optional true} ms/TemporalInstant]]
+    now?))
 
 (defn- test-update
   "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
-  `subject-id-schema`. Omitted fields are left unchanged."
-  [subject-key subject-id-schema]
-  [:map {:closed true}
-   [subject-key   {:optional true} subject-id-schema]
-   [:name         {:optional true} ::lib.schema.common/non-blank-string]
-   [:description  {:optional true} [:maybe :string]]
-   [:now          {:optional true} [:maybe ::now]]
-   [:inputs       {:optional true} ::inputs]
-   [:expectations {:optional true} ::expectations]])
+  `subject-id-schema`, and `now` when `now?`. Omitted fields are left unchanged."
+  [subject-key subject-id-schema now?]
+  (with-now [:map {:closed true}
+             [subject-key   {:optional true} subject-id-schema]
+             [:name         {:optional true} ::lib.schema.common/non-blank-string]
+             [:description  {:optional true} [:maybe :string]]
+             [:inputs       {:optional true} ::inputs]
+             [:expectations {:optional true} ::expectations]]
+    now?))
 
 (mr/def ::transform-test.create
   "What a client sends to create a transform test."
-  (test-create :transform_id ::lib.schema.id/transform))
+  (test-create :transform_id ::lib.schema.id/transform true))
 
 (mr/def ::transform-test
   "A saved transform test."
-  (saved-test :transform_id ::lib.schema.id/transform :transform :metabase.transforms.schema/transform))
+  (saved-test :transform_id ::lib.schema.id/transform :transform :metabase.transforms.schema/transform true))
 
 (mr/def ::transform-test.update
   "What a client sends to update a transform test. Omitted fields are left unchanged."
-  (test-update :transform_id ::lib.schema.id/transform))
+  (test-update :transform_id ::lib.schema.id/transform true))
 
 (mr/def ::card-test.create
   "What a client sends to create a card test."
-  (test-create :card_id ::lib.schema.id/card))
+  (test-create :card_id ::lib.schema.id/card true))
 
 (mr/def ::card-test
   "A saved card test."
-  (saved-test :card_id ::lib.schema.id/card :card :metabase.queries.schema/card))
+  (saved-test :card_id ::lib.schema.id/card :card :metabase.queries.schema/card true))
 
 (mr/def ::card-test.update
   "What a client sends to update a card test. Omitted fields are left unchanged."
-  (test-update :card_id ::lib.schema.id/card))
+  (test-update :card_id ::lib.schema.id/card true))
 
 (mr/def ::segment-test.create
   "What a client sends to create a segment test."
-  (test-create :segment_id ::lib.schema.id/segment))
+  (test-create :segment_id ::lib.schema.id/segment false))
 
 (mr/def ::segment-test
   "A saved segment test."
-  (saved-test :segment_id ::lib.schema.id/segment :segment :metabase.segments.schema/segment))
+  (saved-test :segment_id ::lib.schema.id/segment :segment :metabase.segments.schema/segment false))
 
 (mr/def ::segment-test.update
   "What a client sends to update a segment test. Omitted fields are left unchanged."
-  (test-update :segment_id ::lib.schema.id/segment))
+  (test-update :segment_id ::lib.schema.id/segment false))
 
 (mr/def ::saved-test
   "A saved test of any subject type."
