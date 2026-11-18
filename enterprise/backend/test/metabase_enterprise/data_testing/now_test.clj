@@ -53,12 +53,12 @@
   "An input standing in for the orders table with one row per id of `id->created-at`, a map of order id to the moment
   the order was created."
   [id->created-at]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
+  (let [{:keys [schema], table-name :name} (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
         field-name            #(:name (lib.metadata/field (mt/metadata-provider) (mt/id :orders %)))
         row                   (fn [[id moment]]
                                 (str "SELECT " id " AS " (field-name :id) ", "
                                      (sql.qp/inline-value driver/*driver* moment) " AS " (field-name :created_at)))]
-    {:table  {:schema schema :name name}
+    {:table  {:schema schema :name table-name}
      :format :sql
      :sql    (str/join " UNION ALL " (map row (sort-by key id->created-at)))}))
 
@@ -100,8 +100,8 @@
   "The status of a test of a card with `query`, given the rows of `id->created-at`, that expects exactly the orders with
   `ids`: with `now` set, and, as a control, without it."
   [query id->created-at ids]
-  (let [run! #(run-card-test! query % [(orders-input id->created-at)] [(selects ids)])]
-    {:pinned (run! {:now now}) :unpinned (run! {})}))
+  (let [run-test #(run-card-test! query % [(orders-input id->created-at)] [(selects ids)])]
+    {:pinned (run-test {:now now}) :unpinned (run-test {})}))
 
 (deftest relative-filters-read-the-pinned-clock-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -143,23 +143,38 @@
 
 (deftest pinned-run-reads-the-day-in-the-report-timezone-test
   (mt/test-drivers #{:postgres}
-    (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
-      (let [query      (lib/filter (orders-query) (lib/time-interval (created-at) :current :day))
-            ;; June 18 in Tokyo, June 17 in UTC; order 1 is created on the Tokyo day, order 2 on the UTC day
-            pinned     "2020-06-17T20:00:00Z"
-            inputs     [(orders-input {1 (t/offset-date-time "2020-06-18T01:00:00Z")
-                                       2 (t/offset-date-time "2020-06-17T10:00:00Z")})]
-            run!       #(run-card-test! query {:now pinned} inputs [(selects [1])])
-            session-tz #(-> (qp/process-query (lib/native-query (mt/metadata-provider)
-                                                                "SELECT current_setting('TimeZone')"))
-                            mt/rows
-                            ffirst)]
+    ;; pgjdbc starts a session in the JVM's timezone, so the report timezone must put the pinned moment on another day
+    ;; than the JVM's timezone does, for a session that was never set to show. Tokyo and Honolulu put it on different
+    ;; days, so one of them always does.
+    (let [pinned    (t/instant "2020-06-17T20:00:00Z")
+          day-in    (fn [moment zone] (t/local-date (t/zoned-date-time moment (t/zone-id zone))))
+          jvm-zone  (str (t/zone-id))
+          report-tz (first (remove #(= (day-in pinned %) (day-in pinned jvm-zone)) ["Asia/Tokyo" "Pacific/Honolulu"]))
+          ;; A moment, on the hour, near the pinned one, that is on `zone`'s day of the pinned moment and on no other
+          ;; zone's day of it.
+          on-the-day-of (fn [zone other-zone]
+                          (first (for [hours (range -36 37)
+                                       :let  [moment (t/plus pinned (t/hours hours))]
+                                       :when (and (= (day-in moment zone) (day-in pinned zone))
+                                                  (not= (day-in moment other-zone) (day-in pinned other-zone)))]
+                                   (t/offset-date-time moment (t/zone-offset 0)))))
+          query     (lib/filter (orders-query) (lib/time-interval (created-at) :current :day))
+          ;; Order 1 is created on the report timezone's day, order 2 on the JVM's.
+          inputs    [(orders-input {1 (on-the-day-of report-tz jvm-zone) 2 (on-the-day-of jvm-zone report-tz)})]
+          run-test  #(run-card-test! query {:now (str pinned)} inputs [(selects [1])])
+          session-tz #(-> (qp/process-query (lib/native-query (mt/metadata-provider)
+                                                              "SELECT current_setting('TimeZone')"))
+                          mt/rows
+                          ffirst)]
+      (testing "premise: the report timezone puts the pinned moment on another day than the JVM's timezone"
+        (is (some? report-tz)))
+      (mt/with-temporary-setting-values [report-timezone report-tz]
         (testing "on a fresh pool, today is the pinned day in the report timezone"
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
-          (is (= :passed (run!))))
+          (is (= :passed (run-test))))
         (testing "control: after a query sets the pooled session to the report timezone, the same test passes"
-          (is (= "Asia/Tokyo" (session-tz)))
-          (is (= :passed (run!))))))))
+          (is (= report-tz (session-tz)))
+          (is (= :passed (run-test))))))))
 
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and
@@ -183,16 +198,16 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [query  (lib/filter (orders-query) (lib/time-interval (created-at) -30 :day))
           inputs [(orders-input {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
-          run!   #(run-transform-test! query % inputs (constantly (selects [1])))]
+          run-test #(run-transform-test! query % inputs (constantly (selects [1])))]
       (testing "a transform test with `now` selects the rows of the pinned month"
         (is (= {:pinned :passed :unpinned :failed}
-               {:pinned (run! {:now now}) :unpinned (run! {})}))))))
+               {:pinned (run-test {:now now}) :unpinned (run-test {})}))))))
 
 (deftest native-subject-with-now-is-refused-test
   (mt/test-drivers #{:h2 :postgres}
     (let [mp      (mt/metadata-provider)
-          {:keys [schema name]} (lib.metadata/table mp (mt/id :orders))
-          native  (lib/native-query mp (str "SELECT id, created_at FROM " schema "." name
+          {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
+          native  (lib/native-query mp (str "SELECT id, created_at FROM " schema "." table-name
                                             " WHERE created_at < CURRENT_TIMESTAMP"))
           inputs  [(orders-input {1 (pinned+ -1 :days)})]
           refused ::data-testing.errors/now-on-native-sql]
@@ -214,8 +229,8 @@
 (deftest validate-test-refuses-now-on-native-sql-test
   (mt/test-drivers #{:h2}
     (let [mp     (mt/metadata-provider)
-          {:keys [schema name]} (lib.metadata/table mp (mt/id :orders))
-          native (lib/native-query mp (str "SELECT id FROM " schema "." name))
+          {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
+          native (lib/native-query mp (str "SELECT id FROM " schema "." table-name))
           definition {:inputs       [(orders-input {1 (pinned+ -1 :days)})]
                       :expectations [(selects [1])]}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query native}]
