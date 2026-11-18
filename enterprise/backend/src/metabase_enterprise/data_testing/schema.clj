@@ -200,6 +200,7 @@
   value is refused, asking for quotes."
   ;; Each check passes what the other refuses, so a refused value gets one message.
   [:and
+   {:json-schema {:type "string" :format "date-time"}}
    [:fn {:error/fn (constantly now-quotes-message)} string?]
    [:fn {:error/fn (fn [error opts] (now-error (update error :value ->offset-date-time) opts))}
     #(or (not (string? %)) (mr/validate ::now (->offset-date-time %)))]])
