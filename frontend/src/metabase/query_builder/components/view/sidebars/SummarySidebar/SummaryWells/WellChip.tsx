@@ -26,6 +26,7 @@ type WellChipProps = {
 
 export function WellChip({ drag, children, rename, onRemove }: WellChipProps) {
   const { label, key } = drag.item;
+  const renameShortcut = rename ? "F2" : undefined;
   const wellFieldRef = useWellFieldRef();
   const [isRenaming, setIsRenaming] = useState(false);
   const { listeners, setNodeRef, isDragging } = useDraggable({
@@ -53,6 +54,7 @@ export function WellChip({ drag, children, rename, onRemove }: WellChipProps) {
       className={cx(S.chip, { [S.isDragging]: isDragging })}
       data-testid="summary-well-item"
       {...listeners}
+      aria-keyshortcuts={renameShortcut}
       onDoubleClick={rename ? () => setIsRenaming(true) : undefined}
       onKeyDown={rename ? handleKeyDown : undefined}
     >
@@ -71,6 +73,7 @@ export function WellChip({ drag, children, rename, onRemove }: WellChipProps) {
         variant="subtle"
         c="inherit"
         aria-label={t`Remove ${label}`}
+        aria-keyshortcuts={renameShortcut}
         // keeps an open name field from renaming the chip before the click removes it
         onMouseDown={(event) => event.preventDefault()}
         onClick={onRemove}

@@ -542,8 +542,15 @@ describe("SummaryWells", () => {
 
     it("renames from the keyboard with F2 on a control of the chip", async () => {
       const { getLastChange } = setup({ spec });
+      const removeButton = screen.getByRole("button", {
+        name: "Remove Revenue",
+      });
 
-      screen.getByRole("button", { name: "Remove Revenue" }).focus();
+      expect(removeButton).toHaveAttribute("aria-keyshortcuts", "F2");
+      expect(
+        screen.getByRole("button", { name: "Remove Count" }),
+      ).not.toHaveAttribute("aria-keyshortcuts");
+      removeButton.focus();
       await userEvent.keyboard("{F2}");
       const input = screen.getByRole("textbox", { name: "Rename Revenue" });
       await userEvent.clear(input);
