@@ -23,6 +23,27 @@
     [:map
      [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
 
+(mr/def ::dashboard.name
+  ms/NonBlankString)
+
+(mr/def ::dashboard.width
+  [:enum "fixed" "full"])
+
+(mr/def ::dashboard-card.size
+  ms/PositiveInt)
+
+(mr/def ::dashboard-card.position
+  ms/IntGreaterThanOrEqualToZero)
+
+(mr/def ::dashboard-card-series.position
+  ms/IntGreaterThanOrEqualToZero)
+
+(mr/def ::dashboard-tab.name
+  ms/NonBlankString)
+
+(mr/def ::dashboard-tab.position
+  ms/IntGreaterThanOrEqualToZero)
+
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."
   ::parameters.schema/parameter)
@@ -62,7 +83,7 @@
   [:map {:closed true}
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:name                    {:optional true} [:maybe :string]]
+   [:name                    {:optional true} ::dashboard.name]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
    [:parameters              {:optional true} [:maybe [:sequential ::dashboard.parameter]]]
@@ -79,8 +100,8 @@
    [:collection_position     {:optional true} [:maybe :int]]
    [:cache_ttl               {:optional true} [:maybe :int]]
    [:entity_id               {:optional true} [:maybe :string]]
-   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
-   [:width                   {:optional true} [:maybe :string]]
+   [:auto_apply_filters      {:optional true} :boolean]
+   [:width                   {:optional true} ::dashboard.width]
    [:initially_published_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:view_count              {:optional true} [:maybe :int]]
    [:archived_directly       {:optional true} [:maybe :boolean]]
@@ -118,10 +139,10 @@
   [:map {:closed true}
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:size_x                 {:optional true} [:maybe :int]]
-   [:size_y                 {:optional true} [:maybe :int]]
-   [:row                    {:optional true} [:maybe :int]]
-   [:col                    {:optional true} [:maybe :int]]
+   [:size_x                 {:optional true} [:maybe ::dashboard-card.size]]
+   [:size_y                 {:optional true} [:maybe ::dashboard-card.size]]
+   [:row                    {:optional true} [:maybe ::dashboard-card.position]]
+   [:col                    {:optional true} [:maybe ::dashboard-card.position]]
    [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id           {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:parameter_mappings     {:optional true} [:maybe [:sequential ::dashboard-card.parameter-mapping]]]
@@ -143,7 +164,7 @@
   [:map {:closed true}
    [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
-   [:position         {:optional true} [:maybe :int]]])
+   [:position         {:optional true} ::dashboard-card-series.position]])
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
@@ -156,8 +177,8 @@
   "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional."
   [:map {:closed true}
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:name         {:optional true} [:maybe :string]]
-   [:position     {:optional true} [:maybe :int]]
+   [:name         {:optional true} ::dashboard-tab.name]
+   [:position     {:optional true} ::dashboard-tab.position]
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])

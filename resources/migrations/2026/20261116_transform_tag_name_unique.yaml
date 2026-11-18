@@ -1,0 +1,26 @@
+## Tag names were unique only by a check in the endpoint. The first changeset renames the duplicates a name check could
+## not stop, keeping the oldest tag of each name and appending " (2)", " (3)", ... to the others. The second one makes
+## the database enforce the rule.
+
+databaseChangeLog:
+  - changeSet:
+      id: tgn4u7
+      author: ranquild
+      comment: Rename transform tags that share a name
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.RenameDuplicateTransformTags
+      rollback:
+
+  - changeSet:
+      id: tgx7k2
+      author: ranquild
+      comment: Add a unique index on transform_tag.name
+      changes:
+        - createIndex:
+            tableName: transform_tag
+            indexName: idx_transform_tag_name
+            unique: true
+            columns:
+              - column:
+                  name: name

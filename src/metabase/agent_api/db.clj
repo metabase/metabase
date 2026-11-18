@@ -77,7 +77,7 @@
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived :archived_directly])]
+   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived])]
   (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn active-user-by-email

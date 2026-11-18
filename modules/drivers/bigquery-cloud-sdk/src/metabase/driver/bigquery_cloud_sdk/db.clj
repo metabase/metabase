@@ -20,6 +20,8 @@
   stale schema they already have, returning the number updated."
   [database-id :- ::lib.schema.id/database
    schema      :- :string]
+  ;; The change log leaves out this one-time conversion of connections that still have a `dataset-id`.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (t2/query-one {:update (t2/table-name :model/Table)
                  :set    {:schema schema}
                  :where  [:and

@@ -8,7 +8,6 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -273,9 +272,6 @@ saved later when it is ready."
          (do
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
-
-         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata))
-         (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
 
          ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
          (or (and (not-empty changes) (contains? changes :result_metadata))

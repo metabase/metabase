@@ -1,7 +1,6 @@
 (ns metabase.revisions.impl.segment
   (:require
    [medley.core :as m]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.revisions.models.revision :as revision]))
 
 (def ^:private excluded-columns-for-segment-revision
@@ -15,7 +14,7 @@
   [segment]
   (-> segment
       (select-keys [:name :description :definition])
-      (update :definition lib.schema.util/remove-lib-uuids)))
+      (update :definition revision/comparable-definition)))
 
 (defmethod revision/diff-map :model/Segment
   [model segment1 segment2]

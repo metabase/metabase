@@ -315,11 +315,17 @@
   A failed call also reports its error's class and code from `tools.runtime/invoke`.
   The codes are namespaced keywords, so moving or renaming one changes the reported value.
   They describe the whole call, not the failed items inside a batched call.
-  The message and the recovery text never leave the instance."
+  The message and the recovery text never leave the instance.
+
+  A call that ran the query repair reports `repairs`, the names of the repair passes that changed its query
+  (`metabase.agent-lib.representations.repair/repairs`): `[]` when none did. The key is absent for a tool that
+  runs no repair and for a failed call. The names are code constants, so a rename of a pass changes the
+  reported value."
   [{:keys [iteration] :as tracking-opts} tools]
   (map (fn [part]
          (when (= (:type part) :tool-output)
-           (let [{:keys [class code] :as error} (get-in part [:result :error])]
+           (let [{:keys [class code] :as error} (get-in part [:result :error])
+                 repairs                        (get-in part [:result :structured-output :repairs])]
              (track-ai-service-event! tracking-opts "agent_used_tool"
                                       {:duration-ms   (some-> (:duration-ms part) long)
                                        ;; A failed call carries `:error` on its result — success
@@ -329,6 +335,7 @@
                                                                              (:function part)
                                                                              "unknown")}
                                                         (some? iteration) (assoc "step" iteration)
+                                                        (some? repairs)   (assoc "repairs" repairs)
                                                         error             (assoc "error_class" (name class)
                                                                                  "error_code"  (u/qualified-name code)))})))
          part)))

@@ -463,8 +463,7 @@
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
           (mt/with-current-user (mt/user->id :crowberto)
-            (collection/archive-or-unarchive-collection!
-             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+            (t2/update! :model/Collection :id coll-a {:archived true}))
           (testing "Table X (in the archived collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"

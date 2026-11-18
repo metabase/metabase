@@ -31,4 +31,10 @@ export interface SdkAuthState {
   user?: User;
   siteSettings?: EnterpriseSettings;
   error?: Error;
+  /** `performance.now()` when the bootstrap started auth. */
+  startedAtMs?: number;
+  /** `performance.now()` when the bootstrap had the user and settings. */
+  completedAtMs?: number;
+  /** The bootstrap skipped the SSO discovery request because `jwtProviderUri` was passed. */
+  isJwtProviderUriPassed?: boolean;
 }

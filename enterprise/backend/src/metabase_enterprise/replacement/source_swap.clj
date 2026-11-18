@@ -15,7 +15,6 @@
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
-   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as queries.query]
@@ -33,9 +32,7 @@
                       (assoc :source (assoc (:source transform) :query query')))]
         (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
         (when (seq changes)
-          (replacement.db/update-transform! (:id transform) changes)
-          (events/publish-event! :event/transform-update
-                                 {:object (merge transform changes) :user-id api/*current-user-id*}))))))
+          (replacement.db/update-transform! (:id transform) changes))))))
 
 (defn- swap-parameter-source-card-id
   "For a parameters collection, replace `values_source_config.card_id` references to `old-source-id` with
@@ -77,11 +74,7 @@
                              :verified-result-metadata? true))]
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
-        (replacement.db/update-card! (:id card) changes)
-        (events/publish-event! :event/card-update
-                               {:object (merge card changes)
-                                :user-id api/*current-user-id*
-                                :previous-object card})))))
+        (replacement.db/update-card! (:id card) changes)))))
 
 (defn- segment-swap-source!
   [segment old-source new-source]
@@ -97,9 +90,7 @@
                       (assoc :table_id table-id'))]
       (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
-        (replacement.db/update-segment! (:id segment) changes)
-        (events/publish-event! :event/segment-update
-                               {:object (merge segment changes) :user-id api/*current-user-id*})))))
+        (replacement.db/update-segment! (:id segment) changes)))))
 
 (defn- measure-swap-source!
   [measure old-source new-source]
@@ -115,9 +106,7 @@
                       (assoc :table_id table-id'))]
       (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
       (when (seq changes)
-        (replacement.db/update-measure! (:id measure) changes)
-        (events/publish-event! :event/measure-update
-                               {:object (merge measure changes) :user-id api/*current-user-id*})))))
+        (replacement.db/update-measure! (:id measure) changes)))))
 
 (defn- swap-parameter-target
   "Swap field refs in a parameter target to reference the new source."
@@ -159,21 +148,13 @@
         card-id->card (if (seq all-card-ids)
                         (replacement.db/cards-by-id all-card-ids)
                         {})
-        any-dashcard-changed? (reduce (fn [changed? dashcard]
-                                        (or
-                                         (dashcard-swap-source! dashcard card-id->card old-source new-source)
-                                         changed?))
-                                      false
-                                      dashcards)
+        _             (run! #(dashcard-swap-source! % card-id->card old-source new-source) dashcards)
         parameters    (or (:parameters dashboard) [])
         parameters'   (swap-parameter-source-card-id parameters old-source new-source)
         params-changed? (not= parameters parameters')]
     (when params-changed?
       (replacement.db/update-dashboard! (:id dashboard) {:parameters parameters'}))
-    (when (or any-dashcard-changed? params-changed?)
-      (events/publish-event!
-       :event/dashboard-update {:object  (replacement.db/dashboard (:id dashboard))
-                                :user-id api/*current-user-id*}))))
+    nil))
 
 (defn swap-source!
   "Swap old-source to new-source in an entity.
@@ -191,10 +172,11 @@
                    nil)
                  old-source new-source))
   ([[entity-type _entity-id] entity old-source new-source]
-   (case entity-type
-     :card      (card-swap-source!      entity old-source new-source)
-     :transform (transform-swap-source! entity old-source new-source)
-     :segment   (segment-swap-source!   entity old-source new-source)
-     :measure   (measure-swap-source!   entity old-source new-source)
-     :dashboard (dashboard-swap-source! entity old-source new-source)
-     nil)))
+   (events/with-batched-events
+     (case entity-type
+       :card      (card-swap-source!      entity old-source new-source)
+       :transform (transform-swap-source! entity old-source new-source)
+       :segment   (segment-swap-source!   entity old-source new-source)
+       :measure   (measure-swap-source!   entity old-source new-source)
+       :dashboard (dashboard-swap-source! entity old-source new-source)
+       nil))))

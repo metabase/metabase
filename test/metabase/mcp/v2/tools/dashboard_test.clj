@@ -88,6 +88,16 @@
     (is (re-find #"\"name\" is required"
                  (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" (wire {:method "create"})))))))
 
+(deftest dashboard-columns-follow-dashboard-schema-test
+  (testing "names and widths outside the Dashboard schema entries are refused by the argument schema"
+    (are [args field]
+         (let [error (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                             (wire (merge {:method "create"} args))))]
+           (and (str/starts-with? error "Invalid arguments: ")
+                (str/includes? error field)))
+      {:name "   "}                 "name"
+      {:name "Sales" :width "wide"} "width")))
+
 (deftest update-requires-id-test
   (testing "GHY-4147: update without an id is a teaching error"
     (is (re-find #"\"id\" is required"

@@ -323,6 +323,9 @@
     (sequential? expr)
     (into (empty expr) (map #(replace-qualification % from to) expr))
 
+    (map? expr)
+    (update-vals expr #(replace-qualification % from to))
+
     :else
     expr))
 
@@ -435,7 +438,8 @@
                      (update :visibility #(or % :all))
                      (update :attrs #(merge ~default-attrs %)))]
        (validate-spec! spec#)
-       (derive (:model spec#) :hook/search-index)
+       (derive (:model spec#) :hook/events)
+       (derive (:model spec#) :search/indexed)
        (defmethod spec* ~search-model [~'_] spec#))))
 
 (def ^:private model-hooks*
@@ -457,26 +461,10 @@
   []
   (model-hooks* (methods spec*)))
 
-(defn- collect-updated-columns
-  "The `:updated`-qualified columns `expr` references, without their table qualifier."
-  [expr]
-  (into #{}
-        (comp (filter #(and (keyword? %) (has-table? :updated %)))
-              (map #(remove-table :updated %)))
-        (tree-seq coll? seq expr)))
-
-(defn hook-where-fields
-  "The columns of `model` whose row values parameterize the where-clauses of the search hooks it feeds.
-  A capture layer must snapshot (at least) these for [[search-models-to-update]] to work on a row that no
-  longer exists, e.g. the pre-image of a deleted row."
-  [model]
-  (not-empty
-   (into #{}
-         (mapcat (comp collect-updated-columns :where))
-         (get (model-hooks) model))))
-
 (defn- instance->db-values
-  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query, leaving as it is
+  a value that its write transform refuses, such as the `:unknown` an unrecognized stored value reads as, since only the
+  columns the hooks read are looked up in the result."
   [instance]
   (let [xforms (try
                  (let [model (t2/model instance)]
@@ -487,7 +475,12 @@
                    nil))]
     (reduce-kv
      (fn [m k v]
-       (assoc m k (if-let [f (get xforms k)] (f v) v)))
+       (assoc m k (if-let [f (get xforms k)]
+                    (try
+                      (f v)
+                      (catch Exception _
+                        v))
+                    v)))
      {}
      instance)))
 
@@ -503,11 +496,6 @@
           (get (model-hooks) (t2/model instance)))))
 
 (comment
-  (doseq [d (descendants :hook/search-index)]
-    (underive d :hook/search-index))
-  (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index))
-
   (methods spec)
   (model-hooks)
 

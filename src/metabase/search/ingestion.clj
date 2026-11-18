@@ -137,7 +137,7 @@
                                              :curated curated)))))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
-  ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
+  ;; Joins in the spec (e.g. card → moderation_review on most_recent = true) can produce duplicate rows when the
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (search.db/spec-index-reducible-rows search-model where-clause)
