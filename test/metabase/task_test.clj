@@ -493,6 +493,50 @@
           (when standby?
             (qs/standby (task/scheduler))))))))
 
+(defn- blocking-job-of-its-own ^JobDetail [job-name]
+  (jobs/build
+   (jobs/of-type BlockingJob)
+   (jobs/with-identity (jobs/key job-name))))
+
+(defn- trigger-of-job [^JobDetail job trigger-name]
+  (triggers/build
+   (triggers/with-identity (triggers/key trigger-name))
+   (triggers/for-job (.getKey job))
+   (triggers/start-now)))
+
+(deftest schedule-once-with-job-per-trigger-test
+  (with-jdbc-scheduler!
+    (let [standby? (.isInStandbyMode (task/scheduler))
+          job-a    (blocking-job-of-its-own "metabase.task-test.blocking-job.a")
+          job-b    (blocking-job-of-its-own "metabase.task-test.blocking-job.b")]
+      (try
+        (task/add-job! (blocking-job))
+        (qs/start (task/scheduler))
+        (.clear blocking-job-started)
+        (.clear blocking-job-release)
+        (task/schedule-once! job-a (trigger-of-job job-a "a"))
+        (is (= "a" (next-blocking-job-start)))
+        (testing "other job runs during run"
+          (task/schedule-once! job-b (trigger-of-job job-b "b"))
+          (is (= "b" (next-blocking-job-start))))
+        (testing "same job scheduled during its run waits for it and runs once"
+          (dotimes [_ 3]
+            (task/schedule-once! job-a (trigger-of-job job-a "a")))
+          (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS)))
+          (dotimes [_ 2]
+            (.put blocking-job-release :go))
+          (is (= "a" (next-blocking-job-start)))
+          (.put blocking-job-release :go)
+          (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS))))
+        (testing "job is deleted after its last run"
+          (is (nil? (qs/get-job (task/scheduler) (.getKey job-a)))))
+        (finally
+          (dotimes [_ 3]
+            (.put blocking-job-release :go))
+          (qs/delete-jobs (task/scheduler) [blocking-job-key (.getKey job-a) (.getKey job-b)])
+          (when standby?
+            (qs/standby (task/scheduler))))))))
+
 (deftest schedule-once-without-running-scheduler-test
   (tu/do-with-unstarted-temp-scheduler!
    (fn []

@@ -1,5 +1,5 @@
 (ns metabase.sync.task.sync-table
-  "Task that syncs one Table on request; as a Quartz job it has one run at a time across the cluster, whatever the Table."
+  "Task that syncs one Table on request; as a Quartz job it has one run at a time for each Table across the cluster."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
@@ -22,11 +22,13 @@
   [job-context]
   (sync.task.util/run-for-target! sync-table! job-context))
 
-(def ^:private job
-  (sync.task.util/job SyncTable "metabase.task.sync-table.job" "Sync Table"))
+(defn- job
+  "The job that syncs the Table with `table-id`."
+  [table-id]
+  (sync.task.util/job SyncTable "metabase.task.sync-table" "Sync Table" table-id))
 
 (mu/defn schedule-table-sync!
   "Request a sync, analysis and FieldValues scan of the Table with `table-id`, which replaces a waiting request for that
   Table when this node has a running scheduler and is queued on the quick-task executor of this node otherwise."
   [table-id :- ::lib.schema.id/table]
-  (sync.task.util/schedule! job table-id sync-table!))
+  (sync.task.util/schedule! (job table-id) table-id sync-table!))

@@ -26,7 +26,7 @@
       (mt/with-dynamic-fn-redefs [quick-task/submit-task!                  (fn [task] (task))
                                   sync-metadata/sync-db-metadata-explicit! #(swap! calls conj [:sync %])
                                   analyze/analyze-db-explicit!             #(swap! calls conj [:analyze %])]
-        (.execute ^Job (SyncDatabase.) (sync.task.util-test/job-context "sync-database" database-id))
+        (.execute ^Job (SyncDatabase.) (sync.task.util-test/job-context database-id))
         (task.sync-database/schedule-database-sync! database-id)
         (is (= [[:sync database-id] [:analyze database-id] [:sync database-id] [:analyze database-id]]
                @calls))

@@ -24,7 +24,7 @@
     (mt/with-temp [:model/Table {table-id :id} {}]
       (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
                                   sync/sync-table!        #(swap! synced conj (:id %))]
-        (.execute ^Job (SyncTable.) (sync.task.util-test/job-context "sync-table" table-id))
+        (.execute ^Job (SyncTable.) (sync.task.util-test/job-context table-id))
         (task.sync-table/schedule-table-sync! table-id)
         (is (= [table-id table-id] @synced))
         (testing "Table that does not exist is skipped"
