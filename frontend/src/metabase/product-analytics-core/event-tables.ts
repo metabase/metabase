@@ -61,15 +61,16 @@ export function getColumnRoleValue(
 
 /**
  * Whether product analysis can use the table: it's an event table, and a
- * column plays every required role. Needs the table's fields.
+ * column is set for every required role. When the table has its fields, each
+ * column must also still be in the table and fit its role. Without them, as in
+ * `GET /api/table`, only the column names in its settings are checked.
  */
 export function isEventTableSetUp(
   table: Pick<Table, "entity_type" | "fields" | "event_settings">,
 ): boolean {
-  return (
-    isEventTable(table) &&
-    REQUIRED_COLUMN_ROLES.every(
-      (role) => getColumnRoleValue(table, role) != null,
-    )
-  );
+  const hasColumn = (role: EventTableColumnRole) =>
+    table.fields === undefined
+      ? table.event_settings?.[getColumnRoleKey(role)] != null
+      : getColumnRoleValue(table, role) != null;
+  return isEventTable(table) && REQUIRED_COLUMN_ROLES.every(hasColumn);
 }

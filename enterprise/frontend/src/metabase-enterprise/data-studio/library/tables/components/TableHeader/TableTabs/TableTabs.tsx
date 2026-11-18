@@ -4,8 +4,8 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { isEventTable } from "metabase/data-studio/data-model/pages/DataModel/TableSection/EventSettings";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { isEventTable } from "metabase/product-analytics-core";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";

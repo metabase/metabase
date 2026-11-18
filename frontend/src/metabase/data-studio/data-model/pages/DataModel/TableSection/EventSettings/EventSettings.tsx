@@ -2,8 +2,20 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { Button, Group, Stack, Text } from "metabase/ui";
+import {
+  EVENT_TABLE_ENTITY_TYPE,
+  type EditableColumnRole,
+  OPTIONAL_COLUMN_ROLES,
+  REQUIRED_COLUMN_ROLES,
+  getAnalysisKinds,
+  getColumnRoleKey,
+  isEventTable,
+  isEventTableSetUp,
+} from "metabase/product-analytics-core";
+import { Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   EventTableColumnRole,
   EventTableSettings,
@@ -14,15 +26,6 @@ import { TableSectionGroup } from "../TableSectionGroup";
 
 import { ColumnRoleInput } from "./ColumnRoleInput";
 import S from "./EventSettings.module.css";
-import {
-  EVENT_TABLE_ENTITY_TYPE,
-  type EditableColumnRole,
-  OPTIONAL_COLUMN_ROLES,
-  REQUIRED_COLUMN_ROLES,
-  getColumnRoleKey,
-  isEventTable,
-  isEventTableSetUp,
-} from "./utils";
 
 type EventSettingsProps = {
   table: Table;
@@ -101,11 +104,7 @@ export function EventSettings({ table }: EventSettingsProps) {
             : t`Pick the required columns to make this table available in product analysis.`}
         </Text>
       )}
-      {isEvent && isSetUp && (
-        <Text c="text-secondary">
-          {t`This table is ready for product analysis.`}
-        </Text>
-      )}
+      {isEvent && isSetUp && <ReadyNotice table={table} />}
       <ColumnRoleSection
         title={t`Required`}
         table={table}
@@ -169,6 +168,43 @@ function getColumnRoleLabel(role: EditableColumnRole): string {
     .with("event_name", () => t`Event name`)
     .with("session", () => t`Session`)
     .exhaustive();
+}
+
+type ReadyNoticeProps = {
+  table: Table;
+};
+
+function ReadyNotice({ table }: ReadyNoticeProps) {
+  return (
+    <Group justify="space-between" wrap="nowrap" gap="md">
+      <Text c="text-secondary">
+        {t`This table is ready for product analysis.`}
+      </Text>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <Button
+            variant="filled"
+            flex="0 0 auto"
+            leftSection={<Icon name="add" />}
+          >
+            {t`New analysis`}
+          </Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {getAnalysisKinds().map(({ kind, name, icon }) => (
+            <Menu.Item
+              key={kind}
+              component={ForwardRefLink}
+              to={Urls.newProductAnalysis(kind, table.id)}
+              leftSection={<Icon name={icon} />}
+            >
+              {name}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    </Group>
+  );
 }
 
 type NotEventTableNoticeProps = {

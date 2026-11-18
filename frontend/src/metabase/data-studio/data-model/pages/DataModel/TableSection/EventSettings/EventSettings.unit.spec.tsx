@@ -238,6 +238,27 @@ describe("EventSettings", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("starts a new analysis of each kind on a set up table", async () => {
+    setup({ eventSettings: SET_UP_SETTINGS });
+
+    await userEvent.click(screen.getByRole("button", { name: /New analysis/ }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Habit/ }),
+    ).toHaveAttribute(
+      "href",
+      `/product-analysis/new?kind=habit&table=${TABLE.id}`,
+    );
+  });
+
+  it("doesn't offer a new analysis until the table is set up", () => {
+    setup({ eventSettings: { "columns.timestamp": "created_at" } });
+
+    expect(
+      screen.queryByRole("button", { name: /New analysis/ }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("without metadata permission", () => {
     it("is read-only", () => {
       setup({ canWrite: false });
