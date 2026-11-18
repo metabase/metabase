@@ -2613,3 +2613,9 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+(deftest sync-schema-request-runs-for-database-test
+  (let [database-ids (atom [])]
+    (mt/with-dynamic-fn-redefs [sync/schedule-database-sync! #(swap! database-ids conj %)]
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)))
+      (is (= [(mt/id)] @database-ids)))))
