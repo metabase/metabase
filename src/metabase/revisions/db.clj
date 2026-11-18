@@ -63,6 +63,11 @@
                     :parameterized_object_type parameterized-object-type
                     :parameterized_object_id   parameterized-object-id))
 
+(mu/defn dashboard-id-of-dashcard
+  "The id of the Dashboard that the DashboardCard with `dashcard-id` belongs to, or nil when it is gone."
+  [dashcard-id :- [:maybe ms/PositiveInt]]
+  (t2/select-one-fn :dashboard_id :model/DashboardCard :id [:auto/param dashcard-id]))
+
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]

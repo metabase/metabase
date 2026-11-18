@@ -31,9 +31,12 @@
                (u.events/user-edit? event))
       [model (:id object)])
 
-    (#{:model/DashboardCard :model/DashboardTab} model)
-    (when-not (:reverting? context)
-      [:model/Dashboard (:dashboard_id (or object previous-object))])))
+    (#{:model/DashboardCard :model/DashboardTab :model/DashboardCardSeries} model)
+    (when (and (not (:reverting? context)) (u.events/user-edit? event))
+      (when-let [dashboard-id (if (= :model/DashboardCardSeries model)
+                                (revisions.db/dashboard-id-of-dashcard (:dashboardcard_id (or object previous-object)))
+                                (:dashboard_id (or object previous-object)))]
+        [:model/Dashboard dashboard-id]))))
 
 (defn- changes-entity?
   "Whether `event`, one of the writes of the entity `[model id]`, changes what its Revision records: a write of one of
