@@ -130,6 +130,11 @@
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Document :id :collection_id :exploration_id] :id [:in document-ids]))
 
+(mu/defn explorations
+  "The Explorations with `exploration-ids`."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Exploration :id [:in exploration-ids]))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]

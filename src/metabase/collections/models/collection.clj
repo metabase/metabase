@@ -1617,7 +1617,7 @@
                           collections.db/items-archived-with-collections
                           collections.db/items-restored-with-collections)]
         (or (and (not archive?) (not (:archived_directly collection)))
-            (every? #(mi/can-update-each? % (rows-of % ids) changes) archivable-item-models)))))
+            (every? #(mi/can-update-followers? % (rows-of % ids) changes) archivable-item-models)))))
 
 (defn- archive-subtree-writable?
   "Whether the current user may write every Collection that archiving `collection` takes along, which `changes` need

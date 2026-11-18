@@ -191,24 +191,55 @@
   [_model {collection-id :collection_id}]
   (collection-writable? collection-id))
 
+(defn- following-cards
+  "The Cards of the Document with `document-id` that archiving it, when `archive?`, or restoring it takes along."
+  [document-id archive?]
+  (if archive?
+    (documents.db/cards-archived-with-document document-id)
+    (documents.db/cards-restored-with-document document-id)))
+
 (defn- archive-followers-updatable?
   "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
   [document changes]
-  (or (not (mi/changes-archived? document changes))
-      (mi/can-update-each? :model/Card
-                           (if (:archived changes)
-                             (documents.db/cards-archived-with-document (:id document))
-                             (documents.db/cards-restored-with-document (:id document)))
-                           changes)))
+  (mi/archive-followers-updatable? document changes :model/Card (partial following-cards (:id document))))
 
-(defmethod mi/can-update? :model/Document
-  [document changes]
+(defn- summary-owner-writable
+  "A function from one of `documents` to whether the current user writes the Exploration whose Summary it is, or nil
+  for a Document of no Exploration, with the Explorations loaded once, and only when `changes` archive or restore one
+  of `documents` alone."
+  [documents changes]
+  (let [exploration-ids (when (some #(mi/changes-only-archived? % changes) documents)
+                          (not-empty (into [] (comp (keep :exploration_id) (distinct)) documents)))
+        writable        (when exploration-ids
+                          (into #{} (comp (filter mi/can-write?) (map :id))
+                                (t2/hydrate (documents.db/explorations exploration-ids) :can_write)))]
+    (fn [document]
+      (when-let [exploration-id (:exploration_id document)]
+        (contains? writable exploration-id)))))
+
+(defn- can-update-with?
+  "Whether the current user may apply `changes` to `document`, where `summary-owner-writable` answers an archive or
+  restore of a Summary, whose content its Exploration's data decides, at its Exploration."
+  [document changes summary-owner-writable]
   (boolean
-   (and (mi/can-write? document)
+   (and (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
+          (if (some? owner-writable)
+            owner-writable
+            (mi/can-write? document)))
         (archive-followers-updatable? document changes)
         (collection/can-move? document changes)
         (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
             (mi/superuser?)))))
+
+(defmethod mi/can-update? :model/Document
+  [document changes]
+  (can-update-with? document changes (summary-owner-writable [document] changes)))
+
+(defmethod mi/can-update-all? :model/Document
+  [_model documents changes]
+  (let [owner-writable (summary-owner-writable documents changes)]
+    (every? #(can-update-with? % changes owner-writable) documents)))
+
 ;;; ---------- Hydration -----------------------------------------------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]

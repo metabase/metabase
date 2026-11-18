@@ -101,3 +101,64 @@
         (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top)) {:archived true})
         (mt/user-http-request :rasta :put 404 (str "collection/" (:id top))
                               {:archived false :parent_id Integer/MAX_VALUE})))))
+
+(defn- archived-flags
+  "The `archived` flag of each of `rows` of `model`, by id."
+  [model rows]
+  (t2/select-fn->fn :id :archived model :id [:in (map :id rows)]))
+
+(deftest archive-and-restore-collection-holding-exploration-test
+  (doseq [user [:crowberto :rasta]]
+    (testing (str user " archives and restores a Collection holding an Exploration with a Summary card")
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection  coll {}
+                       :model/Exploration expl {:name "E" :creator_id (mt/user->id :crowberto) :collection_id (:id coll)}
+                       :model/Document    doc  {:name           "Summary"
+                                                :collection_id  (:id coll)
+                                                :creator_id     (mt/user->id :crowberto)
+                                                :exploration_id (:id expl)
+                                                :document       {:type "doc" :content []}}
+                       :model/Card        card {:collection_id (:id coll) :document_id (:id doc)}]
+          (grant! :write coll)
+          (mt/user-http-request user :put 200 (str "collection/" (:id coll)) {:archived true})
+          (is (= {(:id card) true} (archived-flags :model/Card [card])))
+          (is (= {(:id expl) true} (archived-flags :model/Exploration [expl])))
+          (mt/user-http-request user :put 200 (str "collection/" (:id coll)) {:archived false})
+          (is (= {(:id card) false} (archived-flags :model/Card [card])))
+          (is (= {(:id doc) false} (archived-flags :model/Document [doc])))))))
+  (testing "a user who reads but cannot write the Collection is refused, and nothing is archived"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration expl {:name "E" :creator_id (mt/user->id :crowberto) :collection_id (:id coll)}
+                     :model/Document    doc  {:name           "Summary"
+                                              :collection_id  (:id coll)
+                                              :creator_id     (mt/user->id :crowberto)
+                                              :exploration_id (:id expl)
+                                              :document       {:type "doc" :content []}}
+                     :model/Card        card {:collection_id (:id coll) :document_id (:id doc)}]
+        (grant! :read coll)
+        (mt/user-http-request :rasta :put 403 (str "collection/" (:id coll)) {:archived true})
+        (is (= {(:id card) false} (archived-flags :model/Card [card])))))))
+
+(deftest archive-and-restore-exploration-with-summary-card-test
+  (testing "an Exploration with a Summary card is archived and restored by a user who writes its Collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration expl {:name "E" :creator_id (mt/user->id :crowberto) :collection_id (:id coll)}
+                     :model/Document    doc  {:name           "Summary"
+                                              :collection_id  (:id coll)
+                                              :creator_id     (mt/user->id :crowberto)
+                                              :exploration_id (:id expl)
+                                              :document       {:type "doc" :content []}}
+                     :model/Card        card {:collection_id (:id coll) :document_id (:id doc)}]
+        (testing "a user who only reads the Collection is refused"
+          (grant! :read coll)
+          (mt/user-http-request :rasta :put 403 (str "exploration/" (:id expl)) {:archived true})
+          (is (= {(:id card) false} (archived-flags :model/Card [card]))))
+        (grant! :write coll)
+        (mt/user-http-request :rasta :put 200 (str "exploration/" (:id expl)) {:archived true})
+        (is (= {(:id doc) true} (archived-flags :model/Document [doc])))
+        (is (= {(:id card) true} (archived-flags :model/Card [card])))
+        (mt/user-http-request :rasta :put 200 (str "exploration/" (:id expl)) {:archived false})
+        (is (= {(:id doc) false} (archived-flags :model/Document [doc])))
+        (is (= {(:id card) false} (archived-flags :model/Card [card])))))))

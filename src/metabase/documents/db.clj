@@ -37,6 +37,11 @@
   [exploration-id :- ms/PositiveInt]
   (t2/exists? :model/Exploration :id exploration-id :archived true))
 
+(mu/defn explorations
+  "The Explorations with `exploration-ids`."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Exploration :id [:in exploration-ids]))
+
 (mu/defn unarchived-document
   "The Document with `id` if it is not archived, or nil."
   [id :- ms/PositiveInt]
