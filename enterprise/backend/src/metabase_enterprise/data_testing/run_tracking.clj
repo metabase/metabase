@@ -113,8 +113,8 @@
 
 (defn- reap-and-publish!
   "Time out the started runs of the run model `model` whose last heartbeat is older than `stale-minutes`, and return
-  them. For each run, publish an event to the topic that `(topic-of run)` returns, or log the run when `topic-of` returns nil. A
-  failed publish does not stop the others."
+  them. For each run, publish an event to the topic that `(topic-of run)` returns, or log the run when `topic-of`
+  returns nil. A failed publish does not stop the others."
   [model stale-minutes topic-of]
   (let [reaped (rt/reap-orphaned! {:model    model
                                    :active   [:status "started"]

@@ -61,8 +61,8 @@
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- may-change-suites?
-  "Whether the current user may create, change, or delete test suites: they may enter Data Studio, and remote sync, which
-  syncs every suite, does not keep synced content read-only."
+  "Whether the current user may create, change, or delete test suites: they may enter Data Studio, and remote sync,
+  which syncs every suite, does not keep synced content read-only."
   []
   (and (api/entitled-data-analyst?)
        (not (remote-sync/read-only?))))

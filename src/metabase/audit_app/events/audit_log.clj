@@ -528,7 +528,8 @@
   {:event/transform-update :event/update-transform})
 
 (def ^:private creator-recorded-topics
-  "The creation topics of the saved tests and test suites, recorded as their creator when a user writes them."
+  "The creation topics of the saved tests and test suites. An event on one of them that has a user is recorded under
+  the created object's creator."
   #{:event/transform-test-create :event/card-test-create :event/segment-test-create :event/test-suite-create})
 
 (defn- record-saved-test-lifecycle!
@@ -581,9 +582,16 @@
 (events/derive! :event/test-suite-run-timeout ::test-suite-event)
 
 (methodical/defmethod events/publish-event! ::test-suite-event
-  [topic event]
-  (if (events/isa? topic ::lifecycle-event)
+  [topic {:keys [context object user-id] :as event}]
+  (cond
+    ;; A change of members alone updates only the suite's `updated_at`, which `user-edit?` ignores.
+    (and (= :event/test-suite-update topic) user-id (:members-changed? (:details context)))
+    (record! topic {:object object :user-id user-id})
+
+    (events/isa? topic ::lifecycle-event)
     (record-saved-test-lifecycle! topic event)
+
+    :else
     (record! topic event)))
 
 (events/derive! ::glossary-event ::event)

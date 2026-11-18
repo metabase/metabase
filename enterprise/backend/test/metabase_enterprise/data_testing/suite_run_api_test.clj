@@ -129,6 +129,36 @@
             (mt/user-http-request :crowberto :post 404 (run-path no-suite))
             (mt/user-http-request :crowberto :get 404 (runs-path no-suite))))))))
 
+(deftest run-suite-of-segment-tests-test
+  (mt/with-premium-features #{:transforms-testing}
+    (let [inputs       [{:table   {:schema "PUBLIC" :name "PEOPLE"}
+                         :format  "rows"
+                         :columns [{:name "ID" :cast_type "INTEGER"} {:name "SOURCE" :cast_type "VARCHAR"}]
+                         :rows    [{"ID" 1 "SOURCE" "Google"} {"ID" 2 "SOURCE" "Twitter"}]}]
+          expectations [{:type "empty" :name "only people from Google"
+                         :sql  "SELECT * FROM {{output}} WHERE SOURCE <> 'Google'"}]]
+      (mt/with-temp [:model/Segment     {segment-id :id}  (data-testing.test-util/from-google-segment)
+                     :model/SegmentTest {pass-id :id
+                                         pass-eid :entity_id} {:segment_id segment-id :name "Pass"
+                                                               :inputs inputs :expectations expectations}
+                     :model/SegmentTest {refused-id :id
+                                         refused-eid :entity_id} {:segment_id segment-id :name "Refused"
+                                                                  :inputs [] :expectations expectations}
+                     :model/TestSuite   {suite-id :id}    {}]
+        (data-testing.test-util/add-members! suite-id [[:segment pass-eid] [:segment refused-eid]])
+        (try
+          (testing "each segment member reports the outcome of its own run endpoint"
+            (is (= "passed" (:status (mt/user-http-request :crowberto :post 200 (str "ee/segment-test/" pass-id "/run")))))
+            (is (= "segment-test.missing-inputs"
+                   (:error-code (mt/user-http-request :crowberto :post 400 (str "ee/segment-test/" refused-id "/run")))))
+            (is (=? {:status  "failed"
+                     :members [{:status "passed" :test_type "segment" :test_id pass-id :name "Pass"}
+                               {:status "refused" :test_type "segment" :test_id refused-id
+                                :error  {:error_code "segment-test.missing-inputs"}}]}
+                    (mt/user-http-request :crowberto :post 200 (run-path suite-id)))))
+          (finally
+            (t2/delete! :model/DataTestRun :test_type "segment" :test_id [:in [pass-id refused-id]])))))))
+
 (deftest run-suite-permissions-test
   (mt/with-premium-features data-testing.test-util/data-analyst-features
     (mt/with-non-admin-groups-no-root-collection-perms

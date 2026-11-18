@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [metabase-enterprise.data-testing.models]
    [metabase-enterprise.data-testing.models.card-test]
+   [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.test.fixtures :as fixtures]

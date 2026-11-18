@@ -1,7 +1,8 @@
 (ns metabase-enterprise.data-testing.suite
   "Test suites as the current user sees them: [[member-ref]] is the `[test-type entity-id]` a member names;
   [[saved-tests-by]] finds the saved tests that members name; [[with-members]] resolves each member to the saved test
-  it names; [[member-rows]] turns the members a client sends into the rows a suite stores; and [[runs-for-reader]] hides from the run history what the reader may not see."
+  it names; [[member-rows]] turns the members a client sends into the rows a suite stores; and [[runs-for-reader]]
+  hides from the run history what the reader may not see."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-testing.db :as data-testing.db]

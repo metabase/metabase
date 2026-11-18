@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -101,7 +102,8 @@
     (let [updates (cond-> updates
                     (some? members) (assoc :updated_at :%now))]
       (when (seq updates)
-        (t2/update! :model/TestSuite :id id updates)))
+        (events/with-event-context (when (some? members) {:details {:members-changed? true}})
+          (t2/update! :model/TestSuite :id id updates))))
     (when (some? members)
       (replace-suite-members! id members))))
 

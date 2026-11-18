@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.models.test-suite-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.test :as mt]
@@ -30,20 +31,32 @@
                  :model/Transform     {transform-id :id}   {}
                  :model/TransformTest {transform-test-id :id
                                        transform-eid :entity_id} {:transform_id transform-id}
+                 :model/Segment       {segment-id :id}     (data-testing.test-util/from-google-segment)
+                 :model/SegmentTest   {segment-test-id :id
+                                       segment-eid :entity_id} {:segment_id segment-id}
+                 :model/SegmentTest   {cascaded-eid :entity_id} {:segment_id segment-id}
                  :model/TestSuite     {suite-1 :id}        {}
                  :model/TestSuite     {suite-2 :id}        {}]
     (t2/insert! :model/TestSuiteMember
                 [{:suite_id suite-1 :test_type :card :test_entity_id card-eid :position 0}
                  {:suite_id suite-1 :test_type :card :test_entity_id kept-eid :position 1}
                  {:suite_id suite-1 :test_type :transform :test_entity_id transform-eid :position 2}
-                 {:suite_id suite-2 :test_type :card :test_entity_id card-eid :position 0}])
+                 {:suite_id suite-2 :test_type :card :test_entity_id card-eid :position 0}
+                 {:suite_id suite-2 :test_type :segment :test_entity_id segment-eid :position 1}
+                 {:suite_id suite-2 :test_type :segment :test_entity_id cascaded-eid :position 2}])
     (testing "deleting a card test removes it from both suites, and nothing else"
       (t2/delete! :model/CardTest :id card-test-id)
       (is (= #{[:card kept-eid] [:transform transform-eid]} (members suite-1)))
-      (is (= #{} (members suite-2))))
+      (is (= #{[:segment segment-eid] [:segment cascaded-eid]} (members suite-2))))
     (testing "deleting a transform test removes it"
       (t2/delete! :model/TransformTest :id transform-test-id)
-      (is (= #{[:card kept-eid]} (members suite-1))))))
+      (is (= #{[:card kept-eid]} (members suite-1))))
+    (testing "deleting a segment test removes it"
+      (t2/delete! :model/SegmentTest :id segment-test-id)
+      (is (= #{[:segment cascaded-eid]} (members suite-2))))
+    (testing "deleting a segment removes the members of its tests"
+      (t2/delete! :model/Segment :id segment-id)
+      (is (= #{} (members suite-2))))))
 
 (deftest test-suite-audit-events-test
   (mt/with-premium-features #{:audit-app}
@@ -66,6 +79,17 @@
                   :topic    :test-suite-update
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-update suite-id))))
+        (testing "an update of the members alone is audited as an update"
+          (let [updates #(mt/all-entries-for :test-suite-update :model/TestSuite suite-id)
+                before  (count (updates))]
+            (data-testing.db/update-test-suite! suite-id {} [])
+            (is (= (inc before) (count (updates))))
+            (is (= {:model_id suite-id
+                    :user_id  (mt/user->id :rasta)
+                    :details  {:name "Renamed" :description "abc"}
+                    :topic    :test-suite-update
+                    :model    "TestSuite"}
+                   (first (updates))))))
         (testing "delete names the acting user"
           (t2/delete! :model/TestSuite :id suite-id)
           (is (= {:model_id suite-id
@@ -142,8 +166,8 @@
     (let [{run-id :id}      (data-testing.run-tracking/start-suite-run! suite-id nil)
           {test-run-id :id} (data-testing.run-tracking/start-run! :transform test-id)]
       (try
-        (doseq [[thrown-name throwable] [["an exception" (ex-info "boom" {})]
-                                         ["an error" (AssertionError. "boom")]]]
+        (doseq [[thrown-name throwable] [["an Exception" (ex-info "boom" {})]
+                                         ["an Error (AssertionError)" (AssertionError. "boom")]]]
           (testing (str thrown-name " in the test-run heartbeat still lets the suite runs heartbeat")
             (t2/update! :model/TestSuiteRun :id run-id {:last_heartbeat (minutes-ago 10)})
             (mt/with-dynamic-fn-redefs [data-testing.run-tracking/heartbeat-runs! (fn [_] (throw throwable))]
@@ -157,8 +181,8 @@
           (data-testing.run-tracking/finish-run! test-run-id :error))))))
 
 (deftest a-throw-reaping-test-runs-does-not-stop-reaping-suite-runs-test
-  (doseq [[thrown-name throwable] [["an exception" (ex-info "boom" {})]
-                                   ["an error" (AssertionError. "boom")]]]
+  (doseq [[thrown-name throwable] [["an Exception" (ex-info "boom" {})]
+                                   ["an Error (AssertionError)" (AssertionError. "boom")]]]
     (testing (str thrown-name " while reaping test runs still lets the stale suite runs be timed out")
       (mt/with-temp [:model/TestSuite    {suite-id :id} {}
                      :model/TestSuiteRun {run-id :id}   {:suite_id suite-id :last_heartbeat (minutes-ago 10)}]

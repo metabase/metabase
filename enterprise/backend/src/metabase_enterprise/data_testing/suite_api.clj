@@ -18,7 +18,8 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- suite-response :- ::data-testing.schema/test-suite.response
-  "The TestSuite with `id` as the current user sees it: a 404 when it does not exist, a 403 when they may not read it."
+  "The TestSuite with `id` as the current user sees it. Throws a 404 when it does not exist, and a 403 when the user may
+  not read it."
   [id :- ms/PositiveInt]
   (first (data-testing.suite/with-members [(api/read-check (data-testing.db/test-suite id))])))
 
@@ -83,7 +84,7 @@
   `passed` or `failed` with its `result`; `refused` with the `error` its run endpoint would have returned; `error`
   when loading the test's subject or checking the caller's permission threw, or the run threw an exception that is not
   a refusal; `forbidden` when the caller may not run it (with no name when the caller cannot read it); `missing` when
-  this instance has no such test, or the test's card or transform is gone.
+  this instance has no such test, or the thing the test tests is gone.
 
   The suite's `status` is `timeout` when the server timed the run out while it ran, because its heartbeat stopped;
   otherwise `passed` when every member passed, and `failed` when not."

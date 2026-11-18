@@ -513,14 +513,17 @@
    [:serdes/meta    {:optional true} ::models.schema/external-meta]])
 
 (defn repeated-tests
-  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". A member is a map with a
-  `:test_type`, a keyword or a string, and a `:test_entity_id`; either may be missing, which other checks refuse."
+  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". Each of `members` is a
+  map with a `:test_type`, a keyword or a string, and a `:test_entity_id`; a member that lacks either is not counted."
   [members]
   (into []
         (keep (fn [[[test-type eid] n]]
                 (when (> n 1)
                   (str test-type " test " eid))))
-        (frequencies (map (juxt #(some-> % :test_type name) :test_entity_id) members))))
+        (frequencies (keep (fn [{:keys [test_type test_entity_id]}]
+                             (when (and test_type test_entity_id)
+                               [(name test_type) test_entity_id]))
+                           members))))
 
 (mr/def ::external-test-suite
   "A TestSuite as serialization writes it, with its members nested in order. A test can be a member at most once."
