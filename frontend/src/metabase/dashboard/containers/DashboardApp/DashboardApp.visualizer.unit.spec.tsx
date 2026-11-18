@@ -1273,6 +1273,10 @@ function getPathsWithFill(container: HTMLElement, color: string) {
   return container.querySelectorAll(`path[fill='${color}']`);
 }
 
+function getPathsWithStroke(container: HTMLElement, color: string) {
+  return container.querySelectorAll(`path[stroke='${color}']`);
+}
+
 function getPieSlices(container: HTMLElement) {
   return container.querySelectorAll("path[stroke-linejoin='bevel']");
 }
@@ -3236,8 +3240,8 @@ describe("DashboardApp > visualizer", () => {
       const getChart = () => within(modal).getByTestId("chart-container");
       await waitFor(() =>
         expect(
-          getChart().querySelector(`path[stroke='${ADDED_SERIES_COLOR}']`),
-        ).toBeInTheDocument(),
+          getPathsWithStroke(getChart(), ADDED_SERIES_COLOR),
+        ).not.toHaveLength(0),
       );
       await waitFor(() => expect(getYAxisLabels(getChart())).toContain("6%"));
       // a single percent axis: no axis with the unformatted ratios of the added series
