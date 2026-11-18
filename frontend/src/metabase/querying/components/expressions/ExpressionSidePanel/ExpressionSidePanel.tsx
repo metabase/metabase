@@ -138,6 +138,7 @@ export function ExpressionSidePanel({
           placeholder={t`Search`}
           leftSection={<Icon name="search" size={12} />}
           aria-label={t`Search expressions`}
+          autoFocus
           onChange={(event: ChangeEvent<HTMLInputElement>) =>
             setSearch(event.target.value)
           }
