@@ -212,7 +212,8 @@
   (t2/delete! model pk [:in [:auto/param ids]]))
 
 (defn do-in-transaction
-  "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open."
+  "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open, in a batch of events that
+  delivers them before the outermost one commits."
   [thunk]
   (t2/with-transaction [_]
     (events/with-batched-events

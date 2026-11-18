@@ -3,7 +3,6 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
-   [metabase.events.core :as events]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.protocol :as protocol]
@@ -291,7 +290,7 @@
   "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
   marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
   [thunk]
-  (protocol/transact protocol.app-db/store {:retries 3} #(events/with-batched-events (thunk))))
+  (protocol/transact protocol.app-db/store {:retries 3} thunk))
 
 (defmacro with-import-transaction
   "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
@@ -313,18 +312,17 @@
      store
      {:retries 3}
      (fn []
-       (events/with-batched-events
-         (into []
-               (mapcat (fn [{:keys [model keys strip]}]
-                         (eduction (comp (partition-all serialization.util/batch-size)
-                                         (mapcat (fn [batch]
-                                                   (load-batch! model
-                                                                store
-                                                                (mapv #(cond-> %
-                                                                         strip (-> (as-> e (apply dissoc e strip))
-                                                                                   (assoc :serdes/stripped strip)))
-                                                                      (read-batch (vec batch)))
-                                                                opts
-                                                                continue-on-error))))
-                                   keys)))
-               order))))))
+       (into []
+             (mapcat (fn [{:keys [model keys strip]}]
+                       (eduction (comp (partition-all serialization.util/batch-size)
+                                       (mapcat (fn [batch]
+                                                 (load-batch! model
+                                                              store
+                                                              (mapv #(cond-> %
+                                                                       strip (-> (as-> e (apply dissoc e strip))
+                                                                                 (assoc :serdes/stripped strip)))
+                                                                    (read-batch (vec batch)))
+                                                              opts
+                                                              continue-on-error))))
+                                 keys)))
+             order)))))

@@ -89,7 +89,7 @@
               good       (assoc exported :entity_id (eid \v) :name "serdes good" :dashcards [])
               broken     (-> exported
                              (assoc :entity_id (eid \w) :name "serdes broken")
-                             (update :dashcards (partial mapv #(assoc % :entity_id (eid \u) :size_x "wide"))))
+                             (update :dashcards (partial mapv #(assoc % :entity_id (eid \u) :card_id (eid \m)))))
               top-log    (max-id :change_log)
               top-rev    (max-id :revision)]
           (try
