@@ -147,8 +147,7 @@
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn steps->parts
-  "The AISDK parts of agent `steps`, in order. [[build-message-history]] puts them last, after the input messages and
-  the dialect preload."
+  "The AISDK parts of agent `steps`, in order."
   [steps]
   (into [] (mapcat step->parts) steps))
 
