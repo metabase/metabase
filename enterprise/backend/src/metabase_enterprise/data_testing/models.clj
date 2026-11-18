@@ -223,7 +223,8 @@
 
 (defmethod revision/revert-to-revision! :model/TransformTest
   [_model id _user-id serialized-instance]
-  (update-transform-test! id (select-keys serialized-instance revision-columns)))
+  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
+  (update-transform-test! id (merge {:now nil} (select-keys serialized-instance revision-columns))))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
