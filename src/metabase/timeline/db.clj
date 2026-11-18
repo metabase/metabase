@@ -73,6 +73,11 @@
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
   (t2/update! :model/Timeline :id id changes))
 
+(mu/defn directly-archived-timeline-ids
+  "The ids among `ids` of the Timelines archived on their own rather than along with their Collection."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-set :model/Timeline :id [:in ids] :archived true :archived_directly true))
+
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
   [timeline-id :- ms/PositiveInt

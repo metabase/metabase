@@ -107,6 +107,70 @@
   [model rows]
   (t2/select-fn->fn :id :archived model :id [:in (map :id rows)]))
 
+(deftest restore-collection-archived-with-parent-into-new-parent-test
+  (testing "moving a Collection archived with its parent out of the Trash restores what was archived with it"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection parent  {}
+                     :model/Collection child   {:location (format "/%d/" (:id parent))}
+                     :model/Collection grand   {:location (format "/%d/%d/" (:id parent) (:id child))}
+                     :model/Collection earlier {:location (format "/%d/%d/" (:id parent) (:id child))}
+                     :model/Collection target  {}
+                     :model/Card       card    {:collection_id (:id child)}
+                     :model/Card       nested  {:collection_id (:id grand)}
+                     :model/Card       trashed {:collection_id (:id child)}
+                     :model/Dashboard  dash    {:collection_id (:id child)}]
+        (doseq [c [parent child grand earlier target]]
+          (grant! :write c))
+        (mt/user-http-request :rasta :put 200 (str "card/" (:id trashed)) {:archived true})
+        (mt/user-http-request :rasta :put 200 (str "collection/" (:id earlier)) {:archived true})
+        (mt/user-http-request :rasta :put 200 (str "collection/" (:id parent)) {:archived true})
+        (mt/user-http-request :rasta :put 200 (str "collection/" (:id child)) {:archived false :parent_id (:id target)})
+        (is (=? {:archived false :location (format "/%d/" (:id target))}
+                (t2/select-one :model/Collection :id (:id child))))
+        (testing "its items and sub-collections come back with it"
+          (is (= {(:id card) false, (:id nested) false} (archived-flags :model/Card [card nested])))
+          (is (= {(:id dash) false} (archived-flags :model/Dashboard [dash])))
+          (is (= {(:id grand) false} (archived-flags :model/Collection [grand]))))
+        (testing "what was archived on its own before stays archived, and so does the parent"
+          (is (= {(:id trashed) true} (archived-flags :model/Card [trashed])))
+          (is (= {(:id earlier) true, (:id parent) true} (archived-flags :model/Collection [earlier parent])))))))
+  (testing "the move is refused, and nothing is restored, for a user who cannot write a sub-collection it restores"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection parent {}
+                     :model/Collection child  {:location (format "/%d/" (:id parent))}
+                     :model/Collection grand  {:location (format "/%d/%d/" (:id parent) (:id child))}
+                     :model/Collection target {}
+                     :model/Card       card   {:collection_id (:id child)}]
+        (doseq [c [parent child target]]
+          (grant! :write c))
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent)) {:archived true})
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "collection/" (:id child)) {:archived false :parent_id (:id target)})))
+        (is (= {(:id child) true, (:id grand) true} (archived-flags :model/Collection [child grand])))
+        (is (= {(:id card) true} (archived-flags :model/Card [card]))))))
+  (testing "a Collection archived on its own is restored with its items in place and into a new parent"
+    (doseq [request [{:archived false} {:archived false :parent_id ::target}]]
+      (mt/with-temp [:model/Collection top    {}
+                     :model/Collection sub    {:location (format "/%d/" (:id top))}
+                     :model/Collection target {}
+                     :model/Card       card   {:collection_id (:id sub)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top))
+                              (cond-> request (:parent_id request) (assoc :parent_id (:id target))))
+        (is (= {(:id top) false, (:id sub) false} (archived-flags :model/Collection [top sub])))
+        (is (= {(:id card) false} (archived-flags :model/Card [card]))))))
+  (testing "a Collection archived without an archive operation is restored with its items in place and into a new parent"
+    (doseq [request [{:archived false} {:archived false :parent_id ::target}]]
+      (mt/with-temp [:model/Collection top    {}
+                     :model/Collection target {}
+                     :model/Card       card   {:collection_id (:id top)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top)) {:archived true})
+        (t2/query-one {:update :collection :set {:archive_operation_id nil} :where [:= :id (:id top)]})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top))
+                              (cond-> request (:parent_id request) (assoc :parent_id (:id target))))
+        (is (= {(:id top) false} (archived-flags :model/Collection [top])))
+        (is (= {(:id card) false} (archived-flags :model/Card [card])))))))
+
 (deftest archive-and-restore-collection-holding-exploration-test
   (doseq [user [:crowberto :rasta]]
     (testing (str user " archives and restores a Collection holding an Exploration with a Summary card")
@@ -162,3 +226,24 @@
         (mt/user-http-request :rasta :put 200 (str "exploration/" (:id expl)) {:archived false})
         (is (= {(:id doc) false} (archived-flags :model/Document [doc])))
         (is (= {(:id card) false} (archived-flags :model/Card [card])))))))
+
+(deftest collection-archive-leaves-timeline-events-test
+  (testing "a Collection's archive and restore leave the events of its Timelines as they were"
+    (mt/with-temp [:model/Collection    coll    {}
+                   :model/Timeline      tl      {:collection_id (:id coll)}
+                   :model/TimelineEvent live    {:timeline_id (:id tl)}
+                   :model/TimelineEvent trashed {:timeline_id (:id tl)}]
+      (mt/user-http-request :crowberto :put 200 (str "timeline-event/" (:id trashed)) {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" (:id coll)) {:archived true})
+      (is (= {(:id tl) true} (archived-flags :model/Timeline [tl])))
+      (is (= {(:id live) false, (:id trashed) true} (archived-flags :model/TimelineEvent [live trashed])))
+      (mt/user-http-request :crowberto :put 200 (str "collection/" (:id coll)) {:archived false})
+      (is (= {(:id tl) false} (archived-flags :model/Timeline [tl])))
+      (is (= {(:id live) false, (:id trashed) true} (archived-flags :model/TimelineEvent [live trashed])))))
+  (testing "a Timeline's own archive and restore take all its events along"
+    (mt/with-temp [:model/Timeline      tl    {}
+                   :model/TimelineEvent event {:timeline_id (:id tl)}]
+      (mt/user-http-request :crowberto :put 200 (str "timeline/" (:id tl)) {:archived true})
+      (is (= {(:id event) true} (archived-flags :model/TimelineEvent [event])))
+      (mt/user-http-request :crowberto :put 200 (str "timeline/" (:id tl)) {:archived false})
+      (is (= {(:id event) false} (archived-flags :model/TimelineEvent [event]))))))
