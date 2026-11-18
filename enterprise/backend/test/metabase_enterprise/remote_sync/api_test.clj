@@ -128,8 +128,7 @@
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
                      :model/FieldUserSettings fs      {:field_id (:id field) :description "Synced"}
-                     :model/Segment           segment {:table_id   (:id table)
-                                                       :name       "Synced segment"
+                     :model/Segment           segment {:name       "Synced segment"
                                                        :definition (let [mp (mt/metadata-provider)]
                                                                      (-> (lib/query mp (lib.metadata/table mp (:id table)))
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]

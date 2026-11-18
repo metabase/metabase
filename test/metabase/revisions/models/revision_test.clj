@@ -6,6 +6,7 @@
    [metabase.queries.core :as queries]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.models.revision.diff :as revision.diff]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -52,7 +53,7 @@
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:entity   ::FakedCard
     :id       card-id
     :user-id  (mt/user->id :rasta)
@@ -132,7 +133,7 @@
                                 config/ee-available? (assoc :model/TransformTest "Transform test"
                                                             :model/CardTest      "Card test"
                                                             :model/SegmentTest   "Segment test"))]
-      ;; `push-revision!` calls `serialize-instance`, which has no default: a model with revisions has a method.
+      ;; recording a revision calls `serialize-instance`, which has no default: a model with revisions has a method.
       (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
              (set (keys model->display-name))))
       (doseq [[model display-name] model->display-name]
@@ -179,6 +180,7 @@
       (mt/with-temp [:model/Card {card-id :id}]
         (doseq [i (range 3)]
           (push-fake-revision! card-id :name (format "%d Tips Created by Day" i) :message "yay!"))
+        (revision/settle-revisions! [["FakedCard" card-id]])
         (is (=? [{:model       "FakedCard"
                   :model_id    card-id
                   :most_recent true}
@@ -199,9 +201,23 @@
                                                                            :model_id    card-id
                                                                            :object      {}
                                                                            :most_recent false}))]
-      (t2/update! (t2/table-name :model/Revision) :id (:id revision) {:most_recent true})
+      (t2/update! :model/Revision :id (:id revision) {:most_recent true})
       (is (= (:timestamp revision)
              (t2/select-one-fn :timestamp :model/Revision :id (:id revision)))))))
+
+(deftest revision-columns-other-than-most-recent-are-frozen-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (let [revision (first (t2/insert-returning-instances! :model/Revision {:model    "FakedCard"
+                                                                           :user_id  (mt/user->id :crowberto)
+                                                                           :model_id card-id
+                                                                           :object   {:name "Original"}}))]
+      (testing "changing object is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update a Revision"
+                              (t2/update! :model/Revision :id (:id revision) {:object {:name "Changed"}})))
+        (is (= {:name "Original"} (t2/select-one-fn :object :model/Revision :id (:id revision)))))
+      (testing "changing most_recent is accepted"
+        (t2/update! :model/Revision :id (:id revision) {:most_recent false})
+        (is (false? (t2/select-one-fn :most_recent :model/Revision :id (:id revision))))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"
@@ -236,88 +252,37 @@
         ;; e.g. if max-revisions is 15 then insert 16 revisions
         (dorun (doseq [i (range (inc revision/max-revisions))]
                  (push-fake-revision! card-id, :name (format "Tips Created by Day %d" i))))
+        (revision/settle-revisions! [["FakedCard" card-id]])
         (is (= revision/max-revisions
                (count (revision/revisions ::FakedCard card-id))))))))
 
-(deftest do-not-record-if-object-is-not-changed-test
-  (mt/with-model-cleanup [:model/Revision]
-    (testing "Check that we don't record a revision if the object hasn't changed"
+(deftest settle-revisions-in-one-flush-test
+  (testing "the writes of one row settled together leave one flagged Revision, the newest, and at most max-revisions"
+    (mt/test-helpers-set-global-values!
       (mt/with-model-cleanup [:model/Revision]
         (mt/with-temp [:model/Card {card-id :id}]
-          (let [new-revision (fn [x]
-                               (push-fake-revision! card-id, :name (format "Tips Created by Day %s" x)))]
-            (testing "first revision should be recorded"
-              (new-revision 1)
-              (is (= 1 (count (revision/revisions ::FakedCard card-id)))))
-            (testing "repeatedly push reivisions with the same object shouldn't create new revision"
-              (dorun (repeatedly 5 #(new-revision 1)))
-              (is (= 1 (count (revision/revisions ::FakedCard card-id)))))
-            (testing "push a revision with different object should create new revision"
-              (new-revision 2)
-              (is (= 2 (count (revision/revisions ::FakedCard card-id)))))))))
-    (testing "Check that we don't record revision on dashboard if it has a filter"
-      (mt/with-temp
-        [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category Name"
-                                                           :slug "category_name"
-                                                           :id   "_CATEGORY_NAME_"
-                                                           :type "category"}]}
-         :model/Card          {card-id :id} {}
-         :model/DashboardCard {}            {:dashboard_id       dash-id
-                                             :card_id            card-id
-                                             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                                   :card_id      card-id
-                                                                   :target       [:dimension (mt/$ids $categories.name)]}]}]
-        (let [push-revision (fn [] (revision/push-revision!
-                                    {:entity :model/Dashboard
-                                     :id     dash-id
-                                     :user-id (mt/user->id :rasta)
-                                     :object (t2/select-one :model/Dashboard :id dash-id)}))]
-          (testing "first revision should be recorded"
-            (push-revision)
-            (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
-          (testing "push again without changes shouldn't record new revision"
-            (push-revision)
-            (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
-          (testing "now do some updates and new revision should be reocrded"
-            (t2/update! :model/Dashboard :id dash-id {:name "New name"})
-            (push-revision)
-            (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
+          (doseq [i (range (+ 5 revision/max-revisions))]
+            (push-fake-revision! card-id :name (format "Settled %d" i)))
+          (revisions.tu/flush-settling!)
+          (let [revisions (t2/select [:model/Revision :id :most_recent] :model "FakedCard" :model_id card-id)]
+            (is (= revision/max-revisions (count revisions)))
+            (is (= [(apply max (map :id revisions))]
+                   (keep #(when (:most_recent %) (:id %)) revisions)))))))))
 
-(deftest do-not-record-card-revision-if-object-is-not-changed-test
-  (testing "Check that we don't record a revision for a real :model/Card that hasn't changed"
-    ;; The sibling test above exercises ::FakedCard, which has no `:card_schema`, so it never covered the
-    ;; Card-specific branch in `push-revision!`. `serialize-instance :model/Card` keeps `:card_schema`, so
-    ;; stripping it from only the previous revision made every Card compare as changed and recorded a
-    ;; revision on every push — filling a metric's history with "created a revision with no change." and
-    ;; evicting real edits once `max-revisions` was reached.
-    (mt/with-model-cleanup [:model/Revision]
-      (mt/with-temp [:model/Card {card-id :id} {:name "Tips Created by Day"}]
-        (let [push-revision (fn [] (revision/push-revision!
-                                    {:entity  :model/Card
-                                     :id      card-id
-                                     :user-id (mt/user->id :rasta)
-                                     :object  (t2/select-one :model/Card :id card-id)}))]
-          (testing "first revision should be recorded"
-            (push-revision)
-            (is (= 1 (count (revision/revisions :model/Card card-id)))))
-          (testing "pushing the same object again shouldn't record a new revision"
-            (dorun (repeatedly 3 push-revision))
-            (is (= 1 (count (revision/revisions :model/Card card-id)))))
-          (testing "a real change should record a new revision"
-            (t2/update! :model/Card :id card-id {:name "Spots Created by Day"})
-            (push-revision)
-            (is (= 2 (count (revision/revisions :model/Card card-id)))))
-          (testing "`:card_schema` is still stored in the snapshot, because revert reads it back"
-            ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
-            ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
-            ;; silently downgrade the card on every revert.
-            (let [card (t2/select-one :model/Card :id card-id)]
-              (is (= (:card_schema card)
-                     (:card_schema (revision/serialize-instance :model/Card card-id card))))
-              (is (> (:card_schema card) queries/starting-card-schema-version)
-                  "sanity check: the card is past the legacy schema version, so a downgrade would be visible"))))))))
-
-;;; # REVISIONS+DETAILS
+(deftest row-changed-ignores-what-revision-does-not-hold-test
+  (testing "the update of a real :model/Card that changes nothing a revision holds is no change"
+    (mt/with-temp [:model/Card {card-id :id :as card} {:name "Tips Created by Day"}]
+      (testing "an identical card"
+        (is (false? (revision/row-changed? :model/Card card-id card card))))
+      (testing "a change of the name"
+        (is (true? (revision/row-changed? :model/Card card-id card (assoc card :name "Spots Created by Day")))))
+      (testing "`:card_schema` is stored in the snapshot, because revert reads it back"
+        ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
+        ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
+        ;; silently downgrade the card on every revert.
+        (let [card (t2/select-one :model/Card :id card-id)]
+          (is (= (:card_schema card)
+                 (:card_schema (revision/serialize-instance :model/Card card-id card)))))))))
 
 (deftest add-revision-details-test
   (mt/with-model-cleanup [:model/Revision]
@@ -411,15 +376,17 @@
         ;; then both threads commit their transactions.
         (let [p1 (promise)
               p2 (promise)]
-          (future (t2/with-transaction [_conn]
-                    (push-fake-revision! card-id :name "Name1")
-                    (deref p1 100 ::timeout)
-                    (deliver p2 ::done)))
-          (t2/with-transaction [_conn]
-            (push-fake-revision! card-id :name "Name2")
-            (deliver p1 ::done))
+          (let [other (future (t2/with-transaction [_conn]
+                                (push-fake-revision! card-id :name "Name1")
+                                (deref p1 100 ::timeout)
+                                (deliver p2 ::done)))]
+            (t2/with-transaction [_conn]
+              (push-fake-revision! card-id :name "Name2")
+              (deliver p1 ::done))
+            (deref other 1000 ::timeout))
           ;; sanity check: nothing timed out, both transactions finished
           (is (= ::done (deref p1 100 ::timeout) (deref p2 100 ::timeout)))
+          (revisions.tu/flush-settling!)
           ;; we only have one `most_recent: true`
           (is (= 1 (t2/count :model/Revision
                              :model_id card-id :model "FakedCard"
@@ -444,8 +411,8 @@
   (mt/with-model-cleanup [:model/Revision]
     (testing "Check default impl of revert-to-revision! just does mapply upd"
       (mt/with-temp [:model/Card {card-id :id} {:name "Spots Created By Day"}]
-        (revision/push-revision! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"}})
-        (revision/push-revision! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"}})
+        (revisions.tu/push-revision! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"}})
+        (revisions.tu/push-revision! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"}})
         (is (= "Spots Created By Day"
                (:name (t2/select-one :model/Card :id card-id))))
         (let [[_ {old-revision-id :id}] (revision/revisions :model/Card card-id)]
@@ -560,10 +527,10 @@
     (mt/with-test-user :crowberto
       (let [move!      (fn [collection-id]
                          (t2/update! :model/Card :id card-id {:collection_id collection-id})
-                         (revision/push-revision! {:entity  :model/Card
-                                                   :id      card-id
-                                                   :user-id (mt/user->id :crowberto)
-                                                   :object  (t2/select-one :model/Card :id card-id)}))
+                         (revisions.tu/push-revision! {:entity  :model/Card
+                                                       :id      card-id
+                                                       :user-id (mt/user->id :crowberto)
+                                                       :object  (t2/select-one :model/Card :id card-id)}))
             details    #(revision/revisions+details :model/Card card-id)
             call-count (fn [thunk]
                          (t2/with-call-count [call-count]

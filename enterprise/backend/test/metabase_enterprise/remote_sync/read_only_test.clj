@@ -100,7 +100,8 @@
                                                      :location         (str "/" (:id synced) "/")
                                                      :is_remote_synced true
                                                      :archived         true}
-                 :model/Card               card     {:name "Card in archived child" :collection_id (:id archived)}
+                 :model/Card               card     {:name "Card in archived child" :collection_id (:id archived)
+                                                     :archived true :archived_directly false}
                  :model/NativeQuerySnippet snippet  {:name "Archived snippet" :content "1" :archived true}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "on read-only instance, archived content that unarchiving would sync can't be written"
@@ -108,12 +109,12 @@
           (is (false? (mi/can-write? (t2/hydrate archived :can_write))))
           (is (false? (mi/can-write? (t2/hydrate card :can_write))))
           (is (false? (mi/can-write? (t2/hydrate snippet :can_write))))
-          (is (false? (mi/can-update? snippet {:archived false})))))
+          (is (false? (mi/can-update? (t2/hydrate snippet :can_write) {:archived false})))))
       (testing "on read-write instance, it can"
         (remote-sync.tu/with-remote-sync [url :read-write]
           (is (true? (mi/can-write? (t2/hydrate archived :can_write))))
           (is (true? (mi/can-write? (t2/hydrate card :can_write))))
-          (is (true? (mi/can-update? snippet {:archived false}))))))))
+          (is (true? (mi/can-update? (t2/hydrate snippet :can_write) {:archived false}))))))))
 
 (deftest table-write-check-loads-publication-columns-test
   (mt/with-temp [:model/Collection synced    {:name "Synced" :is_remote_synced true :location "/"}

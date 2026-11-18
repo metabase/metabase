@@ -211,6 +211,8 @@
   (testing "should remove field in joins"
     (let [preprocessed (-> (lib/query @deleted-columns-metadata-provider (join-query))
                            qp.preprocess/preprocess
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
                            lib/->legacy-MBQL)]
       (testing ":query => :joins => first => :source-query => :fields"
         (is (=? [[:field "ID" {:base-type :type/BigInteger}]

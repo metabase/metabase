@@ -257,7 +257,7 @@
   [archived? results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
-                       (->> (filterv mi/can-read? (t2/hydrate (metabot.db/documents-in-archived-state document-ids archived?) :can_read))
+                       (->> (mi/readable (metabot.db/documents-in-archived-state document-ids archived?))
                             (#(t2/hydrate % :can_write))
                             (u/index-by :id)))]
     (if (seq document-ids)
@@ -485,8 +485,7 @@
   [ids]
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
-    (for [t (filter mi/can-read?
-                    (t2/hydrate (metabot.db/table-summaries ids) :can_read))]
+    (for [t (mi/readable (metabot.db/table-summaries ids))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -503,7 +502,7 @@
   (let [ids       (distinct (map :id refs))
         ;; only surface cards the current user can read (collection perms) — see table-refs->results
         id->card  (when (seq ids)
-                    (u/index-by :id (filterv mi/can-read? (t2/hydrate (metabot.db/card-search-rows ids) :can_read))))
+                    (u/index-by :id (mi/readable (metabot.db/card-search-rows ids))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (u/index-by :id (metabot.db/collection-summaries coll-ids)))
@@ -534,7 +533,7 @@
     (let [by-type (group-by :type refs)
           fetch   (fn [db-fn ids]
                     (when-let [ids (not-empty (distinct ids))]
-                      (filterv mi/can-read? (t2/hydrate (db-fn ids) :can_read))))
+                      (mi/readable (db-fn ids))))
           rows    (concat (map #(assoc % :type "measure") (fetch metabot.db/measures (map :id (get by-type "measure"))))
                           (map #(assoc % :type "segment") (fetch metabot.db/segments (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))

@@ -1,113 +1,144 @@
 (ns metabase.revisions.events
+  "Handlers of the lifecycle events that record a Revision of what a user changes: the events of the writes of one
+  batch are grouped by the entity they belong to, and the Revision of each entity is written once, from the entity as
+  it then is, so one operation on a Dashboard and its dashcards and tabs is one Revision. Nothing is recorded without
+  a user."
   (:require
-   [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]
+   [metabase.util.events :as u.events]
+   [metabase.util.log :as log]))
 
-(events/derive! ::event :metabase/event)
+(set! *warn-on-reflection* true)
 
-(defn- push-revision!
-  [model
-   {:keys [user-id] object :object :as event}
-   {:keys [is-creation?]
-    :or   {is-creation? false}
-    :as   _options}]
-  (when event
-    (try
-      (when-not (t2/instance-of? model object)
-        (throw (ex-info "object must be a model instance" {:object object :model model})))
-      (let [user-id (or user-id api/*current-user-id*)]
-        (revision/push-revision! {:entity       model
-                                  :id           (:id object)
-                                  :object       object
-                                  :user-id      user-id
-                                  :is-creation? is-creation?
-                                  :message      (:revision-message event)}))
-      (catch Throwable e
-        (log/warnf "Failed to process revision event for model %s: %s" model (ex-message e))))))
+(def ^:private revisioned-models
+  "The models whose rows have Revisions."
+  #{:model/Card :model/CardTest :model/Dashboard :model/Document :model/Exploration :model/Measure
+    :model/Segment :model/SegmentTest :model/Transform :model/TransformTest})
 
-(events/derive! ::card-event ::event)
-(events/derive! :event/card-create ::card-event)
-(events/derive! :event/card-update ::card-event)
+(def ^:private creator-recorded
+  "The models whose saved tests record their creator as the author of the creation Revision when a user writes it, and
+  whose reversion writes a Revision of its own update."
+  revision/models-recording-own-revert)
 
-(methodical/defmethod events/publish-event! ::card-event
-  [topic event]
-  (push-revision! :model/Card event {:is-creation? (= topic :event/card-create)}))
+(def ^:private ignored-columns
+  "For each model, the columns whose change alone is not content to snapshot, `:default` being the counters and
+  timestamps that every model has."
+  {:default         #{:updated_at :view_count :last_used_at :last_viewed_at :cache_invalidated_at :collection_position
+                      :entity_id}
+   :model/Dashboard #{:position}
+   :model/Measure   #{:dimensions :dimension_mappings}
+   :model/Transform #{:last_checkpoint_value :target_table_id :table_dependencies}})
 
-(events/derive! ::dashboard-event ::event)
-(events/derive! :event/dashboard-create ::dashboard-event)
-(events/derive! :event/dashboard-update ::dashboard-event)
+(defn- ignored-column?
+  [model column]
+  (or (contains? (ignored-columns :default) column)
+      (contains? (get ignored-columns model) column)))
 
-(methodical/defmethod events/publish-event! ::dashboard-event
-  [topic event]
-  (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
+(defn- model-overrides
+  "The overrides that a user can set in the columns of `metadata` that `other` has too, by column name."
+  [metadata other]
+  (let [names (into #{} (map :name) other)
+        keys* (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false))]
+    (into {}
+          (comp (filter (comp names :name))
+                (map (juxt :name #(select-keys % keys*))))
+          metadata)))
 
-(events/derive! ::transform-event ::event)
-(events/derive! :event/transform-create ::transform-event)
-(events/derive! :event/transform-update ::transform-event)
+(defn- edited-column?
+  "Whether the change of `column` in the update `event` of a row of `model` is content to snapshot: the result metadata
+  of a model is by what a user sets in it, and of any other card never, for the product recomputes it."
+  [model column {:keys [object previous-object]}]
+  (if (and (= :model/Card model) (= :result_metadata column))
+    (let [previous (:result_metadata previous-object)
+          current  (:result_metadata object)]
+      (boolean (and (= :model (keyword (:type object)))
+                    (seq previous)
+                    (not= (model-overrides previous current) (model-overrides current previous)))))
+    true))
 
-(methodical/defmethod events/publish-event! ::transform-event
-  [topic event]
-  (push-revision! :model/Transform event {:is-creation? (= topic :event/transform-create)}))
+(defn- user-edit?
+  "Whether the lifecycle `event` is a write that a Revision should say a user made: not one that the archive or restore
+  of another entity carried to its row, nor an update that changes nothing but ignored columns."
+  [{:keys [context object previous-object] :as event}]
+  (and (nil? (:archived-with context))
+       (or (not (and object previous-object))
+           (let [model (u.events/model-of event)]
+             (boolean (some #(and (not (ignored-column? model %)) (edited-column? model % event))
+                            (u.events/changed-keys event)))))))
 
-(events/derive! ::transform-test-event ::event)
-(events/derive! :event/transform-test-create ::transform-test-event)
-(events/derive! :event/transform-test-update ::transform-test-event)
+(defn- entity
+  "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none, `dashboard-of`
+  being a function of a DashboardCard id giving the id of its Dashboard."
+  [dashboard-of {:keys [model operation object previous-object context] :as event}]
+  (cond
+    (and (contains? revisioned-models model) (#{:create :update} operation))
+    (when (and (or (not (:reverting? context)) (creator-recorded model))
+               (user-edit? event))
+      [model (:id object)])
 
-(methodical/defmethod events/publish-event! ::transform-test-event
-  [topic event]
-  (push-revision! :model/TransformTest event {:is-creation? (= topic :event/transform-test-create)}))
+    (#{:model/DashboardCard :model/DashboardTab :model/DashboardCardSeries} model)
+    (when (and (not (:reverting? context)) (user-edit? event))
+      (when-let [dashboard-id (if (= :model/DashboardCardSeries model)
+                                (dashboard-of (:dashboardcard_id (or object previous-object)))
+                                (:dashboard_id (or object previous-object)))]
+        [:model/Dashboard dashboard-id]))))
 
-(events/derive! ::card-test-event ::event)
-(events/derive! :event/card-test-create ::card-test-event)
-(events/derive! :event/card-test-update ::card-test-event)
+(defn- changes-entity?
+  "Whether `event`, one of the writes of the entity `[model id]`, changes what its Revision records: a write of one of
+  its parts, its creation, or an update of its row that its serialization sees."
+  [[model id] {:keys [operation object previous-object] :as event}]
+  (or (not= model (:model event))
+      (not= :update operation)
+      (revision/row-changed? model id previous-object object)))
 
-(methodical/defmethod events/publish-event! ::card-test-event
-  [topic event]
-  (push-revision! :model/CardTest event {:is-creation? (= topic :event/card-test-create)}))
+(defn- revision-row
+  "The Revision row of the entity `[model id]` as it is now, for the `events` of its writes, or nil when they do not
+  change it or no user made them."
+  [[model id :as entity] events]
+  (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
+        user-id    (some :user-id events)
+        creator-id (when (and user-id own (creator-recorded model)) (:creator_id (:object own)))]
+    (when-let [user-id (or creator-id user-id)]
+      (try
+        (when (some #(changes-entity? entity %) events)
+          (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
+                                        (revisions.db/entity model id))
+                                    (cond-> (and own (= :model/Dashboard model) (every? #(= model (:model %)) events))
+                                      (assoc :dashcards [] :tabs [])))]
+            (revision/revision-row {:entity       model
+                                    :id           id
+                                    :object       object
+                                    :user-id      user-id
+                                    :is-creation? (boolean own)
+                                    :message      (some #(get-in % [:context :revision-message]) events)})))
+        (catch Throwable e
+          (log/warnf "Failed to record a revision of %s %s: %s" model id (ex-message e)))))))
 
-(events/derive! ::segment-test-event ::event)
-(events/derive! :event/segment-test-create ::segment-test-event)
-(events/derive! :event/segment-test-update ::segment-test-event)
+(defn- owner
+  "The one owner of the events of a batch that call for a Revision, nil for the others, without reading the app DB."
+  [event]
+  (when (entity identity event)
+    ::revisions))
 
-(methodical/defmethod events/publish-event! ::segment-test-event
-  [topic event]
-  (push-revision! :model/SegmentTest event {:is-creation? (= topic :event/segment-test-create)}))
+(defn- push!
+  "Write, in one statement, the Revision of each entity that `events` change, as it is now."
+  [_owner events _all-events]
+  (when (some :user-id events)
+    (let [dashboards (revisions.db/dashboard-ids-of-dashcards
+                      (into #{} (keep #(when (= :model/DashboardCardSeries (:model %))
+                                         (:dashboardcard_id (or (:object %) (:previous-object %)))))
+                            events))
+          entity-of  #(entity dashboards %)
+          by-entity  (group-by entity-of events)
+          rows       (into [] (keep #(revision-row % (get by-entity %))) (distinct (map entity-of events)))]
+      (when (seq rows)
+        (try
+          (revisions.db/insert-revisions! rows)
+          (catch Throwable e
+            (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))))))))
 
-(events/derive! ::segment-event ::event)
-(events/derive! :event/segment-create ::segment-event)
-(events/derive! :event/segment-update ::segment-event)
-(events/derive! :event/segment-delete ::segment-event)
-
-(methodical/defmethod events/publish-event! ::segment-event
-  [topic event]
-  (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))
-
-(events/derive! ::measure-event ::event)
-(events/derive! :event/measure-create ::measure-event)
-(events/derive! :event/measure-update ::measure-event)
-(events/derive! :event/measure-delete ::measure-event)
-
-(methodical/defmethod events/publish-event! ::measure-event
-  [topic event]
-  (push-revision! :model/Measure event {:is-creation? (= topic :event/measure-create)}))
-
-(events/derive! ::document-event ::event)
-(events/derive! :event/document-create ::document-event)
-(events/derive! :event/document-update ::document-event)
-(events/derive! :event/document-delete ::document-event)
-
-(methodical/defmethod events/publish-event! ::document-event
-  [topic event]
-  (push-revision! :model/Document event {:is-creation? (= topic :event/document-create)}))
-
-(events/derive! ::exploration-event ::event)
-(events/derive! :event/exploration-create ::exploration-event)
-(events/derive! :event/exploration-update ::exploration-event)
-
-(methodical/defmethod events/publish-event! ::exploration-event
-  [topic event]
-  (push-revision! :model/Exploration event {:is-creation? (= topic :event/exploration-create)}))
+(events/register-owned-consumer! ::revisions owner push!)

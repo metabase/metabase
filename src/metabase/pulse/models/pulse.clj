@@ -18,6 +18,7 @@
   Legacy note: Currently Pulses are associated with a dashboard, but this is not always the case since there are legacy
   pulses that are a collection of cards, not dashboard."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -28,20 +29,20 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; ------------------------------------------------------- Setup ----------------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)
@@ -50,7 +51,13 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/change-log))
+  (derive :hook/events))
+
+(defmethod events/spec :model/Pulse
+  [_model]
+  {:create :event/pulse-create
+   :update :event/pulse-update
+   :delete :event/pulse-delete})
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
@@ -61,31 +68,33 @@
 (t2/deftransforms :model/Pulse
   {:parameters transform-pulse-parameters})
 
-(defn- assert-valid-parameters [{:keys [parameters]}]
-  (when-not (mr/validate [:maybe
-                          [:sequential
-                           [:and
-                            [:map [:id ms/NonBlankString]]
-                            [:map-of :keyword :any]]]]
-                         parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:parameters parameters}))))
+;;; ------------------------------------------------------- Hooks ----------------------------------------------------------
+
+(defn- check-dashboard-subscription
+  "Throws a 400 when `pulse`, as an update leaves it beside its stored columns, is a dashboard subscription with a
+  column of an alert or a collection position."
+  [{:keys [dashboard_id collection_position alert_condition alert_first_only alert_above_goal]}]
+  (when (and dashboard_id (some some? [alert_condition alert_first_only alert_above_goal]))
+    (throw (ex-info (tru "A dashboard subscription cannot have the columns of an alert.")
+                    {:status-code 400})))
+  (when (and dashboard_id (some? collection_position))
+    (throw (ex-info (tru "A dashboard subscription cannot have a collection position.")
+                    {:status-code 400}))))
+
+(defn- new-pulse
+  "`pulse`, a row an INSERT writes, without its nil columns, with the defaults of a Pulse, and filed in the Collection
+  of its Dashboard when it is a dashboard subscription."
+  [{:keys [dashboard_id] :as pulse}]
+  (merge {:parameters []}
+         (into {} (filter (comp some? val)) pulse)
+         {:collection_id (if dashboard_id
+                           (pulse.db/dashboard-collection-id dashboard_id)
+                           (:collection_id pulse))}))
 
 (t2/define-before-insert :model/Pulse
-  [notification]
-  (let [defaults      {:parameters []}
-        dashboard-id  (:dashboard_id notification)
-        collection-id (if dashboard-id
-                        (pulse.db/dashboard-collection-id dashboard-id)
-                        (:collection_id notification))
-        notification  (->> (for [[k v] notification
-                                 :when (some? v)]
-                             {k v})
-                           (apply merge defaults {:collection_id collection-id}))]
-    (u/prog1 notification
-      (assert-valid-parameters notification)
-      (collection/check-allowed-content :model/Pulse (:collection_id notification))
-      (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
+  [pulse]
+  (u/prog1 (new-pulse pulse)
+    (collection/check-collection-for :model/Pulse <>)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -94,43 +103,28 @@
   false)
 
 (t2/define-before-update :model/Pulse
-  [notification]
-  (let [{:keys [collection_id dashboard_id]} (t2/original notification)
-        changes                              (t2/changes notification)]
-    (collection/check-allowed-content :model/Pulse (:collection_id changes))
-    (when (and dashboard_id
-               (contains? notification :collection_id)
-               (not= (:collection_id notification) collection_id)
-               (not *allow-moving-dashboard-subscriptions*))
-      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
+  [pulse]
+  (let [changes (t2/changes pulse)
+        {original-dashboard-id :dashboard_id} (t2/original pulse)]
+    (when (and original-dashboard-id (contains? changes :dashboard_id))
+      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") {:status-code 400})))
+    (when (and original-dashboard-id (contains? changes :collection_id) (not *allow-moving-dashboard-subscriptions*))
+      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") {:status-code 400})))
+    (when (contains? changes :collection_id)
+      (collection/check-collection-for :model/Pulse pulse))
+    (when (some #(contains? changes %) [:dashboard_id :collection_position :alert_condition :alert_first_only :alert_above_goal])
+      (check-dashboard-subscription pulse))
     (when (contains? changes :archived)
-      (if (:archived changes)
-        (pulse.db/set-pulse-channels-enabled! (u/the-id notification) false)
-        (pulse.db/set-pulse-channels-enabled! (u/the-id notification) true)))
-    (when (and dashboard_id
-               (contains? notification :dashboard_id)
-               (not= (:dashboard_id notification) dashboard_id))
-      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
-  (u/prog1 notification
-    (assert-valid-parameters notification)
-    (collection/check-collection-namespace :model/Pulse (:collection_id notification))))
+      (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) (not (:archived changes))))
+    (cond-> pulse
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly pulse #(collection/archived? (:collection_id pulse)))))))
 
 (t2/define-before-delete :model/Pulse
   [pulse]
   ;; to trigger deleting the scheduled jobs
   (pulse.db/delete-pulse-channels-for-pulse! (u/the-id pulse)))
 
-(defn- alert->card
-  "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
-  [alert]
-  (or
-   ;; if `card` is already present as a top-level key we can just use that directly
-   (:card alert)
-   ;; otherwise fetch the associated `:cards` (if not already fetched) and then pull the first one out, since Alerts
-   ;; can only have one Card
-   (-> (t2/hydrate alert :cards) :cards first)
-   ;; if there's still not a Card, throw an Exception!
-   (throw (Exception. (tru "Invalid Alert: Alert does not have a Card associated with it")))))
+;;; ---------------------------------------------------- Permissions -----------------------------------------------------
 
 (defn is-alert?
   "Whether `notification` is an Alert (as opposed to a regular Pulse)."
@@ -145,61 +139,124 @@
 ;;; non-admin can write a Dashboard Subscription only if they are its creator. (Admins have full read and write
 ;;; permissions for all objects.) These checks are handled by the `can-read?` and `can-write?` methods below.
 
+(defn- alert-cards
+  "A map from the id of each of `alerts` to its Card, the Cards of those without one fetched together."
+  [alerts]
+  (let [missing (into [] (remove :card) alerts)]
+    (into (into {} (keep #(when (:card %) [(:id %) (:card %)])) alerts)
+          (map (fn [alert]
+                 [(:id alert)
+                  (or (first (:cards alert))
+                      (throw (Exception. (tru "Invalid Alert: Alert does not have a Card associated with it"))))]))
+          (when (seq missing) (t2/hydrate missing :cards)))))
+
+(defn- check-collection-key
+  "Throws a 500 unless `owner`, a Pulse or the Card of an Alert, has the `:collection_id` its permission checks read."
+  [owner]
+  (api/check-500 (contains? owner :collection_id) "No :collection_id is set for the Collection check of a Pulse."))
+
+(defn- collection-ids-permitting
+  "The ids among `collection-ids` of the Collections the current user has `permission` on, from one permission query."
+  [collection-ids permission]
+  (when (seq collection-ids)
+    (let [permissions (perms/collection-permissions-for-user (api/current-user-info) (vec (distinct collection-ids))
+                                                             {:root-namespace nil})]
+      (into #{}
+            (filter #(perms/collection-permission-at-least? (get permissions %) permission))
+            (keys permissions)))))
+
 (defn- collection-permits?
   "Whether the current user has `permission` on the Collection of `notification`: its Card's for an Alert, its own
   otherwise."
   [notification permission]
-  (let [owner (if (is-alert? notification) (alert->card notification) notification)]
-    (api/check-500 (contains? owner :collection_id) "No :collection_id is set for the Collection check of a Pulse.")
-    (perms/collection-permission-at-least?
-     (get (perms/collection-permissions-for-user (api/current-user-info) [(:collection_id owner)] {:root-namespace nil})
-          (:collection_id owner))
-     permission)))
-
-(defn- alert-card-writable?
-  "Whether the current user writes the content of the Collection of the Card of `alert`, which takes write permission
-  on it and a Collection remote sync leaves writable."
-  [alert]
-  (let [card (alert->card alert)]
-    (api/check-500 (contains? card :collection_id) "No :collection_id is set for the Collection check of a Pulse.")
-    (contains? (collection/content-writable-collection-ids [(:collection_id card)]
-                                                           {:root-namespace nil, :audit-rules? false})
-               (:collection_id card))))
+  (let [owner (if (is-alert? notification) (get (alert-cards [notification]) (:id notification)) notification)]
+    (check-collection-key owner)
+    (contains? (collection-ids-permitting [(:collection_id owner)] permission) (:collection_id owner))))
 
 (defn- current-user-is-creator?
   [notification]
   (= api/*current-user-id* (:creator_id notification)))
 
-(defn- current-user-is-recipient?
-  [notification]
-  (let [channels (:channels (t2/hydrate notification [:channels :recipients]))
-        recipient-ids (for [{recipients :recipients} channels
-                            recipient recipients]
-                        (:id recipient))]
-    (boolean
-     (some #{api/*current-user-id*} recipient-ids))))
+(defn- recipient-pulse-ids
+  "The ids among `pulses` of those the current user is a recipient of, their channels and recipients fetched together."
+  [pulses]
+  (into #{}
+        (comp (filter (fn [pulse]
+                        (some (fn [{:keys [recipients]}] (some #(= api/*current-user-id* (:id %)) recipients))
+                              (:channels pulse))))
+              (map :id))
+        (when (seq pulses) (t2/hydrate (vec pulses) [:channels :recipients]))))
 
-(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_read]
-  [_model k notification]
-  (vary-meta notification assoc k
-             (boolean
-              (if (is-alert? notification)
-                (collection-permits? notification :read)
-                (or api/*is-superuser?*
-                    (current-user-is-creator? notification)
-                    (current-user-is-recipient? notification))))))
+(methodical/defmethod t2/batched-hydrate [:model/Pulse :can_read]
+  "Whether the current user reads each of `pulses`: an Alert as its Card, a Dashboard Subscription as its creator or
+  recipient, answered together."
+  [_model _k pulses]
+  (let [rows          (remove nil? pulses)
+        alerts        (filter is-alert? rows)
+        cards         (alert-cards alerts)
+        _             (run! check-collection-key (vals cards))
+        readable      (collection-ids-permitting (map :collection_id (vals cards)) :read)
+        candidates    (when-not api/*is-superuser?*
+                        (remove #(or (is-alert? %) (current-user-is-creator? %)) rows))
+        recipient-ids (recipient-pulse-ids candidates)]
+    (for [pulse pulses]
+      (when pulse
+        (vary-meta pulse assoc :can_read
+                   (boolean
+                    (if (is-alert? pulse)
+                      (contains? readable (:collection_id (get cards (:id pulse))))
+                      (or api/*is-superuser?*
+                          (current-user-is-creator? pulse)
+                          (contains? recipient-ids (:id pulse))))))))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
-(methodical/defmethod t2/simple-hydrate [:model/Pulse :can_write]
-  [_model k notification]
-  (assoc notification k
-         (boolean
-          (if (is-alert? notification)
-            (alert-card-writable? notification)
-            (or api/*is-superuser?*
-                (and (collection-permits? notification :read)
-                     (current-user-is-creator? notification)))))))
+(methodical/defmethod t2/batched-hydrate [:model/Pulse :can_write]
+  "Whether the current user writes each of `pulses`: an Alert as the content of its Card's Collection, a Dashboard
+  Subscription as its creator, answered together."
+  [_model _k pulses]
+  (let [rows          (remove nil? pulses)
+        cards         (alert-cards (filter is-alert? rows))
+        _             (run! check-collection-key (vals cards))
+        writable      (collection/content-writable-collection-ids (map :collection_id (vals cards))
+                                                                  {:root-namespace nil, :audit-rules? false})
+        subscriptions (when-not api/*is-superuser?* (remove is-alert? rows))
+        _             (run! check-collection-key subscriptions)
+        readable      (collection-ids-permitting (map :collection_id subscriptions) :read)]
+    (for [pulse pulses]
+      (when pulse
+        (assoc pulse :can_write
+               (boolean
+                (if (is-alert? pulse)
+                  (contains? writable (:collection_id (get cards (:id pulse))))
+                  (or api/*is-superuser?*
+                      (and (contains? readable (:collection_id pulse))
+                           (current-user-is-creator? pulse))))))))))
+
+(defn- email-recipient-keys
+  "The set of recipients of the email channel of `pulse`, a Pulse or the changes to one: Users by their `:id`, other
+  addresses by their `:email`."
+  [pulse]
+  (->> (:channels pulse)
+       (m/find-first #(= :email (keyword (:channel_type %))))
+       :recipients
+       (keep (some-fn :id :email))
+       set))
+
+(defn- recipient-additions-permitted?
+  "Whether the current user may add the recipients that `changes` brings to `pulse`: with advanced permissions, only a
+  superuser or a user with the subscription permission may."
+  [pulse changes]
+  (or (not (premium-features/enable-advanced-permissions?))
+      (boolean api/*is-superuser?*)
+      (perms/current-user-has-application-permissions? :subscription)
+      (empty? (set/difference (email-recipient-keys changes) (email-recipient-keys pulse)))))
+
+(defmethod mi/can-update? :model/Pulse
+  [pulse changes]
+  (and (mi/can-write? pulse)
+       (or (some? (:dashboard_id pulse)) (collection/can-move? pulse changes))
+       (recipient-additions-permitted? pulse changes)))
 
 (defn- can-read-attachments?
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"
@@ -400,7 +457,8 @@
       (dissoc :cards)
       ;; TODO (Kelvin 2025-12-19) Remove this once we support alerts on modular embedding,
       ;; as we only currently have `disable_links` column on Subscriptions.
-      (dissoc :disable_links)))
+      (dissoc :disable_links)
+      (dissoc :archived_directly)))
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
@@ -669,19 +727,17 @@
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
                 [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
-    ;; return the full Pulse (and record our create event).
-    (u/prog1 (retrieve-pulse pulse-id)
-      (events/publish-event! :event/subscription-create {:object <>
-                                                         :user-id api/*current-user-id*}))))
+  (let [pulse-id (events/with-batched-events
+                   (create-notification-and-add-cards-and-channels! kvs cards channels))]
+    (retrieve-pulse pulse-id)))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
   [alert creator-id card-id channels]
-  (let [id (-> alert
-               (assoc :skip_if_empty true, :creator_id creator-id)
-               (create-notification-and-add-cards-and-channels! [card-id] channels))]
-    ;; return the full Pulse (and record our create event)
+  (let [id (events/with-batched-events
+             (-> alert
+                 (assoc :skip_if_empty true, :creator_id creator-id)
+                 (create-notification-and-add-cards-and-channels! [card-id] channels)))]
     (retrieve-alert id)))
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
@@ -720,10 +776,9 @@
 
   Returns the updated Pulse or throws an Exception."
   [pulse]
-  (update-notification! pulse)
-  ;; fetch the fully updated pulse, log an update event, and return it
-  (u/prog1 (retrieve-pulse (u/the-id pulse))
-    (events/publish-event! :event/subscription-update {:object <> :user-id api/*current-user-id*})))
+  (events/with-batched-events
+    (update-notification! pulse))
+  (retrieve-pulse (u/the-id pulse)))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -738,7 +793,6 @@
 (defn update-alert!
   "Updates the given `alert` and returns it"
   [alert]
-  (update-notification! (alert->notification alert))
-  ;; fetch the fully updated pulse, log an update event, and return it
-  (u/prog1 (retrieve-alert (u/the-id alert))
-    (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
+  (events/with-batched-events
+    (update-notification! (alert->notification alert)))
+  (retrieve-alert (u/the-id alert)))

@@ -17,8 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -104,9 +103,7 @@
   {:scope api-scope.workspace-manager/workspace-manager}
   []
   (api/check-superuser)
-  (into [] (comp (filter mi/can-read?)
-                 (map present-workspace))
-        (t2/hydrate (ws/list-workspaces) :can_read)))
+  (into [] (map present-workspace) (mi/readable (ws/list-workspaces))))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."

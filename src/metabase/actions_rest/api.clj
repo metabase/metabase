@@ -10,12 +10,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -39,7 +37,7 @@
                     {:type action-type, :model-id model-id, :archived archived})
         actions    (when (seq action-ids)
                      (actions/select-actions-for-ids action-ids))]
-    (t2/hydrate (filterv mi/can-read? (t2/hydrate actions :can_read)) :creator :can_write)))
+    (t2/hydrate (mi/readable actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -66,22 +64,16 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id})
-    (actions-rest.db/delete-action! action-id)
-    (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
+    (actions-rest.db/delete-action! action-id))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [parameters dataset_query]
+   {:keys [parameters]
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
-  (when (and (nil? (:database dataset_query))
-             (= action-type :query))
-    (throw (ex-info (tru "Must provide a dataset_query for query actions")
-                    {:type        action-type
-                     :status-code 400})))
   (api/create-check :model/Action action)
   (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
@@ -92,8 +84,7 @@
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
-    (u/prog1 (actions/select-action :id action-id)
-      (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
+    (actions/select-action :id action-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -106,7 +97,7 @@
    _query-params
    action :- ::actions.schema/action.update-request]
   (let [existing-action (api/write-check :model/Action id)
-        action          (api/updates-with-archived-directly existing-action action)]
+        action          (api/updates-without-collection-when-archiving existing-action action)]
     (api/update-check existing-action action)
     (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
                    (tru "A model''s action can''t be archived. Delete it instead."))
@@ -116,7 +107,6 @@
         (actions/check-action-databases-enabled merged)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
-    (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type
@@ -142,8 +132,10 @@
   (let [action (api/read-check :model/Action id :archived false)]
     (actions/check-actions-enabled action)
     {:uuid (or (:public_uuid action)
-               (u/prog1 (str (random-uuid))
-                 (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
+               (let [uuid (str (random-uuid))]
+                 (api/update-check action {:public_uuid uuid, :made_public_by_id api/*current-user-id*})
+                 (actions-rest.db/set-action-public-uuid! id uuid api/*current-user-id*)
+                 uuid))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

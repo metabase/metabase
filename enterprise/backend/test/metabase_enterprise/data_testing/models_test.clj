@@ -210,7 +210,7 @@
           (is (= #{test-id other-id}
                  (into #{}
                        (comp (filter (comp #{:event/transform-test-delete} first))
-                             (map (comp :id :object second)))
+                             (map (comp :id :previous-object second)))
                        @published))))))))
 
 ;;; --------------------------------------------- Run tracking ---------------------------------------------
