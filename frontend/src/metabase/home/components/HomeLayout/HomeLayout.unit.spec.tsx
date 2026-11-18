@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
   EmbeddingHomepageStatus,
   EnterpriseSettings,
@@ -147,11 +147,10 @@ describe("HomeLayout", () => {
       await userEvent.click(screen.getByText("Connect a database"));
 
       // Sanity check: add data modal should open
-      expect(
-        await within(await screen.findByRole("dialog")).findByRole("heading", {
-          name: "Add data",
-        }),
-      ).toBeVisible();
+      const heading = await within(
+        await screen.findByRole("dialog"),
+      ).findByRole("heading", { name: "Add data" });
+      await waitFor(() => expect(heading).toBeVisible());
     });
 
     it.each([
