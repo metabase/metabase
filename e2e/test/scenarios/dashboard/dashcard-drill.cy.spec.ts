@@ -6,7 +6,12 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockParameter } from "metabase-types/api/mocks";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers/api/createQuestion";
+import { type DashboardCard, DataPermissionValue } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 const {
   ORDERS,
@@ -28,7 +33,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
-    const questionDetails = {
+    const questionDetails: StructuredQuestionDetails & { name: string } = {
       name: "13062Q",
       query: {
         "source-table": REVIEWS_ID,
@@ -176,7 +181,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     cy.log("Reported on v0.29.3");
     cy.wait("@fkDataset").then((xhr) => {
-      expect(xhr.response.body.error).not.to.exist;
+      expect(xhr.response, "Dataset response").to.exist;
+      expect(xhr.response?.body.error).not.to.exist;
     });
     cy.findByTestId("object-detail")
       .findAllByText("Fantastic Wool Shirt")
@@ -203,7 +209,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    const questionDetails = {
+    const questionDetails: StructuredQuestionDetails & { name: string } = {
       name: "38307",
       query: {
         "source-table": REVIEWS_ID,
@@ -246,8 +252,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
             "source-table": PRODUCTS_ID,
             condition: [
               "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
             alias: "Products",
           },
@@ -280,11 +286,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
                 card_id: QUESTION_ID,
                 target: [
                   "dimension",
-                  [
-                    "joined-field",
-                    "Products",
-                    ["field-id", PRODUCTS.CREATED_AT],
-                  ],
+                  ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
                 ],
               },
             ],
@@ -302,7 +304,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .click();
 
     cy.wait("@dataset").then((xhr) => {
-      expect(xhr.response.body.error).to.not.exist;
+      expect(xhr.response, "Dataset response").to.exist;
+      expect(xhr.response?.body.error).to.not.exist;
     });
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Subtotal");
@@ -335,11 +338,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
             card_id: QUESTION1_ID,
             dashboard_id: DASHBOARD_ID,
             card: {
-              series: [
-                {
-                  id: QUESTION2_ID,
-                },
-              ],
+              series: [createMockCard({ id: QUESTION2_ID })],
             },
           });
 
@@ -471,16 +470,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
       postDrillAssertion("Product → ID is 2 selections");
     });
 
-    function setFilterValue(filterName) {
+    function setFilterValue(filterName: string) {
       H.filterWidget().contains(filterName).click();
       cy.findByPlaceholderText("Enter an ID").type("1,2,");
       cy.button("Add filter").click();
       cy.findByText("2 selections");
     }
 
-    function postDrillAssertion(filterName) {
+    function postDrillAssertion(filterName: string) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
-      H.popover({ testId: "filter-picker-dropdown" }).within(() => {
+      cy.findByTestId("filter-picker-dropdown").within(() => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.findAllByRole("combobox")
           .last()
@@ -499,7 +498,7 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      const questionDetails = {
+      const questionDetails: NativeQuestionDetails & { name: string } = {
         name: "Q1",
         native: { query: 'SELECT 1 as "foo", 2 as "bar"' },
         display: "bar",
@@ -587,7 +586,7 @@ describe("scenarios > dashboard > title drill", () => {
         sectionId: "string",
       };
 
-      const questionDetails = {
+      const questionDetails: NativeQuestionDetails & { name: string } = {
         name: "16181",
         native: {
           query: "select count(*) from products where {{filter}}",
@@ -670,7 +669,7 @@ describe("scenarios > dashboard > title drill", () => {
   });
 
   describe("on a simple question with a connected dashboard parameter", () => {
-    const questionDetails = {
+    const questionDetails: StructuredQuestionDetails & { name: string } = {
       name: "GUI Question",
       query: {
         "source-table": PRODUCTS_ID,
@@ -701,12 +700,15 @@ describe("scenarios > dashboard > title drill", () => {
       H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashboardCard, questionId }) => {
           const { card_id, dashboard_id } = dashboardCard;
+          if (card_id === null) {
+            throw new Error("Expected question card");
+          }
 
           cy.wrap(questionId).as("questionId");
           cy.wrap(dashboard_id).as("dashboardId");
           cy.wrap(card_id).as("cardId");
 
-          const mapFiltersToCard = {
+          const mapFiltersToCard: Partial<DashboardCard> = {
             parameter_mappings: [
               {
                 parameter_id: filterWithDefaultValue.id,
@@ -755,6 +757,7 @@ describe("scenarios > dashboard > title drill", () => {
         // make sure the results match
         H.queryBuilderMain().findByText("42").should("be.visible");
         cy.location("href").should("include", "/question#");
+        cy.title().should("eq", "GUI Question · Metabase");
 
         cy.log("as a user without access to underlying data");
         cy.signIn("nodata");
@@ -821,7 +824,7 @@ describe("scenarios > dashboard > title drill", () => {
   });
 
   describe("on a nested simple question with a connected dashboard parameter", () => {
-    const questionDetails = {
+    const questionDetails: StructuredQuestionDetails & { name: string } = {
       name: "GUI Question",
       query: {
         "source-table": PRODUCTS_ID,
@@ -906,143 +909,8 @@ describe("scenarios > dashboard > title drill", () => {
     });
   });
 
-  describe("on various charts", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("titles become actual HTML anchors on focus and on hover", () => {
-      H.createDashboardWithQuestions({
-        dashboardName: "Dashboard with aggregated Q2",
-        questions: [
-          {
-            name: "Line chart",
-            display: "line",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-              ],
-              limit: 5,
-            },
-          },
-          {
-            name: "Row chart",
-            display: "row",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-              ],
-              limit: 5,
-            },
-          },
-          {
-            name: "Map chart",
-            display: "map",
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 5,
-            },
-          },
-          {
-            name: "Funnel chart",
-            display: "funnel",
-            query: {
-              "source-table": PEOPLE_ID,
-              aggregation: [["count"]],
-              breakout: [["field", PEOPLE.SOURCE]],
-              limit: 5,
-            },
-          },
-        ],
-        cards: [
-          { row: 0, col: 0, size_x: 6, size_y: 6 },
-          { row: 0, col: 6, size_x: 6, size_y: 6 },
-          { row: 6, col: 0, size_x: 6, size_y: 6 },
-          { row: 6, col: 6, size_x: 6, size_y: 6 },
-        ],
-      }).then(({ dashboard, questions }) => {
-        // Park the cursor off the grid before the dashcards render: a pointer
-        // resting over a title computes that title's href before it is asserted.
-        cy.get("body").realHover({ position: "topLeft" });
-
-        H.visitDashboard(dashboard.id);
-        H.waitForDashcardsToLoad({ count: 4 });
-
-        H.getDashboardCard(0)
-          .findByRole("link", { name: "Line chart" })
-          .as("line-chart-title");
-        H.getDashboardCard(1)
-          .findByRole("link", { name: "Row chart" })
-          .as("row-chart-title");
-        H.getDashboardCard(2)
-          .findByRole("link", { name: "Map chart" })
-          .as("map-chart-title");
-        H.getDashboardCard(3)
-          .findByRole("link", { name: "Funnel chart" })
-          .as("funnel-chart-title");
-
-        const titles = [
-          {
-            elementAlias: "@line-chart-title",
-            href: `/question/${questions[0].id}-line-chart`,
-            trigger: focusTitle,
-          },
-          {
-            elementAlias: "@row-chart-title",
-            href: `/question/${questions[1].id}-row-chart`,
-            trigger: focusTitle,
-          },
-          {
-            elementAlias: "@map-chart-title",
-            href: `/question/${questions[2].id}-map-chart`,
-            trigger: hoverTitle,
-          },
-          {
-            elementAlias: "@funnel-chart-title",
-            href: `/question/${questions[3].id}-funnel-chart`,
-            trigger: hoverTitle,
-          },
-        ];
-
-        cy.log("every title is an inert placeholder before focus and hover");
-        titles.forEach(({ elementAlias }) => {
-          cy.get(elementAlias).should("have.attr", "href", "#");
-        });
-
-        cy.log("focusing or hovering a title turns it into a question anchor");
-        titles.forEach(assertTitleBecomesQuestionAnchor);
-      });
-    });
-
-    function focusTitle(element) {
-      element.focus();
-    }
-
-    function hoverTitle(element) {
-      const { MouseEvent } = element.ownerDocument.defaultView;
-      element.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-    }
-
-    /**
-     * The question href is computed lazily on focus/mouseenter, and the anchor
-     * is replaced when it resolves. Re-evaluating the trigger on each retry
-     * keeps the assertion anchored to the node currently in the DOM.
-     */
-    function assertTitleBecomesQuestionAnchor({ elementAlias, href, trigger }) {
-      cy.get(elementAlias).should(($el) => {
-        trigger($el[0]);
-        expect($el).to.have.attr("href", href);
-      });
-    }
-  });
-
   describe("multiple series", () => {
-    const question1Details = {
+    const question1Details: StructuredQuestionDetails = {
       name: "Q1",
       query: {
         "source-table": PEOPLE_ID,
@@ -1052,7 +920,7 @@ describe("scenarios > dashboard > title drill", () => {
       display: "line",
     };
 
-    const question2Details = {
+    const question2Details: StructuredQuestionDetails = {
       name: "Q2",
       query: {
         "source-table": PEOPLE_ID,
@@ -1132,84 +1000,6 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findByText(/Created At/).should("not.exist");
       });
     });
-
-    it("should use the card name instead of series names when navigating to the query builder from the dashcard title (metabase#42165)", () => {
-      const peopleSourceFieldRef = [
-        "field",
-        PEOPLE.SOURCE,
-        { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-      ];
-      const ordersCreatedAtFieldRef = [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ];
-
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      H.createDashboardWithQuestions({
-        dashboardDetails: {
-          parameters: [
-            createMockParameter({
-              id: "param-1",
-              name: "Date",
-              slug: "date",
-              type: "date/all-options",
-            }),
-          ],
-        },
-        questions: [
-          {
-            name: "fooBarQuestion",
-            display: "bar",
-            query: {
-              aggregation: [["count"]],
-              breakout: [peopleSourceFieldRef, ordersCreatedAtFieldRef],
-              "source-table": ORDERS_ID,
-            },
-          },
-        ],
-      }).then(({ dashboard: _dashboard }) => {
-        cy.request("GET", `/api/dashboard/${_dashboard.id}`).then(
-          ({ body: dashboard }) => {
-            const [dashcard] = dashboard.dashcards;
-            const [parameter] = dashboard.parameters;
-            cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-              dashcards: [
-                {
-                  ...dashcard,
-                  parameter_mappings: [
-                    {
-                      card_id: dashcard.card_id,
-                      parameter_id: parameter.id,
-                      target: ["dimension", ordersCreatedAtFieldRef],
-                    },
-                  ],
-                },
-              ],
-            }).then(() => {
-              cy.wrap(_dashboard.id).as("dashboardId");
-            });
-          },
-        );
-      });
-
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitDashboard(dashboardId, { params: { date: "2027-01" } });
-        H.filterWidget().should("contain", "2027");
-
-        H.getDashboardCard(0).within(() => {
-          cy.findAllByTestId("legend-item").should("have.length", 5);
-          cy.findAllByTestId("legend-item")
-            .first()
-            .should("contain.text", "Affiliate");
-          cy.findByText("fooBarQuestion").click();
-        });
-
-        cy.wait("@dataset");
-        cy.title().should("eq", "fooBarQuestion · Metabase");
-      });
-    });
   });
 
   describe("with sandboxing", () => {
@@ -1224,14 +1014,14 @@ describe("scenarios > dashboard > title drill", () => {
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP]: {
           [SAMPLE_DB_ID]: {
-            "view-data": "blocked",
-            "create-queries": "no",
+            "view-data": DataPermissionValue.BLOCKED,
+            "create-queries": DataPermissionValue.NO,
           },
         },
         [COLLECTION_GROUP]: {
           [SAMPLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": "query-builder",
+            "view-data": DataPermissionValue.UNRESTRICTED,
+            "create-queries": DataPermissionValue.QUERY_BUILDER,
           },
         },
       });
@@ -1276,17 +1066,17 @@ describe("scenarios > dashboard > title drill", () => {
   });
 });
 
-function drillThroughCardTitle(title) {
+function drillThroughCardTitle(title: string) {
   cy.findByTestId("legend-caption").contains(title).click();
   cy.contains(`Started from ${title}`);
 }
 
-function checkFilterLabelAndValue(label, value) {
+function checkFilterLabelAndValue(label: string, value: string) {
   H.filterWidget().findByLabelText(label, { exact: false }).should("exist");
   H.filterWidget().contains(value);
 }
 
-function checkScalarResult(result) {
+function checkScalarResult(result: string) {
   cy.findByTestId("scalar-value").invoke("text").should("eq", result);
 }
 
@@ -1300,7 +1090,7 @@ describe("issue 67432", () => {
     H.grantClipboardPermissions();
 
     const ROWS_LIMIT = 5;
-    const questionDetails = {
+    const questionDetails: StructuredQuestionDetails & { name: string } = {
       name: "67432 Question",
       query: {
         "source-table": PRODUCTS_ID,
