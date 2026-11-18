@@ -52,10 +52,6 @@
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
-  ;; raw SQL; a Table whose segments go by database cascade) leaves the runs' test id naming no test; such runs are
-  ;; never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
   segment-test)
 

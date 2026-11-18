@@ -1579,8 +1579,6 @@
         ;; 200 but discards the move. Matching REST for now; rejecting the combination with a 400
         ;; may serve LLM callers better.
         updates      (api/updates-without-collection-when-archiving current-dash updates)
-        ;; A move requires write on BOTH source and target collection: the update check asks it, and the
-        ;; collection check refuses an archived target.
         _            (api/update-check current-dash updates)
         mutations    (:dashcards body)
         ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes

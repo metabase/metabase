@@ -795,7 +795,6 @@
     (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
-                     ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
                      (t2/with-transaction [_conn]
                        (dashboards-rest.db/update-dashboard! dashboard-id
                                                              {:public_uuid       <>

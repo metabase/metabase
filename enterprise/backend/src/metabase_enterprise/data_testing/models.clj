@@ -75,8 +75,6 @@
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/TransformTest [transform-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook.
   (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
   transform-test)
 

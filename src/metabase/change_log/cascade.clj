@@ -56,8 +56,9 @@
         (recur more)))))
 
 (def ^:private foreign-keys*
+  "The foreign keys of the tracked tables, cached by the tracked models that have loaded, so that a model that loads
+  later gets a new entry."
   (mdb/memoize-for-application-db
-   ;; cached by the tracked models that have loaded, so that a model that loads later gets a new entry
    (fn [_tracked]
      (to-tracked-tables (cascades (change-log.db/foreign-keys))
                         (update-vals (tracked-models) #(first (t2/primary-keys %)))))))

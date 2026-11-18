@@ -238,8 +238,6 @@
   (or (mi/superuser?)
       (and (current-user-can-read-payload? notification)
            ;; if advanced-permissions is enabled, we require users to have subscription permissions.
-           ;; Not a bare `has-feature?`: that ignores whether EE code is present, so an OSS jar with a
-           ;; stale paid token would demand a permission it can never grant.
            (or (not (premium-features/enable-advanced-permissions?))
                (perms/current-user-has-application-permissions? :subscription)))))
 
@@ -647,8 +645,6 @@
 (models.u.spec-update/define-spec notification-update-spec
   "Spec for updating a notification."
   {:model        :model/Notification
-   ;; `:creator_id` is here so PUT can flow ownership reassignment through the same spec write as
-   ;; the rest of the row. Authorization lives in `mi/can-update?` (superuser-only).
    :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs [[:payload       {:model        :model/NotificationCard

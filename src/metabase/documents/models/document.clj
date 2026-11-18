@@ -738,8 +738,6 @@
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
    :search-terms {:name true
                   :document document->search-text}
-   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
-   ;; deliberately excluded from semantic-search embeddings.
    :embedding-exclude #{:document}
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name

@@ -194,8 +194,6 @@
   [:map {:closed true}
    [:object [:fn #(t2/instance-of? :model/SecurityAdvisory %)]]])
 
-;; lifecycle events
-
 (defn register-lifecycle-topic!
   "Have the events of `topic`, one made by the write of a row, checked against the lifecycle schema."
   [topic]

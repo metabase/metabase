@@ -249,7 +249,6 @@
                                                                                    {:conflicts (distinct pgms)})))
                                                                  (boolean (:is-group-manager? (first pgms))))))
           ;; re-adding an existing member is a no-op, so everything below only ever sees genuine additions:
-          ;; the insert and its hooks, and the events
           user-id-group-id->is-group-manager? (apply dissoc user-id-group-id->is-group-manager?
                                                      (permissions.db/existing-membership-pairs
                                                       (keys user-id-group-id->is-group-manager?)))]

@@ -944,16 +944,11 @@
                                  (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db        (merge existing-database updates)
             driver-supports?  (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
-        ;; A database-local setting with `:visibility :admin` is hidden from non-superusers when the database is
-        ;; read, so only a superuser may send one, whatever its value. A check on the value would tell a
-        ;; non-superuser whether a guess matches the stored value.
         (when (some (fn [setting-kw]
                       (and (setting/registered? setting-kw)
                            (= :admin (:visibility (setting/resolve-setting setting-kw)))))
                     (keys settings))
           (api/check-superuser))
-        ;; After the superuser check, so that the answer can't tell a non-superuser whether a guess matches the
-        ;; stored value.
         (workspaces/check-database-workspace-schema-write! (:database-workspace-schema existing-settings)
                                                            (:database-workspace-schema pending-settings))
         (doseq [setting-kw (database/changed-settings settings existing-settings)]

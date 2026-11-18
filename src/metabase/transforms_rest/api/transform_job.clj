@@ -186,8 +186,6 @@
       (let [existing-tags (transforms-rest.db/existing-tag-ids tag-ids)]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
-    ;; The row update comes last in the transaction: its hook moves the Quartz trigger, so a failure of the tag
-    ;; write cannot leave the scheduler ahead of the app DB.
     (t2/with-transaction [_conn]
       (when (some? tag-ids)
         (transforms.core/update-job-tags! job-id tag-ids))

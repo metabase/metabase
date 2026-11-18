@@ -20,7 +20,6 @@
   (into []
         (keep (fn [{:keys [key value]}]
                 (try
-                  ;; The settings code resolves a key by its kebab-case form, so compare that form.
                   (if (= (u/->kebab-case-en (keyword key)) :workspaces-enabled)
                     (log/warnf "Skipping Setting %s: an import does not set it" key)
                     (setting/set-string! (keyword key) (some-> value str)))

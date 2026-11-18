@@ -497,8 +497,6 @@
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
     ;; :source-table) in ex-data. Reversing these leaks that through the parameter path.
     (check-parameter-permissions (:parameters card) query)
-    ;; The full create stack (run-permissions, create-check) lives in `queries` so MCP's question_write runs the
-    ;; identical checks.
     (queries/with-copy-source-card source-card
       (queries/check-allowed-to-create-card! card card-type))
     (let [created-card (queries/create-card! card @api/*current-user*)]
@@ -727,8 +725,6 @@
           ;; are gone and update the position in the new collection
           (when-let [cards-with-position (seq (filter :collection_position cards))]
             (update-collection-positions! new-collection-id-or-nil cards-with-position))
-          ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already,
-          ;; through the model, so that each card's checks run and its hooks move what moves with it
           (doseq [card  cards
                   :when (not (:collection_position card))]
             (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))))
@@ -866,7 +862,6 @@
     (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
-                     ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
                      (t2/with-transaction [_conn]
                        (queries-rest.db/update-card! card-id
                                                      {:public_uuid       <>

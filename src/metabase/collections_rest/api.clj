@@ -475,11 +475,6 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
-;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
-;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
-;; `metabase.collections.core` as `create-collection!`.
-
 (api.macros/defendpoint :post "/" :- ::Collection
   "Create a new Collection."
   [_route-params

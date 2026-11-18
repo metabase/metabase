@@ -137,8 +137,6 @@
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  ;; `:dashcard-id`/`:card-id` are stamped on by the callers below before the check runs, and #82196 closed
-  ;; `::parameter-mapping`, so they have to be declared or every mapping write is refused.
   [parameter-mappings :- [:sequential [:merge
                                        ::parameters.schema/parameter-mapping
                                        [:map {:closed true}

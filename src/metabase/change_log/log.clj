@@ -62,7 +62,6 @@
                                   id                          row-ids
                                   :when                       (integer? id)]
                               {:table_name table-name, :row_id id, :action action})))
-  ;; Tests number the entries themselves.
   (when-not config/is-test?
     (change-log.numbering/stay-awake!)))
 

@@ -955,8 +955,6 @@
         reveals-all?        (and (draws-events? visibility (:display card))
                                  (not (draws-events? previous-visibility (:display previous-card))))]
     (or (not (or reveals-all? (not= visibility previous-visibility)))
-        ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
-        ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
         (every? mi/can-read?
                 (t2/hydrate (queries.db/timelines
                              (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
