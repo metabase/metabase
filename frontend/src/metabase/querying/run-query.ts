@@ -237,7 +237,7 @@ function fetchQuestionGoalValues(
   }: { ignoreCache: boolean; signal?: AbortSignal; token?: string | null },
 ): Promise<ReferencedEntitiesResults | null> {
   const sources = getReferencedEntities(question.card());
-  const options = { sources, forceRefetch: ignoreCache, signal };
+  const options = { sources, signal };
 
   // guest embeds can only read the goals saved on the card the token signs
   if (token) {

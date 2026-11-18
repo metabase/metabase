@@ -200,6 +200,7 @@ export const publicApi = Api.injectEndpoints({
         url: `/api/public/card/${uuid}/goal-values`,
         noEvent: true,
       }),
+      keepUnusedDataFor: 0,
     }),
     getPublicDashcardGoalValues: builder.query<
       ReferencedEntitiesResults,
@@ -210,6 +211,7 @@ export const publicApi = Api.injectEndpoints({
         url: `/api/public/dashboard/${uuid}/dashcard/${dashcardId}/card/${cardId}/goal-values`,
         noEvent: true,
       }),
+      keepUnusedDataFor: 0,
     }),
     getPublicDocumentCardGoalValues: builder.query<
       ReferencedEntitiesResults,

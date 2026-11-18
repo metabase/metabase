@@ -107,6 +107,7 @@ export const embedApi = Api.injectEndpoints({
         url: `/api/embed/card/${token}/goal-values`,
         noEvent: true,
       }),
+      keepUnusedDataFor: 0,
     }),
     getEmbedDashcardGoalValues: builder.query<
       ReferencedEntitiesResults,
@@ -117,6 +118,7 @@ export const embedApi = Api.injectEndpoints({
         url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/goal-values`,
         noEvent: true,
       }),
+      keepUnusedDataFor: 0,
     }),
   }),
 });

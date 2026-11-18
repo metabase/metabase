@@ -354,7 +354,6 @@ export const fetchCardDataAction = createAsyncThunk<
     const question = buildQuestion(card);
     const runQuery = makePivotAwareQueryRunner(dispatch, controller.signal);
     const goalValues = fetchDashcardGoalValues(dispatch, card, dashcard, {
-      forceRefetch: Boolean(reload || ignoreCache),
       ignoreCache,
       signal: controller.signal,
     });
@@ -732,14 +731,10 @@ function fetchDashcardGoalValues(
   dispatch: Dispatch,
   card: Card,
   dashcard: DashboardCard,
-  {
-    forceRefetch,
-    ignoreCache,
-    signal,
-  }: { forceRefetch: boolean; ignoreCache?: boolean; signal: AbortSignal },
+  { ignoreCache, signal }: { ignoreCache?: boolean; signal: AbortSignal },
 ): Promise<ReferencedEntitiesResults | null> {
   const sources = getDashcardGoalSources(card, dashcard);
-  const options = { sources, forceRefetch, signal };
+  const options = { sources, signal };
 
   return match(getDashboardType(dashcard.dashboard_id))
     .with("public", () =>

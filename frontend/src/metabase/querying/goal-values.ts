@@ -10,7 +10,7 @@ import type {
 
 type GoalValuesEndpoint<Arg> = {
   Types: { ResultType: ReferencedEntitiesResults };
-  initiate(arg: Arg, options: { forceRefetch: boolean }): unknown;
+  initiate(arg: Arg, options: { forceRefetch: true }): unknown;
 };
 
 type GoalValuesSubscription = {
@@ -21,22 +21,22 @@ type GoalValuesSubscription = {
 
 type FetchGoalValuesOptions = {
   sources: ReferencedEntity[];
-  forceRefetch?: boolean;
   signal?: AbortSignal;
 };
 
 const FAILED_GOAL_VALUE: ReferencedEntityResult = { status: "failed" };
 
 /**
- * Fetches the values of a chart's goal `sources` from a goal route. Resolves to
- * `null` when the chart has no sources, and to failed results when the request
- * fails, so the chart never waits on a goal that can't load. Never rejects.
+ * Fetches the values of a chart's goal `sources` from a goal route, each time
+ * the chart's query runs. Resolves to `null` when the chart has no sources, and
+ * to failed results when the request fails, so the chart never waits on a goal
+ * that can't load. Never rejects.
  */
 export async function fetchGoalValues<Arg>(
   dispatch: Dispatch,
   endpoint: GoalValuesEndpoint<Arg>,
   request: Arg,
-  { sources, forceRefetch = false, signal }: FetchGoalValuesOptions,
+  { sources, signal }: FetchGoalValuesOptions,
 ): Promise<ReferencedEntitiesResults | null> {
   if (sources.length === 0) {
     return null;
@@ -44,7 +44,7 @@ export async function fetchGoalValues<Arg>(
 
   // RTK query thunks dispatch to a subscription, and `Types` pins what `unwrap` resolves to
   const subscription = dispatch(
-    endpoint.initiate(request, { forceRefetch }),
+    endpoint.initiate(request, { forceRefetch: true }),
   ) as GoalValuesSubscription;
   const abort = () => subscription.abort();
   if (signal?.aborted) {

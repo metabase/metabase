@@ -293,6 +293,23 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       });
     });
 
+    it("fetches the goal values again each time the query runs", async () => {
+      setupGoalValuesEndpoint(GOAL_VALUES);
+      const question = createMockAdHocQuestion({
+        display: "gauge",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+      fetchMock.post(getQueryEndpointPath(question), createMockDataset());
+      const { dispatch } = getRtkStore();
+
+      await runQuestionQuery(question, { dispatch });
+      await runQuestionQuery(question, { dispatch });
+
+      expect(
+        fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+      ).toHaveLength(2);
+    });
+
     it("reports every goal source as failed when fetching the goal values fails", async () => {
       setupGoalValuesEndpoint(500);
       const question = createMockAdHocQuestion({
