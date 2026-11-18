@@ -2199,11 +2199,11 @@
                             (format "user/%d/password-reset-url" user-id)))))
 
 (deftest sso-user-with-used-password-can-be-given-password-test
-  (testing "admin can set or reset password of SSO user with enabled provider only when password is used and unexpired"
+  (testing "admin can set or reset password of SSO user with enabled provider only when password is used, expired or not"
     (doseq [[password-attrs expected-status] [[{:last_used_at (t/offset-date-time)} 200]
                                               [{} 404]
                                               [{:last_used_at (t/offset-date-time)
-                                                :expires_at   (t/minus (t/offset-date-time) (t/days 1))} 404]]]
+                                                :expires_at   (t/minus (t/offset-date-time) (t/days 1))} 200]]]
       (testing (pr-str password-attrs)
         (mt/with-temp [:model/User {user-id :id} {:sso_source "google"}
                        :model/AuthIdentity _ (merge {:user_id     user-id
@@ -2242,12 +2242,6 @@
                                           :credentials  {:plaintext_password "somePassword12!!"}
                                           :last_used_at (t/offset-date-time)
                                           :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
-                   :model/User {expiring-user-id :id} {}
-                   :model/AuthIdentity _ {:user_id      expiring-user-id
-                                          :provider     "password"
-                                          :credentials  {:plaintext_password "somePassword12!!"}
-                                          :last_used_at (t/offset-date-time)
-                                          :expires_at   (t/plus (t/offset-date-time) (t/hours 1))}
                    :model/User {used-user-id :id} {}
                    :model/AuthIdentity _ {:user_id      used-user-id
                                           :provider     "password"
@@ -2257,15 +2251,13 @@
                    :model/AuthIdentity _ {:user_id     unused-user-id
                                           :provider    "password"
                                           :credentials {:plaintext_password "somePassword12!!"}}]
-      (is (=? {:has_used_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
-      (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expiring-user-id))))
+      (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
       (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
       (is (=? {:has_used_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
       (let [id->has-used-password (into {}
                                         (map (juxt :id :has_used_password))
                                         (:data (mt/user-http-request :crowberto :get 200 "user")))]
-        (is (false? (id->has-used-password expired-user-id)))
-        (is (true? (id->has-used-password expiring-user-id)))
+        (is (true? (id->has-used-password expired-user-id)))
         (is (true? (id->has-used-password used-user-id)))
         (is (false? (id->has-used-password unused-user-id))))
       (testing "GET /api/user/current reports it to user themself"
