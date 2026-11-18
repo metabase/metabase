@@ -680,7 +680,6 @@
                                                                  :table_id  table-id
                                                                  :base_type :type/Text}
                          :model/Segment    {segment-id :id}     {:name       "Test Segment"
-                                                                 :table_id   table-id
                                                                  :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"
@@ -781,8 +780,10 @@
                          {:name     "Active Child Collection"
                           :archived false
                           :location (format "/%d/" parent-id)}
-                         :model/Card       {in-archived-eid :entity_id} {:name          "Card in archived collection"
-                                                                         :collection_id archived-child-id}
+                         :model/Card       {in-archived-eid :entity_id} {:name              "Card in archived collection"
+                                                                         :archived          true
+                                                                         :archived_directly false
+                                                                         :collection_id     archived-child-id}
                          :model/Card       {in-active-eid :entity_id}   {:name          "Card in active collection"
                                                                          :collection_id active-child-id}]
         (let [opts {:targets       [[:model/Collection parent-id]]

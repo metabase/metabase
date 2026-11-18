@@ -1,14 +1,24 @@
 (ns metabase.pulse.models.pulse-channel-recipient
   (:require
+   [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;;; ------------------------------------------------------- Setup --------------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :pulse_channel_recipient)
 
 (derive :model/PulseChannelRecipient :metabase/model)
-(derive :model/PulseChannelRecipient :hook/change-log)
-(derive :model/PulseChannelRecipient :hook/change-log-before-update-noop)
+(derive :model/PulseChannelRecipient :hook/events)
+
+(defmethod events/spec :model/PulseChannelRecipient
+  [_model]
+  {:create :event/pulse-channel-recipient-create
+   :update :event/pulse-channel-recipient-update
+   :delete :event/pulse-channel-recipient-delete})
+
+;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 
 ;;; Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
 ;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not

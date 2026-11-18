@@ -302,7 +302,6 @@
                                              :type          :metric
                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
                      :model/Measure measure {:name       "Test Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-def}]
         (mt/with-full-data-perms-for-all-users!
           ;; Sync dimensions for both metric and measure

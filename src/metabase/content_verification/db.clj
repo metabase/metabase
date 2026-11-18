@@ -52,11 +52,12 @@
   (t2/delete! :model/ModerationReview :id [:in ids]))
 
 (mu/defn unmark-most-recent-moderation-reviews!
-  "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type`."
+  "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type` other than `review-id`."
   [item-id   :- ms/PositiveInt
-   item-type :- [:or :string :keyword]]
+   item-type :- [:or :string :keyword]
+   review-id :- ms/PositiveInt]
   (t2/update! :model/ModerationReview
-              {:moderated_item_id item-id, :moderated_item_type item-type}
+              {:moderated_item_id item-id, :moderated_item_type item-type, :most_recent true, :id [:not= review-id]}
               {:most_recent false}))
 
 (mu/defn insert-moderation-review!

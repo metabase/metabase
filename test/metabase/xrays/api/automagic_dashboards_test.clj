@@ -7,6 +7,8 @@
    [malli.core :as mc]
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -34,6 +36,13 @@
   (fn [thunk]
     (mt/id)
     (thunk)))
+
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
 
 (defn- dashcards-schema-check
   [dashcards]
@@ -125,8 +134,7 @@
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
 (deftest segment-xray-test
-  (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                  :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+  (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call! "segment/%s" [segment-id]))))
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
@@ -227,8 +235,7 @@
 
 (def ^:private segment
   (delay
-    {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
+    {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (deftest comparisons-test
   (mt/with-temp [:model/Segment {segment-id :id} @segment]
@@ -595,8 +602,7 @@
 
 (deftest ^:parallel segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
-    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+    (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
