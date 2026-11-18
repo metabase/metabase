@@ -133,7 +133,9 @@
           (is (= {(:id grand) false} (archived-flags :model/Collection [grand]))))
         (testing "what was archived on its own before stays archived, and so does the parent"
           (is (= {(:id trashed) true} (archived-flags :model/Card [trashed])))
-          (is (= {(:id earlier) true, (:id parent) true} (archived-flags :model/Collection [earlier parent])))))))
+          (is (= {(:id earlier) true, (:id parent) true} (archived-flags :model/Collection [earlier parent]))))))))
+
+(deftest restore-into-new-parent-checks-what-it-restores-test
   (testing "the move is refused, and nothing is restored, for a user who cannot write a sub-collection it restores"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection parent {}
@@ -147,7 +149,9 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "collection/" (:id child)) {:archived false :parent_id (:id target)})))
         (is (= {(:id child) true, (:id grand) true} (archived-flags :model/Collection [child grand])))
-        (is (= {(:id card) true} (archived-flags :model/Card [card]))))))
+        (is (= {(:id card) true} (archived-flags :model/Card [card])))))))
+
+(deftest restore-collection-archived-on-its-own-test
   (testing "a Collection archived on its own is restored with its items in place and into a new parent"
     (doseq [request [{:archived false} {:archived false :parent_id ::target}]]
       (mt/with-temp [:model/Collection top    {}
@@ -158,7 +162,9 @@
         (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top))
                               (cond-> request (:parent_id request) (assoc :parent_id (:id target))))
         (is (= {(:id top) false, (:id sub) false} (archived-flags :model/Collection [top sub])))
-        (is (= {(:id card) false} (archived-flags :model/Card [card]))))))
+        (is (= {(:id card) false} (archived-flags :model/Card [card])))))))
+
+(deftest restore-collection-without-archive-operation-test
   (testing "a Collection archived without an archive operation is restored with its items in place and into a new parent"
     (doseq [request [{:archived false} {:archived false :parent_id ::target}]]
       (mt/with-temp [:model/Collection top    {}

@@ -478,7 +478,7 @@
                                                  :card_id  (:id policy)}]
     (f {:inner inner, :outer outer, :other other})))
 
-(defn- with-table-writer
+(defn- with-table-writer!
   "Calls `thunk` as a data analyst, not an admin, who may write the Segments and Measures of VENUES."
   [thunk]
   (mt/with-premium-features #{:sandboxes :advanced-permissions}
@@ -514,7 +514,7 @@
       (testing "an unrelated segment is untouched, for a non-admin who writes the Table's Segments"
         (with-segment-policy
           (fn [{:keys [other outer]}]
-            (with-table-writer
+            (with-table-writer!
               (fn []
                 (is (true? (update-check other {:definition (price-above 5)})))
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
@@ -588,7 +588,7 @@
       (testing "an unrelated measure is untouched, for a non-admin who writes the Table's Measures"
         (with-measure-policy
           (fn [{:keys [other measure]}]
-            (with-table-writer
+            (with-table-writer!
               (fn []
                 (is (true? (update-check :model/Measure other {:definition (sum-of-price 2)})))
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
