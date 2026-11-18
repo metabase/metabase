@@ -2769,6 +2769,7 @@
                     :model/Table
                     :model/TableIndex
                     :model/TableUserSettings
+                    :model/TestSuiteMember
                     :model/Timeline
                     :model/TimelineEvent
                     :model/TransformJobTransformTag
@@ -4112,7 +4113,7 @@
            transforms.base
            transforms.schema
            util}
-   :model-exports #{:model/CardTest :model/TransformTest}
+   :model-exports #{:model/CardTest :model/TestSuiteMember :model/TransformTest}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

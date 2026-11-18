@@ -155,6 +155,12 @@
    columns       :- ::columns]
   (t2/select (selected :model/TransformTransformTag columns) :transform_id [:in [:auto/param (vec transform-ids)]]))
 
+(mu/defn test-suite-members-by-suite-ids :- [:sequential ::row]
+  "The TestSuiteMembers of the TestSuites with `suite-ids`, with only `columns` unless nil."
+  [suite-ids :- [:sequential {:min 1} :int]
+   columns   :- ::columns]
+  (t2/select (selected :model/TestSuiteMember columns) :suite_id [:in [:auto/param (vec suite-ids)]]))
+
 (mu/defn table-indexes-by-transform-ids :- [:sequential ::row]
   "The TableIndexes of the Transforms with `transform-ids`, with only `columns` unless nil."
   [transform-ids :- [:sequential {:min 1} :int]

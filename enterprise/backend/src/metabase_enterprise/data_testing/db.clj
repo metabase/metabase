@@ -363,6 +363,11 @@
         (t2/hydrate [:transform [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :transform #(some-> % (collection.root/hydrate-root-collection root)))))))))
 
+(mu/defn synced-test-suite-items :- [:sequential ::data-testing.schema/test-suite.synced-item]
+  "The TestSuites with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/TestSuite :id :name] :id [:in ids]))
+
 (mu/defn synced-card-test-items :- [:sequential ::data-testing.schema/card-test]
   "The CardTests with `ids`, with their Card and its Collection and ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]

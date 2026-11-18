@@ -73,6 +73,7 @@
     :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
+    :model/TestSuiteMember
     :model/LoginHistory
     :model/McpFeedback
     :model/McpGroupPermission
@@ -146,8 +147,6 @@
     :model/DataTestRun
     :model/TestSuiteRun
     ;; TODO we should remove these models from here once serialization is supported
-    :model/TestSuite
-    :model/TestSuiteMember
     :model/TransformRun
     :model/TransformRunCancelation
     :model/TransformDagRun

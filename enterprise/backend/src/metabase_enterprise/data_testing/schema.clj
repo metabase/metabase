@@ -315,6 +315,12 @@
    [:created_at  ms/TemporalInstant]
    [:updated_at  ms/TemporalInstant]])
 
+(mr/def ::test-suite.synced-item
+  "A test suite as remote sync lists it."
+  [:map {:closed true}
+   [:id   ms/PositiveInt]
+   [:name :string]])
+
 (mr/def ::test-suite.member
   "A test in a suite, by type and entity id. A suite can name a test this instance lacks, or of a type this version does
   not know: its `:test_type` is then any keyword."
@@ -474,6 +480,25 @@
 (mr/def ::external-transform-test
   "A TransformTest as serialization writes it, with references in place of ids."
   (external-test ::transform-test :transform_id))
+
+(mr/def ::external-test-suite-member
+  "A TestSuiteMember as serialization writes it, nested in its suite. It names its test by type and entity id, which
+  serialization copies as they are: a suite can name a test the importing instance lacks."
+  [:map {:closed true}
+   [:test_type      [:or :keyword :string]]
+   [:test_entity_id :string]
+   [:position       :int]
+   [:serdes/meta    {:optional true} ::models.schema/external-meta]])
+
+(mr/def ::external-test-suite
+  "A TestSuite as serialization writes it, with its members nested in order."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::test-suite [:entity_id :name :creator_id]]
+    [:map {:closed true}
+     [:description {:optional true} [:maybe :string]]
+     [:members     {:optional true} [:maybe [:sequential [:ref ::external-test-suite-member]]]]
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."

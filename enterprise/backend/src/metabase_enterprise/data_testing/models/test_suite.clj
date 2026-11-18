@@ -9,6 +9,8 @@
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -66,3 +68,33 @@
   (when-not mi/*deserializing?*
     (events/publish-event! :event/test-suite-delete {:object suite}))
   suite)
+
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(defmethod serialization/spec :model/TestSuite [_]
+  {:schema    ::data-testing.schema/external-test-suite
+   :copy      [:entity_id :name :description]
+   :transform {:creator_id serialization/user-transform}
+   :children  {:members :model/TestSuiteMember}})
+
+(defmethod serialization/spec :model/TestSuiteMember [_]
+  ;; A member is found by its test, not its position, so that an import that reorders members never puts two rows of
+  ;; one suite on the same test, which the unique constraint refuses.
+  {:schema    ::data-testing.schema/external-test-suite-member
+   :identity  [:suite_id :test_type :test_entity_id]
+   :copy      [:test_type :test_entity_id :position]
+   :parent    {:model :model/TestSuite :key :suite_id :order :position}
+   :transform {:suite_id serialization/import-only-transform}})
+
+(defmethod serialization/storage-paths :model/TestSuite [_ entities _ctx]
+  (mapv (fn [suite]
+          [{:label "test_suites"} {:label (:name suite) :key (:entity_id suite)}])
+        entities))
+
+;;; -------------------------------------------------- Remote sync -------------------------------------------------
+
+(defmethod remote-sync/spec :model/TestSuite
+  [_model]
+  ;; No filter clause: every suite syncs, whatever its members, and a run reports a member the instance lacks as
+  ;; missing.
+  {:synced-items data-testing.db/synced-test-suite-items})

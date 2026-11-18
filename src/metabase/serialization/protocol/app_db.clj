@@ -183,6 +183,9 @@
 (defmethod rows-by-parent-pks :model/TransformTransformTag [model parent-pks columns]
   (children-rows model parent-pks columns serialization.db/transform-tags-by-transform-ids))
 
+(defmethod rows-by-parent-pks :model/TestSuiteMember [model parent-pks columns]
+  (children-rows model parent-pks columns serialization.db/test-suite-members-by-suite-ids))
+
 (defmethod rows-by-parent-pks :model/TableIndex [model parent-pks columns]
   (children-rows model parent-pks columns serialization.db/table-indexes-by-transform-ids))
 

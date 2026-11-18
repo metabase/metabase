@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-testing.suite-api
-  "`/api/ee/test-suite`: named lists of saved data tests. Every endpoint needs Data Studio access."
+  "`/api/ee/test-suite`: named lists of saved data tests. Every endpoint needs Data Studio access, and on an instance
+  where remote sync keeps synced content read-only, no suite can be created, changed or deleted."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -8,12 +9,20 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- check-writable
+  "Check that the current user may enter Data Studio, and that remote sync, which syncs every suite, does not keep
+  suites read-only; or throw a 403."
+  []
+  (api/check-data-studio-access)
+  (api/check-403 (not (remote-sync/read-only?))))
 
 (mu/defn- suite-response :- ::data-testing.schema/test-suite.response
   "The TestSuite with `id` as the current user sees it, or a 404."
@@ -42,7 +51,7 @@
   [_route-params
    _query-params
    {:keys [members] :as body} :- ::data-testing.schema/test-suite.create]
-  (api/check-data-studio-access)
+  (check-writable)
   (suite-response (data-testing.db/insert-test-suite! (-> body
                                                           (dissoc :members)
                                                           (assoc :creator_id api/*current-user-id*))
@@ -56,7 +65,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    body :- ::data-testing.schema/test-suite.update]
-  (api/check-data-studio-access)
+  (check-writable)
   (api/check-404 (data-testing.db/test-suite id))
   (data-testing.db/update-test-suite!
    id
@@ -72,7 +81,7 @@
   "Delete a test suite. The tests in it are not deleted."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-data-studio-access)
+  (check-writable)
   (api/check-404 (data-testing.db/test-suite id))
   (data-testing.db/delete-test-suite! id)
   nil)
