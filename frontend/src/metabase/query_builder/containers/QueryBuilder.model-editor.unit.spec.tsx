@@ -401,6 +401,51 @@ async function setRowLimit(limit: string) {
   await userEvent.tab();
 }
 
+/** Lets the responses of the requests under way arrive and render */
+async function waitForResponses() {
+  await act(() => fetchMock.callHistory.flush(true));
+}
+
+function getQueryRunCount() {
+  return fetchMock.callHistory
+    .calls()
+    .filter((call) =>
+      /\/api\/(dataset|card\/\d+\/query)$/.test(new URL(call.url).pathname),
+    ).length;
+}
+
+/** Waits for a query run that starts after `previousCount` runs, and its result */
+async function waitForNextQueryRun(previousCount: number) {
+  await waitFor(() =>
+    expect(getQueryRunCount()).toBeGreaterThan(previousCount),
+  );
+  await waitForResponses();
+}
+
+async function openEditor(action: "Edit metadata" | "Edit query definition") {
+  await openQuestionActions();
+  await userEvent.click(screen.getByText(action));
+  await waitForResponses();
+}
+
+async function clickGetAnswer() {
+  const runCount = getQueryRunCount();
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Get Answer" }),
+  );
+  await waitForNextQueryRun(runCount);
+}
+
+async function clickSaveChanges() {
+  const runCount = getQueryRunCount();
+  await userEvent.click(
+    within(screen.getByTestId("dataset-edit-bar")).getByRole("button", {
+      name: "Save changes",
+    }),
+  );
+  await waitForNextQueryRun(runCount);
+}
+
 async function cancelAndDiscardChanges() {
   await userEvent.click(
     within(screen.getByTestId("dataset-edit-bar")).getByRole("button", {
@@ -413,6 +458,7 @@ async function cancelAndDiscardChanges() {
       { name: "Discard changes" },
     ),
   );
+  await waitForResponses();
 }
 
 function getNativeEditorInput() {
@@ -420,11 +466,15 @@ function getNativeEditorInput() {
 }
 
 async function runNativeQuery() {
+  // while a query runs, the run button cancels it
+  await waitForResponses();
+  const runCount = getQueryRunCount();
   await userEvent.click(
     within(screen.getByTestId("native-query-editor-container")).getByTestId(
       "run-button",
     ),
   );
+  await waitForNextQueryRun(runCount);
 }
 
 function createExpressionColumn(name: string, baseType: string) {
@@ -517,6 +567,7 @@ describe("QueryBuilder - model editor", () => {
     await openQuestionActions();
     expect(await screen.findByText("89%")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Edit metadata"));
+    await waitForResponses();
     await waitFor(() => expect(router.location.pathname).toMatch(/\/columns$/));
 
     await clickHeader("Subtotal");
@@ -573,10 +624,9 @@ describe("QueryBuilder - model editor", () => {
       });
       expect(await screen.findByText("109.22")).toBeInTheDocument();
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit query definition"));
+      await openEditor("Edit query definition");
       await setRowLimit("2");
-      await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+      await clickGetAnswer();
 
       await waitFor(() =>
         expect(getFirstStage(getAdhocQueryBodies().at(-1)).limit).toBe(2),
@@ -610,7 +660,7 @@ describe("QueryBuilder - model editor", () => {
 
       await userEvent.click(await screen.findByText("Summarize"));
       await userEvent.click(await screen.findByText("Count of rows"));
-      await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+      await clickGetAnswer();
 
       await waitFor(() =>
         expect(getFirstStage(getAdhocQueryBodies().at(-1)).aggregation).toEqual(
@@ -645,8 +695,7 @@ describe("QueryBuilder - model editor", () => {
       expect(await screen.findByText("109.22")).toBeInTheDocument();
       expect(screen.getByText("37.65")).toBeInTheDocument();
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit query definition"));
+      await openEditor("Edit query definition");
       await waitFor(() => expect(router.location.pathname).toMatch(/\/query$/));
       expect(
         screen.getByRole("button", { name: "Save changes" }),
@@ -669,8 +718,7 @@ describe("QueryBuilder - model editor", () => {
       expect(screen.getByText("37.65")).toBeInTheDocument();
       expect(getCardPutBodies(model)).toHaveLength(0);
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit query definition"));
+      await openEditor("Edit query definition");
       await waitFor(() => expect(router.location.pathname).toMatch(/\/query$/));
       expect(
         screen.getByRole("button", { name: "Save changes" }),
@@ -684,9 +732,7 @@ describe("QueryBuilder - model editor", () => {
       await waitFor(() =>
         expect(screen.queryByText("109.22")).not.toBeInTheDocument(),
       );
-      await userEvent.click(
-        screen.getByRole("button", { name: "Save changes" }),
-      );
+      await clickSaveChanges();
 
       await waitFor(() => expect(getCardPutBodies(model)).toHaveLength(1));
       expect(
@@ -709,8 +755,7 @@ describe("QueryBuilder - model editor", () => {
       setupModelServer({ card: model, runQuery: runNativeOrdersQuery });
       await setup({ card: model, initialRoute: `/model/${model.id}` });
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       expect(
         await screen.findByText(/Syntax error in SQL/),
       ).toBeInTheDocument();
@@ -728,9 +773,7 @@ describe("QueryBuilder - model editor", () => {
       await waitForCell("1");
       expect(screen.queryByText(/Syntax error in SQL/)).not.toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Save changes" }),
-      );
+      await clickSaveChanges();
       await waitFor(() => expect(getCardPutBodies(model)).toHaveLength(1));
       expect(
         getNativeQuery(getCardDatasetQuery(getCardPutBodies(model)[0])),
@@ -740,12 +783,13 @@ describe("QueryBuilder - model editor", () => {
           screen.queryByTestId("dataset-edit-bar"),
         ).not.toBeInTheDocument(),
       );
-      // A model shows a 1x1 result of its view-mode query as a number
+      // The saved model first shows its own query's result as a table, and
+      // then the result of its view-mode query, a 1x1 result, as a number
       expect(
-        await within(screen.getByTestId("query-visualization-root")).findByText(
-          "1",
-        ),
-      ).toBeInTheDocument();
+        await within(
+          screen.getByTestId("query-visualization-root"),
+        ).findAllByText("1"),
+      ).not.toHaveLength(0);
       expect(screen.queryByText(/Syntax error in SQL/)).not.toBeInTheDocument();
     });
   });
@@ -812,8 +856,7 @@ describe("QueryBuilder - model editor", () => {
       });
       await setup({ card: model, initialRoute: `/model/${model.id}` });
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await assertColumnSelected(0, "ID");
       expect(screen.getByLabelText("Description")).toHaveValue(ID_DESCRIPTION);
 
@@ -891,8 +934,7 @@ describe("QueryBuilder - model editor", () => {
       });
       await setup({ card: model, initialRoute: `/model/${model.id}` });
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await clickHeader("Count");
       await userEvent.type(await screen.findByLabelText("Description"), "A");
       await clickHeader("Sum of Total");
@@ -909,9 +951,7 @@ describe("QueryBuilder - model editor", () => {
       );
 
       await waitForSaveChangesToBeEnabled();
-      await userEvent.click(
-        screen.getByRole("button", { name: "Save changes" }),
-      );
+      await clickSaveChanges();
       await waitFor(() => expect(getCardPutBodies(model)).toHaveLength(1));
       expect(getCardPutBodies(model)[0]).toMatchObject({
         result_metadata: [
@@ -926,8 +966,7 @@ describe("QueryBuilder - model editor", () => {
           screen.queryByTestId("dataset-edit-bar"),
         ).not.toBeInTheDocument(),
       );
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await clickHeader("Count");
       await waitFor(() =>
         expect(screen.getByLabelText("Description")).toHaveValue("A"),
@@ -996,8 +1035,7 @@ describe("QueryBuilder - model editor", () => {
       });
       await setup({ card: model, initialRoute: `/model/${model.id}` });
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await setColumnName("ID", "ID1");
       await setColumnName("Orders → ID", "ID2");
       await setColumnName("Orders_2 → ID", "ID3");
@@ -1045,8 +1083,7 @@ describe("QueryBuilder - model editor", () => {
       await waitForHeaderCell("Title");
       expect(getHeaderNames()).not.toContain("Vendor");
 
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await waitForHeaderCell("Vendor");
     });
   });
@@ -1063,7 +1100,7 @@ describe("QueryBuilder - model editor", () => {
         await within(miniPicker).findByText("Sample Database"),
       );
       await userEvent.click(await within(miniPicker).findByText("Orders"));
-      await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+      await clickGetAnswer();
       await assertQueryTabState();
       expect(getAdhocQueryBodies()).toHaveLength(1);
 
@@ -1156,6 +1193,7 @@ describe("QueryBuilder - model editor", () => {
       await userEvent.tab();
 
       await waitFor(() => expect(getCardPutBodies(model)).toHaveLength(1));
+      await waitForResponses();
       expect(getCardPutBodies(model)[0]).toMatchObject({
         description: "# Hello\n## World\nThis is an **important** description!",
       });
@@ -1216,17 +1254,14 @@ describe("QueryBuilder - model editor", () => {
     }
 
     async function makeIdVisibleInTable(model: Card) {
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await clickHeader("ID");
       await waitFor(() =>
         expect(screen.getByLabelText("Detail views only")).toBeChecked(),
       );
       await setVisibility("ID", "Table and details views");
       const putCount = getCardPutBodies(model).length;
-      await userEvent.click(
-        screen.getByRole("button", { name: "Save changes" }),
-      );
+      await clickSaveChanges();
       await waitFor(() =>
         expect(getCardPutBodies(model)).toHaveLength(putCount + 1),
       );
@@ -1251,7 +1286,7 @@ describe("QueryBuilder - model editor", () => {
         await within(miniPicker).findByText("Sample Database"),
       );
       await userEvent.click(await within(miniPicker).findByText("Orders"));
-      await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+      await clickGetAnswer();
       await waitForCell("39.72");
       await userEvent.click(
         within(screen.getByTestId("dataset-edit-bar")).getByText("Columns"),
@@ -1261,12 +1296,14 @@ describe("QueryBuilder - model editor", () => {
       expect(screen.queryByTestId("detail-shortcut")).not.toBeInTheDocument();
       await setVisibility("ID", "Detail views only");
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      const runCount = getQueryRunCount();
       await userEvent.click(
         within(await screen.findByTestId("save-question-modal")).getByRole(
           "button",
           { name: "Save" },
         ),
       );
+      await waitForNextQueryRun(runCount);
       await waitFor(() => expect(getCardPostBodies()).toHaveLength(1));
       expect(getSavedIdVisibility(getCardPostBodies()[0])).toBe("details-only");
 
@@ -1280,15 +1317,12 @@ describe("QueryBuilder - model editor", () => {
         card: ORDERS_MODEL,
         initialRoute: `/model/${ORDERS_MODEL.id}`,
       });
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
 
       await waitForHeaderCell("ID");
       expect(screen.queryByTestId("detail-shortcut")).not.toBeInTheDocument();
       await setVisibility("ID", "Detail views only");
-      await userEvent.click(
-        screen.getByRole("button", { name: "Save changes" }),
-      );
+      await clickSaveChanges();
       await waitFor(() =>
         expect(getCardPutBodies(ORDERS_MODEL)).toHaveLength(1),
       );
@@ -1306,8 +1340,7 @@ describe("QueryBuilder - model editor", () => {
         card: ORDERS_MODEL,
         initialRoute: `/model/${ORDERS_MODEL.id}`,
       });
-      await openQuestionActions();
-      await userEvent.click(screen.getByText("Edit metadata"));
+      await openEditor("Edit metadata");
       await clickHeader("ID");
       await userEvent.clear(screen.getByLabelText("Display name"));
       await userEvent.type(screen.getByLabelText("Display name"), "ID1");
@@ -1324,7 +1357,7 @@ describe("QueryBuilder - model editor", () => {
       await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("ID"),
       );
-      await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+      await clickGetAnswer();
       await waitFor(() =>
         expect(getFirstStage(getAdhocQueryBodies().at(-1))["order-by"]).toEqual(
           [expect.arrayContaining(["asc"])],
@@ -1337,11 +1370,7 @@ describe("QueryBuilder - model editor", () => {
       );
       await clickHeader("ID1");
       expect(screen.getByLabelText("Display name")).toHaveValue("ID1");
-      await userEvent.click(
-        within(screen.getByTestId("dataset-edit-bar")).getByRole("button", {
-          name: "Save changes",
-        }),
-      );
+      await clickSaveChanges();
 
       await waitFor(() =>
         expect(getCardPutBodies(ORDERS_MODEL)).toHaveLength(1),
