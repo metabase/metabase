@@ -159,6 +159,7 @@ describe("SummaryWells", () => {
 
   it("shows full grouping formulas in tooltips and keeps their bucket menus", async () => {
     const name = "Total + 100 + 100 + 100 + 100 +…";
+    const dateName = "coalesce(Created At, Created At)";
     const { getLastChange } = setup({
       spec: {
         stages: [
@@ -181,7 +182,7 @@ describe("SummaryWells", () => {
                 },
               },
               {
-                name: "Order date",
+                name: dateName,
                 value: {
                   type: "operator",
                   operator: "coalesce",
@@ -194,7 +195,7 @@ describe("SummaryWells", () => {
             ],
             breakouts: [
               { type: "column", name },
-              { type: "column", name: "Order date", unit: "month" },
+              { type: "column", name: dateName, unit: "month" },
             ],
           },
         ],
@@ -207,21 +208,21 @@ describe("SummaryWells", () => {
       "[Total] + 100 + 100 + 100 + 100 + 100 + 100",
     );
     await userEvent.unhover(groupBy.getByText(name));
-    await userEvent.hover(groupBy.getByText("Order date: Month"));
+    await userEvent.hover(groupBy.getByText(`${dateName}: Month`));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "coalesce([Created At], [Created At])",
     );
-    expect(getChipLabels("columns")).toEqual([name, "Order date: Month"]);
+    expect(getChipLabels("columns")).toEqual([name, `${dateName}: Month`]);
 
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Change how Order date: Month is grouped",
+        name: `Change how ${dateName}: Month is grouped`,
       }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Year" }),
     );
-    expect(getLastChange().dimensions).toEqual([name, "Order date: Year"]);
+    expect(getLastChange().dimensions).toEqual([name, `${dateName}: Year`]);
   });
 
   it("takes a chip off from its remove button", async () => {
@@ -690,6 +691,42 @@ describe("SummaryWells", () => {
       await userEvent.hover(screen.getByText(label));
 
       expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+    });
+
+    it("shows the full name of a renamed formula instead of its formula", async () => {
+      mockTextOverflow();
+      setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: "Revenue after discounts",
+                  value: {
+                    type: "operator",
+                    operator: "/",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [{ type: "column", name: "TOTAL" }],
+                      },
+                      { type: "operator", operator: "count" },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      await userEvent.hover(screen.getByText("Revenue after discounts"));
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Revenue after discounts");
+      expect(tooltip).not.toHaveTextContent("Count()");
     });
 
     it("shows no tooltip for a label that fits", async () => {
