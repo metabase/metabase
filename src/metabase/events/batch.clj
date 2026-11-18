@@ -41,14 +41,15 @@
                     {:model model}))))
 
 (def ^:private CollectedEvent
-  "A write of a row: its model, its kind, the row after it for a create or an update, and the row before it for an
-  update or a delete."
+  "A write of a row: its model, its kind, the row after it for a create or an update, the row before it for an update
+  or a delete, and the columns an update set, which include an `:updated_at` that the row after it cannot show."
   [:map
    [:model     :keyword]
    [:operation Operation]
    [:id        [:maybe [:or :int :string]]]
    [:object    {:optional true} [:maybe [:map]]]
    [:previous-object {:optional true} [:maybe [:map]]]
+   [:changed   {:optional true} [:set :keyword]]
    [:user-id   [:maybe :int]]
    [:context   {:optional true} [:maybe [:map]]]
    [:captures  {:optional true} [:maybe [:map]]]])
@@ -266,7 +267,8 @@
       :else
       (merge lst shared {:operation       :update
                          :object          object
-                         :previous-object (:previous-object fst)}))))
+                         :previous-object (:previous-object fst)
+                         :changed         (into #{} (mapcat :changed) events)}))))
 
 (defn- compact
   "One event per row, in the order of the first write of the row."

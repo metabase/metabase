@@ -46,7 +46,8 @@
     (let [model    (model-of &model)
           previous (t2/instance model (t2.realize/realize (t2/original instance)))]
       (collect! model :update instance {:object          (settled (t2.realize/realize instance) previous)
-                                        :previous-object previous})))
+                                        :previous-object previous
+                                        :changed         (set (keys (t2/changes instance)))})))
   instance)
 
 (t2/define-before-delete :hook/events

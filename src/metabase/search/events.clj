@@ -39,13 +39,11 @@
           nil)))))
 
 (defn- updated-instance
-  "The row of an update as an instance that knows its changes."
-  [{:keys [model object previous-object]}]
-  (reduce-kv (fn [instance column value]
-               (cond-> instance
-                 (not= value (get previous-object column)) (assoc column value)))
-             (t2/instance model previous-object)
-             object))
+  "The row of an update as an instance whose changes are the columns the update set. They come from `changed`, not a
+  diff of the rows, because the row after an update shows the `updated_at` that the update set as the one before it."
+  [{:keys [model object previous-object changed]}]
+  (merge (t2/instance model (apply dissoc (into {} previous-object) changed))
+         (select-keys object changed)))
 
 (defn- handle-deleted!
   "Hand off the re-derivation of the documents of the `deleted` rows once the transaction commits."

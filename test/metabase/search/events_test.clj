@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -188,6 +189,28 @@
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
                  (capture-enqueues! #(t2/update! :model/ModerationReview :id new-id {:status nil})))))))))
+
+(deftest update-of-unindexed-column-reindexes-test
+  (testing "an edit that changes no indexed column still refreshes the indexed last editor and update time"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+              indexed #(t2/select-one [(search.index/active-table) :last_editor_id :model_updated_at]
+                                      :model "dashboard" :model_id (str dash-id))]
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:width "full"})
+          (is (= {:last_editor_id   (mt/user->id :crowberto)
+                  :model_updated_at (t/instant (t2/select-one-fn :updated_at :report_dashboard :id dash-id))}
+                 (-> (indexed)
+                     (update :model_updated_at t/instant)
+                     (select-keys [:last_editor_id :model_updated_at])))))))))
+
+(deftest update-of-unread-joined-column-enqueues-nothing-test
+  (testing "an update that moves `updated_at` reindexes only the documents that read it, not the ones it joins into"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card          {card-id :id}     {}
+                     :model/Dashboard     {dash-id :id}     {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id}]
+        (is (= [] (capture-enqueues! #(t2/update! :model/DashboardCard :id dashcard-id {:size_x 7}))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"
