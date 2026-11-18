@@ -1191,6 +1191,10 @@ describe("QueryBuilder > models", () => {
       });
       await setup({ card, dataset: NATIVE_DATASET });
 
+      expect(
+        screen.getByTestId("mock-native-query-editor"),
+      ).toBeInTheDocument();
+
       const menu = await openActionsMenu();
       await userEvent.click(
         within(menu).getByRole("menuitem", { name: /Turn into a model/ }),
@@ -1203,6 +1207,9 @@ describe("QueryBuilder > models", () => {
       await waitFor(() => expect(getCardUpdates(card.id)).toHaveLength(1));
       expect(getCardUpdates(card.id)[0]).toMatchObject({ type: "model" });
       await expectToBeModel();
+      expect(
+        screen.queryByTestId("mock-native-query-editor"),
+      ).not.toBeInTheDocument();
     });
 
     it("does not open the variables sidebar when a variable is typed in a native model", async () => {
@@ -1630,6 +1637,10 @@ describe("QueryBuilder > questions based on a model", () => {
       expect(router.location.pathname).toBe(
         `/question/${SAVED_QUESTION_ID}-q1`,
       ),
+    );
+    expect(await screen.findByDisplayValue("Q1")).toBeInTheDocument();
+    await waitFor(() =>
+      expectHeaderToShowModelSource({ modelName: "Product Model" }),
     );
   });
 
