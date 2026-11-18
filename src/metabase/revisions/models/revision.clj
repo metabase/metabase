@@ -322,6 +322,10 @@
   [rows]
   (revisions.db/insert-revisions! rows))
 
+(def models-recording-own-revert
+  "The models whose reversion also writes a Revision of its own update, which the reversion Revision follows."
+  #{:model/CardTest :model/SegmentTest :model/TransformTest})
+
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
   [info :- [:map {:closed true}
@@ -335,20 +339,21 @@
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))
-            ;; Do the reversion of the object, and push a new revision to record it before the batch delivers its
-            ;; events, so that what they read, as the search index does, sees it
-            [last-revision new-revision]
-            (events/with-event-context {:reverting? true}
-              (events/with-batched-events
-                (revert-to-revision! entity id user-id serialized-instance)
-                [(revisions.db/latest-revision model-name id)
-                 (when-not already-in-target-state?
-                   (revisions.db/insert-revision-returning! {:model        model-name
-                                                             :model_id     id
-                                                             :user_id      user-id
-                                                             :object       serialized-instance
-                                                             :is_creation  false
-                                                             :is_reversion true}))]))]
+            own-update?              (contains? models-recording-own-revert entity)
+            record-reversion!        #(when-not already-in-target-state?
+                                        (revisions.db/insert-revision-returning! {:model        model-name
+                                                                                  :model_id     id
+                                                                                  :user_id      user-id
+                                                                                  :object       serialized-instance
+                                                                                  :is_creation  false
+                                                                                  :is_reversion true}))
+            in-batch                 (events/with-event-context {:reverting? true}
+                                       (events/with-batched-events
+                                         (revert-to-revision! entity id user-id serialized-instance)
+                                         (when-not own-update?
+                                           [(revisions.db/latest-revision model-name id) (record-reversion!)])))
+            [last-revision new-revision] (or in-batch
+                                             [(revisions.db/latest-revision model-name id) (record-reversion!)])]
         (if new-revision
           (add-revision-details entity new-revision last-revision)
           last-revision)))))

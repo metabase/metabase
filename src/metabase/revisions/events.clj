@@ -22,7 +22,7 @@
 (def ^:private creator-recorded
   "The models whose saved tests record their creator as the author of the creation Revision when a user writes it, and
   whose reversion writes a Revision of its own update."
-  #{:model/CardTest :model/SegmentTest :model/TransformTest})
+  revision/models-recording-own-revert)
 
 (def ^:private ignored-columns
   "For each model, the columns whose change alone is not content to snapshot, `:default` being the counters and
