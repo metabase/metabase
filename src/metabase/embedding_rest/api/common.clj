@@ -19,6 +19,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -396,23 +397,23 @@
 ;;; it passes `{}`; the token is validated against `embedding-params` exactly as for the chart.
 
 (mr/def ::card-context
-  [:map
-   [:card                 :map]
-   [:parameters           [:maybe [:sequential :map]]]
+  [:map {:closed true}
+   [:card                 ::queries.schema/card]
+   [:parameters           [:maybe ::parameters.schema/parameter-values]]
    [:signed-parameter-ids [:set :string]]])
 
 (mr/def ::dashcard-context
-  [:map
-   [:dashboard            :map]
-   [:dashcard             :map]
-   [:card                 :map]
-   [:parameters           [:sequential :map]]
+  [:map {:closed true}
+   [:dashboard            ::dashboards.schema/dashboard]
+   [:dashcard             ::dashboards.schema/dashboard-card]
+   [:card                 ::queries.schema/card]
+   [:parameters           ::parameters.schema/parameter-values]
    [:signed-parameter-ids [:set :string]]])
 
 (mu/defn card-context :- ::card-context
   "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `card`. Throws a 400 on bad
   params. Returns the card, its query parameters, and the ids of the parameters the token signs a value for."
-  [card             :- :map
+  [card             :- ::queries.schema/card
    embedding-params :- [:maybe ms/EmbeddingParams]
    token-params     :- SlugValueMap
    query-params     :- [:or QueryParams ParsedQueryParams]]
@@ -433,9 +434,9 @@
 (mu/defn dashcard-context :- ::dashcard-context
   "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `dashboard`, then check that
   `card` is on `dashcard` on `dashboard`. Throws a 400 on bad params, a 404 on a membership mismatch."
-  [dashboard        :- :map
-   dashcard         :- :map
-   card             :- :map
+  [dashboard        :- ::dashboards.schema/dashboard
+   dashcard         :- ::dashboards.schema/dashboard-card
+   card             :- ::queries.schema/card
    embedding-params :- [:maybe ms/EmbeddingParams]
    token-params     :- SlugValueMap
    query-params     :- [:or QueryParams ParsedQueryParams]]

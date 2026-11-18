@@ -1061,9 +1061,11 @@
            metabase.dynamic-goals.core}
    :uses #{api
            api-scope
+           dashboards
            data-apps
            lib
            lib.be
+           lib.schema
            queries
            query-processor
            request
