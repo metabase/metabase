@@ -1,6 +1,7 @@
 (ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
@@ -20,55 +21,38 @@
   (when-let [row (audit-log/audit-row topic params)]
     (events/add-to-sink! ::rows row)))
 
-(defn- unchanged-details?
-  "Whether the update `event` leaves what the audit log records of the object as it was."
-  [stored-topic {:keys [object previous-object]}]
-  (let [kw (keyword (name stored-topic))]
-    (= (audit-log/model-details object kw) (audit-log/model-details previous-object kw))))
-
-(def ^:private bookkeeping-columns
-  "The columns of any audited model that the product writes to keep count or time of use, never a change to audit."
-  #{:updated_at :view_count :last_used_at :last_viewed_at :cache_invalidated_at :last_query_start
-    :collection_position :entity_id})
-
-(defn- bookkeeping-update?
-  "Whether `event` is an update that changes only [[bookkeeping-columns]]."
-  [{:keys [object previous-object] :as event}]
-  (and object previous-object (every? bookkeeping-columns (u.events/changed-keys event))))
-
-(defn- carried-by-archive?
-  "Whether `event` is an update that the archive or restore of another entity carried to its row, which the audit log
-  does not record."
-  [event]
-  (some? (get-in event [:context :archived-with])))
+(def ^:private context-details-models
+  "The models whose events take the `:details` of the event context into the row, the others being written by the same
+  operation without being what it is about."
+  #{:model/ApiKey :model/CacheConfig :model/Database})
 
 (defn- record-lifecycle!
   "Record the lifecycle `event` of a write by a user under `stored-topic`, with the changes of an update when
-  `previous?`, and nothing for a write without a user or an update that changes nothing the log records."
+  `previous?`, and nothing for a write without a user or one that is no edit by a user."
   [stored-topic {:keys [user-id object previous-object context] :as event} previous?]
-  (when (and user-id
-             (not (carried-by-archive? event))
-             (not (bookkeeping-update? event))
-             (not (and previous? object previous-object (unchanged-details? stored-topic event))))
+  (when (and user-id (u.events/user-edit? event))
     (record! stored-topic
              (cond-> {:object (or object previous-object) :user-id user-id}
                (and previous? object previous-object) (assoc :previous-object previous-object)
                (:revision-message context)             (assoc :details {:revision-message (:revision-message context)})
-               (:details context)                      (update :details merge (:details context))))))
+               (and (:details context)
+                    (context-details-models (u.events/model-of event))) (update :details merge (:details context))))))
 
 (events/derive! ::card-event ::event)
 (events/derive! :event/card-create ::card-event)
 (events/derive! :event/card-update ::card-event)
 (events/derive! :event/card-delete ::card-event)
 
-(def ^:private audited-card-columns
-  "The columns of a Card whose update the audit log records, those of its details."
-  #{:name :description :database_id :table_id :type})
+(defn- card-archive-only?
+  "Whether `event` is an update that only archives or restores the Card directly, which records no row."
+  [event]
+  (let [changed (set/difference (u.events/changed-keys event) (u.events/bookkeeping-columns :model/Card))]
+    (and (contains? changed :archived)
+         (set/subset? changed #{:archived :archived_directly}))))
 
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
-  (when-not (and (= :event/card-update topic)
-                 (not (u.events/changed-any? event audited-card-columns)))
+  (when-not (and (= :event/card-update topic) (card-archive-only? event))
     (record-lifecycle! topic event true)))
 
 (events/derive! ::dashboard-event ::event)
@@ -264,13 +248,14 @@
 (events/derive! ::user-update-event ::event)
 (events/derive! :event/user-update ::user-update-event)
 
-(def ^:private audited-user-columns
-  "The columns of a User whose update the audit log records."
-  #{:first_name :last_name :email :sso_source :tenant_id})
+(defn- api-key-user?
+  "Whether the User of `event` is the one that an API key owns, which no page lists."
+  [{:keys [object previous-object]}]
+  (= "api-key" (some-> (or object previous-object) :type name)))
 
 (methodical/defmethod events/publish-event! ::user-update-event
   [topic event]
-  (when (u.events/changed-any? event audited-user-columns)
+  (when-not (api-key-user? event)
     (record-lifecycle! topic event true)))
 
 (events/derive! ::user-joined-event ::event)
@@ -419,14 +404,15 @@
 (events/derive! :event/document-delete ::document-event)
 
 (methodical/defmethod events/publish-event! ::document-event
-  [topic {:keys [object] :as event}]
-  (record-lifecycle! (if (and (= :event/document-update topic)
-                              (true? (:archived object))
-                              (u.events/changed? event :archived))
-                       :event/document-delete
-                       topic)
-                     event
-                     false))
+  [topic {:keys [object previous-object] :as event}]
+  (when-not (:exploration_id (or object previous-object))
+    (record-lifecycle! (if (and (= :event/document-update topic)
+                                (true? (:archived object))
+                                (u.events/changed? event :archived))
+                         :event/document-delete
+                         topic)
+                       event
+                       false)))
 
 (events/derive! ::comment-event ::event)
 (events/derive! :event/comment-create ::comment-event)
@@ -581,7 +567,7 @@
          {:user-id user-id :model model :model-id (:id row)}])
 
       :model/User
-      (when (and previous-object (u.events/changed? event :is_active))
+      (when (and previous-object (u.events/changed? event :is_active) (not (api-key-user? event)))
         [(if (:is_active object) :event/user-reactivated :event/user-deactivated)
          {:user-id user-id :object object}])
 
