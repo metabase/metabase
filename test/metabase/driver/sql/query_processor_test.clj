@@ -1801,3 +1801,11 @@
           (is (= "timestamp" (h2x/database-type form)))
           (testing "control: unpinned, the driver's own form"
             (is (not= sql (sql.qp/format-honeysql :h2 (sql.qp/current-datetime-honeysql-form :h2))))))))))
+
+(deftest pinned-now-is-zoned-only-for-zoned-current-time-types-test
+  (testing "a pinned current time is a wall-clock time for an untyped form and for `timestamp` or `datetime`, any case"
+    (doseq [database-type [nil "timestamp" "TIMESTAMP" "datetime" "DATETIME"]]
+      (is (false? (#'sql.qp/zoned-type? database-type)) (pr-str database-type))))
+  (testing "and an instant for any other type"
+    (doseq [database-type ["timestamptz" "timestamp with time zone" "DateTime64(3, 'UTC')"]]
+      (is (true? (#'sql.qp/zoned-type? database-type)) database-type))))

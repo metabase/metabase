@@ -82,7 +82,13 @@
   [e]
   (tru "The query under test could not be compiled to SQL: {0}" (ex-message e)))
 
-(declare compile-preprocessed)
+(mu/defn compile-preprocessed :- ::compiled-subject
+  "`preprocessed`, a preprocessed query, compiled to SQL, and whether that SQL includes SQL written by hand: a native
+  stage of the query, or of a card it reads."
+  [preprocessed :- ::lib.schema/query]
+  (let [{:keys [query params]} (qp.compile/compile-preprocessed preprocessed)]
+    {:compiled {:query query :params params}
+     :native?  (lib/any-native-stage? preprocessed)}))
 
 (mu/defn compile-query :- ::compiled-subject
   "`query` compiled to SQL as a test runs it, and whether that SQL includes SQL written by hand. Throws
@@ -128,11 +134,3 @@
               (tru "This database ({0}) does not support tests." (name driver))
               {:driver driver})))
     database))
-
-(mu/defn compile-preprocessed :- ::compiled-subject
-  "`preprocessed`, a preprocessed query, compiled to SQL, and whether that SQL includes SQL written by hand: a native
-  stage of the query, or of a card it reads."
-  [preprocessed :- ::lib.schema/query]
-  (let [{:keys [query params]} (qp.compile/compile-preprocessed preprocessed)]
-    {:compiled {:query query :params params}
-     :native?  (lib/any-native-stage? preprocessed)}))
