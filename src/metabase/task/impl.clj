@@ -255,8 +255,8 @@
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
 (mu/defn schedule-once! :- [:maybe :boolean]
-  "Store the one-shot `trigger` of `job` in place of a trigger with its key, so that it fires after a run of that key
-  that is in progress, and return true, or nil when this node cannot schedule it."
+  "Store the one-shot `trigger` of `job` in place of a stored trigger with its key, whether that one waits or its run is
+  in progress, and return true, or nil when this node has no running scheduler or Quartz refuses the trigger."
   [job     :- (ms/InstanceOfClass JobDetail)
    trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]

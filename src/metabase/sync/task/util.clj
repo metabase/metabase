@@ -1,5 +1,5 @@
 (ns metabase.sync.task.util
-  "Helpers for the tasks that run one sync operation for one Database, Table or Field on request."
+  "Helpers for the tasks that sync one Database or Table on request."
   (:require
    [clojure.string :as str]
    [clojurewerkz.quartzite.conversion :as qc]
@@ -24,8 +24,8 @@
    (jobs/store-durably)))
 
 (defn- trigger
-  "A one-shot trigger of `job` for the target `id`, with a key that is the same for every request of that target, that
-  keeps its place among waiting triggers however long it waits."
+  "A one-shot trigger of `job` for the target `id`, with the same key for every request of that target, that ignores
+  misfires so that a long wait does not move it ahead of triggers requested before it."
   [^JobDetail job id]
   (let [job-key (.getKey job)]
     (triggers/build
@@ -38,22 +38,25 @@
       (simple/schedule
        (simple/with-misfire-handling-instruction-ignore-misfires))))))
 
+(defn- run-work!
+  "Call `f` with `id`, logging the message of an exception that it throws and not rethrowing it."
+  [^JobDetail job f id]
+  (try
+    (f id)
+    (catch Exception e
+      (log/warnf "%s failed for %d: %s" (.. job getKey getName) id (ex-message e)))))
+
 (defn run-for-target!
-  "Call `f` with the target id that `job-context` carries, under the timeout of quick tasks, logging what it throws by
-  message without rethrowing it."
+  "Run `f`, the work of a job for one target, with the target id that `job-context` carries, under the timeout of quick
+  tasks."
   [f ^JobExecutionContext job-context]
-  (let [id       (get (qc/from-job-data job-context) "id")
-        job-name (.. job-context getJobDetail getKey getName)]
-    (quick-task/run-with-timeout!
-     (fn []
-       (try
-         (f id)
-         (catch Exception e
-           (log/warnf "%s failed for %d: %s" job-name id (ex-message e))))))))
+  (let [job (.getJobDetail job-context)
+        id  (get (qc/from-job-data job-context) "id")]
+    (quick-task/run-with-timeout! #(run-work! job f id))))
 
 (defn schedule!
-  "Request a run of `job` for the target `id`, or call `f`, the body of that job, with `id` on this node when the run
-  cannot be scheduled."
+  "Request a run of `job` for the target `id`, or submit `f`, the work of `job` for one target, to the quick-task
+  executor of this node when the run cannot be scheduled."
   [job id f]
   (or (task/schedule-once! job (trigger job id))
-      (quick-task/submit-task! #(f id))))
+      (quick-task/submit-task! #(run-work! job f id))))

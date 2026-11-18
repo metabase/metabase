@@ -8,7 +8,9 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.util.quick-task :as quick-task]
+   [toucan2.core :as t2])
+  (:import (java.util.concurrent CountDownLatch Executors TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -130,19 +132,32 @@
 (deftest trigger-rescan-values-for-tables-test
   ;; lot more to test here but will wait for firmer ground
   (testing "Can we trigger a field values sync for a filtered set of tables"
-    (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
-                   :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
-                   :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
-                   :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                   :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
-                   :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
-                   :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-      (let [table-ids (atom [])]
-        (mt/with-dynamic-fn-redefs [sync/schedule-table-field-values-scan! #(swap! table-ids conj %)]
-          (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
-                                                                                        :schema_ids   [(format "%d:FOO" d2)]
-                                                                                        :table_ids    [t4]})
-          (is (= [t1 t2 t4 t5] @table-ids)))))))
+    (let [tables       (atom [])
+          latch        (CountDownLatch. 4)
+          ;; Isolated single-thread pool, for the same reasons as in
+          ;; `trigger-bulk-metadata-sync-for-table-test`.
+          pool         (Executors/newSingleThreadExecutor)]
+      (try
+        (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                       :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                       :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                       :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                       :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+          (with-redefs [quick-task/executor (delay pool)]
+            (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
+                                                                              (swap! tables conj table)
+                                                                              (.countDown latch)
+                                                                              nil)]
+              (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
+                                                                                            :schema_ids   [(format "%d:FOO" d2)]
+                                                                                            :table_ids    [t4]})
+              (testing "rescanned?"
+                (is (true? (.await latch 4 TimeUnit/SECONDS)))
+                (is (= [t1 t2 t4 t5] (map :id @tables)))))))
+        (finally
+          (.shutdownNow pool))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
   (testing "Non-admins should not be allowed to trigger discard values"

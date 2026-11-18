@@ -29,9 +29,6 @@ summary: Breaking changes to the Metabase API, listed by release.
   - A serialization export no longer lists `agent-api-enabled?`. An export made by Metabase 65 lists it and still
     imports; the key has no effect.
 
-- `POST /api/field/:id/rescan_values` queues the scan and answers before it runs, as the Table and Database
-  `rescan_values` endpoints do. It no longer answers `500` when the scan fails: the failure is in the server log.
-
 - `GET /api/ee/workspace-instance/current` returns `{"data": {"databases": [{"database_id", "schema"}]}}`, one entry for
   each database that has a `database-workspace-schema`. It no longer returns `name`, `can_write`, or each database's
   `input_schemas` and `output`. `POST /api/ee/workspace-instance/current` takes and returns the same

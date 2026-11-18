@@ -30,8 +30,8 @@
   (u/minutes->ms (or (config/config-int :mb-quick-task-timeout-minutes) 120)))
 
 (defn run-with-timeout!
-  "Run `f` on a thread of its own and return its result, cancelling it and returning nil when it runs longer than
-  `timeout-ms`, by default [[task-timeout-ms]], or throws."
+  "Run `f` on a thread of its own and return its result, or log a warning and return nil when `f` throws or runs longer
+  than `timeout-ms`, by default [[task-timeout-ms]], in which case its thread is interrupted and not waited for."
   ([f]
    (run-with-timeout! f (task-timeout-ms)))
   ([f timeout-ms]
@@ -42,13 +42,13 @@
      (try
        (.get fut timeout-ms TimeUnit/MILLISECONDS)
        (catch TimeoutException _
-         (log/warnf "quick-task exceeded timeout of %d ms, cancelling" timeout-ms)
+         (log/warnf "Task exceeded timeout of %d ms, interrupting it" timeout-ms)
          (.cancel fut true)
          nil)
        (catch InterruptedException _
          (.interrupt (Thread/currentThread)))
        (catch Exception e
-         (log/warnf "quick-task threw exception: %s" (ex-message e)))))))
+         (log/warnf "Task threw exception: %s" (ex-message e)))))))
 
 (defn submit-task!
   "Submit a task to the single thread executor. Each task is run on a separate thread with a timeout

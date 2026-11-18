@@ -469,6 +469,8 @@
   (dotimes [_ 3]
     (task/schedule-once! (blocking-job) (one-shot-trigger "first"))
     (task/schedule-once! (blocking-job) (one-shot-trigger "second")))
+  (testing "no trigger starts while first run blocks"
+    (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS))))
   (testing "triggers scheduled many times during run each run once after it"
     (dotimes [_ 3]
       (.put blocking-job-release :go))

@@ -34,6 +34,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
@@ -1090,17 +1091,19 @@
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  ;; just wrap this is a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/simple_event {:event "database_manual_scan" :target_id id})
-    ;; Grant full permissions so that permission checks pass when the scan runs in-process with the bindings of this
-    ;; request; as a Quartz job it runs with no user to check. If a user has DB detail perms
-    ;; but no data perms, they should still be able to trigger a sync of field values. This is fine because we don't
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (database-routing/with-anonymous-router-access
         (if *rescan-values-async*
-          (sync/schedule-database-field-values-scan! (u/the-id db))
+          (quick-task/submit-task!
+           (fn []
+             (sync/update-field-values! (u/the-id db))))
           (sync/update-field-values! (u/the-id db))))))
   {:status :ok})
 

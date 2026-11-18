@@ -263,11 +263,6 @@
 
 ;;; ------------------------------------------------- Field -------------------------------------------------
 
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- [:maybe ::lib.schema.id/field]]
-  (t2/select-one :model/Field :id field-id))
-
 (mu/defn fields
   "The Fields with `field-ids`, which `our-metadata` diffs against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]

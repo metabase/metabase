@@ -330,10 +330,10 @@ export function waitForSyncToFinish({
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  // `sync_schema` runs one database sync at a time, so it can be queued behind a slow sync
-  // or bump into an already-running sync of the same database, so in some scenarios one-shot
-  // schema sync may be silently dropped. If we assume such scenario, we force
-  // schema sync to be retriggered occasionally.
+  // `sync_schema` requests run one at a time across all databases, so a request can wait
+  // behind a slow sync of another database. A request that arrives while a scheduled sync of
+  // the same database runs on the same server is skipped, so a one-shot schema sync can be
+  // silently dropped. If we assume such scenario, we force schema sync to be retriggered occasionally.
   // (https://linear.app/metabase/issue/QUE2-663/calls-to-sync-schema-are-occasionally-silently-dropped)
   if (retrigger && iteration > 0 && iteration % RESYNC_TRIGGER_INDEX === 0) {
     cy.request("POST", `/api/database/${dbId}/sync_schema`);

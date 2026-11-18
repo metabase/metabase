@@ -9,7 +9,6 @@
    [metabase.sync.sync-metadata]
    [metabase.sync.sync-metadata.fields]
    [metabase.sync.sync-metadata.tables]
-   [metabase.sync.task.scan-field-values]
    [metabase.sync.task.sync-database]
    [metabase.sync.task.sync-table]
    [potemkin :as p]))
@@ -22,7 +21,6 @@
   metabase.sync.sync-metadata/keep-me
   metabase.sync.sync-metadata.fields/keep-me
   metabase.sync.sync-metadata.tables/keep-me
-  metabase.sync.task.scan-field-values/keep-me
   metabase.sync.task.sync-database/keep-me
   metabase.sync.task.sync-table/keep-me)
 
@@ -45,10 +43,6 @@
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables
   create-table!]
- [metabase.sync.task.scan-field-values
-  schedule-database-field-values-scan!
-  schedule-field-values-scan!
-  schedule-table-field-values-scan!]
  [metabase.sync.task.sync-database
   schedule-database-sync!]
  [metabase.sync.task.sync-table

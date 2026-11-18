@@ -361,13 +361,14 @@
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (warehouse-schema-rest.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-    ;; Grant full permissions so that permission checks pass when the scan runs in-process with the bindings of this
-    ;; request; as a Quartz job it runs with no user to check. If a user has DB detail perms
-    ;; but no data perms, they should still be able to trigger a sync of field values. This is fine because we don't
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       ;; async so as not to block the UI
-      (sync/schedule-table-field-values-scan! (:id table)))
+      (quick-task/submit-task!
+       (fn []
+         (sync/update-field-values-for-table! table))))
     {:status :success}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

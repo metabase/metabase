@@ -1,5 +1,5 @@
 (ns metabase.sync.task.sync-database
-  "Task that syncs and analyzes one Database on request; as a Quartz job it has one run at a time across the cluster."
+  "Task that syncs and analyzes one Database on request; as a Quartz job it has one run at a time across the cluster, whatever the Database."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze :as analyze]
@@ -29,7 +29,7 @@
   (sync.task.util/job SyncDatabase "metabase.task.sync-database.job" "Sync Database"))
 
 (mu/defn schedule-database-sync!
-  "Request a sync and analysis of the Database with `database-id`, replacing a request for it that still waits when this
-  node has a running scheduler."
+  "Request a sync and analysis of the Database with `database-id`, which replaces a waiting request for that Database
+  when this node has a running scheduler and is queued on the quick-task executor of this node otherwise."
   [database-id :- ::lib.schema.id/database]
   (sync.task.util/schedule! job database-id sync-database!))

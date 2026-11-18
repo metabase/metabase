@@ -63,7 +63,11 @@
   (.clear runs)
   (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
     (sync.task.util/schedule! recording-job 7 #(.put runs [:in-process %]))
-    (is (= [:in-process 7] (.poll runs)))))
+    (is (= [:in-process 7] (.poll runs)))
+    (testing "thrown exception is logged with job and target"
+      (mt/with-log-messages-for-level [messages [metabase.sync.task.util :warn]]
+        (sync.task.util/schedule! recording-job 7 (fn [_] (throw (ex-info "no connection" {}))))
+        (is (= ["metabase.task.util-test.job failed for 7: no connection"] (map :message (messages))))))))
 
 (deftest run-for-target-test
   (testing "target id of job context is passed on"
@@ -75,7 +79,7 @@
       (is (= [{:level :warn, :e nil, :message "metabase.task.util-test.job failed for 7: no connection"}]
              (map #(select-keys % [:level :e :message]) (messages)))))))
 
-(deftest run-for-target-stops-at-timeout-test
+(deftest run-for-target-interrupts-work-at-timeout-test
   (let [interrupted (promise)]
     (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms (constantly 2000)]
       (is (nil? (sync.task.util/run-for-target! (fn [_]

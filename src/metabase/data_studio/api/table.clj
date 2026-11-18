@@ -16,6 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
 
@@ -245,7 +246,7 @@
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
       (request/as-admin
-        (sync/schedule-table-field-values-scan! (:id table))))))
+        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
 
 (api.macros/defendpoint :post "/discard-values" :- :nil
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."

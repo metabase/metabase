@@ -3209,10 +3209,8 @@
         (is (=? {:is_sample true}
                 (mt/user-http-request :crowberto :post 200 "database/sample_database")))))))
 
-(deftest sync-schema-and-rescan-values-request-runs-for-database-test
-  (let [requested (atom [])]
-    (mt/with-dynamic-fn-redefs [sync/schedule-database-sync!                #(swap! requested conj [:sync %])
-                                sync/schedule-database-field-values-scan! #(swap! requested conj [:scan %])]
+(deftest sync-schema-request-runs-for-database-test
+  (let [database-ids (atom [])]
+    (mt/with-dynamic-fn-redefs [sync/schedule-database-sync! #(swap! database-ids conj %)]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)))
-      (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (mt/id)))
-      (is (= [[:sync (mt/id)] [:scan (mt/id)]] @requested)))))
+      (is (= [(mt/id)] @database-ids)))))
