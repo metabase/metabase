@@ -9,7 +9,6 @@
 (deftest segment-name-hydrate-test
   (testing ":segment_name batched-hydrate resolves the linked Segment's name and is nil when :segment_id is nil"
     (mt/with-temp [:model/Segment s {:name       "my-seg"
-                                     :table_id   (mt/id :venues)
                                      :definition (let [mp (mt/metadata-provider)]
                                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                        (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1))))}

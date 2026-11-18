@@ -33,18 +33,21 @@
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -185,6 +188,14 @@
 
 (defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
   `(do-with-temp-native-card-with-params (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
+
+(deftest blank-card-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (contains? (:errors (mt/user-http-request :crowberto :post 400 "card" {:name "   "})) :name))
+    (mt/with-temp [:model/Card {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "card/" id) {:name "   "})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "card/" id) {:name "Renamed"}))))))
 
 (deftest ^:parallel run-query-with-parameters-test
   (testing "POST /api/card/:id/query"
@@ -481,10 +492,7 @@
                  (select-keys card [:name]))))))))
 
 (deftest filter-by-using-model-segment-metric
-  (mt/with-temp [:model/Database {database-id :id} {}
-                 :model/Table {table-id :id} {:db_id database-id}
-                 :model/Segment {segment-id :id} {:table_id table-id
-                                                  :definition {:filter 100}} ; just a random filter
+  (mt/with-temp [:model/Segment {segment-id :id} {}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:database (mt/id)
@@ -584,14 +592,14 @@
                  :model/Card {card-2-id :id} {:name "Card 2"}]
     (with-cards-in-readable-collection! [card-1-id card-2-id]
       (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
-        (revision/push-revision!
+        (revisions.tu/push-revision!
          {:entity       :model/Card
           :id           card-1-id
           :user-id      user-id
           :is-creation? true
           :object {:id card-1-id}}))
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
-        (revision/push-revision!
+        (revisions.tu/push-revision!
          {:entity       :model/Card
           :id           card-2-id
           :user-id      user-id
@@ -1130,6 +1138,23 @@
                 (is (=? {:id pos-int?}
                         (mt/user-http-request :crowberto :post 200 "card" card)))))))))))
 
+(deftest card-writes-need-real-query-test
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+    (testing "POST /api/card refuses an empty query"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/user-http-request :crowberto :post 400 "card"
+                              (assoc (mt/with-temp-defaults :model/Card) :name "Empty query" :dataset_query {}))))
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+      (testing "PUT /api/card/:id refuses an empty query"
+        (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dataset_query {}}))
+      (testing "a Card whose stored query is empty reads as a stored row and takes edits of its other columns"
+        (t2/query-one {:update :report_card :set {:dataset_query "{}"} :where [:= :id card-id]})
+        (is (mr/validate ::queries.schema/card (t2/select-one :model/Card :id card-id)))
+        (is (not (mr/validate ::queries.schema/card.update {:dataset_query {}})))
+        (is (=? {:name "Renamed"}
+                (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Renamed"})))))))
+
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [:model/Card]
@@ -1629,8 +1654,9 @@
                                                              :filter   [:not-null $password]
                                                              :order-by [[:asc $id]]
                                                              :limit    1})}
-                   :model/Segment segment {:table_id   (mt/id :users)
-                                           :definition (mt/mbql-query users {:filter [:starts-with $password "4"]})}]
+                   :model/Segment segment {:definition (let [mp (mt/metadata-provider)]
+                                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                             (lib/filter (lib/starts-with (lib.metadata/field mp (mt/id :users :password)) "4"))))}]
       (testing "running the saved card"
         (is (= [[1 "4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
                (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))))))
@@ -2562,9 +2588,9 @@
                    :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
                    :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
       (let [published (atom #{})]
-        (with-redefs [events/publish-event! (fn [topic {:keys [object]}]
+        (with-redefs [events/publish-event! (fn [topic {:keys [previous-object]}]
                                               (when (= :event/action-delete topic)
-                                                (swap! published conj (:id object))))]
+                                                (swap! published conj (:id previous-object))))]
           (mt/user-http-request :crowberto :delete 204 (str "card/" model-id)))
         (is (= #{query archived} @published))))))
 
@@ -3526,6 +3552,28 @@
                                                                :model "card" :archived "false")))
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
                                                                :model "card" :archived "false"))))))))
+
+(deftest bulk-move-hydrates-card-permissions-once-test
+  (testing "POST /api/card/collections reads the write permissions of all the cards together"
+    (let [hydrations (fn [card-count]
+                       (mt/with-temp [:model/Collection {from-id :id} {}
+                                      :model/Collection {to-id :id}   {}]
+                         (let [card-ids (mapv :id (t2/insert-returning-instances!
+                                                   :model/Card
+                                                   (for [i (range card-count)]
+                                                     (assoc (mt/with-temp-defaults :model/Card)
+                                                            :collection_id from-id
+                                                            :name (str "bulk move " i)))))
+                               calls    (atom 0)
+                               original (mt/original-fn #'collection/content-writable-collection-ids)]
+                           (mt/with-dynamic-fn-redefs [collection/content-writable-collection-ids
+                                                       (fn [& args]
+                                                         (swap! calls inc)
+                                                         (apply original args))]
+                             (mt/user-http-request :rasta :post 200 "card/collections"
+                                                   {:collection_id to-id, :card_ids card-ids}))
+                           @calls)))]
+      (is (= 1 (hydrations 2) (hydrations 8))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp [:model/Collection  {coll-id-1 :id}      {:name "Old Collection"}
@@ -5961,3 +6009,70 @@
             (is (= (map :name metadata-before)
                    (map :name metadata-after))
                 "result_metadata should be preserved across SQL edits when the recompute cannot run")))))))
+
+(defn- venues-card-query []
+  (let [mp (mt/metadata-provider)]
+    (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :venues))) 2)))
+
+(defn- card-records
+  "The number of Revisions and of audit rows that `card-id` has."
+  [card-id]
+  [(t2/count :model/Revision :model "Card" :model_id card-id)
+   (t2/count :model/AuditLog :model "Card" :model_id card-id)])
+
+(deftest query-run-writes-model-metadata-without-recording-test
+  (testing "the metadata that a run stores for a model is not an edit by the user who ran it"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [persisted-models-enabled true]
+        (mt/with-temp [:model/Database {db-id :id} {:settings {:persist-models-enabled true}}
+                       :model/Card {card-id :id} {:type            :model
+                                                  :database_id     db-id
+                                                  :dataset_query   (venues-card-query)
+                                                  :result_metadata nil}]
+          (let [before (card-records card-id)]
+            (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+            (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+            (is (= before (card-records card-id)))
+            (is (nil? (:last-edit-info (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))
+            (is (zero? (t2/count :model/PersistedInfo :card_id card-id)))))))))
+
+(deftest query-run-refreshes-model-types-and-keeps-overrides-test
+  (testing "a run refreshes the types of a model's columns, keeps what a user overrode, and records nothing"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                :dataset_query (venues-card-query)}]
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
+              stale    (update (vec metadata) 0 assoc :display_name "My own name" :base_type :type/Text)]
+          (t2/update! :model/Card :id card-id {:result_metadata stale})
+          (let [before (card-records card-id)]
+            (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+            (let [refreshed (first (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+              (is (= "My own name" (:display_name refreshed)))
+              (is (not= :type/Text (:base_type refreshed))))
+            (is (= before (card-records card-id)))))))))
+
+(deftest question-metadata-refresh-records-nothing-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-card-query) :result_metadata nil}]
+      (let [before (card-records card-id)]
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+        (is (= before (card-records card-id)))))))
+
+(deftest editing-model-column-overrides-records-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-card-query)}]
+      (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+      (doseq [[what changes] {"display name"  {:display_name "Renamed column"}
+                              "semantic type" {:semantic_type :type/Category}}]
+        (testing (str "an editor changing a column's " what)
+          (let [[revisions audits] (card-records card-id)
+                metadata           (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                  {:result_metadata (update (vec metadata) 0 merge changes)})
+            (is (= [(inc revisions) (inc audits)] (card-records card-id)))
+            (is (= (mt/user->id :crowberto)
+                   (t2/select-one-fn :user_id :model/Revision :model "Card" :model_id card-id {:order-by [[:id :desc]]})))
+            (is (= (mt/user->id :crowberto)
+                   (t2/select-one-fn :user_id :model/AuditLog :model "Card" :model_id card-id {:order-by [[:id :desc]]})))))))))

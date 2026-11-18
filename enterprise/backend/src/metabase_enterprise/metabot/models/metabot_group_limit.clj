@@ -9,7 +9,9 @@
 
 (doto :model/MetabotGroupLimit
   (derive :metabase/model)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
 
 (defn all-group-limits
   "Returns all group-level limits, ordered by group_id."

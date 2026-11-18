@@ -25,7 +25,7 @@
 
 (mr/def ::display-info-pattern
   "A partial [[metabase.lib.metadata.calculation/display-info]] `=?` pattern, whose values may be predicates or regexes."
-  [:map {:closed false, ::mr/deliberately-open true, :description "a partial display info =? pattern"}])
+  [:map {:closed false, :description "a partial display info =? pattern"}])
 
 (def ^:private DisplayInfoSpec
   "A `group-spec` or `column-spec` for [[match-display-info]]: either the expected `:display-name`, or a partial

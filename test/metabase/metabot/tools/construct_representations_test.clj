@@ -4441,3 +4441,28 @@
               (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
               (is (str/includes? msg "SQL question"))
               (is (= table-field? (str/includes? msg "Table Metadata"))))))))))
+
+(deftest repairs-in-structured-output-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [query (fn [op]
+                    (query-data
+                     {"lib/type" "mbql/query"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "filters"      [[op {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 10]]}]}))]
+        (testing "the pipeline names the repair passes that changed the query"
+          (is (= ["rewrite-operator-name-aliases"]
+                 (get-in (construct/execute-representations-query (query "gte")) [:structured-output :repairs]))))
+        (testing "a query that follows the prompt contract has an empty list, not a missing key"
+          (is (= []
+                 (get-in (construct/execute-representations-query (query ">=")) [:structured-output :repairs]))))
+        (doseq [tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (testing (str (type tool))
+            (let [result (tools/handle tool {:query (query "gte") :reasoning "orders above 10"} {})]
+              (testing "the tool result holds the list for the agent_used_tool event"
+                (is (= ["rewrite-operator-name-aliases"]
+                       (get-in result [:structured-output :repairs]))))
+              (testing "the text the model reads does not hold it"
+                (is (not (str/includes? (tools/render-text (:output result)) "rewrite-operator-name-aliases")))))))))))

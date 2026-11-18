@@ -25,8 +25,8 @@
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/change-log-raw-write                             13
-                                :metabase/discourage-dynamic-vars                          289
+                                :metabase/change-log-raw-write                             12
+                                :metabase/discourage-dynamic-vars                          286
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          15
                                 :metabase/namespace-name                                   3

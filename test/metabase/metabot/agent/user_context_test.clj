@@ -678,8 +678,7 @@
     (let [mp         (mt/metadata-provider)
           definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                          (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                      :definition definition}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition definition}]
         ;; The gate never looks at segments, so the query clears it and the segment ref is
         ;; resolved by whichever store the caller handed the export - the choice under test.
         ;; A source-card query would be refused by the gate first, whichever store was passed.

@@ -80,6 +80,8 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
+  :doc        (str "Since 0.54.0, Metabase doesn't use a files channel for Slack, so you can remove this variable, "
+                   "and no other variable replaces it.")
   :default "metabase_files"
   :encryption :when-encryption-key-set
   :visibility :settings-manager
@@ -336,7 +338,9 @@
   :deprecated-name :http-channel-host-strategy
   :setter     :none
   :doc        (str "Set this when a notification webhook must reach a host on your private network "
-                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`. Before Metabase "
+                   "64, this variable was called `MB_HTTP_CHANNEL_HOST_STRATEGY`. Metabase still reads the old name "
+                   "and logs a warning at startup, so rename it to `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`.")
   :getter     (fn []
                 (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
                   (or (u.http/env-network-policy env-var-name raw-value)

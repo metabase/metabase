@@ -1437,7 +1437,9 @@
           (testing "in a custom column"
             (is (= [[false 149 true] [true 51 false]]
                    (mt/formatted-rows [mt/boolish->bool int mt/boolish->bool]
-                                      (qp/process-query (lib/expression query "not b" (lib/not b)))))))
+                                      (qp/process-query (-> query
+                                                            (lib/expression "not b" (lib/not b))
+                                                            (lib/order-by b :asc)))))))
           (testing "in a filter"
             (is (= [[true 51]]
                    (mt/formatted-rows [mt/boolish->bool int]

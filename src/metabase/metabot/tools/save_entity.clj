@@ -12,7 +12,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
-   [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
@@ -26,7 +25,6 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -270,8 +268,7 @@
                  :display                display
                  :visualization_settings {}
                  :collection_id          collection-id}
-                {:id api/*current-user-id*}
-                :delay-event)]
+                {:id api/*current-user-id*})]
       {:card             card
        :destination      {:type "collection" :id collection-id}
        :destination-name (collection-name collection-id)
@@ -284,7 +281,9 @@
                       {:kind :dashboard :id dashboard-id}
                       (tools/with-entity {:kind :dashboard :id dashboard-id}
                         (api/read-check :model/Dashboard dashboard-id)))]
-    (check-writable! {:kind :dashboard :id dashboard-id} #(api/write-check dashboard))
+    (check-writable! {:kind :dashboard :id dashboard-id}
+                     #(do (api/write-check dashboard)
+                          (api/create-check :model/Card {:collection_id (:collection_id dashboard)})))
     (let [card (queries/create-card!
                 {:name                   name
                  :description            description
@@ -292,8 +291,7 @@
                  :display                display
                  :visualization_settings {}
                  :dashboard_id           dashboard-id}
-                {:id api/*current-user-id*}
-                :delay-event)]
+                {:id api/*current-user-id*})]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
        :destination-name (metabot.db/dashboard-name dashboard-id)
@@ -306,7 +304,9 @@
                      {:kind :document :id document-id}
                      (tools/with-entity {:kind :document :id document-id}
                        (documents/get-document document-id :log-view? false)))]
-    (check-writable! {:kind :document :id document-id} #(api/write-check document))
+    (check-writable! {:kind :document :id document-id}
+                     #(do (api/write-check document)
+                          (api/create-check :model/Card {:collection_id (:collection_id document)})))
     (let [card (queries/create-card!
                 {:name                   name
                  :description            description
@@ -315,23 +315,12 @@
                  :visualization_settings {}
                  :collection_id          (:collection_id document)
                  :document_id            document-id}
-                {:id api/*current-user-id*}
-                :delay-event)]
+                {:id api/*current-user-id*})]
       (documents/add-card-to-document! document-id (:id card) (:position destination))
       {:card             card
        :destination      {:type "document" :id document-id}
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
-
-(defn publish-card-create!
-  "Publish the `:event/card-create` event for a card that has already been committed.
-  Log failures without throwing."
-  [card]
-  (try
-    (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
-    (catch Exception e
-      ;; The agent may retry a failed call and save a second copy of the card.
-      (log/error e "Failed to publish the card-create event for a card saved by Metabot" {:card-id (:id card)}))))
 
 (def ^:private tool-description
   "Describe how to call `save_entity`."
@@ -388,9 +377,7 @@
           ;; Create the card and stamp which conversation + generated chart it came
           ;; from in ONE transaction, so a reloaded conversation can't observe the
           ;; card without its origin. The stamp is a raw table update — it should not
-          ;; run the Card model's heavy before-update pipeline. The `:card-create`
-          ;; event is delayed until after the transaction commits so subscribers see
-          ;; the card.
+          ;; run the Card model's heavy before-update pipeline.
           {:keys [card link destination-name] saved-destination :destination}
           (do-with-save-rejections
            #(t2/with-transaction [_conn]
@@ -401,7 +388,6 @@
                 (when-let [conversation-id (shared/current-conversation-id)]
                   (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
                 saved)))
-          _ (publish-card-create! card)
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")
                             ""

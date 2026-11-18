@@ -109,8 +109,8 @@
      (spec-for-table {:engine :bigquery-cloud-sdk, :details {:project-id \"p\"}}
                      {:name \"orders\", :schema \"ds\"})
      ;; => {:db \"p\", :schema \"ds\", :table \"orders\"}"
-  [database :- [:map {::mr/deliberately-open true, :description "a Database row"} [:engine :keyword]]
-   table    :- [:map {::mr/deliberately-open true, :description "a Table row"} [:name :string]]]
+  [database :- [:map {:description "a Database row"} [:engine :keyword]]
+   table    :- [:map {:description "a Table row"} [:name :string]]]
   (let [components (set (driver/qualified-name-components (:engine database)))
         positions  (ws/engine-namespace-positions database table)]
     {:db     (normalize-level (when (:db components)     (:db positions)))

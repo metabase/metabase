@@ -5,6 +5,7 @@
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
@@ -48,7 +49,14 @@
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
+
+(defmethod events/spec :model/CustomVizPlugin
+  [_model]
+  {:create :event/custom-viz-plugin-create
+   :update :event/custom-viz-plugin-update
+   :delete :event/custom-viz-plugin-delete})
 
 (def non-blob-columns
   "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."

@@ -44,25 +44,24 @@
   (when (seq finding-types)
     (cd.db/invalidate-superseded! scan-id finding-types)))
 
-(defn invalidate-for-entity!
-  "Soft-invalidate every still-active finding for a single entity (`entity-type` + `entity-id`) - e.g. when
-  the entity is archived or deleted through any path."
-  [entity-type entity-id]
-  (cd.db/invalidate-for-entity! entity-type entity-id))
-
-(defn invalidate-for-collection-subtree!
-  "Soft-invalidate the active findings of an archived collection subtree: the collections themselves, and the
-  collection items currently in them (live `collection_id`, not the scan-time `scope_collection_id`).
-  Archiving a collection does not archive its transforms, so their findings stay."
-  [collection-ids]
-  (when (seq collection-ids)
-    (let [archived-types (conj (descendants common/hierarchy ::common/collection-item) :collection)]
-      (cd.db/invalidate-findings-where!
-       [:and
-        [:= :invalidated_at nil]
-        (into [:or] (common/entity-collection-clauses
-                     archived-types
-                     (fn [_etype coll-col] [:in coll-col collection-ids])))]))))
+(defn invalidate-for!
+  "Soft-invalidate, in one statement, the active findings of the entities `entity-ids-by-type`, a map of entity type to
+  ids, and of the archived collections `collection-ids` and the collection items currently in them."
+  [entity-ids-by-type collection-ids]
+  (let [archived-types (conj (descendants common/hierarchy ::common/collection-item) :collection)
+        clauses        (cond-> (into []
+                                     (keep (fn [[entity-type ids]]
+                                             (when (seq ids)
+                                               [:and
+                                                [:= :entity_type [:auto/param (name entity-type)]]
+                                                [:in :entity_id [:auto/param (vec ids)]]])))
+                                     entity-ids-by-type)
+                         (seq collection-ids)
+                         (into (common/entity-collection-clauses
+                                archived-types
+                                (fn [_etype coll-col] [:in coll-col [:auto/param (vec collection-ids)]]))))]
+    (when (seq clauses)
+      (cd.db/invalidate-findings-where! [:and [:= :invalidated_at nil] (into [:or] clauses)]))))
 
 (defn invalidate-by-ids!
   "Soft-invalidate the still-active findings among `ids` that match `where`, in one transaction; returns

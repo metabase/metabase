@@ -95,9 +95,10 @@
                        :model/User {external-user-id :id} {:tenant_id tenant-id}
                        :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
                                                                       :is_tenant_group true}]
-          (is (nil? (perms/add-users-to-groups! [{:user external-user-id
-                                                  :group tenant-group-id
-                                                  :is-group-manager? false}]))))))))
+          (perms/add-users-to-groups! [{:user external-user-id
+                                        :group tenant-group-id
+                                        :is-group-manager? false}])
+          (is (t2/exists? :model/PermissionsGroupMembership :user_id external-user-id :group_id tenant-group-id)))))))
 
 (deftest tenant-users-cannot-be-members-of-normal-group-test
   (testing "External user cannot be member of normal group at all"
@@ -113,3 +114,52 @@
                (perms/add-users-to-groups! [{:user external-user-id
                                              :group normal-group-id
                                              :is-group-manager? false}]))))))))
+
+(deftest tenant-member-cannot-become-group-manager-through-membership-update-test
+  (testing "PUT /api/permissions/membership/:id refuses to make a tenant user a group manager"
+    (mt/with-premium-features #{:tenants :advanced-permissions}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                       :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
+                                                                      :is_tenant_group true}]
+          (perms/add-user-to-group! tenant-user-id tenant-group-id)
+          (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership
+                                                :user_id tenant-user-id :group_id tenant-group-id)]
+            (is (=? "Tenant users cannot be made group managers"
+                    (mt/user-http-request :crowberto :put 400 (str "permissions/membership/" membership-id)
+                                          {:is_group_manager true})))
+            (is (false? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :id membership-id)))))))))
+
+(deftest tenant-membership-rules-hold-for-direct-writes-test
+  (mt/with-temp [:model/Tenant           {tenant-id :id}       {:name "Test Tenant" :slug "test"}
+                 :model/User             {tenant-user-id :id}  {:tenant_id tenant-id}
+                 :model/User             {normal-user-id :id}  {}
+                 :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
+                 :model/PermissionsGroup {normal-group-id :id} {}]
+    (testing "inserting a tenant user into a normal group is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add non-tenant user to tenant-group or vice versa"
+                            (t2/insert! :model/PermissionsGroupMembership
+                                        {:user_id tenant-user-id :group_id normal-group-id}))))
+    (testing "inserting a normal user into a tenant group is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add non-tenant user to tenant-group or vice versa"
+                            (t2/insert! :model/PermissionsGroupMembership
+                                        {:user_id normal-user-id :group_id tenant-group-id}))))
+    (testing "inserting a tenant user as group manager is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant users cannot be made group managers"
+                            (t2/insert! :model/PermissionsGroupMembership
+                                        {:user_id tenant-user-id :group_id tenant-group-id :is_group_manager true}))))
+    (testing "making a tenant user's membership a group manager is refused"
+      (t2/insert! :model/PermissionsGroupMembership {:user_id tenant-user-id :group_id tenant-group-id})
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant users cannot be made group managers"
+                            (t2/update! :model/PermissionsGroupMembership
+                                        {:user_id tenant-user-id :group_id tenant-group-id}
+                                        {:is_group_manager true}))))
+    (testing "removing a tenant user from All tenant users is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All tenant users' group"
+                            (t2/delete! :model/PermissionsGroupMembership
+                                        :user_id tenant-user-id :group_id (u/the-id (perms/all-external-users-group))))))
+    (is (= #{tenant-group-id (u/the-id (perms/all-external-users-group))}
+           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id tenant-user-id)))
+    (is (= #{(u/the-id (perms/all-users-group))}
+           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id normal-user-id)))))
