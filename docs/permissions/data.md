@@ -162,7 +162,19 @@ Native query access can only be set for a whole database, so when you switch a d
 
 ### No create queries permission
 
-People can't create or edit questions, including drill-through. They can still view questions in collections they have access to, if their View data permissions allow it.
+People can't create questions directly on the data source, or edit questions that query it directly, including drill-through. They can still view questions in collections they have access to, if their View data permissions allow it.
+
+#### Questions based on saved questions don't need Create queries access to the underlying table
+
+People can still create questions based on a saved question, model, or metric that uses a table with No create queries access, if:
+
+- Their group has View data access to the underlying table.
+- Their group can view the collection that holds the saved question, model, or metric.
+- Their group has at least **Query builder only** create queries access to some other table. Without it, Metabase doesn't show the options to create new questions.
+
+People can filter, summarize, and drill through the results of the saved question, model, or metric, and save the new questions. But they only get the columns that the saved question, model, or metric returns. People can't use it to query the rest of the underlying table.
+
+For example, say you want your Sales team to explore orders, but not the Discount column of the Orders table. An analyst saves an "Orders without discounts" model that leaves out that column, and puts it in a collection the Sales group can view. Set the Sales group's Create queries permission to **No** for the Orders table, and to **Query builder only** for the Products table. People in Sales can filter the model, drill through its charts, and save their own questions based on it. They can't start a new question from the Orders table, and they can't edit questions that query the Orders table directly.
 
 On Pro and Enterprise plans, tables published to the [Library](../data-modeling/semantic-layer/library.md#permissions-to-use-library-content) give query builder access to people who can view them in the Library, even if their group has Create queries set to No.
 
