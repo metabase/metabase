@@ -4,7 +4,7 @@ import { noop } from "underscore";
 import type {
   ColorScheme,
   ResolvedColorScheme,
-} from "metabase/utils/color-scheme";
+} from "metabase/ui/colors/types/color-scheme";
 
 export interface ColorSchemeContextType {
   colorScheme: ColorScheme;

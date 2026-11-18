@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { Box, Stack, Text, ThemeProvider } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/ui/colors/types/color-scheme";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import { StoryBoardContext, useStoryTextColor } from "./context";
 

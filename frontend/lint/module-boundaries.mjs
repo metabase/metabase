@@ -430,6 +430,7 @@ const elements = [
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/AppComponent.unit.spec.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/AppKBarProvider.unit.spec.tsx",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
@@ -505,6 +506,11 @@ const baseRules = [
   {
     from: ["basic/ui"],
     allow: ["lib/lib"],
+  },
+  // metabase-types and utils re-export the definitions that moved into ui (IconName, ColorSettings, ColorScheme, DeepPartial).
+  {
+    from: ["lib/types", "lib/utils"],
+    allow: ["basic/ui"],
   },
   // The column-vocabulary predicates (isa, column-key) live in metabase-lib/v1.
   {

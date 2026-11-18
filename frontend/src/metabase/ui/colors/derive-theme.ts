@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
-import type { ColorSettings } from "metabase-types/api";
+import type { ResolvedColorScheme } from "metabase/ui/colors/types/color-scheme";
+import type { ColorSettings } from "metabase/ui/colors/types/color-settings";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";

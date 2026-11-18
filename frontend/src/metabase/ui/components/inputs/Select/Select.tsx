@@ -8,7 +8,7 @@ import { Select as MantineSelect, defaultOptionsFilter } from "@mantine/core";
 import { mergeRefs } from "@mantine/hooks";
 import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
-import type { IconName } from "metabase-types/api";
+import type { IconName } from "metabase/ui/components/icons/Icon/icon-name";
 
 export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
 export * from "./SelectItem";

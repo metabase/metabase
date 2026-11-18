@@ -91,5 +91,4 @@ export const isTouchDevice = () => {
   return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
 };
 
-export const METAKEY = isMac() ? "⌘" : "Ctrl";
-export const ALTKEY = isMac() ? "⌥" : "Alt";
+export { ALTKEY, METAKEY } from "metabase/ui/utils/browser";

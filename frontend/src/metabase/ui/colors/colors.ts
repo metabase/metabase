@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 
-import type { ColorSettings } from "metabase-types/api/settings";
+import type { ColorSettings } from "metabase/ui/colors/types/color-settings";
 
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import { deriveFullMetabaseTheme } from "./derive-theme";

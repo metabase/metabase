@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
-import { MEASUREMENT_ROOT_CLASSNAME } from "metabase/utils/measure-container";
+import type { ResolvedColorScheme } from "metabase/ui/colors/types/color-scheme";
+import { MEASUREMENT_ROOT_CLASSNAME } from "metabase/ui/utils/measure-container";
 
 import { EmotionCacheProvider } from "./EmotionCacheProvider";
 import { ThemeProvider } from "./ThemeProvider";

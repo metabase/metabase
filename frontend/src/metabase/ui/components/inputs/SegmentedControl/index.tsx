@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import type { FocusEvent, KeyboardEvent, ReactElement } from "react";
 
-import type { IconName } from "metabase-types/api";
+import type { IconName } from "metabase/ui/components/icons/Icon/icon-name";
 
 import { useIsTruncated } from "../../../hooks/use-is-truncated";
 import { Icon } from "../../icons";

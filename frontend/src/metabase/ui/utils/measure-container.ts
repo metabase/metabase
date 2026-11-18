@@ -1,0 +1,38 @@
+import type { Root } from "react-dom/client";
+
+interface MeasurementContainerOptions {
+  fontSize?: string;
+}
+
+const DEFAULT_FONT_SIZE = "12.5px";
+export const MEASUREMENT_ROOT_CLASSNAME = "mb-measurement-root";
+
+export function createMeasurementContainer(
+  options: MeasurementContainerOptions = {},
+): HTMLDivElement {
+  const { fontSize = DEFAULT_FONT_SIZE } = options;
+
+  const container = document.createElement("div");
+  container.classList.add(MEASUREMENT_ROOT_CLASSNAME);
+  container.style.position = "absolute";
+  container.style.top = "-9999px";
+  container.style.left = "-9999px";
+  container.style.visibility = "hidden";
+  container.style.pointerEvents = "none";
+  container.style.zIndex = "-999";
+  container.style.fontSize = fontSize;
+  container.style.lineHeight = "1";
+  document.body.appendChild(container);
+
+  return container;
+}
+
+export function removeMeasurementContainer(
+  container: HTMLDivElement,
+  tree: Root,
+): void {
+  setTimeout(() => {
+    tree.unmount();
+    document.body.removeChild(container);
+  }, 0);
+}

@@ -1,4 +1,4 @@
-import type { IconName } from "metabase-types/api";
+import type { IconName } from "metabase/ui/components/icons/Icon/icon-name";
 
 import one_million_component from "./1m.svg?component";
 import ten_thousand_component from "./10k.svg?component";

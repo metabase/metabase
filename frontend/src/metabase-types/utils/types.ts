@@ -1,8 +1,1 @@
-/**
- * Makes every property in the object optional, recursively.
- *
- * @inline
- */
-export type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
-};
+export type { DeepPartial } from "metabase/ui/utils/types";

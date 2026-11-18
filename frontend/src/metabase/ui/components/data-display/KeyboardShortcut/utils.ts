@@ -1,4 +1,4 @@
-import { ALTKEY, METAKEY } from "metabase/utils/browser";
+import { ALTKEY, METAKEY } from "metabase/ui/utils/browser";
 
 const KEY_LABELS: Record<string, string> = {
   $mod: METAKEY,

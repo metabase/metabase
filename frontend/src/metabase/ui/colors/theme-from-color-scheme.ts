@@ -1,4 +1,4 @@
-import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import type { ResolvedColorScheme } from "metabase/ui/colors/types/color-scheme";
 
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import { getDarkTheme } from "./constants/themes/dark";

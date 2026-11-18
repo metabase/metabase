@@ -7,7 +7,7 @@ import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementPr
 import {
   createMeasurementContainer,
   removeMeasurementContainer,
-} from "metabase/utils/measure-container";
+} from "metabase/ui/utils/measure-container";
 
 import {
   CELL_HORIZONTAL_PADDING,
