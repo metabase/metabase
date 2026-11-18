@@ -1,9 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { Dashboard } from "metabase-types/api";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TENANT_ROOT_NAME = "Shared collections";
 const TENANT_NAMESPACE = "shared-tenant-collection";
@@ -39,6 +35,11 @@ function setupTenantCollections() {
   });
 }
 
+// The picker rules for the tenant namespace root (which items can go there,
+// search, breadcrumbs) are covered by Jest:
+// - enterprise/frontend/src/metabase-enterprise/tenants/shared-collections-entity-picker.unit.spec.tsx
+// - frontend/src/metabase/dashboard/components/AddCardSidebar/AddCardSidebar.tenant-collections.unit.spec.tsx
+// - frontend/src/metabase/new/components/NewModals/NewModals.tenant-collections.unit.spec.tsx
 describe("scenarios > organization > entity picker > shared-tenant-collection namespace", () => {
   beforeEach(() => {
     H.restore();
@@ -47,461 +48,114 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
     H.updateSetting("use-tenants", true);
   });
 
-  describe("virtual tenant root display", () => {
-    it("should display Shared collections in the entity picker when tenants are enabled", () => {
-      setupTenantCollections().then(() => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openQuestionActions();
-        H.popover().findByText("Move").click();
+  it("should create a new collection inside the tenant namespace root", () => {
+    cy.intercept("POST", "/api/collection").as("createCollection");
 
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).should("be.visible");
-        });
+    setupTenantCollections().then(() => {
+      cy.visit("/collection/root");
+
+      H.startNewCollectionFromSidebar();
+
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByPlaceholderText(/My new fantastic collection/).type(
+          "New Collection In Tenant Root",
+        );
+        cy.findByLabelText(/Collection it's saved in/).click();
       });
-    });
-
-    it("should NOT display Shared collections when tenants are disabled", () => {
-      H.updateSetting("use-tenants", false);
-
-      H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openQuestionActions();
-      H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        cy.findByText(TENANT_ROOT_NAME).should("not.exist");
+        cy.findByText(TENANT_ROOT_NAME).click();
+        cy.button("Select").should("be.enabled").click();
       });
-    });
 
-    it("should navigate into Shared collections and see sub-collections", () => {
-      setupTenantCollections().then(() => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openQuestionActions();
-        H.popover().findByText("Move").click();
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-
-          cy.findByText("Test Tenant Collection").should("be.visible");
-        });
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.button("Create").click();
       });
-    });
-  });
 
-  describe("collection creation (allowed)", () => {
-    it("should allow creating a new collection inside the tenant namespace root", () => {
-      setupTenantCollections().then(() => {
-        cy.visit("/collection/root");
-
-        H.startNewCollectionFromSidebar();
-
-        cy.findByTestId("new-collection-modal").within(() => {
-          cy.findByPlaceholderText(/My new fantastic collection/).type(
-            "New Collection In Tenant Root",
-          );
-          cy.findByLabelText(/Collection it's saved in/).click();
+      cy.wait("@createCollection").then(({ request, response }) => {
+        expect(request.body).to.include({
+          name: "New Collection In Tenant Root",
+          namespace: TENANT_NAMESPACE,
+          parent_id: null,
         });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-
-          cy.button("Select").should("not.be.disabled");
-          cy.button("Select").click();
-        });
-
-        cy.findByTestId("new-collection-modal").within(() => {
-          cy.button("Create").click();
-        });
+        expect(response?.statusCode).to.eq(200);
       });
-    });
 
-    it("should not allow moving a collection to the tenant namespace root", () => {
-      setupTenantCollections().then(() => {
-        H.createCollection({ name: "Collection To Move" }).then(
-          ({ body: collection }) => {
-            H.visitCollection(collection.id);
-
-            H.openCollectionMenu();
-            H.popover().findByText("Move").click();
-
-            H.entityPickerModal().within(() => {
-              cy.findByText(TENANT_ROOT_NAME).should("not.exist");
-
-              // Close the modal
-              cy.button("Cancel").click();
-            });
-
-            // The collection should still be in Our analytics (root)
-            H.navigationSidebar().within(() => {
-              cy.findByText("Our analytics").click();
-            });
-            H.navigationSidebar()
-              .findByText("Collection To Move")
-              .should("be.visible");
-          },
-        );
-      });
+      cy.reload();
+      H.navigationSidebar()
+        .findByRole("tree", { name: "tenant-collection-tree" })
+        .findByText("New Collection In Tenant Root")
+        .should("be.visible");
     });
   });
 
-  describe("dashboard restrictions", () => {
-    it("should NOT allow saving a dashboard to the tenant namespace root", () => {
-      setupTenantCollections().then(() => {
-        cy.visit("/");
+  it("should save a question to a tenant sub-collection and add it to a dashboard from there", () => {
+    cy.intercept("POST", "/api/card").as("createCard");
 
-        H.newButton("Dashboard").click();
+    setupTenantCollections().as("tenantCollections");
+    H.createDashboard({ name: "Test Dashboard" }).its("body").as("dashboard");
 
-        H.modal().within(() => {
-          cy.findByLabelText(/Which collection/).click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-
-          cy.button("Select").should("be.disabled");
-        });
-      });
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Sample Database").click();
+      cy.findByText("Orders").click();
     });
 
-    it("should allow saving a dashboard to a sub-collection within tenant namespace", () => {
-      setupTenantCollections().then(() => {
-        cy.visit("/");
+    H.visualize();
+    cy.findByTestId("qb-save-button").click();
 
-        H.newButton("Dashboard").click();
-
-        H.modal().within(() => {
-          cy.findByLabelText(/Which collection/).click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-          cy.findByText("Test Tenant Collection").click();
-
-          cy.button("Select").should("not.be.disabled");
-          cy.button("Select").click();
-        });
-
-        H.modal().within(() => {
-          cy.findByLabelText(/Name/).type("Dashboard in Tenant Collection");
-          cy.button("Create").click();
-        });
-
-        cy.url().should("include", "/dashboard/");
-      });
+    H.modal().within(() => {
+      cy.findByLabelText(/Where do you want to save this/).click();
     });
 
-    it("should NOT allow moving a dashboard to the tenant namespace root", () => {
-      setupTenantCollections().then(() => {
-        H.createDashboard({
-          name: "Dashboard to Move",
-          collection_id: null,
-        }).then(({ body: dashboard }) => {
-          H.visitDashboard(dashboard.id);
-
-          cy.findByTestId("dashboard-header").icon("ellipsis").click();
-          H.popover().findByText("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.findByText(TENANT_ROOT_NAME).click();
-
-            cy.button("Move").should("be.disabled");
-
-            cy.findByText("Test Tenant Collection").click();
-            cy.button("Move").should("not.be.disabled");
-          });
-        });
-      });
-    });
-  });
-
-  describe("question restrictions", () => {
-    it("should NOT allow saving a question to the tenant namespace root", () => {
-      setupTenantCollections().then(() => {
-        H.startNewQuestion();
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalItem(0, "Databases").click();
-          H.entityPickerModalItem(1, "Sample Database").click();
-          cy.findByText("Orders").click();
-        });
-
-        H.visualize();
-        cy.findByTestId("qb-save-button").click();
-
-        H.modal().within(() => {
-          cy.findByLabelText(/Where do you want to save this/).click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-
-          cy.button("Select this collection").should("be.disabled");
-        });
-      });
+    H.entityPickerModal().within(() => {
+      cy.findByText(TENANT_ROOT_NAME).click();
+      cy.findByText("Test Tenant Collection").click();
+      cy.findByText("Tenant Sub-Collection").click();
+      cy.button("Select this collection").should("be.enabled").click();
     });
 
-    it("should allow saving a question to a sub-collection within tenant namespace", () => {
-      setupTenantCollections().then(() => {
-        H.startNewQuestion();
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalItem(0, "Databases").click();
-          H.entityPickerModalItem(1, "Sample Database").click();
-          cy.findByText("Orders").click();
-        });
-
-        H.visualize();
-        cy.findByTestId("qb-save-button").click();
-
-        H.modal().within(() => {
-          cy.findByLabelText(/Where do you want to save this/).click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-          cy.findByText("Test Tenant Collection").click();
-
-          cy.button("Select this collection").should("not.be.disabled");
-          cy.button("Select this collection").click();
-        });
-
-        H.modal().within(() => {
-          cy.findByLabelText(/Name/)
-            .clear()
-            .type("Question in Tenant Collection");
-          cy.button("Save").click();
-        });
-
-        cy.findByTestId("qb-header").should(
-          "contain",
-          "Question in Tenant Collection",
-        );
-      });
+    H.modal().within(() => {
+      cy.findByLabelText(/Name/).clear().type("Tenant Sub-Collection Question");
+      cy.button("Save").click();
     });
 
-    it("should NOT allow moving a question to the tenant namespace root", () => {
-      setupTenantCollections().then(() => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openQuestionActions();
-        H.popover().findByText("Move").click();
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-
-          cy.button("Move").should("be.disabled");
-
-          cy.findByText("Test Tenant Collection").click();
-          cy.button("Move").should("not.be.disabled");
+    cy.get<{ subCollectionId: number }>("@tenantCollections").then(
+      ({ subCollectionId }) => {
+        cy.wait("@createCard").then(({ request, response }) => {
+          expect(request.body.collection_id).to.eq(subCollectionId);
+          expect(response?.statusCode).to.eq(200);
         });
-      });
+      },
+    );
+
+    cy.findByTestId("qb-header").should(
+      "contain",
+      "Tenant Sub-Collection Question",
+    );
+
+    cy.get<Dashboard>("@dashboard").then(({ id }) => {
+      H.visitDashboard(id);
     });
-  });
+    H.editDashboard();
+    H.openQuestionsSidebar();
 
-  describe("search functionality", () => {
-    it("should find tenant collections via search", () => {
-      setupTenantCollections().then(() => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openQuestionActions();
-        H.popover().findByText("Move").click();
+    H.sidebar()
+      .findByTestId("breadcrumbs")
+      .should("contain", "Collections")
+      .and("contain", "Our analytics")
+      .findByText("Collections")
+      .click();
 
-        H.entityPickerModal().within(() => {
-          cy.findByPlaceholderText(/Search/).type("Test Tenant Collection");
+    H.sidebar().findByText(TENANT_ROOT_NAME).click();
+    H.sidebar().findByText("Test Tenant Collection").click();
+    H.sidebar().findByText("Tenant Sub-Collection").click();
+    H.sidebar().findByText("Tenant Sub-Collection Question").click();
 
-          cy.findByText("Test Tenant Collection").should("be.visible");
-        });
-      });
-    });
-
-    it("should NOT show tenant collections in search when moving a non-tenant collection", () => {
-      setupTenantCollections().then(() => {
-        H.createCollection({ name: "Regular Collection" }).then(
-          ({ body: collection }) => {
-            H.visitCollection(collection.id);
-
-            H.openCollectionMenu();
-            H.popover().findByText("Move").click();
-
-            H.entityPickerModal().within(() => {
-              // Search for the tenant collection
-              cy.findByPlaceholderText(/Search/).type("Test Tenant Collection");
-
-              // Tenant collection should NOT appear in search results
-              cy.findByText("Test Tenant Collection").should("not.exist");
-
-              // Clear search and verify regular collections are still searchable
-              cy.findByPlaceholderText(/Search/)
-                .clear()
-                .type("First collection");
-              cy.findByText("First collection").should("be.visible");
-            });
-          },
-        );
-      });
-    });
-  });
-
-  describe("add to dashboard flow", () => {
-    it("should NOT allow creating new dashboard in tenant root via add-to-dashboard flow", () => {
-      setupTenantCollections().then(() => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openQuestionActions();
-        H.popover().findByText("Add to dashboard").click();
-
-        H.entityPickerModal().within(() => {
-          cy.findByText(TENANT_ROOT_NAME).click();
-          cy.button(/New dashboard/).should("be.disabled");
-        });
-      });
-    });
-  });
-
-  describe("dashboard edit question picker sidebar", () => {
-    it("should not show shared collections when tenants are disabled", () => {
-      setupTenantCollections().then(() => {
-        H.updateSetting("use-tenants", false);
-
-        H.createDashboard({
-          name: "Test Dashboard",
-        }).then(({ body: dashboard }) => {
-          H.visitDashboard(dashboard.id);
-          H.editDashboard();
-          H.openQuestionsSidebar();
-
-          H.sidebar().findByText(TENANT_ROOT_NAME).should("not.exist");
-
-          H.sidebar()
-            .findByTestId("breadcrumbs")
-            .should("contain", "Our analytics");
-
-          H.sidebar()
-            .findByTestId("breadcrumbs")
-            .should("not.contain", "Collections");
-        });
-      });
-    });
-
-    it("should allow admins to browse shared collections via breadcrumbs and add questions", () => {
-      setupTenantCollections().then(({ tenantCollectionId }) => {
-        H.createQuestion({
-          name: "Tenant Orders Question",
-          collection_id: tenantCollectionId,
-          query: { "source-table": ORDERS_ID },
-        });
-
-        H.createDashboard({
-          name: "Test Dashboard",
-        }).then(({ body: dashboard }) => {
-          H.visitDashboard(dashboard.id);
-          H.editDashboard();
-          H.openQuestionsSidebar();
-
-          cy.log(
-            "breadcrumb should show 'Collections' as the top level as shared collections exist",
-          );
-          H.sidebar()
-            .findByTestId("breadcrumbs")
-            .should("contain", "Collections")
-            .and("contain", "Our analytics");
-
-          cy.log("navigate to the top level to see both namespaces");
-          H.sidebar()
-            .findByTestId("breadcrumbs")
-            .findByText("Collections")
-            .click();
-
-          H.sidebar().findByText("Our analytics").should("be.visible");
-          H.sidebar().findByText(TENANT_ROOT_NAME).should("be.visible");
-
-          H.sidebar().findByText(TENANT_ROOT_NAME).click();
-          H.sidebar()
-            .findByTestId("breadcrumbs")
-            .should("contain", "Collections")
-            .and("contain", TENANT_ROOT_NAME);
-
-          H.sidebar().findByText("Test Tenant Collection").click();
-          H.sidebar()
-            .findByTestId("breadcrumbs")
-            .should("contain", "Collections")
-            .and("contain", TENANT_ROOT_NAME)
-            .and("contain", "Test Tenant Collection");
-
-          H.sidebar().findByText("Tenant Orders Question").click();
-          H.getDashboardCards().should("have.length", 1);
-        });
-      });
-    });
-
-    it("should allow admins to add questions from shared tenant sub-collections", () => {
-      setupTenantCollections().as("tenantCollections");
-
-      cy.get<{ subCollectionId: number }>("@tenantCollections").then(
-        ({ subCollectionId }) =>
-          H.createQuestion({
-            name: "Tenant Sub-Collection Orders Question",
-            collection_id: subCollectionId,
-            query: { "source-table": ORDERS_ID },
-          }),
-      );
-
-      H.createDashboard({ name: "Test Dashboard" }).its("body").as("dashboard");
-
-      cy.get<Dashboard>("@dashboard").then(({ id }) => {
-        H.visitDashboard(id);
-        H.editDashboard();
-        H.openQuestionsSidebar();
-
-        H.sidebar()
-          .findByTestId("breadcrumbs")
-          .should("contain", "Collections")
-          .and("contain", "Our analytics")
-          .findByText("Collections")
-          .click();
-
-        H.sidebar().findByText(TENANT_ROOT_NAME).should("be.visible").click();
-        H.sidebar().findByText("Test Tenant Collection").click();
-        H.sidebar().findByText("Tenant Sub-Collection").click();
-        H.sidebar().findByText("Tenant Sub-Collection Orders Question").click();
-
-        H.getDashboardCards()
-          .should("have.length", 1)
-          .and("contain", "Tenant Sub-Collection Orders Question");
-      });
-    });
-
-    it("should show 'Collections' in breadcrumb when navigating into Our Analytics sub-collections", () => {
-      setupTenantCollections().then(() => {
-        H.createCollection({ name: "Our Analytics Sub" }).then(() => {
-          H.createDashboard({ name: "Test Dashboard" }).then(
-            ({ body: dashboard }) => {
-              H.visitDashboard(dashboard.id);
-              H.editDashboard();
-              H.openQuestionsSidebar();
-
-              cy.log("navigate to top level");
-              H.sidebar()
-                .findByTestId("breadcrumbs")
-                .findByText("Collections")
-                .click();
-
-              cy.log("navigate into Our Analytics");
-              H.sidebar().findByText("Our analytics").click();
-
-              H.sidebar()
-                .findByTestId("breadcrumbs")
-                .should("contain", "Collections")
-                .and("contain", "Our analytics");
-
-              cy.log("navigate into a sub-collection under our analytics");
-              H.sidebar().findByText("Our Analytics Sub").click();
-
-              H.sidebar()
-                .findByTestId("breadcrumbs")
-                .should("contain", "Collections")
-                .and("contain", "Our analytics")
-                .and("contain", "Our Analytics Sub");
-            },
-          );
-        });
-      });
-    });
+    H.getDashboardCards()
+      .should("have.length", 1)
+      .and("contain", "Tenant Sub-Collection Question");
   });
 });

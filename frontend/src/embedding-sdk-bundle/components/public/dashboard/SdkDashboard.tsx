@@ -334,10 +334,11 @@ const SdkDashboardInner = ({
 
   useSetupContentTranslations({ token });
 
-  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
-    onLoad,
-    onLoadWithoutCards,
-  });
+  const { handleLoad, handleLoadWithoutCards, handleLoadingComplete } =
+    useDashboardLoadHandlers({
+      onLoad,
+      onLoadWithoutCards,
+    });
 
   const { isLocaleLoading } = useLocale();
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
@@ -626,6 +627,7 @@ const SdkDashboardInner = ({
         theme={displayOptions.theme}
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
+        onLoadingComplete={handleLoadingComplete}
         onError={(error) => dispatch(setErrorPage(error))}
         clickActionMode={clickActionMode}
         dashcardMenu={finalDashcardMenu}
