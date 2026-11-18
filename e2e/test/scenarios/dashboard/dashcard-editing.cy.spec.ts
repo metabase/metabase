@@ -755,7 +755,6 @@ describe("issue 64138", () => {
     },
 
     display: "map",
-    displayIsLocked: true,
     visualization_settings: {
       "map.type": "pin",
       "map.pin_type": "markers",
