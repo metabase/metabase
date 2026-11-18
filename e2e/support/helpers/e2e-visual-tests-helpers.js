@@ -247,7 +247,7 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 /**
- * @param {{ header?: string | RegExp, rows?: { name: string, color?: string, value?: string, secondaryValue?: string, index?: number }[], footer?: { name: string, value: string, secondaryValue?: string } | null, blurAfter?: boolean }} options
+ * @param {{ header?: string, rows?: { name: string | RegExp, color?: string, value?: string | RegExp, secondaryValue?: string | RegExp, index?: number }[], footer?: { name: string | RegExp, value: string | RegExp, secondaryValue?: string | RegExp } | null, blurAfter?: boolean }} options
  */
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
   echartsTooltip().within(() => {
