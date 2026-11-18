@@ -20,8 +20,10 @@
   init-scheduler!
   job-exists?
   job-info
+  metrics-job-name-key
   rerun-on-error
   reschedule-trigger!
+  schedule-once!
   schedule-task!
   scheduler
   scheduler-disabled?
