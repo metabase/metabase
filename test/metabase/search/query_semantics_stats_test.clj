@@ -121,7 +121,7 @@
               :mean-hits    {:in-place               69/20
                              :appdb-h2               59/20
                              :appdb-mysql            13/5
-                             :appdb-postgres         51/20
+                             :appdb-postgres         13/5
                              :semantic-only          17/5
                              :semantic-with-fallback 71/20}
               :pairwise     {[:in-place :appdb-h2]                     [10 10 0 0]
@@ -133,16 +133,16 @@
                              [:appdb-h2 :appdb-postgres]               [8 8 4 0]
                              [:appdb-h2 :semantic-only]                [7 3 8 2]
                              [:appdb-h2 :semantic-with-fallback]       [7 2 10 1]
-                             [:appdb-mysql :appdb-postgres]            [19 1 0 0]
+                             [:appdb-mysql :appdb-postgres]            [20 0 0 0]
                              [:appdb-mysql :semantic-only]             [9 1 10 0]
                              [:appdb-mysql :semantic-with-fallback]    [7 1 12 0]
-                             [:appdb-postgres :semantic-only]          [8 1 11 0]
+                             [:appdb-postgres :semantic-only]          [9 1 10 0]
                              [:appdb-postgres :semantic-with-fallback] [7 1 12 0]
                              [:semantic-only :semantic-with-fallback]  [17 0 3 0]}
               :scores       {:in-place               [877/1200 1 114397/138600 6]
                              :appdb-h2               [511/600 47/50 17147/19800 8]
                              :appdb-mysql            [59/60 1 99/100 19]
-                             :appdb-postgres         [59/60 59/60 49/50 18]
+                             :appdb-postgres         [59/60 1 99/100 19]
                              :semantic-only          [457/600 99/100 114991/138600 9]
                              :semantic-with-fallback [859/1200 99/100 110767/138600 7]}
               :typed-scores {:in-place               [1403/2400 187/240 135731/225225 1]

@@ -638,12 +638,16 @@ __REPORT_MODEL__
     }
 
     // The hash holds the tab, the case, and any weights changed from the default, so a link reproduces the view.
-    function writeHash() {
-      const params = new URLSearchParams({ tab: state.corpus });
-      if (state.selected) params.set("case", state.selected);
+    function caseHash(corpus, id) {
+      const params = new URLSearchParams({ tab: corpus });
+      if (id) params.set("case", id);
       const changed = data.goalKinds.filter(kind => weightOf(kind) !== 1).map(kind => `${kind}:${weightOf(kind)}`);
       if (changed.length) params.set("weights", changed.join(","));
-      history.replaceState(null, "", `#${params}`);
+      return `#${params}`;
+    }
+
+    function writeHash() {
+      history.replaceState(null, "", caseHash(state.corpus, state.selected));
     }
 
     function readHash(initial) {
@@ -775,7 +779,11 @@ __REPORT_MODEL__
           return `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" aria-expanded="${open}" title="${escape(theme.description)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${open ? members.map(caseButton).join("") : ""}</div>`;
         }).join("");
       for (const button of $("case-list").querySelectorAll(".case-button")) {
-        button.addEventListener("click", () => { state.selected = button.dataset.id; renderList(); });
+        button.addEventListener("click", () => {
+          state.selected = button.dataset.id;
+          renderList();
+          $("case-list").querySelector('.case-button[aria-current="true"]').focus({ preventScroll: true });
+        });
       }
       for (const button of $("case-list").querySelectorAll(".group-head")) {
         button.addEventListener("click", () => {
@@ -957,7 +965,7 @@ __REPORT_MODEL__
       const topGain = totalWeight ? Math.max(...data.engines.map(id => model.scores[id].gain)) : 0;
       const header = `<thead><tr><th>Goal</th>${data.engines.map(id => `<th>${escape(labels[id])}</th>`).join("")}</tr></thead>`;
       const body = kinds.map(kind => {
-        const goalRows = goalsOf(kind).map(item => `<tr class="goal-row${weightOf(kind) ? "" : " muted-row"}" data-id="${escape(item.id)}"><td>${escape(item.focus)}</td>${data.engines.map(id => {
+        const goalRows = goalsOf(kind).map(item => `<tr class="goal-row${weightOf(kind) ? "" : " muted-row"}" data-id="${escape(item.id)}"><td><a href="${caseHash("translations", item.id)}">${escape(item.focus)}</a></td>${data.engines.map(id => {
           const engine = engineIn(item, id);
           return `<td class="score-cell">${scorePair(engine.typedScore.f1, engine.bestScore.f1, wins(item, id), scoreTitle(engine))}</td>`;
         }).join("")}</tr>`).join("");
@@ -985,7 +993,8 @@ __REPORT_MODEL__
       };
       $("rankings").innerHTML = renderRanking("With original queries", "typedScore") + renderRanking("With best queries", "bestScore");
       for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
-        row.addEventListener("click", () => {
+        row.addEventListener("click", event => {
+          if (event.target.closest("a")) return;
           $("filter").value = "";
           openCase(row.dataset.id);
           renderList();

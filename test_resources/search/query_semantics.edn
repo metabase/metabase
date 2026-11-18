@@ -531,14 +531,15 @@
            :appdb-postgres [:A :D]
            :semantic       {:keyword [:A :D], :vector [:A :B :C]}}
   :comparisons
-  ;; Only the final word is prefix-completed, so putting "fy2024" last keeps the ticket number out.
   [{:id      "year-2024"
     :kind    :word-forms
+    :note    ["The quoted negative token finds the end of the year range."
+              "Exact tokens keep the longer ticket number out."]
     :focus   "cards about 2024"
     :correct [:A :B :C]
     :alternatives
     {:appdb-mysql    {:query "2024 or fy2024", :hits [:A :B :C]}
-     :appdb-postgres {:query "2024 or fy2024", :hits [:A :B]}}}]}
+     :appdb-postgres {:query "\"2024\" or \"fy2024\" or \"-2024\"", :hits [:A :B :C]}}}]}
  {:id     "accent-literal"
   :focus  "only the vector arm matches across an accent"
   :note
