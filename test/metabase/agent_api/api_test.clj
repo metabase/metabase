@@ -9,6 +9,7 @@
    [metabase.agent-api.api :as agent-api.api]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
@@ -1326,6 +1327,16 @@
                               {:name "Forbidden Rename"})))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
+
+(deftest create-dashboard-tracks-snowplow-test
+  (snowplow-test/with-fake-snowplow-collector
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name "Agent Snowplow Dashboard"})]
+      (is (some #{{:data    {"dashboard_id" (:id resp)
+                             "event"        "dashboard_created"}
+                   :user-id (str (mt/user->id :rasta))}}
+                (snowplow-test/pop-event-data-and-user-id!)))
+      (t2/delete! :model/Dashboard :id (:id resp)))))
 
 (deftest create-dashboard-test
   (testing "Creates an empty dashboard, defaulting to the caller's personal collection"

@@ -135,8 +135,8 @@
   UPDATE — and, by extension, every unrelated key batched alongside it — until that writer's
   transaction commits.
 
-  A plain UPDATE rather than [[update-api-key!]] on purpose: the model's `before-update` hook hydrates
-  the key and publishes an `:event/api-key-update` audit event, which a usage stamp must not do.
+  A plain UPDATE rather than [[update-api-key!]] on purpose: a write through the model
+  publishes `:event/api-key-update`, which the audit log records, and a usage stamp must not do that.
   Mirrors [[metabase.query-processor.db/update-cards-last-used-at!]]'s bulk `CASE`/`GREATEST` pattern
   for the same reason: many keys land in one batch, and this is one UPDATE for all of them rather than
   one per key."

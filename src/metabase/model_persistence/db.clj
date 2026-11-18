@@ -102,6 +102,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/PersistedInfo :card_id card-id))
 
+(mu/defn card-for-persistence
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id [:auto/param card-id]))
+
 (mu/defn persisted-info-id-for-card
   "The id of the PersistedInfo of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

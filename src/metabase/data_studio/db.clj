@@ -69,11 +69,6 @@
                                           :from   [(t2/table-name :model/Table)]
                                           :where  [:and where [:= :id output-table-id]]}]]]})))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
-
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
@@ -109,7 +104,7 @@
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! (t2/table-name :model/FieldValues)
+  (t2/delete! :model/FieldValues
               :field_id [:in ^:allow-subquery {:select [:id]
                                                :from   [(t2/table-name :model/Field)]
                                                :where  [:in :table_id table-ids]}]))

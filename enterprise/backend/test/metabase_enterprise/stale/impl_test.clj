@@ -491,9 +491,7 @@
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard {dash-id :id} (stale-dashboard {:name          "A"
                                                                   :collection_id col-id})
-                 :model/Pulse _ {:alert_condition "rows"
-                                 :alert_first_only false
-                                 :creator_id (mt/user->id :rasta)
+                 :model/Pulse _ {:creator_id (mt/user->id :rasta)
                                  :name nil
                                  :dashboard_id dash-id}]
     (is (= {:rows []

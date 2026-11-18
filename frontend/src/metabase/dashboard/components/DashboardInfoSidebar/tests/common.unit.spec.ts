@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, waitFor } from "__support__/ui";
+import { setupRevertRevisionErrorEndpoint } from "__support__/server-mocks";
+import { screen, waitFor, within } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -8,6 +10,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+import { createMockRevision } from "metabase-types/api/mocks/revision";
 
 import { setup } from "./setup";
 
@@ -32,6 +35,35 @@ describe("DashboardInfoSidebar", () => {
       expect(screen.getByText(title)).toBeInTheDocument();
     });
     expect(screen.getByTestId("dashboard-history-list")).toBeInTheDocument();
+  });
+
+  it("should track reverting to an old version and show the revert error in a toast", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    setupRevertRevisionErrorEndpoint({
+      message: "Cannot revert: missing dashboard",
+    });
+    await setup({
+      revisions: [
+        createMockRevision({
+          id: 2,
+          description: "renamed this",
+          is_creation: false,
+        }),
+        createMockRevision({ id: 1 }),
+      ],
+    });
+
+    await userEvent.click(await screen.findByTestId("question-revert-button"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "revert_version_clicked",
+      event_detail: "dashboard",
+    });
+    expect(
+      within(await screen.findByTestId("toast-undo")).getByText(
+        "Cannot revert: missing dashboard",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should list the dashboard's cards under Contents", async () => {

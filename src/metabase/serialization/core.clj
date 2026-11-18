@@ -52,6 +52,8 @@
   import-visualization-settings-dependencies]
  [serialization.entity
   entity-ref
+  check-entity
+  external-entity
   key-of
   log-str
   model-of
@@ -69,6 +71,7 @@
   load-error
   load-error?
   load-order
+  loaded-entities
   local-rows
   with-import-transaction]
  [serialization.storage

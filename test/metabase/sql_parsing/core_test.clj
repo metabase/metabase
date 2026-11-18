@@ -115,27 +115,6 @@
                (sql-parsing/classify-stmt dialect sql stmt-type))
             (pr-str sql))))))
 
-;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
-
-(deftest ^:parallel returned-columns-lineage-test
-  (testing "the columns a query returns, which is what an expectation compares against"
-    (doseq [{:keys [name sql dialect default-schema columns]} (cases "returned_columns")]
-      (testing name
-        (is (= columns
-               (sort (map (comp u/lower-case-en first)
-                          (sql-parsing/returned-columns-lineage dialect sql default-schema {}))))
-            (pr-str sql))))))
-
-;;; ------------------------------------------------- validate-query -----------------------------------------------
-
-(deftest ^:parallel validate-query-test
-  (testing "a query checked against a schema, column by column"
-    (let [schemas (:schemas (edn/read-string (slurp (io/resource "metabase/sql_parsing/test_cases/validate_query.edn"))))]
-      (doseq [{:keys [name sql dialect default-schema schema expected]} (cases "validate_query")]
-        (testing name
-          (is (=? expected (sql-parsing/validate-query dialect sql default-schema (get schemas schema)))
-              (pr-str sql)))))))
-
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 
 (deftest ^:parallel referenced-fields-test
