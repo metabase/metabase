@@ -1,4 +1,5 @@
 import { getIframeBody } from "./e2e-embedding-helpers";
+import { METABASE_INSTANCE_URL } from "./embedding-sdk-helpers/constants";
 
 /**
  * Base interface for interactive embedding test page options
@@ -33,7 +34,7 @@ export function loadInteractiveIframeEmbedTestPage({
 interface PostMessageOptions {
   /**
    * CSS selector for the iframe to post the message to
-   * @example `iframe[src*="localhost:4000/dashboard"]`
+   * @example `iframe[src*="/dashboard"]`
    */
   iframeSelector: string;
 
@@ -78,9 +79,7 @@ export function postMessageToIframe(options: PostMessageOptions) {
  * Base HTML template for embedding test pages
  */
 function getInteractiveHtml({ dashboardId }: BaseEmbedTestPageOptions) {
-  const MB_BASE_URL = "http://localhost:4000";
-
-  const url = `${MB_BASE_URL}/dashboard/${dashboardId}`;
+  const url = `${METABASE_INSTANCE_URL}/dashboard/${dashboardId}`;
 
   return `
     <!DOCTYPE html>

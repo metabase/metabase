@@ -1,7 +1,10 @@
 import { match } from "ts-pattern";
 
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
-import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
+import {
+  JWT_SHARED_SECRET,
+  METABASE_INSTANCE_URL,
+} from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type {
   CreateApiKeyResponse,
@@ -20,7 +23,7 @@ import {
 
 const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
-const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
+const EMBED_JS_PATH = `${METABASE_INSTANCE_URL}/app/embed.js`;
 
 /**
  * Base interface for SDK iframe embedding test page options
@@ -324,7 +327,7 @@ export const getNewEmbedScriptTag = ({
 };
 
 export const getNewEmbedConfigurationScript = ({
-  instanceUrl = "http://localhost:4000",
+  instanceUrl = METABASE_INSTANCE_URL,
   isGuest,
   guestEmbedProviderUri,
   theme,
