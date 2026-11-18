@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -178,8 +179,31 @@
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
     (is (= {:perms/create-queries {0 :query-builder}}
            (query-perms/required-perms-for-query
-            (mt/mbql-query venues
-              {:filter [:WOW 100 200]}))))))
+            (assoc-in (lib/query (mt/metadata-provider) (mt/mbql-query venues))
+                      [:stages 0 :filters]
+                      [[:WOW {:lib/uuid (str (random-uuid))} 100 200]]))))))
+
+(deftest ^:parallel query-that-cannot-be-normalized-test
+  (testing "a query that cannot be converted to MBQL 5 is refused, even for an admin, with or without schemas"
+    ;; written out by hand because they must not be valid queries
+    (doseq [query    [{:database (mt/id), :type :native, :native {:query "SELECT 1"}, :stages []}
+                      {:lib/type "mbql/query", :database (mt/id), :type "native"
+                       :stages   [{:lib/type "mbql.stage/native", :native "SELECT 1"}]}
+                      {:type :native, :native {:query "SELECT 1"}}
+                      {:database (mt/id)}
+                      {:database (mt/id), :type :internal, :fn "x"}]
+            enforce? [true false]]
+      (testing (pr-str query enforce?)
+        (binding [mu.fn/*enforce* enforce?]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
+                                (query-perms/required-perms-for-query query)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
+                                (query-perms/query->source-ids query)))
+          (mt/with-test-user :crowberto
+            (is (false? (query-perms/can-run-query? query)))
+            (is (false? (query-perms/can-run-query-with-resolved-source-ids? query {:table-ids #{(mt/id :venues)}})))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
+                                  (query-perms/can-run-query? query false true)))))))))
 
 (deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
@@ -407,7 +431,7 @@
   (testing "the native query of a Card is read with the permissions of the Card"
     (is (= {:card-ids #{1}}
            (query-perms/query->source-ids
-            (from-card (native-orders-query) first-stage 1))))
+            (lib/append-stage (from-card (native-orders-query) first-stage 1)))))
     (testing "when it feeds into a stage of the Card"
       (is (= {:card-ids #{1}}
              (query-perms/query->source-ids
@@ -421,6 +445,15 @@
               (-> (orders-joining-products-query)
                   joining-native-products
                   (from-card first-stage 1))))))))
+
+(deftest ^:parallel query->source-ids-native-only-query-test
+  (testing "a query that is one native stage and nothing else needs native permissions whatever keys the stage has"
+    (doseq [query [(from-card (native-orders-query) first-stage 1)
+                   (sandboxed (native-orders-query) first-stage (meta/id :orders))]]
+      (is (=? {:native? true}
+              (query-perms/query->source-ids query)))
+      (is (=? {:perms/create-queries :query-builder-and-native, :perms/view-data :unrestricted}
+              (query-perms/required-perms-for-query query :already-preprocessed? true))))))
 
 (deftest ^:parallel native-query-that-cannot-be-preprocessed-test
   (testing (str "a query with a native stage that cannot be preprocessed, such as one with a template tag that has no "
@@ -436,6 +469,52 @@
         (is (= {:perms/create-queries :query-builder-and-native
                 :perms/view-data      :unrestricted}
                (query-perms/required-perms-for-query query)))))))
+
+(defn- native-queries-that-cannot-be-preprocessed
+  [stage-key]
+  (let [mp       (mt/metadata-provider)
+        unfilled (lib/native-query mp "SELECT * FROM venues WHERE id = {{id}}")]
+    [(assoc-in unfilled [:stages 0 stage-key] 1)
+     (assoc-in (lib/append-stage unfilled) [:stages 0 stage-key] 1)
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+         (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :checkins)) [(lib/= 1 1)]))
+         (assoc-in [:stages 0 :joins 0 :stages] (:stages (lib/native-query mp "SELECT * FROM checkins")))
+         (assoc-in [:stages 0 :joins 0 :stages 0 stage-key] 1)
+         (assoc-in [:stages 0 :source-table] Integer/MAX_VALUE))
+     ;; written out by hand because it has to be legacy MBQL
+     {:database (mt/id)
+      :type     :native
+      :native   {:query         "SELECT * FROM venues WHERE id = {{id}}"
+                 :template-tags {"id" {:name "id", :display-name "ID", :type :text}}
+                 stage-key      1}}]))
+
+(deftest ^:parallel native-query-with-keys-only-the-qp-sets-that-cannot-be-preprocessed-test
+  (testing "the native stage of a query that cannot be preprocessed requires native permissions whatever keys it has"
+    (doseq [stage-key [:qp/stage-is-from-source-card :query-permissions/sandboxed-table]
+            query     (native-queries-that-cannot-be-preprocessed stage-key)
+            enforce?  [true false]]
+      (testing (pr-str stage-key enforce? (dissoc query :lib/metadata))
+        (binding [mu.fn/*enforce* enforce?]
+          (is (= {:perms/create-queries :query-builder-and-native
+                  :perms/view-data      :unrestricted}
+                 (query-perms/required-perms-for-query query))))))))
+
+(deftest native-query-with-keys-only-the-qp-sets-needs-native-permission-test
+  (testing "a key that only the QP sets does not let a user run or save a native query that cannot be preprocessed"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (let [grant! #(perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries %)]
+        (mt/with-test-user :rasta
+          (doseq [stage-key [:qp/stage-is-from-source-card :query-permissions/sandboxed-table]
+                  query     (native-queries-that-cannot-be-preprocessed stage-key)]
+            (testing (pr-str stage-key (dissoc query :lib/metadata))
+              (grant! :query-builder)
+              (is (false? (query-perms/can-run-query? query)))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot save this Question"
+                                    (query-perms/check-run-permissions-for-query query)))
+              (grant! :query-builder-and-native)
+              (is (true? (query-perms/can-run-query? query)))
+              (is (nil? (query-perms/check-run-permissions-for-query query))))))))))
 
 (deftest ^:parallel query->resolved-source-ids-test
   (testing "table-sourced queries resolve to their source table"

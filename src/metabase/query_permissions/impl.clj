@@ -75,10 +75,15 @@
   [query]
   (if (= (:lib/type query) :mbql/query)
     query
-    (lib-be/normalize-query (when (qp.store/initialized?)
-                              (qp.store/metadata-provider))
-                            query
-                            {:strict? true})))
+    (try
+      (lib-be/normalize-query (when (qp.store/initialized?)
+                                (qp.store/metadata-provider))
+                              query
+                              {:strict? true})
+      (catch Throwable e
+        (throw (ex-info (tru "Cannot calculate permissions for a query that cannot be normalized: {0}" (ex-message e))
+                        {:type qp.error-type/invalid-query, :query query}
+                        e))))))
 
 (defn- merge-source-ids
   "Merge function which takes the union of two sets of IDs, if they are both sets"
@@ -157,14 +162,16 @@
 
   3. Is it a native stage?
 
-     If there's no parent-source-card-id, set the native flag.
+     If there's no parent-source-card-id, or it is the only stage of the query, set the native flag.
 
   4. Does the stage have a :source-table?
 
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set."
   [query :- ::query]
-  (stages-source-ids (:stages (->mbql5 query)) nil false))
+  (let [query (->mbql5 query)]
+    (cond-> (stages-source-ids (:stages query) nil false)
+      (lib/native-only-query? query) (assoc :native? true))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-instances*
@@ -313,14 +320,14 @@
   such as a native query with a template tag that has no value yet, which cannot be preprocessed, needs native
   permissions. Any other query needs permissions for table 0, which will never exist, so no one gets to see it."
   [query]
-  (if (u/ignore-exceptions (:native? (query->source-ids query)))
+  (if (mu/disable-enforcement (lib/any-native-stage? query))
     (native-perms nil)
     {:perms/create-queries {0 :query-builder}}))
 
 (defn- mbql-required-perms
   [query {:keys [throw-exceptions? already-preprocessed? resolved-source-ids]}]
-  (try
-    (let [query (->mbql5 query)]
+  (let [query (->mbql5 query)]
+    (try
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
       (if-let [source-card-id (lib/primary-source-card-id query)]
         (do
@@ -330,15 +337,15 @@
         (resolved-source-ids->required-perms
          (or resolved-source-ids
              (preprocessed->resolved-source-ids (cond-> query
-                                                  (not already-preprocessed?) preprocess-query))))))
-    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
-    ;; that means no one will ever get to see it
-    (catch Throwable e
-      (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e))
-                       {:query query}
-                       e)]
-        (if throw-exceptions? (throw e) (log/error (ex-message e))))
-      (fallback-required-perms query))))
+                                                  (not already-preprocessed?) preprocess-query)))))
+      ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of
+      ;; permissions that means no one will ever get to see it
+      (catch Throwable e
+        (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e))
+                         {:query query}
+                         e)]
+          (if throw-exceptions? (throw e) (log/error (ex-message e))))
+        (fallback-required-perms query)))))
 
 (defn required-perms-for-query
   "Returns a map representing the permissions required to run `query`. The map has the optional keys
