@@ -107,14 +107,19 @@
               (= "mbql.stage/native" (some-> (get-in query [:stages 0 :lib/type]) u/qualified-name)))
          (= "native" (some-> (:type query) name)))))
 
+(mr/def ::query-action.native-dataset-query
+  "A native query that names its Database, the `:dataset_query` a request that creates a QueryAction must give."
+  [:and
+   ::lib-be.schema/maybe-legacy-query
+   [:fn {:error/message "an action's query must be a native query on a database"}
+    native-query-on-database?]])
+
 (mr/def ::query-action.dataset-query
-  "The `:dataset_query` column of a QueryAction, decoded: an empty query, or a native query that names its Database."
+  "The `:dataset_query` column of a QueryAction, decoded: an empty query, which stored rows may hold, or a native query
+  that names its Database."
   [:multi {:dispatch (fn [query] (boolean (and (map? query) (empty? query))))}
    [true  ::lib-be.schema/empty-query]
-   [false [:and
-           ::lib-be.schema/maybe-legacy-query
-           [:fn {:error/message "an action's query must be a native query on a database"}
-            native-query-on-database?]]]])
+   [false ::query-action.native-dataset-query]])
 
 (def ^:private implicit-action-entries
   [[:kind     {:optional true} ::implicit-action.kind]
@@ -190,7 +195,9 @@
                         request?                (remove (comp #{:database_id} first))
                         (and request? (= schema-type :insert))
                         (map (fn [[k opts schema]]
-                               (if (= k :dataset_query) [k (dissoc opts :optional) schema] [k opts schema]))))]
+                               (if (= k :dataset_query)
+                                 [k (dissoc opts :optional) ::query-action.native-dataset-query]
+                                 [k opts schema]))))]
     [:merge
      (action-columns schema-type request?)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case

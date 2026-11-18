@@ -638,7 +638,12 @@
     (mt/with-actions-test-data-and-actions-enabled
       (is (=? {:specific-errors {:dataset_query some?}}
               (mt/user-http-request :crowberto :post 400 "action"
-                                    (dissoc (model-less-query-action nil) :dataset_query)))))))
+                                    (dissoc (model-less-query-action nil) :dataset_query))))
+      (testing "that is not empty"
+        (mt/with-model-cleanup [:model/Action]
+          (is (=? {:specific-errors {:dataset_query some?}}
+                  (mt/user-http-request :crowberto :post 400 "action"
+                                        (assoc (model-less-query-action nil) :dataset_query {})))))))))
 
 (defn- table-query
   "A query of the test Table `table-key`."
