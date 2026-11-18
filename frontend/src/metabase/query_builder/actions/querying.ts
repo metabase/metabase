@@ -7,7 +7,7 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
-import { replaceMetabotCardBaseline } from "metabase/redux/query-builder";
+import { addMetabotCardBaseline } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { getSensibleDisplays, visualizations } from "metabase/viz-core";
@@ -278,15 +278,13 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
         queryResults,
       },
     });
-    // the display and settings the query builder picks for the results are
-    // not the user's edits
+    // The display and settings the query builder picks for the results are
+    // not the user's edits. The loaded version stays too: Back restores it
+    // from history without running the query again.
     const completedQuestion = getQuestion(getState());
     if (metabotCardBaseline && completedQuestion) {
       dispatch(
-        replaceMetabotCardBaseline({
-          previous: metabotCardBaseline,
-          next: getMetabotCardBaseline(completedQuestion),
-        }),
+        addMetabotCardBaseline(getMetabotCardBaseline(completedQuestion)),
       );
     }
     dispatch(loadCompleteUIControls());

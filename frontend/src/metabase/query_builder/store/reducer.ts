@@ -13,7 +13,6 @@ import {
   API_UPDATE_QUESTION,
   EDIT_SUMMARY,
   INITIALIZE_QB,
-  REPLACE_METABOT_CARD_BASELINE,
   RESET_QB,
   SET_PENDING_METABOT_CARD,
   SET_UI_CONTROLS,
@@ -485,24 +484,13 @@ const pendingMetabotCard = createReducer<PendingMetabotCard | null>(
 const metabotCardBaselines = createReducer<MetabotCardBaseline[]>(
   [],
   (builder) => {
-    builder
-      .addCase<string, { type: string; payload: MetabotCardBaseline }>(
-        ADD_METABOT_CARD_BASELINE,
-        (state, action) => [...state, action.payload],
-      )
-      .addCase<
-        string,
-        {
-          type: string;
-          payload: { previous: MetabotCardBaseline; next: MetabotCardBaseline };
-        }
-      >(REPLACE_METABOT_CARD_BASELINE, (state, action) =>
-        state.map((baseline) =>
-          _.isEqual(baseline, action.payload.previous)
-            ? action.payload.next
-            : baseline,
-        ),
-      );
+    builder.addCase<string, { type: string; payload: MetabotCardBaseline }>(
+      ADD_METABOT_CARD_BASELINE,
+      (state, action) =>
+        state.some((baseline) => _.isEqual(baseline, action.payload))
+          ? state
+          : [...state, action.payload],
+    );
   },
 );
 

@@ -4,10 +4,7 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  REPLACE_METABOT_CARD_BASELINE,
-  replaceMetabotCardBaseline,
-} from "metabase/redux/query-builder";
+import { ADD_METABOT_CARD_BASELINE } from "metabase/redux/query-builder";
 import type { MetabotCardBaseline, State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -166,23 +163,31 @@ describe("queryCompleted on a question Metabot opened", () => {
     return { dispatch, state };
   };
 
-  it("takes the display the query builder picked into Metabot's baseline", async () => {
-    const baselineOf = (state: State) =>
-      getMetabotCardBaseline(checkNotNull(getQuestion(state)));
-    let baseline: MetabotCardBaseline | undefined;
-    const { dispatch, state } = await setup((state) => {
-      baseline = baselineOf(state);
-      return [baseline];
+  const baselineOf = (state: State) =>
+    getMetabotCardBaseline(checkNotNull(getQuestion(state)));
+
+  it("adds the display the query builder picked and keeps the loaded one for Back", async () => {
+    let loaded: MetabotCardBaseline | undefined;
+    const { state } = await setup((state) => {
+      loaded = baselineOf(state);
+      return [loaded];
     });
 
     expect(getQuestion(state)?.display()).toBe("scalar");
-    expect(dispatch).toHaveBeenCalledWith(
-      replaceMetabotCardBaseline({
-        previous: checkNotNull(baseline),
-        next: baselineOf(state),
-      }),
-    );
-    expect(state.qb.metabotCardBaselines).toEqual([baselineOf(state)]);
+    expect(state.qb.metabotCardBaselines).toEqual([
+      checkNotNull(loaded),
+      baselineOf(state),
+    ]);
+  });
+
+  it("adds a baseline only once when the query reruns", async () => {
+    const { state } = await setup((state) => [baselineOf(state)]);
+    const qb = queryBuilderReducer(state.qb, {
+      type: ADD_METABOT_CARD_BASELINE,
+      payload: baselineOf(state),
+    });
+
+    expect(qb.metabotCardBaselines).toEqual(state.qb.metabotCardBaselines);
   });
 
   it("leaves the baselines alone when the question is not Metabot's", async () => {
@@ -190,7 +195,7 @@ describe("queryCompleted on a question Metabot opened", () => {
 
     expect(
       dispatch.mock.calls.filter(
-        ([action]) => action?.type === REPLACE_METABOT_CARD_BASELINE,
+        ([action]) => action?.type === ADD_METABOT_CARD_BASELINE,
       ),
     ).toEqual([]);
   });

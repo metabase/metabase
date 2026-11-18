@@ -50,14 +50,6 @@ export const addMetabotCardBaseline = createAction<MetabotCardBaseline>(
   ADD_METABOT_CARD_BASELINE,
 );
 
-export const REPLACE_METABOT_CARD_BASELINE =
-  "metabase/qb/REPLACE_METABOT_CARD_BASELINE";
-/** Replaces the baseline equal to `previous` with `next`. */
-export const replaceMetabotCardBaseline = createAction<{
-  previous: MetabotCardBaseline;
-  next: MetabotCardBaseline;
-}>(REPLACE_METABOT_CARD_BASELINE);
-
 export const EDIT_SUMMARY = "metabase/qb/EDIT_SUMMARY";
 export const editSummary = createAction(EDIT_SUMMARY);
 
