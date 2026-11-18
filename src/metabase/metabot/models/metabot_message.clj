@@ -9,8 +9,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
-
 (methodical/defmethod t2/table-name :model/MetabotMessage [_model] :metabot_message)
 
 (doto :model/MetabotMessage
@@ -23,6 +21,25 @@
    :state {:in  mi/json-in
            :out (comp metabot.schema/normalize-state mi/json-out-with-keywordization)}
    :role  mi/transform-keyword})
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- check-data
+  "Check the `data` of `message` against the at-rest format when `message` declares the current `data_version`."
+  [{:keys [data data_version] :as message}]
+  (when (= schema.v2/current-data-version data_version)
+    (schema.v2/check-message-data "metabot_message.data" data))
+  message)
+
+(t2/define-before-insert :model/MetabotMessage
+  [message]
+  (check-data message))
+
+(t2/define-before-update :model/MetabotMessage
+  [message]
+  (when (some #(contains? (t2/changes message) %) [:data :data_version])
+    (check-data message))
+  message)
 
 (defn- migrate-v1->v2-on-read
   "Convert a v1 row's `:data` to the v2 format and bump `:data_version`. On failure,

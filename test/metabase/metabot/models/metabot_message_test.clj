@@ -79,15 +79,35 @@
         (is (= [{:role "user" :content "hi"}] (:data row)))))))
 
 (deftest after-select-revalidates-v2-data-in-dev-test
-  (mt/with-temp [:model/MetabotConversation conv {}
-                 :model/MetabotMessage      msg  {:conversation_id (:id conv)
-                                                  ;; invalid v2: a text part missing :text
-                                                  :data            [{:type "text"}]
-                                                  :data_version    2}]
-    (testing "outside dev, malformed v2 rows are re-served without validation"
-      (is (= [{:type "text"}] (:data (t2/select-one :model/MetabotMessage :id (:id msg))))))
-    (testing "in dev, a malformed v2 row throws on read"
-      (with-redefs [config/is-dev? true]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid metabot_message.data \(read\)"
-                              (t2/select-one :model/MetabotMessage :id (:id msg))))))))
+  (mt/with-temp [:model/MetabotConversation conv {}]
+    (let [msg (with-redefs [config/is-test? false]
+                (t2/insert-returning-instance! :model/MetabotMessage
+                                               {:conversation_id (:id conv)
+                                                :role            "assistant"
+                                                :profile_id      "gpt-5"
+                                                :total_tokens    0
+                                                :data            [{:type "text"}]
+                                                :data_version    2}))]
+      (testing "outside dev, malformed v2 rows are re-served without validation"
+        (is (= [{:type "text"}] (:data (t2/select-one :model/MetabotMessage :id (:id msg))))))
+      (testing "in dev, a malformed v2 row throws on read"
+        (with-redefs [config/is-dev? true]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Invalid metabot_message.data \(read\)"
+                                (t2/select-one :model/MetabotMessage :id (:id msg)))))))))
+
+(deftest data-is-checked-on-write-test
+  (mt/with-temp [:model/MetabotConversation conv {}]
+    (let [message {:conversation_id (:id conv) :role "assistant" :profile_id "gpt-5" :total_tokens 0}]
+      (testing "insert of v2 data not in the at-rest format throws"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid metabot_message.data"
+                              (t2/insert! :model/MetabotMessage (assoc message :data [{:type "text"}] :data_version 2)))))
+      (testing "insert of v1 data is not checked against the v2 format"
+        (mt/with-model-cleanup [:model/MetabotMessage]
+          (is (some? (t2/insert-returning-pk! :model/MetabotMessage
+                                              (assoc message :data [{:role "user" :content "hi"}] :data_version 1))))))
+      (testing "update of the data to a value not in the at-rest format throws"
+        (mt/with-temp [:model/MetabotMessage {id :id} (assoc message :data [] :data_version 2)]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid metabot_message.data"
+                                (t2/update! :model/MetabotMessage :id id {:data [{:type "text"}]})))
+          (is (pos? (t2/update! :model/MetabotMessage :id id {:data [{:type "text" :text "hi"}]}))))))))

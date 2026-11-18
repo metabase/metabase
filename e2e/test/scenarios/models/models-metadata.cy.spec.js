@@ -186,7 +186,6 @@ describe("scenarios > models metadata", () => {
     H.questionInfoButton().click();
 
     cy.findByTestId("sidesheet").within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findAllByTestId("question-revert-button").first().click();
     });
 

@@ -25,10 +25,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -50,6 +51,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -130,6 +132,12 @@
              :name (u.random/random-name)
              :visualization_settings {}}))
 
+   :model/CacheConfig
+   (fn [_] {:model    "database"
+            :model_id (data/id)
+            :strategy :nocache
+            :config   {}})
+
    :model/Collection
    (fn [_] (default-created-at-timestamped {:entity_id (u/generate-nano-id)
                                             :name (u.random/random-name)}))
@@ -155,6 +163,10 @@
             {:target_type "document"
              :creator_id  (rasta-id)
              :content     {:type "text", :text (u.random/random-name)}}))
+
+   :model/ConnectionImpersonation
+   (fn [_] {:db_id     (data/id)
+            :attribute "impersonation_role"})
 
    :model/Dashboard
    (fn [_] (default-timestamped
@@ -182,8 +194,8 @@
 
    :model/DataApp
    (fn [_] {:entity_id    (u/generate-nano-id)
-            :name         (u/lower-case-en (u.random/random-name))
-            :display_name (u.random/random-name)
+            :slug         (u/lower-case-en (u.random/random-name))
+            :name         (u.random/random-name)
             :bundle_path  "dist/index.js"
             :bundle       (.getBytes "" "UTF-8")})
 
@@ -247,10 +259,11 @@
    :model/Measure
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
-             :definition {}
+             :definition (let [mp (data/metadata-provider)]
+                           (-> (lib/query mp (lib.metadata/table mp (data/id :checkins)))
+                               (lib/aggregate (lib/count))))
              :entity_id (u/generate-nano-id)
-             :name "Mock Measure"
-             :table_id (data/id :checkins)}))
+             :name "Mock Measure"}))
 
    :model/MetabotConversation
    (fn [_] {:id      (str (random-uuid))
@@ -319,9 +332,6 @@
    (fn [_] {:entity_id (u/generate-nano-id)
             :name (u.random/random-name)})
 
-   :model/PermissionsGroupMembership
-   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
-
    :model/Pulse
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -351,11 +361,12 @@
    :model/Segment
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
-             :definition {}
+             :definition (let [mp (data/metadata-provider)]
+                           (-> (lib/query mp (lib.metadata/table mp (data/id :checkins)))
+                               (lib/filter (lib/= 1 1))))
              :description "Lookin' for a blueberry"
              :entity_id (u/generate-nano-id)
-             :name "Toucans in the rainforest"
-             :table_id (data/id :checkins)}))
+             :name "Toucans in the rainforest"}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
    ;; Tech debt issue: #39329
@@ -430,6 +441,14 @@
        :inputs       []
        :expectations []}))
 
+   :model/SegmentTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Segment Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
    :model/DataTestRun
    (fn [_]
      {:test_type      :transform
@@ -475,13 +494,6 @@
              :input_schemas    []
              :output_namespace ""
              :status           :unprovisioned}))})
-
-;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
-;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
-  [model explicit-attributes f]
-  (binding [pgm/*allow-direct-deletion* true]
-    (next-method model explicit-attributes f)))
 
 ;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
 ;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
@@ -575,6 +587,18 @@
     (fn [] ~@(if (seq more)
                [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
+
+(defmacro with-temp-system-property!
+  "Run `body` with Java system property `k` set to `v`, restoring whatever it was afterwards."
+  [[k v] & body]
+  `(let [k# ~k, before# (System/getProperty k#)]
+     (try
+       (System/setProperty k# ~v)
+       ~@body
+       (finally
+         (if before#
+           (System/setProperty k# before#)
+           (System/clearProperty k#))))))
 
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
@@ -839,21 +863,11 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-(defn postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true"
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
 (defn round-all-decimals
-  "Uses [[postwalk-pred]] to crawl `data`, looking for any double values, will round any it finds"
+  "Uses [[metabase.util.match/replace-all]] to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred (some-fn double? decimal?)
-                 #(u/round-to-decimals decimal-place %)
-                 data))
+  (match/replace-all data
+    (x :guard (or (double? x) (decimal? x))) (u/round-to-decimals decimal-place x)))
 
 ;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
 ;;; context
@@ -888,18 +902,19 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? (task.impl/scheduler) temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
-          (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
-                                                  ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                                                  ;; after it's done, but we need the scheduler for testing
-                                                  qs/shutdown (constantly nil)]
-            (thunk)))
+        (mc/binding (task.impl/scheduler-handle) temp-scheduler
+                    (fn []
+                      ;; keep the scheduler up during the thunk: some custom migrations shut the scheduler down when
+                      ;; they finish, but the test still needs it
+                      (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
+                                                              qs/shutdown   (constantly nil)]
+                        (thunk))))
         (finally
           (qs/shutdown temp-scheduler))))))
 
@@ -909,7 +924,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task.impl/*quartz-scheduler*)
+     (qs/start (task.impl/scheduler))
      (thunk))))
 
 (defmacro with-temp-scheduler!

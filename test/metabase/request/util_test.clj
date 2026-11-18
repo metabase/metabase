@@ -230,3 +230,30 @@
       (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))
+
+(deftest ^:parallel internal-data-app-route-test
+  (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/orders"]]
+    (is (req.util/data-app? {:uri uri}))
+    (is (req.util/internal-data-app? {:uri uri})))
+  (doseq [uri ["/embed/embedded-apps/sales" "/embed/apps-else/sales" "/apps/sales"]]
+    (is (false? (req.util/internal-data-app? {:uri uri}))))
+  (is (false? (req.util/internal-data-app? {}))))
+
+(deftest ^:parallel embedded-data-app-route-test
+  (doseq [uri ["/embed/embedded-apps/sales" "/embed/embedded-apps/sales/orders"]]
+    (is (req.util/data-app? {:uri uri}))
+    (is (req.util/embedded-data-app? {:uri uri})))
+  (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/embed/embedded-apps/other" "/embed/embedded-apps-else/sales"]]
+    (is (not (req.util/embedded-data-app? {:uri uri :params {:modular "true"}}))))
+  (is (false? (req.util/embedded-data-app? {}))))
+
+(deftest ^:parallel cookie-header-entries-test
+  (testing "the entries of the `Cookie` header in order, split on `;` only"
+    (is (= [["a" "1"] ["b" "x,y=2"] ["a" "3"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; b=x,y=2;a=3"}}))))
+  (testing "an entry without `=` is a cookie with no name"
+    (is (= [["a" "1"] ["" "metabase.SESSION"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; metabase.SESSION"}}))))
+  (testing "nil without a header, empty without entries"
+    (is (nil? (req.util/cookie-header-entries {:headers {}})))
+    (is (= [] (req.util/cookie-header-entries {:headers {"cookie" " ; "}})))))

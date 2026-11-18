@@ -201,6 +201,22 @@
   "A Sandbox as serialization references it, by entity id."
   :string)
 
+(mr/def ::database-or-older-export-id
+  "A Database id, which older exports wrote as it is rather than by the Database's name, and import keeps."
+  [:or ::database pos-int?])
+
+(mr/def ::table-or-older-export-id
+  "A Table id, which older exports wrote as it is rather than by the Table's path, and import keeps."
+  [:or ::table pos-int?])
+
+(mr/def ::field-or-older-export-id
+  "A Field id, which older exports wrote as it is rather than by the Field's path, and import keeps."
+  [:or ::field pos-int?])
+
+(mr/def ::user-or-older-export-id
+  "A User id, which older exports wrote as it is rather than by the User's email, and import keeps."
+  [:or ::user pos-int?])
+
 (def external-registry
   "A local registry that swaps every id schema for its external one, so `[:schema {:registry external-registry} s]`
   describes `s` as serialization writes it."

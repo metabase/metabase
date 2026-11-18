@@ -7,6 +7,11 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
+  a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
+  query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
+  Return false for a driver where a capped query breaks the transaction it runs in.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
@@ -19,6 +24,24 @@ summary: Changes to the Metabase driver interface, listed by release.
   `metabase.driver.connection/with-admin-connection`, `metabase.driver.connection/database-admin-details`, the
   `:admin` connection type, `metabase.driver.common/admin-connection-option` and
   `metabase.driver.util/fields-hidden-for-admin-connection`, and a Database's `:admin_details`.
+
+- Added new driver feature flag `:mbql-5-native-query-execution`, which signifies that the driver's implementations of
+  `metabase.driver/execute-reducible-query`, `metabase.driver/execute-write-query!`, and
+  `metabase.driver/query->remark` expect native MBQL queries in the MBQL 5 shape rather than the legacy MBQL shape.
+  This is more performant, since we don't need to convert MBQL 5 queries back to legacy queries just to execute them.
+
+  In 66, this defaults to `false` for non-JDBC drivers, and `true` for drivers deriving from `:sql-jdbc`; in a future
+  release it will change to `true` and in 69 or later it will be removed entirely as all drivers will be expected to
+  execute MBQL 5 native queries directly.
+
+  See notes in `metabase.driver/execute-reducible-query`'s docstring on the differences between the two shapes.
+
+- Various legacy MBQL utility functions that were deprecated in 57 have been removed from `driver-api`:
+  `aggregation-at-index`, `assoc-field-options`, `expression-with-name`, `field-options`, `normalize-token`,
+  `query->source-table-id`, and `update-field-options`.
+
+- `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends.
+  If your driver derives from `:postgres` and overrides the method, extend `:postgres`'s list rather than `:sql-jdbc`'s.
 
 ## Metabase 0.65.3
 
@@ -1421,15 +1444,4 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 ## Older versions
 
-Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
-table below:
-
-| Version | Wiki page                                                                                             |
-| ------- | ----------------------------------------------------------------------------------------------------- |
-| 0.41.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.41.0-for-Metabase-driver-authors) |
-| 0.40.0  | No changes.                                                                                           |
-| 0.39.0  | No changes.                                                                                           |
-| 0.38.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.38.0-for-Metabase-driver-authors) |
-| 0.37.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.37.0-for-Metabase-driver-authors) |
-| 0.36.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.36.0-for-Metabase-driver-authors) |
-| 0.35.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) |
+Changes before 0.42.0 were tracked in the GitHub wiki, which is no longer available.

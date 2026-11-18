@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.bug-reporting.settings :as bug-reporting.settings]
+   [metabase.channel.schema :as channel.schema]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
@@ -33,7 +34,7 @@
 (defn- create-slack-message-blocks
   "Create blocks for the Slack message with diagnostic information"
   [diagnostic-info file-info]
-  (let [version-info (get-in diagnostic-info [:bugReportDetails "metabase-info" "version"])
+  (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         description (get diagnostic-info :description)
         reporter (get diagnostic-info :reporter)
         file-url (if (string? file-info)
@@ -262,15 +263,15 @@
    [:url                 {:optional true} [:maybe :string]]
    [:description         {:optional true} [:maybe :string]]
    [:frontendErrors      {:optional true} [:maybe [:sequential :string]]]
-   [:backendErrors       {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
-   [:userLogs            {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
-   [:logs                {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
+   [:backendErrors       {:optional true} [:maybe [:sequential ::channel.schema/bug-report.object]]]
+   [:userLogs            {:optional true} [:maybe [:sequential ::channel.schema/bug-report.object]]]
+   [:logs                {:optional true} [:maybe [:sequential ::channel.schema/bug-report.object]]]
    [:entityName          {:optional true} [:maybe :string]]
    [:localizedEntityName {:optional true} [:maybe :string]]
-   [:entityInfo          {:optional true} [:maybe ms/OpaqueJSONObject]]
-   [:queryResults        {:optional true} [:maybe ms/OpaqueJSONObject]]
-   [:bugReportDetails    {:optional true} [:maybe ms/OpaqueJSONObject]]
-   [:browserInfo         {:optional true} [:maybe ms/OpaqueJSONObject]]])
+   [:entityInfo          {:optional true} [:maybe ::channel.schema/bug-report.object]]
+   [:queryResults        {:optional true} [:maybe ::channel.schema/bug-report.object]]
+   [:bugReportDetails    {:optional true} [:maybe ::channel.schema/bug-report.object]]
+   [:browserInfo         {:optional true} [:maybe ::channel.schema/bug-report.object]]])
 
 (defn- current-user-reporter
   "Name and email of the user making the request, for attributing a bug report."

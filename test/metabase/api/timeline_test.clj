@@ -208,6 +208,30 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "timeline/" tl-id) {:collection_id coll-a})))))))
 
+(deftest move-timeline-permissions-test
+  (testing "PUT /api/timeline/:id needs write access to the collection the timeline moves to"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}
+                   :model/Timeline   {tl-id :id}   {:collection_id from-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) from-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+      (perms/revoke-collection-permissions! (perms-group/all-users) to-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) to-id)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "timeline/" tl-id) {:collection_id to-id})))
+      (is (= from-id (t2/select-one-fn :collection_id :model/Timeline :id tl-id)))
+      (is (= "Renamed" (:name (mt/user-http-request :rasta :put 200 (str "timeline/" tl-id) {:name "Renamed"})))))))
+
+(deftest timeline-icon-test
+  (testing "POST /api/timeline gives a timeline without an icon the default icon"
+    (let [id (:id (mt/user-http-request :crowberto :post 200 "timeline" {:name "No icon"}))]
+      (is (= "star" (t2/select-one-fn :icon :model/Timeline :id id)))
+      (t2/delete! :model/Timeline :id id)))
+  (testing "POST /api/timeline takes a null icon as none"
+    (let [id (:id (mt/user-http-request :crowberto :post 200 "timeline" {:name "Null icon" :icon nil}))]
+      (is (= "star" (t2/select-one-fn :icon :model/Timeline :id id)))
+      (t2/delete! :model/Timeline :id id))))
+
 (deftest delete-timeline-test
   (testing "DELETE /api/timeline/:id cascades to its events"
     (mt/with-temp [:model/Timeline      {tl-id :id} {:name "Releases"}

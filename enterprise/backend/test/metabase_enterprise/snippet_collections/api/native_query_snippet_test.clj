@@ -4,7 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -192,11 +192,11 @@
             (testing "read-only remote sync blocks writes to the snippet folder"
               (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                                  remote-sync-type :read-only]
-                (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder)))))))
+                (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id folder)) :can_write))))))
             (testing "read-write remote sync allows writes to the snippet folder"
               (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                                  remote-sync-type :read-write]
-                (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder)))))))))))))
+                (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id folder)) :can_write))))))))))))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"
@@ -217,3 +217,23 @@
               (is (true? (can-see-snippet?)))
               (perms/revoke-collection-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?))))))))))
+
+(deftest archive-snippet-folder-needs-curate-test
+  (testing "PUT /api/collection/:id archives and restores a snippet folder, with its snippets, for a user who curates it
+            without native query access"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection         folder  {:namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id folder) :content "1" :name (mt/random-name)}]
+            (testing "a user who only reads the folder is refused"
+              (perms/grant-collection-read-permissions! (perms-group/all-users) folder)
+              (mt/user-http-request :rasta :put 403 (str "collection/" (:id folder)) {:archived true})
+              (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet)))))
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) folder)
+            (mt/user-http-request :rasta :put 200 (str "collection/" (:id folder)) {:archived true})
+            (is (true? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
+            (mt/user-http-request :rasta :put 200 (str "collection/" (:id folder)) {:archived false})
+            (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
+            (testing "archiving the snippet itself still needs native query access, as before"
+              (mt/user-http-request :rasta :put 403 (str "native-query-snippet/" (:id snippet)) {:archived true}))))))))

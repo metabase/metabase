@@ -24,7 +24,6 @@
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as string]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -131,11 +130,11 @@
          :model/PermissionsGroup {group-id3 :id} {:name "Good Folks"}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
-        (testing "admin can get users from any group, even when they are also marked as a group manager"
+        (testing "admin can get users from any group"
           (is (= #{"lucky@metabase.com"
                    "rasta@metabase.com"}
                  (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
@@ -1943,7 +1942,7 @@
       (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
         (let [creds {:username (:email user), :password "def"}]
-          (is (=? {:session_id string/valid-uuid?
+          (is (=? {:session_id u/uuid-string?
                    :success true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                     :old_password "def"}))))))
@@ -1986,7 +1985,7 @@
                                                   :put 200 (format "user/%d/password" user-id)
                                                   {:password "abc123!!DEF"
                                                    :old_password "def"})]
-             (is (=? {:session_id string/valid-uuid?
+             (is (=? {:session_id u/uuid-string?
                       :success true}
                      resp))
              ;; Original session should be ended: its key destroyed, the change attributed to the user

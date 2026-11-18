@@ -15,7 +15,7 @@ export function DataAppGroupDataAccess({
   group,
 }: DataAppGroupDataAccessProps) {
   const { data: warnings } = useGetDataAppGroupPermissionWarningsQuery(
-    app.name,
+    app.slug,
   );
 
   if (warnings == null) {

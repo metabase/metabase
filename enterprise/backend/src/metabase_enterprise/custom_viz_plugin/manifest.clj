@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -49,7 +50,9 @@
   "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
    viz-settings keys, so an identifier containing it could read another plugin's settings."
   [identifier]
-  (when (and (string? identifier) (str/includes? identifier ":"))
+  (when (and (string? identifier)
+             (not (str/blank? identifier))
+             (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.identifier identifier)))
     (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------

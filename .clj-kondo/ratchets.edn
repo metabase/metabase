@@ -20,16 +20,17 @@
 {:ignore-counts                {:aliased-namespace-symbol                                  3
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
-                                :deprecated-namespace                                      30
-                                :deprecated-var                                            53
+                                :deprecated-namespace                                      29
+                                :deprecated-var                                            52
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/discourage-dynamic-vars                          298
+                                :metabase/change-log-raw-write                             12
+                                :metabase/discourage-dynamic-vars                          286
                                 :metabase/discourage-millis-duration                       1
-                                :metabase/modules                                          16
+                                :metabase/modules                                          15
                                 :metabase/namespace-name                                   3
-                                :metabase/validate-defendpoint-has-response-schema         417
+                                :metabase/validate-defendpoint-has-response-schema         327
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       42
                                 :missing-docstring                                         4
@@ -46,13 +47,13 @@
                                 :unused-binding                                            3
                                 :unused-excluded-var                                       2
                                 :unused-namespace                                          2
-                                :unused-private-var                                        2
+                                :unused-private-var                                        1
                                 :unused-value                                              1}
  :discouraged-namespace-counts {:cheshire.core         3
                                 :clojure.tools.logging 3
                                 :grouper.core          1
                                 :legacy-mbql.normalize 14
-                                :legacy-mbql.schema    14
+                                :legacy-mbql.schema    13
                                 :legacy-mbql.util      2
                                 :query-processor.store 9
                                 :toucan2.core          4
@@ -65,7 +66,7 @@
                                 :clojure.core/update-keys                         1
                                 :clojure.java.jdbc/get-connection                 2
                                 :clojure.pprint/pprint                            2
-                                :clojure.string/lower-case                        2
+                                :clojure.string/lower-case                        1
                                 :clojure.string/upper-case                        1
                                 :compojure.core/context                           2
                                 :compojure.core/defroutes                         4

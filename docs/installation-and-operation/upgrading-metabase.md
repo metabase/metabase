@@ -158,7 +158,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=username
 export MB_DB_PASS=password
 export MB_DB_HOST=localhost
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down
+java -jar metabase.jar migrate down
 ```
 
 If you're running Docker, use the command `"migrate down"` (with the quotes around `"migrate down"`), and include the connection details for your application database, for example:

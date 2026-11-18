@@ -1,5 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import { getTargetsForQuestion } from "metabase/dashboard/utils/click-behavior";
+import { isAlwaysDefaultClickAction } from "metabase/visualizations/types";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
 import {
@@ -10,6 +15,10 @@ import {
   createMockParameter,
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 import {
@@ -130,6 +139,13 @@ describe("getClickBehavior", () => {
 
 const stateColumn = createMockColumn({ name: "STATE" });
 
+const createdAtMonthColumn = createMockColumn({
+  name: "CREATED_AT",
+  base_type: "type/DateTime",
+  effective_type: "type/DateTime",
+  unit: "month",
+});
+
 const targetDashboard = createMockDashboard({
   id: 2,
   parameters: [
@@ -233,6 +249,23 @@ describe("getDashboardDrillType", () => {
 
     expect(type).toBeNull();
   });
+
+  it("resolves no drill when the question link target is not loaded in extraData", () => {
+    // Static embedding loads no link targets, so these links must not open
+    const type = getDashboardDrillType({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "question",
+          targetId: 5,
+          parameterMapping: {},
+        },
+      }),
+      extraData: { dashboard: createMockDashboard({ id: 1 }), questions: {} },
+    });
+
+    expect(type).toBeNull();
+  });
 });
 
 describe("getDashboardDrillTab", () => {
@@ -277,6 +310,59 @@ describe("getDashboardDrillParameters", () => {
 
     expect(pairs).toEqual([["current-param", "CA"]]);
   });
+
+  it("updates every mapped filter at once, formatting each value for its parameter", () => {
+    const pairs = getDashboardDrillParameters({
+      settings: buildSettings({
+        root: {
+          type: "crossfilter",
+          parameterMapping: {
+            "text-param": {
+              id: "text-param",
+              source: { type: "column", id: "count", name: "Count" },
+              target: { type: "parameter", id: "text-param" },
+            },
+            "date-param": {
+              id: "date-param",
+              source: {
+                type: "column",
+                id: "CREATED_AT",
+                name: "Created At: Month",
+              },
+              target: { type: "parameter", id: "date-param" },
+            },
+          },
+        },
+      }),
+      data: [
+        { col: createMockColumn({ name: "count" }), value: 64 },
+        {
+          col: createdAtMonthColumn,
+          value: "2025-07-01T00:00:00Z",
+        },
+      ],
+      extraData: {
+        dashboard: createMockDashboard({ id: 1 }),
+        parameters: [
+          createMockParameter({
+            id: "text-param",
+            slug: "filter-text",
+            type: "string/=",
+          }),
+          createMockParameter({
+            id: "date-param",
+            slug: "filter-time",
+            type: "date/month-year",
+          }),
+        ],
+      },
+    });
+
+    expect(pairs).toEqual([
+      ["text-param", 64],
+      ["date-param", "2025-07"],
+    ]);
+  });
 });
 
 describe("getDashboardDrillUrl", () => {
@@ -288,6 +374,157 @@ describe("getDashboardDrillUrl", () => {
     });
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
+  });
+
+  it("uses the tab of the clicked table dashcard's column click behavior (metabase#34447)", () => {
+    const tableDashcard = createMockDashboardCard({
+      card: createMockCard({ display: "table" }),
+    });
+    const productIdColumn = createMockColumn({ name: "PRODUCT_ID" });
+    const getUrlForTab = (tabId: number) =>
+      getDashboardDrillUrl({
+        column: productIdColumn,
+        settings: buildSettings({
+          columns: {
+            PRODUCT_ID: {
+              type: "link",
+              linkType: "dashboard",
+              targetId: 3,
+              tabId,
+              parameterMapping: {},
+            },
+          },
+        }),
+        data: [{ col: productIdColumn, value: 14 }],
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: tableDashcard,
+          dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+        },
+      });
+
+    expect(getUrlForTab(11)).toBe("/dashboard/3?tab=11");
+    expect(getUrlForTab(12)).toBe("/dashboard/3?tab=12");
+  });
+
+  it("omits the tab and filter params when the link has no tab and the target has no filters", () => {
+    const url = getDashboardDrillUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "dashboard",
+          targetId: 3,
+          tabId: undefined,
+          parameterMapping: {},
+        },
+      }),
+      data: [{ col: stateColumn, value: "CA" }],
+      extraData: {
+        ...drillExtraData,
+        dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+      },
+    });
+
+    expect(url).toBe("/dashboard/3?");
+  });
+});
+
+describe("DashboardClickAction with a question link", () => {
+  it("opens the target question filtered by a clicked boolean custom column value", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const query = Lib.createTestQuery(createMetadataProvider({ metadata }), {
+      stages: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          expressions: [
+            {
+              name: "Boolean column",
+              value: {
+                type: "operator",
+                operator: "starts-with",
+                args: [
+                  { type: "column", name: "CATEGORY" },
+                  { type: "literal", value: "Gi" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const targetCard = createMockCard({
+      id: 5,
+      dataset_query: Lib.toJsQuery(query),
+    });
+    const target = getTargetsForQuestion(
+      new Question(targetCard, metadata),
+    ).find(({ name }) => name === "Boolean column");
+    if (target == null) {
+      throw new Error("Boolean column target not found");
+    }
+    const booleanColumn = createMockColumn({
+      name: "Boolean column",
+      base_type: "type/Boolean",
+      effective_type: "type/Boolean",
+    });
+
+    const sourceCard = createMockCard({ id: 1, display: "table" });
+
+    const actions = DashboardClickAction({
+      question: new Question(sourceCard, metadata),
+      clicked: {
+        column: booleanColumn,
+        value: false,
+        data: [{ col: booleanColumn, value: false }],
+        settings: buildSettings({
+          columns: {
+            "Boolean column": {
+              type: "link",
+              linkType: "question",
+              targetId: 5,
+              parameterMapping: {
+                [target.id]: {
+                  id: target.id,
+                  source: {
+                    type: "column",
+                    id: "Boolean column",
+                    name: "Boolean column",
+                  },
+                  target: target.target,
+                },
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: sourceCard.id,
+            card: sourceCard,
+          }),
+          questions: { 5: targetCard },
+        },
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
+    const drilledQuery = new Question(
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
+      metadata,
+    ).query();
+    expect(
+      Lib.filters(drilledQuery, 0).map(
+        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
+      ),
+    ).toEqual(["Boolean column is false"]);
   });
 });
 
@@ -305,6 +542,37 @@ describe("getDashboardDrillLinkUrl", () => {
     });
 
     expect(url).toBe("https://metabase.test/42");
+  });
+
+  it("fills dashboard filter values and clicked column values into the link template", () => {
+    const url = getDashboardDrillLinkUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "url",
+          linkTemplate:
+            "https://metabase.com/{{filter-text}}/{{count}}/{{CREATED_AT}}",
+        },
+      }),
+      data: [
+        { col: createdAtMonthColumn, value: "2026-10-01T00:00:00Z" },
+        { col: createMockColumn({ name: "count" }), value: 1 },
+      ],
+      extraData: {
+        dashboard: createMockDashboard({
+          parameters: [
+            createMockParameter({
+              id: "text-param",
+              name: "Text filter",
+              slug: "filter-text",
+            }),
+          ],
+        }),
+        parameterValuesBySlug: { "filter-text": "Dell Adams" },
+      },
+    });
+
+    expect(url).toBe("https://metabase.com/Dell%20Adams/1/2026-10");
   });
 });
 

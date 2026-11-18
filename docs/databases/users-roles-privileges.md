@@ -7,7 +7,7 @@ summary: "Set up database users and roles for Metabase: read-only access for que
 
 ## Recommended setup
 
-We recommend creating a dedicated `metabase` database user with **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
+We recommend creating a dedicated `metabase` database user with **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to only the schemas or tables used for analysis.
 
 Some Metabase functionality requires write access to the database. Depending on other Metabase features you're planning to use, you might want to create additional roles:
 
@@ -28,7 +28,9 @@ For operations that require write access, we recommend using separate [writable 
 In order to view and query your tables in Metabase, you'll have to give Metabase's database user:
 
 - `CONNECT` to your database.
-- `SELECT` privileges to any schemas or tables that you want to use in Metabase.
+- `SELECT` privileges to the schemas or tables that you want to use in Metabase.
+
+Grant `SELECT` only on the tables that people need for analysis, not on your entire database. Metabase syncs the tables that its database user can query, so each extra table makes syncs and scans take longer, and adds clutter to the tables that people browse and search in Metabase.
 
 To organize these privileges (and make maintenance easier down the line):
 
@@ -52,7 +54,8 @@ CREATE USER metabase WITH PASSWORD "your_password";
 -- Give the role to the metabase user.
 GRANT analytics TO metabase;
 
--- Add query privileges to the role (options 1-4):
+-- Add query privileges to the role (options 1-4).
+-- We recommend option 4: grant access only to the specific tables used for analytics.
 
 -- Option 1: Uncomment the line below to let users with the analytics role query ALL DATA (In Postgres 14 or higher. See [Predefined Roles](https://www.postgresql.org/docs/current/predefined-roles.html#PREDEFINED-ROLES)).
 -- GRANT pg_read_all_data TO analytics;

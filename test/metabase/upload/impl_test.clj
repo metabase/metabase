@@ -22,7 +22,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -359,7 +359,7 @@
                           (sql.tx/session-schema driver/*driver*))
             group-id    (u/the-id (perms-group/all-users))
             grant?      (and db
-                             (not (mi/can-read? db))
+                             (not (mi/can-read? (t2/hydrate db :can_read)))
                              grant-permission?)]
         (mt/with-restored-data-perms-for-group! group-id
           (when grant?
@@ -2680,10 +2680,10 @@
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before upload create"
-              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
               (testing "write pool is created during upload create"
-                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+                (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 
@@ -2701,9 +2701,9 @@
             (let [table (create-upload-table!)]
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "write pool does not exist before upload delete"
-                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+                (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
               (upload/delete-upload! table)
               (testing "write pool is created during upload delete"
-                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+                (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))

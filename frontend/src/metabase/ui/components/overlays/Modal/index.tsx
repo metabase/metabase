@@ -69,8 +69,10 @@ interface ModalLayoutProps {
    */
   layout?: ModalLayout;
   /**
-   * Space between the header, body and footer. `default` is 16px. `relaxed`
-   * is 24px, for bodies with several fields or sections, such as forms.
+   * Space between the header, body and footer, and between the footer
+   * buttons. `default` is 16px, with 12px between buttons. `relaxed` is 24px,
+   * with 16px between buttons, for bodies with several fields or sections,
+   * such as forms.
    */
   density?: ModalDensity;
   /**

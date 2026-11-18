@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -45,17 +46,18 @@
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
-  (into [:enum] (map name table/visibility-types)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/visibility-types))
 
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
-  (into [:enum] (map name table/field-orderings)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/field-orderings))
 
 (def ^:private EntityType
-  "Schema for a valid table entity type, as either a keyword or a string."
+  "Schema for a valid table entity type, normalized from its name."
   (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}} #(isa? types/entity-hierarchy (keyword %) :entity/*)]
-   (deferred-tru "value must be a valid entity type (keyword or string).")))
+   [:fn {:json-schema {:type "string"} :decode/normalize lib.schema.common/normalize-keyword}
+    #(and (keyword? %) (isa? types/entity-hierarchy % :entity/*))]
+   (deferred-tru "value must be a valid entity type.")))
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
@@ -70,6 +72,9 @@
 
 (mr/def ::data-sources
   (into [:enum {:decode/string keyword}] table/data-sources))
+
+(mr/def ::data-source-write
+  (into [:enum {:decode/string keyword}] table/writable-data-sources))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -113,15 +118,12 @@
             :include-transform-targets? include-transform-targets})
           tables
       (apply t2/hydrate tables hydrations)
-      (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                          :table-ids (into #{} (map :id) tables)})
-          tables)
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
-        (filter mi/can-read? tables))
+        (mi/readable tables))
       (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
-            tables))))
+            (cond-> tables can-query (t2/hydrate :can_query))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -188,8 +190,8 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
    [:data_authority          {:optional true} ::data-authority-write]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
+   [:data_source             {:optional true} [:maybe ::data-source-write]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
@@ -205,8 +207,8 @@
         table-update-entries))
 
 (mu/defn ^:private update-table!*
-  "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
-  if field positions have changed."
+  "Takes an existing table and the changes, updates in the database, and hydrates the Fields of the result when its
+  field order changed."
   [{:keys [id] :as existing-table} :- :metabase.warehouse-schema.schema/table
    body                            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
   (when-let [changes (-> body
@@ -218,34 +220,10 @@
                          (u/update-some :data_source keyword)
                          not-empty)]
     (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
-  (let [updated-table        (warehouse-schema-rest.db/table id)
-        changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
-    (if changed-field-order?
-      (do
-        (table/update-field-positions! updated-table)
-        (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+  (let [updated-table (warehouse-schema-rest.db/table id)]
+    (if (not= (:field_order updated-table) (:field_order existing-table))
+      (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values])
       updated-table)))
-
-;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?
-(defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
-  efficiently sync tables from different databases."
-  [newly-unhidden]
-  (when (seq newly-unhidden)
-    (quick-task/submit-task!
-     (fn []
-       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (warehouse-schema-rest.db/database db-id)]
-           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-           ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true
-                         driver.settings/*allow-testing-sqlite-connections* true]
-                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
-             (doseq [table tables]
-               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-               (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
-                                       (:id database))))))))))
 
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
@@ -253,22 +231,19 @@
   (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Semantic layer/Data collections."))
-    (api/check-403 (every? mi/can-query? tables))))
+    (api/check-403 (every? mi/can-query? (t2/hydrate tables :can_query)))))
 
 (defn- update-tables!
   [ids {:keys [collection_id visibility_type] :as body}]
   (let [existing-tables (warehouse-schema-rest.db/tables-by-ids ids)]
     (api/check-404 (= (count existing-tables) (count ids)))
-    (run! api/write-check existing-tables)
+    (run! api/write-check (t2/hydrate existing-tables :can_write))
     (when collection_id
       (check-can-publish-tables-to-collection! existing-tables collection_id))
-    (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
+    (let [updated-tables (events/with-batched-events (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
-      (sync-unhidden-tables newly-unhidden)
-      (doseq [table updated-tables]
-        (events/publish-event! :event/table-update {:object  table
-                                                    :user-id api/*current-user-id*}))
+      (sync/sync-tables-in-background! newly-unhidden)
       updated-tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -342,8 +317,7 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
-    (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
-          :let [origin-field (t2/hydrate origin-field [:table :db])]
+    (for [origin-field (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
           :when (and (-> origin-field :table :active)
                      (mi/can-read? origin-field))
           :let [origin-field (update origin-field :table schema.table/present-table)]]
@@ -408,9 +382,7 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
-    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
-                                                :user-id api/*current-user-id*}))
+    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!
@@ -430,18 +402,22 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(mr/def ::csv-upload.parts
+  "The multipart parts of a CSV upload, open so that a part under any other name is kept for [[CsvUploadParts]] to refuse."
+  [:map {:closed false, :description "CSV upload multipart parts"}
+   [:file
+    [:map {:closed true}
+     [:filename :string]
+     [:tempfile (ms/InstanceOfClass java.io.File)]]]
+   [:collection_id {:optional true} :string]])
+
 (def ^:private CsvUploadParts
   "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
-  file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
+  file cannot be smuggled past the upload."
   [:and
-   (ms/string-keyed-object
-    ["file"
-     [:map {:closed true}
-      [:filename :string]
-      [:tempfile (ms/InstanceOfClass java.io.File)]]]
-    ["collection_id" {:optional true} :string])
+   ::csv-upload.parts
    (mu/with-api-error-message
-    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
     (deferred-tru "unexpected multipart part"))])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -458,7 +434,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:strs [file]} :- CsvUploadParts]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)
@@ -478,7 +454,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:strs [file]} :- CsvUploadParts]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)
@@ -499,12 +475,7 @@
   (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
         database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
     (api/check-403
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:id database)
-      id))
+     (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {id (:id database)}))
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try

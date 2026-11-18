@@ -399,7 +399,7 @@
                 "implementation (OSS `can-access-via-collection?` is a constant `false`).")
     (mt/with-premium-features #{}
       (let [seen (atom nil)]
-        (with-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
           (metabot.db/readable-active-table-database-id (mt/id :venues)))
         (is (some? @seen) "can-read? should have been called")
         (doseq [k [:id :db_id :is_published :collection_id]]
@@ -456,8 +456,7 @@
                 "assertion cannot be satisfied by the source table's own check — that is what makes\n"
                 "this test able to fail.")
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :checkins)
-                                                      :definition {}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {}]
         (let [checked (atom [])
               record  (fn rec
                         ([obj] obj)

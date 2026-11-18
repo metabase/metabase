@@ -4,10 +4,10 @@ import type {
   DataTestId,
   DataTestRun,
   DataTestRunStatus,
+  DataTestTable,
   DataTestType,
   TransformRun,
   TransformRunStatus,
-  TransformTestTable,
 } from "metabase-types/api";
 
 const TRANSFORM_RUN_STATUSES: Record<DataTestRunStatus, TransformRunStatus> = {
@@ -37,7 +37,7 @@ export function getRunStatusInfo(
   };
 }
 
-export function getTableName(table: TransformTestTable) {
+export function getTableName(table: DataTestTable) {
   return table.schema ? `${table.schema}.${table.name}` : table.name;
 }
 

@@ -19,7 +19,7 @@
         (is (some? profile))
         (is (= :embedding_next (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
         (is (contains? (tool-names profile) "search"))
@@ -30,7 +30,7 @@
         (is (some? profile))
         (is (= :internal (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
@@ -52,7 +52,7 @@
         ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         ;; In tests the library index can't answer, so :nlq is transparently served the general-search
         ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
         (is (contains? (tool-names profile) "search"))
@@ -63,7 +63,7 @@
         (is (some? profile))
         (is (= :slackbot (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))
@@ -148,8 +148,7 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
-                "curated nlq swaps search for the library tool")
+  (testing "NLQ profiles add run_query and write_dashboard to embedding_next's tools"
     (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
@@ -157,9 +156,9 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback (conj embedding "run_query")))
+      (is (= fallback (conj embedding "run_query" "write_dashboard")))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query"))))))
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query" "write_dashboard"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]

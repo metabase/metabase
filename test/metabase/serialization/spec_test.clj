@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (use-fixtures :once
@@ -60,13 +61,20 @@
           (testing "declares every serialized key in its schema"
             (is (empty? (remove (schema-keys (:schema spec)) serialized)))))))))
 
+(deftest schema-keys-match-external-keys-test
+  (testing "the schema of each spec declares exactly the keys an import reads from its entities"
+    (doseq [[model-name model spec] (model-specs)]
+      (testing model-name
+        (is (= (serialization.entity/external-keys model)
+               (schema-keys (:schema spec))))))))
+
 (deftest validate-export-test
   (let [spec {:schema [:map {:closed true} [:name :string]]}]
     (mt/with-dynamic-fn-redefs [serialization.spec/spec-of (fn [_] spec)]
       (testing "export matching its spec's schema passes"
         (is (nil? (serialization.entity/validate-export :model/Model {:name "x"}))))
       (testing "export with key its spec's schema does not declare throws"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid export of :model/Model"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Model"
                               (serialization.entity/validate-export :model/Model {:name "x" :id 1})))))
     (mt/with-dynamic-fn-redefs [serialization.spec/spec-of (fn [_] {})]
       (testing "spec without schema throws"
@@ -86,10 +94,16 @@
                                                                            (:children (get specs parent))))))))))
 
 (deftest primary-keys-match-models-test
-  (testing "the primary key of each spec is the first primary key of its model"
+  (testing "each serialized model has one primary key column, which serialization uses"
     (doseq [[model-name model] (model-specs)]
       (testing model-name
-        (is (= (first (t2/primary-keys model)) (serialization.spec/primary-key model)))))))
+        (is (= (t2/primary-keys model) [(serialization.spec/primary-key model)]))))))
+
+(methodical/defmethod t2/primary-keys ::two-key-model [_model] [:kind :local_id])
+
+(deftest primary-key-rejects-several-columns-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"single primary key column"
+                        (serialization.spec/primary-key ::two-key-model))))
 
 (def ^:private implicit-columns
   "The columns a spec never declares, since serialization never exports them."

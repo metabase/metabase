@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
 import {
   type NodeViewProps,

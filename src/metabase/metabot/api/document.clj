@@ -6,9 +6,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.parameters.schema :as parameters.schema]
@@ -19,7 +21,7 @@
 (def ^:private generate-content-body-schema
   [:map {:closed true}
    [:instructions ms/NonBlankString]
-   [:references {:optional true} ms/OpaqueJSONObject]])
+   [:references {:optional true} ::metabot.schema/references]])
 
 (def ^:private generate-content-response-schema
   [:map
@@ -28,7 +30,7 @@
                          [:dataset_query ::lib-be.schema/maybe-legacy-query]
                          [:database_id ms/PositiveInt]
                          [:parameters [:maybe ::parameters.schema/parameters]]
-                         [:visualization_settings ms/VisualizationSettings]]]]
+                         [:visualization_settings ::lib.schema.visualization/visualization-settings]]]]
    [:error [:maybe ms/NonBlankString]]
    [:description [:maybe ms/NonBlankString]]])
 

@@ -4,12 +4,13 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
@@ -73,7 +74,7 @@
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
                         [:= :exploration.archived false]
-                        (collection/visible-collection-filter-clause :exploration.collection_id)]
+                        (perms/visible-collections-filter-clause :exploration.collection_id (api/current-user-info) {:root-namespace nil})]
              :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
@@ -101,7 +102,7 @@
 (mu/defn update-exploration!
   "Apply `changes` to the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
-   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :archived_directly :collection_id :collection_position])]
+   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :collection_id :collection_position])]
   (t2/update! :model/Exploration :id exploration-id changes))
 
 (mu/defn delete-exploration!
@@ -329,6 +330,13 @@
   "The ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
+
+(mu/defn pages-by-ids
+  "The ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (if (seq page-ids)
+    (t2/select :model/ExplorationPage :id [:in page-ids])
+    []))
 
 (mu/defn page-block-id-row
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
@@ -739,28 +747,48 @@
   [document :- ::documents.schema/document.update]
   (t2/insert! :model/Document document))
 
+(defn- update-summary-documents!
+  "Apply `changes` to the Summary Documents of the Exploration with `exploration-id` that match `conditions`, and return
+  them as updated."
+  [exploration-id conditions changes]
+  (let [ids (apply t2/select-pks-vec :model/Document :exploration_id exploration-id conditions)]
+    (when (seq ids)
+      (t2/update! :model/Document :id [:in ids] changes)
+      (t2/select :model/Document :id [:in ids]))))
+
+(defn- summary-document-conditions
+  "The conditions of the Summary Documents of an Exploration that an archive of it, when `archive?`, or a restore of it
+  archives or restores along with it."
+  [archive?]
+  (if archive?
+    [:archived false]
+    [:archived true :archived_directly false]))
+
+(mu/defn summary-documents-following
+  "The Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a restore
+  of it archives or restores along with it."
+  [exploration-id :- ms/PositiveInt
+   archive?       :- :boolean]
+  (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
+
 (mu/defn move-summary-documents!
-  "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`."
+  "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`,
+  returning them as updated."
   [exploration-id :- ms/PositiveInt
    collection-id  :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Document :exploration_id exploration-id {:collection_id collection-id}))
+  (update-summary-documents! exploration-id [] {:collection_id collection-id}))
 
 (mu/defn archive-summary-documents!
-  "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly."
+  "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly,
+  returning them as updated."
   [exploration-id :- ms/PositiveInt]
-  (t2/update! :model/Document
-              :exploration_id exploration-id
-              :archived       false
-              {:archived true, :archived_directly false}))
+  (update-summary-documents! exploration-id (summary-document-conditions true) {:archived true}))
 
 (mu/defn unarchive-summary-documents!
-  "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it."
+  "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it, returning them
+  as updated."
   [exploration-id :- ms/PositiveInt]
-  (t2/update! :model/Document
-              :exploration_id    exploration-id
-              :archived          true
-              :archived_directly false
-              {:archived false}))
+  (update-summary-documents! exploration-id (summary-document-conditions false) {:archived false}))
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 
@@ -768,6 +796,13 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."

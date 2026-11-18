@@ -9,6 +9,7 @@
    :model/FieldUserSettings
    :model/Measure
    :model/Segment
+   :model/SegmentTest
    :model/Table
    :model/TableUserSettings
    :model/Channel])
@@ -21,7 +22,8 @@
    :model/Field
    :model/FieldUserSettings
    :model/Dimension
-   :model/Segment])
+   :model/Segment
+   :model/SegmentTest])
 
 (def content
   "Content model types"
@@ -43,7 +45,8 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          [:model/CustomVizPlugin
+          [:model/CardTest
+           :model/CustomVizPlugin
            :model/DataApp
            :model/EmbeddingTheme
            :model/FieldValues
@@ -85,8 +88,6 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
-   ;; Until card tests have a serialization spec.
-   :model/CardTest
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark

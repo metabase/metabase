@@ -1,4 +1,4 @@
-# Complete list of options here: https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference
+# Complete list of options here: https://www.metabase.com/docs/latest/developers-guide/drivers/plugins#the-metabase-plugin-manifest-reference
 info:
   name: Metabase Athena Driver
   version: 1.0.0-athena-jdbc-2.0.13

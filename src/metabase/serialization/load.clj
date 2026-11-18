@@ -3,14 +3,13 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
-   [metabase.dependencies.hooks :as dependencies.hooks]
-   [metabase.models.interface :as mi]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.util :as serialization.util]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime ZonedDateTime)))
@@ -26,6 +25,14 @@
   (fn [model _items] model))
 
 (defmethod before-load :default [_ items] items)
+
+(defmulti loaded-entities
+  "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so that a model
+  can leave out the shapes of older exports it no longer loads, by default all of them."
+  {:arglists '([model entities])}
+  (fn [model _entities] model))
+
+(defmethod loaded-entities :default [_ entities] entities)
 
 (defmulti after-load
   "Runs the side effects of loading `items` of `model`, each a load item (see [[before-load]]) with the loaded
@@ -58,10 +65,13 @@
 
 (defn- comparable
   "`x` as an import compares it with a value of the store: without the uuids and metadata providers of MBQL clauses,
-  which every import of a query regenerates, and with temporals as instants."
+  which every import of a query regenerates, with temporals as instants, localized strings as their text, and byte
+  arrays as their bytes."
   [x]
   (walk/postwalk (fn [y]
                    (cond
+                     (i18n/localized-string? y)     (str y)
+                     (bytes? y)                     (vec y)
                      (map? y)                       (dissoc y :lib/uuid :lib/metadata)
                      (instance? OffsetDateTime y)   (.toInstant ^OffsetDateTime y)
                      (instance? ZonedDateTime y)    (.toInstant ^ZonedDateTime y)
@@ -133,7 +143,8 @@
     (when (seq parent-pks)
       (let [pk       (serialization.spec/primary-key model)
             existing (protocol/select-by-parent-pks store model parent-pks nil)
-            prepared (prepare-items model store entities opts #(rows-by-identity model existing %))
+            prepared (prepare-items model store entities (assoc opts :nested? true)
+                                    #(rows-by-identity model existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
             stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
         (when (seq stale)
@@ -147,10 +158,9 @@
   ([model entities]
    (load model protocol.app-db/store entities import-opts))
   ([model store entities opts]
-   (binding [mi/*deserializing?* true]
-     (let [entities (vec entities)]
-       (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
-                    opts)))))
+   (let [entities (vec (loaded-entities model entities))]
+     (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
+                  opts))))
 
 (defn import
   "The rows that `entities` of `model` import to, with their references resolved at once in the app DB."
@@ -280,7 +290,7 @@
   "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
   marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
   [thunk]
-  (protocol/transact protocol.app-db/store {:retries 3} #(dependencies.hooks/with-batched-marks (thunk))))
+  (protocol/transact protocol.app-db/store {:retries 3} thunk))
 
 (defmacro with-import-transaction
   "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
@@ -292,8 +302,8 @@
   depends on. `read-batch` is a fn of a batch of keys returning their entities, called a batch at a
   time so that the whole import need not fit in memory. Retries the whole import on a transient DB error. With
   `continue-on-error`, an entity that fails to load is left out and its error returned; otherwise the first failure
-  rolls the whole import back. With `skip-schema-validation`, queries load even when this instance's query schema
-  rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
+  rolls the whole import back. With `skip-schema-validation`, entities are only normalized, not checked against their spec
+  schema, and queries load even when this instance's query schema rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
   [ks read-batch & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
   (let [order (load-order ks read-batch)
         opts  {:create-missing?         true

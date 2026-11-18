@@ -4,11 +4,14 @@
   (:require
    [java-time.api :as t]
    [malli.util :as mut]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -16,16 +19,28 @@
 
 (mu/defn synced-documents-clause :- [:fn vector?]
   "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
    [:= (u/qualified-key alias :exploration_id) nil]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn document
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
+
+(mu/defn exploration-archived?
+  "Whether the Exploration with `exploration-id` is archived."
+  [exploration-id :- ms/PositiveInt]
+  (t2/exists? :model/Exploration :id exploration-id :archived true))
+
+(mu/defn explorations
+  "The Explorations with `exploration-ids`."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Exploration :id [:in exploration-ids]))
 
 (mu/defn unarchived-document
   "The Document with `id` if it is not archived, or nil."
@@ -36,7 +51,7 @@
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
   []
   (t2/select :model/Document {:where [:and
-                                      (collection/visible-collection-filter-clause)
+                                      (perms/visible-collections-filter-clause :document.collection_id (api/current-user-info) {:root-namespace nil})
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
@@ -106,16 +121,41 @@
    changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
   (t2/update! :model/Card :id card-id changes))
 
+(defn- archivable-card-conditions
+  "The key-value conditions of the Cards in the Document with `document-id` that archiving it archives."
+  [document-id]
+  [:document_id document-id :archived false])
+
+(defn- restorable-card-conditions
+  "The key-value conditions of the Cards in the Document with `document-id` that restoring it restores."
+  [document-id]
+  [:document_id document-id :archived true :archived_directly false])
+
+(mu/defn cards-archived-with-document
+  "The unarchived Cards in the Document with `document-id`, which archiving it archives along with it."
+  [document-id :- ms/PositiveInt]
+  (apply t2/select :model/Card (archivable-card-conditions document-id)))
+
+(mu/defn cards-restored-with-document
+  "The Cards in the Document with `document-id` that were archived along with it, which restoring it restores."
+  [document-id :- ms/PositiveInt]
+  (apply t2/select :model/Card (restorable-card-conditions document-id)))
+
+(mu/defn archive-document-cards!
+  "Archive, through their model, the rows of [[cards-archived-with-document]], returning the number updated."
+  [document-id :- ms/PositiveInt]
+  (apply t2/update! :model/Card (concat (archivable-card-conditions document-id) [{:archived true}])))
+
+(mu/defn restore-document-cards!
+  "Restore, through their model, the rows of [[cards-restored-with-document]], returning the number updated."
+  [document-id :- ms/PositiveInt]
+  (apply t2/update! :model/Card (concat (restorable-card-conditions document-id) [{:archived false}])))
+
 (mu/defn update-cards-for-document!
   "Apply `changes` to the Cards of the Document with `document-id`, returning the number updated."
   [document-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::queries.schema/card.update [:collection_id :archived :archived_directly])]
   (t2/update! :model/Card :document_id document-id changes))
-
-(mu/defn unarchived-collection-exists?
-  "Whether an unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."
@@ -134,11 +174,9 @@
 
 (mu/defn update-documents-last-viewed-at!
   "Move `last_viewed_at` of each Document in `document-id->timestamp` forward to its timestamp, without touching
-  `updated_at`, returning the number updated (as a one-element sequence -- `t2/query` on an UPDATE, unlike
-  `t2/update!`, does not unwrap it)."
+  `updated_at`, as a raw update rather than `t2/update!`, which would publish `:event/document-update`, returning
+  the number updated as a one-element sequence."
   [document-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
-  ;; A raw update rather than `t2/update!` so Toucan 2 model hooks don't fire: the :model/Document after-update
-  ;; publishes :event/document-update and syncs card collections, side effects that must not re-run on retry.
   (t2/query {:update (t2/table-name :model/Document)
              :set    {:last_viewed_at (into [:case]
                                             (mapcat (fn [[id timestamp]]
@@ -146,3 +184,11 @@
                                                     document-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys document-id->timestamp)]}))
+
+(mu/defn synced-document-items :- [:sequential ::documents.schema/document]
+  "The Documents with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Document :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

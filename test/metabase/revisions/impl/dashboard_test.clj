@@ -5,10 +5,16 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn- diff-strings
+  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  [model o1 o2]
+  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
 
 (deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
@@ -75,7 +81,7 @@
 (deftest ^:parallel diff-dashboards-str-test
   (testing "update general info ---"
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Dashboard x y)))
+                           (u/build-sentence (diff-strings :model/Dashboard x y)))
       {:name        "Diff Test"
        :description nil
        :cards       []}
@@ -137,7 +143,7 @@
 (deftest ^:parallel diff-dashboards-str-update-cards-test
   (testing "update cards ---"
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Dashboard x y)))
+                           (u/build-sentence (diff-strings :model/Dashboard x y)))
       {:cards [{:id 1} {:id 2}]}
       {:cards [{:id 1} {:id 2} {:id 3}]}
       "added a card."
@@ -159,15 +165,15 @@
            repositions an existing card (metabase#6884)"
     (is (= "added a card."
            (u/build-sentence
-            (revision/diff-strings :model/Dashboard
-                                   {:cards [{:id 1 :row 0 :col 0}]}
-                                   {:cards [{:id 1 :row 4 :col 0} {:id 2 :row 0 :col 0}]}))))))
+            (diff-strings :model/Dashboard
+                          {:cards [{:id 1 :row 0 :col 0}]}
+                          {:cards [{:id 1 :row 4 :col 0} {:id 2 :row 0 :col 0}]}))))))
 
 (deftest diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
            (u/build-sentence
-            (revision/diff-strings
+            (diff-strings
              :model/Dashboard
              {:name "Apple"}
              {:name          "Apple"
@@ -177,7 +183,7 @@
       (mt/with-test-user :crowberto
         (is (= "moved this Dashboard to New collection."
                (u/build-sentence
-                (revision/diff-strings
+                (diff-strings
                  :model/Dashboard
                  {:name "Apple"}
                  {:name          "Apple"
@@ -188,7 +194,7 @@
       (mt/with-test-user :crowberto
         (is (= "moved this Dashboard from Old collection to New collection."
                (u/build-sentence
-                (revision/diff-strings
+                (diff-strings
                  :model/Dashboard
                  {:name          "Apple"
                   :collection_id coll-id-1}
@@ -198,7 +204,7 @@
 (deftest ^:parallel diff-dashboards-str-update-tabs-test
   (testing "update tabs"
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Dashboard x y)))
+                           (u/build-sentence (diff-strings :model/Dashboard x y)))
       {:tabs [{:id 0 :name "First tab" :position 0}]}
       {:tabs [{:id 0 :name "First tab" :position 0}
               {:id 1 :name "Second tab" :position 1}]}
@@ -244,7 +250,8 @@
                                                             :type "category"}]}
          :model/Collection       coll      {:name "A collection"}]
         (mt/with-temporary-setting-values [enable-public-sharing true]
-          (let [columns    (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+          (let [columns    (disj (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+                                 :archived_directly)
                 update-col (fn [col value]
                              (cond
                                (= col :collection_id)              (:id coll)
@@ -257,6 +264,7 @@
                                (= col :embedding_params)           {:category_name "locked"}
                                (= col :embedding_type)             "static-legacy"
                                (= col :public_uuid)                (str (random-uuid))
+                               (= col :width)                      "full"
                                (int? value)                        (inc value)
                                (boolean? value)                    (not value)
                                (string? value)                     (str value "_changed")))]
@@ -275,7 +283,7 @@
                 (when-not (#{:made_public_by_id :archived_directly} col)
                   (testing (format "we should have a revision description for %s" col)
                     (is (some? (u/build-sentence
-                                (revision/diff-strings
+                                (diff-strings
                                  :model/Dashboard
                                  before
                                  changes))))))))))))))
@@ -440,7 +448,7 @@
 (defn- create-dashboard-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object       (t2/select-one :model/Dashboard :id dash-id)
     :entity       :model/Dashboard
     :id           dash-id
@@ -598,9 +606,9 @@
       ;; 2.b: delete tab 2
       (t2/delete! :model/DashboardTab :id tab-2-id)
       ;; 2.c: create a new tab with 1 card
-      (let [new-tab-id (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
-                                                                      :position     1
-                                                                      :dashboard_id dashboard-id})]
+      (let [[new-tab-id] (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+                                                                        :position     1
+                                                                        :dashboard_id dashboard-id})]
         (t2/insert! :model/DashboardCard {:dashboard_id     dashboard-id
                                           :dashboard_tab_id new-tab-id
                                           :row              0

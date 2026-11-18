@@ -81,10 +81,17 @@
 
 (defmethod driver/disallowed-connection-parameters :databricks
   [driver]
-  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
-  ;; the older spelling of the same setting, and the client still honors it
   (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
-        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
+        [;; Lets volume `PUT` and `GET` read and write local files
+         "VolumeOperationAllowedLocalPaths"
+         ;; Older spelling of `VolumeOperationAllowedLocalPaths`, which the client still honors
+         "StagingAllowedLocalPaths"
+         ;; Reads Google credentials from a local file
+         "GoogleCredentialsFile"
+         ;; Reads a private key from a local file
+         "Auth_JWT_Key_File"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]
@@ -307,7 +314,7 @@
   #{"OIDC"})
 
 (defn- wif-jdbc-properties
-  [{:keys [wif-provider wif-token wif-token-file-path wif-client-id]}]
+  [{:keys [wif-provider wif-token wif-token-file-path wif-client-id wif-audience]}]
   (when (and (driver-api/is-hosted?)
              (not (contains? hosted-allowed-wif-providers wif-provider)))
     (throw (ex-info (tru (str "Workload identity federation with the {0} provider is not available "
@@ -321,7 +328,9 @@
 
                              (not (str/blank? wif-token))
                              wif-token)
-                    (driver.u/wif-ambient-token-file wif-provider))
+                    "GCP"  (driver.u/wif-ambient-token-http wif-provider wif-audience)
+                    (throw (ex-info (format "Unsupported WIF provider: %s" (pr-str wif-provider))
+                                    {:wif-provider wif-provider})))
         expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
     (cond-> {:AuthMech         11
              :Auth_Flow        0

@@ -159,8 +159,11 @@ function transformDatabaseNode(
   const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
 
   let children: TablePickerTreeNode[];
+  let isLoaded = database.loaded === true;
   if (shouldFlattenSingleSchema) {
-    children = sort(database.children[0].children).map(transformTableNode);
+    const [schema] = database.children;
+    children = sort(schema.children).map(transformTableNode);
+    isLoaded = isLoaded && schema.loaded === true;
   } else {
     children = sort(database.children).flatMap((schema) => {
       if (schema.label === UNNAMED_SCHEMA_NAME) {
@@ -176,7 +179,7 @@ function transformDatabaseNode(
     name: database.label,
     nodeKey: database.key,
     databaseId,
-    children,
+    children: getLoadedChildren(children, isLoaded),
   };
 }
 
@@ -190,8 +193,22 @@ function transformSchemaNode(schema: SchemaNode): TablePickerTreeNode {
     nodeKey: schema.key,
     databaseId,
     schemaName,
-    children: sort(schema.children).map(transformTableNode),
+    children: getLoadedChildren(
+      sort(schema.children).map(transformTableNode),
+      schema.loaded === true,
+    ),
   };
+}
+
+/**
+ * Returns `undefined` for a container whose children have loaded and turned out to be
+ * empty, so its row can't expand. An empty array means the children haven't loaded yet.
+ */
+function getLoadedChildren(
+  children: TablePickerTreeNode[],
+  isLoaded: boolean,
+): TablePickerTreeNode[] | undefined {
+  return isLoaded && children.length === 0 ? undefined : children;
 }
 
 function transformTableNode(table: TableNode): TablePickerTreeNode {

@@ -7,13 +7,13 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -40,15 +40,16 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def DBEngineString
-  "Schema for a valid database engine name, e.g. `h2` or `postgres`."
+(def DBEngine
+  "Schema for a valid database engine, e.g. `:h2` or `:postgres`, normalized from its name."
   (mu/with-api-error-message
    [:and
-    ms/NonBlankString
+    ::lib.schema.common/keyword
     [:fn
      {:error/message "Valid database engine"}
      #(u/ignore-exceptions (driver/the-driver %))]]
@@ -60,8 +61,8 @@
   "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
   [dbs & {:keys [can-query?]}]
   (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
-        _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
-        filtered-tables (cond->> (filter mi/can-read? all-tables)
+        filtered-tables (cond->> (mi/readable all-tables)
+                          can-query?          (#(t2/hydrate % :can_query))
                           can-query?          (filter mi/can-query?))
         db-id->tables (group-by :db_id filtered-tables)]
     (for [db dbs]
@@ -82,7 +83,6 @@
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
                          {} rows)]
-      (perms/prime-schema-perms-cache {:db-ids db-ids})
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
@@ -107,16 +107,15 @@
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
-  (for [db dbs]
-    (assoc db
-           :native_permissions
-           (if (= :query-builder-and-native
-                  (perms/full-database-permission-for-user
-                   api/*current-user-id*
-                   :perms/create-queries
-                   (u/the-id db)))
-             :write
-             :none))))
+  (let [create-queries (when (seq dbs)
+                         (perms/every-table-in-database-permissions-for-user
+                          (perms/user-info api/*current-user-id*) :perms/create-queries (mapv u/the-id dbs)))]
+    (for [db dbs]
+      (assoc db
+             :native_permissions
+             (if (= :query-builder-and-native (get create-queries (u/the-id db)))
+               :write
+               :none)))))
 
 (mu/defn- add-transforms-perms-info :- [:maybe
                                         [:sequential
@@ -125,16 +124,15 @@
   "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
   creating/running Transforms. Will be either `:write` or `:none`."
   [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
-  (for [db dbs]
-    (assoc db
-           :transforms_permissions
-           (if (perms/user-has-permission-for-database?
-                api/*current-user-id*
-                :perms/transforms
-                :yes
-                (u/the-id db))
-             :write
-             :none))))
+  (let [transforms (when (seq dbs)
+                     (perms/database-permissions-for-user
+                      (perms/user-info api/*current-user-id*) :perms/transforms (mapv u/the-id dbs)))]
+    (for [db dbs]
+      (assoc db
+             :transforms_permissions
+             (if (perms/at-least-as-permissive? :perms/transforms (get transforms (u/the-id db)) :yes)
+               :write
+               :none)))))
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
@@ -145,7 +143,7 @@
    (fn [db] (if (mi/can-read? db)
               db
               (select-keys db [:id :name :tables])))
-   (schema.table/filter-databases-by-data-model-perms dbs)))
+   (t2/hydrate (schema.table/filter-databases-by-data-model-perms dbs) :can_read)))
 
 (defn- check-db-data-model-perms
   "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
@@ -180,25 +178,25 @@
              include-only-uploadable?
              router-database-id
              can-query?]}]
-  (let [filter-on-router-database-id (when (some->> router-database-id
-                                                    (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
+  (let [filter-on-router-database-id (when (and router-database-id
+                                                (perms/user-has-permission-for-databases?
+                                                 (perms/user-info api/*current-user-id*)
+                                                 :perms/manage-database :yes [router-database-id]))
                                        router-database-id)
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
         dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
                                                 filter-by-data-access? filter-on-router-database-id
-                                                include-analytics? include-stubs?)
-        ;; everything below walks the list one database at a time
-        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
+                                                include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
       include-schemas?             add-schemas
-      can-query?                   (#(filter mi/can-query? %))
+      can-query?                   (#(filter mi/can-query? (t2/hydrate % :can_query)))
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
-      exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
+      exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) (t2/hydrate % :can_write)))
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
@@ -303,6 +301,7 @@
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables
+                            true                        (#(t2/hydrate % :can_read))
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
                             true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
@@ -329,7 +328,7 @@
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
     include-editable-data-model? check-db-data-model-perms
-    (mi/can-write? db)           (assoc :can-manage true)))
+    (mi/can-write? (t2/hydrate db :can_write))           (assoc :can-manage true)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -395,7 +394,6 @@
                ((if skip-fields?
                   #(t2/hydrate % [:tables :segments :metrics])
                   #(t2/hydrate % [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
-        _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -417,11 +415,12 @@
                           (if-not include-editable-data-model?
                             ;; If we're filtering by data model perms, table perm checks were already done by
                             ;; check-db-data-model-perms
-                            (filter mi/can-read? tables)
+                            (mi/readable tables)
                             tables)))
         (update :tables (fn [tables]
-                          (for [table tables]
-                            (update table :segments (partial filter mi/can-read?)))))
+                          (let [readable (into #{} (map :id) (mi/readable (mapcat :segments tables)))]
+                            (for [table tables]
+                              (update table :segments (partial filter #(contains? readable (:id %))))))))
         (update :tables (fn [tables]
                           (for [table tables]
                             (update table :schema str))))
@@ -503,7 +502,7 @@
   lowercased table and field names."
   [db-id like-pattern]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
+        tables (mi/readable (autocomplete-tables db-id like-pattern limit))
         fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
     (autocomplete-results tables fields limit)))
 
@@ -568,7 +567,7 @@
   (api/read-check (warehouses/get-database id))
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
-         (filter mi/can-read?)
+         mi/readable
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
@@ -584,9 +583,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
-  (perms/prime-table-perms-cache {:db-ids #{id}})
-  (let [fields (filter mi/can-read? (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
-                                        (t2/hydrate :table)))]
+  (let [fields (mi/readable (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
+                                (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
        :name          name
@@ -618,7 +616,7 @@
                         (let [table-ids (into #{} (map :id) (schema.table/filter-tables-by-data-model-perms
                                                              (distinct (map :table fields))))]
                           (filter (comp table-ids :table_id) fields))
-                        (filter mi/can-read? fields))]
+                        (mi/readable fields))]
     (sort-by (comp u/lower-case-en :name :table) fields)))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
@@ -631,19 +629,18 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]
     :as   body}
    :- [:map {:closed true}
        [:name              ms/NonBlankString]
-       [:engine            DBEngineString]
-       [:details           ms/DatabaseDetails]
+       [:engine            DBEngine]
+       [:details           ::warehouses.schema/database.connection-details]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
-       [:provider_name     {:optional true}  [:maybe :string]]
        [:is_stub           {:optional true}  [:maybe :boolean]]]]
   (api/check-superuser)
   (when (true? (:is_stub body))
@@ -666,16 +663,15 @@
                                  :is_full_sync is_full_sync
                                  :is_on_demand is_on_demand
                                  :cache_ttl    cache_ttl
-                                 :provider_name provider_name
                                  :creator_id   api/*current-user-id*}
                                 (when schedules
                                   (sync.schedules/schedule-map->cron-strings schedules))
                                 (when (some? auto_run_queries)
                                   {:auto_run_queries auto_run_queries}))))
-        (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
+        (sync/start-initial-sync! <> nil)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
-                                 :database     engine
+                                 :database     (u/qualified-name engine)
                                  :database-id  (u/the-id <>)
                                  :source       connection_source
                                  :dbms-version (:version (driver/dbms-version (keyword engine) (driver.u/lib-database (u/the-id <>))))}))
@@ -683,7 +679,7 @@
       (do
         (analytics/track-event! :snowplow/database
                                 {:event    :database-connection-failed
-                                 :database engine
+                                 :database (u/qualified-name engine)
                                  :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
@@ -746,8 +742,8 @@
    _query-params
    {{:keys [engine details id]} :details} :- [:map {:closed true}
                                               [:details [:map {:closed true}
-                                                         [:engine  DBEngineString]
-                                                         [:details ms/DatabaseDetails]
+                                                         [:engine  DBEngine]
+                                                         [:details ::warehouses.schema/database.connection-details]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
   (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
@@ -788,8 +784,6 @@
         marker-name    (name marker-key)
         column-name    (connection-marker-key->details-column marker-key)
         article-noun   (str article " " noun)]
-    (api/check-400 (not (:router_database_id existing-database))
-                   (tru "Cannot configure {0} connection on a destination database" article-noun))
     (api/check-400 (not (warehouses-rest.db/destination-database-exists-for-router? (:id existing-database)))
                    (tru "Cannot configure {0} connection on a router database" article-noun))
     (when-not (get overlay-details marker-key)
@@ -835,15 +829,15 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
-           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
+           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings]
     :as   body}
    :- [:map {:closed true}
        [:name               {:optional true} [:maybe ms/NonBlankString]]
-       [:engine             {:optional true} [:maybe DBEngineString]]
+       [:engine             {:optional true} [:maybe DBEngine]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ms/DatabaseDetails]]
-       [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
-       [:admin_details      {:optional true} [:maybe ms/DatabaseDetails]]
+       [:details            {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+       [:write_data_details {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+       [:admin_details      {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -852,8 +846,7 @@
        [:points_of_interest {:optional true} [:maybe :string]]
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-       [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/DatabaseSettings]]
+       [:settings           {:optional true} [:maybe ::warehouses.schema/database.local-settings]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -870,12 +863,10 @@
     (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (warehouses-rest.db/database id))
-        ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
-        ;; table editing), so the guard is lifted when test endpoints are enabled
-        _                               (when (and (:is_sample existing-database)
-                                                   (not (config/config-bool :mb-enable-test-endpoints)))
+        _                               (when (database/sample-database-locked? existing-database)
                                           (throw (ex-info (tru "The sample database cannot be edited.")
                                                           {:status-code 400})))
+        _                               (api/update-check existing-database body)
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
         _                               (when admin_details
@@ -919,6 +910,9 @@
        :body   conn-error}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
+            ;; Setting names are kebab-case, and readers look them up that way. Normalize once, so a snake_case key
+            ;; can't skip the checks below and land beside the real one.
+            settings          (some-> settings (update-keys #(keyword (u/->kebab-case-en (clojure.core/name %)))))
             pending-settings  (into {}
                                     ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                                     (remove (fn [[_k v]] (nil? v)))
@@ -941,51 +935,34 @@
                                  :settings           (when (seq settings) pending-settings)}
                                 :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                            :description :caveats :points_of_interest :auto_run_queries :settings})
-                               (when (and (:is_stub existing-database)
-                                          (or details-changed? engine-changed?))
-                                 {:is_stub             false
-                                  :initial_sync_status "incomplete"
-                                  :initial_sync_error  nil})
                                ;; these fields can be nil
-                               (when (contains? body :provider_name)
-                                 {:provider_name provider_name})
                                (when (contains? body :write_data_details)
                                  {:write_data_details write-data-details-with-secrets})
                                (when (contains? body :admin_details)
                                  {:admin_details admin-details-with-secrets})
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
-            pending-db        (merge existing-database updates)]
-        ;; pass in this predicate to break circular dependency
-        (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
-          ;; ensure we're not trying to set anything we should not be able to.
-          ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
-          ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
-          (doseq [[setting-kw new-value] settings
-                  :when                  (and (some? new-value)
-                                              ;; Allow explicit default value as well (typically this is what FE will actually do)
-                                              ;; Should we translate this into setting it to NULL? That seems too opinionated.
-                                              (not= new-value (try (setting/default-value setting-kw)
-                                                                   ;; fallback to a redundant nil check
-                                                                   (catch Exception _)))
-                                              (not= new-value (get existing-settings setting-kw)))]
-            (try
-              (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
-              (catch Exception e
-                (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
-        (warehouses-rest.db/update-database! id updates)
-        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-        ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-cache-granular-controls?)
-          (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
+            pending-db        (merge existing-database updates)
+            driver-supports?  (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+        (when (some (fn [setting-kw]
+                      (and (setting/registered? setting-kw)
+                           (= :admin (:visibility (setting/resolve-setting setting-kw)))))
+                    (keys settings))
+          (api/check-superuser))
+        (workspaces/check-database-workspace-schema-write! (:database-workspace-schema existing-settings)
+                                                           (:database-workspace-schema pending-settings))
+        (doseq [setting-kw (database/changed-settings settings existing-settings)]
+          (try
+            (setting/validate-settable setting-kw)
+            (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
+            (catch Exception e
+              (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
+        (events/with-batched-events
+          (warehouses-rest.db/update-database! id updates)
+          (when (premium-features/enable-cache-granular-controls?)
+            (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl})))
         (let [db (warehouses-rest.db/database id)]
-          ;; the details in db and existing-database have been normalized so they are the same here
-          ;; we need to pass through details-changed? which is calculated before detail normalization
-          ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
-          (events/publish-event! :event/database-update {:object           db
-                                                         :user-id          api/*current-user-id*
-                                                         :previous-object  existing-database
-                                                         :details-changed? details-changed?})
+          (sync/start-initial-sync! db existing-database)
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
@@ -1003,11 +980,11 @@
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/let-404 [db (warehouses-rest.db/database id)]
-      (api/check-403 (mi/can-write? db))
+      (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
       (warehouses-rest.db/delete-destination-databases! id)
       (database-routing/delete-associated-database-router! id)
       (warehouses-rest.db/delete-database! id)
-      (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
+      nil))
   api/generic-204-no-content)
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
@@ -1054,7 +1031,7 @@
                     [:id ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
   (let [db     (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))
-        tables (map api/write-check (:tables (first (add-tables [db]))))]
+        tables (map api/write-check (t2/hydrate (:tables (first (add-tables [db]))) :can_write))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
@@ -1129,9 +1106,9 @@
                     [:id ms/PositiveInt]]]
   (let [db (warehouses/get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
-                       (and (mi/can-write? db)
-                            (mi/can-read? db))))
+                       (perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) (:id db))
+                       (and (mi/can-write? (t2/hydrate db :can_write))
+                            (mi/can-read? (t2/hydrate db :can_read)))))
     (->> (driver.u/lib-database (:id db))
          (driver/syncable-schemas (:engine db))
          (vec)

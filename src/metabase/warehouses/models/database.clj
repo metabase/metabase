@@ -6,11 +6,15 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.cache.core :as cache]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -24,7 +28,7 @@
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
@@ -40,7 +44,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
 
@@ -64,16 +68,23 @@
    :dbms_version                   mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
+
 (methodical/defmethod t2/model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
 
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies)
+  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(defmethod events/spec :model/Database
+  [_model]
+  {:create :event/database-create
+   :update :event/database-update
+   :delete :event/database-delete})
 
 (defn is-destination?
   "Is this database a destination database for some router database?"
@@ -94,105 +105,12 @@
       (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no))
     (f temp-object)))
 
-(defn- should-read-audit-db?
-  "Audit Database should only be fetched if audit app is enabled."
-  [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
+(defmethod mi/exclude-internal-content-hsql :model/Database
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field table-alias %)]
+    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
-(def ^{:arglists '([db-id])
-       :private  true} db-id->router-db-id
-  (mdb/memoize-for-application-db
-   (fn [db-id]
-     (warehouses.db/router-database-id db-id))))
-
-(defmethod mi/can-read? :model/Database
-  ;; Check if user can see this database's metadata.
-  ;; True if user has:
-  ;; - Query builder access (create-queries permission), OR
-  ;; - Metadata management permissions (manage-table-metadata or manage-database), OR
-  ;; - Access to a published table in this database (EE feature)
-  ([instance]
-   (mi/can-read? :model/Database (u/the-id instance)))
-  ([_model database-id]
-   (cond
-     (should-read-audit-db? database-id) false
-     (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
-     :else (or
-            ;; Has query builder access
-            (contains? #{:query-builder :query-builder-and-native}
-                       (perms/most-permissive-database-permission-for-user
-                        api/*current-user-id*
-                        :perms/create-queries
-                        database-id))
-            ;; Has manage-database permission
-            (perms/user-has-permission-for-database?
-             api/*current-user-id*
-             :perms/manage-database
-             :yes
-             database-id)
-            ;; Has manage-table-metadata permission for any table in the database
-            (= :yes (perms/most-permissive-database-permission-for-user
-                     api/*current-user-id*
-                     :perms/manage-table-metadata
-                     database-id))
-            ;; Has published table access
-            (perms/user-has-published-table-permission-for-database? database-id)))))
-
-(defmethod mi/can-query? :model/Database
-  ;; Check if user can execute queries against this database.
-  ;; True if user has:
-  ;; - Query builder access (create-queries permission), OR
-  ;; - Access to a published table in this database (EE feature)
-  ([instance]
-   (mi/can-query? :model/Database (u/the-id instance)))
-  ([_model database-id]
-   (cond
-     (should-read-audit-db? database-id) false
-     (db-id->router-db-id database-id) (mi/can-query? :model/Database (db-id->router-db-id database-id))
-     :else (or
-            ;; Has query builder access
-            (contains? #{:query-builder :query-builder-and-native}
-                       (perms/most-permissive-database-permission-for-user
-                        api/*current-user-id*
-                        :perms/create-queries
-                        database-id))
-            ;; Has published table access
-            (perms/user-has-published-table-permission-for-database? database-id)))))
-
-(defenterprise current-user-can-write-db?
-  "OSS implementation. Returns a boolean whether the current user can write the given field."
-  metabase-enterprise.advanced-permissions.common
-  [_db-id]
-  (mi/superuser?))
-
-(defenterprise reconcile-workspace-database-refs-before-delete!
-  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
-   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
-   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
-   implementation is a no-op: OSS has nothing to reconcile."
-  metabase-enterprise.workspaces.models.workspace-database
-  [_db-id]
-  nil)
-(defn- can-write?
-  [db-id]
-  (or (some-> db-id db-id->router-db-id can-write?)
-      (and (not= db-id audit/audit-db-id)
-           (current-user-can-write-db? db-id))))
-
-(defmethod mi/can-write? :model/Database
-  ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
-  ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
-  ([{:keys [is_attached_dwh] :as instance}]
-   (and (can-write? (u/the-id instance))
-        (not is_attached_dwh)))
-  ([_model pk]
-   (and (can-write? pk)
-        (not (:is_attached_dwh (warehouses.db/database pk))))))
-
-(mu/defmethod mi/visible-filter-clause :model/Database
-  [_model column-or-exp user-info permission-mapping]
-  {:clause [:in column-or-exp
-            (perms/visible-database-filter-select user-info permission-mapping)]})
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
@@ -243,113 +161,6 @@
       (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
-
-(defn maybe-test-and-migrate-details!
-  "When a driver has db-details to test and migrate:
-   we loop through them until we find one that works and update the database with the working details."
-  [{:keys [engine] :as database}]
-  (let [details (driver.conn/default-details database)
-        test-and-migrate! (fn [details-to-test]
-                            (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
-                            (loop [[test-details & tail] details-to-test]
-                              (if test-details
-                                (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
-                                  (let [keys-remaining (-> test-details keys set)
-                                        [_ removed _] (data/diff keys-remaining (-> details keys set))]
-                                    (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-                                    (warehouses.db/set-database-details! (:id database) test-details)
-                                    test-details)
-                                  (recur tail))
-                                ;; if we go through the list and we can't fine a working detail to test, keep original value
-                                details)))]
-    (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
-      (test-and-migrate! details-to-test)
-      details)))
-
-(defn- check-connection!
-  "Checks connectivity for a set of database details. Returns true on success, false on failure.
-   Reports analytics with the given connection-type label."
-  [database driver engine details-map connection-type]
-  (try
-    (log/info (u/format-color :cyan "Health check [%s]: checking database {:id %d}"
-                              connection-type (:id database)))
-    (u/with-timeout (driver.settings/db-connection-timeout-ms)
-      (or (driver/can-connect? driver details-map)
-          (throw (Exception. (format "Failed to connect to Database (%s)" connection-type)))))
-    (log/info (u/format-color :green "Health check [%s]: success database {:id %d}"
-                              connection-type (:id database)))
-    (analytics/inc! :metabase-database/status {:driver engine :healthy true :connection-type connection-type})
-    true
-    (catch Throwable e
-      (let [humanized-message (some->> (u/all-ex-messages e)
-                                       (driver/humanize-connection-error-message driver))
-            reason            (if (keyword? humanized-message) "user-input" "exception")]
-        (log/error (u/format-color :red "Health check [%s]: failure {:id %d :reason %s :message %s}"
-                                   connection-type
-                                   (:id database)
-                                   reason
-                                   humanized-message))
-        (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason :connection-type connection-type}))
-      false)))
-
-(defn health-check-database!
-  "Checks database health off-thread.
-   - checks connectivity for the default connection
-   - checks connectivity for the write connection (if configured)
-   - checks connectivity for the admin connection (if configured)
-   - cleans-up ambiguous legacy db-details"
-  [{:keys [engine] :as database}]
-  (when-not (or (:is_audit database) (:is_sample database))
-    (log/info (u/format-color :cyan "Health check: queueing database {:id %d}" (:id database)))
-    (quick-task/submit-task!
-     (fn []
-       (let [details     (maybe-test-and-migrate-details! database)
-             database    (assoc database :details details)
-             engine-str  (name engine)
-             driver      (keyword engine-str)
-             details-map (assoc details :engine engine-str)
-             lib-db      (driver.u/ensure-lib-database database)]
-         (when (check-connection! database driver engine-str details-map "default")
-           (let [provider (provider-detection/detect-provider-from-database database)]
-             (when (not= provider (:provider_name database))
-               (try
-                 (log/info (u/format-color :blue "Provider detection: updating database {:id %d} from '%s' to '%s'"
-                                           (:id database)
-                                           (:provider_name database) provider))
-                 (warehouses.db/set-database-provider-name! (:id database) provider)
-                 (catch Throwable provider-e
-                   (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
-         (when (driver.conn/database-write-data-details lib-db)
-           (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
-             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
-         (when (driver.conn/database-admin-details lib-db)
-           (let [admin-details (merge details (driver.conn/details-for-exact-type lib-db :admin))]
-             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
-
-(defn- health-check-candidates
-  "The databases to health check at startup: one representative per unique engine — the lowest-id regular database of
-  each engine — rather than every database. The health signal feeds the per-driver `:metabase-database/status`
-  metrics, so checking hundreds of same-engine databases at startup mostly re-measures the same driver stack while
-  hammering the warehouses with connection attempts. Audit/sample databases are excluded here (rather than relying on
-  the guard in [[health-check-database!]]) so they can never claim an engine's representative slot and starve a real
-  database of its check; router destinations are excluded because they can be very numerous and are only reachable
-  through their router.
-
-  The representative ids are aggregated in the database first, and only those rows are fetched as model instances:
-  instances with 3k+ databases exist in the wild, and realizing every Database row (including details decryption)
-  just to pick one per engine would defeat the point."
-  []
-  (let [ids (map :id (warehouses.db/health-check-candidate-ids))]
-    (when (seq ids)
-      (warehouses.db/databases ids))))
-
-(defn check-health!
-  "Health checks databases connected to metabase asynchronously using a thread pool. Only one database per unique
-  engine is checked -- see [[health-check-candidates]]."
-  []
-  (analytics/clear! :metabase-database/status)
-  (doseq [database (health-check-candidates)]
-    (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
@@ -412,6 +223,15 @@
            (not *normalizing-details*))
       normalize-details)))
 
+(defenterprise reconcile-workspace-database-refs-before-delete!
+  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
+   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
+   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
+   implementation is a no-op: OSS has nothing to reconcile."
+  metabase-enterprise.workspaces.models.workspace-database
+  [_db-id]
+  nil)
+
 (mu/defn- delete-database-fields!
   [database-id :- ::lib.schema.id/database]
   {:pre [(pos-int? database-id)]}
@@ -426,6 +246,10 @@
         (when (pos? deleted)
           (recur))))))
 
+(def ^:private tombstone-chunk-size
+  "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
+  1000)
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -438,18 +262,43 @@
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
   (warehouses.db/delete-transforms-for-database! id)
-  (->> (eduction
-        (map t2.realize/realize)
-        (partition-all 1000)
-        ;; mysql and h2 both do not support `returning`, so we do the correct thing for postgres and
-        ;; then some sad version for those two
-        (if (= :postgres (mdb/db-type))
-          (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
-          (warehouses.db/card-ids-for-database-reducible id)))
-       (run! (fn [batch]
-               (search/delete! :model/Card (map (comp str :id) batch)))))
-  (when (not= :postgres (mdb/db-type))
-    (warehouses.db/delete-cards-for-database! id))
+  (cache/delete-target-configs! "database" [id])
+  ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
+  ;; their search documents are enumerated first.
+  ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
+  ;; indexes, which Toucan never sees.
+  (let [{:keys [gone cascading]}
+        (reduce (fn [{:keys [gone cascading]} batch]
+                  (let [ids    (mapv :id batch)
+                        ;; A search error must not fail the database delete; those documents are left to the reindex.
+                        merged (try
+                                 (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
+                                 (catch Exception e
+                                   (log/errorf e "Skipping search cascade enumeration for database %s" id)
+                                   cascading))]
+                    ;; A card that moved to another database since the scan survives, and keeps its documents.
+                    ;; Only a short count says one did, so a full batch skips the check.
+                    {:gone      (if (= (count ids) (warehouses.db/delete-cards! id ids))
+                                  (into gone ids)
+                                  (into gone (remove (warehouses.db/existing-card-ids ids)) ids))
+                     :cascading merged}))
+                {:gone [], :cascading nil}
+                (eduction
+                 (map t2.realize/realize)
+                 (partition-all 1000)
+                 (warehouses.db/card-ids-for-database-reducible id)))]
+    (doseq [card-ids (partition-all tombstone-chunk-size gone)]
+      (cache/delete-target-configs! "question" card-ids))
+    ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
+    ;; older re-index that may already have read a soon-to-be-deleted card.
+    (when (or (seq gone) (seq cascading))
+      (apply search/after-commit! "database delete"
+             ;; Each chunk is its own step, and after-commit! catches each step's failure separately.
+             ;; Without an ingestion worker a step deletes at once, so a failed chunk costs only its own ids.
+             ;; With a worker the steps only queue tombstones, and the worker applies adjacent ones as one run.
+             (concat (for [chunk (partition-all tombstone-chunk-size gone)]
+                       (fn [] (search/delete! :model/Card chunk)))
+                     [(fn [] (search/reconcile-cascading-documents! cascading))]))))
   (try
     (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
@@ -497,11 +346,72 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defn- driver-supports-feature?
+  "Whether the driver of `database` supports `feature`, for `database` itself once it has an id."
+  [database feature]
+  (driver.u/supports? (keyword (:engine database)) feature (when (:id database) database)))
+
+(defn- setting-default
+  "The default value of the setting named `setting-name`, or nil when no such setting is registered."
+  [setting-name]
+  (when (setting/registered? setting-name)
+    (setting/default-value setting-name)))
+
+(defn changed-settings
+  "The names of the settings in `settings` set to a value other than nil, the setting's default, and its value in
+  `original-settings`."
+  [settings original-settings]
+  (into []
+        (keep (fn [[setting-name value]]
+                (when (and (some? value)
+                           (not= value (setting-default setting-name))
+                           (not= value (get original-settings setting-name)))
+                  setting-name)))
+        settings))
+
+(defn- check-settings-driver-features
+  "Throws a 400 unless `database`'s driver has the driver feature of each registered setting among `setting-names`."
+  [database setting-names]
+  (doseq [setting-name setting-names
+          :when        (setting/registered? setting-name)]
+    (setting/validate-driver-feature-for-db setting-name database driver-supports-feature?)))
+
+(defn- check-destination-overlays
+  "Throws a 400 when `database` is a destination and `overlays`, the overlay columns being written, hold a write or an
+  admin connection, since a destination is only reached through its router."
+  [database overlays]
+  (when (and (:router_database_id database) (seq (:write_data_details overlays)))
+    (throw (ex-info (tru "Cannot configure a write connection on a destination database.") {:status-code 400})))
+  (when (and (:router_database_id database) (seq (:admin_details overlays)))
+    (throw (ex-info (tru "Cannot configure an admin connection on a destination database.") {:status-code 400}))))
+
+(defn- provider-name
+  "The name of the provider hosting `database`, as its engine and host tell it, or nil."
+  [{:keys [engine] :as database}]
+  (when (some-> engine keyword driver.impl/registered?)
+    (provider-detection/detect-provider-from-database (update database :engine keyword))))
+
+(defn- check-provider-name-change
+  "Throws a 400 when `changes` set `provider_name` to a name other than the one `database` has, as its engine and host
+  tell it."
+  [database changes]
+  (when (and (contains? changes :provider_name)
+             (not= (:provider_name changes) (provider-name database)))
+    (throw (ex-info (tru "provider_name follows the engine and the host; change them instead.")
+                    {:status-code 400}))))
+
+(defn- stub-cleared
+  "`database`, a stub that got connection details, as a database to sync."
+  [database]
+  (assoc database :is_stub false :initial_sync_status "incomplete" :initial_sync_error nil))
+
 (t2/define-before-update :model/Database
   [database]
-  (assert-router-database-id-not-mutated! database)
   (let [changes  (t2/changes database)
         original (t2/original database)]
+    (assert-router-database-id-not-mutated! database)
+    (check-provider-name-change database changes)
+    (check-destination-overlays database changes)
     ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
     ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
     ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
@@ -510,54 +420,41 @@
                                   (merge original changes)
                                   (if (contains? changes :engine)
                                     details-keys
-                                    (filterv #(contains? changes %) details-keys))))
-  ;; Note: the "sample database may not be edited" policy is enforced at the API layer
-  ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
-  ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
-  (let [changes                       (t2/changes database)
-        {new-engine        :engine
-         new-settings      :settings} changes
-        {existing-settings :settings
-         existing-engine   :engine}   (t2/original database)
-        new-engine                    (some-> new-engine keyword)]
-    (u/prog1 (cond-> database
-               ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-               (and (some? (:details changes))
-                    (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
-               (update :details dissoc :json_unfolding)
+                                    (filterv #(contains? changes %) details-keys)))
+    (when (contains? changes :engine)
+      (check-settings-driver-features database (changed-settings (:settings database) nil)))
+    (when (contains? changes :settings)
+      (check-settings-driver-features database (changed-settings (:settings changes) (:settings original))))
+    (cond-> database
+      (not= (:provider_name database) (provider-name database))
+      (assoc :provider_name (provider-name database))
 
-               (or
-                ;if there is any changes in user control setting
-                (some? (get-in changes [:details :let-user-control-scheduling]))
-                ;; if the let user control scheduling is already on, we should always try to re-infer it
-                (get-in database [:details :let-user-control-scheduling])
-                ;; if there is a changes in schedules, make sure it respects the settings
-                (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
-               infer-db-schedules
+      (and (:is_stub original)
+           (not (contains? changes :is_stub))
+           (some #(contains? changes %) [:engine :details]))
+      stub-cleared
 
-               (or (some? (:details changes))
-                   (some? (:write_data_details changes))
-                   (some? (:admin_details changes)))
-               secret/handle-incoming-client-secrets!
+      ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+      (and (some? (:details changes))
+           (not (driver.u/supports? (keyword (:engine database)) :nested-field-columns database)))
+      (update :details dissoc :json_unfolding)
 
-               (:uploads_enabled changes)
-               maybe-disable-uploads-for-all-dbs!)
-      ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
-      ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
-      (when (and (:database-enable-actions (or new-settings existing-settings))
-                 (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
-        (throw (ex-info (trs "The database does not support actions.")
-                        {:status-code     400
-                         :existing-engine existing-engine
-                         :new-engine      new-engine})))
-      ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
-      ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
-      (when (and (:database-enable-table-editing (or new-settings existing-settings))
-                 (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
-        (throw (ex-info (trs "The database does not support table editing.")
-                        {:status-code     400
-                         :existing-engine existing-engine
-                         :new-engine      new-engine}))))))
+      (or
+       ;if there is any changes in user control setting
+       (some? (get-in changes [:details :let-user-control-scheduling]))
+       ;; if the let user control scheduling is already on, we should always try to re-infer it
+       (get-in database [:details :let-user-control-scheduling])
+       ;; if there is a changes in schedules, make sure it respects the settings
+       (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
+      infer-db-schedules
+
+      (or (some? (:details changes))
+          (some? (:write_data_details changes))
+          (some? (:admin_details changes)))
+      secret/handle-incoming-client-secrets!
+
+      (:uploads_enabled changes)
+      maybe-disable-uploads-for-all-dbs!)))
 
 (t2/define-after-update :model/Database
   [database]
@@ -566,25 +463,159 @@
   ;; from [[metabase.core/init!]] to self-heal.
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
+(defn- check-router-not-destination
+  "Throws a 400 when the router of `database` is itself a destination, since a destination cannot route on to another
+  one."
+  [{:keys [router_database_id]}]
+  (when (and router_database_id (warehouses.db/router-database-id router_database_id))
+    (throw (ex-info (tru "A destination database cannot be the router of another destination database.")
+                    {:status-code 400}))))
+
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
+  (check-router-not-destination database)
   (validate-connection-details! engine database details-keys)
+  (check-destination-overlays database database)
+  (check-settings-driver-features database (changed-settings (:settings database) nil))
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
       (cond->
        (not details)             (assoc :details {})
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+      (assoc :provider_name (provider-name database))
       secret/handle-incoming-client-secrets!
       maybe-disable-uploads-for-all-dbs!
       infer-db-schedules))
 
-(defmethod mi/exclude-internal-content-hsql :model/Database
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field table-alias %)]
-    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
-;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
+(defn- should-read-audit-db?
+  "Audit Database should only be fetched if audit app is enabled."
+  [database-id]
+  (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
+
+(def ^{:arglists '([db-id])
+       :private  true} db-id->router-db-id
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (warehouses.db/router-database-id db-id))))
+
+(defn- check-permission-keys
+  "Throws unless `database` has the `:id` its permission hydrations read."
+  [database]
+  (api/check-500 (some? (:id database)) "No :id is set for a Database."))
+
+(defn- permission-database-id
+  "The id of the Database whose permissions answer for the Database with `database-id`: its router's for a
+  destination Database, and its own otherwise."
+  [database-id]
+  (or (db-id->router-db-id database-id) database-id))
+
+(defn- queryable-database-ids
+  "The ids among `database-ids` of the Databases the current user can query: those with query builder access on some
+  Table, and, on EE, those with a published Table in a Collection they read."
+  [database-ids]
+  (let [create-queries (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                          :perms/create-queries
+                                                                          (vec database-ids))]
+    (into #{}
+          (filter #(or (contains? #{:query-builder :query-builder-and-native} (get create-queries %))
+                       (perms/user-has-published-table-permission-for-database? %)))
+          database-ids)))
+
+(defn- readable-database-ids
+  "The ids among `database-ids` of the Databases whose metadata the current user can see: those they can query, and
+  those they manage or whose Table metadata they manage."
+  [database-ids]
+  (let [user-info       (perms/user-info api/*current-user-id*)
+        database-ids    (vec database-ids)
+        manage-database (perms/database-permissions-for-user user-info :perms/manage-database database-ids)
+        manage-metadata (perms/some-table-in-database-permissions-for-user user-info :perms/manage-table-metadata
+                                                                           database-ids)
+        managed         (into #{}
+                              (filter #(or (= :yes (get manage-database %)) (= :yes (get manage-metadata %))))
+                              database-ids)]
+    (into managed (queryable-database-ids (remove managed database-ids)))))
+
+(defn- hydrate-database-permission
+  "Sets the flag `k` on each of `databases`: whether its permission Database, never the audit Database while the audit
+  app is off, is among the ids `allowed-ids`, a function of the candidate ids, returns."
+  [k databases allowed-ids]
+  (let [rows       (into [] (remove nil?) databases)
+        _          (run! check-permission-keys rows)
+        candidates (into #{}
+                         (comp (map :id) (remove should-read-audit-db?) (map permission-database-id)
+                               (remove should-read-audit-db?))
+                         rows)
+        allowed    (if (seq candidates) (allowed-ids candidates) #{})]
+    (for [database databases]
+      (when database
+        (let [answer (boolean (and (not (should-read-audit-db? (:id database)))
+                                   (contains? allowed (permission-database-id (:id database)))))]
+          (if (= k :can_read)
+            (vary-meta database assoc k answer)
+            (assoc database k answer)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :can_read]
+  "Whether the current user can see the metadata of each of `databases`."
+  [_model k databases]
+  (hydrate-database-permission k databases readable-database-ids))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :can_query]
+  "Whether the current user can run queries against each of `databases`."
+  [_model k databases]
+  (hydrate-database-permission k databases queryable-database-ids))
+
+(defenterprise current-user-managed-database-ids
+  "OSS implementation, the ids among `db-ids` of the Databases the current user manages, which for a superuser is all of
+  them and for anyone else none."
+  metabase-enterprise.advanced-permissions.common
+  [db-ids]
+  (if (mi/superuser?) (set db-ids) #{}))
+
+(defn- writable-database-ids
+  "The ids among `database-ids` of the Databases the current user can change: those they manage other than the audit
+  Database, and the destinations of a router they manage, `routers` mapping each destination to its router."
+  [database-ids routers]
+  (let [candidates (into #{} (comp (remove nil?) (remove #{audit/audit-db-id})) (concat database-ids (vals routers)))
+        managed    (if (seq candidates) (current-user-managed-database-ids candidates) #{})]
+    (into #{}
+          (filter #(or (contains? managed %) (contains? managed (get routers %))))
+          database-ids)))
+
+(defn- database-writable?
+  "Whether `database`, one of the Databases with `writable-ids`, can be changed by the current user, which nobody can
+  for an attached data warehouse."
+  [writable-ids {:keys [is_attached_dwh] :as database}]
+  (boolean (and (contains? writable-ids (u/the-id database))
+                (not is_attached_dwh))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :can_write]
+  "Whether the current user can change each of `databases`."
+  [_model k databases]
+  (let [rows     (into [] (remove nil?) databases)
+        _        (doseq [database rows]
+                   (check-permission-keys database)
+                   (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database."))
+        ids      (into [] (comp (map :id) (distinct)) rows)
+        writable (writable-database-ids ids (warehouses.db/router-database-ids ids))]
+    (for [database databases]
+      (when database
+        (assoc database k (database-writable? writable database))))))
+
+(defn sample-database-locked?
+  "Whether `database` is the Sample Database, which users do not edit unless the test endpoints are enabled."
+  [database]
+  (boolean (and (:is_sample database)
+                (not (config/config-bool :mb-enable-test-endpoints)))))
+
+(defmethod mi/can-update? :model/Database
+  [database _changes]
+  (boolean (and (mi/can-write? database)
+                (not (sample-database-locked? database)))))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 ;; only used in tests
 (defn tables
@@ -611,7 +642,17 @@
     (when (seq table-ids)
       (warehouses.db/pk-fields-for-tables table-ids))))
 
-;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
+(defenterprise hydrate-router-user-attribute
+  "OSS implementation. Hydrates router user attribute on the databases."
+  metabase-enterprise.database-routing.models
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_user_attribute nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (hydrate-router-user-attribute k databases))
 
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
@@ -640,15 +681,16 @@
              details
              (sensitive-fields-for-db db)))]
     (next-method
-     (let [db (if (not (mi/can-write? db))
-                (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
-                (do (log/debug "Redacting sensitive fields within database details during json encoding.")
-                    (-> db
-                        (secret/to-json-hydrate-redacted-secrets)
-                        (update :details redact-sensitive-fields)
-                        (m/update-existing :write_data_details redact-sensitive-fields)
-                        (m/update-existing :admin_details redact-sensitive-fields))))]
+     (let [db-id (u/the-id db)
+           db    (if (not (database-writable? (writable-database-ids [db-id] {db-id (db-id->router-db-id db-id)}) db))
+                   (do (log/debug "Fully redacting database details during json encoding.")
+                       (dissoc db :details :write_data_details :admin_details :initial_sync_error))
+                   (do (log/debug "Redacting sensitive fields within database details during json encoding.")
+                       (-> db
+                           (secret/to-json-hydrate-redacted-secrets)
+                           (update :details redact-sensitive-fields)
+                           (m/update-existing :write_data_details redact-sensitive-fields)
+                           (m/update-existing :admin_details redact-sensitive-fields))))]
        (update db :settings
                (fn [settings]
                  (when (map? settings)
@@ -675,7 +717,14 @@
                        (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
      json-generator)))
 
-;;; ------------------------------------------------ Serialization ----------------------------------------------------
+(def ^{:arglists '([table-id])} table-id->database-id
+  "Retrieve the `Database` ID for the given table-id."
+  (mdb/memoize-for-application-db
+   (fn [table-id]
+     {:pre [(integer? table-id)]}
+     (warehouses.db/table-database-id table-id))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- import-constantly
   "A transform fn importing every value as `v`."
@@ -683,14 +732,36 @@
   (fn [_store _entities values _opts]
     (mapv (constantly v) values)))
 
+(def ^:private instance-local-settings
+  "Database-local settings that hold names in this instance's warehouse, not content: an export leaves them out, and an
+  import keeps the values of the database it updates. A copied workspace schema would point the target's transforms
+  at another schema while its remap rows still point at the old one."
+  [:database-workspace-schema])
+
+(def ^:private settings-transform
+  "The serialization transform of `:settings`, which leaves out [[instance-local-settings]]. An import normalizes the
+  value by the `:settings` schema of [[warehouses.schema/external-database]], as it would if `:settings` were copied.
+  Settings the model could not decrypt are the raw ciphertext string, which passes through unchanged."
+  {:export (fn [_store _rows values _opts]
+             (mapv #(if (map? %) (not-empty (apply dissoc % instance-local-settings)) %) values))
+   :import (fn [_store entities values _opts]
+             (mapv (fn [{db-name :name} settings]
+                     (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
+                           target   (warehouses.db/database-settings-by-name db-name)
+                           kept     (when (map? target) (select-keys target instance-local-settings))]
+                       (if (map? settings)
+                         (not-empty (merge (apply dissoc settings instance-local-settings) kept))
+                         settings)))
+                   entities values))})
+
 (defmethod serialization/spec :model/Database [_]
   {:schema    ::warehouses.schema/external-database
    :identity  [:name]
    :copy      [:auto_run_queries :caveats
                :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
-               :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+               :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
-   :skip      [:cache_ttl :initial_sync_error :dbms_version]
+   :skip      [:cache_ttl :initial_sync_error :dbms_version :provider_name]
    :transform {:details                     serialization/import-only-transform
                :write_data_details          serialization/import-only-transform
                :admin_details               serialization/import-only-transform
@@ -700,7 +771,8 @@
                :is_sample                   {:import (import-constantly false)}
                :is_stub                     {:import (import-constantly false)}
                :creator_id                  serialization/user-transform
-               :router_database_id          serialization/database-transform}
+               :router_database_id          serialization/database-transform
+               :settings                    settings-transform}
    :defaults  {:auto_run_queries true
                :is_attached_dwh  false
                :is_audit         false
@@ -732,43 +804,6 @@
     (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
                     {:engine (:engine row) :name (:name row) :status-code 400}))))
 
-(def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb/memoize-for-application-db
-   (fn [table-id]
-     {:pre [(integer? table-id)]}
-     (warehouses.db/table-database-id table-id))))
-
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
-
-(search.spec/define-spec "database"
-  {:model        :model/Database
-   :attrs        {:archived      false
-                  :collection-id false
-                  :creator-id    false
-                  ;; not sure if this is another bug
-                  :database-id   false
-                  :created-at    true
-                  :updated-at    true}
-   :search-terms {:name        search.spec/explode-camel-case
-                  :description true}
-   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
-   :render-terms {:initial-sync-status true}})
-
-(defenterprise hydrate-router-user-attribute
-  "OSS implementation. Hydrates router user attribute on the databases."
-  metabase-enterprise.database-routing.models
-  [_k databases]
-  (for [database databases]
-    (assoc database :router_user_attribute nil)))
-
-(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
-  "Batch hydrate `Tables` for the given `Database`."
-  [_model k databases]
-  (hydrate-router-user-attribute k databases))
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
 (defn- keep-local-audit-columns
   "The load `item` of a Database, keeping the local values of the columns its entity lacks when it is the internal
   analytics Database, whose engine, details and timezone belong to this instance."
@@ -789,3 +824,132 @@
                               (:write_data_details %) (update :write_data_details driver/sanitize-db-details)
                               (:admin_details %)      (update :admin_details driver/sanitize-db-details)))))
         items))
+
+;;; ----------------------------------------------------- Search -----------------------------------------------------
+
+(search.spec/define-spec "database"
+  {:model        :model/Database
+   :attrs        {:archived      false
+                  :collection-id false
+                  :creator-id    false
+                  ;; not sure if this is another bug
+                  :database-id   false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms {:name        search.spec/explode-camel-case
+                  :description true}
+   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
+   :render-terms {:initial-sync-status true}})
+
+;;; ------------------------------------------------- Health checks --------------------------------------------------
+
+(defn maybe-test-and-migrate-details!
+  "When a driver has db-details to test and migrate:
+   we loop through them until we find one that works and update the database with the working details."
+  [{:keys [engine] :as database}]
+  (let [details (driver.conn/default-details database)
+        test-and-migrate! (fn [details-to-test]
+                            (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+                            (loop [[test-details & tail] details-to-test]
+                              (if test-details
+                                (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+                                  (let [keys-remaining (-> test-details keys set)
+                                        [_ removed _] (data/diff keys-remaining (-> details keys set))]
+                                    (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
+                                    (warehouses.db/set-database-details! (:id database) test-details)
+                                    test-details)
+                                  (recur tail))
+                                ;; if we go through the list and we can't fine a working detail to test, keep original value
+                                details)))]
+    (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+      (test-and-migrate! details-to-test)
+      details)))
+
+(defn- check-connection!
+  "Checks connectivity for a set of database details. Returns true on success, false on failure.
+   Reports analytics with the given connection-type label."
+  [database driver engine details-map connection-type]
+  (try
+    (log/info (u/format-color :cyan "Health check [%s]: checking database {:id %d}"
+                              connection-type (:id database)))
+    (u/with-timeout (driver.settings/db-connection-timeout-ms)
+      (or (driver/can-connect? driver details-map)
+          (throw (Exception. (format "Failed to connect to Database (%s)" connection-type)))))
+    (log/info (u/format-color :green "Health check [%s]: success database {:id %d}"
+                              connection-type (:id database)))
+    (analytics/inc! :metabase-database/status {:driver engine :healthy true :connection-type connection-type})
+    true
+    (catch Throwable e
+      (let [humanized-message (some->> (u/all-ex-messages e)
+                                       (driver/humanize-connection-error-message driver))
+            reason            (if (keyword? humanized-message) "user-input" "exception")]
+        (log/error (u/format-color :red "Health check [%s]: failure {:id %d :reason %s :message %s}"
+                                   connection-type
+                                   (:id database)
+                                   reason
+                                   humanized-message))
+        (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason :connection-type connection-type}))
+      false)))
+
+(defn- refresh-provider-name!
+  "Stores the provider name of `database`, as its engine and host tell it, when it is not the stored one."
+  [database]
+  (let [provider (provider-name database)]
+    (when (not= provider (:provider_name database))
+      (try
+        (log/infof "Provider detection: updating database {:id %d} from '%s' to '%s'"
+                   (:id database) (:provider_name database) provider)
+        (warehouses.db/set-database-provider-name! (:id database) provider)
+        (catch Throwable e
+          (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message e)))))))
+
+(defn health-check-database!
+  "Checks database health off-thread.
+   - checks connectivity for the default connection
+   - checks connectivity for the write connection (if configured)
+   - checks connectivity for the admin connection (if configured)
+   - cleans-up ambiguous legacy db-details"
+  [{:keys [engine] :as database}]
+  (when-not (or (:is_audit database) (:is_sample database))
+    (log/info (u/format-color :cyan "Health check: queueing database {:id %d}" (:id database)))
+    (quick-task/submit-task!
+     (fn []
+       (let [details     (maybe-test-and-migrate-details! database)
+             database    (assoc database :details details)
+             engine-str  (name engine)
+             driver      (keyword engine-str)
+             details-map (assoc details :engine engine-str)
+             lib-db      (driver.u/ensure-lib-database database)]
+         (when (check-connection! database driver engine-str details-map "default")
+           (refresh-provider-name! database))
+         (when (driver.conn/database-write-data-details lib-db)
+           (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
+         (when (driver.conn/database-admin-details lib-db)
+           (let [admin-details (merge details (driver.conn/details-for-exact-type lib-db :admin))]
+             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
+
+(defn- health-check-candidates
+  "The databases to health check at startup: one representative per unique engine — the lowest-id regular database of
+  each engine — rather than every database. The health signal feeds the per-driver `:metabase-database/status`
+  metrics, so checking hundreds of same-engine databases at startup mostly re-measures the same driver stack while
+  hammering the warehouses with connection attempts. Audit/sample databases are excluded here (rather than relying on
+  the guard in [[health-check-database!]]) so they can never claim an engine's representative slot and starve a real
+  database of its check; router destinations are excluded because they can be very numerous and are only reachable
+  through their router.
+
+  The representative ids are aggregated in the database first, and only those rows are fetched as model instances:
+  instances with 3k+ databases exist in the wild, and realizing every Database row (including details decryption)
+  just to pick one per engine would defeat the point."
+  []
+  (let [ids (map :id (warehouses.db/health-check-candidate-ids))]
+    (when (seq ids)
+      (warehouses.db/databases ids))))
+
+(defn check-health!
+  "Health checks databases connected to metabase asynchronously using a thread pool. Only one database per unique
+  engine is checked -- see [[health-check-candidates]]."
+  []
+  (analytics/clear! :metabase-database/status)
+  (doseq [database (health-check-candidates)]
+    (health-check-database! database)))

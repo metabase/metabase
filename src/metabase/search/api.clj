@@ -15,6 +15,7 @@
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
+   [metabase.search.schema :as search.schema]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
@@ -184,13 +185,11 @@
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
   [_route-params
-   overrides :- (ms/string-keyed-object
-                 ["context"       {:default :default} :keyword]
-                 ["search_engine" {:optional true} [:maybe :string]])]
+   overrides :- ::search.schema/weights.overrides]
   ;; remove cookie
   ;; normalize so overrides are stored under the same key search reads them from
-  (let [context   (search.config/normalized-context (get overrides "context"))
-        overrides (-> overrides (dissoc "search_engine" "context") (update-keys keyword) (update-vals parse-double))]
+  (let [context   (search.config/normalized-context (:context overrides))
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights {:context context})))
@@ -271,7 +270,6 @@
     :is-sandboxed-user?                  (perms/sandboxed-user?)
     :is-routed-user?                     (perms/routed-user?)
     :is-superuser?                       api/*is-superuser?*
-    :current-user-perms                  @api/*current-user-permissions-set*
     :filter-items-in-personal-collection filter-items-in-personal-collection
     :last-edited-at                      last-edited-at
     :last-edited-by                      (set last-edited-by)
