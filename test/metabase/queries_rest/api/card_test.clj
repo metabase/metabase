@@ -5991,3 +5991,70 @@
             (is (= (map :name metadata-before)
                    (map :name metadata-after))
                 "result_metadata should be preserved across SQL edits when the recompute cannot run")))))))
+
+(defn- venues-card-query []
+  (let [mp (mt/metadata-provider)]
+    (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :venues))) 2)))
+
+(defn- card-records
+  "The number of Revisions and of audit rows that `card-id` has."
+  [card-id]
+  [(t2/count :model/Revision :model "Card" :model_id card-id)
+   (t2/count :model/AuditLog :model "Card" :model_id card-id)])
+
+(deftest query-run-writes-model-metadata-without-recording-test
+  (testing "the metadata that a run stores for a model is not an edit by the user who ran it"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [persisted-models-enabled true]
+        (mt/with-temp [:model/Database {db-id :id} {:settings {:persist-models-enabled true}}
+                       :model/Card {card-id :id} {:type            :model
+                                                  :database_id     db-id
+                                                  :dataset_query   (venues-card-query)
+                                                  :result_metadata nil}]
+          (let [before (card-records card-id)]
+            (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+            (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+            (is (= before (card-records card-id)))
+            (is (nil? (:last-edit-info (mt/user-http-request :rasta :get 200 (str "card/" card-id)))))
+            (is (zero? (t2/count :model/PersistedInfo :card_id card-id)))))))))
+
+(deftest query-run-refreshes-model-types-and-keeps-overrides-test
+  (testing "a run refreshes the types of a model's columns, keeps what a user overrode, and records nothing"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                :dataset_query (venues-card-query)}]
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
+              stale    (update (vec metadata) 0 assoc :display_name "My own name" :base_type :type/Text)]
+          (t2/update! :model/Card :id card-id {:result_metadata stale})
+          (let [before (card-records card-id)]
+            (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+            (let [refreshed (first (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+              (is (= "My own name" (:display_name refreshed)))
+              (is (not= :type/Text (:base_type refreshed))))
+            (is (= before (card-records card-id)))))))))
+
+(deftest question-metadata-refresh-records-nothing-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-card-query) :result_metadata nil}]
+      (let [before (card-records card-id)]
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+        (is (= before (card-records card-id)))))))
+
+(deftest editing-model-column-overrides-records-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-card-query)}]
+      (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+      (doseq [[what changes] {"display name"  {:display_name "Renamed column"}
+                              "semantic type" {:semantic_type :type/Category}}]
+        (testing (str "an editor changing a column's " what)
+          (let [[revisions audits] (card-records card-id)
+                metadata           (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                  {:result_metadata (update (vec metadata) 0 merge changes)})
+            (is (= [(inc revisions) (inc audits)] (card-records card-id)))
+            (is (= (mt/user->id :crowberto)
+                   (t2/select-one-fn :user_id :model/Revision :model "Card" :model_id card-id {:order-by [[:id :desc]]})))
+            (is (= (mt/user->id :crowberto)
+                   (t2/select-one-fn :user_id :model/AuditLog :model "Card" :model_id card-id {:order-by [[:id :desc]]})))))))))

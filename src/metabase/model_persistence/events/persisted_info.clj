@@ -1,11 +1,12 @@
 (ns metabase.model-persistence.events.persisted-info
   "Handlers of the lifecycle events that have a model Card persisted when its database persists models, for the user
-  who wrote it."
+  who turned it into one."
   (:require
    [metabase.events.core :as events]
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -29,7 +30,14 @@
     (catch Throwable e
       (log/warnf "Failed to persist model %s: %s" card-id (ex-message e)))))
 
+(defn- became-model?
+  "Whether the write of `event` created a model Card, or turned a Card into one."
+  [{:keys [object previous-object] :as event}]
+  (and (= (keyword (:type object)) :model)
+       (or (nil? previous-object)
+           (u.events/changed? event :type))))
+
 (methodical/defmethod events/publish-event! ::event
-  [_topic {:keys [object user-id]}]
-  (when (and user-id (= (keyword (:type object)) :model))
+  [_topic {:keys [object user-id] :as event}]
+  (when (and user-id (became-model? event))
     (turn-on-model! (:id object) user-id)))

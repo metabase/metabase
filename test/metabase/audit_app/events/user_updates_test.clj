@@ -90,21 +90,63 @@
                               {:dimension_ids [price]})
         (is (= [[:card-update "Card" metric-id]] (topics-since before)))))))
 
-(deftest reading-metric-records-no-card-update-test
+(deftest reading-metric-writes-no-revision-and-no-unchanged-audit-row-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Card {metric-id :id} {:name          "Metric"
                                                 :type          :metric
                                                 :database_id   (mt/id)
                                                 :table_id      (mt/id :venues)
                                                 :dataset_query (lib/aggregate (venues-query) (lib/count))}]
-      (let [before (max-id)
-            revs   (t2/count :model/Revision :model "Card" :model_id metric-id)]
-        (mt/user-http-request :rasta :get 200 (str "metric/" metric-id))
-        (testing "the read syncs the dimensions"
-          (is (seq (:dimensions (t2/select-one :model/Card :id metric-id)))))
-        (testing "the sync is not an update by the reader"
-          (is (= [] (rows-since before)))
-          (is (= revs (t2/count :model/Revision :model "Card" :model_id metric-id))))))))
+      (let [revs #(t2/count :model/Revision :model "Card" :model_id metric-id)]
+        (testing "known gap, awaiting a marker for user-curated dimensions: the load that seeds the dimensions of a metric
+                  is recorded as an update of the metric by its reader, as any write of a user column is"
+          (mt/user-http-request :rasta :get 200 (str "metric/" metric-id))
+          (is (seq (:dimensions (t2/select-one :model/Card :id metric-id))))
+          (is (zero? (revs))
+              "Card revisions exclude the dimensions, so neither the seed nor the last editor changes"))
+        (testing "a load with nothing to seed and no status to change writes nothing"
+          (let [before (max-id)]
+            (mt/user-http-request :rasta :get 200 (str "metric/" metric-id))
+            (mt/user-http-request :rasta :get 200 (str "metric/" metric-id "/dimension"))
+            (is (= [] (rows-since before)))
+            (is (zero? (revs)))))))))
+
+(deftest reading-measure-writes-nothing-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Measure"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (lib/aggregate (venues-query) (lib/count))}]
+      (let [before (max-id)]
+        (mt/user-http-request :rasta :get 200 (str "measure/" measure-id))
+        (is (seq (:dimensions (t2/select-one :model/Measure :id measure-id))))
+        (t2/update! :model/Measure :id measure-id {:dimensions nil})
+        (mt/user-http-request :rasta :get 200 (str "measure/" measure-id))
+        (is (= [] (rows-since before)))
+        (is (zero? (t2/count :model/Revision :model "Measure" :model_id measure-id)))))))
+
+(deftest metric-curation-records-card-update-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {metric-id :id} {:name          "Metric"
+                                                :type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (lib/aggregate (venues-query) (lib/count))}]
+      (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id))
+      (let [dimensions (:dimensions (t2/select-one :model/Card :id metric-id))
+            d1         (:id (first (remove :default dimensions)))
+            d2         (:id (second (remove :default dimensions)))
+            path       #(str "metric/" metric-id "/dimension" %)
+            editor     (mt/user->id :crowberto)]
+        (doseq [[what request] {"set-default" #(mt/user-http-request :crowberto :post 200 (path "/set-default") {:dimension_id d1})
+                                "reorder"     #(mt/user-http-request :crowberto :post 200 (path "/reorder") {:dimension_ids [d2 d1]})
+                                "update"      #(mt/user-http-request :crowberto :post 200 (path (str "/" d1)) {:display_name "Renamed"})
+                                "remove"      #(mt/user-http-request :crowberto :post 200 (path "/remove") {:dimension_ids [d2]})}]
+          (testing what
+            (let [before (max-id)]
+              (request)
+              (is (=? [{:topic :card-update :model "Card" :model_id metric-id}]
+                      (rows-since before)))
+              (is (= editor (t2/select-one-fn :user_id :model/AuditLog :id [:> before]))))))))))
 
 (deftest database-update-records-row-test
   (mt/with-premium-features #{:audit-app}
@@ -187,3 +229,33 @@
         (let [before (max-id)]
           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:name "Renamed tenant"})
           (is (= [[:tenant-update "Tenant" tenant-id]] (topics-since before))))))))
+
+(deftest read-paths-of-a-reader-record-nothing-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Measure"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (lib/aggregate (venues-query) (lib/count))}
+                   :model/Card {metric-id :id} {:name          "Metric"
+                                                :type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (lib/aggregate (venues-query) (lib/count))}
+                   :model/Card {model-id :id} {:name "Model" :type :model :dataset_query (venues-query)
+                                               :result_metadata nil}
+                   :model/Card {question-id :id} {:name "Question" :dataset_query (venues-query)
+                                                  :result_metadata nil}]
+      (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id))
+      (let [before (max-id)]
+        (testing "reads by a reader"
+          (mt/user-http-request :rasta :get 200 (str "measure/" measure-id))
+          (mt/user-http-request :rasta :get 200 (str "metric/" metric-id))
+          (mt/user-http-request :rasta :get 200 (str "card/" model-id))
+          (mt/user-http-request :rasta :get 200 (str "card/" question-id))
+          (doseq [id [metric-id model-id question-id]]
+            (mt/user-http-request :rasta :post 202 (str "card/" id "/query")))
+          (is (= [] (rows-since before)))
+          (is (zero? (t2/count :model/Revision :model [:in ["Card" "Measure"]]
+                               :model_id [:in [measure-id metric-id model-id question-id]]))))
+        (testing "the readers' runs stored the metadata"
+          (is (seq (t2/select-one-fn :result_metadata :model/Card :id model-id)))
+          (is (seq (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))

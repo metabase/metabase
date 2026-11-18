@@ -31,3 +31,12 @@
                                                                       :database_id (u/the-id db)
                                                                       :type        :model)))]
             (is (= "creating" (:state (t2/select-one :model/PersistedInfo :card_id card-id))))))))))
+
+(deftest updating-model-does-not-persist-it-test
+  (mt/with-premium-features #{}
+    (mt/with-temporary-setting-values [persisted-models-enabled true]
+      (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
+                     :model/Card     card {:database_id (u/the-id db) :type :model}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (t2/update! :model/Card :id (u/the-id card) {:name "Renamed model" :description "Edited"}))
+        (is (zero? (t2/count :model/PersistedInfo :card_id (u/the-id card))))))))

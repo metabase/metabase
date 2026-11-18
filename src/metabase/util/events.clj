@@ -34,10 +34,11 @@
     :collection_position :entity_id})
 
 (def ^:private model-bookkeeping-columns
-  "For a model, the columns it adds to [[common-bookkeeping-columns]]: state the product writes on its own, or that has
-  a topic of its own."
+  "For a model, the columns it adds to [[common-bookkeeping-columns]]: computed state that the product writes on its
+  own, which is no part of the entity, or that has a topic of its own."
   {:model/Dashboard #{:position}
    :model/Database  #{:initial_sync_status :dbms_version :timezone}
+   :model/Measure   #{:dimensions :dimension_mappings}
    :model/Transform #{:last_checkpoint_value :target_table_id :table_dependencies}
    :model/User      #{:last_login :deactivated_at :is_active :password :password_salt :reset_token :reset_triggered :is_qbnewb
                       :settings}})
@@ -47,6 +48,18 @@
   [model]
   (into common-bookkeeping-columns (model-bookkeeping-columns model)))
 
+(defmulti user-edited-column?
+  "Whether the change of `column` in the update `event` of a row of `model` can be a user's edit of it, where a column
+  that the product recomputes on its own, as the result metadata of a Card, is one only when what a user sets in it
+  changed. A column with no method of its own is one."
+  {:arglists '([model column event])}
+  (fn [model column _event]
+    [model column]))
+
+(defmethod user-edited-column? :default
+  [_model _column _event]
+  true)
+
 (defn bookkeeping-only?
   "Whether the lifecycle `event` is an update that changes only the [[bookkeeping-columns]] of its model."
   [{:keys [object previous-object] :as event}]
@@ -55,7 +68,12 @@
 
 (defn user-edit?
   "Whether the lifecycle `event` is a write whose record should say a user made it: not one that the archive or restore
-  of another entity carried to its row (`:archived-with`), nor an update of only [[bookkeeping-columns]]."
-  [{:keys [context] :as event}]
-  (not (or (some? (:archived-with context))
-           (bookkeeping-only? event))))
+  of another entity carried to its row (`:archived-with`), nor an update that changes only the [[bookkeeping-columns]]
+  of its model or columns whose change is [[user-edited-column?]] in no way."
+  [{:keys [context object previous-object] :as event}]
+  (and (nil? (:archived-with context))
+       (or (not (and object previous-object))
+           (let [model   (model-of event)
+                 skipped (bookkeeping-columns model)]
+             (boolean (some #(and (not (skipped %)) (user-edited-column? model % event))
+                            (changed-keys event)))))))
