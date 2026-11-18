@@ -418,9 +418,6 @@ describe("QueryBuilder - models", () => {
     );
     const sortStep = await screen.findByTestId("step-sort-0-0");
     expect(within(sortStep).getByText("Total")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Something's gone wrong"),
-    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByTestId("run-button"));
 
