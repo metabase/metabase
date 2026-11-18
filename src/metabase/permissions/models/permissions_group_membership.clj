@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -13,6 +14,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
@@ -163,12 +166,23 @@
   (check-can-add-to-data-analyst-group group_id)
   membership)
 
+(defn- unchecked-rows
+  "The `rows` of an INSERT that no build of it in this transaction has checked yet, remembering them by identity, as
+  MySQL and MariaDB build the INSERT of each row again to read its key."
+  [rows]
+  (if-let [state (mdb/transaction-state)]
+    (let [checked (::checked-rows (swap! state update ::checked-rows #(or % (java.util.Collections/newSetFromMap
+                                                                             (java.util.IdentityHashMap.)))))]
+      (locking checked
+        (into [] (filter #(.add ^java.util.Set checked %)) rows)))
+    rows))
+
 (methodical/defmethod t2.pipeline/build :around [:toucan.query-type/insert.*
                                                  :model/PermissionsGroupMembership
                                                  clojure.lang.IPersistentMap]
   "Checks the Users of every membership an INSERT writes against its group, in one read of them for the statement."
   [query-type model parsed-args resolved-query]
-  (check-members (or (:rows parsed-args) (:rows resolved-query)))
+  (check-members (unchecked-rows (or (:rows parsed-args) (:rows resolved-query))))
   (next-method query-type model parsed-args resolved-query))
 
 (t2/define-after-insert :model/PermissionsGroupMembership
