@@ -22,23 +22,23 @@
    [:severity    ::severity]
    [:description :string]])
 
-;; `validation-exception-error` is an error: an entity the analysis couldn't check must not pass.
+;; `validation-exception-error` has severity `:error`: an entity the analysis couldn't check must not pass.
 (def ^:private rules
   "One rule per analysis error type."
   {:missing-column             {:severity    :error
                                 :description "A query reads a column its source does not have."}
    :missing-table-alias        {:severity    :error
-                                :description "Native SQL reads a table no known table matches."}
+                                :description "Native SQL names a table that matches no table Metabase knows."}
    :missing-table              {:severity    :error
                                 :description "A query reads a table that no longer exists."}
    :missing-card               {:severity    :error
-                                :description "A query reads a saved question that no longer exists."}
+                                :description "A query reads a card that no longer exists."}
    :duplicate-column           {:severity    :error
                                 :description "A query returns two columns with the same name."}
    :syntax-error               {:severity    :error
                                 :description "Native SQL does not parse."}
    :validation-exception-error {:severity    :error
-                                :description "The analysis of the query failed."}})
+                                :description "Metabase could not check the entity."}})
 
 (mr/def ::result
   "One error; `entity_id` keys into `entities`."
@@ -74,7 +74,7 @@
   [{:keys [type id], entity-name :name} :- ::deps.findings/cause]
   (if entity-name
     (str (name type) " \"" entity-name "\"")
-    (str (name type) " " id " (deleted)")))
+    (str (name type) " " id)))
 
 (mu/defn- message :- :string
   "A sentence for one error, from its type, detail and cause."
@@ -82,8 +82,8 @@
   (case type
     :missing-column
     (if cause
-      (str "Column " detail " is not on " (cause-text cause))
-      (str "Column " detail " is not on any table the query reads"))
+      (str "Column " detail " is not on " (cause-text cause) (when-not (:name cause) " (deleted)"))
+      (str "Column " detail " is not on any source the query reads"))
 
     :missing-table-alias
     (str "Native SQL reads " detail ", which no known table matches")
@@ -96,7 +96,7 @@
     :missing-card
     (if cause
       (str "The query reads " (cause-text cause) ", which no longer exists")
-      "The query reads a saved question that no longer exists")
+      "The query reads a card that no longer exists")
 
     :duplicate-column
     (str "The query returns column " detail " more than once")
@@ -108,8 +108,8 @@
 
     :validation-exception-error
     (if detail
-      (str "The analysis failed: " detail)
-      "The analysis failed")))
+      (str "Metabase could not check this entity: " detail)
+      "Metabase could not check this entity")))
 
 (mu/defn- result :- ::result
   [entity :- ::deps.findings/failed-entity
@@ -138,10 +138,10 @@
      :results  results}))
 
 (api.macros/defendpoint :post "/" :- ::report
-  "Lint report of the instance's cards, transforms and segments, for superusers. Each `result` is one error the query
-  analysis found, with its rule and, when traced, the entity that caused it. Pending analysis runs first, so the
-  report reflects every write committed before the request. Fails with a 503 when the analysis can't run: a job is
-  disabled or the instance is read-only."
+  "Lint report of the instance's cards, transforms and segments, for superusers, leaving out archived and
+  Metabase-managed content. Each entry of `results` is one error the query analysis found, with its rule and, when
+  traced, the entity that caused it. Pending analysis runs first. Fails with a 503 when the analysis can't run: a job
+  is disabled or Metabase is in read-only mode."
   [_route-params _query-params]
   (api/check-superuser)
   (deps.findings/drain-pending!)

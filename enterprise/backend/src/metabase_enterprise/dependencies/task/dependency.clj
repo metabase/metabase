@@ -184,6 +184,11 @@
   []
   (task.util/run-batch-in-place! job))
 
+(mu/defn enabled? :- :boolean
+  "Whether the UpdateDependencies job runs."
+  []
+  (task.util/enabled? job))
+
 (mu/defn trigger-dependency-job! :- :any
   "Trigger the UpdateDependencies job, unless a MB_DEPENDENCY_BACKFILL_BATCH_SIZE that isn't positive
   disables it."

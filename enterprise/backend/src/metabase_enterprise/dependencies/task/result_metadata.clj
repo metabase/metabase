@@ -48,6 +48,11 @@
   []
   (task.util/run-batch-in-place! job))
 
+(mu/defn enabled? :- :boolean
+  "Whether the UpdateResultMetadata job runs."
+  []
+  (task.util/enabled? job))
+
 (mu/defn trigger-result-metadata-job! :- :any
   "Trigger the UpdateResultMetadata job, unless a MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE that isn't positive
   disables it."

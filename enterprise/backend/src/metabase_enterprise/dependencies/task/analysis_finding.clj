@@ -48,6 +48,11 @@
   []
   (task.util/run-batch-in-place! job))
 
+(mu/defn enabled? :- :boolean
+  "Whether the UpdateAnalysisFindings job runs."
+  []
+  (task.util/enabled? job))
+
 (defmethod task/init! ::UpdateAnalysisFindings [_]
   (task.util/init-job! job))
 

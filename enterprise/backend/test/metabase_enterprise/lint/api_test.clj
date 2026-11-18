@@ -2,10 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
-   [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.lint.api :as lint.api]
    [metabase.config.core :as config]
@@ -99,6 +100,24 @@
     (testing (pr-str error-type detail cause)
       (is (string? (#'lint.api/message {:type error-type, :detail detail, :cause cause}))))))
 
+(defn- status-and-summary
+  "The status and summary of the report of `failed` entities. The endpoint's cover the whole app DB, where other
+  namespaces may leave failing entities."
+  [failed]
+  (select-keys (#'lint.api/report failed) [:status :summary]))
+
+(deftest ^:synchronized report-status-and-summary-test
+  (testing "the report passes with zero counts when no entity failed"
+    (is (= {:status :passed :summary {:errors 0 :warnings 0 :entities 0}}
+           (status-and-summary []))))
+  (testing "the report fails and counts one error on one entity for one broken card"
+    (do-with-broken-native-card!
+     (fn [native-card]
+       (deps.findings/drain-pending!)
+       (is (= {:status :failed :summary {:errors 1 :warnings 0 :entities 1}}
+              (status-and-summary (filterv #(= (:entity_id native-card) (:entity_id %))
+                                           (deps.findings/failed-entities)))))))))
+
 (deftest requires-superuser-test
   (mt/with-premium-features #{:dependencies}
     (is (= "You don't have permissions to do that."
@@ -154,8 +173,8 @@
            (is (= [] (card-results report card)))
            (is (not (contains? (:entities report) (keyword (:entity_id card)))))))))))
 
-(deftest ^:synchronized passed-when-nothing-is-broken-test
-  (testing "POST /api/ee/lint answers `passed` with no results once a broken entity is fixed"
+(deftest ^:synchronized fixed-entity-no-longer-reported-test
+  (testing "POST /api/ee/lint stops reporting an entity once it is fixed"
     (do-with-broken-model!
      #(create-card-filtering-total! %1 %2 "Lint dependent")
      (fn [model-card dependent-card]
@@ -176,9 +195,13 @@
   (do-with-broken-native-card!
    (fn [native-card]
      (testing "POST /api/ee/lint fails rather than answer from stale findings when a job is disabled"
+       (deps.findings/drain-pending!)
+       (dependencies.db/mark-dependency-statuses-stale! {:card #{(:id native-card)}})
        (mt/with-temporary-setting-values [dependency-entity-check-batch-size 0]
          (is (= "The analysis cannot run while one of its jobs is disabled by its batch size."
-                (mt/user-http-request :crowberto :post 503 "ee/lint")))))
+                (mt/user-http-request :crowberto :post 503 "ee/lint"))))
+       (testing "before the jobs ahead of the disabled one run"
+         (is (pos? (t2/select-one-fn :stale :model/DependencyStatus :entity_type :card :entity_id (:id native-card))))))
      (testing "POST /api/ee/lint fails when the app DB is read-only"
        (mt/with-temporary-setting-values [read-only-mode true]
          (is (= "The analysis cannot run while Metabase is in read-only mode."
@@ -199,7 +222,7 @@
       (f))))
 
 (deftest ^:synchronized uncomputable-dependencies-fail-test
-  (testing "POST /api/ee/lint fails on an entity whose dependencies cannot be computed"
+  (testing "POST /api/ee/lint reports an entity whose dependencies cannot be computed"
     (do-with-plain-native-card!
      (fn [card]
        (do-with-uncomputable-dependencies!
@@ -210,12 +233,12 @@
             (is (= [{:ruleId    "validation-exception-error"
                      :entity_id (:entity_id card)
                      :detail    "Dependencies broke"
-                     :message   "The analysis failed: Dependencies broke"
+                     :message   "Metabase could not check this entity: Dependencies broke"
                      :cause     nil}]
                    (card-results report card))))))))))
 
 (deftest ^:synchronized recomputed-dependencies-clear-failure-test
-  (testing "POST /api/ee/lint stops failing an entity once its given-up dependencies compute again"
+  (testing "POST /api/ee/lint stops reporting an entity once its given-up dependencies compute again"
     (do-with-plain-native-card!
      (fn [card]
        (let [mark-stale! #(dependencies.db/mark-dependency-statuses-stale! {:card #{(:id card)}})]
@@ -227,8 +250,84 @@
          (mark-stale!)
          (is (= [] (card-results (lint-report) card))))))))
 
+(defn- give-up-on-dependencies!
+  "Break `card`'s SQL and drain while its dependencies cannot be computed, so the dependency job gives up on it."
+  [card]
+  (do-with-uncomputable-dependencies!
+   card
+   (fn []
+     (update-card-query! card (mt/native-query {:query "SELECT * FROM orderz"}))
+     (deps.findings/drain-pending!)))
+  (is (:terminal (t2/select-one :model/DependencyStatus :entity_type :card :entity_id (:id card)))))
+
+(def ^:private given-up-results
+  [{:ruleId  "validation-exception-error"
+    :detail  "Could not compute the dependencies of this entity."
+    :message "Metabase could not check this entity: Could not compute the dependencies of this entity."
+    :cause   nil}])
+
+(deftest ^:synchronized entity-given-up-without-finding-fails-test
+  (testing "POST /api/ee/lint fails on an entity given up on without a failed finding, as before findings were recorded"
+    (do-with-plain-native-card!
+     (fn [card]
+       (is (= [] (card-results (lint-report) card)))
+       (mt/with-dynamic-fn-redefs [deps.analysis-finding/record-failed-finding! (constantly nil)]
+         (give-up-on-dependencies! card))
+       (is (= given-up-results (map #(dissoc % :entity_id) (card-results (lint-report) card))))))))
+
+(deftest ^:synchronized give-up-finding-write-failure-fails-test
+  (testing "POST /api/ee/lint fails on an entity whose failed finding could not be written when it was given up on"
+    (do-with-plain-native-card!
+     (fn [card]
+       (is (= [] (card-results (lint-report) card)))
+       (let [upsert-analysis! (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
+         (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
+                                     (fn [entity-type entity-id result details]
+                                       (if (and (= (:id card) entity-id) (not result))
+                                         (throw (ex-info "Finding write broke" {}))
+                                         (upsert-analysis! entity-type entity-id result details)))]
+           (give-up-on-dependencies! card)))
+       (is (= given-up-results (map #(dissoc % :entity_id) (card-results (lint-report) card))))))))
+
+(deftest ^:synchronized failed-finding-without-errors-fails-test
+  (testing "POST /api/ee/lint fails on an entity whose stored finding failed with no error recorded"
+    (do-with-plain-native-card!
+     (fn [card]
+       (is (= [] (card-results (lint-report) card)))
+       (t2/update! :model/AnalysisFinding :entity_type :card :entity_id (:id card) {:result false})
+       (is (= [{:ruleId    "validation-exception-error"
+                :entity_id (:entity_id card)
+                :detail    "No error was recorded for this entity."
+                :message   "Metabase could not check this entity: No error was recorded for this entity."
+                :cause     nil}]
+              (card-results (lint-report) card)))
+       (is (= {:status :failed :summary {:errors 1 :warnings 0 :entities 1}}
+              (status-and-summary (filterv #(= (:entity_id card) (:entity_id %))
+                                           (deps.findings/failed-entities)))))))))
+
+(deftest ^:synchronized unknown-error-type-fails-test
+  (testing "POST /api/ee/lint fails on a stored error of a type it does not know, and still reports other entities"
+    (do-with-broken-native-card!
+     (fn [broken-card]
+       (do-with-plain-native-card!
+        (fn [card]
+          (is (= [] (card-results (lint-report) card)))
+          (t2/update! :model/AnalysisFinding :entity_type :card :entity_id (:id card) {:result false})
+          (t2/insert! (t2/table-name :model/AnalysisFindingError) {:analyzed_entity_type "card"
+                                                                   :analyzed_entity_id   (:id card)
+                                                                   :error_type           "validate-missing-column"
+                                                                   :error_detail         "TOTAL"})
+          (let [report (lint-report)]
+            (is (= [{:ruleId    "validation-exception-error"
+                     :entity_id (:entity_id card)
+                     :detail    "Unknown error type validate-missing-column: TOTAL"
+                     :message   "Metabase could not check this entity: Unknown error type validate-missing-column: TOTAL"
+                     :cause     nil}]
+                   (card-results report card)))
+            (is (= ["missing-table-alias"] (map :ruleId (card-results report broken-card)))))))))))
+
 (deftest ^:synchronized unreadable-entity-fails-test
-  (testing "POST /api/ee/lint fails on an entity whose stored row cannot be read, without failing the request"
+  (testing "POST /api/ee/lint reports an entity whose stored row cannot be read, without failing the request"
     (do-with-plain-native-card!
      (fn [card]
        (t2/update! (t2/table-name :model/Card) :id (:id card) {:parameters "[5]"})
@@ -238,24 +337,3 @@
            (is (= ["validation-exception-error"] (map :ruleId (card-results report card)))))
          (finally
            (t2/update! (t2/table-name :model/Card) :id (:id card) {:parameters "[]"})))))))
-
-(deftest ^:synchronized waits-for-running-batch-test
-  (testing "POST /api/ee/lint waits for an analysis batch running elsewhere and reports what it found"
-    (do-with-broken-native-card!
-     (fn [native-card]
-       (deps.test/synchronously-run-dependency-job!)
-       (let [entered      (promise)
-             release      (promise)
-             check-entity (mt/original-fn #'deps.analysis/check-entity)]
-         (mt/with-dynamic-fn-redefs [deps.analysis/check-entity (fn [& args]
-                                                                  (deliver entered true)
-                                                                  @release
-                                                                  (apply check-entity args))]
-           (let [batch (future (task.analysis-finding/run-batch-in-place!))]
-             (is (true? (deref entered 10000 false)))
-             (let [report (future (lint-report))]
-               (is (= ::waiting (deref report 1000 ::waiting)))
-               (deliver release true)
-               (is (= :worked (deref batch 10000 ::timed-out)))
-               (is (= ["missing-table-alias"]
-                      (map :ruleId (card-results (deref report 30000 nil) native-card))))))))))))

@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -16,7 +17,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (def ^:private Column
   "A Honey SQL column keyword, or a string literal standing in for one."
@@ -404,21 +407,30 @@
   (let [model (dependencies/entity-model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
+(defn- database-failure? [e]
+  (and (some #(instance? SQLException %) (u/full-exception-chain e))
+       (not (sql-errors/row-rejected? e))))
+
 (mu/defn readable-entities :- [:sequential :any]
-  "`(read-entities ids)`. If that throws, read each id alone and call `on-unreadable` with the id and exception of each
-  that fails, so one unreadable row doesn't block the rest."
+  "The entities `read-entities` returns for `ids`. When that fails on a row's content, reads each id alone, calling
+  `on-unreadable` with the id and exception of each that fails, so one unreadable row doesn't block the rest. A
+  database failure is rethrown: it isn't about any one row."
   [read-entities :- [:fn {:error/message "a function"} ifn?]
    ids           :- [:set ::deps.dependency-types/entity-id]
    on-unreadable :- [:fn {:error/message "a function"} ifn?]]
   (try
     (vec (read-entities ids))
     (catch Exception e
+      (when (database-failure? e)
+        (throw e))
       (log/warnf "Reading %s entities together failed, reading each on its own: %s" (count ids) (ex-message e))
       (into []
             (mapcat (fn [id]
                       (try
                         (vec (read-entities #{id}))
                         (catch Exception e
+                          (when (database-failure? e)
+                            (throw e))
                           (on-unreadable id e)
                           nil))))
             ids))))
@@ -892,27 +904,34 @@
                                                    [:id            ms/PositiveInt]
                                                    [:entity_id     :string]
                                                    [:name          :string]
-                                                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  "The entities of `entity-type` whose analysis failed, excluding archived and Metabase-managed content."
+                                                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                   [:given_up      [:maybe :boolean]]]]
+  "The entities of `entity-type` whose analysis failed or whose dependencies the dependency job gave up computing, with
+  `given_up` true for the latter, excluding archived and Metabase-managed content."
   [entity-type :- (into [:enum] (keys failed-entity-columns))]
   (let [model                           (deps.dependency-types/dependency-type->model entity-type)
         {:keys [archived? collection?]} (failed-entity-columns entity-type)]
-    (t2/query {:select   (cond-> [:entity.id :entity.entity_id :entity.name]
-                           collection? (conj :entity.collection_id))
-               :from     [[(t2/table-name model) :entity]]
-               :join     [:analysis_finding [:and
-                                             [:= :analysis_finding.entity_id :entity.id]
-                                             [:= :analysis_finding.entity_type (name entity-type)]]]
-               :where    (cond-> [:and
-                                  [:= :analysis_finding.result false]
-                                  (mi/exclude-internal-content-hsql model :table-alias :entity)]
-                           archived? (conj [:= :entity.archived false]))
-               :order-by [[:entity.id :asc]]})))
+    (t2/query {:select    (cond-> [:entity.id :entity.entity_id :entity.name [:dependency_status.terminal :given_up]]
+                            collection? (conj :entity.collection_id))
+               :from      [[(t2/table-name model) :entity]]
+               :left-join [:analysis_finding  [:and
+                                               [:= :analysis_finding.entity_id :entity.id]
+                                               [:= :analysis_finding.entity_type (name entity-type)]]
+                           :dependency_status [:and
+                                               [:= :dependency_status.entity_id :entity.id]
+                                               [:= :dependency_status.entity_type (name entity-type)]]]
+               :where     (cond-> [:and
+                                   [:or
+                                    [:= :analysis_finding.result false]
+                                    [:= :dependency_status.terminal true]]
+                                   (mi/exclude-internal-content-hsql model :table-alias :entity)]
+                            archived? (conj [:= :entity.archived false]))
+               :order-by  [[:entity.id :asc]]})))
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
 
 (mu/defn finding-errors-for-entities
-  "The AnalysisFindingErrors of the entities `entity-type` `entity-ids`, oldest first."
+  "The AnalysisFindingErrors of the entities `entity-type` `entity-ids`, each entity's oldest first."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
   (into []

@@ -481,6 +481,41 @@
         (is (=? {:terminal true :fail_count (deps.settings/dependency-max-failures)}
                 (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)))))))
 
+(defn- with-card-reads-failing!
+  "Run `thunk` with every read of cards among `ids` throwing `e`."
+  [ids e thunk]
+  (let [entities (mt/original-fn #'dependencies.db/entities)]
+    (mt/with-dynamic-fn-redefs [dependencies.db/entities (fn [entity-type entity-ids]
+                                                           (when (and (= :card entity-type) (some ids entity-ids))
+                                                             (throw e))
+                                                           (entities entity-type entity-ids))]
+      (thunk))))
+
+(deftest ^:synchronized transient-read-failure-does-not-give-up-on-entities-test
+  (backfill-all-existing-entities!)
+  (mt/with-premium-features #{}
+    (testing "a read failing with a database error fails the batch, counting against no entity"
+      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/Card {card2-id :id} {:dataset_query (mt/mbql-query products)}]
+        (with-card-reads-failing! #{card1-id card2-id} (java.sql.SQLException. "connection lost" "08006")
+          #(dotimes [_ (deps.settings/dependency-max-failures)]
+             (is (thrown? java.sql.SQLException (backfill-dependencies-single-trigger!)))))
+        (is (every? #(pending? :card %) [card1-id card2-id]))
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id [:in [card1-id card2-id]]
+                             :fail_count [:> 0])))
+        (testing "and the entities compute once the database recovers"
+          (backfill-dependencies-single-trigger!)
+          (assert-processed :card card1-id)
+          (assert-processed :card card2-id))))
+    (testing "a row whose content can't be read is given up on, and the rest of its batch computes"
+      (mt/with-temp [:model/Card {good-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/Card {bad-id :id}  {:dataset_query (mt/mbql-query products)}]
+        (with-card-reads-failing! #{bad-id} (ex-info "corrupt row" {})
+          #(dotimes [_ (deps.settings/dependency-max-failures)]
+             (backfill-dependencies-single-trigger!)))
+        (assert-processed :card good-id)
+        (is (=? {:terminal true} (t2/select-one :model/DependencyStatus :entity_type :card :entity_id bad-id)))))))
+
 (deftest ^:synchronized fatal-error-still-reschedules-test
   (testing "A failure must not leave the job unscheduled. The job is one-shot self-rescheduling with no cron
            backstop, so an Error propagating out of the batch skipped schedule-run! entirely and the chain ended
