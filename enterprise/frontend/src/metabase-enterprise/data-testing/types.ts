@@ -8,6 +8,7 @@ import type {
   DataTestRun,
   DataTestType,
   RunTransformTestResponse,
+  SegmentTest,
   TransformTest,
 } from "metabase-types/api";
 
@@ -28,6 +29,7 @@ export type DataTestSubjectId = number;
 export type DataTestByType = {
   transform: TransformTest;
   card: CardTest;
+  segment: SegmentTest;
 };
 
 export type DataTestQueryResult<T> = {
@@ -45,6 +47,11 @@ export type DataTestRunMutation = readonly [
   }>,
   { isLoading: boolean },
 ];
+
+export type DataTestUrls<T extends DataTest> = {
+  getTestUrl: (test: T) => string;
+  getTestRunsUrl: (test: T, params?: Urls.DataTestRunListParams) => string;
+};
 
 export type DataTestReadOnlyResult = {
   readOnly: boolean;
@@ -69,8 +76,7 @@ export type DataTestTypeDefinition<T extends DataTest> = {
     subjectId: DataTestSubjectId | SkipToken,
   ) => DataTestReadOnlyResult;
   getSubjectId: (test: T) => DataTestSubjectId;
-  getTestUrl: (test: T) => string;
-  getTestRunsUrl: (test: T, params?: Urls.DataTestRunListParams) => string;
+  useTestUrls: () => DataTestUrls<T>;
   trackManualRun: (opts: {
     testId: DataTestId;
     triggeredFrom: DataTestRunTriggeredFrom;

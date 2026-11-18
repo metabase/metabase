@@ -14,6 +14,7 @@ import { trackTransformTestTriggerManualRun } from "../../analytics";
 import type {
   DataTestReadOnlyResult,
   DataTestTypeDefinition,
+  DataTestUrls,
 } from "../../types";
 
 import { TransformLink } from "./TransformLink";
@@ -45,15 +46,19 @@ function useTransformReadOnly(
   };
 }
 
+const TRANSFORM_TEST_URLS: DataTestUrls<TransformTest> = {
+  getTestUrl: (test) => Urls.transformTest(test.transform_id, test.id),
+  getTestRunsUrl: (test, params) =>
+    Urls.transformTestRuns(test.transform_id, test.id, params),
+};
+
 export const transformTestDefinition: DataTestTypeDefinition<TransformTest> = {
   useGetTestQuery: useGetTransformTestQuery,
   useListTestsQuery: useListTransformTestsBySubjectQuery,
   useRunTestMutation: useRunTransformTestMutation,
   useReadOnly: useTransformReadOnly,
   getSubjectId: (test) => test.transform_id,
-  getTestUrl: (test) => Urls.transformTest(test.transform_id, test.id),
-  getTestRunsUrl: (test, params) =>
-    Urls.transformTestRuns(test.transform_id, test.id, params),
+  useTestUrls: () => TRANSFORM_TEST_URLS,
   trackManualRun: trackTransformTestTriggerManualRun,
   getListLabel: () => t`Transform tests`,
   getRunDescription: () =>

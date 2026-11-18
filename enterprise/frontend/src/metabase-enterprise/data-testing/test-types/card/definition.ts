@@ -15,6 +15,7 @@ import { trackCardTestTriggerManualRun } from "../../analytics";
 import type {
   DataTestReadOnlyResult,
   DataTestTypeDefinition,
+  DataTestUrls,
 } from "../../types";
 
 import { CardLink } from "./CardLink";
@@ -50,15 +51,19 @@ function useCardReadOnly(
   };
 }
 
+const CARD_TEST_URLS: DataTestUrls<CardTest> = {
+  getTestUrl: (test) => Urls.dataStudioMetricTest(test.card_id, test.id),
+  getTestRunsUrl: (test, params) =>
+    Urls.dataStudioMetricTestRuns(test.card_id, test.id, params),
+};
+
 export const cardTestDefinition: DataTestTypeDefinition<CardTest> = {
   useGetTestQuery: useGetCardTestQuery,
   useListTestsQuery: useListCardTestsBySubjectQuery,
   useRunTestMutation: useRunCardTestMutation,
   useReadOnly: useCardReadOnly,
   getSubjectId: (test) => test.card_id,
-  getTestUrl: (test) => Urls.dataStudioMetricTest(test.card_id, test.id),
-  getTestRunsUrl: (test, params) =>
-    Urls.dataStudioMetricTestRuns(test.card_id, test.id, params),
+  useTestUrls: () => CARD_TEST_URLS,
   trackManualRun: trackCardTestTriggerManualRun,
   getListLabel: () => t`Tests`,
   getRunDescription: () =>

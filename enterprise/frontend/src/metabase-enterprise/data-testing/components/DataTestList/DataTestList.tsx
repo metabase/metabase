@@ -80,6 +80,7 @@ function DataTestTable<T extends DataTest>({
   readOnly,
 }: DataTestTableProps<T>) {
   const navigate = useNavigate();
+  const { getTestUrl } = definition.useTestUrls();
   const [searchQuery, setSearchQuery] = useState("");
   const columns = useMemo(
     () => getColumns(definition, readOnly),
@@ -88,9 +89,9 @@ function DataTestTable<T extends DataTest>({
 
   const handleRowActivate = useCallback(
     (row: Row<T>) => {
-      navigate(definition.getTestUrl(row.original));
+      navigate(getTestUrl(row.original));
     },
-    [definition, navigate],
+    [getTestUrl, navigate],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -201,6 +202,7 @@ function DataTestMenu<T extends DataTest>({
   test,
 }: DataTestMenuProps<T>) {
   const [runTest] = definition.useRunTestMutation();
+  const { getTestRunsUrl } = definition.useTestUrls();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRun = async () => {
@@ -236,7 +238,7 @@ function DataTestMenu<T extends DataTest>({
         </Menu.Item>
         <Menu.Item
           component={ForwardRefLink}
-          to={definition.getTestRunsUrl(test)}
+          to={getTestRunsUrl(test)}
           leftSection={<Icon name="clock" />}
         >
           {t`View runs`}

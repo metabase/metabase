@@ -31,6 +31,8 @@ export function DataTestOverview<K extends DataTestType>({
     test != null ? definition.getSubjectId(test) : skipToken,
   );
 
+  const { getTestRunsUrl } = definition.useTestUrls();
+
   if (test == null || isLoadingTest || isLoadingReadOnly) {
     return (
       <LoadingAndErrorWrapper
@@ -47,7 +49,7 @@ export function DataTestOverview<K extends DataTestType>({
       <DataTestRunSection
         lastRun={test.last_run}
         description={definition.getRunDescription()}
-        runsUrl={definition.getTestRunsUrl(test)}
+        runsUrl={getTestRunsUrl(test)}
         runButton={
           <DataTestRunButton
             testType={testType}

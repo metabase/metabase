@@ -9,6 +9,7 @@ import type {
   NativeQuerySnippetId,
   SchemaName,
   SegmentId,
+  SegmentTestId,
   TableId,
   WritebackActionId,
 } from "metabase-types/api";
@@ -162,6 +163,33 @@ export function dataStudioPublishedTableSegmentDependencies(
   return `${dataStudioPublishedTableSegment(tableId, segmentId)}/dependencies`;
 }
 
+export function dataStudioPublishedTableSegmentTestList(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/tests`;
+}
+
+export function dataStudioPublishedTableSegmentTest(
+  tableId: TableId,
+  segmentId: SegmentId,
+  testId: SegmentTestId,
+) {
+  return `${dataStudioPublishedTableSegmentTestList(tableId, segmentId)}/${testId}`;
+}
+
+export function dataStudioPublishedTableSegmentTestRuns(
+  tableId: TableId,
+  segmentId: SegmentId,
+  testId: SegmentTestId,
+  params?: DataTestRunListParams,
+) {
+  return dataTestRuns(
+    dataStudioPublishedTableSegmentTest(tableId, segmentId, testId),
+    params,
+  );
+}
+
 type DataModelSegmentParams = {
   databaseId: DatabaseId;
   schemaName: SchemaName;
@@ -188,6 +216,30 @@ export function dataStudioDataModelSegmentDependencies(
   params: DataModelSegmentParams,
 ) {
   return `${dataStudioDataModelSegment(params)}/dependencies`;
+}
+
+export function dataStudioDataModelSegmentTestList(
+  params: DataModelSegmentParams,
+) {
+  return `${dataStudioDataModelSegment(params)}/tests`;
+}
+
+export function dataStudioDataModelSegmentTest(
+  params: DataModelSegmentParams,
+  testId: SegmentTestId,
+) {
+  return `${dataStudioDataModelSegmentTestList(params)}/${testId}`;
+}
+
+export function dataStudioDataModelSegmentTestRuns(
+  params: DataModelSegmentParams,
+  testId: SegmentTestId,
+  runListParams?: DataTestRunListParams,
+) {
+  return dataTestRuns(
+    dataStudioDataModelSegmentTest(params, testId),
+    runListParams,
+  );
 }
 
 export function newDataStudioDataModelSegment({
