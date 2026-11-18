@@ -71,7 +71,7 @@ export function WhyContent({ target }: { target: WhyTarget }) {
 
       {cell.groups.length > 0 && (
         <SidesheetCard title={t`Groups`}>
-          <Stack gap="sm">
+          <Stack gap="lg">
             {getGroupsApplyingFirst(cell).map((group) => (
               <Flex
                 key={group.group_id}

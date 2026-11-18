@@ -118,4 +118,32 @@ describe("WhyContent", () => {
       screen.getByText("The most permissive group applies."),
     ).toBeInTheDocument();
   });
+
+  it("spaces the group rows 16px apart, like the rows of every other list", () => {
+    renderWithProviders(
+      <WhyContent
+        target={{
+          ...SANDBOXED_ORDERS,
+          cell: {
+            value: "unrestricted",
+            group_id: 3,
+            groups: [
+              { group_id: 1, name: "All internal users", value: "blocked" },
+              { group_id: 3, name: "Sales", value: "unrestricted" },
+            ],
+            note: null,
+          },
+          security: null,
+        }}
+      />,
+    );
+
+    // the rows' stack has no role or label to find it by
+    const groupRows = screen
+      .getByText("Sales")
+      .closest('[class*="Stack-root"]');
+    expect(groupRows).toHaveStyle({
+      "--stack-gap": "var(--mantine-spacing-lg)",
+    });
+  });
 });
