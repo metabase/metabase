@@ -11,14 +11,13 @@
   * [[chart-goal-values]]: in-process callers (notifications, dashboard PDF, ...) for a saved chart's goals.
   * [[chart-context-goal-values]]: public, embed and preview routes, with only their shared resolver's output.
 
-  API routes wrap the result in [[goal-values-response]]."
+  API routes wrap the result in [[goal-values-response]], or call [[chart-context-goal-values-response]]."
   (:require
    [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor :as qp]
@@ -86,7 +85,7 @@
   [:map {:closed true}
    [:card                 ::queries.schema/card]
    [:dashcard             {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
-   [:dashboard-id         {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:dashboard            {:optional true} [:maybe ::dashboards.schema/dashboard]]
    [:signed-parameter-ids [:set :string]]])
 
 ;;; ------------------------------------------------ Running sources -------------------------------------------------
@@ -320,16 +319,17 @@
 
 (mu/defn chart-context-goal-values :- ::goal-values
   "Anonymous (public/embed/preview) path; takes only a shared resolver's output. Withholds every goal when the token
-  signs a parameter value, else runs [[chart-goal-values]] as admin with generic error texts."
-  [{:keys [card dashcard dashboard-id signed-parameter-ids]} :- ::chart-context]
+  signs a parameter value, else runs [[chart-goal-values]] as admin, with no current user and generic error texts."
+  [{:keys [card dashcard dashboard signed-parameter-ids]} :- ::chart-context]
   ;; a goal runs without parameter values, and a signed value often separates tenants. Any signed value withholds the
   ;; goals, wired to this card or not: an unwired source can still read tenant data
   (if (seq signed-parameter-ids)
     (let [sources (chart-goal-sources card dashcard)]
       (results-map sources (repeat (failed "withheld" nil))))
-    ;; like the chart's own query: full perms, no new current user. Saving a goal checked its author can read it
+    ;; like the chart's own query: full perms, no current user. Saving a goal checked its author can read it
     (request/as-admin
-      (chart-goal-values card dashcard :dashboard-id dashboard-id :anonymous? true))))
+      (binding [api/*current-user-id* nil]
+        (chart-goal-values card dashcard :dashboard-id (:id dashboard) :anonymous? true)))))
 
 ;;; ---------------------------------------------------- Response ----------------------------------------------------
 
@@ -343,3 +343,8 @@
       (when-not (a/poll! canceled-chan)
         (with-open [writer (BufferedWriter. (OutputStreamWriter. ^OutputStream os StandardCharsets/UTF_8))]
           (json/encode-to result writer {}))))))
+
+(mu/defn chart-context-goal-values-response
+  "[[goal-values-response]] of [[chart-context-goal-values]] for a shared resolver's output."
+  [chart-context :- ::chart-context]
+  (goal-values-response #(chart-context-goal-values chart-context)))
