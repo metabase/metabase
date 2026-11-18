@@ -57,14 +57,24 @@
 ;; JDBC connection properties that are not needed to connect to a warehouse and are rejected for every SQL-JDBC driver.
 ;; Matched as substrings, so a token here also catches its longer spellings (`socketFactory` covers
 ;; `socketFactoryClass`, `socketfactoryname`, `sslsocketfactoryname`; `hostnameverifier` covers `sslhostnameverifier`).
-;;
-;; These are all properties whose value a JDBC driver loads and instantiates as a Java class -- a no-arg constructor
-;; and/or static initializer runs inside the Metabase process -- which is arbitrary-class-instantiation leading to code
-;; execution when a gadget is on the classpath. None is needed to reach a data warehouse.
 (defmethod driver/disallowed-connection-parameters :sql-jdbc
   [_driver]
-  ["socketFactory" "sslfactory" "hostnameverifier" "sslpasswordcallback" "xmlFactoryFactory" "loggerFile"
-   "queryInterceptors" "dnsResolver"])
+  [;; Instantiates an arbitrary class
+   "socketFactory"
+   ;; Instantiates an arbitrary class
+   "sslfactory"
+   ;; Instantiates an arbitrary class
+   "hostnameverifier"
+   ;; Instantiates an arbitrary class
+   "sslpasswordcallback"
+   ;; Instantiates an arbitrary class
+   "xmlFactoryFactory"
+   ;; Writes the driver log to a chosen local file (older pgjdbc; current versions ignore it)
+   "loggerFile"
+   ;; Instantiates an arbitrary class
+   "queryInterceptors"
+   ;; Instantiates an arbitrary class
+   "dnsResolver"])
 
 (defmethod driver/validate-db-details! :sql-jdbc
   [driver details]

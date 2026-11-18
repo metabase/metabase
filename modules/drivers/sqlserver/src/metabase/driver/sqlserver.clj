@@ -293,7 +293,15 @@
         (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
 
 (def ^:private sqlserver-disallowed-parameters
-  ["socketFactoryClass" "socketFactoryConstructorArg" "trustManagerClass" "trustManagerConstructorArg"
+  [;; Instantiates an arbitrary class
+   "socketFactoryClass"
+   ;; The constructor argument for `socketFactoryClass`
+   "socketFactoryConstructorArg"
+   ;; Instantiates an arbitrary class
+   "trustManagerClass"
+   ;; The constructor argument for `trustManagerClass`
+   "trustManagerConstructorArg"
+   ;; Instantiates an arbitrary class
    "accessTokenCallbackClass"])
 
 (defmethod driver/disallowed-connection-parameters :sqlserver

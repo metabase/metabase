@@ -41,6 +41,18 @@
   ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
    "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
 
+(defmethod driver/disallowed-connection-parameters :athena
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Can escalate privileges on Windows servers
+         "AdfsWiaEnabled"
+         ;; Instantiates an Arbitrary Class
+         "CredentialsProvider"
+         ;; Can pick a profile from the host's AWS config files
+         "ProfileName"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
