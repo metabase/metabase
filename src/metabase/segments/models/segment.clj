@@ -58,10 +58,15 @@
     (throw (ex-info (tru "Segment definition must be a full query with a source table.") {:status-code 400})))
   (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
 
+(defn- check-referenced-segments-exist
+  "Throws unless every Segment that `definition`, a new Segment's, refers to exists."
+  [definition]
+  (lib/check-segment-overwrite nil (lib-be/normalize-query definition)))
+
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
   (check-definition definition)
-  (lib/check-segment-overwrite nil (lib-be/normalize-query definition))
+  (check-referenced-segments-exist definition)
   (assoc segment :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Segment

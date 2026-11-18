@@ -110,7 +110,7 @@
                     (t2/hydrate :definition_description)
                     :definition_description))))))
 
-(deftest insert-segment-cycle-detection-test
+(deftest insert-segment-referencing-missing-segment-test
   (testing "Inserting a segment that references a non-existent segment should fail"
     (is (thrown-with-msg?
          Exception
@@ -118,7 +118,9 @@
          (t2/insert! :model/Segment {:name       "Bad Segment"
                                      :creator_id (mt/user->id :rasta)
                                      :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)})))
-    (is (not (t2/exists? :model/Segment :name "Bad Segment"))))
+    (is (not (t2/exists? :model/Segment :name "Bad Segment")))))
+
+(deftest insert-segment-referencing-segment-test
   (testing "Inserting a segment that references an existing segment should succeed"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :definition (price-definition)}
