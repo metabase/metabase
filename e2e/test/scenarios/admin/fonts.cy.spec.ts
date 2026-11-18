@@ -82,6 +82,8 @@ describe("scenarios > admin > fonts", () => {
     // leaves nothing in the page to find it by.
     const measuredOnCanvas: string[] = [];
     const loadedByScript: string[] = [];
+    const everInPage: string[] = [];
+    const fontLoads: string[] = [];
     cy.visit("/", {
       onBeforeLoad: (win) => {
         const recordText = (target: object, method: string) => {
@@ -105,6 +107,34 @@ describe("scenarios > admin > fonts", () => {
           recordText(context, "measureText");
           recordText(context, "fillText");
           recordText(context, "strokeText");
+        });
+
+        // Text that is gone again by the time the page settles.
+        new win.MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            const texts = [
+              mutation.target.textContent ?? "",
+              ...Array.from(
+                mutation.addedNodes,
+                (node) => node.textContent ?? "",
+              ),
+            ];
+            everInPage.push(texts.join("").replace(/[ -\u00ff\s]/g, ""));
+          });
+        }).observe(win.document, {
+          subtree: true,
+          childList: true,
+          characterData: true,
+        });
+        win.document.fonts.addEventListener("loading", () => {
+          fontLoads.push(
+            `started at ${Math.round(win.performance.now())}ms with "${win.document.body?.innerText.slice(0, 80).replace(/\n/g, " | ")}"`,
+          );
+        });
+        win.document.fonts.addEventListener("loadingdone", (event) => {
+          fontLoads.push(
+            `done: ${event.fontfaces.map((face) => `${face.family} ${face.weight} ${face.unicodeRange.slice(0, 7)}`).join(", ")}`,
+          );
         });
 
         const caller = () => new Error().stack?.split("\n")[3]?.trim() ?? "";
@@ -139,8 +169,10 @@ describe("scenarios > admin > fonts", () => {
           scriptChunks.map((face) => `${face.family} ${face.weight}`),
           `script chunks downloaded. Characters outside the latin chunk: ${charactersOutside(
             latinChunk?.unicodeRange ?? "",
-            drawnText(win) + measuredOnCanvas.join(""),
-          ).join(" ")}. Faces loaded by a script: ${loadedByScript.join(", ")}`,
+            drawnText(win) + measuredOnCanvas.join("") + everInPage.join(""),
+          ).join(
+            " ",
+          )}. Faces loaded by a script: ${loadedByScript.join(", ")}. Font loads: ${fontLoads.join(" / ")}`,
         ).to.deep.equal([]);
       }),
     );
