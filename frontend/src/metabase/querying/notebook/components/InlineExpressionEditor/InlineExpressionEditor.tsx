@@ -13,7 +13,7 @@ import {
 } from "metabase/querying/expressions";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Button, Tooltip } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { Editor } from "../../../components/expressions/Editor";
 import type {
@@ -120,6 +120,19 @@ function isOnPlainCode(target: EventTarget) {
   return view != null && !view.composing && !isEnterForTheEditor(view.state);
 }
 
+function getBreakoutKey(
+  query: Lib.Query,
+  stageIndex: number,
+  expressionMode: Lib.ExpressionMode,
+) {
+  if (expressionMode !== "aggregation") {
+    return "";
+  }
+  return Lib.breakouts(query, stageIndex)
+    .map((breakout) => Lib.displayInfo(query, stageIndex, breakout).displayName)
+    .join("\n");
+}
+
 export function InlineExpressionEditor({
   query,
   stageIndex,
@@ -149,6 +162,12 @@ export function InlineExpressionEditor({
   // can be outdated.
   const [previewRun, setPreviewRun] = useState<PreviewRun>();
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  // The groups of an aggregation also change its result, so a preview of
+  // other groups is outdated.
+  const breakoutKey = getBreakoutKey(query, stageIndex, expressionMode);
+  const breakoutKeyRef = useRef(breakoutKey);
+  breakoutKeyRef.current = breakoutKey;
+  const [previewBreakoutKey, setPreviewBreakoutKey] = useState(breakoutKey);
 
   // A change proposed as a diff. The preview runs it, so that the user can
   // check the result before accepting it.
@@ -156,6 +175,7 @@ export function InlineExpressionEditor({
 
   const showPreview = useCallback((run: PreviewRun) => {
     setPreviewRun(run);
+    setPreviewBreakoutKey(breakoutKeyRef.current);
     setPreviewRefreshKey((key) => key + 1);
   }, []);
   // Errors show only after the user asks for a check: preview, refresh or
@@ -199,8 +219,8 @@ export function InlineExpressionEditor({
   const shownSource = proposal?.source ?? editedSource;
   const isPreviewOutdated =
     previewRun != null &&
-    shownSource !== undefined &&
-    shownSource !== previewRun.source;
+    ((shownSource !== undefined && shownSource !== previewRun.source) ||
+      breakoutKey !== previewBreakoutKey);
 
   // A new proposal runs in the preview at once. An accepted one stays in the
   // preview; a rejected one makes the preview outdated.
