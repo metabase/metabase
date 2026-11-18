@@ -994,7 +994,10 @@ __REPORT_MODEL__
       $("rankings").innerHTML = renderRanking("With original queries", "typedScore") + renderRanking("With best queries", "bestScore");
       for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
         row.addEventListener("click", event => {
-          if (event.target.closest("a")) return;
+          const link = event.target.closest("a");
+          if (link && (link.hash !== location.hash || event.button !== 0
+            || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
+          if (link) event.preventDefault();
           $("filter").value = "";
           openCase(row.dataset.id);
           renderList();
