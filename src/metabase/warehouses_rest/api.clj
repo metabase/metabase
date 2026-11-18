@@ -668,6 +668,7 @@
                                   (sync.schedules/schedule-map->cron-strings schedules))
                                 (when (some? auto_run_queries)
                                   {:auto_run_queries auto_run_queries}))))
+        (sync/start-initial-sync! <> nil)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
                                  :database     (u/qualified-name engine)
@@ -963,6 +964,7 @@
           (when (premium-features/enable-cache-granular-controls?)
             (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl})))
         (let [db (warehouses-rest.db/database id)]
+          (sync/start-initial-sync! db existing-database)
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules

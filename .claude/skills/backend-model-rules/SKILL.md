@@ -133,8 +133,8 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
   call per owner per batch. Work that needs committed rows goes in `mdb/do-after-commit` inside the handler.
 - Upkeep (subscription sync, persisted models, driver pools, personal collections, session revoke, dependency marks)
-  runs for every writer. A record of a user action (revision, audit row) needs a non-nil `:user-id`; the writes of an
-  archive cascade carry `:archived-with [model id]` in `:context`, which record consumers read and no hook does.
+  runs for every writer; a writer calls what only it starts (the database API, `sync/start-initial-sync!`). Records
+  (revision, audit row) need a non-nil `:user-id`; archive cascade writes carry `:archived-with [model id]` in context.
 - The request schema is closed and lists only what a caller may set: no derived columns, no `archived_directly`.
 - App-DB queries live in `<module>.db`, caller values bound: `(t2/select-one :model/X :id [:auto/param id])`.
 

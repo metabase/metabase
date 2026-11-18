@@ -32,6 +32,7 @@
   update-field-values-for-table!]
  [metabase.sync.sync
   refingerprint-field!
+  start-initial-sync!
   sync-database!
   sync-table!
   sync-tables-in-background!]

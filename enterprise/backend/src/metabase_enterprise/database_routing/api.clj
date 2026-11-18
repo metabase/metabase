@@ -9,6 +9,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
+   [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -58,18 +60,19 @@
        :body (into {} invalid-destinations)}
       (events/with-event-context {:details {:primary_db_name (:name router-db)
                                             :primary_db_id   (:id router-db)}}
-        (database-routing.db/insert-databases!
-         (map (fn [{:keys [name details]}]
-                {:name               name
-                 :engine             engine
-                 :details            details
-                 :auto_run_queries   auto_run_queries
-                 :is_full_sync       false
-                 :is_on_demand       is_on_demand
-                 :cache_ttl          nil
-                 :router_database_id router_database_id
-                 :creator_id         api/*current-user-id*})
-              destinations))))))
+        (u/prog1 (database-routing.db/insert-databases!
+                  (map (fn [{:keys [name details]}]
+                         {:name               name
+                          :engine             engine
+                          :details            details
+                          :auto_run_queries   auto_run_queries
+                          :is_full_sync       false
+                          :is_on_demand       is_on_demand
+                          :cache_ttl          nil
+                          :router_database_id router_database_id
+                          :creator_id         api/*current-user-id*})
+                       destinations))
+          (run! #(sync/start-initial-sync! % nil) <>))))))
 
 (defn- delete-router!
   [db-id]
