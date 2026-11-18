@@ -54,7 +54,7 @@
   {:track    [:card_id :action_id :dashboard_id :dashboard_tab_id :row :col :size_x :size_y :parameter_mappings
               :inline_parameters :visualization_settings]
    :skip     [:entity_id]
-   :parent   {:model :model/Dashboard :key :dashboard_id :as :dashcards}
+   :parent   {:model :model/Dashboard :key :dashboard_id}
    :snapshot snapshot-series})
 
 (t2/deftransforms :model/DashboardCard

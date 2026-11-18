@@ -36,17 +36,26 @@
                                                                     "FakeCard"      "FakeCard"))]
     (thunk)))
 
+(defn- snapshot-serialized
+  [_rows snapshots]
+  (mapv #(assoc % :serialized true) snapshots))
+
+(defn- revert-faked-card!
+  [_id _user-id snapshot]
+  (reset! reverted-to (dissoc snapshot :serialized)))
+
+(defn- describe-faked-card
+  [o1 o2 _names]
+  (when o1
+    [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
+
 (defmethod revisions.spec/spec ::FakedCard
   [_model]
   {:track    [:name :serialized]
    :skip     []
-   :snapshot (fn [_rows snapshots]
-               (mapv #(assoc % :serialized true) snapshots))
-   :revert!  (fn [_id _user-id snapshot]
-               (reset! reverted-to (dissoc snapshot :serialized)))
-   :describe (fn [o1 o2 _names]
-               (when o1
-                 [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))})
+   :snapshot snapshot-serialized
+   :revert!  revert-faked-card!
+   :describe describe-faked-card})
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revisions.tu/push-revision!

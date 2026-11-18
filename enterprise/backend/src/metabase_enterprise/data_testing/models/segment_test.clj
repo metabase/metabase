@@ -78,11 +78,11 @@
   ;; segment is not enough.
   (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
 
-(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/segment (:segment_id instance))
-                                               (t2/hydrate :can_read)
-                                               mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
+  "Add whether the current user can read the segment of each segment test, loading the segments at once."
+  [_model k segment-tests]
+  (data-testing.models/with-readable-subjects k segment-tests :segment_id
+    (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
 
 (methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_write]
   [_model k instance]
@@ -131,15 +131,16 @@
 (def ^:private revision-columns
   [:segment_id :name :description :inputs :expectations])
 
+(defn- revert-segment-test!
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (update-segment-test! id (select-keys snapshot revision-columns)))
+
 (defmethod revisions/spec :model/SegmentTest [_model]
-  {:track           revision-columns
-   :skip            [:creator_id :entity_id]
-   :authorize       :snapshot
-   :author          :creator_id
-   :revert-update?  true
-   :revert!         (fn [id _user-id snapshot]
-                      (update-segment-test! id (select-keys snapshot revision-columns)))
-   :check-available data-testing.models/check-revert-available})
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-segment-test!})
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

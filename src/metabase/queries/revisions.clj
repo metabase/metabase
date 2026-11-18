@@ -14,6 +14,11 @@
                 (map (juxt :name #(select-keys % keys*))))
           metadata)))
 
+(defn always-same?
+  "Whether a column that no change of makes a revision is unchanged, which it always is."
+  [_before _after]
+  true)
+
 (defn same-result-metadata?
   "Whether the result metadata of the card `before` is that of the card `after`, as far as a revision records: of a
   model it is what a user sets in it, of any other card nothing, for the product recomputes it."

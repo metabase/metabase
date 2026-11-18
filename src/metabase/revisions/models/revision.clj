@@ -59,12 +59,11 @@
 
 (defn- nest-children
   [model rows snapshots*]
-  (reduce-kv (fn [acc k child-model]
-               (let [hydration-key (:as (revisions.spec/parent child-model))]
-                 (mapv (fn [row snapshot]
-                         (assoc snapshot k (snapshots child-model (child-rows row hydration-key))))
-                       rows
-                       acc)))
+  (reduce-kv (fn [acc k {child-model :model, hydration-key :as}]
+               (mapv (fn [row snapshot]
+                       (assoc snapshot k (snapshots child-model (child-rows row hydration-key))))
+                     rows
+                     acc))
              snapshots*
              (revisions.spec/children model)))
 
@@ -179,13 +178,6 @@
   (if (= :snapshot (:authorize (revisions.spec/spec model)))
     (mapv boolean (map mi/can-read? (t2/hydrate (mapv #(t2/instance model %) objects) :can_read)))
     (mapv (constantly true) objects)))
-
-(defn check-revert-available
-  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs, which the
-  `:check-available` of its spec checks. A model without one needs none."
-  [model]
-  (when-let [f (:check-available (revisions.spec/spec model))]
-    (f)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -362,7 +354,6 @@
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))
-            own-update?              (boolean (:revert-update? (revisions.spec/spec entity)))
             record-reversion!        #(when-not already-in-target-state?
                                         (revisions.db/insert-revision-returning! {:model        model-name
                                                                                   :model_id     id
@@ -373,8 +364,7 @@
             in-batch                 (events/with-event-context {:reverting? true}
                                        (events/with-batched-events
                                          (revert-to-revision! entity id user-id serialized-instance)
-                                         (when-not own-update?
-                                           [(revisions.db/latest-revision model-name id) (record-reversion!)])))
+                                         [(revisions.db/latest-revision model-name id) (record-reversion!)]))
             [last-revision new-revision] (or in-batch
                                              [(revisions.db/latest-revision model-name id) (record-reversion!)])]
         (if new-revision

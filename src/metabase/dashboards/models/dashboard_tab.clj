@@ -37,7 +37,7 @@
 (defmethod revisions/spec :model/DashboardTab [_model]
   {:track  [:name :position :dashboard_id]
    :skip   [:entity_id]
-   :parent {:model :model/Dashboard :key :dashboard_id :as :tabs}})
+   :parent {:model :model/Dashboard :key :dashboard_id}})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

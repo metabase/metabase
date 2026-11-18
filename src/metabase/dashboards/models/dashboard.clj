@@ -76,8 +76,8 @@
    :skip     [:caveats :collection_position :creator_id :embedding_params :embedding_type :enable_embedding :entity_id
               :initially_published_at :last_viewed_at :made_public_by_id :points_of_interest :position
               :public_uuid :public_uuid_prefix :show_in_getting_started :view_count]
-   :children {:cards :model/DashboardCard
-              :tabs  :model/DashboardTab}
+   :children {:cards {:model :model/DashboardCard :as :dashcards}
+              :tabs  {:model :model/DashboardTab :as :tabs}}
    :revert!  dashboards.revisions/revert-dashboard!
    :describe dashboards.revisions/describe-change})
 

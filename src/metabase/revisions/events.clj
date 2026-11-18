@@ -38,7 +38,7 @@
     (when (and spec
                (not (:parent spec))
                (#{:create :update} operation)
-               (or (not (:reverting? context)) (:revert-update? spec))
+               (not (:reverting? context))
                (user-edit? event))
       [model (:id object)])))
 
@@ -86,7 +86,7 @@
 (defn- without-children
   "`row` of `model` with no child rows, so that nothing loads them."
   [model row]
-  (reduce (fn [row child-model] (assoc row (:as (revisions.spec/parent child-model)) []))
+  (reduce (fn [row {hydration-key :as}] (assoc row hydration-key []))
           row
           (vals (revisions.spec/children model))))
 
@@ -95,10 +95,8 @@
   them."
   [[model id] events]
   (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
-        user-id    (some :user-id events)
-        author     (:author (revisions.spec/spec model))
-        creator-id (when (and user-id own author) (get (:object own) author))]
-    (when-let [user-id (or creator-id user-id)]
+        user-id    (some :user-id events)]
+    (when user-id
       (try
         (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
                                       (revisions.db/entity model id))

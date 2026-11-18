@@ -10,28 +10,27 @@
   Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists. All
   the other keys are optional:
 
-  - `:parent`, `{:model parent-model :key column :as hydration-key}`: a row of this model belongs to the Revision of
-    the row of `parent-model` whose id its `column` holds, a parent that has a `:parent` of its own passing it on up.
-    `:as` is the key under which the parent hydrates these rows. A snapshot of such a row keeps its `:id`.
-  - `:children`, a map from a key to a child model: the snapshot nests the snapshots of the child rows under the key.
+  - `:parent {:model parent-model :key column}`: a row of this model belongs to the Revision of the row of
+    `parent-model` whose id its `column` holds, a parent that has a `:parent` of its own passing it on up. A snapshot
+    of such a row keeps its `:id`.
+  - `:children`, a map from a key to `{:model child-model :as hydration-key}`: the snapshot nests the snapshots of the
+    child rows under the key, the child rows being those that the row hydrates under `hydration-key`.
   - `:same?`, a map from a column to a fn of the row before and the row after, true when the column is unchanged,
     `=` of the two values by default.
   - `:snapshot`, a fn of a vector of rows and the vector of their snapshots returning the snapshots to store, for what
     the columns alone do not say.
-  - `:defaults`, a map from a column to the value that a snapshot recorded without it is read with.
+  - `:defaults`, a map from a column to the value that a snapshot recorded without it is read with, as when it was
+    recorded before the column existed.
   - `:before-revert`, a fn of the id, the id of the user and a snapshot returning the snapshot to write, which checks
     and upgrades the snapshot, identity by default.
   - `:revert!`, a fn of the id, the id of the user and a snapshot that replaces the revert of the tracked columns.
-  - `:revert-update?`, true when the revert of the row makes a Revision of its own update, which the Revision of the
-    reversion follows.
   - `:describe`, a fn of the snapshots before and after and the names that [[metabase.revisions.models.revision]]
     gives returning the strings that describe the change, which replaces the description of the changed columns.
   - `:diff-columns`, the columns whose change the diff of two snapshots lists, each as `{column {:before :after}}`,
-    in place of a `{:before :after}` of every changed column.
+    in place of a `{:before :after}` of every changed column, the shape that the history of a Segment or a Measure
+    reads.
   - `:authorize`, `:snapshot` to check each snapshot against the current user's permissions on its own, `:current`
-    (the default) to let whoever reads the current row read its history.
-  - `:author`, the column that names the author of the creation Revision, the user of the write by default.
-  - `:check-available`, a fn of no arguments that throws when the model's revert is not available."
+    (the default) to let whoever reads the current row read its history."
   (:require
    [toucan2.model :as t2.model]))
 

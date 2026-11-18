@@ -45,11 +45,11 @@
               root  (last chain)
               top   (last (butlast chain))]
           (is (nil? (revisions.spec/parent root)))
-          (is (contains? (set (vals (revisions.spec/children root))) top)))))))
+          (is (contains? (into #{} (map :model) (vals (revisions.spec/children root))) top)))))))
 
 (deftest children-test
   (doseq [model (revisioned-models!)
-          [k child-model] (revisions.spec/children model)]
+          [k {child-model :model, hydration-key :as}] (revisions.spec/children model)]
     (testing (str model " nests " child-model " under " k)
       (is (= model (:model (revisions.spec/parent child-model))))
-      (is (some? (:as (revisions.spec/parent child-model)))))))
+      (is (keyword? hydration-key)))))

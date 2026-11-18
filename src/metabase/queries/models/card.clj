@@ -1631,7 +1631,7 @@
                    :document_id :embedding_params :embedding_type :enable_embedding :entity_id
                    :initially_published_at :last_used_at :legacy_query :made_public_by_id :metabase_version
                    :metabot_chart_id :metabot_conversation_id :public_uuid :public_uuid_prefix :view_count]
-   :same?         {:card_schema     (constantly true)
+   :same?         {:card_schema     queries.revisions/always-same?
                    :result_metadata queries.revisions/same-result-metadata?}
    :snapshot      queries.revisions/snapshot-metadata
    :defaults      {:card_schema starting-card-schema-version}

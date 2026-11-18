@@ -127,9 +127,21 @@
           (or (mi/superuser?)
               (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TransformTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/transform (:transform_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(defn with-readable-subjects
+  "Add to each of the saved `tests` whether the current user can read its subject, as `:can_read` in its metadata, the
+  `subjects` of all the tests loaded together, the subject of a test being the one whose id its `subject-key` holds,
+  and none, which no one can read, when it has been deleted."
+  [k tests subject-key subjects]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects :can_read))]
+    (for [saved-test tests]
+      (when saved-test
+        (vary-meta saved-test assoc k (boolean (some-> (get id->subject (subject-key saved-test)) mi/can-read?)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_read]
+  "Add whether the current user can read the transform of each transform test, loading the transforms at once."
+  [_model k transform-tests]
+  (with-readable-subjects k transform-tests :transform_id
+    (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
   "Add whether the current user can write each transform test, loading their transforms at once and checking each
@@ -207,15 +219,16 @@
   []
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
+(defn- revert-transform-test!
+  [id _user-id snapshot]
+  (check-revert-available)
+  (update-transform-test! id (select-keys snapshot revision-columns)))
+
 (defmethod revisions/spec :model/TransformTest [_model]
-  {:track           revision-columns
-   :skip            [:creator_id :entity_id]
-   :authorize       :snapshot
-   :author          :creator_id
-   :revert-update?  true
-   :revert!         (fn [id _user-id snapshot]
-                      (update-transform-test! id (select-keys snapshot revision-columns)))
-   :check-available check-revert-available})
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-transform-test!})
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

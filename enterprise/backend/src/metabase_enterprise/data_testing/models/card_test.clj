@@ -81,9 +81,11 @@
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
   (card-allows? mi/can-read? :can_read (:card_id card-test)))
 
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/card (:card_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_read]
+  "Add whether the current user can read the card of each card test, loading the cards at once."
+  [_model k card-tests]
+  (data-testing.models/with-readable-subjects k card-tests :card_id
+    (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
 
 (methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
   [_model k instance]
@@ -133,15 +135,16 @@
 (def ^:private revision-columns
   [:card_id :name :description :inputs :expectations])
 
+(defn- revert-card-test!
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (update-card-test! id (select-keys snapshot revision-columns)))
+
 (defmethod revisions/spec :model/CardTest [_model]
-  {:track           revision-columns
-   :skip            [:creator_id :entity_id]
-   :authorize       :snapshot
-   :author          :creator_id
-   :revert-update?  true
-   :revert!         (fn [id _user-id snapshot]
-                      (update-card-test! id (select-keys snapshot revision-columns)))
-   :check-available data-testing.models/check-revert-available})
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-card-test!})
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
