@@ -115,7 +115,10 @@
      :mean-hits (zipmap engines (map #(mean (comp count %) results) engines))
      :pairwise  (zipmap engine-pairs
                         (for [[left right] engine-pairs]
-                          (merge {:equal 0, :left-superset 0, :left-subset 0, :incomparable 0}
+                          (merge {:equal         0
+                                  :left-superset 0
+                                  :left-subset   0
+                                  :incomparable  0}
                                  (frequencies (map #(relation (% left) (% right)) results)))))}))
 
 (defn- score-summary
@@ -133,9 +136,10 @@
   "Summarize how the engines' results relate, for identical and adapted queries.
   Comparisons are scored against their correct results twice: `:scores` for each engine's adapted query, and
   `:typed-scores` for the scenario query as typed."
-  [cases]
-  (let [translations (translation-rows cases)]
-    {:same-query   (membership-summary (scenario-rows cases))
-     :translations (assoc (membership-summary translations)
-                          :scores       (score-summary translations :best)
-                          :typed-scores (score-summary translations :typed))}))
+  ([cases]
+   (summary (scenario-rows cases) (translation-rows cases)))
+  ([scenarios translations]
+   {:same-query   (membership-summary scenarios)
+    :translations (assoc (membership-summary translations)
+                         :scores       (score-summary translations :best)
+                         :typed-scores (score-summary translations :typed))}))
