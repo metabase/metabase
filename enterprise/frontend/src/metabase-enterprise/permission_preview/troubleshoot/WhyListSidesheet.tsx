@@ -375,26 +375,30 @@ const ITEM_ICONS: Record<ItemType, IconName> = {
   metric: "metric",
 };
 
-/** One line under the title: the item's icon and name, which truncates, a table's database, then "as {name}". */
+/** Under the title: the item's icon and name, which wraps, a table's database after it, then "as {name}" on its own line. */
 function ItemLine({ icon, name, databaseName, whoName }: SheetHeading) {
   return (
-    <Flex align="center" gap="xs" wrap="nowrap" miw={0}>
-      <Icon name={icon} c="text-secondary" style={{ flexShrink: 0 }} />
-      <Tooltip label={name}>
-        <Text fw="bold" truncate="end" miw={0}>
+    <Flex align="flex-start" gap="xs" wrap="nowrap" miw={0}>
+      <Icon
+        name={icon}
+        c="text-secondary"
+        style={{ flexShrink: 0, marginTop: "0.1875rem" }}
+      />
+      <Stack gap={0} miw={0}>
+        <Text size="lg" fw="bold" lh="1.375rem">
           {name}
+          {databaseName != null && (
+            <Text component="span" size="sm" fw="normal" c="text-secondary">
+              {` · ${databaseName}`}
+            </Text>
+          )}
         </Text>
-      </Tooltip>
-      {databaseName != null && (
-        <Text size="sm" c="text-secondary" truncate="end" miw={0}>
-          {`· ${databaseName}`}
-        </Text>
-      )}
-      {whoName != null && (
-        <Text size="sm" c="text-secondary" style={{ flexShrink: 0 }}>
-          {t`as ${whoName}`}
-        </Text>
-      )}
+        {whoName != null && (
+          <Text size="sm" c="text-secondary">
+            {t`as ${whoName}`}
+          </Text>
+        )}
+      </Stack>
     </Flex>
   );
 }

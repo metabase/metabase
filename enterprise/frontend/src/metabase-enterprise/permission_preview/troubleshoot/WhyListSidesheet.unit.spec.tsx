@@ -204,6 +204,21 @@ describe("WhyListSidesheet", () => {
     expect(status).not.toHaveTextContent("Sales reports");
   });
 
+  it("shows a long item name in full, not cut, with who it's for on its own line below", async () => {
+    const longName =
+      "Revenue by product category and month, all regions, compared with last year";
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      dashboardName: longName,
+    });
+
+    const name = await screen.findByText(longName);
+    expect(name).not.toHaveAttribute("data-truncate");
+    const who = screen.getByText("as Sandy Sales");
+    expect(who).not.toHaveAttribute("data-truncate");
+    expect(name).not.toContainElement(who);
+  });
+
   it("says on hover or focus that the dashboard's collection decides", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
     const info = await screen.findByRole("button", {
@@ -963,6 +978,8 @@ type SetupOpts = {
   mainCollections?: PreviewCollectionsResponse;
   sharedCollections?: PreviewCollectionsResponse;
   tenantCollections?: PreviewCollectionsResponse;
+  /** The opened dashboard's name, Sales overview unless given. */
+  dashboardName?: string;
   /** The tables the dashboard uses, Orders unless given. */
   tableIds?: number[];
   /** Whether the dashboard opens, and whether its cards load; both allowed unless given. */
@@ -989,6 +1006,7 @@ function setup({
   },
   sharedCollections = NO_COLLECTIONS,
   tenantCollections = NO_COLLECTIONS,
+  dashboardName = SALES_OVERVIEW.name,
   tableIds = [ORDERS_ID],
   dashboardRead = ALLOW,
   dashboardQuery = ALLOW,
@@ -1000,6 +1018,7 @@ function setup({
   setupPermissionPreviewCollectionsEndpoint("tenant", tenantCollections);
   fetchMock.get("path:/api/ee/permission_debug/preview/item-scope", {
     ...SALES_OVERVIEW,
+    name: dashboardName,
     table_ids: tableIds,
   });
   setupPermissionPreviewDataEndpoint(DATA);
