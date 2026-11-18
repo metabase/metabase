@@ -59,6 +59,9 @@ const unchainedTtagContextRestriction = {
     "Unchained ttag c() — its strings are dropped from the translation template. Chain it inline: c('context').t`...`",
 };
 
+const UI_SELF_CONTAINED_MESSAGE =
+  "`metabase/ui` is published as the `@metabase/ui` package and must be self-contained: it may import only itself (`metabase/ui`, `metabase/ui/...`) and third-party packages, not app code, Emotion or kbar. Inject the dependency from the app instead.";
+
 const DAYJS_RESTRICTED_IMPORT_MESSAGE =
   "Please import dayjs from `metabase/dayjs` instead.";
 const dayjsRestrictedPath = {
@@ -711,6 +714,66 @@ const configs = [
               name: "@emotion/react",
               message:
                 "Please use components from `metabase/ui` instead and style them using css modules.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // `/ui` is published as the `@metabase/ui` package, so its source cannot
+    // import app code. Specs and stories may.
+    files: ["frontend/src/metabase/ui/**/*.{ts,tsx}"],
+    ignores: [
+      "**/*.unit.spec.*",
+      "**/*.stories.*",
+      "**/stories-data.*",
+      "**/tests/*",
+    ],
+    rules: {
+      // `/ui` registers the dayjs plugins it needs itself instead of using `metabase/dayjs`.
+      "no-restricted-syntax": [
+        "error",
+        unchainedTtagContextRestriction,
+        {
+          selector: "Literal[value=/mb-base-color-/]",
+          message:
+            "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+        },
+      ],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "metabase/*",
+                "!metabase/ui",
+                "!metabase/ui/**",
+                "metabase-types",
+                "metabase-types/*",
+                "metabase-lib",
+                "metabase-lib/*",
+                "metabase-enterprise",
+                "metabase-enterprise/*",
+                "embedding",
+                "embedding/*",
+                "embedding-*",
+                "embedding-*/*",
+                "cljs/*",
+                "assets/*",
+                "__support__/*",
+                "@emotion/*",
+              ],
+              message: UI_SELF_CONTAINED_MESSAGE,
+            },
+          ],
+          paths: [
+            { name: "metabase", message: UI_SELF_CONTAINED_MESSAGE },
+            { name: "kbar", message: UI_SELF_CONTAINED_MESSAGE },
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
             },
           ],
         },

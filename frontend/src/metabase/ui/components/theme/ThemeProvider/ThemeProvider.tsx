@@ -5,10 +5,9 @@ import { MantineProvider } from "@mantine/core";
 import { type ReactNode, useContext, useMemo } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
-import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
-import { getCspNonce } from "metabase/utils/csp";
-import { deepMerge } from "metabase/utils/deep-merge";
-import type { ColorSettings } from "metabase-types/api";
+import type { ResolvedColorScheme } from "metabase/ui/colors/types/color-scheme";
+import type { ColorSettings } from "metabase/ui/colors/types/color-settings";
+import { deepMerge } from "metabase/ui/utils/deep-merge";
 
 import { getThemeOverrides } from "../../../theme";
 import "../../overlays/Popover/register-popover-dropdown";
@@ -16,6 +15,7 @@ import { useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
+import { getStyleNonce } from "./get-style-nonce";
 
 export interface ThemeProviderProps {
   children: ReactNode;
@@ -117,7 +117,7 @@ export const ThemeProvider = ({
     <MantineProvider
       theme={theme}
       forceColorScheme={resolvedColorScheme}
-      getStyleNonce={() => getCspNonce() ?? "metabase"}
+      getStyleNonce={getStyleNonce}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={cssVariablesSelector}
       withCssVariables={withCssVariables}

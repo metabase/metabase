@@ -1,11 +1,16 @@
+// eslint-disable-next-line eslint-js/no-restricted-imports -- temporary until Emotion is removed from the app
 import createCache from "@emotion/cache";
 // eslint-disable-next-line eslint-js/no-restricted-imports
 import { CacheProvider } from "@emotion/react";
+import { getNonce } from "get-nonce";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
-import { isCypressActive } from "metabase/env";
-import { getCspNonce } from "metabase/utils/csp";
+// Same expression as `isCypressActive` in metabase/env, guarded for non-browser bundles.
+const isCypressActive =
+  typeof window !== "undefined" &&
+  // @ts-expect-error window.Cypress is not typed
+  !!window.Cypress;
 
 interface EmotionCacheProviderProps {
   children?: ReactNode;
@@ -17,7 +22,7 @@ export const EmotionCacheProvider = ({
   const emotionCache = useMemo(() => {
     const cache = createCache({
       key: "emotion",
-      nonce: getCspNonce(),
+      nonce: getNonce(),
       ...(isCypressActive && { speedy: true }),
     });
     // This disables :first-child not working in SSR warnings

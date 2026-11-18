@@ -7,10 +7,11 @@ import {
 } from "@mantine/dates";
 import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
+import dayjs from "dayjs";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import quarterOfYear from "dayjs/plugin/quarterOfYear";
 import { type Ref, forwardRef } from "react";
 import { c } from "ttag";
-
-import { dayjs } from "metabase/dayjs";
 
 import CalendarS from "../Calendar/Calendar.module.css";
 
@@ -94,7 +95,14 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
   );
 });
 
+// Registering is idempotent; done lazily to keep module import side-effect free.
+function ensureDayjsPlugins() {
+  dayjs.extend(advancedFormat);
+  dayjs.extend(quarterOfYear);
+}
+
 function getQuarters(date: Date) {
+  ensureDayjsPlugins();
   return Array.from({ length: 4 }, (_, index) =>
     dayjs(date).startOf("year").add(index, "quarter").toDate(),
   );
@@ -107,6 +115,7 @@ function getQuarterFormat() {
 }
 
 function isSelected(value: DateStringValue, quarter: Date) {
+  ensureDayjsPlugins();
   const date = dayjs(value);
   return date.isSame(quarter, "year") && date.isSame(quarter, "quarter");
 }
