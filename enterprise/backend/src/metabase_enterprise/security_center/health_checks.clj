@@ -12,6 +12,7 @@
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.read-only-connections :as read-only-connections]
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -436,14 +437,6 @@
     (catch Exception e
       (log/errorf e "Health check %s could not refresh" (name id)))))
 
-(mu/defn refresh-and-run-checks :- [:sequential ::security-center.schema/health-check]
-  "Refreshes every background check that applies, then runs every check that applies, as [[run-checks]] does. Blocks
-  until every refresh is done; each `:refresh` caps its own duration."
-  []
-  ;; one after the other: there is one background check so far
-  (run! refresh-check! (background-checks))
-  (run-checks))
-
 (defn last-refreshed-at
   "When the newest stored refresh of a background check ran, or nil while no refresh has stored a result."
   []
@@ -452,6 +445,46 @@
            (keep (comp stored-checked-at :id))
            seq
            (apply t/max)))
+
+(def ^:private refresh-lock
+  ::refresh-lock)
+
+(defn- refresh-lock-held-elsewhere?
+  ;; the exception that the lock throws when it times out names the lock; an exception from inside the refresh that
+  ;; names another lock must propagate
+  [e]
+  (boolean (some #{(str (namespace refresh-lock) "/" (name refresh-lock))}
+                 (:lock-names (ex-data e)))))
+
+(defn- refreshed-within?
+  [duration]
+  ;; another process may have stored a result after this process cached the setting
+  (binding [config/*disable-setting-cache* true]
+    (when-let [at (last-refreshed-at)]
+      (t/after? at (t/minus (t/offset-date-time) duration)))))
+
+(mu/defn refresh-and-run-checks :- [:sequential ::security-center.schema/health-check]
+  "Refreshes every background check that applies, then runs every check that applies, as [[run-checks]] does. Blocks
+  until every refresh is done; each `:refresh` caps its own duration.
+
+  One process in the cluster refreshes at a time. When another process is refreshing, this one does not refresh and
+  does not wait: it runs the checks on the results stored before. With `:skip-if-refreshed-within`, a duration, it
+  does not refresh either when a stored result is newer than that."
+  ([]
+   (refresh-and-run-checks {}))
+  ([{:keys [skip-if-refreshed-within]} :- [:map [:skip-if-refreshed-within {:optional true} (ms/InstanceOfClass java.time.Duration)]]]
+   (try
+     ;; detached: the refresh can take up to 30 s, and the lock must not keep an app-DB transaction open for that long
+     (cluster-lock/with-detached-cluster-lock {:lock refresh-lock, :timeout-seconds 1, :retry-config {:max-retries 0}}
+       (if (and skip-if-refreshed-within (refreshed-within? skip-if-refreshed-within))
+         (log/info "Health checks refreshed recently; using the stored results")
+         ;; one after the other: there is one background check so far
+         (run! refresh-check! (background-checks))))
+     (catch Throwable e
+       (if (refresh-lock-held-elsewhere? e)
+         (log/info "Another process is refreshing the health checks; using the stored results")
+         (throw e))))
+   (run-checks)))
 
 (defn background-check-without-result?
   "Whether a background check that applies has no stored result yet."

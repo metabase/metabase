@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase.premium-features.core :as premium-features]
@@ -18,12 +19,14 @@
 (def ^:private trigger-key "metabase.task.security-center.run-health-checks.trigger")
 
 (defn run-health-checks!
-  "Refreshes every background health check, runs every health check and sets the gauges. Does nothing when Security
-  Center is off."
+  "Refreshes every background health check unless a refresh ran in the last 5 minutes, runs every health check and
+  sets the gauges. Does nothing when Security Center is off."
   []
   (when (premium-features/security-center-enabled?)
     (let [timer  (u/start-timer)
-          checks (health-checks/refresh-and-run-checks)]
+          ;; every node that starts before the first refresh has stored a result triggers this job; one refresh among
+          ;; them is enough
+          checks (health-checks/refresh-and-run-checks {:skip-if-refreshed-within (t/minutes 5)})]
       (metrics/set-health-check-gauges! checks)
       (metrics/set-health-checks-last-run!)
       (log/infof "Ran %d health checks in %sms: %s"

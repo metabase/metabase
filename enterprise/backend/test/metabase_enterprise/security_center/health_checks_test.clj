@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.security-center.schema :as security-center.schema]
@@ -457,3 +458,55 @@
         (is (= {:status "fail", :message "The connection user can write"}
                (health-checks/stored-result :read-only-connections))
             "the stored result is read back from JSON: keywords that are values come back as strings")))))
+
+(defn- lock-timeout
+  "Throws what the cluster lock throws when another process holds `lock-name` past the timeout."
+  [lock-name]
+  (fn [_opts _thunk]
+    (throw (ex-info (str "Failed to obtain cluster lock: " lock-name) {:lock-names [lock-name]}))))
+
+;; On H2 the cluster lock waits for the lock instead of timing out, so these tests replace the lock to show what
+;; another process that holds it does.
+(deftest refresh-lock-held-elsewhere-test
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results nil]
+      (let [calls (atom 0)]
+        (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh calls))}]
+          (health-checks/refresh-and-run-checks)
+          (testing "when another process holds the refresh lock, the checks run on the stored result without a refresh"
+            (mt/with-dynamic-fn-redefs [cluster-lock/do-with-detached-cluster-lock
+                                        (lock-timeout "metabase-enterprise.security-center.health-checks/refresh-lock")]
+              (is (=? [{:status :fail, :items [{:message "The connection user can write"}]}]
+                      (health-checks/refresh-and-run-checks)))
+              (is (= 1 @calls))))
+          (testing "a timeout on another lock propagates"
+            (mt/with-dynamic-fn-redefs [cluster-lock/do-with-detached-cluster-lock (lock-timeout "metabase/other-lock")]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"metabase/other-lock"
+                                    (health-checks/refresh-and-run-checks)))
+              (is (= 1 @calls)))))))))
+
+(deftest refresh-skips-a-recent-refresh-test
+  (mt/with-premium-features #{:admin-security-center}
+    (let [calls (atom 0)]
+      (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh calls))}]
+        (mt/with-temporary-setting-values [security-center-health-check-results nil]
+          (testing "without a stored result, the refresh runs"
+            (health-checks/refresh-and-run-checks {:skip-if-refreshed-within (t/minutes 5)})
+            (is (= 1 @calls)))
+          (testing "a stored result newer than the duration skips the refresh"
+            (is (=? [{:status :fail, :items [{:message "The connection user can write"}]}]
+                    (health-checks/refresh-and-run-checks {:skip-if-refreshed-within (t/minutes 5)})))
+            (is (= 1 @calls)))
+          (testing "without the option, a recent result does not skip the refresh"
+            (health-checks/refresh-and-run-checks)
+            (is (= 2 @calls))))
+        (mt/with-temporary-setting-values [security-center-health-check-results
+                                           {:read-only-connections {:result     {:status "pass", :message "Read-only"}
+                                                                    :checked_at "2026-01-01T00:00:00Z"}}]
+          (testing "a stored result older than the duration does not skip the refresh"
+            (is (=? [{:status :fail}]
+                    (health-checks/refresh-and-run-checks {:skip-if-refreshed-within (t/minutes 5)})))
+            (is (= 3 @calls))))
+        (testing "the duration must be a java.time.Duration"
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (health-checks/refresh-and-run-checks {:skip-if-refreshed-within 300}))))))))
