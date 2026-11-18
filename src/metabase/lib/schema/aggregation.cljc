@@ -64,7 +64,6 @@
   "Options specific to `:percentile` and `:median`: `:percentile-type` (see [[::common/percentile-type]]). Absent means
   `:continuous`."
   [:map
-   {:closed true}
    [:percentile-type {:optional true} ::percentile-options.percentile-type]])
 
 ;;; apparently median and percentile only work for numeric args in Postgres, as opposed to anything orderable. Not

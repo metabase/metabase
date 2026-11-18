@@ -409,8 +409,6 @@
     :metabase.query-processor.util.add-alias-info/source
     :metabase.query-processor.util.add-alias-info/none]])
 
-
-
 (mr/def ::options
   [:and
    {:default {}}

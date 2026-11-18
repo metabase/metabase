@@ -145,8 +145,8 @@
   [tag & args]
   {:pre [(simple-keyword? tag)]}
   (let [[{options-schema :options} args] (if (map? (first args))
-                                            [(first args) (rest args)]
-                                            [nil args])]
+                                           [(first args) (rest args)]
+                                           [nil args])]
     (into [:tuple
            {:error/message    (str "Valid " tag " clause")
             :decode/normalize normalize-clause}
