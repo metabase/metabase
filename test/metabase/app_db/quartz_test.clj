@@ -184,6 +184,7 @@
     "metabase_enterprise.remote_sync.task.import.AutoImport"
     "metabase_enterprise.remote_sync.task.table_cleanup.RemoteSyncTableCleanup"
     "metabase_enterprise.replacement.timeout.TimeoutReplacementRuns"
+    "metabase_enterprise.security_center.task.run_health_checks.RunHealthChecks"
     "metabase_enterprise.security_center.task.sync_advisories.SyncAdvisories"
     "metabase_enterprise.semantic_search.task.index_cleanup.SemanticIndexCleanup"
     "metabase_enterprise.semantic_search.task.index_repair.SemanticIndexRepair"
