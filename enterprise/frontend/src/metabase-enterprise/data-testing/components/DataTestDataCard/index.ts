@@ -1,0 +1,1 @@
+export { DataTestDataCard } from "./DataTestDataCard";

@@ -1,4 +1,5 @@
 import type {
+  CardTest,
   DataTestEmptyExpectation,
   DataTestEqualsExpectation,
   DataTestRowsData,
@@ -61,6 +62,28 @@ export function createMockTransformTest(
     id: 1,
     entity_id: "transform-test-1",
     transform_id: 1,
+    creator_id: 1,
+    name: "Test",
+    description: null,
+    inputs: [
+      {
+        table: { schema: "public", name: "orders" },
+        ...createMockDataTestRowsData(),
+      },
+    ],
+    expectations: [createMockDataTestEqualsExpectation()],
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    last_run: null,
+    ...opts,
+  };
+}
+
+export function createMockCardTest(opts?: Partial<CardTest>): CardTest {
+  return {
+    id: 1,
+    entity_id: "card-test-1",
+    card_id: 1,
     creator_id: 1,
     name: "Test",
     description: null,

@@ -1,5 +1,5 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { TransformTestId } from "metabase-types/api";
+import type { CardTestId, TransformTestId } from "metabase-types/api";
 
 export type DataTestRunTriggeredFrom =
   | "test_list"
@@ -15,6 +15,20 @@ export function trackTransformTestTriggerManualRun({
 }) {
   trackSimpleEvent({
     event: "transform_test_trigger_manual_run",
+    target_id: testId,
+    triggered_from: triggeredFrom,
+  });
+}
+
+export function trackCardTestTriggerManualRun({
+  testId,
+  triggeredFrom,
+}: {
+  testId: CardTestId;
+  triggeredFrom: DataTestRunTriggeredFrom;
+}) {
+  trackSimpleEvent({
+    event: "card_test_trigger_manual_run",
     target_id: testId,
     triggered_from: triggeredFrom,
   });
