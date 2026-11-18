@@ -35,7 +35,7 @@
    [clojure.string :as str]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -139,8 +139,8 @@
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
   (let [db-id (:db_id table)]
-    ;; Bind the metadata provider before we compile, so drivers can read the database (e.g. BigQuery's project-id).
-    (qp.store/with-metadata-provider db-id
+    ;; Set up the QP before we compile, so drivers can read the database (e.g. BigQuery's project-id).
+    (qp.setup/with-qp-setup [_query {:database db-id, :type :native}]
       (let [driver         (:engine (warehouse-schema.db/database db-id))
             fields         (vec fields)
             hsql           (build-union driver table fields)
