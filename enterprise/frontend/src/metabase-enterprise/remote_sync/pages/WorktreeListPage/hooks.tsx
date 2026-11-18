@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { SyncTaskModal } from "../../components/SyncTaskModal";
+import { getCurrentWorktreeId } from "../../selectors";
 
 type WorktreeCheckout = {
   currentWorktreeId: RemoteSyncWorktreeId | null;
@@ -35,6 +36,7 @@ const REMOTE_SYNC_STATE_TAGS = [
 export function useWorktreeCheckout(): WorktreeCheckout {
   const dispatch = useDispatch();
   const user = useSelector(getUser);
+  const currentWorktreeId = useSelector(getCurrentWorktreeId);
   const [updateUser] = useUpdateUserMutation();
   const [importChanges] = useImportChangesMutation();
   const [taskId, setTaskId] = useState<RemoteSyncTaskId | null>(null);
@@ -75,7 +77,7 @@ export function useWorktreeCheckout(): WorktreeCheckout {
   };
 
   return {
-    currentWorktreeId: user?.worktree_id ?? null,
+    currentWorktreeId,
     checkout,
     leave,
     modal: (
