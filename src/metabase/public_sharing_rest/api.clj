@@ -412,12 +412,6 @@
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
-(defn- card-on-dashcard?
-  "Whether `card-id` is the main card of `dashcard` or one of its series cards."
-  [dashcard card-id]
-  (or (= (:card_id dashcard) card-id)
-      (boolean (some #(= card-id (:id %)) (:series (t2/hydrate dashcard :series))))))
-
 (defn- resolve-public-dashcard
   "`{:dashboard :dashcard :card}` for Card `card-id` on DashboardCard `dashcard-id` of the public Dashboard with
   `uuid`. 400 when public sharing is disabled; 404 when the Card or Dashboard is missing or archived, the
@@ -428,8 +422,7 @@
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
     ;; [[qp.dashboard/process-query-for-dashcard]] checks this again for the chart routes
-    (api/check-404 (and (= (:dashboard_id dashcard) (:id dashboard))
-                        (card-on-dashcard? dashcard card-id)))
+    (qp.dashboard/check-card-and-dashcard-are-in-dashboard (:id dashboard) card-id dashcard)
     {:dashboard dashboard, :dashcard dashcard, :card card}))
 
 (defn process-query-for-dashcard

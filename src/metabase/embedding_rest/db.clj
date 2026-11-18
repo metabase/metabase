@@ -50,12 +50,6 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
 
-(mu/defn dashcard-series-exists?
-  "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
-  [card-id     :- ::lib.schema.id/card
-   dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/exists? :model/DashboardCardSeries :card_id [:auto/param card-id] :dashboardcard_id [:auto/param dashcard-id]))
-
 (mu/defn embedding-themes
   "The id, entity id, name, settings, default flag, and timestamps of every EmbeddingTheme, oldest first."
   []
