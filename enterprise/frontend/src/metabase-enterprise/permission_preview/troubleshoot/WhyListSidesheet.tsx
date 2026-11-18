@@ -32,6 +32,7 @@ import {
 import type { IconName } from "metabase-types/api";
 
 import { CreateQueriesContent } from "./CreateQueriesContent";
+import { TargetName } from "./TargetName";
 import S from "./WhyListSidesheet.module.css";
 import {
   SecurityRows,
@@ -327,6 +328,8 @@ function SheetTitle({
 type SheetHeading = {
   icon: IconName;
   name: string;
+  /** A table's database, dimmed after the name. */
+  databaseName?: string;
   /** The person the sheet explains, after the name; none where the name already says it. */
   whoName?: string;
 };
@@ -341,6 +344,7 @@ function getSheetHeading(
     return {
       icon: view.target.column === "collection" ? "folder" : "table",
       name: view.target.title,
+      databaseName: view.target.databaseName,
       whoName,
     };
   }
@@ -371,8 +375,8 @@ const ITEM_ICONS: Record<ItemType, IconName> = {
   metric: "metric",
 };
 
-/** One line under the title: the item's icon and name, which truncates, then "as {name}". */
-function ItemLine({ icon, name, whoName }: SheetHeading) {
+/** One line under the title: the item's icon and name, which truncates, a table's database, then "as {name}". */
+function ItemLine({ icon, name, databaseName, whoName }: SheetHeading) {
   return (
     <Flex align="center" gap="xs" wrap="nowrap" miw={0}>
       <Icon name={icon} c="text-secondary" style={{ flexShrink: 0 }} />
@@ -381,6 +385,11 @@ function ItemLine({ icon, name, whoName }: SheetHeading) {
           {name}
         </Text>
       </Tooltip>
+      {databaseName != null && (
+        <Text size="sm" c="text-secondary" truncate="end" miw={0}>
+          {`· ${databaseName}`}
+        </Text>
+      )}
       {whoName != null && (
         <Text size="sm" c="text-secondary" style={{ flexShrink: 0 }}>
           {t`as ${whoName}`}
@@ -621,7 +630,7 @@ function DataRows({
             <ToggleRow
               key={index}
               rowKey={`filtered-table-${index}`}
-              label={target.title}
+              label={<TargetName target={target} />}
               initiallyOpen
               status={
                 <StatusLink target={target} onClick={() => onOpen(target)} />
@@ -648,11 +657,15 @@ function DataRows({
       {isFolded && (
         <ToggleRow
           rowKey="full-access-tables"
-          label={ngettext(
-            msgid`${tableCount} table`,
-            `${tableCount} tables`,
-            tableCount,
-          )}
+          label={
+            <Text truncate="end">
+              {ngettext(
+                msgid`${tableCount} table`,
+                `${tableCount} tables`,
+                tableCount,
+              )}
+            </Text>
+          }
           initiallyOpen={false}
           status={<Text c="text-secondary">{t`Full access`}</Text>}
         >
@@ -697,7 +710,7 @@ function ToggleRow({
   children,
 }: {
   rowKey: string;
-  label: string;
+  label: ReactNode;
   initiallyOpen: boolean;
   status: ReactNode;
   children: ReactNode;
@@ -717,7 +730,7 @@ function ToggleRow({
               c="text-secondary"
               style={{ flexShrink: 0 }}
             />
-            <Text truncate="end">{label}</Text>
+            {label}
           </Flex>
         </UnstyledButton>
         {status}
@@ -1012,7 +1025,7 @@ function FilteredSection({
             onClick={() => onOpen(target)}
           >
             <Flex align="center" gap="sm" justify="space-between">
-              <Text truncate="end">{target.title}</Text>
+              <TargetName target={target} />
               <Icon name="chevronright" c="text-secondary" />
             </Flex>
             {target.security != null && (
@@ -1068,7 +1081,7 @@ function AccessRow({
 
   return (
     <Row
-      name={label ?? <RowName name={target.title} />}
+      name={label ?? <TargetName target={target} />}
       detail={
         value == null && group != null && !isBlocking
           ? t`from ${group}`
@@ -1095,7 +1108,7 @@ function PermissionRow({
 }) {
   return (
     <Row
-      name={<RowName name={target.title} />}
+      name={<TargetName target={target} />}
       detail={getPreviewColumnName(target.column)}
       status={
         <StatusButton

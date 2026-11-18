@@ -146,6 +146,22 @@ describe("useWhyList", () => {
       });
     });
 
+    it("names the database of every table it lists, and of no collection", async () => {
+      const { result } = setup({ path: "/model/1-orders-by-state" });
+
+      await waitFor(() =>
+        expect(getVerdict(result.current)).toMatchObject({ kind: "allowed" }),
+      );
+      const page = result.current?.page;
+      expect(page).toMatchObject({
+        tables: [{ title: "Orders", databaseName: "Sample Database" }],
+        explore: [{ title: "Orders", databaseName: "Sample Database" }],
+      });
+      expect(page?.kind === "item" && page.collection).not.toHaveProperty(
+        "databaseName",
+      );
+    });
+
     it("says the person can see a dashboard whose rows are filtered, and lists the table under row security", async () => {
       const { result } = setup({
         path: "/dashboard/1-orders-by-state",

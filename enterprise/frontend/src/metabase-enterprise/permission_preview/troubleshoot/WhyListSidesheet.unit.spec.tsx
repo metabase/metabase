@@ -309,11 +309,18 @@ describe("WhyListSidesheet", () => {
     expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
       "Sandy Sales can open this dashboard but can't see 1 of its 2 cards.",
     );
-    expect(getToggle("Orders")).toHaveAttribute("aria-expanded", "true");
+    expect(getToggle("Orders · Sample Database")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     expect(getVisibleTexts("Rules set by Sales")).toHaveLength(1);
     // a blocked table has no attributes to fold: it's a line of its own, always shown
-    expect(getRowStatus("Reviews")).toHaveTextContent("Blocked");
-    expect(getRowStatus("Reviews")).not.toHaveAttribute("aria-expanded");
+    expect(getRowStatus("Reviews · Sample Database")).toHaveTextContent(
+      "Blocked",
+    );
+    expect(getRowStatus("Reviews · Sample Database")).not.toHaveAttribute(
+      "aria-expanded",
+    );
     expect(getToggle("2 tables")).toHaveAttribute("aria-expanded", "false");
     expect(getVisibleTexts("Accounts")).toHaveLength(0);
 
@@ -328,8 +335,108 @@ describe("WhyListSidesheet", () => {
       tableIds: [ORDERS_ID, ACCOUNTS_ID],
     });
 
-    expect(await findRowStatus("Accounts")).toHaveTextContent("Full access");
+    expect(await findRowStatus("Accounts · Sample Database")).toHaveTextContent(
+      "Full access",
+    );
     expect(screen.queryByText("1 table")).not.toBeInTheDocument();
+  });
+
+  it("names the database after each table's name in the Data section, dimmed on the same line", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID, ACCOUNTS_ID],
+    });
+    await screen.findByText("Data in this dashboard");
+
+    expect(
+      within(getToggle("Orders · Sample Database")).getByText(
+        "· Sample Database",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Reviews · Sample Database" }),
+      ).getByText("· Sample Database"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Accounts · Sample Database" }),
+      ).getByText("· Sample Database"),
+    ).toBeInTheDocument();
+  });
+
+  it("names the database after each table's name in All permissions", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+    });
+    await userEvent.click(await findAllPermissions());
+
+    expect(
+      within(
+        await screen.findByRole("group", {
+          name: "Orders · Sample Database View data",
+        }),
+      ).getByText("· Sample Database"),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", {
+          name: "Reviews · Sample Database View data",
+        }),
+      ).getByText("· Sample Database"),
+    ).toBeInTheDocument();
+  });
+
+  it("names the database after the table's name in the table's detail title, before who it's for", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+    });
+
+    await userEvent.click(await findRowStatus("Reviews · Sample Database"));
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("· Sample Database")).toBeInTheDocument();
+    expect(screen.getByText("as Sandy Sales")).toBeInTheDocument();
+  });
+
+  it("names the database after each table in Create queries' list of tables", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Varies by table/ }),
+    );
+
+    expect(screen.getAllByText("· Sample Database")).toHaveLength(2);
+  });
+
+  it("names the database after each table in See everything: Blocked, Filtered rows, and Has access to Tables", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, REVIEWS_ID, ACCOUNTS_ID],
+    });
+    await userEvent.click(
+      await screen.findByText("See everything Sandy Sales can access"),
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /^Orders · Sample Database/,
+      }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Can't access (1)"));
+    expect(
+      await screen.findByRole("group", { name: "Reviews · Sample Database" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", {
+        name: "Accounts · Sample Database from Sales",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("toggles a row from its name, and opens the table's detail from its status", async () => {
@@ -337,9 +444,14 @@ describe("WhyListSidesheet", () => {
     await screen.findByText("Data in this dashboard");
 
     // the status is a button of its own, outside the row's toggle
-    expect(getToggle("Orders")).not.toHaveTextContent("Rows filtered");
-    await userEvent.click(getToggle("Orders"));
-    expect(getToggle("Orders")).toHaveAttribute("aria-expanded", "false");
+    expect(getToggle("Orders · Sample Database")).not.toHaveTextContent(
+      "Rows filtered",
+    );
+    await userEvent.click(getToggle("Orders · Sample Database"));
+    expect(getToggle("Orders · Sample Database")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
     expect(screen.getByText("Data in this dashboard")).toBeInTheDocument();
 
     await userEvent.click(
@@ -359,7 +471,7 @@ describe("WhyListSidesheet", () => {
       tableIds: [ORDERS_ID, REVIEWS_ID],
     });
 
-    await userEvent.click(await findRowStatus("Reviews"));
+    await userEvent.click(await findRowStatus("Reviews · Sample Database"));
 
     expect(
       screen.getByText(
@@ -376,7 +488,7 @@ describe("WhyListSidesheet", () => {
     await screen.findByText("Data in this dashboard");
     await userEvent.click(getToggle("2 tables"));
 
-    await userEvent.click(await findRowStatus("Accounts"));
+    await userEvent.click(await findRowStatus("Accounts · Sample Database"));
 
     expect(
       screen.getByText(
@@ -432,7 +544,9 @@ describe("WhyListSidesheet", () => {
     });
     await userEvent.click(await findAllPermissions());
 
-    await userEvent.click(await findRowStatus("Orders Create queries"));
+    await userEvent.click(
+      await findRowStatus("Orders · Sample Database Create queries"),
+    );
 
     expect(
       screen.getByText(
@@ -448,7 +562,7 @@ describe("WhyListSidesheet", () => {
     });
     await userEvent.click(await findAllPermissions());
 
-    const status = await findRowStatus("Orders View data");
+    const status = await findRowStatus("Orders · Sample Database View data");
 
     expect(status).toHaveTextContent("Rows filtered");
     expect(status).not.toHaveTextContent("Row and column security");
@@ -510,7 +624,9 @@ describe("WhyListSidesheet", () => {
       tableIds: [ORDERS_ID, ACCOUNTS_ID],
     });
     await userEvent.click(await findAllPermissions());
-    await userEvent.click(await findRowStatus("Orders View data"));
+    await userEvent.click(
+      await findRowStatus("Orders · Sample Database View data"),
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
@@ -523,13 +639,16 @@ describe("WhyListSidesheet", () => {
       tableIds: [ORDERS_ID, ACCOUNTS_ID, INVOICES_ID],
     });
     await screen.findByText("Data in this dashboard");
-    await userEvent.click(getToggle("Orders"));
+    await userEvent.click(getToggle("Orders · Sample Database"));
     await userEvent.click(getToggle("2 tables"));
-    await userEvent.click(await findRowStatus("Accounts"));
+    await userEvent.click(await findRowStatus("Accounts · Sample Database"));
 
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(getToggle("Orders")).toHaveAttribute("aria-expanded", "false");
+    expect(getToggle("Orders · Sample Database")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
     expect(getToggle("2 tables")).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -970,11 +1089,8 @@ function getScrollContainer() {
 /** A row that opens in place, by its name. */
 function getToggle(name: string) {
   const toggle = screen
-    .getAllByRole("button")
-    .find(
-      (button) =>
-        button.hasAttribute("aria-expanded") && button.textContent === name,
-    );
+    .queryAllByRole("button", { name: new RegExp(`(^| )${name}$`) })
+    .find((button) => button.hasAttribute("aria-expanded"));
   if (toggle == null) {
     throw new Error(`No row named ${name} opens in place`);
   }

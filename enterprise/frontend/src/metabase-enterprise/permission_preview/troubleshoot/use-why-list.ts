@@ -614,6 +614,7 @@ function getTableWhyTarget(
   const tableName = table.display_name ?? table.name;
   return {
     title: tableName,
+    databaseName: database.name,
     who,
     subject: { label: t`Table`, value: `${database.name} / ${tableName}` },
     column,

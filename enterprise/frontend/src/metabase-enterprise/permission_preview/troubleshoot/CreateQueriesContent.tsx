@@ -5,6 +5,7 @@ import { Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import { formatList } from "../format-list";
 
+import { TargetName } from "./TargetName";
 import {
   type WhyTarget,
   getSameInEveryGroupSentence,
@@ -58,7 +59,7 @@ export function CreateQueriesContent({ targets }: { targets: WhyTarget[] }) {
               gap="md"
               wrap="nowrap"
             >
-              <Text truncate>{target.title}</Text>
+              <TargetName target={target} />
               <CreateQueriesValue target={target} value={target.cell.value} />
             </Flex>
           ))}

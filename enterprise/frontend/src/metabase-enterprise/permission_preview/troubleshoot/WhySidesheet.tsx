@@ -16,6 +16,8 @@ import {
 /** The value a "why" sidesheet explains. */
 export type WhyTarget = {
   title: string;
+  /** A table's database, shown after the title. */
+  databaseName?: string;
   who: string;
   /** What the value is about, such as "Sample Database / Products", under its label. */
   subject: { label: string; value: string };
