@@ -1,6 +1,7 @@
 ;; SQLGlot version of references test
 (ns metabase.sql-tools.sqlglot.references-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -297,7 +298,7 @@
 (deftest ^:parallel select-constant-test
   (is (= {:used-fields #{},
           :returned-fields
-          [{:alias nil, :type :custom-field, :used-fields #{}}],
+          [{:alias nil, :type :custom-field}],
           :errors #{}}
          (->references "select 1"))))
 
@@ -315,13 +316,13 @@
 
 (deftest ^:parallel basic-aggregation-test
   (is (=? {:used-fields #{},
-           :returned-fields [{:alias nil, :type :custom-field, :used-fields #{}}]
+           :returned-fields [{:alias nil, :type :custom-field}]
            :errors #{}}
           (->references "select count(*) from products"))))
 
 (deftest ^:parallel named-aggregation-test
   (is (=? {:used-fields #{},
-           :returned-fields [{:alias "count", :type :custom-field, :used-fields #{}}]
+           :returned-fields [{:alias "count", :type :custom-field}]
            :errors #{}}
           (->references "select count(*) as count from products"))))
 
@@ -353,12 +354,7 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:alias "sum",
-                                :type :custom-field,
-                                :used-fields
-                                #{{:column "total",
-                                   :alias nil,
-                                   :type :single-column,
-                                   :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]
+                                :type :custom-field}]
                               [{:type :all-columns,
                                 :table {:table "orders"}}]]}
             {:column "total",
@@ -368,24 +364,14 @@
                                 :table {:table "orders"}}]]}},
           :returned-fields
           [{:alias "sum",
-            :type :custom-field,
-            :used-fields
-            #{{:column "total",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]
+            :type :custom-field}]
           :errors #{}}
          (->references "select sum(total) as sum from orders group by category"))))
 
 (deftest ^:parallel grouping-order-by-test
   (is (= {:used-fields
           #{{:alias "cards_created",
-             :type :custom-field,
-             :used-fields
-             #{{:column "creator_id",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}
+             :type :custom-field}
             {:column "creator_id",
              :alias nil,
              :type :single-column,
@@ -395,12 +381,7 @@
              :type :single-column,
              :source-columns
              [[{:alias "cards_created",
-                :type :custom-field,
-                :used-fields
-                #{{:column "creator_id",
-                   :alias nil,
-                   :type :single-column,
-                   :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]
+                :type :custom-field}]
               [{:type :all-columns, :table {:table "report_card"}}]]}},
           :returned-fields
           [{:column "creator_id",
@@ -408,12 +389,7 @@
             :type :single-column,
             :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}
            {:alias "cards_created",
-            :type :custom-field,
-            :used-fields
-            #{{:column "creator_id",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "report_card"}}]]}}}]
+            :type :custom-field}]
           :errors #{}}
          (->references "SELECT creator_id, COUNT(creator_id) AS cards_created FROM report_card GROUP BY creator_id ORDER BY cards_created DESC"))))
 
@@ -448,23 +424,7 @@
                                  :table {:table "orders"}}]]}},
            :returned-fields
            [{:alias nil,
-             :type :custom-field,
-             :used-fields
-             #{{:column "tax",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns,
-                                   :table {:table "orders"}}]]}
-               {:column "total",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns,
-                                   :table {:table "orders"}}]]}
-               {:column "subtotal",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns,
-                                   :table {:table "orders"}}]]}}}]
+             :type :custom-field}]
            :errors #{}}
           (->references "select case when total < 0 then -subtotal else tax end from orders"))))
 
@@ -477,13 +437,7 @@
                                  :table {:table "products"}}]]}},
            :returned-fields
            [{:alias nil,
-             :type :custom-field,
-             :used-fields
-             #{{:column "category",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns,
-                                   :table {:table "products"}}]]}}}]
+             :type :custom-field}]
            :errors #{}}
           (->references "select case category when 'Gizmo' then 'is gizmo' else 'is not gizmo' end from products"))))
 
@@ -761,8 +715,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
   (is (= {:used-fields #{},
           :returned-fields
           [{:type :custom-field,
-            :alias "o",
-            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]
+            :alias "o"}]
           :errors #{}}
          (->references "select o from (select * from orders) as o"))))
 
@@ -770,8 +723,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
   (is (= {:used-fields #{},
           :returned-fields
           [{:type :custom-field,
-            :alias "o2",
-            :used-fields #{{:type :all-columns, :table {:table "orders"}}}}]
+            :alias "o2"}]
           :errors #{}}
          (->references "select o as o2 from (select * from orders) as o"))))
 
@@ -962,16 +914,9 @@ FROM c;"))))
             {:alias "level",
              :type :composite-field,
              :member-fields
-             [{:alias "level", :type :custom-field, :used-fields #{}}
+             [{:alias "level", :type :custom-field}
               {:alias nil,
-               :type :custom-field,
-               :used-fields
-               #{{:column "level",
-                  :alias nil,
-                  :type :single-column,
-                  :source-columns
-                  [[{:type :all-columns, :table {:table-alias "h",
-                                                 :table "emp_hierarchy"}}]]}}}]}
+               :type :custom-field}]}
             {:column "manager_id",
              :alias nil,
              :type :single-column,
@@ -980,7 +925,7 @@ FROM c;"))))
              :alias nil,
              :type :single-column,
              :source-columns
-             [[{:alias "level", :type :custom-field, :used-fields #{}}]
+             [[{:alias "level", :type :custom-field}]
               [{:type :all-columns, :table {:table "employees"}}]]}},
           :returned-fields
           [{:alias "name",
@@ -999,16 +944,9 @@ FROM c;"))))
            {:alias "level",
             :type :composite-field,
             :member-fields
-            [{:alias "level", :type :custom-field, :used-fields #{}}
+            [{:alias "level", :type :custom-field}
              {:alias nil,
-              :type :custom-field,
-              :used-fields
-              #{{:column "level",
-                 :alias nil,
-                 :type :single-column,
-                 :source-columns
-                 [[{:type :all-columns, :table {:table-alias "h",
-                                                :table "emp_hierarchy"}}]]}}}]}]
+              :type :custom-field}]}]
           :errors #{}}
          (->references "WITH RECURSIVE emp_hierarchy AS (
   SELECT id, name, manager_id, 0 AS level
@@ -1094,13 +1032,7 @@ SELECT id, name FROM archived_users"))))
             :source-columns [[{:type :all-columns,
                                :table {:table "employees"}}]]}
            {:alias "rank",
-            :type :custom-field,
-            :used-fields
-            #{{:column "salary",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns,
-                                  :table {:table "employees"}}]]}}}]
+            :type :custom-field}]
           :errors #{}}
          (->references "SELECT name, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank
 FROM employees"))))
@@ -1125,16 +1057,7 @@ FROM employees"))))
             :type :single-column,
             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
            {:alias "dept_rank",
-            :type :custom-field,
-            :used-fields
-            #{{:column "salary",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
-              {:column "department",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}}}]
+            :type :custom-field}]
           :errors #{}}
          (->references "SELECT name,
   RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
@@ -1149,14 +1072,8 @@ FROM employees"))))
                                                             :table "orders"}}]]}},
           :returned-fields
           [{:alias "created_at",
-            :type :custom-field,
-            :used-fields
-            #{{:column "created_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:schema "public",
-                                                              :table "orders"}}]]}}}
-           {:alias "count", :type :custom-field, :used-fields #{}}]
+            :type :custom-field}
+           {:alias "count", :type :custom-field}]
           :errors #{}}
          (->references "SELECT
   (
@@ -1192,14 +1109,8 @@ ORDER BY
                                                             :table "orders"}}]]}},
           :returned-fields
           [{:alias "created_at",
-            :type :custom-field,
-            :used-fields
-            #{{:column "created_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:schema "public",
-                                                              :table "orders"}}]]}}}
-           {:alias "count", :type :custom-field, :used-fields #{}}]
+            :type :custom-field}
+           {:alias "count", :type :custom-field}]
           :errors #{}}
          (->references "SELECT
   CEIL(
@@ -1277,14 +1188,7 @@ ORDER BY
              :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:alias "upper_category",
-             :type :custom-field,
-             :used-fields
-             #{{:column "category",
-                :alias "category",
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns, :table {:schema "public",
-                                               :table "products"}}]]}}}
+             :type :custom-field}
             {:column "ean",
              :alias "ean",
              :type :single-column,
@@ -1352,39 +1256,14 @@ ORDER BY
                                                             :table "products"}}]]}},
           :returned-fields
           [{:alias "created_at",
-            :type :custom-field,
-            :used-fields
-            #{{:column "created_at",
-               :alias "created_at",
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:schema "public",
-                                                              :table "orders"}}]]}}}
+            :type :custom-field}
            {:alias "upper_category",
-            :type :custom-field,
-            :used-fields
-            #{{:column "category",
-               :alias "category",
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns, :table {:schema "public",
-                                              :table "products"}}]]}}}
+            :type :custom-field}
            {:alias "sum",
-            :type :custom-field,
-            :used-fields
-            #{{:column "total",
-               :alias "total",
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:schema "public",
-                                                              :table "orders"}}]]}}}
+            :type :custom-field}
            {:alias "sum_2",
-            :type :custom-field,
-            :used-fields
-            #{{:column "discount",
-               :alias "discount",
-               :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:schema "public",
-                                                              :table "orders"}}]]}}}
-           {:alias "count", :type :custom-field, :used-fields #{}}]
+            :type :custom-field}
+           {:alias "count", :type :custom-field}]
           :errors #{}}
          (->references "SELECT
   DATE_TRUNC('month', \"source\".\"created_at\") AS \"created_at\",
@@ -1483,77 +1362,11 @@ ORDER BY
              [[{:type :all-columns,
                 :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_paid_accounts_enterprise",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "lifetime_value",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:alias "is_active_accounts_starter",
-             :type :custom-field,
-             :used-fields
-             #{{:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+             :type :custom-field}
             {:alias "is_active_accounts_enterprise",
-             :type :custom-field,
-             :used-fields
-             #{{:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+             :type :custom-field}
             {:column "trial_ended_at",
              :alias nil,
              :type :single-column,
@@ -1561,59 +1374,9 @@ ORDER BY
              [[{:type :all-columns,
                 :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_paid_accounts_pro",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "lifetime_value",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:alias "is_trialing_accounts_cloud",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "deployment",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:column "deployment",
              :alias nil,
              :type :single-column,
@@ -1639,26 +1402,7 @@ ORDER BY
              [[{:type :all-columns,
                 :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
             {:alias "is_active_accounts_pro",
-             :type :custom-field,
-             :used-fields
-             #{{:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+             :type :custom-field}
             {:column "plan_name",
              :alias nil,
              :type :single-column,
@@ -1666,59 +1410,11 @@ ORDER BY
              [[{:type :all-columns,
                 :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
             {:alias "is_active_accounts_self_hosted",
-             :type :custom-field,
-             :used-fields
-             #{{:column "deployment",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+             :type :custom-field}
             {:alias "is_active_accounts_cloud",
-             :type :custom-field,
-             :used-fields
-             #{{:column "deployment",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+             :type :custom-field}
             {:alias "is_trialing_accounts_self_hosted",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "deployment",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:column "customer_name",
              :alias nil,
              :type :single-column,
@@ -1726,23 +1422,7 @@ ORDER BY
              [[{:type :all-columns,
                 :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_trialing",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "subscription_status",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:column "is_active",
              :alias nil,
              :type :single-column,
@@ -1750,86 +1430,13 @@ ORDER BY
              [[{:type :all-columns,
                 :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_paid_accounts_self_hosted",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "deployment",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "lifetime_value",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:alias "is_paid_accounts_cloud",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "deployment",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "lifetime_value",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:alias "is_paid_accounts_starter",
-             :type :custom-field,
-             :used-fields
-             #{{:column "trial_ended_at",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "lifetime_value",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-               {:column "plan_name",
-                :alias nil,
-                :type :single-column,
-                :source-columns
-                [[{:type :all-columns,
-                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-               {:alias "month",
-                :type :custom-field,
-                :used-fields #{}}}}
+             :type :custom-field}
             {:alias "month",
-             :type :custom-field,
-             :used-fields #{}}
+             :type :custom-field}
             {:column "valid_to",
              :alias nil,
              :type :single-column,
@@ -1918,305 +1525,33 @@ ORDER BY
             [[{:type :all-columns,
                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:alias "month",
-            :type :custom-field,
-            :used-fields #{}}
+            :type :custom-field}
            {:alias "is_trialing",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_trialing_accounts_cloud",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "deployment",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_active_accounts_cloud",
-            :type :custom-field,
-            :used-fields
-            #{{:column "deployment",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+            :type :custom-field}
            {:alias "is_paid_accounts_cloud",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "deployment",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "lifetime_value",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_trialing_accounts_self_hosted",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "deployment",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_active_accounts_self_hosted",
-            :type :custom-field,
-            :used-fields
-            #{{:column "deployment",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+            :type :custom-field}
            {:alias "is_paid_accounts_self_hosted",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "deployment",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "lifetime_value",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_active_accounts_enterprise",
-            :type :custom-field,
-            :used-fields
-            #{{:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+            :type :custom-field}
            {:alias "is_paid_accounts_enterprise",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "lifetime_value",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_active_accounts_starter",
-            :type :custom-field,
-            :used-fields
-            #{{:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+            :type :custom-field}
            {:alias "is_paid_accounts_starter",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "lifetime_value",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}
+            :type :custom-field}
            {:alias "is_active_accounts_pro",
-            :type :custom-field,
-            :used-fields
-            #{{:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "subscription_status",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+            :type :custom-field}
            {:alias "is_paid_accounts_pro",
-            :type :custom-field,
-            :used-fields
-            #{{:column "trial_ended_at",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "lifetime_value",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
-              {:column "plan_name",
-               :alias nil,
-               :type :single-column,
-               :source-columns
-               [[{:type :all-columns,
-                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
-              {:alias "month",
-               :type :custom-field,
-               :used-fields #{}}}}]
+            :type :custom-field}]
           :errors #{}}
          (->references "with months as (
   select
@@ -2307,3 +1642,12 @@ left join monthly_account_subscription_status mas
       (is (seq (errors "SELECT [#u].[ID] FROM [#t]"))))
     (testing "control: outside T-SQL, a quoted name starting with # is a plain name"
       (is (seq (:errors (sql-parsing/field-references (sql-tools/sqlglot-parser) "postgres" "SELECT \"#t\".id FROM t")))))))
+
+(deftest ^:parallel computed-column-chain-test
+  (testing "a column computed from computed columns of a CTE does not hold the fields that the CTE reads"
+    (let [ctes (for [i (range 1 9)]
+                 (format "c%d AS (SELECT a.v + a.w AS v, a.v - a.w AS w FROM c%d a)" i (dec i)))
+          sql  (str "WITH c0 AS (SELECT v, w FROM t), " (str/join ", " ctes) " SELECT v, w FROM c8")]
+      (is (= [{:type :custom-field, :alias "v"}
+              {:type :custom-field, :alias "w"}]
+             (:returned-fields (->references sql)))))))
