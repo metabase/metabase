@@ -65,9 +65,9 @@ If you're on Metabase OSS/Starter plans, you can select light or dark themes for
 
 On Metabase Pro/Enterprise, you can also:
 
-- Pick a [saved theme](./appearance.md#embedding-themes) you've created in **Embedding hub > Appearance**.
+- Pick a [saved theme](./appearance.md#save-a-theme-in-metabase) you've created in **Embedding hub > Appearance**.
 - Pick specific colors for brand, text, and background in the embed wizard.
-- Add more [advanced theme options](./appearance.md#advanced-theming) by editing the generated snippet later.
+- Add more [advanced theme options](./appearance.md#set-colors-and-fonts) by editing the generated snippet later.
 
 All the customization options you select in this wizard will be reflected in the code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 
