@@ -141,15 +141,14 @@
         (or (empty? names) (apply distinct? names))))]])
 
 (defn- ->offset-date-time
-  "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant, a ZonedDateTime
-  or a `java.util.Date`, as YAML reads an unquoted date-time; otherwise `x` unchanged, for the schema to refuse."
+  "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant or a
+  ZonedDateTime; otherwise `x` unchanged, for the schema to refuse."
   [x]
   (cond
-    (string? x)                (try (t/offset-date-time x) (catch Exception _ x))
-    (t/instant? x)             (t/offset-date-time x (t/zone-offset 0))
-    (instance? java.util.Date x) (t/offset-date-time (t/instant x) (t/zone-offset 0))
-    (t/zoned-date-time? x)     (t/offset-date-time x)
-    :else                      x))
+    (string? x)            (try (t/offset-date-time x) (catch Exception _ x))
+    (t/instant? x)         (t/offset-date-time x (t/zone-offset 0))
+    (t/zoned-date-time? x) (t/offset-date-time x)
+    :else                  x))
 
 (def ^:private now-range
   "The first and last moments a MySQL app DB stores in a `TIMESTAMP` column, the narrowest range of the app DBs."
@@ -170,6 +169,10 @@
   "Why a `now` outside [[now-range]] is refused."
   (let [[first-moment last-moment] (map str now-range)]
     (deferred-tru "must be from {0} to {1}, inclusive" first-moment last-moment)))
+
+(def ^:private now-quotes-message
+  "Why a serialized `now` that YAML read as a date is refused."
+  (deferred-tru "must be in quotes, such as \"2026-10-13T00:00:00Z\": without them, YAML drops the offset"))
 
 (defn- now-error
   "The message for the refused `now` `value`, after decoding: the range message for a moment, else the offset one."
@@ -192,12 +195,14 @@
    #(and (t/offset-date-time? %) (in-now-range? %))])
 
 (mr/def ::now-string
-  "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset, or the `java.util.Date` YAML
-  reads from such a string written without quotes."
+  "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset. YAML reads a date-time written
+  without quotes as a `java.util.Date`, at UTC when it has no offset, so the offset can no longer be checked; such a
+  value is refused, asking for quotes."
+  ;; Each check passes what the other refuses, so a refused value gets one message.
   [:and
-   [:or :string inst?]
+   [:fn {:error/fn (constantly now-quotes-message)} string?]
    [:fn {:error/fn (fn [error opts] (now-error (update error :value ->offset-date-time) opts))}
-    #(mr/validate ::now (->offset-date-time %))]])
+    #(or (not (string? %)) (mr/validate ::now (->offset-date-time %)))]])
 
 (def ^:private subject-keys-with-now
   "The subject keys of the test types that have `now`. The `segment_test` table has no `now` column."
