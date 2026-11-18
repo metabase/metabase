@@ -84,6 +84,7 @@ Here's what you need to know when syncing Google Sheets:
 - **Renaming sheet columns will create new table columns**. If you rename a column in a spreadsheet, Metabase will create a new column with the new name in the synced table. The original column will remain in the table but it'll become empty. You'll be able to hide the old column in Table Metadata settings.
 - **Empty sheets won't import**. We won't import completely empty sheets or sheets that only have column headers. There needs to be some actual data in there.
 - **Google Sheets must have unique names**. If files in the synced Google Drive folder (and its subfolders) have the same name (e.g., one sheet is in the root folder, another sheet in a subfolder), the sheets might not sync properly.
+- **File names can't contain slashes**. If a file in the synced Google Drive folder (or its subfolders) has a slash (`/`) in its name, the sync can fail. Rename the file to remove the slash.
 
 ## Metabase Cloud Storage quota management
 

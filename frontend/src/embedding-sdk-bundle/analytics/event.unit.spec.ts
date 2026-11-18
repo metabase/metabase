@@ -22,7 +22,7 @@ jest.mock("metabase/utils/metaplow", () => ({
 }));
 
 // Re-import the module under test so its module-scoped init guard resets per test.
-const loadModule = () => import("./snowplow");
+const loadModule = () => import("./event");
 
 function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
   // Seed the `getSessionProperties` RTK Query cache.
@@ -44,7 +44,7 @@ function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
   };
 }
 
-describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
+describe("embedding-sdk-bundle/analytics/event (CSP transport)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
