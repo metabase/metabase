@@ -5991,3 +5991,29 @@
             (is (= (map :name metadata-before)
                    (map :name metadata-after))
                 "result_metadata should be preserved across SQL edits when the recompute cannot run")))))))
+
+(deftest running-model-query-is-not-an-edit-by-the-reader-test
+  (testing "the metadata that a run writes back to a model is not an edit by the user who ran it"
+    (mt/with-premium-features #{:audit-app}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {model-id :id} {:type            :model
+                                                   :dataset_query   (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :venues))) 2)
+                                                   :result_metadata nil}]
+          (let [revisions #(t2/count :model/Revision :model "Card" :model_id model-id)
+                audit-id  (or (t2/select-one-fn :id :model/AuditLog {:order-by [[:id :desc]]}) 0)]
+            (mt/user-http-request :rasta :post 202 (format "card/%d/query" model-id))
+            (is (seq (t2/select-one-fn :result_metadata :model/Card :id model-id)))
+            (is (zero? (revisions)))
+            (is (= [] (t2/select :model/AuditLog :id [:> audit-id] :model "Card")))))))))
+
+(deftest editing-model-metadata-records-revision-test
+  (testing "a user who edits the metadata of a model in the model editor records a revision"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                                 :dataset_query (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :venues))) 2)}]
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" model-id))
+        (let [metadata (t2/select-one-fn :result_metadata :model/Card :id model-id)
+              edited   (assoc-in (vec metadata) [0 :display_name] "Renamed column")]
+          (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:result_metadata edited})
+          (is (=? [{:user_id (mt/user->id :crowberto)}]
+                  (t2/select :model/Revision :model "Card" :model_id model-id))))))))
