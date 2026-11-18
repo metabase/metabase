@@ -7,7 +7,6 @@
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.permissions.audit :as permissions.audit]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
@@ -33,11 +32,9 @@
    :delete :event/group-membership-delete})
 
 (defmethod audit/spec :model/PermissionsGroupMembership [_model]
-  {:track          [:user_id :group_id :is_group_manager]
+  {:track          [:id :user_id :group_id :is_group_manager]
    :track-redacted []
    :skip           []
-   :details        permissions.audit/membership-details
-   :subject        permissions.audit/membership-subject
    :topics         {:create :group-membership-create
                     :delete :group-membership-delete}})
 

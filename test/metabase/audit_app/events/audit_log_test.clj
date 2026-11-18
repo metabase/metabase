@@ -742,13 +742,13 @@
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Audited group"}
                    :model/User             {user-id :id}  {}]
       (let [membership-id (t2/insert-returning-pk! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})]
-        (testing "creating a membership records no id for it"
+        (testing "creating a membership records its id"
           (is (partial= {:model "PermissionsGroupMembership"
-                         :model_id nil
+                         :model_id membership-id
                          :user_id (mt/user->id :crowberto)
-                         :details {:user_id user-id :group_id group-id}
+                         :details {:id membership-id :user_id user-id :group_id group-id}
                          :topic :group-membership-create}
-                        (mt/latest-audit-log-entry :group-membership-create))))
+                        (mt/latest-audit-log-entry :group-membership-create membership-id))))
         (testing "deleting a membership records its id"
           (t2/delete! :model/PermissionsGroupMembership :id membership-id)
           (is (partial= {:model "PermissionsGroupMembership"
@@ -757,6 +757,18 @@
                          :details {:id membership-id :user_id user-id :group_id group-id}
                          :topic :group-membership-delete}
                         (mt/latest-audit-log-entry :group-membership-delete membership-id))))))))
+
+(deftest bulk-group-membership-create-records-ids-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Audited group"}
+                   :model/User             {user-1 :id}   {}
+                   :model/User             {user-2 :id}   {}]
+      (t2/insert! :model/PermissionsGroupMembership [{:user_id user-1 :group_id group-id}
+                                                     {:user_id user-2 :group_id group-id}])
+      (let [ids (t2/select-pks-set :model/PermissionsGroupMembership :group_id group-id)]
+        (is (= 2 (count ids)))
+        (is (= ids (into #{} (map :model_id)
+                         (t2/select :model/AuditLog :topic "group-membership-create" :model_id [:in ids]))))))))
 
 (defn- failure-call-count!
   "The number of app DB queries that publishing the `topic` event of `object` runs."
