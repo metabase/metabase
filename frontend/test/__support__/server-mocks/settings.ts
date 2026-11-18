@@ -100,6 +100,78 @@ export function setupScimEndpoints(
   fetchMock.post("path:/api/ee/scim/api_key", payload);
 }
 
+/**
+ * An in-memory stand-in for `/api/ee/scim/api_key`. GET returns a 404 until a
+ * token exists, then the masked token. Every POST issues a new token with its
+ * own `mb_<n>…` prefix and stores it inside the handler, or answers 500 while
+ * `store.failGeneration` is set. Returns the store for assertions.
+ */
+export function setupStatefulScimEndpoints({
+  hasToken = false,
+  failGeneration = false,
+  delay,
+}: {
+  hasToken?: boolean;
+  failGeneration?: boolean;
+  delay?: number;
+} = {}) {
+  const store: {
+    token: UnmaskedScimApiKey | null;
+    issuedTokens: number;
+    failGeneration: boolean;
+  } = { token: null, issuedTokens: 0, failGeneration };
+
+  const issueToken = (): UnmaskedScimApiKey => {
+    store.issuedTokens += 1;
+    const unmaskedKey = `mb_${store.issuedTokens}Tok${"s".repeat(36)}`;
+    const prefix = unmaskedKey.slice(0, 7);
+    return {
+      id: store.issuedTokens,
+      scope: "scim",
+      key: "$2a$10$hashed",
+      key_prefix: prefix,
+      masked_key: `${prefix}${"*".repeat(40)}`,
+      unmasked_key: unmaskedKey,
+      name: `SCIM API Key - ${store.issuedTokens}`,
+      user_id: null,
+      created_at: "2025-01-12T16:08:20.164094Z",
+      creator_id: 1,
+      updated_at: "2025-01-12T16:08:20.164094Z",
+      updated_by_id: 1,
+    };
+  };
+
+  if (hasToken) {
+    store.token = issueToken();
+  }
+
+  fetchMock.get(
+    "path:/api/ee/scim/api_key",
+    () => {
+      if (!store.token) {
+        return 404;
+      }
+      const { unmasked_key: _unmaskedKey, ...maskedToken } = store.token;
+      return maskedToken;
+    },
+    { name: "get-scim-token", delay },
+  );
+
+  fetchMock.post(
+    "path:/api/ee/scim/api_key",
+    () => {
+      if (store.failGeneration) {
+        return { status: 500, body: { message: "An error occurred" } };
+      }
+      store.token = issueToken();
+      return store.token;
+    },
+    { name: "generate-scim-token", delay },
+  );
+
+  return store;
+}
+
 export function setupUpsellEndpoints() {
   fetchMock.get(
     "path:/api/user-key-value/namespace/user_acknowledgement/key/upsell-embedding-methods",

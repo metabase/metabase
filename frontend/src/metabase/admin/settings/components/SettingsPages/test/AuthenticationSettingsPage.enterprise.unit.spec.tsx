@@ -16,7 +16,7 @@ const setup = async (
   tab: AuthSettingsPageTab = "authentication",
 ) => {
   setupEnterpriseOnlyPlugin("auth");
-  return OSSSetup(extraSettings, true, tab);
+  return OSSSetup({ extraSettings, isEnterprise: true, tab });
 };
 
 const deactivate = async (cardTestId: string) => {
