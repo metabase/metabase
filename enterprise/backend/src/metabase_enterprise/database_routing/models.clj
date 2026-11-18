@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -24,6 +25,9 @@
   {:create :event/database-router-create
    :update :event/database-router-update
    :delete :event/database-router-delete})
+
+(defmethod app-db-copy/spec :model/DatabaseRouter [_model]
+  {:skip? true})
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

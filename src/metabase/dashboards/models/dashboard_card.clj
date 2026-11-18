@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
@@ -61,6 +62,9 @@
    :skip     [:entity_id]
    :parent   {:model :model/Dashboard :key :dashboard_id}
    :snapshot snapshot-series})
+
+(defmethod app-db-copy/spec :model/DashboardCard [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings

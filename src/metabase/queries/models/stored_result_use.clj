@@ -6,6 +6,7 @@
   paired with the card being read-checked, and by [[assert-can-view-card-snapshots!]] to enumerate
   every snapshot a Card renders from. Lives in the queries module alongside `:model/StoredResult`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.db :as queries.db]
    [metabase.util.i18n :refer [tru]]
@@ -19,6 +20,9 @@
 (doto :model/StoredResultUse
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/StoredResultUse [_model]
+  {:skip? true})
 
 (t2/define-before-insert :model/StoredResultUse
   [row]

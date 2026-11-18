@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -63,6 +64,9 @@
 (defmethod revisions/spec :model/Exploration [_model]
   {:track [:name :description :collection_id :archived]
    :skip  [:archived_directly :collection_position :creator_id :entity_id]})
+
+(defmethod app-db-copy/spec :model/Exploration [_model]
+  {:skip? false})
 
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]

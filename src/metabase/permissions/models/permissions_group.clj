@@ -10,6 +10,7 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
@@ -51,6 +52,9 @@
 (defmethod change-log/spec :model/PermissionsGroup [_model]
   {:track [:name :entity_id :magic_group_type :is_tenant_group]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/PermissionsGroup [_model]
+  {:skip? false})
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 

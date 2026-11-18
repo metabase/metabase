@@ -4,6 +4,7 @@
   `metabase.query-processor.middleware.add-remaps`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -37,6 +38,9 @@
   {:create :event/dimension-create
    :update :event/dimension-update
    :delete :event/dimension-delete})
+
+(defmethod app-db-copy/spec :model/Dimension [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
@@ -18,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -147,6 +149,11 @@
            :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
    :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
            :is_defective_duplicate :unique_field_helper]})
+
+(defmethod app-db-copy/spec :model/Field [_model]
+  {:skip?     false
+   :select    warehouse-schema.db/copy-fields-select
+   :transform warehouse-schema.app-db-copy/transform-field})
 
 (t2/define-after-select :model/Field
   [field]

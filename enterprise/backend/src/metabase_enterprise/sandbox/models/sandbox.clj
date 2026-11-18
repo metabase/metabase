@@ -11,6 +11,7 @@
    [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -50,6 +51,10 @@
   {:create :event/sandbox-create
    :update :event/sandbox-update
    :delete :event/sandbox-delete})
+
+(defmethod app-db-copy/spec :model/Sandbox [_model]
+  {:skip?    false
+   :sequence "group_table_access_policy_id_seq"})
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})

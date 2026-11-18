@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.job-run
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.db :as transforms.db]
@@ -18,6 +19,9 @@
 (doto :model/TransformJobRun
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/TransformJobRun [_model]
+  {:skip? false})
 
 (t2/define-before-update :model/TransformJobRun
   [run]

@@ -30,6 +30,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.activity-feed.db :as activity-feed.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.batch-processing.core :as grouper]
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
@@ -48,6 +49,9 @@
   {:context mi/transform-keyword})
 
 (methodical/defmethod t2/table-name :model/RecentViews [_model] :recent_views)
+
+(defmethod app-db-copy/spec :model/RecentViews [_model]
+  {:skip? false})
 
 (t2/define-before-insert :model/RecentViews
   [log-entry]

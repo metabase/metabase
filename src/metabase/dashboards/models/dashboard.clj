@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
@@ -84,6 +85,9 @@
               :tabs  {:model :model/DashboardTab :as :tabs}}
    :revert!  dashboards.revisions/revert-dashboard!
    :describe dashboards.revisions/describe-change})
+
+(defmethod app-db-copy/spec :model/Dashboard [_model]
+  {:skip? false})
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

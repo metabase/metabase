@@ -1,6 +1,7 @@
 (ns metabase.glossary.models.glossary
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
@@ -24,6 +25,9 @@
   {:create :event/glossary-create
    :update :event/glossary-update
    :delete :event/glossary-delete})
+
+(defmethod app-db-copy/spec :model/Glossary [_model]
+  {:skip? false})
 
 (def GlossaryEntry
   "Schema for a glossary entry."

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.models.data-test-run
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -9,6 +10,9 @@
 (methodical/defmethod t2/table-name :model/DataTestRun [_model] :data_test_run)
 
 (derive :model/DataTestRun :metabase/model)
+
+(defmethod app-db-copy/spec :model/DataTestRun [_model]
+  {:skip? false})
 
 (defmethod audit-app/model-details :model/DataTestRun
   [data-test-run _event-type]

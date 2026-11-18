@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-run-cancelation
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.transforms.db :as transforms.db]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -13,6 +14,10 @@
 (methodical/defmethod t2/table-name :model/TransformRunCancelation [_model] :transform_run_cancelation)
 
 (derive :model/TransformRunCancelation :metabase/model)
+
+(defmethod app-db-copy/spec :model/TransformRunCancelation [_model]
+  {:skip?    false
+   :sequence false})
 
 (mu/defn mark-cancel-started-run! :- :nil
   "Mark a started run for cancelation."

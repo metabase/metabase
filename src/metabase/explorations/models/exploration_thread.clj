@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
@@ -15,6 +16,9 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod app-db-copy/spec :model/ExplorationThread [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ExplorationThread
   {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"

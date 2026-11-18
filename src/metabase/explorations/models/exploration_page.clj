@@ -2,6 +2,7 @@
   "A page within a block: the bundle of queries that appear together on one page
    (currently, those that share a card, dimension, and query_type)."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -14,6 +15,9 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod app-db-copy/spec :model/ExplorationPage [_model]
+  {:skip? false})
 
 (methodical/defmethod t2/simple-hydrate [:model/ExplorationPage :can_read]
   [_model k instance]

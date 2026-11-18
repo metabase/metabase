@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-source-feedback
   "Persist Metabot source feedback"
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -10,6 +11,9 @@
 
 (doto :model/MetabotSourceFeedback
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/MetabotSourceFeedback [_model]
+  {:skip? false})
 
 (def ^:private valid-source-types
   #{"table" "card" "model"})

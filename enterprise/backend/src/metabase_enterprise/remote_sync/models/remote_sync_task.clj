@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [trun]]
@@ -21,6 +22,9 @@
 (methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
 (derive :model/RemoteSyncTask :metabase/model)
+
+(defmethod app-db-copy/spec :model/RemoteSyncTask [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/RemoteSyncTask
   {:conflicts mi/transform-json

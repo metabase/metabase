@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
@@ -44,6 +45,9 @@
   {:track [:name :description :content :creator_id :archived :collection_id :entity_id :template_tags
            :archived_directly]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/NativeQuerySnippet [_model]
+  {:skip? false})
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet

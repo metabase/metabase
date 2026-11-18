@@ -34,6 +34,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
@@ -47,6 +48,9 @@
 (doto :model/UserKeyValue
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/UserKeyValue [_model]
+  {:skip? true})
 
 (mu/defn put!
   "Upserts a KV-pair"

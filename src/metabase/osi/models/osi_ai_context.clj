@@ -12,6 +12,8 @@
   ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
   themselves."
   (:require
+   [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.osi.schema :as osi.schema]
@@ -29,6 +31,9 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/OsiAiContext [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write

@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
@@ -32,6 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.app-db-copy :as warehouses.app-db-copy]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -94,6 +96,10 @@
            :uploads_enabled :uploads_schema_name :uploads_table_prefix :is_attached_dwh :router_database_id
            :provider_name :write_data_details :is_stub :default_schema :initial_sync_error :admin_details]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/Database [_model]
+  {:skip?     false
+   :transform warehouses.app-db-copy/transform-database})
 
 (defn is-destination?
   "Is this database a destination database for some router database?"

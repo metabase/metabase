@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -33,6 +34,9 @@
   {:track [:pulse_id :card_id :position :include_csv :include_xls :dashboard_card_id :entity_id :format_rows
            :pivot_results]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/PulseCard [_model]
+  {:skip? false})
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 

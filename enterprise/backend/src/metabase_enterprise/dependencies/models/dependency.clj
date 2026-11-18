@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -32,6 +33,9 @@
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
 (derive :model/Dependency :metabase/model)
+
+(defmethod app-db-copy/spec :model/Dependency [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/Dependency
   {:from_entity_type mi/transform-keyword

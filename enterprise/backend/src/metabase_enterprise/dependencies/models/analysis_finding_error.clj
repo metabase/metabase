@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -16,6 +17,9 @@
 (methodical/defmethod t2/table-name :model/AnalysisFindingError [_model] :analysis_finding_error)
 
 (derive :model/AnalysisFindingError :metabase/model)
+
+(defmethod app-db-copy/spec :model/AnalysisFindingError [_model]
+  {:skip? true})
 
 (mr/def ::analysis-finding-error
   "Schema for an AnalysisFindingError record."

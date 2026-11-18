@@ -3,6 +3,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -16,6 +17,9 @@
 (doto :model/WorkspaceDatabase
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/WorkspaceDatabase [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/WorkspaceDatabase
   {:database_details (mi/transform-encrypted-json "workspace_database.database_details")

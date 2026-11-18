@@ -9,6 +9,7 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
@@ -23,6 +24,9 @@
 (doto :model/ExplorationBlock
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/ExplorationBlock [_model]
+  {:skip? false})
 
 (defn- keywordize-dim-types
   "The dim snapshot stores `effective-type`/`semantic-type` as JSON strings (`\"type/Date\"`),

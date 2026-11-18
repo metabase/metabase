@@ -10,6 +10,7 @@
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -58,6 +59,9 @@
   {:create :event/api-key-create
    :update :event/api-key-update
    :delete :event/api-key-delete})
+
+(defmethod app-db-copy/spec :model/ApiKey [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ApiKey
   {:scope mi/transform-keyword

@@ -7,6 +7,7 @@
   table. Lives in the queries module because the snapshot is tied to a query/card, not to
   any one feature that produced it."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
@@ -14,6 +15,9 @@
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/StoredResult [_model] :stored_result)
+
+(defmethod app-db-copy/spec :model/StoredResult [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/StoredResult
   {:result_data         (mi/transform-secret-value "stored_result.result_data")

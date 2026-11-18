@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
@@ -159,6 +160,9 @@
            :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings :metabot_conversation_id
            :metabot_chart_id]
    :skip  [:last_used_at :view_count :cache_invalidated_at]})
+
+(defmethod app-db-copy/spec :model/Card [_model]
+  {:skip? false})
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it

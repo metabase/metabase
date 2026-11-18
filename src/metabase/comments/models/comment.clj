@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.channel.urls :as channel.urls]
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
@@ -24,6 +25,9 @@
   {:create :event/comment-create
    :update :event/comment-update
    :delete :event/comment-delete})
+
+(defmethod app-db-copy/spec :model/Comment [_model]
+  {:skip? false})
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON

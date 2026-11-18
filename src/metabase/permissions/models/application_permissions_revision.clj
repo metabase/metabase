@@ -1,5 +1,6 @@
 (ns metabase.permissions.models.application-permissions-revision
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.util.i18n :refer [tru]]
@@ -13,6 +14,9 @@
 (doto :model/ApplicationPermissionsRevision
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/ApplicationPermissionsRevision [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ApplicationPermissionsRevision
   {:before mi/transform-json

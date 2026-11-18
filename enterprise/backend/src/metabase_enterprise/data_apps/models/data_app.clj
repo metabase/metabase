@@ -3,6 +3,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -53,6 +54,9 @@
   {:create :event/data-app-create
    :update :event/data-app-update
    :delete :event/data-app-delete})
+
+(defmethod app-db-copy/spec :model/DataApp [_model]
+  {:skip? true})
 
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)

@@ -15,6 +15,7 @@
    They also drop this process's [[database-ids-with-remappings]] cache."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.cache.core :as cache]
    [methodical.core :as methodical]
@@ -27,6 +28,9 @@
 (doto :model/TableRemapping
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/TableRemapping [_model]
+  {:skip? false})
 
 (def ^:private sentinel-columns
   "Columns that use `\"\"` as the empty-slot sentinel in storage."

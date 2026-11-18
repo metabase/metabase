@@ -115,6 +115,7 @@
    :uses #{analytics
            api
            api.eid-translation
+           app-db
            collections
            driver
            events
@@ -173,6 +174,7 @@
            metabase.activity-feed.core
            metabase.activity-feed.init}
    :uses #{api
+           app-db
            batch-processing
            collections
            events
@@ -365,6 +367,7 @@
   app-db
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock
+           metabase.app-db.copy-spec
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.quartz
@@ -721,6 +724,7 @@
    :api  #{metabase.comments.api metabase.comments.core metabase.comments.init}
    :uses #{analytics
            api
+           app-db
            channel
            events
            lib
@@ -741,8 +745,7 @@
   content-translation
   {:team "UX West"
    :api  #{metabase.content-translation.models}
-   :uses #{premium-features
-           util}
+   :uses #{app-db premium-features util}
    :model-exports #{:model/ContentTranslation}}
 
   content-verification
@@ -1222,6 +1225,7 @@
            metabase.glossary.init
            metabase.glossary.schema}
    :uses #{api
+           app-db
            events
            lib.schema
            models
@@ -1250,6 +1254,7 @@
            metabase.indexed-entities.init}
    :uses #{analytics
            api
+           app-db
            driver
            events
            lib.legacy-mbql
@@ -1523,6 +1528,7 @@
           metabase.oauth-server.init}
    :uses #{api
            api-scope
+           app-db
            appearance
            events
            lib.schema
@@ -1550,6 +1556,7 @@
    :api  #{metabase.measures.api metabase.measures.init}
    :uses #{api
            api.eid-translation
+           app-db
            collections
            events
            lib
@@ -1693,6 +1700,7 @@
    :uses    #{ai-tracing
               analytics.interface
               api
+              app-db
               channel
               collections
               dashboards
@@ -1928,6 +1936,7 @@
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
            api.eid-translation
+           app-db
            change-log
            collections
            events
@@ -2683,6 +2692,7 @@
                      segments.schema}
    :api  #{metabase.segments.init}
    :uses #{api.eid-translation
+           app-db
            collections
            events
            lib
@@ -2939,7 +2949,8 @@
           metabase.auth-identity.db
           metabase.auth-identity.init
           metabase.auth-identity.schema}
-   :uses #{channel
+   :uses #{app-db
+           channel
            events
            lib.schema
            models
@@ -3055,6 +3066,7 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
+           app-db
            lib.schema
            models
            permissions
@@ -3135,6 +3147,7 @@
    :uses #{analytics
            api
            api.eid-translation
+           app-db
            collections
            events
            lib.schema
@@ -3259,7 +3272,8 @@
   {:team "Gadget"
    :ns-prefix "metabase.indexes"
    :api #{metabase.indexes.models.table-index metabase.indexes.reconcile metabase.indexes.schema}
-   :uses #{driver
+   :uses #{app-db
+           driver
            lib.schema
            models
            remote-sync
@@ -3375,6 +3389,7 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
+           app-db
            lib.schema
            util
            util.config}}
@@ -3391,6 +3406,7 @@
    :uses #{analytics
            api
            api.eid-translation
+           app-db
            batch-processing
            change-log
            events
@@ -3649,6 +3665,7 @@
    :ns-prefix "metabase.secrets"
    :api #{metabase.secrets.core}
    :uses #{api
+           app-db
            driver
            lib.schema
            models
@@ -3705,6 +3722,7 @@
    :api #{metabase-enterprise.action-v2.api metabase-enterprise.action-v2.init}
    :uses #{actions
            api
+           app-db
            driver
            events
            lib
@@ -3997,6 +4015,7 @@
    :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            api-scope
+           app-db
            events
            lib.schema
            models
@@ -4015,6 +4034,7 @@
    :uses #{actions
            api
            api-scope
+           app-db
            audit-app
            collections
            data-apps
@@ -4080,6 +4100,7 @@
           metabase-enterprise.data-testing.schema
           metabase-enterprise.data-testing.segment-api}
    :uses #{api
+           app-db
            audit-app
            collections
            driver
@@ -4120,6 +4141,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
+           app-db
            driver
            events
            lib.metadata
@@ -4308,6 +4330,7 @@
                      enterprise/metabot.data-complexity-score}
    :api            #{metabase-enterprise.metabot.api metabase-enterprise.metabot.api.routes metabase-enterprise.metabot.init}
    :uses           #{api
+                     app-db
                      lib.schema
                      metabot
                      metabot.llm
@@ -4723,6 +4746,7 @@
            metabase-enterprise.sso.init
            metabase-enterprise.sso.settings}
    :uses #{api
+           app-db
            appearance
            embedding
            premium-features
@@ -4800,6 +4824,7 @@
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
+           app-db
            audit-app
            change-log
            collections

@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
    [metabase.events.core :as events]
@@ -38,6 +39,9 @@
    :update :event/channel-update
    :delete :event/channel-delete})
 
+(defmethod app-db-copy/spec :model/Channel [_model]
+  {:skip? false})
+
 (doto :model/ChannelTemplate
   (derive :metabase/model)
   (derive :hook/events)
@@ -48,6 +52,9 @@
   {:create :event/channel-template-create
    :update :event/channel-template-update
    :delete :event/channel-template-delete})
+
+(defmethod app-db-copy/spec :model/ChannelTemplate [_model]
+  {:skip? false})
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------
 

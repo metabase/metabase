@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.models.result-metadata-status
   "The ResultMetadataStatus model: one status per MBQL card, marked stale by the writes its result metadata reads."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -8,6 +9,9 @@
 (methodical/defmethod t2/table-name :model/ResultMetadataStatus [_model] :result_metadata_status)
 
 (derive :model/ResultMetadataStatus :metabase/model)
+
+(defmethod app-db-copy/spec :model/ResultMetadataStatus [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/ResultMetadataStatus
   {:entity_type mi/transform-keyword})

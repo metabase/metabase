@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-tag
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -29,6 +30,9 @@
   {:create :event/transform-tag-create
    :update :event/transform-tag-update
    :delete :event/transform-tag-delete})
+
+(defmethod app-db-copy/spec :model/TransformTag [_model]
+  {:skip? false})
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

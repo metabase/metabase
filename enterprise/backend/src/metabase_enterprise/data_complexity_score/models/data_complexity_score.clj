@@ -5,6 +5,7 @@
    [malli.transform :as mtx]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,6 +14,9 @@
 
 (doto :model/DataComplexityScore
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/DataComplexityScore [_model]
+  {:skip? true})
 
 (defn- score-data-out
   "Re-keywordize the `:keyword`-typed leaves (e.g. `:meta.text-variant`) that JSON storage round-trips back as

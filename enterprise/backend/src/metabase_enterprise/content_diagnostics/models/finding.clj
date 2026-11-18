@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,6 +14,9 @@
 
 (doto :model/ContentDiagnosticsFinding
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/ContentDiagnosticsFinding [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ContentDiagnosticsFinding
   {:entity_type  mi/transform-keyword

@@ -1,6 +1,7 @@
 (ns metabase.embedding.models.theme
   "Model for embedding themes for use in the embedding theme editor."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -15,6 +16,9 @@
   (derive ::mi/read-policy.superuser)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/EmbeddingTheme [_model]
+  {:skip? false})
 
 ;;;; transforms
 

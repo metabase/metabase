@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -46,6 +47,9 @@
   {:create :event/table-user-settings-create
    :update :event/table-user-settings-update
    :delete :event/table-user-settings-delete})
+
+(defmethod app-db-copy/spec :model/TableUserSettings [_model]
+  {:skip? false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

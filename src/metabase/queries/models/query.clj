@@ -1,6 +1,7 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,6 +23,9 @@
 
 (methodical/defmethod t2/table-name :model/Query [_model] :query)
 (methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
+
+(defmethod app-db-copy/spec :model/Query [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/Query
   {:query mi/transform-json})

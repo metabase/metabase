@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.transform-job-transform-tag
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.schema :as transforms.schema]
    [methodical.core :as methodical]
@@ -14,6 +15,9 @@
 (doto :model/TransformJobTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+(defmethod app-db-copy/spec :model/TransformJobTransformTag [_model]
+  {:skip? false})
 
 ;;; ------------------------------------------------ Serialization -------------------------------------------------
 

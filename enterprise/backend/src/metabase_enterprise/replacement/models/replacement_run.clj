@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -12,6 +13,9 @@
 (methodical/defmethod t2/table-name :model/ReplacementRun [_model] :source_replacement_run)
 
 (derive :model/ReplacementRun :metabase/model)
+
+(defmethod app-db-copy/spec :model/ReplacementRun [_model]
+  {:skip? true})
 
 (def ^:private terminal-statuses
   #{:succeeded :failed :canceled :timeout})

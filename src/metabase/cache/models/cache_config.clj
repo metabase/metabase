@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -37,6 +38,9 @@
   {:create :event/cache-config-create
    :update :event/cache-config-update
    :delete :event/cache-config-delete})
+
+(defmethod app-db-copy/spec :model/CacheConfig [_model]
+  {:skip? true})
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
 

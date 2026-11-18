@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -20,6 +21,9 @@
 (methodical/defmethod t2/table-name :model/PersistedInfo [_model] :persisted_info)
 
 (derive :model/PersistedInfo :metabase/model)
+
+(defmethod app-db-copy/spec :model/PersistedInfo [_model]
+  {:skip? false})
 
 (t2/define-before-insert :model/PersistedInfo
   [persisted-info]

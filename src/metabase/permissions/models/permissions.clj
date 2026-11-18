@@ -158,6 +158,7 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -245,6 +246,9 @@
 (methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
 
 (derive :model/Permissions :metabase/model)
+
+(defmethod app-db-copy/spec :model/Permissions [_model]
+  {:skip? false})
 
 (defn- maybe-break-out-permission-data
   "Given a `Permissions` model, add `:collection_id`, `:perm_type`, and `:perm_value` iff we know how to break that out."

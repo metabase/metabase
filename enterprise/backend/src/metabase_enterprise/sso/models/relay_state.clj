@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.db :as sso.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.util.random :as random]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -23,6 +24,9 @@
 (doto :model/SsoRelayState
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/SsoRelayState [_model]
+  {:skip? true})
 
 (def ^:private key-prefix
   "Prefix for generated RelayState keys. The trailing `_` is not part of the Base64 alphabet, so a stored

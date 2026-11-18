@@ -3,6 +3,7 @@
   metabot_conversation/metabot_message rows, so the visualization context
   (prompt + query) is stored inline rather than via a message FK."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -10,3 +11,6 @@
 
 (doto :model/McpFeedback
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/McpFeedback [_model]
+  {:skip? false})

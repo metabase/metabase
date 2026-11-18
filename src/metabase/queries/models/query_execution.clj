@@ -4,6 +4,7 @@
   (:require
    [malli.error :as me]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -17,6 +18,9 @@
 
 (derive :model/QueryExecution :metabase/model)
 (derive :model/QueryExecution ::t2.disallow/update)
+
+(defmethod app-db-copy/spec :model/QueryExecution [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/QueryExecution
   {:json_query mi/transform-json

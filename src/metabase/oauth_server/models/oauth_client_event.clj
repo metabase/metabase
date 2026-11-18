@@ -6,6 +6,7 @@
    each decision a user makes via `POST /oauth/authorize/decision`, stamped with the deciding user's
    `user_id`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -17,6 +18,9 @@
 
 (doto :model/OAuthClientEvent
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/OAuthClientEvent [_model]
+  {:skip? false})
 
 (defn- client-pk
   "Look up the numeric `oauth_client.id` primary key for the given OAuth `client-id` (UUID)."

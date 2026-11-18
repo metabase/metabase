@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -12,6 +13,9 @@
 
 (doto :model/SecurityAdvisory
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/SecurityAdvisory [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/SecurityAdvisory
   {:severity          mi/transform-keyword

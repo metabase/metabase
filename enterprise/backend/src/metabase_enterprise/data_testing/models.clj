@@ -3,6 +3,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -37,6 +38,9 @@
   {:create :event/transform-test-create
    :update :event/transform-test-update
    :delete :event/transform-test-delete})
+
+(defmethod app-db-copy/spec :model/TransformTest [_model]
+  {:skip? false})
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its

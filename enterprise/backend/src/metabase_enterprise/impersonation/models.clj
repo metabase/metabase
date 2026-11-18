@@ -4,6 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -21,6 +22,9 @@
   ;; Only admins can work with Connection Impersonation configs
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
+
+(defmethod app-db-copy/spec :model/ConnectionImpersonation [_model]
+  {:skip? false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

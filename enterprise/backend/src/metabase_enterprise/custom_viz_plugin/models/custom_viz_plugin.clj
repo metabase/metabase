@@ -4,6 +4,7 @@
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -56,6 +57,9 @@
   {:create :event/custom-viz-plugin-create
    :update :event/custom-viz-plugin-update
    :delete :event/custom-viz-plugin-delete})
+
+(defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
+  {:skip? false})
 
 (def non-blob-columns
   "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."

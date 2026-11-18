@@ -1,5 +1,6 @@
 (ns metabase.oauth-server.models.oauth-access-token
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -10,6 +11,9 @@
 
 (doto :model/OAuthAccessToken
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/OAuthAccessToken [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/OAuthAccessToken
   {:scope    mi/transform-json

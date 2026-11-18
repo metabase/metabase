@@ -1,6 +1,7 @@
 (ns metabase.embedding.models.sdk-react-18-host
   "Model for the host apps that use the React embedding SDK with React 18."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
@@ -15,6 +16,9 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/EmbeddingSdkReact18Host [_model]
+  {:skip? true})
 
 ;; The middleware normalizes the host before it saves it; this rejects a new row whose host is not normalized.
 (t2/define-before-insert :model/EmbeddingSdkReact18Host

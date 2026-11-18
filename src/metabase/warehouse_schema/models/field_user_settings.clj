@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -45,6 +46,9 @@
            :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
            :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/FieldUserSettings [_model]
+  {:skip? false})
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."

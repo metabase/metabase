@@ -3,6 +3,7 @@
   members may connect to the MCP server and, per tool name, the admin's explicit `\"yes\"` or `\"no\"`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
@@ -25,6 +26,9 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/McpGroupPermission [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/McpGroupPermission
   {:tool_access mi/transform-json-no-keywordization})

@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
    [metabase.util :as u]
@@ -20,6 +21,9 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/SupportAccessGrantLog [_model]
+  {:skip? true})
 
 (defn fetch-or-create-support-user!
   "Fetch or Create the support user account from settings.

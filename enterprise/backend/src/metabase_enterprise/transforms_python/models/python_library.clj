@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -23,6 +24,9 @@
   {:create :event/python-library-create
    :update :event/python-library-update
    :delete :event/python-library-delete})
+
+(defmethod app-db-copy/spec :model/PythonLibrary [_model]
+  {:skip? true})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

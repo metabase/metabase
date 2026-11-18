@@ -1,6 +1,7 @@
 (ns metabase.search.models.search-index-metadata
   (:require
    [java-time.api :as t]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.search.db :as search.db]
    [metabase.util :as u]
@@ -14,6 +15,9 @@
 (doto :model/SearchIndexMetadata
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/SearchIndexMetadata [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/SearchIndexMetadata
   {:engine mi/transform-keyword

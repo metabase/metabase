@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-feedback
   "Persist Metabot message feedback"
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -10,6 +11,9 @@
 
 (doto :model/MetabotFeedback
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/MetabotFeedback [_model]
+  {:skip? false})
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotFeedback :user]
   "Batch-hydrate `:user` (id/email/name only) — the feedback submitter."

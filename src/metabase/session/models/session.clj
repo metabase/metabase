@@ -6,6 +6,7 @@
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
    [environ.core :as env]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.db :as session.db]
@@ -74,6 +75,9 @@
 (doto :model/Session
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/Session [_model]
+  {:skip? true})
 
 (def ^:private ending-columns
   "The only columns an update of a Session may touch: the ones [[metabase.session.db/end-sessions!]] writes to record

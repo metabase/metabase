@@ -1,5 +1,6 @@
 (ns metabase.mcp.models.mcp-query-handle
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -8,3 +9,6 @@
 (doto :model/McpQueryHandle
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/McpQueryHandle [_model]
+  {:skip? true})

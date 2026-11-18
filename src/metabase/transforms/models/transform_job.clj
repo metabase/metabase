@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -35,6 +36,9 @@
   {:create :event/transform-job-create
    :update :event/transform-job-update
    :delete :event/transform-job-delete})
+
+(defmethod app-db-copy/spec :model/TransformJob [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})

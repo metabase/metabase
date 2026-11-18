@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
@@ -343,6 +344,9 @@
   {:create :event/collection-create
    :update :event/collection-update
    :delete :event/collection-delete})
+
+(defmethod app-db-copy/spec :model/Collection [_model]
+  {:skip? false})
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]

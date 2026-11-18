@@ -2,6 +2,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -29,6 +30,9 @@
 (methodical/defmethod t2/table-name :model/TransformRun [_model] :transform_run)
 
 (derive :model/TransformRun :metabase/model)
+
+(defmethod app-db-copy/spec :model/TransformRun [_model]
+  {:skip? false})
 
 (t2/define-before-update :model/TransformRun
   [run]

@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -32,6 +33,9 @@
   {:create :event/card-test-create
    :update :event/card-test-update
    :delete :event/card-test-delete})
+
+(defmethod app-db-copy/spec :model/CardTest [_model]
+  {:skip? false})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]

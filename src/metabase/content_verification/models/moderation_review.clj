@@ -1,6 +1,7 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.content-verification.schema :as content-verification.schema]
@@ -44,6 +45,9 @@
   {:create :event/moderation-review-create
    :update :event/moderation-review-update
    :delete :event/moderation-review-delete})
+
+(defmethod app-db-copy/spec :model/ModerationReview [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})

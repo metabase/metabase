@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.metabot-message
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
@@ -13,6 +14,9 @@
 
 (doto :model/MetabotMessage
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/MetabotMessage [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/MetabotMessage
   {:usage {:in  mi/json-in

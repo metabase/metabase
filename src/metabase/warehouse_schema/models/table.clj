@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
@@ -17,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -113,6 +115,10 @@
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
            :owner_user_id :collection_id :is_published :transform_id :transform_target]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
+
+(defmethod app-db-copy/spec :model/Table [_model]
+  {:skip?     false
+   :transform warehouse-schema.app-db-copy/transform-table})
 
 (def transform-data-authority
   "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but

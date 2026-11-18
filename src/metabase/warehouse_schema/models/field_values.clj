@@ -27,6 +27,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.database-routing.core :as database-routing]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -112,6 +113,9 @@
   {:create :event/field-values-create
    :update :event/field-values-update
    :delete :event/field-values-delete})
+
+(defmethod app-db-copy/spec :model/FieldValues [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization

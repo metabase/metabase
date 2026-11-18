@@ -3,6 +3,7 @@
    Source cards / models / metrics are recursively expanded to their underlying
    tables by [[metabase.metabot.used-tables]] before insertion."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -10,3 +11,6 @@
 
 (doto :model/MetabotUsedTable
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/MetabotUsedTable [_model]
+  {:skip? false})

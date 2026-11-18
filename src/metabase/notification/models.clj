@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.channel.models.channel :as models.channel]
    [metabase.events.core :as events]
@@ -59,6 +60,9 @@
   {:track [:payload_type :active :internal_id :payload_id :creator_id]
    :skip  []})
 
+(defmethod app-db-copy/spec :model/Notification [_model]
+  {:skip? false})
+
 (defmethod events/spec :model/NotificationCard
   [_model]
   {:create :event/notification-card-create
@@ -68,6 +72,9 @@
 (defmethod change-log/spec :model/NotificationCard [_model]
   {:track [:card_id :send_once :send_condition :disable_links]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/NotificationCard [_model]
+  {:skip? false})
 
 (defmethod events/spec :model/NotificationHandler
   [_model]
@@ -79,6 +86,9 @@
   {:track [:channel_type :notification_id :channel_id :template_id :active]
    :skip  []})
 
+(defmethod app-db-copy/spec :model/NotificationHandler [_model]
+  {:skip? false})
+
 (defmethod events/spec :model/NotificationRecipient
   [_model]
   {:create :event/notification-recipient-create
@@ -89,6 +99,9 @@
   {:track [:notification_handler_id :type :user_id :permissions_group_id :details]
    :skip  []})
 
+(defmethod app-db-copy/spec :model/NotificationRecipient [_model]
+  {:skip? false})
+
 (defmethod events/spec :model/NotificationSubscription
   [_model]
   {:create :event/notification-subscription-create
@@ -98,6 +111,9 @@
 (defmethod change-log/spec :model/NotificationSubscription [_model]
   {:track [:notification_id :type :event_name :cron_schedule :ui_display_type]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/NotificationSubscription [_model]
+  {:skip? false})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;

@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.composite :as composite]
    [metabase.explorations.db :as explorations.db]
    [metabase.interestingness.core :as interestingness]
@@ -21,6 +22,9 @@
 
 (doto :model/ExplorationQueryResult
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/ExplorationQueryResult [_model]
+  {:skip? true})
 
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose
 ;; derived from them, produced under the creator's data-access lens. That is the same material as the

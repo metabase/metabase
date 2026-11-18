@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -60,6 +61,9 @@
                :target :target_db_id]
    :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
    :authorize :snapshot})
+
+(defmethod app-db-copy/spec :model/Transform [_model]
+  {:skip? false})
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
   "Deserialize a transform source map from JSON storage format, normalized to its schema."

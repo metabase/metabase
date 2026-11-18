@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -32,6 +33,9 @@
   {:create :event/segment-test-create
    :update :event/segment-test-update
    :delete :event/segment-test-delete})
+
+(defmethod app-db-copy/spec :model/SegmentTest [_model]
+  {:skip? false})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
   [_original-model _k]

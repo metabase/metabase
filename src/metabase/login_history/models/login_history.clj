@@ -1,6 +1,8 @@
 (ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.login-history.app-db-copy :as login-history.app-db-copy]
    [metabase.login-history.db :as login-history.db]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
@@ -44,6 +46,10 @@
 
 (doto :model/LoginHistory
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/LoginHistory [_model]
+  {:skip?     false
+   :transform login-history.app-db-copy/transform-login-history})
 
 (mu/defn record-login-history!
   "Record a login event in the LoginHistory table."

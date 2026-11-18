@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -10,6 +11,9 @@
 (derive :model/SemanticSearchTokenTracking :metabase/model)
 
 (methodical/defmethod t2/table-name :model/SemanticSearchTokenTracking [_model] :semantic_search_token_tracking)
+
+(defmethod app-db-copy/spec :model/SemanticSearchTokenTracking [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/SemanticSearchTokenTracking
   {:request_type mi/transform-keyword})

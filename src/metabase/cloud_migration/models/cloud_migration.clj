@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.quartz :as app-db.quartz]
    [metabase.cloud-migration.db :as cloud-migration.db]
@@ -33,6 +34,9 @@
   (derive :hook/timestamped?))
 
 (methodical/defmethod t2/table-name :model/CloudMigration [_model] :cloud_migration)
+
+(defmethod app-db-copy/spec :model/CloudMigration [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})

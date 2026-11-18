@@ -1,6 +1,7 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -24,6 +25,24 @@
 (derive :model/BookmarkOrdering :metabase/model)
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
+
+(defmethod app-db-copy/spec :model/CardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DashboardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/CollectionBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/BookmarkOrdering [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DocumentBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ExplorationBookmark [_model]
+  {:skip? false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

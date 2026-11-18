@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -85,6 +86,9 @@
   {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled
            :entity_id :channel_id]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/PulseChannel [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")

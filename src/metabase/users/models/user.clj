@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
@@ -56,6 +57,9 @@
            :reset_token :reset_triggered :is_qbnewb :login_attributes :sso_source :locale :is_datasetnewb :settings
            :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/User [_model]
+  {:skip? false})
 
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."

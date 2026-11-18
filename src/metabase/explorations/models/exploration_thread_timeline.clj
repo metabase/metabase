@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-thread-timeline
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.timeline.core :as timeline]
@@ -12,6 +13,9 @@
 (doto :model/ExplorationThreadTimeline
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/ExplorationThreadTimeline [_model]
+  {:skip? false})
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThreadTimeline :timeline]
   [_model k join-rows]

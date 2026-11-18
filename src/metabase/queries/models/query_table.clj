@@ -1,5 +1,6 @@
 (ns metabase.queries.models.query-table
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -7,3 +8,6 @@
 
 (doto :model/QueryTable
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/QueryTable [_model]
+  {:skip? true})

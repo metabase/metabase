@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
@@ -17,6 +18,9 @@
   (derive ::mi/write-policy.superuser)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/Metabot [_model]
+  {:skip? false})
 
 ;; NOTE: the `use_verified_content` column now means "use only verified OR curated content" — when on,
 ;; Metabot search is restricted via the precomputed `curated` flag (see metabase.collections.curation),

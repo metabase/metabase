@@ -3,6 +3,7 @@
   for a User - a User can have multiple AuthIdentities (e.g., password + SSO)."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
@@ -24,6 +25,9 @@
   (derive :hook/timestamped?)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
+
+(defmethod app-db-copy/spec :model/AuthIdentity [_model]
+  {:skip? false})
 
 (defn- parse-credentials-timestamps-out
   "Parse timestamp strings in credentials to java.time.Instant when reading from database."

@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-query
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -15,6 +16,9 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defmethod app-db-copy/spec :model/ExplorationQuery [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json

@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.transform-transform-tag
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
@@ -16,6 +17,9 @@
 (doto :model/TransformTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+(defmethod app-db-copy/spec :model/TransformTransformTag [_model]
+  {:skip? false})
 
 ;;; ------------------------------------------------ Serialization -------------------------------------------------
 

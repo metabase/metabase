@@ -1,6 +1,7 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -29,6 +30,9 @@
   {:create :event/timeline-event-create
    :update :event/timeline-event-update
    :delete :event/timeline-event-delete})
+
+(defmethod app-db-copy/spec :model/TimelineEvent [_model]
+  {:skip? false})
 
 (def default-icon
   "The default icon for Timeline and TimelineEvents."

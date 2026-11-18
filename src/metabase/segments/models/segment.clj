@@ -2,6 +2,7 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -54,6 +55,9 @@
    :skip         [:entity_id :creator_id]
    :same?        {:definition revisions/same-definition?}
    :diff-columns [:name :description :definition]})
+
+(defmethod app-db-copy/spec :model/Segment [_model]
+  {:skip? false})
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."

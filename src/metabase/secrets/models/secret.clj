@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -31,6 +32,9 @@
   (derive :hook/timestamped?)
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
+
+(defmethod app-db-copy/spec :model/Secret [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/Secret
   {:value  (mi/transform-secret-value "secret.value")

@@ -1,6 +1,7 @@
 (ns metabase.queries.models.parameter-card
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
@@ -17,6 +18,9 @@
 (doto :model/ParameterCard
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/ParameterCard [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/ParameterCard
   {:parameterized_object_type mi/transform-keyword})

@@ -1,5 +1,6 @@
 (ns metabase.permissions.models.collection-permission-graph-revision
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.util.i18n :refer [tru]]
@@ -11,6 +12,9 @@
 (doto :model/CollectionPermissionGraphRevision
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/CollectionPermissionGraphRevision [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/CollectionPermissionGraphRevision
   {:before mi/transform-json

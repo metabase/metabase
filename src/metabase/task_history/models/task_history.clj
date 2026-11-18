@@ -6,6 +6,7 @@
    [clojure.tools.logging.impl]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -31,6 +32,9 @@
 
 (doto :model/TaskHistory
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/TaskHistory [_model]
+  {:skip? true})
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.

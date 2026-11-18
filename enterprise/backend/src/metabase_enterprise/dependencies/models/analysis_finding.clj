@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -13,6 +14,9 @@
 (methodical/defmethod t2/table-name :model/AnalysisFinding [_model] :analysis_finding)
 
 (derive :model/AnalysisFinding :metabase/model)
+
+(defmethod app-db-copy/spec :model/AnalysisFinding [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/AnalysisFinding
   {:entity_type mi/transform-keyword})

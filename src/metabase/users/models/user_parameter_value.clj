@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
@@ -18,6 +19,9 @@
 
 (doto :model/UserParameterValue
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/UserParameterValue [_model]
+  {:skip? false})
 
 (defn- json-out
   "A version of `metabase.models.interface/json-out` that does not log a parse error.

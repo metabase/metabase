@@ -4,6 +4,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -14,6 +15,9 @@
 (doto :model/ImpersonationQueryCache
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
+
+(defmethod app-db-copy/spec :model/ImpersonationQueryCache [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/ImpersonationQueryCache
   {:input_engine mi/transform-keyword

@@ -22,6 +22,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
@@ -68,6 +69,9 @@
   {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id
            :collection_position :archived :dashboard_id :parameters :entity_id :disable_links :archived_directly]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/Pulse [_model]
+  {:skip? false})
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."

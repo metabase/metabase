@@ -6,6 +6,7 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.actions.serialization :as actions.serialization]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -51,6 +52,9 @@
    :update :event/action-update
    :delete :event/action-delete})
 
+(defmethod app-db-copy/spec :model/Action [_model]
+  {:skip? false})
+
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
@@ -64,6 +68,10 @@
    :update :event/query-action-update
    :delete :event/query-action-delete})
 
+(defmethod app-db-copy/spec :model/QueryAction [_model]
+  {:skip?    false
+   :sequence false})
+
 (derive :model/ImplicitAction :hook/events)
 
 (defmethod events/spec :model/ImplicitAction
@@ -71,6 +79,10 @@
   {:create :event/implicit-action-create
    :update :event/implicit-action-update
    :delete :event/implicit-action-delete})
+
+(defmethod app-db-copy/spec :model/ImplicitAction [_model]
+  {:skip?    false
+   :sequence false})
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])

@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -14,6 +15,9 @@
 (methodical/defmethod t2/table-name :model/DependencyStatus [_model] :dependency_status)
 
 (derive :model/DependencyStatus :metabase/model)
+
+(defmethod app-db-copy/spec :model/DependencyStatus [_model]
+  {:skip? true})
 
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})

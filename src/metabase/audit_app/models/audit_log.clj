@@ -6,6 +6,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -26,6 +27,9 @@
 (m/defmethod t2/table-name :model/AuditLog
   [_model]
   :audit_log)
+
+(defmethod app-db-copy/spec :model/AuditLog [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/AuditLog
   {:topic   mi/transform-keyword

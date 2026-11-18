@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.spec :as eid-translation]
@@ -31,6 +32,9 @@
   {:create :event/timeline-create
    :update :event/timeline-update
    :delete :event/timeline-delete})
+
+(defmethod app-db-copy/spec :model/Timeline [_model]
+  {:skip? false})
 
 (t2/define-after-select :model/Timeline
   [timeline]

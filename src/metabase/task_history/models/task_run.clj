@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -21,6 +22,9 @@
 
 (doto :model/TaskRun
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/TaskRun [_model]
+  {:skip? true})
 
 ;;; Permissions to read or write TaskRun. Same as TaskHistory - requires superusers or monitoring permission.
 (defn- can-access?

@@ -1,6 +1,7 @@
 (ns metabase.documents.models.document
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -61,6 +62,9 @@
   {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
    :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
            :public_uuid :public_uuid_prefix :view_count]})
+
+(defmethod app-db-copy/spec :model/Document [_model]
+  {:skip? false})
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 

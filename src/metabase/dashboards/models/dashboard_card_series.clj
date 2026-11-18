@@ -1,5 +1,6 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
@@ -26,6 +27,9 @@
   {:track  [:card_id :position]
    :skip   [:dashboardcard_id]
    :parent {:model :model/DashboardCard :key :dashboardcard_id}})
+
+(defmethod app-db-copy/spec :model/DashboardCardSeries [_model]
+  {:skip? false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

@@ -10,12 +10,14 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.settings.app-db-copy :as settings.app-db-copy]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.settings.schema :as settings.schema]
@@ -93,6 +95,11 @@
 
 (doto :model/Setting
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/Setting [_model]
+  {:skip?     false
+   :transform settings.app-db-copy/transform-setting
+   :sequence  false})
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 

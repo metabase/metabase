@@ -19,6 +19,11 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
+(defn copy-fields-select
+  "The HoneySQL fragment by which copying the application database reads all fields in id order."
+  []
+  {:order-by [[:id :asc]]})
+
 (mu/defn synced-table-user-settings-clause :- [:fn vector?]
   "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
   [alias :- :keyword

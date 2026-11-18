@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-channel-recipient
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
@@ -22,6 +23,9 @@
 (defmethod change-log/spec :model/PulseChannelRecipient [_model]
   {:track [:pulse_channel_id :user_id]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/PulseChannelRecipient [_model]
+  {:skip? false})
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 

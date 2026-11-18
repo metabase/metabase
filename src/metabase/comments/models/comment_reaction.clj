@@ -1,6 +1,7 @@
 (ns metabase.comments.models.comment-reaction
   "Model for comment reactions (emoji reactions on comments)"
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.comments.db :as comments.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -10,6 +11,9 @@
 
 (doto :model/CommentReaction
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/CommentReaction [_model]
+  {:skip? false})
 
 (methodical/defmethod t2/batched-hydrate [:model/CommentReaction :user]
   [_model k reactions]

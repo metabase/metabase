@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
@@ -196,6 +197,9 @@
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
 (derive :model/Revision :metabase/model)
+
+(defmethod app-db-copy/spec :model/Revision [_model]
+  {:skip? false})
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})

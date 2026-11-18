@@ -2,6 +2,7 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -57,6 +58,9 @@
    :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
    :same?        {:definition revisions/same-definition?}
    :diff-columns [:name :description :definition]})
+
+(defmethod app-db-copy/spec :model/Measure [_model]
+  {:skip? false})
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."

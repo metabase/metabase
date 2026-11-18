@@ -8,6 +8,7 @@
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
@@ -24,6 +25,9 @@
 (doto :model/TableIndex
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(defmethod app-db-copy/spec :model/TableIndex [_model]
+  {:skip? true})
 
 (def ^:private transform-structured
   "JSON in/out for `:structured`, re-keywordizing enum-valued fields (the `fixes`) and validating against the schema

@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
@@ -19,6 +20,10 @@
   {:create :event/metabot-conversation-create
    :update :event/metabot-conversation-update
    :delete :event/metabot-conversation-delete})
+
+(defmethod app-db-copy/spec :model/MetabotConversation [_model]
+  {:skip?    false
+   :sequence false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

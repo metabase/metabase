@@ -2,6 +2,7 @@
   "Model for the `premium_features_token_cache` table, which stores hashes of premium features token check
   results for cross-instance cache coordination. The actual token status is only held in memory."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -9,3 +10,6 @@
 
 (doto :model/PremiumFeaturesCache
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/PremiumFeaturesCache [_model]
+  {:skip? true})

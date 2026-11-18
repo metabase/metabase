@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.ai-usage-log
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -7,3 +8,6 @@
 
 (doto :model/AiUsageLog
   (derive :metabase/model))
+
+(defmethod app-db-copy/spec :model/AiUsageLog [_model]
+  {:skip? true})

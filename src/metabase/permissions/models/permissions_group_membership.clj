@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
@@ -32,6 +33,9 @@
 (defmethod change-log/spec :model/PermissionsGroupMembership [_model]
   {:track [:user_id :group_id :is_group_manager]
    :skip  []})
+
+(defmethod app-db-copy/spec :model/PermissionsGroupMembership [_model]
+  {:skip? false})
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
