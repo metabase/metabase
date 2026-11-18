@@ -486,6 +486,13 @@ describe("MoveModal search", () => {
     can_write: true,
   });
 
+  const THIRD_COLLECTION = createMockCollection({
+    id: 13,
+    name: "Third collection",
+    location: `/${FIRST_COLLECTION_ID}/10/`,
+    can_write: true,
+  });
+
   const createCollectionSearchResult = (
     id: number,
     name: string,
@@ -525,6 +532,11 @@ describe("MoveModal search", () => {
       Number(SECOND_COLLECTION.id),
       "Second collection",
       FIRST_COLLECTION,
+    ),
+    createCollectionSearchResult(
+      Number(THIRD_COLLECTION.id),
+      "Third collection",
+      SECOND_COLLECTION,
     ),
     ...createPersonalCollectionSearchResults(
       "Normal personal collection",
@@ -679,13 +691,19 @@ describe("MoveModal search", () => {
     await openFirstCollection();
     await typeSearchText("collection");
     expect(getScopeRadio("First collection")).toBeChecked();
-    await expectSearchResults(["Second collection"]);
+    // a scoped search also returns the scoped collection and nested collections
+    await expectSearchResults([
+      "First collection",
+      "Second collection",
+      "Third collection",
+    ]);
 
     await userEvent.click(getScopeRadio("Everywhere"));
     expect(getLastSearchParams().get("collection")).toBeNull();
     await expectSearchResults([
       "First collection",
       "Second collection",
+      "Third collection",
       "Normal personal collection 1",
       "Normal personal collection 2",
     ]);
@@ -695,7 +713,11 @@ describe("MoveModal search", () => {
     expect(getLastSearchParams().get("collection")).toBe(
       String(FIRST_COLLECTION_ID),
     );
-    await expectSearchResults(["Second collection"]);
+    await expectSearchResults([
+      "First collection",
+      "Second collection",
+      "Third collection",
+    ]);
 
     await userEvent.click(getRootItem(/Robert Tableton's Personal/));
     await typeSearchText("personal collection 1");

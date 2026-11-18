@@ -379,6 +379,40 @@ describe("scenarios > organization > entity picker", () => {
         .should("have.css", "width")
         .and("eq", "1198px");
     });
+
+    it("should scroll to the left edge of the newly opened column", () => {
+      cy.viewport(375, 800);
+      cy.visit("/");
+
+      H.openNavigationSidebar();
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
+        .findByLabelText(/Collection it's saved in/)
+        .click();
+
+      H.entityPickerModal().within(() => {
+        // After opening, the first column (level 0) should be visible
+        cy.findByTestId("item-picker-level-0").should("be.visible");
+
+        // Navigate into a collection
+        H.entityPickerModalItem(1, "First collection").click();
+
+        // The new column should be visible
+        cy.findByTestId("item-picker-level-2").should("be.visible");
+
+        // The scroll container should be scrolled so that the new column's
+        // left edge aligns with the container's left edge
+        cy.findByTestId("nested-item-picker").should(($container) => {
+          const container = $container[0];
+          const lastColumn = container.querySelector<HTMLElement>(
+            "[data-testid='item-picker-level-2']",
+          );
+
+          expect(lastColumn).to.not.be.null;
+          expect(container.scrollLeft).to.equal(lastColumn?.offsetLeft);
+        });
+      });
+    });
   });
 });
 

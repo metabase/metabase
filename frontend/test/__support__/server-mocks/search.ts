@@ -13,9 +13,11 @@ export function setupSearchEndpoints(
   }: {
     nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
     /**
-     * Answer like the backend for the `collection` and
-     * `include_dashboard_questions` params: only items directly in the
-     * requested collection, and dashboard questions only on request.
+     * Filter on the `collection` and `include_dashboard_questions` params:
+     * a scoped search returns the scoped collection and the items in it or in
+     * its descendants (read from the result collection's `effective_ancestors`
+     * or `location`), and dashboard questions only on request. It does not
+     * check permissions.
      */
     filterByScope?: boolean;
   } = {},
@@ -48,8 +50,7 @@ export function setupSearchEndpoints(
           url.searchParams.get("include_dashboard_questions") === "true";
         matchedItems = matchedItems.filter(
           (item) =>
-            (collectionId == null ||
-              String(item.collection?.id) === collectionId) &&
+            (collectionId == null || isInCollection(item, collectionId)) &&
             (includeDashboardQuestions ||
               !("dashboard" in item) ||
               item.dashboard == null),
@@ -74,6 +75,30 @@ export function setupSearchEndpoints(
       };
     },
     { name, delay },
+  );
+}
+
+function isInCollection(
+  item: CollectionItem | SearchResult,
+  collectionId: string,
+) {
+  if (item.model === "collection" && String(item.id) === collectionId) {
+    return true;
+  }
+  const collection = item.collection;
+  if (!collection) {
+    return false;
+  }
+  const location =
+    "location" in collection && typeof collection.location === "string"
+      ? collection.location
+      : "";
+  return (
+    String(collection.id) === collectionId ||
+    (collection.effective_ancestors ?? []).some(
+      (ancestor) => String(ancestor.id) === collectionId,
+    ) ||
+    location.split("/").includes(collectionId)
   );
 }
 

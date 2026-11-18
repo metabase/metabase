@@ -354,6 +354,15 @@ describe("DataPickerModal", () => {
           collection: NORMAL_PERSONAL_COLLECTION,
           namePrefix: "Normal personal collection",
         },
+        // a sub-collection of First collection: its cards are in its scope too
+        {
+          collection: createMockCollection({
+            id: 12,
+            name: "Nested collection",
+            location: `/${FIRST_COLLECTION_ID}/`,
+          }),
+          namePrefix: "Regular nested",
+        },
       ]);
       const searchItems = createCardSearchResults(cards);
       const itemsIn = (collection: Collection) =>
@@ -405,6 +414,9 @@ describe("DataPickerModal", () => {
         "Normal personal collection question 2",
         "Normal personal collection model 2",
         "Normal personal collection metric 2",
+        "Regular nested question 2",
+        "Regular nested model 2",
+        "Regular nested metric 2",
       ]);
 
       await userEvent.click(getRootItem(/Our analytics/));
@@ -419,6 +431,9 @@ describe("DataPickerModal", () => {
         "Regular question 1",
         "Regular model 1",
         "Regular metric 1",
+        "Regular nested question 1",
+        "Regular nested model 1",
+        "Regular nested metric 1",
       ]);
 
       await userEvent.click(getRootItem(/Personal Collection/));
