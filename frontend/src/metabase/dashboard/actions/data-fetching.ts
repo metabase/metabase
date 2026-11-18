@@ -76,6 +76,7 @@ import type {
   ParameterValuesMap,
   QuestionDashboardCard,
   ReferencedEntitiesResults,
+  ReferencedEntity,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
@@ -507,20 +508,56 @@ function getCardsFetchingConcurrencyLimit(): number {
 
 const CONCURRENT_CARD_FETCH_LIMIT = getCardsFetchingConcurrencyLimit();
 
-async function runWithConcurrencyLimit(
-  tasks: (() => Promise<void>)[],
+type CardFetchTask = {
+  requestCount: number;
+  run: () => Promise<void>;
+};
+
+/**
+ * Runs the tasks in order, with at most `limit` requests in flight. A task
+ * that needs more requests than the limit still runs, but alone.
+ */
+function runWithRequestLimit(
+  tasks: CardFetchTask[],
   limit: number,
 ): Promise<void> {
-  let index = 0;
-  async function worker() {
-    while (index < tasks.length) {
-      const taskIndex = index++;
-      await tasks[taskIndex]();
+  let nextIndex = 0;
+  let requestsInFlight = 0;
+
+  return new Promise((resolve, reject) => {
+    function canStart(task: CardFetchTask) {
+      return (
+        requestsInFlight === 0 || requestsInFlight + task.requestCount <= limit
+      );
     }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(limit, tasks.length) }, worker),
-  );
+
+    function startTasks() {
+      if (nextIndex === tasks.length && requestsInFlight === 0) {
+        resolve();
+        return;
+      }
+
+      while (nextIndex < tasks.length && canStart(tasks[nextIndex])) {
+        const task = tasks[nextIndex++];
+        requestsInFlight += task.requestCount;
+        task.run().then(() => {
+          requestsInFlight -= task.requestCount;
+          startTasks();
+        }, reject);
+      }
+    }
+
+    startTasks();
+  });
+}
+
+function createCardFetchTask(
+  card: Card,
+  dashcard: DashboardCard,
+  run: () => Promise<void>,
+): CardFetchTask {
+  const hasGoalRequest = getDashcardGoalSources(card, dashcard).length > 0;
+  return { requestCount: hasGoalRequest ? 2 : 1, run };
 }
 
 export const fetchDashboardCardData =
@@ -577,22 +614,22 @@ export const fetchDashboardCardData =
       );
     }
 
-    const tasks = nonVirtualDashcardsToFetch.map(
-      ({ card, dashcard }) =>
-        async () => {
-          await dispatch(
-            // TODO: fix the return type of getAllDashboardCards to make sure
-            // that the relationship between a dashcard and its card
-            // is actually reflected in the type system
-            fetchCardData(card as Card, dashcard, {
-              reload,
-              clearCache,
-              dashboardLoadId,
-            }),
-          );
-          await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
-        },
-    );
+    const tasks = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
+      // TODO: fix the return type of getAllDashboardCards to make sure
+      // that the relationship between a dashcard and its card
+      // is actually reflected in the type system
+      const questionCard = card as Card;
+      return createCardFetchTask(questionCard, dashcard, async () => {
+        await dispatch(
+          fetchCardData(questionCard, dashcard, {
+            reload,
+            clearCache,
+            dashboardLoadId,
+          }),
+        );
+        await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+      });
+    });
 
     if (nonVirtualDashcardsToFetch.length > 0) {
       dispatch(
@@ -601,7 +638,7 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      return runWithConcurrencyLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
+      return runWithRequestLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
         () => {
           dispatch(loadingComplete());
         },
@@ -619,19 +656,22 @@ export const reloadDashboardCards =
 
     const reloadTasks = getAllDashboardCards(dashboard)
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-      .map(({ card, dashcard }) => async () => {
-        await dispatch(
-          // TODO: fix the return type of getAllDashboardCards to make sure
-          // that the relationship between a dashcard and its card
-          // is actually reflected in the type system
-          fetchCardData(card as Card, dashcard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+      .map(({ card, dashcard }) => {
+        // TODO: fix the return type of getAllDashboardCards to make sure
+        // that the relationship between a dashcard and its card
+        // is actually reflected in the type system
+        const questionCard = card as Card;
+        return createCardFetchTask(questionCard, dashcard, async () => {
+          await dispatch(
+            fetchCardData(questionCard, dashcard, {
+              reload: true,
+              ignoreCache: true,
+            }),
+          );
+        });
       });
 
-    await runWithConcurrencyLimit(reloadTasks, CONCURRENT_CARD_FETCH_LIMIT);
+    await runWithRequestLimit(reloadTasks, CONCURRENT_CARD_FETCH_LIMIT);
   };
 
 export const cancelFetchDashboardCardData = createThunkAction(
@@ -698,8 +738,7 @@ function fetchDashcardGoalValues(
     signal,
   }: { forceRefetch: boolean; ignoreCache?: boolean; signal: AbortSignal },
 ): Promise<ReferencedEntitiesResults | null> {
-  const goalCard = getDashcardGoalCard(card, dashcard);
-  const sources = goalCard != null ? getReferencedEntities(goalCard) : [];
+  const sources = getDashcardGoalSources(card, dashcard);
   const options = { sources, forceRefetch, signal };
 
   return match(getDashboardType(dashcard.dashboard_id))
@@ -749,6 +788,14 @@ function fetchDashcardGoalValues(
         options,
       ),
     );
+}
+
+function getDashcardGoalSources(
+  card: Card,
+  dashcard: DashboardCard,
+): ReferencedEntity[] {
+  const goalCard = getDashcardGoalCard(card, dashcard);
+  return goalCard != null ? getReferencedEntities(goalCard) : [];
 }
 
 // keep in sync with `goal-scope` in dynamic_goals.clj, which picks the goals the backend answers

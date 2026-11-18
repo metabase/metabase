@@ -458,7 +458,17 @@ function createMockDispatch(getMockState: () => Partial<State>) {
   return { dispatch, getState };
 }
 
-function setupConcurrencyTest(dashboardId: number, cardCount: number) {
+type ConcurrencyTestOpts = {
+  cardCount: number;
+  dashboardId: number;
+  hasGoals?: boolean;
+};
+
+function setupConcurrencyTest({
+  cardCount,
+  dashboardId,
+  hasGoals = false,
+}: ConcurrencyTestOpts) {
   let currentConcurrent = 0;
   let maxConcurrent = 0;
 
@@ -468,24 +478,35 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
       id: i + 1,
       card_id: i + 1,
       dashboard_id: dashboardId,
-      card: createMockCard({ id: i + 1 }),
+      card: createMockCard({
+        id: i + 1,
+        display: "progress",
+        visualization_settings: hasGoals
+          ? // a source per card, so no two goal requests are deduplicated
+            { "progress.goal": { type: "card", id: 100 + i, column: "goal" } }
+          : {},
+      }),
     }),
   );
+
+  function respondLater<T>(response: T) {
+    return new Promise<T>((resolve) => {
+      currentConcurrent++;
+      maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
+      setTimeout(() => {
+        currentConcurrent--;
+        resolve(response);
+      }, 50);
+    });
+  }
 
   dashcards.forEach((dashcard) => {
     fetchMock.post(
       `/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${dashcard.card_id}/query`,
-      () =>
-        new Promise((resolve) => {
-          currentConcurrent++;
-          maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
-          setTimeout(() => {
-            currentConcurrent--;
-            resolve({ data: [] });
-          }, 50);
-        }),
+      () => respondLater({ data: [] }),
     );
   });
+  setupGoalValuesEndpoint(() => respondLater({}));
 
   const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
   const state: Partial<StoreSeedState> = {
@@ -510,15 +531,31 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
 
 describe("fetchDashboardCardData", () => {
   it("should make at most 5 api calls simultaneously", async () => {
-    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
-      100,
-      8,
-    );
+    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest({
+      cardCount: 8,
+      dashboardId: 100,
+    });
 
     // Unjustified type cast. FIXME
     await fetchDashboardCardData()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);
+  });
+
+  it("should count the goal request of a dashcard against the limit of 5 simultaneous api calls", async () => {
+    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest({
+      cardCount: 8,
+      dashboardId: 100,
+      hasGoals: true,
+    });
+
+    // the mock dispatch and getState implement only what the thunk calls
+    await fetchDashboardCardData()(dispatch as never, getState as never);
+
+    expect(getMaxConcurrent()).toBe(4);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(8);
   });
 
   it("should not cancel in-flight requests from other tabs on tab switch (#70534)", async () => {
@@ -1002,10 +1039,10 @@ describe("fetchCardDataAction with goal references", () => {
 
 describe("reloadDashboardCards", () => {
   it("should make at most 5 api calls simultaneously", async () => {
-    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
-      200,
-      8,
-    );
+    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest({
+      cardCount: 8,
+      dashboardId: 200,
+    });
 
     // Unjustified type cast. FIXME
     await reloadDashboardCards()(dispatch as never, getState as never);
