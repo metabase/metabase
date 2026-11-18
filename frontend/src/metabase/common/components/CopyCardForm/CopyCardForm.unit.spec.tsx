@@ -10,6 +10,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -190,6 +191,15 @@ describe("CopyQuestionForm", () => {
       });
     }
 
+    async function waitForRootItems() {
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.called("path:/api/collection/root/items"),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+    }
+
     async function openPicker() {
       await userEvent.click(
         screen.getByLabelText(/Where do you want to save this/),
@@ -205,10 +215,11 @@ describe("CopyQuestionForm", () => {
       expect(
         await within(picker).findByText("First collection"),
       ).toBeInTheDocument();
-      expect(within(picker).getByText(/Select a collection$/)).toBeVisible();
+      await waitForRootItems();
       expect(
         within(picker).queryByText("Orders in a dashboard"),
       ).not.toBeInTheDocument();
+      expect(within(picker).getByText(/Select a collection$/)).toBeVisible();
 
       await userEvent.click(within(picker).getByText("First collection"));
       await userEvent.click(

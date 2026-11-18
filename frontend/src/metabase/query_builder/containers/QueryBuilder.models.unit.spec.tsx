@@ -1223,9 +1223,11 @@ describe("QueryBuilder > models", () => {
 
       await typeInNativeEditor(" WHERE {{F}}");
 
-      expect(screen.getByRole("textbox")).toHaveValue(
-        "SELECT * FROM PRODUCTS WHERE {{F}}",
-      );
+      expect(
+        within(screen.getByTestId("mock-native-query-editor")).getByRole(
+          "textbox",
+        ),
+      ).toHaveValue("SELECT * FROM PRODUCTS WHERE {{F}}");
       expect(screen.getByTestId("dataset-edit-bar")).toBeInTheDocument();
       expect(
         screen.queryByTestId("tag-editor-sidebar"),
