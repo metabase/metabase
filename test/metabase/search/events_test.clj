@@ -113,7 +113,7 @@
         (is (= [1 3] [one-rows three-rows]))
         (is (= one-queries three-queries))))))
 
-(deftest model-index-feeds-the-index-on-delete-only-test
+(deftest model-index-feeds-index-on-delete-only-test
   (testing "a ModelIndex feeds the index on delete, and its inserts and updates do not"
     (is (isa? :model/ModelIndex :hook/events))
     (is (isa? :model/ModelIndex :search/indexed-deletes))
@@ -615,7 +615,7 @@
                 outcome))
         (is (= 1 (count @checked)))))))
 
-(deftest capture-failure-keeps-the-delete-test
+(deftest capture-failure-keeps-delete-test
   (testing "a search error while enumerating the dependents of a delete is logged, and the delete still succeeds"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Capture Failure Card"}]

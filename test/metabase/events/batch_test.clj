@@ -232,7 +232,7 @@
     (t2/resolve-model model))
   (filterv #(and (keyword? %) (= "model" (namespace %))) (descendants :hook/events)))
 
-(deftest every-trait-model-has-a-spec-test
+(deftest every-trait-model-has-spec-test
   (let [models (trait-models)
         specs  (dissoc (methods events/spec) :default)]
     (testing "every model deriving :hook/events names its topics in events/spec"

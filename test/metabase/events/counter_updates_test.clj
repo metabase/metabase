@@ -38,7 +38,7 @@
               (t2/update! model :id id changes)
               (is (= before (row-counts))))))))))
 
-(deftest counter-updates-query-only-for-the-write-test
+(deftest counter-updates-query-only-for-write-test
   (testing "a counter-only update runs the statements of the write itself and no consumer's query: for a Card the load
             of the row, its UPDATE (counted twice by Toucan), the after-update read and the read of the Actions that move
             with it; for a Dashboard or a Document the load and the UPDATE"

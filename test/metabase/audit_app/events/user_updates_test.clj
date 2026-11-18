@@ -230,7 +230,7 @@
           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:name "Renamed tenant"})
           (is (= [[:tenant-update "Tenant" tenant-id]] (topics-since before))))))))
 
-(deftest read-paths-of-a-reader-record-nothing-test
+(deftest read-paths-of-reader-record-nothing-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Measure {measure-id :id} {:name       "Measure"
                                                     :table_id   (mt/id :venues)

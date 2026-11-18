@@ -118,8 +118,8 @@
           (#'change-log.log/log! []))
         (is (= 1 @woken))))))
 
-(deftest other-hooks-test
-  (testing "a model with other hooks is logged, and its other hooks still run"
+(deftest card-writes-are-logged-and-keep-model-hooks-test
+  (testing "a Card is logged, and its model hooks still run"
     (when config/ee-available?
       (mt/with-premium-features #{:change-log}
         (mt/with-temp [:model/Database _ {}]

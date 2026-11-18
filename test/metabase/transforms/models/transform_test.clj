@@ -532,7 +532,7 @@
        ~@body)
      @scans#))
 
-(deftest cycle-check-runs-when-the-definition-changes-test
+(deftest cycle-check-runs-when-definition-changes-test
   (mt/with-temp [:model/Table {table-1 :id} {:schema "PUBLIC", :name "cycle_1"}
                  :model/Field _ {:table_id table-1, :name "foo"}
                  :model/Table {table-2 :id} {:schema "PUBLIC", :name "cycle_2"}

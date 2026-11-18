@@ -119,7 +119,7 @@
               (is (every? invalidated? findings))
               (is (= 1 @updates)))))))))
 
-(deftest archive-is-a-noop-without-the-feature-test
+(deftest archive-is-noop-without-feature-test
   (mt/with-premium-features #{}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Dashboard {id :id} {}]

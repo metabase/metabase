@@ -269,7 +269,7 @@
             (is (= [(apply max (map :id revisions))]
                    (keep #(when (:most_recent %) (:id %)) revisions)))))))))
 
-(deftest row-changed-ignores-what-a-revision-does-not-hold-test
+(deftest row-changed-ignores-what-revision-does-not-hold-test
   (testing "the update of a real :model/Card that changes nothing a revision holds is no change"
     (mt/with-temp [:model/Card {card-id :id :as card} {:name "Tips Created by Day"}]
       (testing "an identical card"

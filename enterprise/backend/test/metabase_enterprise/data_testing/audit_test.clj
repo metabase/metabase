@@ -62,7 +62,7 @@
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-delete transform-test-id))))))))
 
-(deftest transform-test-model-writes-by-a-user-write-audit-rows-test
+(deftest transform-test-model-writes-by-user-write-audit-rows-test
   (testing "Inserting, updating and deleting a transform test through the model as a user writes an audit row each"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform     {transform-id :id}      {}
@@ -172,7 +172,7 @@
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
 
-(deftest card-test-model-writes-by-a-user-write-audit-rows-test
+(deftest card-test-model-writes-by-user-write-audit-rows-test
   (testing "Inserting, updating and deleting a card test through the model as a user writes an audit row each"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card     {card-id :id}      {}

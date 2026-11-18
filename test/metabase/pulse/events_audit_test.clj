@@ -113,7 +113,7 @@
         (testing "the dashboard is the only thing recorded as updated"
           (is (= [] (filter (comp #{:subscription-update} first) (topics-since before)))))))))
 
-(deftest leaving-a-subscription-records-nothing-test
+(deftest leaving-subscription-records-nothing-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Pulse {pulse-id :id} {:name "Subscription"}
                    :model/PulseChannel {channel-id :id} {:pulse_id pulse-id :channel_type :email

@@ -116,7 +116,7 @@
                 (is (some (partial re-find #"Invalid input.*:template-tags") messages))
                 (is (not (ours? messages)))))))))))
 
-(deftest import-checks-the-non-query-columns-against-the-schema-test
+(deftest import-checks-non-query-columns-against-schema-test
   (testing "the entity check refuses an invalid column that is no query, and the import validates the query columns itself"
     (let [extracted (atom nil)]
       (mt/with-empty-h2-app-db!

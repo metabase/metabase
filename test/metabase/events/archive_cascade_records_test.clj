@@ -52,7 +52,7 @@
           (is (= expected
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "collection/" coll) {:archived false})))))))))
 
-(deftest dashboard-archive-records-only-the-dashboard-test
+(deftest dashboard-archive-records-only-dashboard-test
   (testing "a Dashboard's archive and restore record its Revision and nothing for its dashboard questions, which they
             carry"
     (mt/with-premium-features #{:audit-app}
@@ -66,7 +66,7 @@
           (is (= expected
                  (records entities #(mt/user-http-request :crowberto :put 200 (str "dashboard/" dash) {:archived false})))))))))
 
-(deftest document-archive-records-only-the-document-test
+(deftest document-archive-records-only-document-test
   (testing "a Document's archive and restore record it and nothing for its cards, which they carry"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Document {doc :id} {}
