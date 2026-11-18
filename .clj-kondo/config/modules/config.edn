@@ -4100,6 +4100,7 @@
            lib.schema
            model-persistence
            models
+           permissions
            premium-features
            queries
            query-permissions

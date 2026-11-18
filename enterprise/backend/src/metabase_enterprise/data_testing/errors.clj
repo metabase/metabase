@@ -14,6 +14,7 @@
   "Every `:error-type` a test run can throw, and the HTTP status it carries.
 
   400 — the test is wrong, and its author can fix it.
+  403 — the current user may not save or run this test.
   422 — the test is fine; the subject or its database prevents a run here.
   501 — the test asks for something not built yet."
   {;; 400 — authoring
@@ -30,6 +31,9 @@
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::not-a-single-select        400  ; SQL the run executes is not one SELECT, or holds something the statement check refuses.
    ::uncheckable-sql            400  ; SQL the run executes is too long for the statement check, or holds a list too long to parse.
+
+   ;; 403 — the current user
+   ::impersonated-user          403  ; The user's connection to the subject's database is impersonated.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).

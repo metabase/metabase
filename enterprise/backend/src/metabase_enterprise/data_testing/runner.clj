@@ -42,6 +42,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
@@ -306,20 +307,32 @@
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
+(mu/defn- check-not-impersonated :- :nil
+  "Refuse the current user when their connection to `database` is impersonated. A run executes each statement on one
+  connection, outside the query processor that holds an impersonated user to a single SELECT."
+  [database :- ::lib.schema.metadata/database]
+  (when (perms/impersonation-enforced-for-db? (:id database))
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/impersonated-user
+            (tru "Data tests can''t be saved or run by a user whose connection is impersonated on this database.")
+            {}))))
+
 (mu/defn- validated-plan :- ::plan
   "Everything a run needs, resolved and checked but not yet executed: the database and driver the subject runs
   against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
   message renders them as.
 
-  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, SQL of the query under
-  test or of an input that is not one SELECT, a test the validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
-  discarding it."
+  Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
+  subject or driver, SQL that will not parse, SQL of the query under test or of an input that is not one SELECT, a
+  test the validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the
+  plan and discarding it."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
   (let [{:keys [database compiled output-tables output-token output-label]}
         (data-testing.subject/subject-plan subject-type subject inputs)
+        _              (check-not-impersonated database)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)

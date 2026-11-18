@@ -126,51 +126,89 @@
                     (catch Exception e {:thrown (ex-message e)}))
        :sent   @sent})))
 
-(defn- create-and-run-as-rasta!
-  "Creates, through the API as rasta, a test of the card `card-id` with `input-sql` standing in for `public.orders` and
-  one `empty` expectation of `expectation-sql`, and runs it through the API as rasta. Returns the run's response, or
-  the creation's response when creation fails."
+(defn- card-test-body
+  "The body that creates a test of the card `card-id` with `input-sql` standing in for `public.orders` and one `empty`
+  expectation of `expectation-sql`."
   [card-id input-sql expectation-sql]
-  (let [created (mt/user-http-request :rasta :post "ee/card-test"
-                                      {:card_id      card-id
-                                       :name         "impersonated"
-                                       :inputs       [{:table orders :format "sql" :sql input-sql}]
-                                       :expectations [{:type "empty" :name "check" :sql expectation-sql}]})]
+  {:card_id      card-id
+   :name         "impersonated"
+   :inputs       [{:table orders :format "sql" :sql input-sql}]
+   :expectations [{:type "empty" :name "check" :sql expectation-sql}]})
+
+(defn- create-and-run-as!
+  "Creates, through the API as `user`, a test of the card `card-id` from [[card-test-body]], and runs it through the API
+  as `user`. Returns the run's response, or the creation's response when creation fails."
+  [user card-id input-sql expectation-sql]
+  (let [created (mt/user-http-request user :post "ee/card-test" (card-test-body card-id input-sql expectation-sql))]
     (if-let [test-id (:id created)]
-      (mt/user-http-request :rasta :post (str "ee/card-test/" test-id "/run"))
+      (mt/user-http-request user :post (str "ee/card-test/" test-id "/run"))
       created)))
 
-(deftest impersonated-user-data-test-is-held-to-the-single-select-rule-test
+(deftest impersonated-user-cannot-save-or-run-a-data-test-test
   (mt/with-premium-features #{:advanced-permissions :transforms-testing :transforms-basic}
     (do-with-unreachable-postgres
      (fn [db-id]
        (mt/with-db (t2/select-one :model/Database :id db-id)
          ;; Real policy rows: rasta's group is impersonated on the Database with the role `limited_role`, and has
-         ;; unrestricted view-data and native query permission on it.
+         ;; unrestricted view-data and native query permission on it. The All Users group has no data permission on it.
          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id db-id :attribute "role_attr"}]
                                                         :attributes     {"role_attr" "limited_role"}}
-           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query
-                                                                     (lib-be/application-database-metadata-provider db-id)
-                                                                     card-sql)}]
+           (mt/with-temp [:model/Card     {card-id :id} {:dataset_query (lib/native-query
+                                                                         (lib-be/application-database-metadata-provider db-id)
+                                                                         card-sql)}
+                          :model/CardTest {test-id :id} {:card_id      card-id
+                                                         :inputs       [{:table orders :format :sql :sql "SELECT 1 AS id"}]
+                                                         :expectations [{:type :empty :name "check"
+                                                                         :sql  "SELECT * FROM {{output}} WHERE 1 = 0"}]}]
              (testing "control: the query processor sends rasta's single SELECT"
                (is (= ["SELECT 1 AS id"] (:sent (process-native-query! db-id "SELECT 1 AS id")))))
              (testing "control: the query processor refuses rasta's native query that resets the role, and sends nothing"
                (let [{:keys [result sent]} (process-native-query! db-id escape-sql)]
                  (is (re-find #"Must be a single select statement" (str (:thrown result))))
                  (is (= [] sent))))
-             (testing "control: rasta's data test of single SELECTs runs under rasta's role"
-               (let [{:keys [result sent roles]} (with-recorder! #(create-and-run-as-rasta!
-                                                                   card-id "SELECT 1 AS id"
-                                                                   "SELECT * FROM {{output}} WHERE 1 = 0"))]
+             (testing "rasta cannot save a data test of single SELECTs, and nothing reaches the warehouse"
+               (let [{:keys [result sent roles]}
+                     (with-recorder! #(mt/user-http-request :rasta :post 403 "ee/card-test"
+                                                            (card-test-body card-id "SELECT 1 AS id"
+                                                                            "SELECT * FROM {{output}} WHERE 1 = 0")))]
+                 (is (= "card-test.impersonated-user" (:error-code result)) (pr-str result))
+                 (is (= [] sent))
+                 (is (= [] roles))))
+             (testing "rasta cannot save a data test whose SQL resets the role, and nothing reaches the warehouse"
+               (let [{:keys [result sent]}
+                     (with-recorder! #(mt/user-http-request :rasta :post 403 "ee/card-test"
+                                                            (card-test-body card-id (str "SELECT 1 AS id; " escape-sql)
+                                                                            "RESET ROLE; SELECT * FROM {{output}} WHERE 1 = 0")))]
+                 (is (= "card-test.impersonated-user" (:error-code result)) (pr-str result))
+                 (is (= [] sent))))
+             (testing "rasta cannot run a data test that an admin saved, and nothing reaches the warehouse"
+               (let [{:keys [result sent roles]}
+                     (with-recorder! #(mt/user-http-request :rasta :post 403 (str "ee/card-test/" test-id "/run")))]
+                 (is (= "card-test.impersonated-user" (:error-code result)) (pr-str result))
+                 (is (= [] sent))
+                 (is (= [] roles))))
+             (testing "a user who is not impersonated on the Database saves and runs a data test"
+               (mt/with-group-for-user [group :lucky]
+                 (mt/with-db-perms-for-group! group db-id {:perms/view-data      :unrestricted
+                                                           :perms/create-queries :query-builder-and-native}
+                   (let [{:keys [result sent roles]}
+                         (with-recorder! #(create-and-run-as! :lucky card-id "SELECT 1 AS id"
+                                                              "SELECT * FROM {{output}} WHERE 1 = 0"))]
+                     (is (= "passed" (:status result)) (pr-str result))
+                     (is (= [nil] roles))
+                     (is (seq sent))
+                     (is (= [] (more-than-one-statement sent)))))))
+             (testing "an admin saves and runs a data test"
+               (let [{:keys [result sent roles]}
+                     (with-recorder! #(create-and-run-as! :crowberto card-id "SELECT 1 AS id"
+                                                          "SELECT * FROM {{output}} WHERE 1 = 0"))]
                  (is (= "passed" (:status result)) (pr-str result))
-                 (is (= ["limited_role"] roles))
-                 (is (seq sent))
-                 (is (= [] (more-than-one-statement sent)))))
-             (testing "rasta's data test whose SQL resets the role is refused or never sent"
-               (is (= [] (more-than-one-statement
-                          (:sent (with-recorder! #(create-and-run-as-rasta!
-                                                   card-id (str "SELECT 1 AS id; " escape-sql)
-                                                   "RESET ROLE; SELECT * FROM {{output}} WHERE 1 = 0"))))))))))))))
+                 (is (= [nil] roles))
+                 (is (seq sent))))
+             (testing "an admin runs the data test that rasta is refused"
+               (let [{:keys [result]}
+                     (with-recorder! #(mt/user-http-request :crowberto :post 200 (str "ee/card-test/" test-id "/run")))]
+                 (is (= "passed" (:status result)) (pr-str result)))))))))))
 
 (deftest data-test-sends-the-checked-statement-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
