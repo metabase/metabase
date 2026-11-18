@@ -168,7 +168,7 @@
   "The `error_description` for an authorization request in which no requested scope is accepted by `resources`."
   [resources]
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  (let [mcp-resource (str (system/site-url) (mcp/mcp-canonical-path))]
+  (let [mcp-resource (oauth-server/mcp-resource-url)]
     (if (empty? resources)
       (str "No resource was requested, so no MCP scopes can be granted. "
            "Send the MCP server's resource URL, which is " mcp-resource ".")
@@ -601,23 +601,20 @@
                          :resource          (:resource parsed)})))))
 
 (defn- with-default-mcp-resource
-  "The parsed authorization request, with the MCP server's resource indicator added when the request names no
-  resource and every registered scope it asks for is an MCP scope.
-
-  Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. [[scope-to-grant]] would treat such a
-  request as one for a REST token and drop every MCP scope, leaving nothing to grant. A request that names a resource
-  or asks for any other scope is left alone, so MCP and REST tokens stay separate.
-
-  The resource goes on the request rather than only into the scope, so the code and every token it yields carry it.
-  A refresh narrows to the resource its token holds, and without one it would drop the MCP scopes."
-  [parsed]
+  "The `request` map of `:scope` and `:resource`, with the MCP server's resource indicator as its `:resource` when it
+  names none and every registered scope it asks for is an MCP scope.
+  Returns the map unchanged otherwise, and when no Site URL is set."
+  [request]
   (let [mcp-resource (oauth-server/mcp-resource-url)
-        scopes       (scope-tokens (oauth-server/registered-scopes-only (:scope parsed)))]
-    (cond-> parsed
-      (and (empty? (:resource parsed))
+        scopes       (scope-tokens (oauth-server/registered-scopes-only (:scope request)))]
+    (cond-> request
+      (and (empty? (:resource request))
            mcp-resource
            (seq scopes)
            (every? (set (mcp/v2-scopes)) scopes))
+      ;; Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. Without this, [[scope-to-grant]]
+      ;; reads the request as one for a REST token and drops every MCP scope, leaving nothing to grant. A request that
+      ;; also asks for a non-MCP scope stays a REST request, so MCP and REST tokens stay separate.
       (assoc :resource [mcp-resource]))))
 
 (defn- refreshable-token
@@ -682,7 +679,8 @@
                                                        (cond-> query-params
                                                          (str/blank? (:scope query-params)) (dissoc :scope)))
         ;; Defaulted and narrowed before signing, so the signature binds the resource and the granted scope through
-        ;; the consent form round-trip, and the decision endpoint needs neither rule of its own.
+        ;; the consent form round-trip, and the decision endpoint needs neither rule of its own. The resource goes on
+        ;; the request rather than only shaping the scope, so the code and every token it yields carry it.
         parsed       (with-default-mcp-resource parsed)
         parsed       (assoc parsed :scope (scope-to-grant parsed))
         client       (proto/get-client (:client-store provider) (:client_id parsed))
