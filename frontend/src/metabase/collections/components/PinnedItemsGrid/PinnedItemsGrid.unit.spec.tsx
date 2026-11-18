@@ -114,6 +114,50 @@ describe("PinnedItemsGrid", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should render a dashboard and questions of any display in one section without headings", async () => {
+    const items = [
+      createMockCollectionItem({
+        id: 1,
+        model: "dashboard",
+        name: "Orders in a dashboard",
+        collection_position: 1,
+      }),
+      createMockCollectionItem({
+        id: 2,
+        model: "card",
+        display: "scalar",
+        name: "Orders, Count",
+        collection_position: 2,
+      }),
+      createMockCollectionItem({
+        id: 3,
+        model: "card",
+        display: "pivot",
+        name: "Pivot table",
+        collection_position: 3,
+      }),
+      createMockCollectionItem({
+        id: 4,
+        model: "card",
+        display: "scalar",
+        name: "SQL with parameters",
+        fully_parameterized: false,
+        collection_position: 4,
+      }),
+    ];
+    setup({ items });
+
+    const section = within(await screen.findByTestId("pinned-items"));
+    expect(section.getByText("Orders in a dashboard")).toBeInTheDocument();
+    expect(section.getByText("Orders, Count")).toBeInTheDocument();
+    expect(section.getByText("Pivot table")).toBeInTheDocument();
+    expect(section.getByText("SQL with parameters")).toBeInTheDocument();
+    expect(section.getAllByText("A question")).toHaveLength(3);
+    expect(section.getAllByText("A dashboard")).toHaveLength(1);
+    expect(section.queryByText("Dashboards")).not.toBeInTheDocument();
+    expect(section.queryByText("Pinned questions")).not.toBeInTheDocument();
+  });
+
   it("should render items sorted by collection_position across types", async () => {
     setup();
     const names = await screen.findAllByText(

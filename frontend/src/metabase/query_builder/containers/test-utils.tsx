@@ -240,6 +240,7 @@ interface SetupOpts {
   initialRoute?: string;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
+  withUndos?: boolean;
 }
 
 export const setup = async ({
@@ -257,6 +258,7 @@ export const setup = async ({
   }`,
   timelines = [],
   timelinesResponse,
+  withUndos = false,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -323,6 +325,7 @@ export const setup = async ({
     </>,
     {
       withRouter: true,
+      withUndos,
       initialRoute,
       storeInitialState: createMockState({
         currentUser: createMockUser({
