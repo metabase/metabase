@@ -301,6 +301,30 @@ describe("ActionMenu", () => {
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
 
+    it("should not allow to move and archive a writable collection inside a read only collection", async () => {
+      // e.g. "Custom reports" inside the "Usage analytics" collection
+      const item = createMockCollectionItem({
+        name: "Custom reports",
+        model: "collection",
+        can_write: true,
+      });
+
+      setup({
+        item,
+        collection: createMockCollection({
+          name: "Usage analytics",
+          can_write: false,
+        }),
+        withBookmarks: true,
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
+      expect(screen.queryByText("Move")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
     it("should not render the menu at all when no actions are available", () => {
       const item = createMockCollectionItem({
         name: "My Read Only collection",

@@ -93,6 +93,10 @@ describe("QuestionInfoSidebar", () => {
           "Relationships",
           "Insights",
         ]);
+        // OSS shows an upsell, never a link to usage analytics
+        expect(
+          screen.queryByRole("link", { name: /Insights/i }),
+        ).not.toBeInTheDocument();
 
         const insightsTab = screen.getByText("Insights");
         await userEvent.click(insightsTab);
