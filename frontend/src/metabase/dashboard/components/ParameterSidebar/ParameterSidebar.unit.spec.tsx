@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { setupSubscriptionsEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -35,7 +35,7 @@ const setup = ({
 }: SetupOpts): {
   clickNextParameterButton: () => Promise<void>;
 } => {
-  fetchMock.get("path:/api/pulse", subscriptions);
+  setupSubscriptionsEndpoint(subscriptions);
 
   const NEXT_PARAMETER_BUTTON_ID = "parameter-sidebar-test-change";
 
