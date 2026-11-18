@@ -44,7 +44,7 @@
   {:inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
-(defn with-last-runs
+(defn- with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
   [test-type tests]
   (if-not (seq tests)
