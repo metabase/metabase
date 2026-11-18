@@ -37,7 +37,8 @@
    the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
    reads the `workspaces-enabled` setting."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]))
 
 (defenterprise workspace-mode?
   "True if this instance is running in workspace mode — the EE `workspaces-enabled`
@@ -52,6 +53,53 @@
   metabase-enterprise.workspaces.core
   []
   false)
+
+(defenterprise workspace-bound?
+  "True when the current request works in a workspace that it names ([[current-workspace-id]]), while other requests
+   of this instance work in other workspaces or in none. Then the results of a query hold that workspace's data, so
+   nothing that other requests read, such as the query cache, may keep them. False on a sidecar, whose every request
+   works in the instance's own workspace. The OSS fallback returns false."
+  metabase-enterprise.workspaces.core
+  []
+  false)
+
+;;; ---------------------------------------- The workspace a request names -----------------------------------------
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *workspace-id*
+  "The id of the workspace the current request names with its `X-Metabase-Workspace-Id` header
+   ([[metabase.server.middleware.workspace]]), or nil. Threads that `bound-fn` starts, such as a transform run's,
+   keep it."
+  nil)
+
+(defn current-workspace-id
+  "The id of the workspace the current request names, or nil when it names none."
+  []
+  *workspace-id*)
+
+(defn do-with-workspace-id
+  "Impl for [[with-workspace-id]] and [[without-workspace]]."
+  [workspace-id thunk]
+  (binding [*workspace-id* workspace-id]
+    (thunk)))
+
+(defmacro with-workspace-id
+  "Run `body` in the workspace with `workspace-id`, or in none when it is nil."
+  [workspace-id & body]
+  `(do-with-workspace-id ~workspace-id (^:once fn* [] ~@body)))
+
+(defmacro without-workspace
+  "Run `body` in no workspace that a request names: with the Databases' own logins, and the instance's own table
+   remappings. Use it around work whose results everyone shares, such as a sync of a Database."
+  [& body]
+  `(with-workspace-id nil ~@body))
+
+(defenterprise request-workspace-problem
+  "Why a request can't work in the workspace with `workspace-id`, or nil when it can. The OSS fallback refuses every
+   workspace."
+  metabase-enterprise.workspaces.core
+  [_workspace-id]
+  (tru "This instance has no workspaces."))
 
 (defenterprise workspace-connection-details
   "The connection details the current workspace uses for the Database with `database-id`, which go over that

@@ -2817,7 +2817,8 @@
            tracing
            users
            util
-           util.config}
+           util.config
+           workspaces}
    :model-imports #{:model/Session}}
 
   session
@@ -3680,7 +3681,7 @@
   workspaces
   {:team "Graphy"
    :api #{metabase.workspaces.core metabase.workspaces.table-remapping}
-   :uses #{premium-features}}
+   :uses #{premium-features util}}
 
   xrays
   {:team "Graphy"

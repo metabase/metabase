@@ -1,8 +1,10 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -16,6 +18,15 @@
 (doto :model/WorkspaceDatabase
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;; A request that names a workspace reads its WorkspaceDatabases from a cache. After commit, not now: another thread
+;; that reads before the commit would cache the rows as they were before this write.
+(defn- invalidate-request-workspaces! []
+  (app-db/do-after-commit ws.request-workspace/invalidate!))
+
+(t2/define-after-insert :model/WorkspaceDatabase [row] (invalidate-request-workspaces!) row)
+(t2/define-after-update :model/WorkspaceDatabase [row] (invalidate-request-workspaces!) row)
+(t2/define-before-delete :model/WorkspaceDatabase [row] (invalidate-request-workspaces!) row)
 
 (t2/deftransforms :model/WorkspaceDatabase
   {:database_details (mi/transform-encrypted-json "workspace_database.database_details")

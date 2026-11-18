@@ -27,7 +27,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]])
+   [metabase.util.performance :refer [get-in]]
+   [metabase.workspaces.core :as workspaces])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -376,24 +377,27 @@
   (not= (:type cache-strategy) :nocache))
 
 (defn- is-cacheable?
-  "Returns true if the query has a valid cache strategy."
+  "Returns true if the query has a valid cache strategy, and the current request works in no workspace that it names:
+  the cache key is the query alone, so a request in another workspace would read this workspace's results."
   [{:keys [cache-strategy], :as _query}]
   (let [has-strat?  (has-cache-strategy? cache-strategy)
         not-nocache? (strategy-not-nocache? cache-strategy)]
-    (and has-strat? not-nocache?)))
+    (and has-strat? not-nocache? (not (workspaces/workspace-bound?)))))
 
 (defn- get-cache-eligibility-description
   "Returns a descriptive string explaining why a query is or isn't cacheable."
   [{:keys [cache-strategy], :as _query}]
-  (let [has-strat?  (has-cache-strategy? cache-strategy)
-        not-nocache? (strategy-not-nocache? cache-strategy)]
-    (if (and has-strat? not-nocache?)
+  (let [has-strat?   (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)
+        bound?       (workspaces/workspace-bound?)]
+    (if (and has-strat? not-nocache? (not bound?))
       (str "cache strategy provided: " (pr-str cache-strategy) "; "
            "cache strategy type is not :nocache")
       (str/join ", "
                 (cond-> []
                   (not has-strat?)   (conj "no cache strategy provided")
-                  (not not-nocache?) (conj "cache strategy is :nocache"))))))
+                  (not not-nocache?) (conj "cache strategy is :nocache")
+                  bound?             (conj "the request names a workspace"))))))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.

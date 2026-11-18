@@ -82,13 +82,15 @@
   On **child (workspace-mode) instances** they are NOT excluded -- those are the schemas the local instance
   needs to sync (with table remapping) to surface its workspace's data. The gate is
   `(metabase.workspaces.core/workspace-mode?)`: false on parent (OSS fallback) or any EE instance that
-  didn't load a `:workspace` section, true on child instances that did. See GHY-3489 for context."
+  didn't load a `:workspace` section, true on child instances that did. A request that names a workspace of the parent
+  excludes them too (`workspace-bound?`): a sync writes the metadata that every workspace shares. See GHY-3489 for
+  context."
   {:added "0.42.0"}
   ([database schema-name]
    (let [[inclusion-patterns exclusion-patterns] (db-details->schema-filter-patterns database)]
      (include-schema? inclusion-patterns exclusion-patterns schema-name)))
   ([inclusion-patterns exclusion-patterns schema-name]
-   (and (or (workspaces/workspace-mode?)
+   (and (or (and (workspaces/workspace-mode?) (not (workspaces/workspace-bound?)))
             (not (driver.u/workspace-isolated-schema? schema-name)))
         (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
           (filter-fn schema-name)))))

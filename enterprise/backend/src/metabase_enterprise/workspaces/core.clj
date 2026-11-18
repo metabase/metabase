@@ -69,6 +69,7 @@
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.driver :as driver]
@@ -82,6 +83,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -272,19 +274,50 @@
   nil)
 
 (defn current-workspace
-  "The workspace the current thread works in, or nil. Today that is only `{:mode :sidecar}`, while the
-   `workspaces-enabled` setting makes this whole instance a workspace: each Database then names its output schema in
-   its `database-workspace-schema` setting, and connects with its own details.
+  "The workspace the current thread works in, or nil:
 
-   [[workspace-mode?]], [[db-workspace-namespace]] and [[workspace-connection-details]] read this, so a workspace that
-   only some threads work in changes this one function."
+   - `{:mode :sidecar}` while the `workspaces-enabled` setting makes this whole instance a workspace. Each Database
+     then names its output schema in its `database-workspace-schema` setting, and connects with its own details.
+   - The workspace that the current request names ([[workspaces/current-workspace-id]]), as
+     [[ws.request-workspace/request-workspace]] gives it, with `:mode :bound`.
+
+   The two do not meet: an instance with workspaces of its own can't turn `workspaces-enabled` on, and a request on a
+   sidecar can't name a workspace ([[request-workspace-problem]]). [[workspace-mode?]], [[db-workspace-namespace]] and
+   [[workspace-connection-details]] read this."
   []
-  (when (ws.settings/workspaces-enabled)
-    {:mode :sidecar}))
+  (cond
+    (ws.settings/workspaces-enabled)
+    {:mode :sidecar}
+
+    (workspaces/current-workspace-id)
+    (ws.request-workspace/request-workspace (workspaces/current-workspace-id))))
+
+(defenterprise request-workspace-problem
+  "EE impl: why a request can't work in the workspace with `workspace-id`, or nil when it can. It can when every
+   database of the workspace is provisioned, and the workspace's login is the only login of each
+   ([[metabase-enterprise.workspaces.login/login-problem]])."
+  :feature :workspaces
+  [workspace-id]
+  (let [{:keys [databases unprovisioned-database-ids] :as workspace} (ws.request-workspace/request-workspace workspace-id)]
+    (cond
+      (ws.settings/workspaces-enabled)
+      (tru "This instance is a workspace, so a request can''t name another one.")
+
+      (nil? workspace)
+      (tru "There is no workspace {0}." (str workspace-id))
+
+      (and (empty? databases) (empty? unprovisioned-database-ids))
+      (tru "Workspace {0} has no databases." (str workspace-id))
+
+      (seq unprovisioned-database-ids)
+      (tru "Workspace {0} has databases that are not provisioned." (str workspace-id))
+
+      :else
+      (some :problem (vals databases)))))
 
 (defenterprise workspace-mode?
-  "EE impl: true iff the current thread works in a workspace ([[current-workspace]]), which today means the
-   `workspaces-enabled` setting is on. Single source of truth for gating features that conflict with workspace
+  "EE impl: true iff the current thread works in a workspace ([[current-workspace]]): this whole instance is one, or
+   the current request names one. Single source of truth for gating features that conflict with workspace
    remapping (DB routing, impersonation, writeback, CSV upload, model persistence).
    Use [[db-workspace-namespace]] when you need per-database scoping.
 
@@ -295,15 +328,28 @@
   []
   (some? (current-workspace)))
 
-(defenterprise workspace-connection-details
-  "EE impl: the connection details the current workspace uses for the Database with `database-id`, over that
-   Database's own details, or nil. A sidecar's Databases already hold its workspace's login, so this is nil today.
+(defenterprise workspace-bound?
+  "EE impl: true when the current request works in a workspace that it names, rather than in the instance's own.
    Ungated like [[workspace-mode?]]."
   :feature :none
-  [_database-id]
-  (when-let [{:keys [mode]} (current-workspace)]
+  []
+  (= :bound (:mode (current-workspace))))
+
+(defenterprise workspace-connection-details
+  "EE impl: the connection details the current workspace uses for the Database with `database-id`, over that
+   Database's own details, or nil. A sidecar's Databases already hold its workspace's login, so they get nil. In a
+   workspace that a request names, each of the workspace's provisioned Databases gets the workspace's login. Throws
+   when that login would not be the only one ([[metabase-enterprise.workspaces.login/login-problem]]): the
+   connection would log in as the parent. Ungated like [[workspace-mode?]]."
+  :feature :none
+  [database-id]
+  (when-let [{:keys [mode databases]} (current-workspace)]
     (case mode
-      :sidecar nil)))
+      :sidecar nil
+      :bound   (when-let [{:keys [details problem]} (get databases database-id)]
+                 (when problem
+                   (throw (ex-info problem {:status-code 400 :database-id database-id})))
+                 details))))
 
 (defenterprise workspace-database-exists?
   "EE impl: whether any WorkspaceDatabase row references the Database with `database-id`.
@@ -316,14 +362,17 @@
 (defn db-workspace-namespace
   "Return the workspace output namespace map `{:db ?, :schema ?}` for `db-id`, or
    `nil` when the current thread works in no workspace ([[current-workspace]]) or the database has no
-   `database-workspace-schema`. Either key may be absent depending on the driver's
+   `database-workspace-schema`, or is not a provisioned database of the workspace that the request names. Either key may be absent depending on the driver's
    `qualified-name-components`."
   [db-id]
-  (when-let [{:keys [mode]} (current-workspace)]
+  (when-let [{:keys [mode databases]} (current-workspace)]
     (case mode
       :sidecar (when-let [database (ws.db/database db-id)]
                  (some->> (database-workspace-schema database)
-                          (expand-output-namespace database))))))
+                          (expand-output-namespace database)))
+      :bound   (when-let [output-namespace (get-in databases [db-id :output-namespace])]
+                 (when-let [database (ws.db/database db-id)]
+                   (expand-output-namespace database output-namespace))))))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."

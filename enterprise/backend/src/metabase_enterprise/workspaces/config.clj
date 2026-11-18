@@ -3,14 +3,14 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.login :as ws.login]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
    [metabase.util :as u]
-   [metabase.util.yaml :as yaml]
-   [ring.util.codec :as codec]))
+   [metabase.util.yaml :as yaml]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
@@ -67,39 +67,6 @@
 
       :else
       {})))
-
-(def ^:private parent-login-keys
-  "Connection properties of the eligible engines that pick or carry the parent's own warehouse login. The workspace
-  user logs in with the `:user`/`:password` in `:database_details`, so the config must carry none of these: each one
-  either makes the child connect with something other than that login or leaks a parent credential. Logins written
-  into `:additional-options` are refused instead (`check-additional-options!`). Engines that can't be a workspace
-  database, such as Snowflake and BigQuery, have credentials this list does not name.
-
-  - Auth provider (`metabase.driver.common/auth-provider-options`): with `:use-auth-provider` still set, the
-    child replaces the password with a token from the provider: for OAuth, fetched with the parent's client
-    settings (`:oauth-token-headers` can carry a client secret); for Azure managed identity, from the child's host
-    with the parent's client ID; for AWS IAM, with the child host's credentials.
-  - `:auth-mode` selects the login on SQL Server and Snowflake. Without it, SQL Server falls back to SQL login
-    (`:user`/`:password`).
-  - SQL Server's Azure AD logins (`ad-*`): the service-principal client ID/secret, the certificate and key
-    secrets (every secret sub-key), and the managed-identity client ID."
-  [:use-auth-provider :auth-provider :azure-managed-identity-client-id :oauth-token-url :oauth-token-headers
-   :auth-mode
-   :ad-client-id :ad-client-secret :ad-managed-identity-client-id
-   :ad-client-certificate :ad-client-certificate-value :ad-client-certificate-path :ad-client-certificate-options
-   :ad-client-certificate-id :ad-client-certificate-source :ad-client-certificate-kind
-   :ad-client-certificate-creator-id :ad-client-certificate-created-at
-   :ad-client-certificate-password :ad-client-certificate-password-value :ad-client-certificate-password-path
-   :ad-client-certificate-password-options :ad-client-certificate-password-id
-   :ad-client-certificate-password-source :ad-client-certificate-password-kind
-   :ad-client-certificate-password-creator-id :ad-client-certificate-password-created-at
-   :ad-client-key :ad-client-key-value :ad-client-key-path :ad-client-key-options
-   :ad-client-key-id :ad-client-key-source :ad-client-key-kind
-   :ad-client-key-creator-id :ad-client-key-created-at
-   :ad-client-key-password :ad-client-key-password-value :ad-client-key-password-path
-   :ad-client-key-password-options :ad-client-key-password-id
-   :ad-client-key-password-source :ad-client-key-password-kind
-   :ad-client-key-password-creator-id :ad-client-key-password-created-at])
 
 (def ^:private tunnel-secret-keys-by-auth-option
   "The tunnel credentials each `:tunnel-auth-option` uses."
@@ -209,16 +176,9 @@
    `inlined-secrets`, is dropped. The values of the `inlined-secrets` whose feature is on ship instead, for the child's
    config-file import to store as Secrets of its own.
 
-   The client certificate and key are not inlined, so a connection that authenticates with them is a 422: the child
-   would otherwise fail only when it connects."
+   The client certificate and key are not inlined: [[ws.login/login-problem]] refuses a connection that
+   authenticates with them."
   [db details]
-  (when (and (:ssl details) (:ssl-use-client-auth details))
-    (throw (ex-info (format (str "Database %s uses SSL client-certificate authentication, which workspaces don't "
-                                 "support. Remove the database from the workspace, or turn off client-certificate "
-                                 "authentication for it.")
-                            (pr-str (:name db)))
-                    {:status-code 422
-                     :database_id (:id db)})))
   (let [;; the `-id`/`-options` naming follows `metabase.secrets.models.secret`. The inlined secrets are listed on
         ;; their own: Postgres puts the SSH-tunnel properties in a nested vector, which `secret-conn-props-by-name`
         ;; does not read, so it does not list `tunnel-known-hosts`.
@@ -234,68 +194,16 @@
           (map #(inlined-secret-entries db details %))
           inlined-secrets)))
 
-(def ^:private login-option-name
-  "Names of JDBC options that set a login or carry a credential, matched against option names normalized by
-   [[driver.u/normalize-connection-parameter]] (case-folded, `_ . - +` and whitespace removed): the exact login names,
-   or any name containing a credential word (`SecretAccessKey`, `SessionToken`, `sslpassword`). MySQL's
-   `passwordCharacterEncoding` and Redshift's `TokenType` name no credential and are let through."
-  #"(?x) (?!passwordcharacterencoding$|tokentype$)
-         (?:user|username|uid|sslkey|accesskeyid|aadsecureprincipalid|.*(?:password|pwd|secret|token).*)")
-
-(def ^:private login-option-assignment
-  "An exact login name set anywhere in a normalized `:additional-options` string, after any non-word character. A
-   backstop for separators other than `&` and `;`."
-  #"(?U)(?:^|\W)(user|username|uid|sslkey|accesskeyid|aadsecureprincipalid)=")
-
-(def ^:private max-percent-decode-rounds
-  "How many times an `:additional-options` string may be percent-encoded before it is refused outright."
-  5)
-
-(defn- percent-decode-fully
-  "`s` percent-decoded until it stops changing, or nil when it still changes after [[max-percent-decode-rounds]]
-   rounds. Drivers may decode option names more than once, and an encoded `&` or `;` can hide a name."
-  [s]
-  (loop [s (str s), rounds 0]
-    (let [decoded (codec/percent-decode s)]
-      (cond
-        (= decoded s)                       s
-        (< rounds max-percent-decode-rounds) (recur decoded (inc rounds))
-        :else                               nil))))
-
-(defn- additional-option-names
-  "The option names in an `:additional-options` string: `name=value` pairs separated by `&` (Postgres, MySQL,
-   Redshift, ClickHouse) or `;` (SQL Server), with an optional leading `?`."
-  [additional-options]
-  (for [part  (str/split (str additional-options) #"[&;]")
-        :let  [option-name (-> part (str/split #"=" 2) first str/trim (str/replace #"^\?" ""))]
-        :when (seq option-name)]
-    option-name))
-
-(defn- login-option
-  "What in the `additional-options` string sets a login or carries a credential, as text for an error message, or
-   nil. The string is percent-decoded fully before it is split, so encoded names and separators are seen."
-  [additional-options]
-  (if-let [decoded (percent-decode-fully additional-options)]
-    (or (some #(when (re-matches login-option-name (driver.u/normalize-connection-parameter %)) %)
-              (additional-option-names decoded))
-        (second (re-find login-option-assignment (driver.u/normalize-connection-parameter decoded))))
-    (format "an option percent-encoded more than %d times" max-percent-decode-rounds)))
-
-(defn- check-additional-options!
-  "Throw a 422 when the parent's `:additional-options` set a login or carry a credential. The string ships to the
-   config as is, and drivers such as pgjdbc let URL options override the workspace's `:user`/`:password`, so the child
-   would connect as the parent and the config's holder would read the parent's password."
+(defn- check-login!
+  "Throw a 422 when the child could not log in to `db` with the workspace's own login
+   ([[ws.login/login-problem]])."
   [db]
-  (when-let [option (some-> (:additional-options (:details db)) login-option)]
-    (throw (ex-info (format (str "Database %s sets %s in its additional JDBC connection options, which would give the "
-                                 "workspace the parent's login. Remove it from the database's connection settings, or "
-                                 "remove the database from the workspace.")
-                            (pr-str (:name db)) option)
-                    {:status-code 422
-                     :database_id (:id db)}))))
+  (when-let [problem (ws.login/login-problem db)]
+    (throw (ex-info problem {:status-code 422
+                             :database_id (:id db)}))))
 
 (defn- database-entry [wsd db]
-  (check-additional-options! db)
+  (check-login! db)
   {:name    (:name db)
    :engine  (:engine db)
    ;; Force :let-user-control-scheduling false. The YAML only carries :details — not the
@@ -303,7 +211,7 @@
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
    :details (inline-secrets db (drop-unused-tunnel-secrets
-                                (merge (apply dissoc (:details db) parent-login-keys)
+                                (merge (apply dissoc (:details db) ws.login/parent-login-keys)
                                        (:database_details wsd)
                                        (schema-filter-entries db wsd)
                                        {:let-user-control-scheduling false})))})
@@ -394,7 +302,7 @@
                                                   :output        {:db ? :schema ?}}}}}
 
   Each database entry merges the underlying `metabase_database.details`, minus the
-  parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
+  parent's login properties ([[ws.login/parent-login-keys]]), with the WorkspaceDatabase's
   override credentials, drops SSH-tunnel secrets the tunnel does not use
   (`drop-unused-tunnel-secrets`), replaces every Secret id with the value of the
   inlined secrets in use (`inline-secrets`), and adds `schema-filters-*` keys
@@ -404,7 +312,7 @@
   exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`.
   Retry while a database is `:provisioning` or `:deprovisioning`. In any other
   status, waiting does not clear the 409; delete the workspace. Throws a 422 when
-  only an admin can clear the cause: its `:additional-options` set a login (`check-additional-options!`),
+  only an admin can clear the cause: its `:additional-options` set a login ([[ws.login/login-problem]]),
   it uses SSL client-certificate auth, an inlined secret in use can't ship
   (`inlined-secret-entries`), an emitted string contains a template form
   (`{{` or `[[`), or the workspace has no databases."
