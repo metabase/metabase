@@ -3358,15 +3358,20 @@ describe("DashboardApp > visualizer", () => {
         ),
       );
 
-      const productsItem = getItemWithText(
-        within(within(modal).getByTestId("datasets-list")).getAllByTestId(
-          "swap-dataset-button",
-        ),
-        PRODUCTS_BY_CREATED_AT.name,
-      );
-      await userEvent.click(productsItem);
+      // the datasets list refetches after a change, so query its items again
+      const getProductsItem = () =>
+        getItemWithText(
+          within(within(modal).getByTestId("datasets-list")).getAllByTestId(
+            "swap-dataset-button",
+          ),
+          PRODUCTS_BY_CREATED_AT.name,
+        );
       await waitFor(() =>
-        expect(productsItem).toHaveAttribute("aria-pressed", "false"),
+        expect(getProductsItem()).toHaveAttribute("aria-pressed", "true"),
+      );
+      await userEvent.click(getProductsItem());
+      await waitFor(() =>
+        expect(getProductsItem()).toHaveAttribute("aria-pressed", "false"),
       );
       await expectNewEvent(
         visualizerEvent(
