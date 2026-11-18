@@ -10,6 +10,7 @@ import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { SchemaName, TableId } from "./table";
 
 export type UserId = number;
@@ -51,6 +52,7 @@ export interface BaseUser {
   first_login: string;
   updated_at: string;
   tenant_id: number | null;
+  worktree_id?: RemoteSyncWorktreeId | null;
 }
 
 export interface UserPermissions {
@@ -191,6 +193,7 @@ export type UpdateUserRequest = {
   is_superuser?: boolean;
   login_attributes?: UserAttributeMap | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
+  worktree_id?: RemoteSyncWorktreeId | null;
 };
 
 export type UserKeyValue =
