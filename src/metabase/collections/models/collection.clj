@@ -822,9 +822,9 @@
     (throw (ex-info (tru "A data app''s collection can hold only questions and implicit actions.") {:status-code 400}))))
 
 (defn check-allowed-content
-  "Checks the content of a collection before saving it. Throws when `collection`, a Collection id or the row
-  [[content-parent]] gives, can't hold content of `model-type`; a data app's collection holds only what a remote-sync
-  pull of the app accepts."
+  "Checks the content of a collection before saving it, throwing when `collection`, a Collection id or the row
+  [[content-parent]] gives, can't hold content of `model-type`, where a data app's collection holds only what a
+  remote-sync pull of the app accepts."
   [model-type collection]
   (when (and collection (some? model-type))
     (let [parent (content-parent-or-nil collection)]
@@ -1557,7 +1557,7 @@
     (every? #(perms/collection-permission-at-least? (get permissions %) :read-and-write) collection-ids)))
 
 (mu/defn parent-or-root :- CollectionWithLocationAndIDOrRoot
-  "The Collection with `parent-id`, or for nil the root Collection of `collection-namespace`. Throws a 404 when there
+  "The Collection with `parent-id`, or for nil the root Collection of `collection-namespace`, throwing a 404 when there
   is no such Collection."
   [collection-namespace :- [:maybe [:or :keyword :string]]
    parent-id            :- [:maybe ms/PositiveInt]]
@@ -2265,8 +2265,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn can-move?
-  "Whether the current user may apply `changes` to the `:collection_id` of `row`: when it changes, write access to the
-  old Collection and the new one, the root Collection for nil. Always true when it does not."
+  "Whether the current user may apply `changes` to the `:collection_id` of `row`, which asks write access to the old
+  Collection and the new one, the root Collection for nil, when it changes, and is always true when it does not."
   [row changes]
   (or (not (api/column-will-change? (:collection_id row) (get changes :collection_id ::api/not-provided)))
       (and (can-write-collection-or-root? (:collection_id row) {:root-namespace nil})

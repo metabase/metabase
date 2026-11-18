@@ -297,8 +297,8 @@
   (enqueue-hook-selectors! instances true))
 
 (defn feeds-documents?
-  "Whether [[bulk-update!]] would enqueue anything for `instances`.
-  A superseded moderation review, for one, feeds no document: the hook it would trigger requires `most_recent`."
+  "Whether [[bulk-update!]] would enqueue anything for `instances`, which a superseded moderation review, for one, does
+  not, since the hook it would trigger requires `most_recent`."
   [instances]
   (boolean (seq (hook-selectors instances true))))
 

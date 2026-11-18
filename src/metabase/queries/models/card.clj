@@ -505,8 +505,8 @@
   [_ _])
 
 (defenterprise sandboxes-allow-card-delete?
-  "Whether sandboxing lets the current user delete `card`: only an admin may delete one a sandbox is built out of. OSS
-  always does."
+  "Whether sandboxing lets the current user delete `card`, which only an admin may when a sandbox is built out of it,
+  and which OSS always does."
   metabase-enterprise.sandbox.models.sandbox
   [_card]
   true)
@@ -1020,9 +1020,9 @@
   nil)
 
 (defmacro with-copy-source-card
-  "Runs `body`, treating a Card created within it as a copy of `source-card`: an inherited timeline selection does
-  not require read access to those timelines. `source-card` must be a Card the current user has already passed a
-  read check on, and `body` should perform only the create permission check and the single copy insert."
+  "Runs `body`, treating a Card created within it as a copy of `source-card`, so that an inherited timeline selection
+  does not require read access to those timelines, where `source-card` must be a Card the current user has already
+  passed a read check on and `body` should perform only the create permission check and the single copy insert."
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
 

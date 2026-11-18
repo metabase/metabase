@@ -462,9 +462,9 @@
   (model-hooks* (methods spec*)))
 
 (defn- instance->db-values
-  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query. A value that
-  its write transform refuses, such as the `:unknown` an unrecognized stored value reads as, stays as it is, since only
-  the columns the hooks read are looked up in the result."
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query, leaving as it is
+  a value that its write transform refuses, such as the `:unknown` an unrecognized stored value reads as, since only the
+  columns the hooks read are looked up in the result."
   [instance]
   (let [xforms (try
                  (let [model (t2/model instance)]

@@ -265,9 +265,9 @@
                 new)))
 
 (mu/defn update-dashboard-cards!
-  "Update existing DashboardCards, each given as a `[dashboard-card old-dashboard-card]` pair, with their
-   DashboardCardSeries rewritten in one statement for all of them; `old-dashboard-card` avoids a DB call when nothing
-   changed. Returns nil."
+  "Update existing DashboardCards, each given as a `[dashboard-card old-dashboard-card]` pair with `old-dashboard-card`
+  sparing a DB call when nothing changed, rewriting their DashboardCardSeries in one statement for all of them, and
+  returning nil."
   [pairs :- [:sequential [:tuple DashboardCardUpdates DashboardCardUpdates]]]
   (t2/with-transaction [_conn]
     (let [update-ks [:action_id :card_id :row :col :size_x :size_y

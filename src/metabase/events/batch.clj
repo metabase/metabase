@@ -126,9 +126,8 @@
 (mu/defn register-capture!
   "Have `capture`, a function of the vector of the delete events of the rows of one model that one DELETE statement
   removes, called once per statement, in its transaction, after the before-delete hooks of the model and before the
-  DELETE runs, so that it can read the rows that the delete cascades to. A non-nil value it returns is attached under
-  `consumer-key` in `:captures` to one of those events that the batch delivers, for the handler of the consumer at the
-  end of the batch."
+  DELETE runs, so that it can read the rows that the delete cascades to, a non-nil value it returns being attached under
+  `consumer-key` in `:captures` to one of those events that the batch delivers."
   [consumer-key :- :keyword
    capture      :- ifn?]
   (swap! capturers assoc consumer-key capture)
@@ -186,10 +185,10 @@
           (swap-batch! state update-in [:captures statement] merge captured))))))
 
 (mu/defn register-statement-capture!
-  "Have `capture`, a function of a model and of `select-rows`, called once per DELETE statement of that model, in its
-  transaction and before the before-delete hooks of the model, so that it can read the rows that the hooks or the
-  delete remove. `select-rows`, a function of columns, selects those columns of the rows that the statement matches. A
-  non-nil value `capture` returns is attached as [[register-capture!]] attaches one."
+  "Have `capture`, a function of a model and of `select-rows`, a function of columns selecting them from the rows a
+  DELETE statement matches, called once per DELETE statement of that model, in its transaction and before its
+  before-delete hooks, so that it can read the rows that the hooks or the delete remove, and attach a non-nil value it
+  returns as [[register-capture!]] attaches one."
   [consumer-key :- :keyword
    capture      :- ifn?]
   (swap! statement-capturers assoc consumer-key capture)
@@ -357,8 +356,8 @@
 
 (defn- run-batch
   "Run `thunk` in the batch there already is, or else in a new batch that delivers its events when `thunk` returns, in
-  the transaction there already is when `join-transaction?` and in a nested one otherwise. A joined `thunk` that throws
-  keeps its events, which follow its rows: a savepoint or transaction rolled back drops both."
+  the transaction there already is when `join-transaction?` and in a nested one otherwise, a joined `thunk` that throws
+  keeping its events, which follow its rows when a savepoint or transaction rolls back."
   [join-transaction? thunk]
   (let [run (fn []
               (let [state (or (mdb/transaction-state)

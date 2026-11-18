@@ -85,10 +85,9 @@
       {})))
 
 (defn- snippet-template-tags
-  "The template tags of `snippet` for its content, with its snippet references resolved against `name->id`.
-
-  A reference to a snippet named in `name->id` gets that snippet's id. Otherwise it keeps the id of the same reference
-  in the old tags, so that references survive the rename of their target, or none when there was none."
+  "The template tags of `snippet` for its content, with a reference to a snippet named in `name->id` given that
+  snippet's id, and otherwise the id of the same reference in the old tags, so that references survive the rename of
+  their target, or none when there was none."
   [{old-tags :template_tags :as snippet} name->id]
   (let [name->old-tag (into {} (comp (map val)
                                      (filter snippet-tag?)

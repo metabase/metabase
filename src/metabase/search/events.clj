@@ -18,8 +18,8 @@
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
 
 (defn- capture-dependents
-  "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable. A search error
-  must not fail the delete: it skips the enumeration and leaves those documents to the scheduled reindex."
+  "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable, skipping the
+  enumeration on a search error, which must not fail the delete, and leaving those documents to the scheduled reindex."
   [events]
   (when-let [{:keys [model operation]} (first events)]
     (when (and (= :delete operation)

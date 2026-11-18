@@ -1,17 +1,8 @@
 (ns metabase.api.macros.defendpoint.closed-schemas
   "Check, when a `defendpoint` is evaluated, that its request schemas let nothing through that
-  [[metabase.api.macros/decode-transformer]] does not strip.
-
-  The decoder drops the keys a `[:map ...]` does not declare and the entries of a `:map-of` that fail its key or value
-  schema, and touches nothing else. So a schema that accepts a map with a key of ours as it arrived (`:any`, `:some`,
-  `map?`, `[:fn map?]` and so on) and a `:map-of` keyed by keywords let a client send data no schema describes, and
-  [[check!]] throws on them. A `:fn` is never stripped; one that rejects both probes is not reported, whatever else
-  it accepts. A `[:map {:closed false}]` opts out of stripping: it is allowed, and
-  `metabase.api-routes.closed-schemas-test` pins every one a request can reach.
-
-  How schemas are walked is described in [[metabase.util.malli.closed-schemas]]; in addition, the entries of a map
-  whose `:decode/api` is [[metabase.lib.schema.common/remove-internal-keys]] that are internal keys are skipped,
-  since the API decoder removes them from every request."
+  [[metabase.api.macros/decode-transformer]] does not strip, which are the schemas that accept a map with a key of ours
+  as it arrived, a `:map-of` keyed by keywords, and any other finding of [[metabase.util.malli.closed-schemas]], where a
+  `[:map {:closed false}]` opts out and `metabase.api-routes.closed-schemas-test` pins every one a request can reach."
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]

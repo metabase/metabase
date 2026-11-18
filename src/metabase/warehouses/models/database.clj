@@ -569,7 +569,8 @@
   (hydrate-database-permission k databases queryable-database-ids))
 
 (defenterprise current-user-managed-database-ids
-  "OSS implementation. The ids among `db-ids` of the Databases the current user manages: all of them for a superuser."
+  "OSS implementation, the ids among `db-ids` of the Databases the current user manages, which for a superuser is all of
+  them and for anyone else none."
   metabase-enterprise.advanced-permissions.common
   [db-ids]
   (if (mi/superuser?) (set db-ids) #{}))

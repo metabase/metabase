@@ -398,7 +398,7 @@
   (resolve/import-in-bulk store xs opts walk-import))
 
 (def mbql-transform
-  "A spec transform of forms that may hold MBQL, by [[export-mbql]] and [[import-mbql]]. Its import validates a query
+  "A spec transform of forms that may hold MBQL, by [[export-mbql]] and [[import-mbql]], whose import validates a query
   against this instance's query schema, so an import need not check the column against the schema of the spec."
   {:validates-query? true
    :export (fn [store _ xs _] (export-mbql store xs))

@@ -403,10 +403,8 @@
               :can_write :can_restore :can_delete))
 
 (defn- exploration-recent-edits-subquery
-  "Per-exploration latest edit of the explorations listed under `collection`, unioning the Exploration's own metadata
-  revisions with revisions of its Summary Document. `rn = 1` picks the winner.
-  The Exploration row is mostly inert post-creation; the meat of editing happens in the attached Document, so \"Last
-  edited\" must reflect both sources."
+  "The latest edit of each exploration listed under `collection`, taking the newest of the revisions of the Exploration
+  itself and of its Summary Document, whose edits \"Last edited\" must reflect."
   [collection]
   (let [listed? (fn [alias]
                   (if (collection/is-trash? collection)

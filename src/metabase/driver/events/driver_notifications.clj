@@ -1,8 +1,6 @@
 (ns metabase.driver.events.driver-notifications
-  "Driver notifications are used to let drivers know that the details or other relevant state of a Database changed
-  (`:database-update`). Drivers can choose to be notified by implementing the `metabase.driver/notify-database-updated`
-  multimethod. At the time of this writing, the SQL JDBC driver 'superclass' is the only thing that implements this
-  method, and does so to close connection pools when database details change or when they are deleted."
+  "Notifies drivers, through `metabase.driver/notify-database-updated`, that the details of a Database changed or that
+  it was deleted, which the SQL JDBC driver uses to close connection pools."
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]

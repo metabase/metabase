@@ -643,9 +643,9 @@
 
 (def ^:private implication-rules
   "The rules both permission writers apply: a group whose `:perm-type` value satisfies `:applies?` also gets
-  `:implied-value` of `:implied-type`, for changes on a whole Database or on single Tables as `:levels` says. A
-  `:database-wide?` rule implies a Database permission, which a Table-level change sets on the whole Database when any of
-  its Table values satisfies `:applies?`; the other rules apply to the same Database or Table."
+  `:implied-value` of `:implied-type`, for changes on a whole Database or on single Tables as `:levels` says, where a
+  `:database-wide?` rule implies a Database permission that a Table-level change sets on the whole Database when any of
+  its Table values satisfies `:applies?`, and the other rules apply to the same Database or Table."
   [{:perm-type :perms/create-queries :applies? #(not= % :no) :levels #{:database :table}
     :implied-type :perms/view-data :implied-value :unrestricted}
    {:perm-type :perms/view-data :applies? #(= % :blocked) :levels #{:database :table}

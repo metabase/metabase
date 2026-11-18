@@ -27,8 +27,8 @@
 (defmethod before-load :default [_ items] items)
 
 (defmulti loaded-entities
-  "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so a model can
-  leave out the shapes of older exports it no longer loads. By default, the entities."
+  "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so that a model
+  can leave out the shapes of older exports it no longer loads, by default all of them."
   {:arglists '([model entities])}
   (fn [model _entities] model))
 

@@ -622,11 +622,7 @@
 
 (defn updates-without-collection-when-archiving
   "`obj-updates` without the `archived_directly` of the request, which the model derives, and without `collection_id`
-  when they archive `current-obj`.
-
-  Dropping `collection_id` is a hack around a frontend issue. Apparently, the undo functionality depends on calculating
-  a diff between the current state and the previous state. Sometimes this results in the frontend telling us to *both*
-  mark an item as archived *and* \"move\" it to the Trash."
+  when they archive `current-obj`, because the frontend's undo sends an archive together with a move to the Trash."
   [current-obj obj-updates]
   (cond-> (dissoc obj-updates :archived_directly)
     (and (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))

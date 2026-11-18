@@ -57,8 +57,8 @@
   (memoize (fn [schema ks] (mut/optional-keys schema ks))))
 
 (defn check-entity
-  "`entity`, an entity of `model` as serialization writes it, normalized by the `:schema` of its spec, throwing when it
-  still does not match the schema. With `unchecked-keys`, the schema takes those keys as optional."
+  "`entity`, an entity of `model` as serialization writes it, normalized by the `:schema` of its spec and throwing when
+  it still does not match, with the `unchecked-keys` the schema takes as optional."
   ([model entity]
    (check-entity model entity #{}))
   ([model entity unchecked-keys]
@@ -141,10 +141,9 @@
 (defn deserialize-entities
   "The `entities` of `model` as the rows to insert, each cut to its [[external-entity]] and passed through
   [[check-entity]], or only normalized by the `:schema` of its spec when `opts` has `:skip-schema-validation?` or
-  `:nested?`, for children whose parent's schema checked them, but for the columns its import transforms normalize
-  themselves, with their references resolved to database ids in `store` with `opts` all at once. Each column the spec
-  copies or exports is set to the entity's value, or else to its default, or else to nil; a column it only imports is
-  set only when the entity holds a value, and the columns imported after insert are left out."
+  `:nested?`, with their references resolved to database ids in `store` with `opts` all at once, setting each column the
+  spec copies or exports to the value of the entity, else its default, else nil, a column it only imports only when the
+  entity holds a value, and leaving out the columns imported after insert."
   [model store entities opts]
   (let [spec     (serialization.spec/spec-of model)
         defaults (:defaults spec)

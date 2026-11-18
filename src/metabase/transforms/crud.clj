@@ -93,10 +93,10 @@
   nil)
 
 (mu/defn check-references :- :nil
-  "Throws a 400 unless what `definition` refers to outside the transform allows it: a target database with the
-  features the transform needs and without DB routing, and for the parts of `definition` that the request writes, `written`, a query that preprocesses, a target
-  schema where the driver needs one, and a checkpoint column and lookback of supported types. The rest of the rules on
-  a transform are those of its model hooks."
+  "Throws a 400 unless what `definition` refers to outside the transform allows it: a target database with the features
+  the transform needs and without DB routing, and for the parts the request writes, `written`, a query that
+  preprocesses, a target schema where the driver needs one and a checkpoint column and lookback of supported types, the
+  rest of the rules on a transform being those of its model hooks."
   [definition :- ::transforms.schema/transform.definition
    written    :- [:set [:enum :source :target]]]
   (let [database (api/check-400 (some-> (transforms-base.i/target-db-id definition) transforms.db/database)
@@ -200,8 +200,8 @@
      transform)))
 
 (mu/defn update-transform! :- ::transforms.schema/transform
-  "Update a transform. Validates features, what the transform refers to, and target conflicts.
-   Returns the updated transform with hydrated associations."
+  "Update a transform, validating its features, what it refers to and its target conflicts, and return it with its
+  associations hydrated."
   [id   :- ::lib.schema.id/transform
    body :- ::transforms.schema/transform.create]
   (let [transform (events/with-batched-events

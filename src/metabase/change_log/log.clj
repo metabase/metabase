@@ -41,16 +41,16 @@
   (name (t2/table-name model)))
 
 (defn- throw-or-log
-  "Reports a mistake in calling code. In dev and test it throws, so that a test catches it. In production it only logs
-  a warning, so that the write goes ahead."
+  "Reports a mistake in calling code by throwing in dev and test, so that a test catches it, and only by logging a
+  warning in production, so that the write goes ahead."
   [message]
   (if config/is-prod?
     (log/warn message)
     (throw (ex-info message {}))))
 
 (defn log!
-  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering. A row key that is not an integer
-  goes to [[throw-or-log]], and gets no entry."
+  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering, sending a row key that is not an
+  integer to [[throw-or-log]] and giving it no entry."
   [changes]
   (doseq [[table-name row-ids action] changes
           :let  [n (count (remove integer? row-ids))]
@@ -67,17 +67,10 @@
     (change-log.numbering/stay-awake!)))
 
 (mu/defn log-rows!
-  "Logs `action` on the rows of `model` that match `conditions`, for a write that skips the model. `conditions` are
-  what `t2/select` takes after the model, usually the write's own. Call it in the write's transaction, before an
-  update or a delete and after an insert:
-
-    (t2/with-transaction [_conn]
-      (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id)
-      (t2/delete! :pulse_channel_recipient :pulse_channel_id channel-id))
-
-  While the log is off, it does nothing, so a write can call it on an EE model without EE. While the log is on, a
-  `model` that is not tracked goes to [[throw-or-log]]. It does not log what a delete cascades to: those rows need
-  their own call."
+  "Logs `action` on the rows of `model` that match `conditions`, what `t2/select` takes after the model and usually the
+  write's own, for a write that skips the model, called in the write's transaction before an update or a delete and
+  after an insert, doing nothing while the log is off, sending a model that is not tracked to [[throw-or-log]] while it
+  is on, and not logging what a delete cascades to."
   [model  :- :keyword
    action :- [:enum :insert :update :delete]
    & conditions :- [:* [:maybe [:fn {:description "what `t2/select` takes after the model"} some?]]]]

@@ -1,14 +1,9 @@
 (ns metabase.util.malli.closed-schemas
-  "Find the schemas reachable from a schema that let a value through undeclared.
-
-  - `:any`: a schema that accepts a value of any shape. For a function argument that is `:any`, `any?`, `:some` and
-    `some?`; [[passes-as-arrived?]] is the wider rule for an API request.
-  - `:keyword-keyed-map-of`: a `:map-of` whose key schema accepts a keyword, for an API request only.
-  - `:open-map`: a `[:map {:closed false} ...]`, which is allowed and only reported.
-
-  A `::mc/default` entry hands the other keys of a map to its schema, which is walked like any other. One conjunct of
-  an `:and` that lets nothing through settles the value, so only the open maps of its siblings are reported; for an
-  API request a `:fn` conjunct is a guard and settles nothing. An alternative of an `:or` or a `:multi` is reported like the schema itself."
+  "Find the schemas reachable from a schema that let a value through undeclared, each as an `:any` schema that accepts a
+  value of any shape, a `:keyword-keyed-map-of` whose key schema accepts a keyword (for an API request only), or an
+  `:open-map`, a `[:map {:closed false} ...]` that is allowed and only reported, walking a `::mc/default` entry like any
+  other schema and, in an `:and`, settling the value by any conjunct that lets nothing through, which for an API request
+  is never a `:fn` guard."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -278,12 +273,10 @@
 (defn findings
   "Everything reachable from `schema` that lets a value through undeclared, each a map of `:kind` (`:any`,
   `:keyword-keyed-map-of` or `:open-map`), the `:trail` of map keys, child indexes and registry keys that leads to it
-  from the root, and its `:form`.
-
-  Options: `:any-schema?` and `:open-key?`, the rules for a leaf that accepts a value of any shape and for a `:map-of`
-  key that accepts any keyword, with `:cache-key` naming them;
-  `:guards?`, whether a `:fn` is a guard that types nothing; `:skip-entry?`, a `(fn [map-schema k])` for map entries
-  not to walk."
+  from the root, and its `:form`, under the options `:any-schema?` and `:open-key?`, the rules for a leaf that accepts a
+  value of any shape and for a `:map-of` key that accepts any keyword, with `:cache-key` naming them, `:guards?`,
+  whether a `:fn` is a guard that types nothing, and `:skip-entry?`, a `(fn [map-schema k])` for map entries not to
+  walk."
   ([schema]
    (findings schema {}))
   ([schema {rule :any-schema?, key-rule :open-key?, :keys [cache-key skip-entry? guards?]}]
