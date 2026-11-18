@@ -952,7 +952,7 @@
 (defn- do-with-product-app-db
   "Bind an application DB of `db-type` whose connections report `product`, and call `f` with a function returning
   how many connections it has opened.
-  Calls `on-connect`, when given, with the connection's number before connecting."
+  Calls `on-connect`, when given, with the call's number before connecting."
   [db-type product on-connect f]
   (let [calls (atom 0)]
     (mdb.connection/with-application-db
@@ -980,7 +980,7 @@
      (fn [calls]
        (is (= {:answer false, :calls 0}
               {:answer (mdb.connection/mariadb?), :calls (calls)})))))
-  (testing "the product name is read while holding the cell's lock, so concurrent first callers share one read"
+  (testing "reads the product name under the lock, so concurrent first callers share one read"
     (let [held?             (atom nil)
           record-lock-held! (fn [_]
                               (reset! held? (Thread/holdsLock (:mariadb? (mdb.connection/current-application-db)))))]
