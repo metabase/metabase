@@ -394,23 +394,23 @@
 
 (defn- external-test
   "A saved test of schema `saved-test-schema` as serialization writes it, with references in place of ids: its subject
-  under `subject-key`, and `now` as an ISO-8601 string."
-  [saved-test-schema subject-key]
+  under `subject-key`, and, when `now?`, `now` as an ISO-8601 string."
+  [saved-test-schema subject-key now?]
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
-    [:map {:closed true}
-     [:now         {:optional true} [:maybe ::now-string]]
-     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+    (cond-> [:map {:closed true}
+             [:serdes/meta {:optional true} ::models.schema/external-meta]]
+      now? (conj [:now {:optional true} [:maybe ::now-string]]))]])
 
 (mr/def ::external-transform-test
   "A TransformTest as serialization writes it, with references in place of ids."
-  (external-test ::transform-test :transform_id))
+  (external-test ::transform-test :transform_id true))
 
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."
-  (external-test ::card-test :card_id))
+  (external-test ::card-test :card_id true))
 
 (mr/def ::external-segment-test
   "A SegmentTest as serialization writes it, with references in place of ids."
-  (external-test ::segment-test :segment_id))
+  (external-test ::segment-test :segment_id false))
