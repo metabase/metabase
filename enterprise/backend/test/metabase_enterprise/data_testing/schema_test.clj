@@ -10,8 +10,10 @@
    [metabase-enterprise.data-testing.expectations.empty :as expectations.empty]
    [metabase-enterprise.data-testing.expectations.equals :as expectations.equals]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.lib.core :as lib]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]))
@@ -290,3 +292,20 @@
       (is (mr/validate ::data-testing.schema/now-string now))
       (is (= (t/instant "2026-10-13T00:00:00Z")
              (t/instant (lib/normalize ::data-testing.schema/now now)))))))
+
+(deftest import-refusal-of-now-names-the-reason-test
+  (testing "an import that refuses a test's `now` says why, as the API does"
+    (let [refusal (fn [now]
+                    (try
+                      (serialization/check-entity :model/CardTest {:entity_id    "aaaaaaaaaaaaaaaaaaaaa"
+                                                                   :name         "t"
+                                                                   :now          now
+                                                                   :inputs       []
+                                                                   :expectations []})
+                      nil
+                      (catch clojure.lang.ExceptionInfo e
+                        (ex-message e))))]
+      (is (re-find #"with an offset" (str (refusal "2026-10-13T00:00:00"))))
+      (is (re-find #"inclusive" (str (refusal "2040-01-01T00:00:00Z"))))
+      (testing "control: a `now` with an offset in range is accepted"
+        (is (nil? (refusal "2026-10-13T00:00:00Z")))))))
