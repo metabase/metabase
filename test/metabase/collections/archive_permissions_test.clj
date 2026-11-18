@@ -44,7 +44,6 @@
                                :model/Document           [document summary]
                                :model/Exploration        [exploration]
                                :model/Timeline           [timeline]
-                               :model/TimelineEvent      [event]
                                :model/Pulse              [pulse]}
                   all-flags   (fn [expected]
                                 (every? (fn [[_model flags]] (every? #(= expected %) (vals flags)))
@@ -53,6 +52,7 @@
                 (testing "archiving"
                   (collections/update-collection! (:id top) {:archived true})
                   (is (all-flags true))
+                  (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id (:id event))))
                   (collections/update-collection! (:id snippet-coll) {:archived true})
                   (is (true? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id snippet))))
                   (collections/update-collection! (:id actions-coll) {:archived true})
