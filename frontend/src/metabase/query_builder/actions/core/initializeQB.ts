@@ -25,6 +25,7 @@ import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
   INITIALIZE_QB,
+  addMetabotCardBaseline,
   setPendingMetabotCard,
 } from "metabase/redux/query-builder";
 import type {
@@ -296,6 +297,13 @@ async function handleQBInit(
     isStale: () => boolean;
   },
 ) {
+  // Read and cleared before any await, so an init already in flight never takes
+  // the card meant for this one, and an early return never leaves it set
+  const pendingMetabotCard = getPendingMetabotCard(getState());
+  if (pendingMetabotCard) {
+    dispatch(setPendingMetabotCard(null));
+  }
+
   dispatch(resetQB());
   dispatch(cancelQuery());
 
@@ -483,16 +491,11 @@ async function handleQBInit(
     return;
   }
 
-  // Every init clears it; only the matching one uses it
-  const pendingMetabotCard = getPendingMetabotCard(getState());
-  if (pendingMetabotCard) {
-    dispatch(setPendingMetabotCard(null));
-    const isMetabotCard =
-      pendingMetabotCard.url === `${location.pathname}${location.hash}`;
-    if (isNative && isMetabotCard) {
-      // after the tag renames above, so it matches the question as loaded
-      uiControls.metabotCardBaseline = getMetabotCardBaseline(question);
-    }
+  const isMetabotCard =
+    pendingMetabotCard?.url === `${location.pathname}${location.hash}`;
+  if (isNative && isMetabotCard) {
+    // after the tag renames above, so it matches the question as loaded
+    dispatch(addMetabotCardBaseline(getMetabotCardBaseline(question)));
   }
 
   dispatch({

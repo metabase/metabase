@@ -157,6 +157,9 @@ export const getQueryStartTime = (state: QueryBuilderStoreState) =>
 export const getPendingMetabotCard = (state: QueryBuilderStoreState) =>
   state.qb.pendingMetabotCard;
 
+export const getMetabotCardBaselines = (state: QueryBuilderStoreState) =>
+  state.qb.metabotCardBaselines;
+
 export const getDatabaseId = createSelector(
   [getCard],
   (card) => card && card.dataset_query && card.dataset_query.database,
@@ -646,18 +649,26 @@ export const getMetabotCardBaseline = (
   question: Question,
 ): MetabotCardBaseline => {
   const card = question.card();
-  const baseline = _.pick(
-    card,
-    "dataset_query",
-    "visualization_settings",
-    "parameters",
-  );
-  // The query builder replaces an unlocked display to suit the results, and a
-  // display the user picks is locked, so only a locked one is the user's.
-  return card.displayIsLocked
-    ? { ...baseline, display: card.display }
-    : baseline;
+  return {
+    dataset_query: card.dataset_query,
+    display: card.display,
+    visualization_settings: card.visualization_settings,
+    // as `updateQuestion` writes them, since a loaded card may have none
+    parameters: question.applyTemplateTagParameters().card().parameters,
+  };
 };
+
+/** The baseline the current question still matches, if Metabot opened it. */
+export const getUntouchedMetabotCardBaseline = createSelector(
+  [getQuestion, getMetabotCardBaselines],
+  (question, baselines) => {
+    if (!question || baselines.length === 0) {
+      return undefined;
+    }
+    const current = getMetabotCardBaseline(question);
+    return baselines.find((baseline) => _.isEqual(baseline, current));
+  },
+);
 
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [
@@ -667,6 +678,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getOriginalQuestion,
     getUiControls,
+    getUntouchedMetabotCardBaseline,
   ],
   (
     queryBuilderMode,
@@ -675,6 +687,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     originalQuestion,
     uiControls,
+    untouchedMetabotCardBaseline,
   ) => {
     const isEditingModelOrMetric = queryBuilderMode === "dataset";
 
@@ -690,16 +703,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        const baseline = uiControls.metabotCardBaseline;
-        const current = getMetabotCardBaseline(question);
-        // the query builder also unlocks a display that stops suiting the results
-        const isUntouchedMetabotCard =
-          baseline != null &&
-          _.isEqual(
-            current,
-            current.display == null ? _.omit(baseline, "display") : baseline,
-          );
-        return rawQuery.length > 0 && !isUntouchedMetabotCard;
+        return rawQuery.length > 0 && untouchedMetabotCardBaseline == null;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());

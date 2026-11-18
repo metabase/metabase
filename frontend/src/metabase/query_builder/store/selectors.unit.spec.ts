@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
@@ -46,6 +44,7 @@ import {
   getEmbeddedParameterVisibilityGetter,
   getIsResultDirty,
   getIsVisualized,
+  getMetabotCardBaseline,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
@@ -586,48 +585,46 @@ describe("getShouldShowUnsavedChangesWarning", () => {
       const tagQuery = (type: "text" | "number") =>
         Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
           query: "SELECT {{x}}",
-          templateTags: { x: { type, name: "x" } },
+          templateTags: { x: { type, name: "x", id: "tag-x" } },
         });
       const card = createMockCard({
         query_type: "native",
         display: "table",
         dataset_query: tagQuery("text"),
+        parameters: undefined,
       });
-      // an unlocked display is the query builder's, so the baseline leaves it out
-      const baseline = _.pick(
-        card,
-        "dataset_query",
-        "visualization_settings",
-        "parameters",
-      );
+      const baselineOf = (card: Card) =>
+        getMetabotCardBaseline(
+          checkNotNull(getQuestion(getBaseState({ card }))),
+        );
 
-      const getState = (changes: Partial<Card>) =>
+      const getState = (
+        changes: Partial<Card>,
+        metabotCardBaselines = [baselineOf(card)],
+      ) =>
         getBaseState({
           card: { ...card, ...changes },
-          uiControls: {
-            queryBuilderMode: "view",
-            metabotCardBaseline: baseline,
-          },
+          metabotCardBaselines,
         });
 
       it("does not warn while the question is Metabot's", () => {
         expect(getShouldShowUnsavedChangesWarning(getState({}))).toBe(false);
       });
 
-      it("does not warn when the query builder unlocks Metabot's display", () => {
-        const state = getBaseState({
-          card: { ...card, display: "table" },
-          uiControls: {
-            queryBuilderMode: "view",
-            metabotCardBaseline: { ...baseline, display: "scalar" },
-          },
-        });
+      it("does not warn on any question Metabot opened, as after Back", () => {
+        const other = { ...card, display: "bar" as const };
+        const state = getState({}, [baselineOf(card), baselineOf(other)]);
         expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
       });
 
-      it("does not warn when the query builder switches an unlocked display", () => {
+      it("does not warn once the query builder writes the variable's parameter", () => {
+        const parameters = checkNotNull(
+          getQuestion(getState({}))?.applyTemplateTagParameters().card()
+            .parameters,
+        );
+        expect(parameters).toHaveLength(1);
         expect(
-          getShouldShowUnsavedChangesWarning(getState({ display: "scalar" })),
+          getShouldShowUnsavedChangesWarning(getState({ parameters })),
         ).toBe(false);
       });
 
@@ -641,7 +638,7 @@ describe("getShouldShowUnsavedChangesWarning", () => {
           },
         ],
         ["a variable", { dataset_query: tagQuery("number") }],
-        ["the display", { display: "bar", displayIsLocked: true }],
+        ["the display", { display: "bar" }],
         [
           "the visualization settings",
           { visualization_settings: { "table.pivot": true } },
@@ -651,7 +648,7 @@ describe("getShouldShowUnsavedChangesWarning", () => {
           {
             parameters: [
               {
-                id: "x",
+                id: "tag-x",
                 name: "x",
                 slug: "x",
                 type: "category",

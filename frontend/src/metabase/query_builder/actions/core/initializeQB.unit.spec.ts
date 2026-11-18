@@ -586,6 +586,12 @@ describe("QB Actions > initializeQB", () => {
     describe("opened by Metabot", () => {
       const location = getLocationForCard(card);
       const url = `${location.pathname}${location.hash}`;
+      const addedBaselines = (dispatch: jest.Mock) =>
+        dispatch.mock.calls
+          .map(([action]) => action)
+          .filter(
+            (action) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
+          );
 
       it("records the question it loaded as Metabot's", async () => {
         const { dispatch, result } = await setup({
@@ -594,33 +600,47 @@ describe("QB Actions > initializeQB", () => {
           pendingMetabotCard: { url },
         });
 
-        expect(result.uiControls.metabotCardBaseline).toEqual({
-          dataset_query: result.card.dataset_query,
-          visualization_settings: result.card.visualization_settings,
-          parameters: result.card.parameters,
+        expect(addedBaselines(dispatch)).toEqual([
+          sharedQB.addMetabotCardBaseline({
+            dataset_query: result.card.dataset_query,
+            display: result.card.display,
+            visualization_settings: result.card.visualization_settings,
+            parameters: [],
+          }),
+        ]);
+      });
+
+      it("clears the pending card before anything else", async () => {
+        const { dispatch } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url },
         });
+
+        const types = dispatch.mock.calls.map(([action]) => action?.type);
+        expect(types[0]).toBe(sharedQB.SET_PENDING_METABOT_CARD);
         expect(dispatch).toHaveBeenCalledWith(
           sharedQB.setPendingMetabotCard(null),
         );
       });
 
       it("records nothing when Metabot was opening another question", async () => {
-        const { dispatch, result } = await setup({
+        const { dispatch } = await setup({
           card,
           location,
           pendingMetabotCard: { url: "/question#another-card" },
         });
 
-        expect(result.uiControls.metabotCardBaseline).toBeUndefined();
+        expect(addedBaselines(dispatch)).toEqual([]);
         expect(dispatch).toHaveBeenCalledWith(
           sharedQB.setPendingMetabotCard(null),
         );
       });
 
       it("records nothing when Metabot did not open it", async () => {
-        const { result } = await setup({ card, location });
+        const { dispatch } = await setup({ card, location });
 
-        expect(result.uiControls.metabotCardBaseline).toBeUndefined();
+        expect(addedBaselines(dispatch)).toEqual([]);
       });
     });
   });
@@ -630,13 +650,17 @@ describe("QB Actions > initializeQB", () => {
 
     it("records nothing", async () => {
       const location = getLocationForCard(card);
-      const { result } = await setup({
+      const { dispatch } = await setup({
         card,
         location,
         pendingMetabotCard: { url: `${location.pathname}${location.hash}` },
       });
 
-      expect(result.uiControls.metabotCardBaseline).toBeUndefined();
+      expect(
+        dispatch.mock.calls.filter(
+          ([action]) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
+        ),
+      ).toEqual([]);
     });
   });
 
