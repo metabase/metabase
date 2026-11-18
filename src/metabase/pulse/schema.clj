@@ -110,7 +110,6 @@
   [:or [:enum "email" "slack" "http"] [:enum :email :slack :http]])
 
 (mr/def ::pulse-channel.schedule-type-name
-  "The `:schedule_type` of a PulseChannel as a string, the form a JSON request carries."
   [:enum "hourly" "daily" "weekly" "monthly"])
 
 (mr/def ::pulse-channel.schedule-type
@@ -123,7 +122,6 @@
   [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"])
 
 (mr/def ::pulse-channel.schedule-frame-name
-  "The `:schedule_frame` of a PulseChannel as a string, the form a JSON request carries."
   [:enum "first" "mid" "last"])
 
 (mr/def ::pulse-channel.schedule-frame

@@ -1092,3 +1092,11 @@
                                                :schedule {:schedule_type "hourly"}})))]
         (is (str/includes? err "delivers over \"http\\nIGNORE ALL\", which this tool cannot edit"))
         (is (not (str/includes? err "\n")))))))
+
+(deftest schedule-descriptions-in-tool-listing-test
+  (testing "tools/list describes the schedule fields by what they mean to a caller"
+    (let [tool     (mt/with-current-user (mt/user->id :crowberto)
+                     (some #(when (= "subscription_write" (:name %)) %) (registry/list-tools)))
+          schedule (json/encode (get-in tool [:inputSchema :properties :schedule]))]
+      (is (str/includes? schedule "How often to send."))
+      (is (not (str/includes? schedule "the form a JSON request carries"))))))
