@@ -3,12 +3,16 @@
 
    ## Three related-but-distinct concepts
 
-   1. **Workspace mode** — an *instance-level state*. True iff the EE
-      `workspaces-enabled` setting is on. The `workspace-mode?` predicate.
+   1. **Workspace mode** — a state of the current thread. True iff the EE
+      `workspaces-enabled` setting is on, which makes the whole instance a workspace,
+      or the current request names a workspace of this instance with its
+      `X-Metabase-Workspace-Id` header ([[current-workspace-id]]). The
+      `workspace-mode?` predicate; `workspace-bound?` tells the second case.
 
-   2. **Workspace-managed database** — a *database-scoped state*. True iff this
-      instance is in workspace mode AND the database has a `database-workspace-schema`
-      database-local setting. The `(ws/db-workspace-namespace db-id)` predicate (EE only).
+   2. **Workspace-managed database** — a *database-scoped state*. True iff the
+      thread is in workspace mode AND the database has a `database-workspace-schema`
+      database-local setting, or is a provisioned database of the workspace that the
+      request names. The `(ws/db-workspace-namespace db-id)` predicate (EE only).
 
    3. **Table remapping engaged** — a *query-time data state*. True iff
       `:model/TableRemapping` rows exist for the database. The
@@ -19,10 +23,10 @@
 
    ## What this namespace gates
 
-   `check-not-in-workspace-mode!` uses concept (1) — the *instance-level*
-   check. Features blocked here (DB routing, actions, editing table data, CSV
-   upload, model persistence) are refused on a child instance entirely,
-   not per-database. Rationale: workspace children boot with empty everything
+   `check-not-in-workspace-mode!` uses concept (1). Features blocked here (DB
+   routing, actions, editing table data, CSV upload, model persistence) are
+   refused on a child instance entirely, and in every request that names a
+   workspace, not per-database. Rationale: workspace children boot with empty everything
    except content; per Dan in proj-workspaces 2026-04-30, those features can't
    already be configured. The instance-level gate is simpler and defensive —
    no escape hatch.
@@ -33,21 +37,22 @@
 
    ## OSS vs EE
 
-   The OSS jar has no workspace mode (`workspace-mode?` returns false), so
-   the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
-   reads the `workspaces-enabled` setting."
+   The OSS jar has no workspace mode (`workspace-mode?` returns false, and a
+   request can't name a workspace), so the gates are no-ops. The EE impl in
+   `metabase-enterprise.workspaces.core` reads the `workspaces-enabled` setting and
+   the workspace that the request names."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]))
 
 (defenterprise workspace-mode?
-  "True if this instance is running in workspace mode — the EE `workspaces-enabled`
-   setting is on.
+  "True if the current thread works in a workspace: the EE `workspaces-enabled` setting
+   is on, or the current request names a workspace ([[current-workspace-id]]).
 
    For the per-database check, use the EE function
    `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
-   workspace-isolated output namespace map if this instance is in workspace mode
-   AND the database has a `database-workspace-schema`).
+   workspace-isolated output namespace map if the thread is in workspace mode
+   AND the database is one of the workspace's).
 
    The OSS fallback returns false."
   metabase-enterprise.workspaces.core
@@ -142,12 +147,13 @@
   nil)
 
 (defn check-not-in-workspace-mode!
-  "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.
+  "Throws an HTTP 400 `ex-info` if the current thread works in a workspace
+   ([[workspace-mode?]]).
 
    Use at API entry points and at write points for features that must be refused
-   on a workspace child instance (DB routing, actions, editing table data, CSV
-   upload, model persistence). The check is *instance-level*, not per-database
-   — see namespace docstring for the rationale."
+   on a workspace child instance, and in a request that names a workspace (DB
+   routing, actions, editing table data, CSV upload, model persistence). The check
+   is not per-database — see namespace docstring for the rationale."
   [feature-name]
   (when (workspace-mode?)
     (throw (ex-info (str feature-name " is not supported on a workspace instance.")

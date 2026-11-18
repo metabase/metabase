@@ -20,6 +20,12 @@
      Workspace-aware code (transform target rewriting, table-remapping QP middleware)
      reads them via [[workspace-mode?]] / [[db-workspace-namespace]].
 
+   - **Request-side state.** On an instance that manages workspaces, a superuser's
+     request can name one of them with its `X-Metabase-Workspace-Id` header. The request
+     then works in that workspace ([[current-workspace]] with `:mode :bound`): each
+     provisioned database connects with the workspace's login and writes to its output
+     namespace, and the workspace has table remappings and copy metadata of its own.
+
    Per-database lifecycle for the manager-side rows. A create inserts every row
    `provisioning`. Each status, what it means, and what leaves it:
 

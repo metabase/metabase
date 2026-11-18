@@ -37,7 +37,8 @@
    [[record-workspace-target-remapping!]] records later points at the same place.
 
    On a non-workspace instance the canonical target passes through unchanged. On a
-   workspace instance, throws a 400 when the database has no `database-workspace-schema`,
+   workspace instance, throws a 400 when the database has no `database-workspace-schema`, or, in a workspace that
+   the request names, is not a provisioned database of that workspace,
    so that no production table is used as a transform's target: written, checked for
    existence, or dropped.
 
@@ -52,6 +53,11 @@
     (cond
       (some? workspace-ns)
       (retarget target (ws.table-remapping/transform-target-remapping db-id target))
+
+      (ws/workspace-bound?)
+      (throw (ex-info (tru "Database {0} is not a provisioned database of the workspace that the request names, so its transforms have no safe target."
+                           db-id)
+                      {:status-code 400 :database-id db-id}))
 
       (ws/workspace-mode?)
       (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
