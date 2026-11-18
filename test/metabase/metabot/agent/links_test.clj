@@ -49,7 +49,7 @@
 (def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
 (def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
-(deftest ^:parallel ->legacy-mbql-lib-type-less-legacy-mbql-test
+(deftest ^:parallel ->legacy-mbql-lib-type-less-mbql-5-test
   (testing "converts MBQL 5 stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
     ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
     ;; frontend's `user_is_viewing` / `chart_configs` context comes back as MBQL 5

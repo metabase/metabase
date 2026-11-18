@@ -1681,6 +1681,41 @@
                                                :lib/transformation-added-base-type true}
                                        "USER_ID"])))))
 
+(deftest ^:parallel ->legacy-MBQL-ref-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "Tax Rate" (lib// (meta/field-metadata :orders :tax)
+                                                    (meta/field-metadata :orders :total)))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))]
+    (testing "string-name :field ref keeps :base-type, even when the conversion to MBQL 5 added it"
+      (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
+             (lib.convert/->legacy-MBQL-ref [:field {:lib/uuid                           "47afe974-396c-4213-8736-859399ba5e7e"
+                                                     :base-type                          :type/Integer
+                                                     :join-alias                         "ord1"
+                                                     :lib/transformation-added-base-type true}
+                                             "USER_ID"]))))
+    (testing ":expression ref"
+      (is (= [:expression "Tax Rate" {:base-type :type/Float}]
+             (lib.convert/->legacy-MBQL-ref (lib/expression-ref query "Tax Rate")))))
+    (testing ":aggregation ref"
+      (let [sum-ref (lib/aggregation-ref query 1)]
+        (testing "becomes an index into the aggregation list inside with-aggregation-list"
+          (is (= [:aggregation 1]
+                 (lib.convert/with-aggregation-list (lib/aggregations query)
+                   (lib.convert/->legacy-MBQL-ref sum-ref)))))
+        (testing "cannot be converted outside of with-aggregation-list"
+          (is (thrown-with-msg?
+               #?(:clj Throwable :cljs :default)
+               #"Unable to find key"
+               (lib.convert/->legacy-MBQL-ref sum-ref))))))
+    ;; only Clojure validates `mu/defn` input schemas
+    #?(:clj
+       (testing "other refs like :metric are rejected"
+         (is (thrown-with-msg?
+              Throwable
+              #"Invalid input"
+              (lib.convert/->legacy-MBQL-ref [:metric {:lib/uuid "47afe974-396c-4213-8736-859399ba5e7e"} 1])))))))
+
 (deftest ^:parallel dimension->mbql5-test
   (is (=? [:dimension
            {:stage-number 0, :lib/uuid string?}

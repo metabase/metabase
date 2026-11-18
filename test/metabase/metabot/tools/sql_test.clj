@@ -1368,8 +1368,7 @@
                                              metabot-sql-execution-enabled?   true]
             (let [query-id  "test-hidden-warning-q"
                   join      " JOIN no_such_account a ON a.id = v.id"
-                  stored    (-> (lib/native-query (mt/metadata-provider) "SELECT v.name FROM venues v")
-                                lib/->legacy-MBQL)
+                  stored    (lib/native-query (mt/metadata-provider) "SELECT v.name FROM venues v")
                   ;; A fresh memory per call: a warning already shown in this turn would not keep the turn open.
                   run       (fn [tool-name context & {:keys [client-ids]}]
                               (binding [shared/*memory-atom*                     (atom {:tool-names      #{"create_sql_query"
