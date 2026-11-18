@@ -1,10 +1,11 @@
-import { Ellipsified, Icon } from "metabase/ui";
+import { Ellipsified, FixedSizeIcon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type { SummaryValueItem } from "../types";
 
 import { ColumnValueMenu } from "./ColumnValueMenu";
+import { FormulaLabel } from "./FormulaLabel";
 import { WellChip } from "./WellChip";
 
 const VALUE_ICONS: Record<
@@ -32,6 +33,18 @@ export function ValueChip({
   onChange,
   onRemove,
 }: ValueChipProps) {
+  const label =
+    item.kind === "expression" ? (
+      <FormulaLabel
+        query={query}
+        stageIndex={stageIndex}
+        clause={item.clause}
+        label={item.label}
+      />
+    ) : (
+      <Ellipsified fw="inherit">{item.label}</Ellipsified>
+    );
+
   return (
     <WellChip drag={{ kind: "value", item }} onRemove={onRemove}>
       {item.kind === "column" ? (
@@ -43,8 +56,8 @@ export function ValueChip({
         />
       ) : (
         <>
-          <Icon name={VALUE_ICONS[item.kind]} size={12} />
-          <Ellipsified fw="inherit">{item.label}</Ellipsified>
+          <FixedSizeIcon name={VALUE_ICONS[item.kind]} size={12} />
+          {label}
         </>
       )}
     </WellChip>

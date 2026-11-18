@@ -47,6 +47,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { FormulaBarSlotProvider, useFormulaBarOwnership } from "../FormulaBar";
+
 import { ViewTitleHeader } from "./ViewTitleHeader";
 
 console.warn = jest.fn();
@@ -310,6 +312,16 @@ function setupWithKBar(opts: SetupOpts) {
     getRegistrationsOf,
     ...callbacks,
   };
+}
+
+function FormulaBarControls() {
+  const { open, close } = useFormulaBarOwnership();
+  return (
+    <>
+      <button onClick={open}>Open formula</button>
+      <button onClick={close}>Close formula</button>
+    </>
+  );
 }
 
 function setupAdHoc(props: Partial<SetupOpts> = {}) {
@@ -657,6 +669,36 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
 
     it("shows all filters by default", () => {
       setup({ card, queryBuilderMode: "view" });
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
+    });
+
+    it("hides filters while the formula bar is open and restores them on close", async () => {
+      const { viewTitleHeaderProps, storeInitialState } = buildSetup({
+        card,
+        queryBuilderMode: "view",
+      });
+      renderWithProviders(
+        <FormulaBarSlotProvider>
+          <FormulaBarControls />
+          <ViewTitleHeader {...viewTitleHeaderProps} />
+        </FormulaBarSlotProvider>,
+        { withRouter: true, storeInitialState },
+      );
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Open formula" }),
+      );
+      expect(
+        screen.queryByText("Total is less than 50"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Close formula" }),
+      );
       expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
       expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
     });

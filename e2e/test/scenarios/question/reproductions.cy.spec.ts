@@ -359,7 +359,10 @@ describe("issue 53170", () => {
     "should correctly position the add column popover (metabase#53170)",
     { viewportWidth: 480, viewportHeight: 800 },
     () => {
-      H.openOrdersTable();
+      H.createNativeQuestion(
+        { native: { query: "SELECT * FROM ORDERS LIMIT 5" } },
+        { visitQuestion: true },
+      );
       cy.findByLabelText("Add column").click();
       H.popover().within(() => {
         cy.findByText("Combine columns").click();

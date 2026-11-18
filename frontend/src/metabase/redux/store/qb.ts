@@ -47,6 +47,12 @@ export type Range = {
   end: Position;
 };
 
+export type SummaryGeneratedExpression = {
+  stageIndex: number;
+  name: string;
+  expression: string;
+};
+
 export interface QueryBuilderUIControls {
   isModifiedFromNotebook: boolean;
   isShowingDataReference: boolean;
@@ -54,6 +60,7 @@ export interface QueryBuilderUIControls {
   isShowingNewbModal: boolean;
   isRunning: boolean;
   isShowingSummarySidebar: boolean;
+  summaryGeneratedExpressions: SummaryGeneratedExpression[];
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Box, Ellipsified } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
@@ -20,6 +21,11 @@ import {
 } from "../utils";
 
 import { DimensionBucketMenu } from "./DimensionBucketMenu";
+import {
+  DraftFormulaChip,
+  type DraftFormulaChipProps,
+} from "./DraftFormulaChip";
+import { FormulaLabel } from "./FormulaLabel";
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
@@ -29,6 +35,10 @@ type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
+  formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
+  draftFormula?:
+    | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
+    | null;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
@@ -38,6 +48,8 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
+  formulaInputs,
+  draftFormula,
   draggedItem,
   onPick,
   onChange,
@@ -82,6 +94,7 @@ export function SummaryWells({
       >
         <SummaryWellInput
           wellId="values"
+          formulaInput={formulaInputs?.values}
           sections={valueSections}
           hasItems={valueItems.length > 0}
           autoFocus
@@ -103,6 +116,9 @@ export function SummaryWells({
               onRemove={() => handleRemove(item.clause)}
             />
           ))}
+          {draftFormula?.wellId === "values" && (
+            <DraftFormulaChip key={draftFormula.draftKey} {...draftFormula} />
+          )}
         </SummaryWellInput>
       </SummaryWell>
       <SummaryWell
@@ -112,6 +128,7 @@ export function SummaryWells({
       >
         <SummaryWellInput
           wellId="columns"
+          formulaInput={formulaInputs?.columns}
           sections={columnSections}
           hasItems={dimensionItems.length > 0}
           onPick={(field) => onPick("columns", field)}
@@ -122,32 +139,50 @@ export function SummaryWells({
             }
           }}
         >
-          {dimensionItems.map((item) => (
-            <WellChip
-              key={item.key}
-              drag={{ kind: "dimension", item }}
-              onRemove={() => handleRemove(item.clause)}
-            >
-              {item.bucketOptions.length > 0 ? (
-                <DimensionBucketMenu
-                  item={item}
-                  onSelect={(option) => {
-                    const nextQuery = changeDimensionBucket(
-                      query,
-                      stageIndex,
-                      item,
-                      option,
-                    );
-                    if (nextQuery !== query) {
-                      onChange(nextQuery);
-                    }
-                  }}
-                />
-              ) : (
-                <Ellipsified fw="inherit">{item.label}</Ellipsified>
-              )}
-            </WellChip>
-          ))}
+          {dimensionItems.map((item) => {
+            const label = item.expression ? (
+              <FormulaLabel
+                query={query}
+                stageIndex={stageIndex}
+                clause={item.expression}
+                label={item.label}
+              />
+            ) : (
+              <Ellipsified fw="inherit">{item.label}</Ellipsified>
+            );
+
+            return (
+              <WellChip
+                key={item.key}
+                drag={{ kind: "dimension", item }}
+                onRemove={() => handleRemove(item.clause)}
+              >
+                {item.bucketOptions.length > 0 ? (
+                  <DimensionBucketMenu
+                    item={item}
+                    onSelect={(option) => {
+                      const nextQuery = changeDimensionBucket(
+                        query,
+                        stageIndex,
+                        item,
+                        option,
+                      );
+                      if (nextQuery !== query) {
+                        onChange(nextQuery);
+                      }
+                    }}
+                  >
+                    {label}
+                  </DimensionBucketMenu>
+                ) : (
+                  label
+                )}
+              </WellChip>
+            );
+          })}
+          {draftFormula?.wellId === "columns" && (
+            <DraftFormulaChip key={draftFormula.draftKey} {...draftFormula} />
+          )}
         </SummaryWellInput>
       </SummaryWell>
     </Box>

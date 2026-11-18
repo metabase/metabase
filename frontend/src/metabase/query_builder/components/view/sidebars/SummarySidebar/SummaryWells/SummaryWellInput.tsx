@@ -11,6 +11,7 @@ import { useLatest } from "react-use";
 import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
 import { MatchedLabel } from "../MatchedLabel";
+import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryField,
@@ -34,6 +35,7 @@ type SummaryWellInputProps = {
   children: ReactNode;
   hasItems: boolean;
   autoFocus?: boolean;
+  formulaInput?: SummaryFormulaInput;
   onPick: (field: SummaryField) => void;
   onRemoveLast: () => void;
 };
@@ -44,6 +46,7 @@ export function SummaryWellInput({
   children,
   hasItems,
   autoFocus = false,
+  formulaInput,
   onPick,
   onRemoveLast,
 }: SummaryWellInputProps) {
@@ -95,6 +98,19 @@ export function SummaryWellInput({
   };
 
   const handleSearchChange = (text: string) => {
+    if (formulaInput?.isPending()) {
+      setSearchText(text);
+      formulaInput.update(text.startsWith("=") ? text.slice(1) : text);
+      return;
+    }
+    if (formulaInput && text.startsWith("=") && inputRef.current) {
+      setSearchText(text);
+      combobox.closeDropdown();
+      formulaInput.start(text.slice(1), inputRef.current, () =>
+        setSearchText(""),
+      );
+      return;
+    }
     setSearchText(text);
     if (text.trim().length > 0) {
       combobox.openDropdown();
@@ -103,8 +119,26 @@ export function SummaryWellInput({
     }
   };
 
+  const handleSearchChangeRef = useLatest(handleSearchChange);
+  const isFormulaEnabled = formulaInput !== undefined;
+  useEffect(() => {
+    const input = inputRef.current;
+    if (
+      isFormulaEnabled &&
+      input?.value.startsWith("=") &&
+      input === document.activeElement
+    ) {
+      handleSearchChangeRef.current(input.value);
+    }
+  }, [isFormulaEnabled, handleSearchChangeRef]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Backspace" && searchText.length === 0 && hasItems) {
+    if (
+      event.key === "Backspace" &&
+      searchText.length === 0 &&
+      hasItems &&
+      !formulaInput?.isPending()
+    ) {
       event.preventDefault();
       onRemoveLast();
     }

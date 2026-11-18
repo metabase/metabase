@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
-import { Ellipsified, Icon, Menu, UnstyledButton } from "metabase/ui";
+import { Icon, Menu, UnstyledButton } from "metabase/ui";
 
 import S from "../SummarySidebar.module.css";
 import type { SummaryBucketOption, SummaryDimensionItem } from "../types";
 
 type DimensionBucketMenuProps = {
   item: SummaryDimensionItem;
+  children: ReactNode;
   onSelect: (option: SummaryBucketOption) => void;
 };
 
 export function DimensionBucketMenu({
   item,
+  children,
   onSelect,
 }: DimensionBucketMenuProps) {
   const { bucketOptions, initialBucketOptionCount } = item;
@@ -37,7 +39,7 @@ export function DimensionBucketMenu({
           className={S.chipButton}
           aria-label={t`Change how ${item.label} is grouped`}
         >
-          <Ellipsified fw="inherit">{item.label}</Ellipsified>
+          {children}
           <Icon name="chevrondown" size={10} />
         </UnstyledButton>
       </Menu.Target>

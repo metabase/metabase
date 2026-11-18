@@ -101,6 +101,112 @@ describe("SummaryWells", () => {
     expect(getValuesField()).toHaveFocus();
   });
 
+  it("shows the full formula in the tooltip without changing its shortened name", async () => {
+    const name = "Sum(Total) + 100 + 100 + 100 + 100 +…";
+    setup({
+      spec: {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                name,
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    {
+                      type: "operator",
+                      operator: "sum",
+                      args: [{ type: "column", name: "TOTAL" }],
+                    },
+                    ...Array.from({ length: 6 }, () => ({
+                      type: "literal" as const,
+                      value: 100,
+                    })),
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    await userEvent.hover(screen.getByText(name));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Sum([Total]) + 100 + 100 + 100 + 100 + 100 + 100",
+    );
+    expect(getChipLabels("values")).toEqual([name]);
+  });
+
+  it("shows full grouping formulas in tooltips and keeps their bucket menus", async () => {
+    const name = "Total + 100 + 100 + 100 + 100 +…";
+    const { getLastChange } = setup({
+      spec: {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            expressions: [
+              {
+                name,
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "column", name: "TOTAL" },
+                    ...Array.from({ length: 6 }, () => ({
+                      type: "literal" as const,
+                      value: 100,
+                    })),
+                  ],
+                },
+              },
+              {
+                name: "Order date",
+                value: {
+                  type: "operator",
+                  operator: "coalesce",
+                  args: [
+                    { type: "column", name: "CREATED_AT" },
+                    { type: "column", name: "CREATED_AT" },
+                  ],
+                },
+              },
+            ],
+            breakouts: [
+              { type: "column", name },
+              { type: "column", name: "Order date", unit: "month" },
+            ],
+          },
+        ],
+      },
+    });
+
+    const groupBy = within(screen.getByTestId("summary-well-columns"));
+    await userEvent.hover(groupBy.getByText(name));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "[Total] + 100 + 100 + 100 + 100 + 100 + 100",
+    );
+    await userEvent.unhover(groupBy.getByText(name));
+    await userEvent.hover(groupBy.getByText("Order date: Month"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "coalesce([Created At], [Created At])",
+    );
+    expect(getChipLabels("columns")).toEqual([name, "Order date: Month"]);
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Change how Order date: Month is grouped",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Year" }),
+    );
+    expect(getLastChange().dimensions).toEqual([name, "Order date: Year"]);
+  });
+
   it("takes a chip off from its remove button", async () => {
     const { onChange, getLastChange } = setup();
 
