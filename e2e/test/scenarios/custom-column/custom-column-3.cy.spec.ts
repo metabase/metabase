@@ -71,7 +71,8 @@ describe("scenarios > question > custom column > path", () => {
     H.expressionEditorWidget().button("Function browser").click();
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("path");
-      cy.findByText("path").click();
+      // The highlighted example in the description also has a "path" token.
+      cy.findByRole("button", { name: /^path/ }).click();
     });
     H.CustomExpressionEditor.value().should("equal", "path()");
 
