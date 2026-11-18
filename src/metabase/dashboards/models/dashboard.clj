@@ -226,23 +226,20 @@
        (or (not (creates-shared-dashboard? dashboard))
            (boolean (mi/superuser?)))))
 
-(defn- archive-followers-updatable?
-  "Whether the current user may apply `changes` to the Cards internal to `dashboard` that archiving or restoring it
-  takes along."
-  [dashboard changes]
-  (or (not (mi/changes-archived? dashboard changes))
-      (mi/can-update-each? :model/Card
-                           (if (:archived changes)
-                             (dashboards.db/questions-archived-with-dashboard (:id dashboard))
-                             (dashboards.db/questions-restored-with-dashboard (:id dashboard)))
-                           changes)))
+(defn- following-questions
+  "The Cards internal to the Dashboard with `dashboard-id` that archiving it, when `archive?`, or restoring it takes
+  along."
+  [dashboard-id archive?]
+  (if archive?
+    (dashboards.db/questions-archived-with-dashboard dashboard-id)
+    (dashboards.db/questions-restored-with-dashboard dashboard-id)))
 
 (defmethod mi/can-update? :model/Dashboard
   [dashboard changes]
   (boolean
    (and (or (changes-only-public-link? dashboard changes)
             (mi/can-write? dashboard))
-        (archive-followers-updatable? dashboard changes)
+        (mi/archive-followers-updatable? dashboard changes :model/Card (partial following-questions (:id dashboard)))
         (collection/can-move? dashboard changes)
         (can-change-embedding? dashboard changes)
         (can-change-public-link? dashboard changes))))

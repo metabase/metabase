@@ -734,6 +734,26 @@
           (testing "tenant collection is now archived"
             (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
 
+(deftest tenants-feature-toggle-leaves-tenant-collections-test
+  (testing "turning the Tenants feature off deactivates every Tenant and leaves their Collections where they are"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id, tenant-collection-id :tenant_collection_id} {:name "Toggle" :slug "toggle"}]
+          (mt/with-temp [:model/Card {card-id :id} {:collection_id tenant-collection-id}]
+            (mt/with-temporary-setting-values [use-tenants false]
+              (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+              (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+              (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))
+            (testing "reactivating the Tenant keeps its Collection where it is"
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+              (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id))))
+            (testing "an admin who deactivates and reactivates the Tenant archives and restores its Collection"
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
+              (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+              (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+              (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))))))))
+
 (deftest tenant-collection-children-archived-when-tenant-deactivated-test
   (testing "Children of tenant-specific collection are also archived when tenant is deactivated"
     (mt/with-premium-features #{:tenants}

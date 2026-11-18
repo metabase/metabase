@@ -366,9 +366,9 @@
            (let [created (mt/user-http-request :crowberto :post 200 "action"
                                                (cross-db-native-action model-id model-db-id model-db-id))
                  url     (str "action/" (:id created))]
-             (testing "blanking the query leaves the action on the database it was created against"
-               (is (=? {:database_id model-db-id}
-                       (mt/user-http-request :crowberto :put 200 url {:dataset_query {}}))))
+             (testing "blanking the query is refused and leaves the action on the database it was created against"
+               (is (=? {:specific-errors {:dataset_query some?}}
+                       (mt/user-http-request :crowberto :put 400 url {:dataset_query {}}))))
              (testing "a database_id in the body is dropped"
                (is (=? {:database_id model-db-id}
                        (mt/user-http-request :crowberto :put 200 url {:database_id other-db-id}))))
@@ -638,7 +638,29 @@
     (mt/with-actions-test-data-and-actions-enabled
       (is (=? {:specific-errors {:dataset_query some?}}
               (mt/user-http-request :crowberto :post 400 "action"
-                                    (dissoc (model-less-query-action nil) :dataset_query)))))))
+                                    (dissoc (model-less-query-action nil) :dataset_query))))
+      (testing "that is not empty"
+        (mt/with-model-cleanup [:model/Action]
+          (is (=? {:specific-errors {:dataset_query some?}}
+                  (mt/user-http-request :crowberto :post 400 "action"
+                                        (assoc (model-less-query-action nil) :dataset_query {})))))))))
+
+(deftest query-action-update-needs-real-query-test
+  (testing "PUT /api/action/:id refuses an empty query, takes a native one, and edits an action whose stored query is empty"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [{id :id} (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+              path     (str "action/" id)]
+          (is (=? {:specific-errors {:dataset_query some?}}
+                  (mt/user-http-request :crowberto :put 400 path {:dataset_query {}})))
+          (is (some? (mt/user-http-request :crowberto :put 200 path
+                                           {:dataset_query {:database (mt/id)
+                                                            :type     "native"
+                                                            :native   {:query "UPDATE categories SET name = 'x' WHERE id = 1"}}})))
+          (t2/query-one {:update :query_action :set {:dataset_query "{}"} :where [:= :action_id id]})
+          (is (some? (mt/user-http-request :crowberto :get 200 path)))
+          (is (=? {:name "Renamed"}
+                  (mt/user-http-request :crowberto :put 200 path {:name "Renamed"}))))))))
 
 (defn- table-query
   "A query of the test Table `table-key`."

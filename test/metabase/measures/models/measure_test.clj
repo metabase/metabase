@@ -21,7 +21,17 @@
     (-> (lib/query mp table-metadata)
         (lib/aggregate aggregation-clause))))
 
-(deftest insert-measure-cycle-detection-test
+(deftest insert-measure-referencing-missing-measure-test
+  (testing "Inserting a measure that references a non-existent measure should fail"
+    (is (thrown-with-msg?
+         Exception
+         #"does not exist"
+         (t2/insert! :model/Measure {:name       "Bad Measure"
+                                     :creator_id (mt/user->id :rasta)
+                                     :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])})))
+    (is (not (t2/exists? :model/Measure :name "Bad Measure")))))
+
+(deftest insert-measure-referencing-measure-test
   (testing "Inserting a measure that references an existing measure should succeed"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :creator_id (mt/user->id :rasta)

@@ -2324,6 +2324,7 @@
                     :model/DashboardCardSeries
                     :model/Database
                     :model/Document
+                    :model/Exploration
                     :model/Field
                     :model/ModerationReview
                     :model/NativeQuerySnippet

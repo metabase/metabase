@@ -63,16 +63,8 @@
 
 ;;; ------------------------------------------------------ Hooks -------------------------------------------------------
 
-(defn- check-timeline-not-archived
-  "Throws a 400 when `row`, which is not archived, is in an archived Timeline."
-  [{:keys [archived timeline_id]}]
-  (when (and timeline_id (not archived) (timeline.db/timeline-archived? timeline_id))
-    (throw (ex-info (tru "You cannot put an unarchived Timeline event in an archived Timeline.")
-                    {:status-code 400}))))
-
 (t2/define-before-insert :model/TimelineEvent
   [row]
-  (check-timeline-not-archived row)
   (cond-> row
     (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
 
@@ -81,8 +73,6 @@
   (let [changes (t2/changes event)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a Timeline event.") {:status-code 400})))
-    (when (contains? changes :timeline_id)
-      (check-timeline-not-archived event))
     event))
 
 ;;; --------------------------------------------------- Permissions ----------------------------------------------------

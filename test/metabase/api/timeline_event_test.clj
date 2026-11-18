@@ -110,9 +110,34 @@
                                        {:name "RC1" :timestamp "2027-10-20" :timezone "Nowhere/Land" :timeline_id tl-id})
                  (select-keys [:errors])))))
     (testing "PUT /api/timeline-event/:id"
-      (is (= {:errors {:timezone "nullable Invalid Timeline event timezone."}}
-             (-> (mt/user-http-request :rasta :put 400 (str "timeline-event/" id) {:timezone "Nowhere/Land"})
-                 (select-keys [:errors])))))))
+      (is (= "Invalid Timeline event timezone."
+             (mt/user-http-request :rasta :put 400 (str "timeline-event/" id) {:timezone "Nowhere/Land"})))
+      (testing "keeps a stored time zone Java does not know when the request repeats it"
+        (t2/update! :model/TimelineEvent :id id {:timezone "Nowhere/Land"})
+        (is (=? {:name "Renamed" :timezone "Nowhere/Land"}
+                (mt/user-http-request :rasta :put 200 (str "timeline-event/" id) {:name "Renamed" :timezone "Nowhere/Land"})))))))
+
+(deftest timeline-event-null-inputs-test
+  (mt/with-temp [:model/Timeline {tl-id :id} {:icon "cake"}]
+    (testing "POST /api/timeline-event takes a null icon as none"
+      (let [event (mt/user-http-request :crowberto :post 200 "timeline-event"
+                                        {:name "RC1" :timestamp "2027-10-20" :timezone "UTC" :time_matters false
+                                         :icon nil :timeline_id tl-id})]
+        (is (= "cake" (:icon event)))
+        (testing "PUT /api/timeline-event/:id takes a null time_matters as no change"
+          (is (=? {:time_matters false}
+                  (mt/user-http-request :crowberto :put 200 (str "timeline-event/" (:id event)) {:time_matters nil}))))))))
+
+(deftest unarchived-event-in-archived-timeline-test
+  (testing "an unarchived event may be added to an archived Timeline, as stored data and imports hold such events"
+    (mt/with-temp [:model/Timeline {tl-id :id} {:archived true}]
+      (let [id (t2/insert-returning-pk! :model/TimelineEvent {:name         "RC1"
+                                                              :timeline_id  tl-id
+                                                              :timestamp    (java.time.Instant/parse "2027-10-20T00:00:00Z")
+                                                              :timezone     "UTC"
+                                                              :time_matters false
+                                                              :creator_id   (mt/user->id :rasta)})]
+        (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id id)))))))
 
 (deftest create-timeline-event-defaults-test
   (testing "POST /api/timeline-event gives an event without an icon the icon of its timeline"

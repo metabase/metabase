@@ -755,6 +755,12 @@
   (and (contains? changes :archived)
        (not= (boolean (:archived row)) (boolean (:archived changes)))))
 
+(defn changes-only-archived?
+  "Whether `changes` give `row` another value of `:archived` and change nothing else."
+  [row changes]
+  (and (changes-archived? row changes)
+       (every? #{:archived} (keys changes))))
+
 (defmulti can-update-all?
   "Whether the current user may apply `changes` to every one of the `model` `rows`, each hydrated with `:can_write`; a
   model implements it to answer once for all rows what its [[can-update?]] would ask for each."
@@ -773,6 +779,24 @@
   [model rows changes]
   (or (empty? rows)
       (can-update-all? model (t2/hydrate (vec rows) :can_write) changes)))
+
+(defmulti can-update-followers?
+  "Whether the current user may apply `changes`, an archive or restore of the row the `model` `rows` follow, to them: by
+  default what [[can-update-each?]] answers, and for a model whose write access is not about archiving, what an archive
+  asks of it."
+  {:arglists '([model rows changes])}
+  dispatch-on-model)
+
+(defmethod can-update-followers? :default
+  [model rows changes]
+  (can-update-each? model rows changes))
+
+(defn archive-followers-updatable?
+  "Whether the current user may apply `changes` to the `model` rows that archiving or restoring `row` takes along, which
+  `followers` selects given whether `changes` archive."
+  [row changes model followers]
+  (or (not (changes-archived? row changes))
+      (can-update-followers? model (followers (boolean (:archived changes))) changes)))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation

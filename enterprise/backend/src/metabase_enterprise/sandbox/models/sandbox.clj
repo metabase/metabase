@@ -95,7 +95,9 @@
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
   the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id} :- [:or ::sandbox.schema/sandbox ::sandbox.schema/sandbox.update]]
+  ([{card-id :card_id, table-id :table_id} :- [:map
+                                               [:card_id {:optional true} [:maybe ::lib.schema.id/card]]
+                                               [:table_id ::lib.schema.id/table]]]
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
@@ -110,12 +112,6 @@
              :when table-col]
        (check-column-types-match col table-col)))))
 
-(defn- check-card-columns
-  "Throws a 400 unless the saved result columns of the Card of `sandbox` match the columns of its Table."
-  [{:keys [card_id table_id]}]
-  (when-let [result-metadata (some-> card_id sandbox.db/card-result-metadata not-empty)]
-    (check-columns-match-table table_id result-metadata)))
-
 (defn- remove-native-access!
   "Downgrades the native query access of the group of `sandbox` to the query builder on the Database of its Table, where
   the group has native access to that Table."
@@ -127,7 +123,7 @@
 
 (t2/define-before-insert :model/Sandbox
   [sandbox]
-  (check-card-columns sandbox)
+  (check-columns-match-table sandbox)
   (remove-native-access! sandbox)
   sandbox)
 
@@ -140,8 +136,8 @@
     (when (contains? changes :group_id)
       (throw (ex-info (tru "You cannot change the group of a sandbox.")
                       {:id (:id sandbox), :status-code 400})))
-    (when (seq changes)
-      (check-card-columns sandbox))
+    (when (contains? changes :card_id)
+      (check-columns-match-table sandbox))
     sandbox))
 
 ;;; --------------------------------------------- Sandbox dependency set ---------------------------------------------

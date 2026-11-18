@@ -38,11 +38,12 @@
                                                 [:name          ::timeline.schema/name]
                                                 [:default       {:optional true} [:maybe :boolean]]
                                                 [:description   {:optional true} [:maybe :string]]
-                                                [:icon          {:optional true} ::timeline.schema/icon]
+                                                [:icon          {:optional true} [:maybe ::timeline.schema/icon]]
                                                 [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                 [:archived      {:optional true} [:maybe :boolean]]]]
   (api/create-check :model/Timeline {:collection_id collection-id})
-  (let [tl (assoc body :creator_id api/*current-user-id*)]
+  (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
+             (nil? (:icon body)) (dissoc :icon))]
     (u/prog1 (timeline.db/insert-timeline! tl))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]

@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -81,11 +82,17 @@
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
 
 (mu/defn update-tenant!
-  "Updates a tenant, publishing any necessary events after doing so"
+  "Applies `tenant` to the Tenant with `tenant-id`, archiving its Collection when it deactivates it and restoring the
+  Collection when it activates it, and returns the Tenant."
   [tenant-id :- ms/PositiveInt
-   tenant :- UpdateTenantArguments]
-  (tenants.db/update-tenant! tenant-id tenant)
-  (tenants.db/tenant tenant-id))
+   {:keys [is_active] :as tenant} :- UpdateTenantArguments]
+  (t2/with-transaction [_conn]
+    (let [collection-id (:tenant_collection_id (tenants.db/tenant tenant-id))]
+      (tenants.db/update-tenant! tenant-id tenant)
+      (when (and collection-id (some? is_active))
+        (collection/with-allow-modifying-tenant-root-collections
+          (tenants.db/set-collection-archived! collection-id (not is_active))))
+      (tenants.db/tenant tenant-id))))
 
 (api.macros/defendpoint :put "/:id" :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."

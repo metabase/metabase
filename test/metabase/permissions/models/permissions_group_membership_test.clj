@@ -267,3 +267,31 @@
         (is (not (in-data-analyst-group? user-id)))
         (testing "and the rest of the batch is not applied either"
           (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))))))))
+
+(deftest adding-members-reads-their-users-once-test
+  (testing "adding Users to a group costs the same number of queries for two Users as for eight"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (let [users   (vec (repeatedly 10 #(t2/insert-returning-pk! :model/User {:email      (str (random-uuid) "@example.com")
+                                                                               :first_name "Test"
+                                                                               :last_name  "User"
+                                                                               :password   (str (random-uuid))})))
+            queries (fn [user-ids]
+                      (t2/with-call-count [call-count]
+                        (perms/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))
+                        (call-count)))]
+        (try
+          (is (= (queries (subvec users 0 2)) (queries (subvec users 2 10))))
+          (is (= 10 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
+          (finally
+            (t2/delete! :model/User :id [:in users])))))))
+
+(deftest adding-members-in-batch-keeps-user-rules-test
+  (testing "a batch holding one membership that makes an admin a group manager is refused as a whole"
+    (mt/with-temp [:model/User             {admin-id :id} {:is_superuser true}
+                   :model/User             {user-id :id}  {}
+                   :model/PermissionsGroup {group-id :id} {}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                            (t2/insert! :model/PermissionsGroupMembership
+                                        [{:user_id user-id :group_id group-id :is_group_manager true}
+                                         {:user_id admin-id :group_id group-id :is_group_manager true}])))
+      (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id))))))

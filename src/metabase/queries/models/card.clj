@@ -1141,10 +1141,30 @@
                (shared-dashboard-timelines-readable? (queries.db/dashboard (:dashboard_id changes))
                                                      [(merge card changes)])))))
 
+(defn- summary-owner-writable
+  "A function from one of `cards` to whether the current user writes the Exploration whose Summary holds it, or nil
+  for a Card of no Summary, with the Documents and Explorations loaded once, and only when `changes` archive or
+  restore one of `cards` alone."
+  [cards changes]
+  (let [doc->exploration (when-let [ids (and (some #(mi/changes-only-archived? % changes) cards)
+                                             (seq (into [] (comp (keep :document_id) (distinct)) cards)))]
+                           (into {} (keep (fn [{:keys [id exploration_id]}] (when exploration_id [id exploration_id])))
+                                 (queries.db/documents-collection-and-exploration (vec ids))))
+        writable         (when (seq doc->exploration)
+                           (into #{} (comp (filter mi/can-write?) (map :id))
+                                 (t2/hydrate (queries.db/explorations (vec (distinct (vals doc->exploration)))) :can_write)))]
+    (fn [card]
+      (when-let [exploration-id (get doc->exploration (:document_id card))]
+        (contains? writable exploration-id)))))
+
 (defn- can-update-apart-from-sandboxes?
-  "Whether the current user may apply `changes` to `card` as far as every rule but sandboxing goes."
-  [card changes]
-  (and (or (changes-only-public-link? card changes) (mi/can-write? card))
+  "Whether the current user may apply `changes` to `card` as far as every rule but sandboxing goes, where
+  `summary-owner-writable` answers an archive or restore of a Summary Card, which no user writes, at its Exploration."
+  [card changes summary-owner-writable]
+  (and (let [owner-writable (when (mi/changes-only-archived? card changes) (summary-owner-writable card))]
+         (if (some? owner-writable)
+           owner-writable
+           (or (changes-only-public-link? card changes) (mi/can-write? card))))
        (can-change-public-link? card changes)
        (collection/can-move? card changes)
        (dashboard-move-permitted? card changes)
@@ -1153,12 +1173,13 @@
 
 (defmethod mi/can-update? :model/Card
   [card changes]
-  (and (can-update-apart-from-sandboxes? card changes)
+  (and (can-update-apart-from-sandboxes? card changes (summary-owner-writable [card] changes))
        (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
 (defmethod mi/can-update-all? :model/Card
   [_model cards changes]
-  (and (every? #(can-update-apart-from-sandboxes? % changes) cards)
+  (and (let [owner-writable (summary-owner-writable cards changes)]
+         (every? #(can-update-apart-from-sandboxes? % changes owner-writable) cards))
        (sandboxes-allow-cards-update? (filterv #(seq (changing-columns % changes sandbox-guarded-columns)) cards))))
 
 (defn- data-app-card-error

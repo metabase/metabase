@@ -604,7 +604,7 @@
       (when database
         (assoc database k (database-writable? writable database))))))
 
-(defn- sample-database-locked?
+(defn sample-database-locked?
   "Whether `database` is the Sample Database, which users do not edit unless the test endpoints are enabled."
   [database]
   (boolean (and (:is_sample database)

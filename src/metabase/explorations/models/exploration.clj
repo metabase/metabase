@@ -96,10 +96,8 @@
   [exploration changes]
   (boolean
    (and (mi/can-write? exploration)
-        (or (not (mi/changes-archived? exploration changes))
-            (mi/can-update-each? :model/Document
-                                 (explorations.db/summary-documents-following (:id exploration) (boolean (:archived changes)))
-                                 changes)))))
+        (mi/archive-followers-updatable? exploration changes :model/Document
+                                         (partial explorations.db/summary-documents-following (:id exploration))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]

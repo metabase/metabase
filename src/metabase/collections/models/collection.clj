@@ -1544,11 +1544,11 @@
   *recursive* (all descendants archived together get unarchived), we require write ('curate')
   permissions for the collection and all descendants being unarchived."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (let [archive-operation-id (:archive_operation_id collection)
-        descendant-ids (collections.db/archived-collection-ids-in-operation-with-location-like
-                        (str (children-location collection) "%")
-                        archive-operation-id)]
-    (set (cons (u/the-id collection) descendant-ids))))
+  (set (cons (u/the-id collection)
+             (when-let [archive-operation-id (:archive_operation_id collection)]
+               (collections.db/archived-collection-ids-in-operation-with-location-like
+                (str (children-location collection) "%")
+                archive-operation-id)))))
 
 (mu/defn can-write-collection-ids? :- :boolean
   "Whether the current user has write permission on each of the Collections with `collection-ids`, answered together."
@@ -1601,23 +1601,19 @@
 
 (defn- archive-followers-updatable?
   "Whether the current user may apply `changes`, which archive or restore `collection`, to every item the change takes
-  along, the items of the Collections under it too: each kind of item loaded once, and hydrated once, by the selection
+  along, the items of the Collections under it too: each kind of item loaded once, and answered once, by the selection
   the cascade writes."
   [collection changes]
   (or (not (mi/changes-archived? collection changes))
-      (let [archive?    (boolean (:archived changes))
-            children    (str (children-location collection) "%")
-            descendants (cond
-                          archive?                         (collections.db/unarchived-collection-ids-with-location-like children)
-                          (:archived_directly collection)  (collections.db/archived-collection-ids-in-operation-with-location-like
-                                                            children (:archive_operation_id collection))
-                          :else                            [])
-            ids         (vec (cons (:id collection) descendants))
-            rows-of     (if archive?
-                          collections.db/items-archived-with-collections
-                          collections.db/items-restored-with-collections)]
-        (or (and (not archive?) (not (:archived_directly collection)))
-            (every? #(mi/can-update-each? % (rows-of % ids) changes) archivable-item-models)))))
+      (let [archive? (boolean (:archived changes))
+            ids      (vec (if archive?
+                            (cons (:id collection) (collections.db/unarchived-collection-ids-with-location-like
+                                                    (str (children-location collection) "%")))
+                            (collection-ids-for-unarchiving collection)))
+            rows-of  (if archive?
+                       collections.db/items-archived-with-collections
+                       collections.db/items-restored-with-collections)]
+        (every? #(mi/can-update-followers? % (rows-of % ids) changes) archivable-item-models))))
 
 (defn- archive-subtree-writable?
   "Whether the current user may write every Collection that archiving `collection` takes along, which `changes` need
@@ -2099,7 +2095,7 @@
         (let [row (collections.db/collection (:id before))]
           (when (:archived_directly row)
             (archive-subtree! row)))
-        (when (:archived_directly before)
+        (when (or (:archived_directly before) (not (contains? changes :archive_operation_id)))
           (restore-subtree! before))))))
 
 (defn- archived-columns

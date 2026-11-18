@@ -52,8 +52,8 @@
                 (str model " " (u/the-id item)))))
         (testing "an item archived on its own keeps its cause"
           (is (=? {:archived true :archived_directly true} (row :model/Card (u/the-id direct-card)))))
-        (testing "the events of a timeline follow it"
-          (is (true? (:archived (row :model/TimelineEvent (u/the-id event))))))
+        (testing "the events of a timeline it carries stay as they were"
+          (is (false? (:archived (row :model/TimelineEvent (u/the-id event))))))
         (archive! :model/Collection (u/the-id parent) false)
         (testing "restoring brings back what the archive took down"
           (is (=? {:archived false :archived_directly false :archive_operation_id nil}

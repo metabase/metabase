@@ -107,14 +107,19 @@
               (= "mbql.stage/native" (some-> (get-in query [:stages 0 :lib/type]) u/qualified-name)))
          (= "native" (some-> (:type query) name)))))
 
+(mr/def ::query-action.native-dataset-query
+  "A native query that names its Database, the `:dataset_query` every write of a QueryAction gives."
+  [:and
+   ::lib-be.schema/maybe-legacy-query
+   [:fn {:error/message "an action's query must be a native query on a database"}
+    native-query-on-database?]])
+
 (mr/def ::query-action.dataset-query
-  "The `:dataset_query` column of a QueryAction, decoded: an empty query, or a native query that names its Database."
+  "The `:dataset_query` column of a QueryAction, decoded: an empty query, which stored rows may hold, or a native query
+  that names its Database."
   [:multi {:dispatch (fn [query] (boolean (and (map? query) (empty? query))))}
    [true  ::lib-be.schema/empty-query]
-   [false [:and
-           ::lib-be.schema/maybe-legacy-query
-           [:fn {:error/message "an action's query must be a native query on a database"}
-            native-query-on-database?]]]])
+   [false ::query-action.native-dataset-query]])
 
 (def ^:private implicit-action-entries
   [[:kind     {:optional true} ::implicit-action.kind]
@@ -187,7 +192,11 @@
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
                          request?    :- :boolean]
   (let [query-entries (cond->> query-action-entries
-                        request?                (remove (comp #{:database_id} first))
+                        request?                     (remove (comp #{:database_id} first))
+                        (not= schema-type :select)   (map (fn [[k opts schema]]
+                                                            (if (= k :dataset_query)
+                                                              [k opts ::query-action.native-dataset-query]
+                                                              [k opts schema])))
                         (and request? (= schema-type :insert))
                         (map (fn [[k opts schema]]
                                (if (= k :dataset_query) [k (dissoc opts :optional) schema] [k opts schema]))))]
@@ -255,7 +264,7 @@
   [:map {:closed true}
    [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} ::query-action.dataset-query]
+   [:dataset_query {:optional true} ::query-action.native-dataset-query]
    [:legacy_query  {:optional true} [:maybe :string]]])
 
 (mr/def ::execution.row-diff

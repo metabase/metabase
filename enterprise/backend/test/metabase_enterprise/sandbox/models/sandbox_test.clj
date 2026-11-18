@@ -61,6 +61,21 @@
       (is (= {"cat" (mt/id :venues :category_id)}
              (t2/select-one-fn :attribute_remappings :model/Sandbox :id sandbox-id))))))
 
+(deftest card-columns-checked-only-when-card-changes-test
+  (testing "an update checks the sandbox Card's columns against the Table only when it sets the Card"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Card             {card-id :id}  {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                     :model/Card             {other-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                     :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id :card_id card-id}]
+        (let [checks (atom 0)]
+          (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
+                                                                          (fn [table-id] (swap! checks inc) (f table-id)))]
+            (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {"cat" "CATEGORY_ID"}})
+            (is (= 0 @checks))
+            (t2/update! :model/Sandbox :id sandbox-id {:card_id other-id})
+            (is (= 1 @checks))))))))
+
 (deftest insert-removes-native-access-of-each-group-test
   (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
                  :model/PermissionsGroup {group-2 :id} {}
@@ -463,6 +478,17 @@
                                                  :card_id  (:id policy)}]
     (f {:inner inner, :outer outer, :other other})))
 
+(defn- with-table-writer!
+  "Calls `thunk` as a data analyst, not an admin, who may write the Segments and Measures of VENUES."
+  [thunk]
+  (mt/with-premium-features #{:sandboxes :advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/User             {analyst-id :id} {:is_data_analyst true}]
+      (perms/add-user-to-group! analyst-id group-id)
+      (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+      (mt/with-current-user analyst-id
+        (thunk)))))
+
 (deftest only-admins-can-change-a-segment-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(update-check [segment changes]
@@ -485,11 +511,14 @@
               (doseq [[change-name segment changes] (guarded-changes policy)]
                 (testing change-name
                   (is (true? (update-check segment changes)))))))))
-      (testing "an unrelated segment is untouched"
+      (testing "an unrelated segment is untouched, for a non-admin who writes the Table's Segments"
         (with-segment-policy
-          (fn [{:keys [other]}]
-            (mt/with-test-user :crowberto
-              (is (true? (update-check other {:definition (price-above 5)}))))))))))
+          (fn [{:keys [other outer]}]
+            (with-table-writer!
+              (fn []
+                (is (true? (update-check other {:definition (price-above 5)})))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
+                                      (update-check outer {:definition (price-above 5)})))))))))))
 
 (defn- sum-where-measure-definition
   "A Measure definition summing VENUES.PRICE over the rows matching `segment-id`."
@@ -556,11 +585,14 @@
               (doseq [[change-name model instance changes] (guarded-changes policy)]
                 (testing change-name
                   (is (true? (update-check model instance changes)))))))))
-      (testing "an unrelated measure is untouched"
+      (testing "an unrelated measure is untouched, for a non-admin who writes the Table's Measures"
         (with-measure-policy
-          (fn [{:keys [other]}]
-            (mt/with-test-user :crowberto
-              (is (true? (update-check :model/Measure other {:definition (sum-of-price 2)}))))))))))
+          (fn [{:keys [other measure]}]
+            (with-table-writer!
+              (fn []
+                (is (true? (update-check :model/Measure other {:definition (sum-of-price 2)})))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
+                                      (update-check :model/Measure measure {:definition (sum-of-price 2)})))))))))))
 
 (deftest non-admin-cannot-rewrite-a-policy-snippet-through-the-api-test
   (testing "SEC-1094: a non-admin with native access to an unrelated Database only cannot rewrite a policy snippet"

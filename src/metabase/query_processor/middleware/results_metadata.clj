@@ -95,7 +95,6 @@
                  ;; A row-restricted run (sandbox, impersonation, DB routing) returns metadata without fingerprints.
                  ;; Persisting it would erase the whole-table fingerprints an unrestricted run stored for every reader.
                  (not (row-restricted-metadata/row-restricted? query))
-                 (sandboxes-allow-result-metadata-write? card-id)
                  ;; Only update changed metadata; a non-default parameterized run writes only on
                  ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
                  (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]
@@ -104,7 +103,8 @@
                           ;; existing usage -- don't use going forward
                           #_{:clj-kondo/ignore [:deprecated-var]}
                           (qp.store/miscellaneous-value [::card-stored-metadata])
-                          parameter-independent?))))
+                          parameter-independent?)))
+                 (sandboxes-allow-result-metadata-write? card-id))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (query-processor.db/set-card-result-metadata! card-id actual-metadata)))

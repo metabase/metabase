@@ -680,8 +680,11 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine    ::test-driver
                                                 :is_sample true
                                                 :name      "Sample Database"}]
-      (mt/user-http-request :crowberto :put 403 (format "database/%d" db-id)
-                            {:name "New Name"})
+      (is (= "The sample database cannot be edited."
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                   {:name "New Name"})))
+      (testing "a user who cannot write the database is refused first"
+        (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "New Name"}))
       (testing "the row is unchanged"
         (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id))))
       (testing "the guard is lifted when test endpoints are enabled (e2e tests edit the sample database)"

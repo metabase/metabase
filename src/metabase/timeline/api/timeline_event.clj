@@ -1,6 +1,7 @@
 (ns metabase.timeline.api.timeline-event
   "/api/timeline-event endpoints."
   (:require
+   [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -30,9 +31,9 @@
        [:name         ::timeline.schema/name]
        [:description  {:optional true} [:maybe :string]]
        [:timestamp    ms/TemporalString]
-       [:time_matters {:optional true} ::timeline.schema/time-matters]
+       [:time_matters {:optional true} [:maybe ::timeline.schema/time-matters]]
        [:timezone     timeline-event/Timezone]
-       [:icon         {:optional true} ::timeline.schema/icon]
+       [:icon         {:optional true} [:maybe ::timeline.schema/icon]]
        [:timeline_id  ms/PositiveInt]
        [:source       {:optional true} [:maybe timeline-event/Source]]
        [:question_id  {:optional true} [:maybe ms/PositiveInt]]
@@ -44,7 +45,7 @@
                       {:status-code 404})))
     (api/create-check :model/TimelineEvent {:timeline_id timeline_id})
     ;; todo: revision system
-    (let [tl-event (merge (dissoc body :source :question_id)
+    (let [tl-event (merge (m/remove-vals nil? (dissoc body :source :question_id))
                           {:creator_id api/*current-user-id*
                            :timestamp  (u.date/parse timestamp)})]
       (analytics/track-event! :snowplow/timeline
@@ -79,8 +80,8 @@
                                       [:name         {:optional true} [:maybe ::timeline.schema/name]]
                                       [:description  {:optional true} [:maybe :string]]
                                       [:timestamp    {:optional true} ms/TemporalString]
-                                      [:time_matters {:optional true} ::timeline.schema/time-matters]
-                                      [:timezone     {:optional true} [:maybe timeline-event/Timezone]]
+                                      [:time_matters {:optional true} [:maybe ::timeline.schema/time-matters]]
+                                      [:timezone     {:optional true} [:maybe :string]]
                                       [:icon         {:optional true} ::timeline.schema/icon]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
@@ -88,8 +89,11 @@
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))
         changes  (u/select-keys-when timeline-event-updates
-                                     :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-                                     :non-nil #{:name})]
+                                     :present #{:description :timestamp :timezone :icon :timeline_id :archived}
+                                     :non-nil #{:name :time_matters})]
+    (when (and (api/column-will-change? (:timezone existing) (get changes :timezone ::api/not-provided))
+               (not (some-> (:timezone changes) timeline-event/valid-timezone?)))
+      (throw (ex-info (tru "Invalid Timeline event timezone.") {:status-code 400})))
     (api/update-check existing changes)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (timeline.db/update-timeline-event! id changes)

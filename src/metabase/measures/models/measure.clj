@@ -62,9 +62,15 @@
     (throw (ex-info (tru "Measure definition must be a full query with a source table.") {:status-code 400})))
   (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
 
+(defn- check-referenced-measures-exist
+  "Throws unless every Measure that `definition`, a new Measure's, refers to exists."
+  [definition]
+  (lib/check-measure-overwrite nil (lib-be/normalize-query definition)))
+
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
   (check-definition definition)
+  (check-referenced-measures-exist definition)
   (assoc measure :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Measure

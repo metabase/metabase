@@ -193,6 +193,10 @@
   (and (every? #(can-update-apart-from-sandboxes? % changes) snippets)
        (sandboxes-allow-snippets-update? snippets changes)))
 
+(defmethod mi/can-update-followers? :model/NativeQuerySnippet
+  [_model snippets changes]
+  (sandboxes-allow-snippets-update? snippets changes))
+
 ;;; ---------------------------------------------------- Serialization ----------------------------------------------------
 
 (defn- walk-export-renames

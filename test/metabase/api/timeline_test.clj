@@ -226,6 +226,10 @@
   (testing "POST /api/timeline gives a timeline without an icon the default icon"
     (let [id (:id (mt/user-http-request :crowberto :post 200 "timeline" {:name "No icon"}))]
       (is (= "star" (t2/select-one-fn :icon :model/Timeline :id id)))
+      (t2/delete! :model/Timeline :id id)))
+  (testing "POST /api/timeline takes a null icon as none"
+    (let [id (:id (mt/user-http-request :crowberto :post 200 "timeline" {:name "Null icon" :icon nil}))]
+      (is (= "star" (t2/select-one-fn :icon :model/Timeline :id id)))
       (t2/delete! :model/Timeline :id id))))
 
 (deftest delete-timeline-test

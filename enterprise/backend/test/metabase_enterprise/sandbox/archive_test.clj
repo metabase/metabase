@@ -133,3 +133,31 @@
               (let [before (state content)]
                 (request content :crowberto 200)
                 (is (not= before (state content)))))))))))
+
+(deftest only-admins-archive-sandbox-summary-cards-test
+  (testing "an archive that takes along an Exploration's Summary card a sandbox is built out of is refused to a
+            non-admin who writes the Collection, and allowed to an admin"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (doseq [[user status] [[:rasta 403] [:crowberto 200]]]
+          (mt/with-temp [:model/PermissionsGroup group {}
+                         :model/Collection       coll  {}
+                         :model/Exploration      expl  {:name "E" :creator_id (mt/user->id :crowberto) :collection_id (:id coll)}
+                         :model/Document         doc   {:name           "Summary"
+                                                        :collection_id  (:id coll)
+                                                        :creator_id     (mt/user->id :crowberto)
+                                                        :exploration_id (:id expl)
+                                                        :document       {:type "doc" :content []}}
+                         :model/Card             card  {:collection_id (:id coll)
+                                                        :document_id   (:id doc)
+                                                        :dataset_query (venues-query)}
+                         :model/Sandbox          _     {:table_id (mt/id :venues), :group_id (:id group), :card_id (:id card)}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
+            (testing (str user " archives the Collection")
+              (mt/user-http-request user :put status (str "collection/" (:id coll)) {:archived true})
+              (is (= (= 200 status) (t2/select-one-fn :archived :model/Card :id (:id card)))))
+            (testing (str user " archives the Exploration")
+              (when (= 200 status)
+                (mt/user-http-request user :put 200 (str "collection/" (:id coll)) {:archived false}))
+              (mt/user-http-request user :put status (str "exploration/" (:id expl)) {:archived true})
+              (is (= (= 200 status) (t2/select-one-fn :archived :model/Card :id (:id card)))))))))))

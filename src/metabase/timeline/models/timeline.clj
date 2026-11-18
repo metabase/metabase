@@ -39,9 +39,14 @@
 
 (defmethod mi/after-archived-change :model/Timeline
   [_model rows changes]
-  (doseq [{:keys [id]} rows]
-    (events/with-event-context {:archived-with [:model/Timeline id]}
-      (timeline.db/set-timeline-events-archived! id (boolean (:archived changes))))))
+  (let [archive? (boolean (:archived changes))
+        direct   (if archive?
+                   (timeline.db/directly-archived-timeline-ids (mapv :id rows))
+                   (into #{} (comp (filter :archived_directly) (map :id)) rows))]
+    (doseq [{:keys [id]} rows
+            :when        (contains? direct id)]
+      (events/with-event-context {:archived-with [:model/Timeline id]}
+        (timeline.db/set-timeline-events-archived! id archive?)))))
 
 (t2/define-before-insert :model/Timeline
   [row]

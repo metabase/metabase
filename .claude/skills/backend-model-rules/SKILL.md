@@ -152,12 +152,12 @@ An endpoint or tool: parse the request, load the row with `api/check-404`, call 
   that writes them through their models, one statement per kind. The followers then find their parent archived and
   derive their cause from it.
 - Collection archives its subtree in a fixed number of statements and does not cascade again when it inherits an
-  archive. Dashboard carries its dashboard questions, Document its cards, Timeline its events.
+  archive. Dashboard carries its dashboard questions, Document its cards, Timeline its events (only on its own archive).
 - A live row cannot be inserted or moved into an archived parent (`collection/check-collection-not-archived`).
-- A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: the parent's `mi/can-update?` also
-  covers every row the archive or restore writes, each kind loaded once by the same `<module>.db` selection the cascade
-  uses and hydrated once (`mi/can-update-each?`). A per-user rule such as a sandbox restriction belongs to a model's
-  `can-update?`, never to its hooks.
+- A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: its `mi/can-update?` covers every row
+  the cascade writes, each kind loaded and answered once (`mi/can-update-followers?`, by default `can-update-each?`).
+  A sandbox restriction belongs to `can-update?`, never to hooks. An owned part no user writes (a Summary's Document
+  and Cards) answers an archive-only change at its owner; a carried snippet asks only the sandbox guard.
 
 ## Lay out a model file
 
