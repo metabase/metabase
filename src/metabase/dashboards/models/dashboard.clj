@@ -97,9 +97,9 @@
    :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
    :embedding_params mi/transform-json-no-keywordization})
 
-(defmethod mi/exclude-internal-content-hsql :model/Dashboard
-  [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+(defmethod mi/non-internal-filter-clause :model/Dashboard
+  [_model alias]
+  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

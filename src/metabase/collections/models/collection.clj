@@ -2213,9 +2213,9 @@
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
   "instance-analytics")
 
-(defmethod mi/exclude-internal-content-hsql :model/Collection
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
+(defmethod mi/non-internal-filter-clause :model/Collection
+  [_model alias]
+  (let [maybe-alias #(h2x/identifier :field (name alias) %)]
     [:and
      [:or [:= (maybe-alias :type) nil]
       [:and

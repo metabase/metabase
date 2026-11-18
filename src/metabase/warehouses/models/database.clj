@@ -120,9 +120,9 @@
       (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no))
     (f temp-object)))
 
-(defmethod mi/exclude-internal-content-hsql :model/Database
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field table-alias %)]
+(defmethod mi/non-internal-filter-clause :model/Database
+  [_model alias]
+  (let [maybe-alias #(h2x/identifier :field alias %)]
     [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------

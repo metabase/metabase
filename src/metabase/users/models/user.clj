@@ -92,9 +92,9 @@
 
 (t2.default-fields/define-default-fields :model/User default-user-columns)
 
-(defmethod mi/exclude-internal-content-hsql :model/User
-  [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
+(defmethod mi/non-internal-filter-clause :model/User
+  [_model alias]
+  [:not= (h2x/identifier :field alias :type) "internal"])
 
 (defn settings-map
   "Returns the user's `settings` as a map, defaulting to an empty map.

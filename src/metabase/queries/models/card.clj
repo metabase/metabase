@@ -1447,9 +1447,9 @@
   (cache/delete-target-configs! "question" [id])
   (delete-notifications-of-card id))
 
-(defmethod mi/exclude-internal-content-hsql :model/Card
-  [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+(defmethod mi/non-internal-filter-clause :model/Card
+  [_model alias]
+  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
