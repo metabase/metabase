@@ -1,9 +1,11 @@
 import type { TimeInputProps as MantineTimeInputProps } from "@mantine/dates";
 import { TimeInput as MantineTimeInput } from "@mantine/dates";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import dayjs from "dayjs";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useLayoutEffect, useState } from "react";
-
-import { dayjs } from "metabase/dayjs";
 
 const TIME_FORMAT = "HH:mm";
 
@@ -73,6 +75,8 @@ function formatValue(value: Date | null | undefined) {
 }
 
 function parseValue(value: string) {
+  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
+  dayjs.extend(customParseFormat);
   const time = dayjs(value, TIME_FORMAT, true);
   return time.isValid() ? time.toDate() : null;
 }

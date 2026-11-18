@@ -1,8 +1,8 @@
 import type { DatesProviderSettings } from "@mantine/dates";
 import { DatesProvider as MantineDatesProvider } from "@mantine/dates";
+// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
+import dayjs from "dayjs";
 import type { ReactNode } from "react";
-
-import { dayjs } from "metabase/dayjs";
 
 interface DatesProviderProps {
   children?: ReactNode;
