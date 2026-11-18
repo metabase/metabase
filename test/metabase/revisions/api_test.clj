@@ -375,6 +375,48 @@
         (finally
           (t2/delete! :model/Card :id card-id))))))
 
+(deftest revert-native-model-after-query-runs-test
+  (testing "the metadata that a query run stores in a native model is no revision, so a revert targets the edit"
+    (let [query         (lib/native-query (mt/metadata-provider) "SELECT * FROM ORDERS LIMIT 5")
+          {card-id :id} (mt/user-http-request :crowberto :post 200 "card"
+                                              {:name                   "Native Model"
+                                               :dataset_query          query
+                                               :display                "table"
+                                               :visualization_settings {}})
+          get-card      #(mt/user-http-request :crowberto :get 200 (str "card/" card-id))
+          run!          #(do (mt/user-http-request :crowberto :post 202 (str "card/" card-id "/query"))
+                             (Thread/sleep (long 1000)))
+          edit!         (fn [column-name f]
+                          (let [card (get-card)]
+                            (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                  (assoc card :result_metadata
+                                                         (mapv #(cond-> % (= column-name (:name %)) f)
+                                                               (:result_metadata card))))
+                            (run!)))
+          revisions     #(mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)
+          display-names #(into {} (map (juxt :name :display_name)) (:result_metadata (get-card)))]
+      (try
+        (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:type "model"})
+        (run!)
+        (edit! "SUBTOTAL" #(assoc % :id (mt/id :orders :subtotal) :display_name "Pre-tax" :semantic_type "type/Currency"
+                                  :table_id (mt/id :orders)
+                                  :field_ref [:field (mt/id :orders :subtotal) nil]))
+        (edit! "TAX" #(assoc % :id (mt/id :orders :tax) :display_name "Tax" :semantic_type "type/Currency"
+                             :table_id (mt/id :orders)
+                             :field_ref [:field (mt/id :orders :tax) nil]))
+        (let [before (count (revisions))
+              target (second (revisions))]
+          (run!)
+          (is (= before (count (revisions))))
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity :card, :id card-id, :revision_id (:id target)})
+          (is (= "model" (:type (get-card))))
+          (is (= ["Pre-tax" "TAX"] (map (display-names) ["SUBTOTAL" "TAX"])))
+          (is (=? {:status "completed"}
+                  (mt/user-http-request :crowberto :post 202 (str "card/" card-id "/query")))))
+        (finally
+          (t2/delete! :model/Card :id card-id))))))
+
 (deftest revert-card-to-revision-stored-with-public-link-and-embedding-columns-test
   (testing "a non-admin who writes a card reverts it to a revision whose object carries unchanged public-link and embedding columns"
     (mt/with-temp [:model/Card {card-id :id} {:name "Before", :dataset_query (mt/mbql-query venues)}]
