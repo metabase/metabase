@@ -13,7 +13,6 @@ import {
 } from "metabase/querying/expressions";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Button, Tooltip } from "metabase/ui";
-import { isMac } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
 
 import { Editor } from "../../../components/expressions/Editor";
@@ -108,8 +107,6 @@ function getResultName(
   }
 }
 
-const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
-
 /**
  * True when Enter in the code may save: not when it picks a suggestion or
  * moves to the next placeholder of a function or template. The AI prompt and
@@ -190,7 +187,6 @@ export function InlineExpressionEditor({
     }
   };
   // The Preview button shows the preview, or hides it when it shows.
-  // Cmd/Ctrl+Enter shows it, or runs it again.
   const isPreviewShown = previewRun != null;
   const togglePreview = () => {
     if (isPreviewShown) {
@@ -277,22 +273,11 @@ export function InlineExpressionEditor({
     setIsGenerating(false);
   };
 
-  // Cmd/Ctrl+Enter runs the preview, or sends a request to the AI.
   // Enter in the code saves and keeps the editor open (see saveAndShow), or
   // sends the request, and Shift+Enter starts a new line. The capture phase
   // comes before the keymap of the code editor.
   const handleKeyDownCapture = (event: KeyboardEvent) => {
     if (event.key !== "Enter") {
-      return;
-    }
-    if (event.metaKey || event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (canGenerate) {
-        runGenerate();
-      } else {
-        runPreview();
-      }
       return;
     }
     // Enter also confirms the characters of an input method (Japanese,
@@ -407,7 +392,7 @@ export function InlineExpressionEditor({
               {canGenerate ? (
                 <ToolbarSegment
                   icon={<AiIcon />}
-                  label={t`Generate with AI (${PREVIEW_SHORTCUT})`}
+                  label={t`Generate with AI (Enter)`}
                   disabled={isGenerating}
                   onClick={runGenerate}
                 />
@@ -425,7 +410,7 @@ export function InlineExpressionEditor({
                 label={
                   isPreviewShown
                     ? t`Hide preview`
-                    : `${getPreviewLabel(expressionMode)} (${PREVIEW_SHORTCUT})`
+                    : getPreviewLabel(expressionMode)
                 }
                 isPressed={isPreviewShown}
                 disabled={isEmpty && !isPreviewShown}
@@ -443,7 +428,7 @@ export function InlineExpressionEditor({
                 miw={64}
                 disabled={isEmpty}
                 onClick={handleSave}
-              >{t`Save`}</Button>
+              >{t`Done`}</Button>
               <Tooltip label={t`Close`}>
                 <ActionIcon
                   size="sm"
@@ -476,7 +461,7 @@ export function InlineExpressionEditor({
           name={getResultName(expressionMode, previewRun.name ?? name)}
           refreshKey={previewRefreshKey}
           isOutdated={isPreviewOutdated}
-          runLabel={t`Update preview (${PREVIEW_SHORTCUT})`}
+          runLabel={t`Update preview (Enter)`}
           onRun={runPreview}
         />
       )}
