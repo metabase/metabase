@@ -93,6 +93,8 @@ describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    // `H.selectDataset` waits on this alias
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {
