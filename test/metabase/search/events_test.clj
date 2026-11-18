@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -673,7 +675,9 @@
       (mt/with-model-cleanup [:model/Card :model/Dashboard]
         (let [card-id (:id (mt/user-http-request :rasta :post 200 "card"
                                                  {:name "Reverted card" :display "scalar" :visualization_settings {}
-                                                  :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}))
+                                                  :dataset_query (let [mp (mt/metadata-provider)]
+                                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                       (lib/aggregate (lib/count))))}))
               dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name "Reverted dashboard"}))]
           (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited"})
           (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:description "edited"})
