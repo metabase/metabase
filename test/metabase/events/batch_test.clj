@@ -8,6 +8,7 @@
    [metabase.events.models.events-test-timeline]
    [metabase.models.resolution :as models.resolution]
    [metabase.test :as mt]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -152,3 +153,18 @@
       (t2/update! :model/EventsTestTimelineUpdateOnly :id id {:name "p"})
       (t2/delete! :model/EventsTestTimelineUpdateOnly :id id)
       (is (= [:event/events-test-timeline-update-only-update] (topics))))))
+
+(deftest task-submitted-in-batch-writes-outside-it-test
+  (testing "a write of a task submitted in a batch publishes its own event rather than joining the batch"
+    (let [done    (promise)
+          creator (mt/user->id :rasta)]
+      (try
+        (events/with-batched-events
+          (quick-task/submit-task!
+           (fn []
+             (deliver done (t2/insert-returning-pk! :model/EventsTestTimeline
+                                                    {:name "task" :icon "cake" :creator_id creator})))))
+        (is (pos-int? (deref done 60000 ::timeout)))
+        (is (= ["task"] (map (comp :name :object :event) @received)))
+        (finally
+          (t2/delete! :model/EventsTestTimeline :name "task"))))))

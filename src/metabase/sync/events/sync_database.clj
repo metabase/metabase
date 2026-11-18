@@ -1,5 +1,6 @@
 (ns metabase.sync.events.sync-database
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.sync.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -15,7 +16,7 @@
 
 (methodical/defmethod events/publish-event! ::event
   "When a Database is created by a user or a stub Database gets connected, kick off a sync process for it in a
-  different thread."
+  different thread once the write commits."
   [topic {database :object previous-database :previous-object :keys [user-id]}]
   (try
     (when (and user-id
@@ -24,13 +25,14 @@
                (or (= topic :event/database-create)
                    (:is_stub previous-database))
                (not (warehouses/disable-auto-sync)))
-      (quick-task/submit-task!
-       (fn []
-         (try
-           (if (:is_full_sync database)
-             (sync/sync-database! (u/the-id database))
-             (sync-metadata/sync-db-metadata! (u/the-id database)))
-           (catch Throwable e
-             (log/errorf "Error syncing Database %s: %s" (u/the-id database) (ex-message e)))))))
+      (mdb/do-after-commit
+       #(quick-task/submit-task!
+         (fn []
+           (try
+             (if (:is_full_sync database)
+               (sync/sync-database! (u/the-id database))
+               (sync-metadata/sync-db-metadata! (u/the-id database)))
+             (catch Throwable e
+               (log/errorf "Error syncing Database %s: %s" (u/the-id database) (ex-message e))))))))
     (catch Throwable e
       (log/warnf "Failed to process sync-database event: %s: %s" topic (ex-message e)))))

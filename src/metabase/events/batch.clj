@@ -7,6 +7,7 @@
    [metabase.events.schema :as events.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.connection :as t2.conn]))
 
 (set! *warn-on-reflection* true)
@@ -62,6 +63,11 @@
   `:revision-message` of the revisions they cause, or the `[model id]` of the entity whose archive or restore carried
   their rows, `:archived-with`."
   nil)
+
+(quick-task/register-submission-wrapper! ::outside-batch
+                                         (fn [thunk]
+                                           (binding [*batch* nil *context* nil]
+                                             (thunk))))
 
 (defonce ^:private owned-consumers
   (atom {}))

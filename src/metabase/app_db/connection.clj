@@ -8,6 +8,7 @@
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -391,6 +392,8 @@
         (run-after-commit-callback! thunk))
       nil)
     (thunk)))
+
+(quick-task/register-submission-wrapper! ::after-commit do-after-commit)
 
 (defn- run-after-commit-callbacks! [callbacks]
   (run! run-after-commit-callback! (first (reset-vals! callbacks ::committed))))
