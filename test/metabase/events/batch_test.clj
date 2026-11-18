@@ -27,7 +27,8 @@
 
 (def ^:private topic-names
   [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete
-   :event/events-test-timeline-update-only-update])
+   :event/events-test-timeline-update-only-update
+   :event/events-test-timeline-self-update-create :event/events-test-timeline-self-update-update])
 
 (doseq [topic topic-names]
   (events/derive! topic ::capture))
@@ -321,3 +322,27 @@
                                         (t2/delete! :model/Field :table_id (:id t)))))]
           (is (contains? logged ["metabase_field" (:id f1) "delete"]))
           (is (contains? logged ["metabase_field_user_settings" (:id fus) "delete"])))))))
+
+(deftest create-carries-row-its-own-hooks-wrote-test
+  (testing "the create of a row whose after-insert writes it again carries the row as stored"
+    (with-timeline-cleanup
+      (let [id (t2/insert-returning-pk! :model/EventsTestTimelineSelfUpdate (row "batch-test-self"))]
+        (is (= [:event/events-test-timeline-self-update-create] (topics)))
+        (is (= "set by the hook" (t2/select-one-fn :description :model/EventsTestTimeline :id id)))
+        (is (= "set by the hook" (:description (:object (:event (first @received))))))))))
+
+(deftest endless-delivery-throws-test
+  (testing "consumers that write rows with events on every delivery fail the batch rather than loop"
+    (events/register-owned-consumer! ::endless
+                                     (fn [{:keys [model operation]}]
+                                       (when (and (= :model/EventsTestTimeline model) (= :create operation)) :again))
+                                     (fn [_owner _events _all]
+                                       (t2/insert! :model/EventsTestTimeline (row "batch-test-again"))))
+    (try
+      (with-timeline-cleanup
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kept writing rows with events for 100 deliveries"
+                              (events/with-batched-events
+                                (t2/insert! :model/EventsTestTimeline (row "batch-test-first")))))
+        (is (not (t2/exists? :model/EventsTestTimeline :name [:in ["batch-test-first" "batch-test-again"]]))))
+      (finally
+        (events/register-owned-consumer! ::endless (constantly nil) (constantly nil))))))

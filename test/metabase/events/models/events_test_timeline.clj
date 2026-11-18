@@ -28,3 +28,20 @@
 (defmethod events/spec :model/EventsTestTimelineUpdateOnly
   [_model]
   {:update :event/events-test-timeline-update-only-update})
+
+(methodical/defmethod t2/table-name :model/EventsTestTimelineSelfUpdate [_model] :timeline)
+
+(doto :model/EventsTestTimelineSelfUpdate
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id)
+  (derive :hook/events))
+
+(defmethod events/spec :model/EventsTestTimelineSelfUpdate
+  [_model]
+  {:create :event/events-test-timeline-self-update-create
+   :update :event/events-test-timeline-self-update-update})
+
+(t2/define-after-insert :model/EventsTestTimelineSelfUpdate
+  [row]
+  (t2/update! :model/EventsTestTimelineSelfUpdate :id (:id row) {:description "set by the hook"})
+  row)

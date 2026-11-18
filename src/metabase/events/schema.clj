@@ -199,7 +199,8 @@
 (defn register-lifecycle-topic!
   "Have the events of `topic`, one made by the write of a row, checked against the lifecycle schema."
   [topic]
-  (swap! lifecycle-topics conj topic)
+  (when-not (contains? @lifecycle-topics topic)
+    (swap! lifecycle-topics conj topic))
   nil)
 
 (mr/def ::lifecycle

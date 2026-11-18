@@ -230,14 +230,16 @@
 
 (defn- ensure-topic!
   [topic]
-  (locking owned-consumers
-    (when-not (events.hierarchy/isa? topic :metabase/event)
-      (events.hierarchy/derive! topic :metabase/event)))
+  (when-not (events.hierarchy/isa? topic :metabase/event)
+    (locking owned-consumers
+      (when-not (events.hierarchy/isa? topic :metabase/event)
+        (events.hierarchy/derive! topic :metabase/event))))
   (events.schema/register-lifecycle-topic! topic))
 
 (defn- merge-events
   "The one event that the `events` of one row amount to, or nil when the row came and went. The insert of a row may
-  collect after the writes its own hooks make, so a creation is told by any of the events, not by the first."
+  collect after the writes its own hooks make, so a creation is told by any of the events, not by the first, and
+  carries the row as its newest update left it."
   [events]
   (let [create (first (filter #(= :create (:operation %)) events))
         fst    (first events)
@@ -245,7 +247,9 @@
         shared {:user-id  (some :user-id (rseq events))
                 :context  (apply merge (map :context events))
                 :captures (apply merge (map :captures events))}
-        object (:object (peek (filterv :object events)))]
+        object (if create
+                 (:object (or (peek (filterv #(= :update (:operation %)) events)) create))
+                 (:object (peek (filterv :object events))))]
     (cond
       (and create (some #(= :delete (:operation %)) events))
       nil
@@ -311,21 +315,31 @@
             :when (some? owner-key)]
       (handle owner-key owned events))))
 
+(def ^:private max-deliveries
+  "The most rounds of delivery a batch runs, each delivering the events that the round before made consumers collect."
+  100)
+
 (defn- finish!
   "Deliver what the batch in `state` collected, and what the delivery makes it collect, then flush its sinks, until
-  nothing is left."
+  nothing is left, throwing when consumers keep collecting events past [[max-deliveries]] rounds."
   [state]
-  (loop []
+  (loop [round 0]
+    (when (= round max-deliveries)
+      (throw (ex-info (format "The consumers of a batch of events kept writing rows with events for %d deliveries"
+                              max-deliveries)
+                      {:topics (into #{}
+                                     (map #(lifecycle-topic (:model %) (:operation %)))
+                                     (get-in @state [::batch :events]))})))
     (let [[old _] (swap-batch! state assoc :events [] :captures {})
           batch   (::batch old)]
       (if (seq (:events batch))
         (do (deliver! (:events batch) (:captures batch))
-            (recur))
+            (recur (inc round)))
         (let [[old _] (swap-batch! state assoc :sinks {})
               by-sink (:sinks (::batch old))]
           (when (seq by-sink)
             (flush-sinks! by-sink)
-            (recur)))))))
+            (recur (inc round))))))))
 
 (mu/defn collect!
   "Collect the event of a write of a row, or deliver it at once outside a batch, when the spec of its model names a
