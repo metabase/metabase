@@ -121,7 +121,7 @@
                                                       :status       :started}))
 
 (mu/defn finish-started-suite-run! :- :int
-  "Set `status`, the end time and `members` of the TestSuiteRun `run-id` if it is still started. Returns the number of
+  "Set `status`, the end time, and `members` of the TestSuiteRun `run-id` if it is still started. Returns the number of
   rows updated."
   [run-id  :- ms/PositiveInt
    status  :- ::data-testing.schema/run-status
@@ -133,8 +133,8 @@
                 members (assoc :members members))))
 
 (mu/defn add-members-to-ended-suite-run! :- :int
-  "Set the `members` of the TestSuiteRun `run-id` if it has ended, for a run the cluster reaper timed out while it ran,
-  which ended without them. Returns the number of rows updated."
+  "Set the `members` of the TestSuiteRun `run-id` if the run has ended. Returns the number of rows updated. The cluster
+  reaper ends a run without its members; this sets them afterward."
   [run-id  :- ms/PositiveInt
    members :- ::data-testing.schema/test-suite-run.stored-members]
   (t2/update! :model/TestSuiteRun

@@ -38,7 +38,7 @@
    :dataset_query (lib/native-query (mt/metadata-provider) sql)})
 
 (defn- card
-  "A native card reading the table [[inputs]] stands in for, in the collection `collection-id`."
+  "A native card reading the table that [[inputs]] stands in for, in the collection `collection-id`."
   [collection-id]
   (native-card collection-id "SELECT ID, NAME FROM PUBLIC.PEOPLE"))
 
@@ -86,7 +86,7 @@
                     (t2/select-one :model/DataTestRun :id (:data_test_run_id pass))))
             (is (= "passed" (get-in pass [:result :status])))
             (is (= "failed" (get-in fail [:result :status]))))
-          (testing "a refused member carries the refusal under the code of its test type"
+          (testing "a refused member has the refusal's error code, prefixed by its test type, and no result"
             (is (= "card-test.missing-inputs" (get-in refused [:error :error_code])))
             (is (nil? (:result refused))))
           (testing "a missing member is reported by type and entity id only"
@@ -101,7 +101,7 @@
                                     {:status :refused :error {:error_code "card-test.missing-inputs"}}
                                     {:status :missing}]}
                     (t2/select-one :model/TestSuiteRun :id (:id response))))))
-        (testing "control: a suite whose every member passes passes"
+        (testing "control: a suite passes when every member passes"
           (is (= "passed" (:status (mt/user-http-request :crowberto :post 200 (run-path passing-suite))))))
         (testing "a missing member fails a suite whose other members pass"
           (is (=? {:status "failed" :members [{:status "passed"} {:status "missing"}]}

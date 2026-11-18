@@ -87,7 +87,7 @@
         (t2/update! :model/TestSuiteRun :id run-id {:last_heartbeat (minutes-ago 10)})
         (data-testing.run-tracking/heartbeat-and-reconcile-runs!)
         (is (recent? (t2/select-one-fn :last_heartbeat :model/TestSuiteRun :id run-id))))
-      (testing "finishing sets the status, the end time and the member outcomes"
+      (testing "finishing sets the status, the end time, and the member outcomes"
         (is (= 1 (data-testing.run-tracking/finish-suite-run! run-id :failed members)))
         (is (=? {:status :failed :end_time some? :members members}
                 (t2/select-one :model/TestSuiteRun :id run-id)))))))
@@ -149,9 +149,22 @@
             (mt/with-dynamic-fn-redefs [data-testing.run-tracking/heartbeat-runs! (fn [_] (throw throwable))]
               (data-testing.run-tracking/heartbeat-and-reconcile-runs!))
             (is (recent? (t2/select-one-fn :last_heartbeat :model/TestSuiteRun :id run-id)))))
-        (testing "an interrupt is not swallowed, so the heartbeat thread can be stopped"
+        (testing "an InterruptedException is rethrown, so the heartbeat thread can be stopped"
           (mt/with-dynamic-fn-redefs [data-testing.run-tracking/heartbeat-runs! (fn [_] (throw (InterruptedException.)))]
             (is (thrown? InterruptedException (data-testing.run-tracking/heartbeat-and-reconcile-runs!)))))
         (finally
           (data-testing.run-tracking/finish-suite-run! run-id :error nil)
           (data-testing.run-tracking/finish-run! test-run-id :error))))))
+
+(deftest a-throw-reaping-test-runs-does-not-stop-reaping-suite-runs-test
+  (doseq [[thrown-name throwable] [["an exception" (ex-info "boom" {})]
+                                   ["an error" (AssertionError. "boom")]]]
+    (testing (str thrown-name " while reaping test runs still lets the stale suite runs be timed out")
+      (mt/with-temp [:model/TestSuite    {suite-id :id} {}
+                     :model/TestSuiteRun {run-id :id}   {:suite_id suite-id :last_heartbeat (minutes-ago 10)}]
+        (mt/with-dynamic-fn-redefs [data-testing.run-tracking/reap-orphaned-runs! (fn [_] (throw throwable))]
+          (is (= [run-id] (mapv :id (data-testing.run-tracking/reap-orphaned-test-and-suite-runs! 5)))))
+        (is (= :timeout (t2/select-one-fn :status :model/TestSuiteRun :id run-id))))))
+  (testing "an InterruptedException is rethrown"
+    (mt/with-dynamic-fn-redefs [data-testing.run-tracking/reap-orphaned-runs! (fn [_] (throw (InterruptedException.)))]
+      (is (thrown? InterruptedException (doall (data-testing.run-tracking/reap-orphaned-test-and-suite-runs! 5)))))))

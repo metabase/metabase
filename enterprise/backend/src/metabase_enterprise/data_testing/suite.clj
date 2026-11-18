@@ -24,7 +24,7 @@
   [:tuple :keyword [:or ms/PositiveInt :string]])
 
 (mu/defn member-ref :- TestRef
-  "The `[test-type entity-id]` that `member`, a suite member or a member outcome of a run, names."
+  "The `[test-type entity-id]` of `member`, a suite member or a member outcome of a run."
   [member :- [:or
               ::data-testing.schema/test-suite.member
               ::data-testing.schema/test-suite-run.stored-member
@@ -112,8 +112,8 @@
 (mu/defn runs-for-reader :- [:sequential ::data-testing.schema/test-suite-run]
   "`runs` with the `:error` removed from each member unless the member's test exists and the current user may run it.
   An error can quote the SQL of the test's query and of the cards and snippets that query includes; reading the test
-  does not grant reading that SQL, permission to run it does. A permission check that throws withholds the error
-  rather than fail the history. Every member keeps its status."
+  does not grant reading that SQL, and permission to run the test does. When the permission check throws, the error is
+  withheld and the history is still returned. Every member keeps its status."
   [runs :- [:sequential ::data-testing.schema/test-suite-run]]
   (let [refs  (into [] (comp (mapcat :members) (filter :error) (map member-ref) (distinct)) runs)
         shown (into #{}

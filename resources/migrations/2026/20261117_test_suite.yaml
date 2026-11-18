@@ -216,7 +216,7 @@ databaseChangeLog:
               - column:
                   name: members
                   type: ${text.type}
-                  remarks: JSON array of the outcome of each member, written when the run finishes
+                  remarks: JSON array of the outcome of each member, written once every member has run; null when the run ended before that
 
   - changeSet:
       id: 4gejxi

@@ -172,7 +172,7 @@
 (defn- put-members-concurrently!
   "PUT `first-members` and then `second-members` to `path`, as crowberto. The first request's transaction stays open
   until the second request has waited a second inside `update-test-suite!`. Returns the status and error message of
-  both responses, and whether the second request was still waiting when the first was let go."
+  both responses, and whether the second request was still waiting when the first was released."
   [path first-members second-members]
   (let [original       (mt/original-fn #'data-testing.db/update-test-suite!)
         calls          (atom 0)

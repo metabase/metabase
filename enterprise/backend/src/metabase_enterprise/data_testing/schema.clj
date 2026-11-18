@@ -322,8 +322,8 @@
    [:name :string]])
 
 (mr/def ::test-suite.member
-  "A test in a suite, by type and entity id. A suite can name a test this instance lacks, or of a type this version does
-  not know: its `:test_type` is then any keyword."
+  "A test in a suite, by type and entity id. The test can be missing from this instance. `:test_type` is any keyword,
+  as a suite can name a type this version does not know."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:suite_id       ms/PositiveInt]
@@ -442,8 +442,8 @@
    [:members        [:maybe ::test-suite-run.stored-members]]])
 
 (mr/def ::test-suite-run.result
-  "The outcome of a suite run as the run endpoint returns it. `:timeout` when the cluster reaper timed the run out while
-  it ran, which happens only when this process stopped heartbeating it."
+  "The outcome of a suite run as the run endpoint returns it. `:status` is `:timeout` when the cluster reaper timed the
+  run out while it ran, which happens only when the process running it stopped heartbeating it."
   [:map {:closed true}
    [:id       ms/PositiveInt]
    [:suite_id ms/PositiveInt]

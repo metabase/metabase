@@ -19,7 +19,7 @@
    :test_type mi/transform-keyword})
 
 (defn with-initiated-by-users
-  "`runs`, rows of any run model, each with the user who started it, or nil, under `:initiated_by_user`."
+  "`runs`, each with the user whose id is its `:initiated_by`, or nil, under `:initiated_by_user`."
   [runs]
   (let [user-ids (into #{} (keep :initiated_by) runs)
         id->user (when (seq user-ids) (data-testing.db/users-by-id user-ids))]

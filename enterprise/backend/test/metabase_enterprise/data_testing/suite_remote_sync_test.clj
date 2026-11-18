@@ -96,7 +96,7 @@
     (mt/with-temp [:model/TestSuite suite {:name "Nightly"}]
       (remote-sync.tu/with-remote-sync ["file:///nonexistent/remote-sync-test-suite" :read-only]
         (let [path (str "ee/test-suite/" (:id suite))]
-          (testing "on a read-only instance, a superuser cannot create, update or delete a suite"
+          (testing "on a read-only instance, a superuser cannot create, update, or delete a suite"
             (mt/user-http-request :crowberto :post 403 "ee/test-suite" {:name "New" :members []})
             (mt/user-http-request :crowberto :put 403 path {:name "Renamed"})
             (mt/user-http-request :crowberto :delete 403 path)
@@ -188,10 +188,10 @@
             ["\"Nightly\" names the same test more than once" "card test EID"]]
            ["a file whose member has no test_type"
             (fn [yaml _member] (str/replace yaml "  test_type: card\n" ""))
-            ["\"Nightly\" has a member without a test_type or test_entity_id"]]
+            ["\"Nightly\" has a member that is missing test_type, test_entity_id, or both"]]
            ["a file whose member has no test_entity_id"
             (fn [yaml _member] (str/replace yaml #"  test_entity_id: \S+\n" ""))
-            ["\"Nightly\" has a member without a test_type or test_entity_id"]]]]
+            ["\"Nightly\" has a member that is missing test_type, test_entity_id, or both"]]]]
     (testing case-name
       (remote-sync.tu/with-repository [url]
         (remote-sync.tu/with-remote-sync [url :read-write]
@@ -210,7 +210,7 @@
               (let [[result messages] (pull-messages! url v1)]
                 (testing "fails the pull with a message naming the suite"
                   (is (not= :success (:status result)))
-                  ;; EID stands for the entity id of the test, which the case's message must name
+                  ;; EID stands for the entity id of `t`, which the message must name
                   (doseq [text expected]
                     (is (str/includes? messages (str/replace text "EID" (:entity_id t))))))
                 (testing "and leaves the suite as it was"

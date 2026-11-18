@@ -62,8 +62,9 @@
     run))
 
 (mu/defn finish-suite-run! :- :int
-  "Finish the suite run `run-id` with `status` and the outcomes of its `members` if it is still started, then release
-  this process's ownership. Returns the number of runs finished: 0 when the cluster reaper timed the run out first."
+  "Finish the suite run `run-id` with `status` and `members`, its member outcomes, if the run is still started.
+  Releases this process's ownership of the run either way. Returns the number of runs finished: 0 when the cluster
+  reaper timed the run out first."
   [run-id  :- ms/PositiveInt
    status  :- ::data-testing.schema/run-status
    members :- [:maybe ::data-testing.schema/test-suite-run.stored-members]]
@@ -112,7 +113,7 @@
 
 (defn- reap-and-publish!
   "Time out the started runs of the run model `model` whose last heartbeat is older than `stale-minutes`, and return
-  them. For each run, publish an event to the topic that `(topic-of run)` returns, or log the run when it returns nil. A
+  them. For each run, publish an event to the topic that `(topic-of run)` returns, or log the run when `topic-of` returns nil. A
   failed publish does not stop the others."
   [model stale-minutes topic-of]
   (let [reaped (rt/reap-orphaned! {:model    model
@@ -142,14 +143,17 @@
   [stale-minutes :- ms/PositiveInt]
   (reap-and-publish! :model/TestSuiteRun stale-minutes (constantly :event/test-suite-run-timeout)))
 
+(defn reap-orphaned-test-and-suite-runs!
+  "Time out the orphaned test runs and suite runs, as [[reap-orphaned-runs!]] and [[reap-orphaned-suite-runs!]] do, and
+  return them. A failure to reap one kind of run does not stop the other."
+  [stale-minutes]
+  (concat (call-or-log-failure "reap test runs" #(reap-orphaned-runs! stale-minutes))
+          (call-or-log-failure "reap suite runs" #(reap-orphaned-suite-runs! stale-minutes))))
+
 (defmethod task/init! ::DataTestRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
 
 (defmethod task/init! ::DataTestRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transform-testing.reaper"
                         :label   "test or suite run"
-                        ;; A failure to reap one kind of run does not stop the other.
-                        :reap-fn #(concat (call-or-log-failure "reap test runs"
-                                                               (fn [] (reap-orphaned-runs! heartbeat-stale-minutes)))
-                                          (call-or-log-failure "reap suite runs"
-                                                               (fn [] (reap-orphaned-suite-runs! heartbeat-stale-minutes))))}))
+                        :reap-fn #(reap-orphaned-test-and-suite-runs! heartbeat-stale-minutes)}))

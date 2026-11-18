@@ -85,18 +85,20 @@
    :identity  [:suite_id :test_type :test_entity_id]
    :copy      [:test_entity_id :position]
    :parent    {:model :model/TestSuite :key :suite_id :order :position}
-   ;; Rows of the app DB hold the test type as a keyword, so an imported one must be too, to match on the identity.
+   ;; The model reads `test_type` as a keyword, so the import makes it one too: an imported member then matches its row
+   ;; on the identity.
    :transform {:suite_id  serialization/import-only-transform
                :test_type {:export (fn [_store _rows values _opts] (mapv name values))
                            :import (fn [_store _entities values _opts] (mapv keyword values))}}})
 
 (defmethod serialization/before-load :model/TestSuite [_ items]
-  ;; A hand-edited file can name a test twice, or have a member with no test_type or test_entity_id; refuse the file with
-  ;; a message that names the suite. Without the check, a test named twice would load as one member or fail on the
-  ;; unique constraint, depending on what the suite held, and a member without either would fail on a not-null one.
+  ;; A hand-edited file can name a test twice, or have a member that is missing test_type, test_entity_id, or both;
+  ;; refuse the file with a message that names the suite. Without the check, a test named twice loads as one member when
+  ;; the suite already holds that test and fails on the unique constraint otherwise, and a member missing either column
+  ;; fails on a not-null constraint.
   (doseq [{{suite-name :name :keys [members]} :entity} items]
     (when (some #(or (nil? (:test_type %)) (nil? (:test_entity_id %))) members)
-      (throw (ex-info (tru "Test suite {0} has a member without a test_type or test_entity_id." (pr-str suite-name))
+      (throw (ex-info (tru "Test suite {0} has a member that is missing test_type, test_entity_id, or both." (pr-str suite-name))
                       {:status-code 400
                        :suite       suite-name})))
     (when-let [repeated (not-empty (data-testing.suite/repeated-tests members))]

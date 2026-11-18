@@ -46,9 +46,9 @@
    :expectations (json-column ::data-testing.schema/expectations)})
 
 (mu/defn remove-deleted-test-from-suites!
-  "Remove the deleted `test-type` test with entity id `entity-id` from every suite, unless a remote-sync pull or a
-  serialization load deletes it, or remote sync keeps synced content read-only. In those cases the suites keep the
-  member, as the loaded content has it, and a run reports the test as missing."
+  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. Does nothing during a remote-sync
+  pull or a serialization load, whose content sets the members, or while remote sync keeps synced content read-only.
+  The suites then keep the member, and a run reports its test as missing."
   [test-type :- ::data-testing.schema/test-type
    entity-id :- :string]
   (when-not (or mi/*deserializing?* (remote-sync/read-only?))

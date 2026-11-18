@@ -340,7 +340,8 @@
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
   "Run `saved-test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
-  recording the run under the test. `:on-start`, when given, is called with the id of the run once it is recorded.
+  recording the run under the test. The optional last argument is a map; its `:on-start`, when given, is called with
+  the run's id once the run is recorded.
 
   Throws a typed refusal from [[metabase-enterprise.data-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
