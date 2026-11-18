@@ -94,6 +94,7 @@ export function useDataModelSegmentPage(
       definition: Urls.dataStudioDataModelSegment(urlParams),
       revisions: Urls.dataStudioDataModelSegmentRevisions(urlParams),
       dependencies: Urls.dataStudioDataModelSegmentDependencies(urlParams),
+      tests: Urls.dataStudioDataModelSegmentTestList(urlParams),
     };
   }, [databaseId, schemaName, tableId, segmentId]);
 

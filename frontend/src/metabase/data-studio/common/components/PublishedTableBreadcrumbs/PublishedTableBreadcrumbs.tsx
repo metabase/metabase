@@ -10,6 +10,8 @@ type PublishedTableBreadcrumbsProps = {
   entityName: string | undefined;
   newEntityLabel: string;
   tableListUrl: string;
+  entityUrl?: string;
+  entityChildName?: string;
 };
 
 export function PublishedTableBreadcrumbs({
@@ -17,6 +19,8 @@ export function PublishedTableBreadcrumbs({
   entityName,
   newEntityLabel,
   tableListUrl,
+  entityUrl,
+  entityChildName,
 }: PublishedTableBreadcrumbsProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection?.id ?? null,
@@ -35,7 +39,12 @@ export function PublishedTableBreadcrumbs({
         </Link>
       ))}
       <Link to={tableListUrl}>{table.display_name}</Link>
-      <span>{entityName ?? newEntityLabel}</span>
+      {entityUrl != null ? (
+        <Link to={entityUrl}>{entityName ?? newEntityLabel}</Link>
+      ) : (
+        <span>{entityName ?? newEntityLabel}</span>
+      )}
+      {entityChildName != null && <span>{entityChildName}</span>}
     </DataStudioBreadcrumbs>
   );
 }

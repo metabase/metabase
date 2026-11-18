@@ -6,6 +6,7 @@ export type SegmentTabUrls = {
   definition: string;
   revisions: string;
   dependencies: string;
+  tests?: string;
 };
 
 export type NewSegmentPageProps = {

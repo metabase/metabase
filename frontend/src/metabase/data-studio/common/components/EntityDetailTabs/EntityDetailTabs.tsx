@@ -4,13 +4,14 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useLocation } from "metabase/router";
 
 export type EntityDetailTabUrls = {
   definition: string;
   revisions: string;
   dependencies: string;
+  tests?: string;
 };
 
 type EntityDetailTabsProps = {
@@ -31,6 +32,14 @@ export function EntityDetailTabs({ urls }: EntityDetailTabsProps) {
       isSelected: location.pathname.startsWith(urls.revisions),
     },
   ];
+
+  if (PLUGIN_DATA_TESTING.isEnabled && urls.tests != null) {
+    tabs.push({
+      label: t`Tests`,
+      to: urls.tests,
+      isSelected: location.pathname.startsWith(urls.tests),
+    });
+  }
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({

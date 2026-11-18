@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route, redirect } from "metabase/router";
 
 /**
@@ -110,6 +110,7 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
+      {PLUGIN_DATA_TESTING.getDataModelSegmentTestRoutes()}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
         element={<IsAdmin />}

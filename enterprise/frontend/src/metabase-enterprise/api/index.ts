@@ -24,6 +24,7 @@ export * from "./remote-sync";
 export * from "./replacement";
 export * from "./saml";
 export * from "./scim";
+export * from "./segment-test";
 export * from "./session-management";
 export * from "./support-access-grants";
 export * from "./table";
