@@ -60,20 +60,9 @@
     [:id pos-int?]
     [:columns {:optional true} [:maybe [:sequential :string]]]]])
 
-(mr/def ::source-result
-  "The result of running one goal source."
-  [:map
-   [:status     [:enum "completed" "failed"]]
-   [:error      {:optional true} [:maybe :string]]
-   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters" "withheld"
-                                          "too-many-sources"]]]
-   [:data       {:optional true} [:maybe [:map
-                                          [:cols [:sequential :map]]
-                                          [:rows [:sequential [:sequential :any]]]]]]])
-
 (mr/def ::goal-values
   "Goal source results by source type, then by source id. A source with no entry wasn't run."
-  [:map-of :string [:map-of :string ::source-result]])
+  ::viz.dynamic-goals/goal-values)
 
 (mr/def ::chart-context
   "What a public, embed or preview route's shared resolver found for a chart."
