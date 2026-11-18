@@ -13,7 +13,7 @@ import {
 } from "metabase/current-user";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
@@ -78,6 +78,15 @@ function getTabs(
     });
   }
 
+  if (PLUGIN_DATA_TESTING.isEnabled && urls.tests != null) {
+    const testListUrl = urls.tests(card.id);
+    tabs.push({
+      label: t`Tests`,
+      to: testListUrl,
+      isSelected: (pathname) => pathname.startsWith(testListUrl),
+    });
+  }
+
   if (PLUGIN_DEPENDENCIES.isEnabled && canSeeDependencies) {
     tabs.push({
       label: t`Dependencies`,
@@ -92,7 +101,12 @@ function getTabs(
 
   return tabs.map((tab) => ({
     ...tab,
-    isSelected: (pathname) => stripMetricSlug(pathname, aboutUrl) === tab.to,
+    isSelected: (pathname) => {
+      const metricPathname = stripMetricSlug(pathname, aboutUrl);
+      return typeof tab.isSelected === "function"
+        ? tab.isSelected(metricPathname)
+        : metricPathname === tab.to;
+    },
   }));
 }
 

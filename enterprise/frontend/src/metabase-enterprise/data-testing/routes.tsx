@@ -30,3 +30,34 @@ export function getTransformTestRoutes() {
     </>
   );
 }
+
+const cardTestListPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/CardTestListPage"
+  ).then(({ CardTestListPage }) => ({
+    Component: CardTestListPage,
+  }));
+
+const cardTestOverviewPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/CardTestOverviewPage"
+  ).then(({ CardTestOverviewPage }) => ({
+    Component: CardTestOverviewPage,
+  }));
+
+const cardTestRunsPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/CardTestRunsPage"
+  ).then(({ CardTestRunsPage }) => ({
+    Component: CardTestRunsPage,
+  }));
+
+export function getMetricTestRoutes() {
+  return (
+    <>
+      <Route path=":cardId/tests" lazy={cardTestListPage} />
+      <Route path=":cardId/tests/:testId" lazy={cardTestOverviewPage} />
+      <Route path=":cardId/tests/:testId/runs" lazy={cardTestRunsPage} />
+    </>
+  );
+}

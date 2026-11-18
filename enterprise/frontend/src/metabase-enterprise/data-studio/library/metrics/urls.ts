@@ -8,6 +8,7 @@ export const dataStudioMetricUrls: MetricUrls = {
   dimensions: Urls.dataStudioMetricDimensions,
   dependencies: Urls.dataStudioMetricDependencies,
   history: Urls.dataStudioMetricHistory,
+  tests: Urls.dataStudioMetricTestList,
   database: (databaseId) => Urls.dataStudioData({ databaseId }),
   table: (_databaseId, tableId) => Urls.dataStudioTable(tableId),
 };

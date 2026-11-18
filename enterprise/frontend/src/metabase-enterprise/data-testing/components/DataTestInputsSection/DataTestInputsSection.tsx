@@ -2,26 +2,25 @@ import { msgid, ngettext, t } from "ttag";
 
 import type { DataTestInput } from "metabase-types/api";
 
-import { DataTestSection } from "../../../components/DataTestSection";
-import { getTableName } from "../../../utils";
-import { TransformTestDataCard } from "../TransformTestDataCard";
+import { getTableName } from "../../utils";
+import { DataTestDataCard } from "../DataTestDataCard";
+import { DataTestSection } from "../DataTestSection";
 
-type TransformTestInputsSectionProps = {
+type DataTestInputsSectionProps = {
+  description: string;
   inputs: DataTestInput[];
 };
 
-export function TransformTestInputsSection({
+export function DataTestInputsSection({
+  description,
   inputs,
-}: TransformTestInputsSectionProps) {
+}: DataTestInputsSectionProps) {
   return (
-    <DataTestSection
-      label={t`Inputs`}
-      description={t`The transform reads this test data instead of the real tables.`}
-    >
+    <DataTestSection label={t`Inputs`} description={description}>
       {inputs.map((input) => {
         const name = getTableName(input.table);
         return (
-          <TransformTestDataCard
+          <DataTestDataCard
             key={name}
             name={name}
             icon="table2"
