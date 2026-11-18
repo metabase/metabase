@@ -374,10 +374,10 @@
           expects [{:type :empty :name "no output" :sql "SELECT * FROM {{output}}"}]]
       (testing "control: a card whose data-modifying CTE deletes from a table with no input is refused"
         (is (= ::data-testing.errors/missing-inputs
-               (:error-type (refusal #(run-card-test! (deletes "") [] expects))))))
+               (:error-type (data-testing.test-util/refusal #(run-card-test! (deletes "") [] expects))))))
       (testing "the table the CTE deletes from is the table, not a sibling CTE of its name, so it is refused alike"
         (is (= ::data-testing.errors/missing-inputs
-               (:error-type (refusal #(run-card-test! (deletes (str orders " AS (SELECT 1 AS id), ")) [] expects)))))))))
+               (:error-type (data-testing.test-util/refusal #(run-card-test! (deletes (str orders " AS (SELECT 1 AS id), ")) [] expects)))))))))
 
 (deftest date-column-under-a-report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
