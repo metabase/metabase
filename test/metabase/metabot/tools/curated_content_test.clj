@@ -211,9 +211,9 @@
                (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items")))))))
       (testing "lists an uncurated metric once what it's defined on is curated, agreeing with metric/{id}"
         (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
-          (is (contains? (item-ids (first (read-uris metabot :internal
-                                                     (str "metabase://collection/" coll-id "/items"))))
-                         plain-metric)))))))
+          (is (= #{verified-model plain-metric}
+                 (item-ids (first (read-uris metabot :internal
+                                             (str "metabase://collection/" coll-id "/items")))))))))))
 
 (deftest read-resource-curated-only-dashboards-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -242,12 +242,30 @@
                      :model/DashboardCard _                 {:dashboard_id       dash-id
                                                              :card_id            plain-id
                                                              :parameter_mappings [(mapping plain-id)]}
+                     :model/Card          {metric-id :id}   {:type          :metric
+                                                             :dataset_query (count-metric-query (orders-query))}
+                     :model/DashboardCard {metric-dc :id}   {:dashboard_id       dash-id
+                                                             :card_id            metric-id
+                                                             :parameter_mappings [(mapping metric-id)]}
                      :model/Metabot       metabot           {:name "curated metabot", :use_verified_content true}]
-        (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
-          (is (=? [{:id "date", :connected_dashcards [curated-dc]}]
-                  (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
-                      first
-                      (get-in [:content :structured-output :parameters])))))))))
+        (let [connected (fn []
+                          (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
+                              first
+                              (get-in [:content :structured-output :parameters])
+                              first
+                              :connected_dashcards
+                              set))
+              items     (fn []
+                          (into #{}
+                                (keep :dashcard_id)
+                                (get-in (first (read-uris metabot :internal
+                                                          (str "metabase://dashboard/" dash-id "/items")))
+                                        [:content :structured-output :items])))]
+          (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
+            (is (= #{curated-dc} (connected) (items))))
+          (testing "and of an uncurated metric once what it's defined on is curated"
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+              (is (= #{curated-dc metric-dc} (connected) (items))))))))))
 
 (defn- first-request-text!
   "The text of the first LLM request a turn of the agent loop makes for `opts`, with the LLM mocked to answer at once."
@@ -720,13 +738,16 @@
                                                          :dataset_query (orders-query)}
                        :model/Card {plain-question :id} {:type :question :name "plain recent question"
                                                          :dataset_query (orders-query)}
+                       :model/Card {plain-metric :id} {:type :metric :name "plain recent metric"
+                                                       :dataset_query (count-metric-query (orders-query))}
                        :model/Table {raw-table :id} {:db_id (mt/id) :name "raw_recent_table" :active true}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (verify-card! verified-model)
           (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
             (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
           (let [items (fn [metabot]
-                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]}
+                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]
+                                         ["metric" plain-metric]}
                                        (juxt :type :id))
                                  (get-in (first (read-uris metabot :internal "metabase://user/recent-items"))
                                          [:content :structured-output :items])))]
@@ -736,7 +757,14 @@
               (is (=? [{:type "table" :uri (str "metabase://table/" raw-table)}
                        {:type "question" :uri (str "metabase://question/" plain-question)}
                        {:type "model" :uri (str "metabase://model/" verified-model)}]
-                      (items nil))))))))))
+                      (items nil))))
+            (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
+              (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
+              (is (= #{["model" verified-model]}
+                     (into #{} (map (juxt :type :id)) (items metabot))))
+              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                (is (= #{["model" verified-model] ["metric" plain-metric]}
+                       (into #{} (map (juxt :type :id)) (items metabot))))))))))))
 
 (deftest curation-subject-test
   (testing "transforms can never be curated"

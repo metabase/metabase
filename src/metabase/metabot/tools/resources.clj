@@ -358,7 +358,8 @@
   "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, uncurated metrics whose
    definition passes [[curation/usable-metric-ids]] (the same rule a `metric/{id}` read applies), plus
    navigation items (databases, schemas, collections, documents, dashcards without a card, ...) that carry no
-   data of their own."
+   data of their own. Callers pass only items the current user can read: the curation verdict on an unreadable
+   item would tell them whether it, or what a metric reads, is curated."
   [items]
   (let [usable-metrics (curation/usable-metric-ids
                         (into [] (comp (filter #(= "metric" (:type %))) (map :id)) items))
