@@ -4,11 +4,12 @@ import {
   getDefaultZIndex,
 } from "@mantine/core";
 
-import { isTest } from "metabase/env";
-
 import { PORTAL_CONTAINER_ID } from "../PortalContainer/constants";
 
 import TooltipStyles from "./Tooltip.module.css";
+
+const isTest =
+  typeof process !== "undefined" && process.env.NODE_ENV === "test";
 
 const ARROW_WIDTH = 9;
 const ARROW_SIZE = ARROW_WIDTH / Math.SQRT2;

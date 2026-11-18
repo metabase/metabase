@@ -1,7 +1,5 @@
 import { type FocusEvent, type KeyboardEvent, useState } from "react";
 
-import { isFocusVisible } from "metabase/utils/dom";
-
 import type { SegmentedControlItem } from "./index";
 
 /**
@@ -26,7 +24,7 @@ export function useItemTooltip<Value extends string>(
 
   const handleFocus = (event: FocusEvent<HTMLElement>) => {
     // the tooltip only follows keyboard focus so it doesn't stay open after the pointer leaves.
-    if (!isFocusVisible(event.target)) {
+    if (!event.target.matches(":focus-visible")) {
       return;
     }
 
