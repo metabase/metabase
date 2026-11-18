@@ -50,6 +50,12 @@ docs/usage-and-performance-tools/usage-analytics-reference.md # auto-generated
 # Not enforced: uncomment these lines once the team agrees to review these paths.
 # .github @metabase/devex
 
+# The @metabase/ui npm package. frontend/src/metabase/ui itself is shared by many teams, so it has no owner.
+frontend/ui-package @metabase/devex
+bin/ui-package @metabase/devex
+.github/workflows/ui-package.yml @metabase/devex
+.github/workflows/release-ui-package.yml @metabase/devex
+
 # These files are left unowned on purpose.
 # They change in most backend PRs, so an owning team would review many changes for little benefit.
 # Ratchet budgets may split per module in future, which would give each module's team its own file.

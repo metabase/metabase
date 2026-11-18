@@ -1,0 +1,96 @@
+name: UI Package
+
+# Builds and checks @metabase/ui (frontend/ui-package). Runs on every PR and push to master and
+# decides with a paths filter inside the workflow (like chromatic.yml) rather than `on.paths`,
+# so the required `ui-package-result` check reports instead of hanging when nothing matched.
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 3
+    outputs:
+      ui_package: ${{ steps.changes.outputs.ui_package }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  ui-package:
+    needs: files-changed
+    if: ${{ needs.files-changed.outputs.ui_package == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      # Installs root dependencies only. The package does not need the ClojureScript build.
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Check package version consistency
+        working-directory: frontend/ui-package
+        run: bun run check:package-versions
+      - name: Type-check
+        working-directory: frontend/ui-package
+        run: bun run type-check
+      - name: Build package
+        working-directory: frontend/ui-package
+        run: bun run build
+      - name: Check dist
+        working-directory: frontend/ui-package
+        run: bun run check:dist
+      - name: Check API report
+        working-directory: frontend/ui-package
+        run: bun run api:check
+
+      - name: Test host app
+        working-directory: frontend/ui-package
+        run: bun run test:host-app
+
+      - name: Upload host app artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-package-host-app-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            frontend/ui-package/host-app/test-artifacts/**
+            frontend/ui-package/host-app/test-results/**
+          if-no-files-found: ignore
+      - name: Upload packed tarball
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-package-tarball-${{ github.event.pull_request.head.sha || github.sha }}
+          path: frontend/ui-package/.pack/*.tgz
+          if-no-files-found: ignore
+
+  # The single required check: green when the package job passed or was skipped.
+  ui-package-result:
+    needs: [files-changed, ui-package]
+    if: ${{ !cancelled() }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check UI package job status
+        env:
+          NEEDS: ${{ toJson(needs) }}
+        run: |
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null \
+            || { echo "::error::UI package checks failed"; exit 1; }

@@ -1,0 +1,231 @@
+# One-time npm setup needed before the first real release (owner: DevEx):
+# the package `@metabase/ui` must exist on npm under the @metabase scope, and this workflow
+# (release-ui-package.yml) must be registered as its trusted publisher. Until then,
+# only dry runs (the default) work.
+name: Release UI Package
+run-name: Release @metabase/ui from ${{ github.ref_name }}${{ inputs.dry_run && ' (dry run)' || '' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip npm publish and git tag push (leave on until the npm package and trusted publisher are set up)"
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  determine-release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      npm_tag: ${{ steps.resolve.outputs.npm_tag }}
+      git_tag: ${{ steps.resolve.outputs.git_tag }}
+    steps:
+      - name: Fail unless running on master
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/master" ]; then
+            echo "::error::@metabase/ui releases only from master (got '$GITHUB_REF'). Run this workflow from master."
+            exit 1
+          fi
+
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Resolve release from package.json
+        id: resolve
+        run: ./bin/ui-package/resolve-release.sh | tee -a "$GITHUB_OUTPUT"
+
+      - name: Append release plan to workflow summary
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+          NPM_TAG: ${{ steps.resolve.outputs.npm_tag }}
+          GIT_TAG: ${{ steps.resolve.outputs.git_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## Release plan"
+            echo ""
+            echo "- **Branch**: \`master\`"
+            echo "- **Version**: \`$VERSION\`"
+            echo "- **npm tag**: \`$NPM_TAG\`"
+            echo "- **git tag**: \`$GIT_TAG\`"
+            echo "- **Dry run**: \`$DRY_RUN\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  preflight:
+    needs: determine-release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fail if git tag already exists
+        env:
+          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+        run: |
+          if [ -n "$(git tag -l "$GIT_TAG")" ]; then
+            echo "::error::Git tag '$GIT_TAG' already exists. Bump version in frontend/ui-package/package.json and land a new PR."
+            exit 1
+          fi
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      # A package that is not on npm yet has no versions, so this passes for the first release.
+      - name: Fail if version already exists on npm
+        env:
+          VERSION: ${{ needs.determine-release.outputs.version }}
+        run: |
+          PUBLISHED=$(npm view "@metabase/ui@$VERSION" version 2>/dev/null || true)
+          if [ -n "$PUBLISHED" ]; then
+            echo "::error::Version '$VERSION' already exists on npm. Bump version in frontend/ui-package/package.json and land a new PR."
+            exit 1
+          fi
+
+      - name: Check package version consistency
+        working-directory: frontend/ui-package
+        run: bun run check:package-versions
+
+  build-and-publish:
+    needs: [determine-release, preflight]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # OIDC handshake for npm trusted publishing
+    defaults:
+      run:
+        working-directory: frontend/ui-package
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      # Installs root dependencies only. The package does not need the ClojureScript build.
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      # Same checks as .github/workflows/ui-package.yml
+      - name: Type-check
+        run: bun run type-check
+
+      - name: Build package
+        run: bun run build
+
+      - name: Check dist
+        run: bun run check:dist
+
+      - name: Check API report
+        run: bun run api:check
+
+      - name: Test host app
+        run: bun run test:host-app
+
+      - name: Upload host app artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-package-host-app
+          path: |
+            frontend/ui-package/host-app/test-artifacts/**
+            frontend/ui-package/host-app/test-results/**
+          if-no-files-found: ignore
+
+      - name: Upload packed tarball
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-package-tarball
+          path: frontend/ui-package/.pack/*.tgz
+          if-no-files-found: ignore
+
+      # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
+      # Node 22.x ships npm 10.x, so pin Node 24.x which ships npm 11.x.
+      - name: Setup Node.js for npm publish with trusted publishing
+        if: ${{ !inputs.dry_run }}
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Publishes the tarball that test:host-app installed and tested.
+      - name: Publish to NPM
+        if: ${{ !inputs.dry_run }}
+        env:
+          NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
+        run: npm publish .pack/metabase-ui.tgz --tag "$NPM_TAG"
+
+      - name: Dry run — skipping npm publish
+        if: ${{ inputs.dry_run }}
+        run: echo "dry_run=true → skipped 'npm publish --tag ${{ needs.determine-release.outputs.npm_tag }}'"
+
+  tag-git:
+    needs: [determine-release, build-and-publish]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the code
+        if: ${{ !inputs.dry_run }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "Metabase Automation"
+          git config user.email "github-automation@metabase.com"
+
+      - name: Create git tag
+        if: ${{ !inputs.dry_run }}
+        env:
+          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+          VERSION: ${{ needs.determine-release.outputs.version }}
+        run: git tag -a "$GIT_TAG" -m "@metabase/ui $VERSION"
+
+      - name: Push git tag
+        if: ${{ !inputs.dry_run }}
+        env:
+          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+        run: git push origin "$GIT_TAG"
+
+      - name: Dry run — skipping git tag push
+        if: ${{ inputs.dry_run }}
+        run: echo "dry_run=true → skipped 'git push origin ${{ needs.determine-release.outputs.git_tag }}'"
+
+      - name: Workflow summary
+        env:
+          VERSION: ${{ needs.determine-release.outputs.version }}
+          NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
+          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
+          ## Released @metabase/ui
+
+          - **Version**: \`$VERSION\`
+          - **npm tag**: \`$NPM_TAG\`
+          - **git tag**: \`$GIT_TAG\`
+          - **Branch**: \`master\`
+          - **Dry run**: \`$DRY_RUN\`
+          - **Triggered by**: @${{ github.event.sender.login }}
+          EOF
