@@ -46,6 +46,7 @@ const Q4_PIPELINE_ID = 15;
 const ORDERS_ID = 2;
 const REVIEWS_ID = 3;
 const ACCOUNTS_ID = 4;
+const INVOICES_ID = 5;
 const PERSONAL_COLLECTION_ID = 10;
 
 const COLLECTIONS: PreviewCollectionsResponse = {
@@ -133,6 +134,13 @@ const ACCOUNTS: PreviewTableAccess = {
   security: null,
 };
 
+const INVOICES: PreviewTableAccess = {
+  ...ACCOUNTS,
+  id: INVOICES_ID,
+  name: "INVOICES",
+  display_name: "Invoices",
+};
+
 const DATA: PreviewDataResponse = {
   principal: SANDY,
   databases: [
@@ -142,7 +150,7 @@ const DATA: PreviewDataResponse = {
       reasons: [],
       manage_database: getCell("no"),
       transforms: getCell("no"),
-      tables: [ORDERS, REVIEWS, ACCOUNTS],
+      tables: [ORDERS, REVIEWS, ACCOUNTS, INVOICES],
     },
   ],
 };
@@ -288,10 +296,10 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
   });
 
-  it("starts open only the rows that limit: row security open, blocked shown, full access folded", async () => {
+  it("starts open only the rows that limit: row security open, blocked shown, two full-access tables folded", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tableIds: [ORDERS_ID, REVIEWS_ID, ACCOUNTS_ID],
+      tableIds: [ORDERS_ID, REVIEWS_ID, ACCOUNTS_ID, INVOICES_ID],
       dashboardQuery: {
         decision: "limited",
         data: { "card-count": 2, "blocked-card-count": 1 },
@@ -306,12 +314,22 @@ describe("WhyListSidesheet", () => {
     // a blocked table has no attributes to fold: it's a line of its own, always shown
     expect(getRowStatus("Reviews")).toHaveTextContent("Blocked");
     expect(getRowStatus("Reviews")).not.toHaveAttribute("aria-expanded");
-    expect(getToggle("1 table")).toHaveAttribute("aria-expanded", "false");
+    expect(getToggle("2 tables")).toHaveAttribute("aria-expanded", "false");
     expect(getVisibleTexts("Accounts")).toHaveLength(0);
 
-    await userEvent.click(getToggle("1 table"));
+    await userEvent.click(getToggle("2 tables"));
 
     await waitFor(() => expect(getVisibleTexts("Accounts")).toHaveLength(1));
+  });
+
+  it("shows a single full-access table as a row of its own, not a fold of one", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tableIds: [ORDERS_ID, ACCOUNTS_ID],
+    });
+
+    expect(await findRowStatus("Accounts")).toHaveTextContent("Full access");
+    expect(screen.queryByText("1 table")).not.toBeInTheDocument();
   });
 
   it("toggles a row from its name, and opens the table's detail from its status", async () => {
@@ -353,10 +371,10 @@ describe("WhyListSidesheet", () => {
   it("opens a full-access table's detail from the opened fold", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tableIds: [ORDERS_ID, ACCOUNTS_ID],
+      tableIds: [ORDERS_ID, ACCOUNTS_ID, INVOICES_ID],
     });
     await screen.findByText("Data in this dashboard");
-    await userEvent.click(getToggle("1 table"));
+    await userEvent.click(getToggle("2 tables"));
 
     await userEvent.click(await findRowStatus("Accounts"));
 
@@ -502,17 +520,17 @@ describe("WhyListSidesheet", () => {
   it("keeps a table row folded and the full-access fold open after opening a detail and going Back", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tableIds: [ORDERS_ID, ACCOUNTS_ID],
+      tableIds: [ORDERS_ID, ACCOUNTS_ID, INVOICES_ID],
     });
     await screen.findByText("Data in this dashboard");
     await userEvent.click(getToggle("Orders"));
-    await userEvent.click(getToggle("1 table"));
+    await userEvent.click(getToggle("2 tables"));
     await userEvent.click(await findRowStatus("Accounts"));
 
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
     expect(getToggle("Orders")).toHaveAttribute("aria-expanded", "false");
-    expect(getToggle("1 table")).toHaveAttribute("aria-expanded", "true");
+    expect(getToggle("2 tables")).toHaveAttribute("aria-expanded", "true");
   });
 
   it("goes Back to where the page was scrolled, with the detail opened at its top", async () => {

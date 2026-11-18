@@ -599,7 +599,8 @@ function InfoButton({ info, label }: { info: string; label: string }) {
 
 /**
  * One row per table. A table under row security starts open on its attributes; a blocked table is a line of its own;
- * tables with full access fold into one closed row. Each status opens the table's View data detail.
+ * two or more tables with full access fold into one closed row, a single one is a line of its own. Each status opens the
+ * table's View data detail.
  */
 function DataRows({
   targets,
@@ -610,10 +611,11 @@ function DataRows({
 }) {
   const fullAccess = targets.filter(isFullAccess);
   const tableCount = fullAccess.length;
+  const isFolded = tableCount > 1;
   return (
     <Box>
       {targets
-        .filter((target) => !isFullAccess(target))
+        .filter((target) => !isFolded || !isFullAccess(target))
         .map((target, index) =>
           target.security != null ? (
             <ToggleRow
@@ -643,7 +645,7 @@ function DataRows({
             />
           ),
         )}
-      {tableCount > 0 && (
+      {isFolded && (
         <ToggleRow
           rowKey="full-access-tables"
           label={ngettext(
