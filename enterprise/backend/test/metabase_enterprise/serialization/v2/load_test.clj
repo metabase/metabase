@@ -105,8 +105,8 @@
             bad-card  (assoc-in card [:dataset_query :stages 0 :template-tags]
                                 {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
             ingestion #(ts/ingestion-in-memory [db coll bad-card])
-            ours?     #(some (partial re-find #"Invalid Card .*:template-tags") %)]
-        (testing "by default the schema check is what refuses the import"
+            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+        (testing "by default the validation of the query by its import transform refuses the import"
           (mt/with-empty-h2-app-db!
             (is (ours? (load-failure-messages! (ingestion))))))
         (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
@@ -115,6 +115,34 @@
               (let [messages (load-failure-messages! (ingestion))]
                 (is (some (partial re-find #"Invalid input.*:template-tags") messages))
                 (is (not (ours? messages)))))))))))
+
+(deftest import-checks-the-non-query-columns-against-the-schema-test
+  (testing "the entity check refuses an invalid column that is no query, and the import validates the query columns itself"
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db) :type :native :native {:query "SELECT 1"}})]
+          (reset! extracted {:db   (ts/extract-one "Database" (:id db))
+                             :coll (ts/extract-one "Collection" (:id coll))
+                             :card (ts/extract-one "Card" (:id card))})))
+      (let [{:keys [db coll card]} @extracted
+            load!                  #(load-failure-messages! (ts/ingestion-in-memory [db coll %]))]
+        (testing "control: the card loads"
+          (mt/with-empty-h2-app-db!
+            (is (serdes.load/load-metabase! (ts/ingestion-in-memory [db coll card])))))
+        (testing "an invalid column that is no query is refused by the entity check"
+          (mt/with-empty-h2-app-db!
+            (is (some (partial re-find #"Invalid Card .*:name") (load! (assoc card :name 5))))))
+        (testing "an invalid query is refused by the import of the query column, not by the entity check"
+          (mt/with-empty-h2-app-db!
+            (let [messages (load! (assoc-in card [:dataset_query :stages 0 :template-tags]
+                                            {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}}))]
+              (is (some (partial re-find #"does not match this Metabase's query schema") messages))
+              (is (not-any? (partial re-find #"Invalid Card ") messages)))))))))
 
 (deftest http-action-dashcards-are-dropped-test
   (testing "an older export's HTTP action does not load, and only the dashboard buttons that ran it are dropped"

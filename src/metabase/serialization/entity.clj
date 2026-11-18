@@ -6,6 +6,7 @@
   name of a Database, or the `[db-name schema table-name]` of a Table."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.serialization.protocol :as protocol]
@@ -51,21 +52,29 @@
              (select-keys entity (external-keys model))
              (serialization.spec/children model)))
 
+(def ^:private with-optional-keys
+  "`schema` with the keys `ks` optional, compiled once for each schema and keys."
+  (memoize (fn [schema ks] (mut/optional-keys schema ks))))
+
 (defn check-entity
   "`entity`, an entity of `model` as serialization writes it, normalized by the `:schema` of its spec, throwing when it
-  still does not match the schema."
-  [model entity]
-  (let [schema (or (:schema (serialization.spec/spec-of model))
-                   (throw (ex-info (format "No :schema in the serialization spec of %s" model)
-                                   {:model model})))]
-    (try
-      (lib/normalize schema entity {:throw? true})
-      (catch Exception e
-        (let [error (some-> (ex-data e) :error :explain mu.humanize/humanize)]
-          (throw (ex-info (format "Invalid %s %s: %s" (name model) (pr-str (entity-ref model entity))
-                                  (pr-str (or error (ex-message e))))
-                          {:model model :error error}
-                          e)))))))
+  still does not match the schema. With `unchecked-keys`, the schema takes those keys as optional."
+  ([model entity]
+   (check-entity model entity #{}))
+  ([model entity unchecked-keys]
+   (let [schema (or (:schema (serialization.spec/spec-of model))
+                    (throw (ex-info (format "No :schema in the serialization spec of %s" model)
+                                    {:model model})))
+         schema (cond-> schema
+                  (seq unchecked-keys) (with-optional-keys (vec unchecked-keys)))]
+     (try
+       (lib/normalize schema entity {:throw? true})
+       (catch Exception e
+         (let [error (some-> (ex-data e) :error :explain mu.humanize/humanize)]
+           (throw (ex-info (format "Invalid %s %s: %s" (name model) (pr-str (entity-ref model entity))
+                                   (pr-str (or error (ex-message e))))
+                           {:model model :error error}
+                           e))))))))
 
 (defn validate-export
   "In dev and test, throws when `entity`, exported from a row of `model`, does not match the schema of its spec."
@@ -140,14 +149,13 @@
   (let [spec     (serialization.spec/spec-of model)
         defaults (:defaults spec)
         raw-keys (into [] (keep (fn [[k transform]] (when (:import transform) (:as transform k)))) (:transform spec))
-        entities (mapv (fn [entity]
-                         (merge (apply dissoc
-                                       (if (or (:nested? opts) (:skip-schema-validation? opts))
-                                         (lib/normalize (:schema spec) (external-entity model entity))
-                                         (check-entity model (external-entity model entity)))
-                                       raw-keys)
-                                (select-keys entity raw-keys)))
-                       entities)
+        query-keys (into #{} (keep (fn [[k transform]] (when (:validates-query? transform) (:as transform k)))) (:transform spec))
+        check    (fn [entity]
+                   (let [entity (external-entity model entity)]
+                     (if (or (:nested? opts) (:skip-schema-validation? opts))
+                       (lib/normalize (:schema spec) (apply dissoc entity raw-keys))
+                       (apply dissoc (check-entity model (apply dissoc entity query-keys) query-keys) raw-keys))))
+        entities (mapv #(merge (check %) (select-keys % raw-keys)) entities)
         columns  (concat (for [k (:copy spec)]
                            [k true (mapv #(get % k) entities)])
                          (for [[k transform] (:transform spec)
