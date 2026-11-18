@@ -61,6 +61,7 @@
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
   (check-definition definition)
+  (lib/check-segment-overwrite nil (lib-be/normalize-query definition))
   (assoc segment :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Segment

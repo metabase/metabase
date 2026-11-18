@@ -65,6 +65,7 @@
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
   (check-definition definition)
+  (lib/check-measure-overwrite nil (lib-be/normalize-query definition))
   (assoc measure :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Measure
