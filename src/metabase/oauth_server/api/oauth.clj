@@ -641,7 +641,9 @@
    token was issued for, which is the resource oidc-provider issues the new token for. Scopes the refresh token does not
    hold are then dropped too, as RFC 6749 section 3.3 allows, so a client that always refreshes with the same `scope`
    keeps working after the user declines part of it at consent; the response's `scope` says what was granted. Throws
-   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives.
+   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives. When neither the request nor the
+   refresh token names a resource, the resource is defaulted as [[with-default-mcp-resource]] defaults it for
+   authorization, and the body names it so the new tokens carry it.
 
    Trimmed only once [[refreshable-token]] finds the request would reach oidc-provider's scope check, so a dead token,
    another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
@@ -657,15 +659,22 @@
 
     :else
     (if-let [token-data (refreshable-token provider authorization-header body)]
-      (let [requested (scope-tokens (scope-to-grant {:scope    scope
-                                                     :resource (or resource (:resource token-data))}))
-            held      (into #{} (:scope token-data))]
-        ;; oidc-provider splits `scope` on single spaces and stores what it gets, so pass it deduplicated and
-        ;; single-spaced.
-        (assoc body :scope (or (not-empty (str/join " " (filter held requested)))
-                               (throw (ex-info "no requested scope is held by the refresh token"
-                                               {:oauth-error       "invalid_scope"
-                                                :error-description not-held-scope-description})))))
+      (let [named     (or (not-empty resource) (:resource token-data))
+            target    (with-default-mcp-resource {:scope scope, :resource named})
+            requested (scope-tokens (scope-to-grant target))
+            held      (into #{} (:scope token-data))
+            ;; oidc-provider splits `scope` on single spaces and stores what it gets, so pass it deduplicated and
+            ;; single-spaced.
+            granted   (or (not-empty (str/join " " (filter held requested)))
+                          (throw (ex-info "no requested scope is held by the refresh token"
+                                          {:oauth-error       "invalid_scope"
+                                           :error-description not-held-scope-description})))]
+        (cond-> (assoc body :scope granted)
+          ;; A token issued before MCP and REST tokens were separated holds MCP scopes but no resource. oidc-provider
+          ;; checks a refresh's `resource` against the token's only when the token has one, so naming the default
+          ;; here binds the new tokens to it and later refreshes need no default.
+          (and (empty? named) (seq (:resource target)))
+          (assoc :resource (:resource target))))
       body)))
 
 (defn- authorization-consent-response
