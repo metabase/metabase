@@ -1,0 +1,5 @@
+.Overlay {
+  /* !important is needed to override the z-index that Mantine applies. The
+   * specificity hack doesn't work. */
+  z-index: var(--mb-overlay-z-index) !important;
+}

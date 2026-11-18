@@ -9,8 +9,8 @@ import { useIsomorphicEffect, useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 
-import ZIndex from "metabase/css/core/z-index.module.css";
 import { PreventEagerPortal } from "metabase/ui/components/utils/PreventEagerPortal";
+import ZIndex from "metabase/ui/css/z-index.module.css";
 
 import { OverlayStackItem } from "../overlay-stack";
 

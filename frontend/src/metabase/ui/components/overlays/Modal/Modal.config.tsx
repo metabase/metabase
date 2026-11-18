@@ -2,9 +2,9 @@ import { Modal } from "@mantine/core";
 import cx from "classnames";
 import { t } from "ttag";
 
-import Animation from "metabase/css/core/animation.module.css";
-import Layout from "metabase/css/core/layout.module.css";
-import ZIndex from "metabase/css/core/z-index.module.css";
+import Animation from "metabase/ui/css/animation.module.css";
+import Layout from "metabase/ui/css/layout.module.css";
+import ZIndex from "metabase/ui/css/z-index.module.css";
 
 const DEFAULT_MODAL_SPACING = "xl";
 

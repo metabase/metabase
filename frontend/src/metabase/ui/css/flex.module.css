@@ -1,0 +1,3 @@
+.flexNoShrink {
+  flex-shrink: 0;
+}

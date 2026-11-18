@@ -2,7 +2,7 @@ import { Box, Portal as MantinePortal, type PortalProps } from "@mantine/core";
 export { type PortalProps } from "@mantine/core";
 export { portalOverrides } from "./Portal.config";
 
-import ZIndex from "metabase/css/core/z-index.module.css";
+import ZIndex from "metabase/ui/css/z-index.module.css";
 
 export const Portal = ({ children, ...props }: PortalProps) => {
   return (
