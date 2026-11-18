@@ -15,9 +15,12 @@
   (:require
    [clojure.core.async :as a]
    [metabase.api.common :as api]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -80,10 +83,10 @@
 
 (mr/def ::chart-context
   "What a public, embed or preview route's shared resolver found for a chart."
-  [:map
-   [:card                 :map]
-   [:dashcard             {:optional true} [:maybe :map]]
-   [:dashboard-id         {:optional true} [:maybe pos-int?]]
+  [:map {:closed true}
+   [:card                 ::queries.schema/card]
+   [:dashcard             {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
+   [:dashboard-id         {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:signed-parameter-ids [:set :string]]])
 
 ;;; ------------------------------------------------ Running sources -------------------------------------------------
