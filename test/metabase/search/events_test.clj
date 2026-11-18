@@ -12,7 +12,6 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.events :as search.events]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -616,11 +615,11 @@
                 outcome))
         (is (= 1 (count @checked)))))))
 
-(deftest capture-fields-failure-keeps-the-delete-test
-  (testing "a search error while working out what to capture is logged, and the delete still succeeds uncaptured"
+(deftest capture-failure-keeps-the-delete-test
+  (testing "a search error while enumerating the dependents of a delete is logged, and the delete still succeeds"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Capture Fields Failure Card"}]
-        (mt/with-dynamic-fn-redefs [search.spec/hook-where-fields (fn [_model] (throw (ex-info "spec bug" {})))]
+      (mt/with-temp [:model/Card {id :id} {:name "Capture Failure Card"}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
           (is (= 1 (t2/delete! :model/Card :id id))))
         (is (false? (t2/exists? :model/Card :id id)))))))
 
