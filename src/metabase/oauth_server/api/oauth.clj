@@ -600,6 +600,26 @@
                          :error-description (narrowed-away-scope-description (:resource parsed))
                          :resource          (:resource parsed)})))))
 
+(defn- with-default-mcp-resource
+  "The parsed authorization request, with the MCP server's resource indicator added when the request names no
+  resource and every registered scope it asks for is an MCP scope.
+
+  Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. [[scope-to-grant]] would treat such a
+  request as one for a REST token and drop every MCP scope, leaving nothing to grant. A request that names a resource
+  or asks for any other scope is left alone, so MCP and REST tokens stay separate.
+
+  The resource goes on the request rather than only into the scope, so the code and every token it yields carry it.
+  A refresh narrows to the resource its token holds, and without one it would drop the MCP scopes."
+  [parsed]
+  (let [mcp-resource (oauth-server/mcp-resource-url)
+        scopes       (scope-tokens (oauth-server/registered-scopes-only (:scope parsed)))]
+    (cond-> parsed
+      (and (empty? (:resource parsed))
+           mcp-resource
+           (seq scopes)
+           (every? (set (mcp/v2-scopes)) scopes))
+      (assoc :resource [mcp-resource]))))
+
 (defn- refreshable-token
   "The stored refresh token a refresh `body` names, when oidc-provider would get as far as checking its scope: the
    client authenticates, may use the refresh grant, and owns the token, and the token is unexpired. Otherwise nil.
@@ -661,7 +681,9 @@
         parsed       (oidc/parse-authorization-request provider
                                                        (cond-> query-params
                                                          (str/blank? (:scope query-params)) (dissoc :scope)))
-        ;; Narrowed before signing, so the signature binds the granted scope through the consent form round-trip.
+        ;; Defaulted and narrowed before signing, so the signature binds the resource and the granted scope through
+        ;; the consent form round-trip, and the decision endpoint needs neither rule of its own.
+        parsed       (with-default-mcp-resource parsed)
         parsed       (assoc parsed :scope (scope-to-grant parsed))
         client       (proto/get-client (:client-store provider) (:client_id parsed))
         csrf-token   (generate-csrf-token)

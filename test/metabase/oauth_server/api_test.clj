@@ -2407,8 +2407,8 @@
 
 (deftest dynamic-client-ceiling-still-bounds-requests-test
   (testing (str "GHY-4543: a narrow registration is widened to the default ceiling, not beyond it. GHY-4969: a client "
-                "that omits the resource indicator asks for a REST token, so only the MCP scopes are dropped, and the "
-                "ceiling is what refuses these.")
+                "that omits the resource indicator and asks for a non-MCP scope asks for a REST token, so only the "
+                "MCP scopes are dropped, and the ceiling is what refuses these.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -2417,15 +2417,13 @@
                           {:scope "agent:content:read agent:query:run"}
                           (first-non-mcp-default-scope))]
             (is (= 200 (:status response)) (pr-str (:body response)))))
-        (testing "GHY-4969: an MCP scope inside the ceiling is dropped without the MCP resource, which leaves nothing"
+        (testing "an MCP scope inside the ceiling, asked for alone without a resource, defaults to the MCP resource"
           (let [response (register-then-authorize-without-resource!
                           {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
-            (is (= {:error             "invalid_scope"
-                    :error_description (str "No resource was requested, so no MCP scopes can be granted. "
-                                            "Send the MCP server's resource URL, which is http://localhost:3000"
-                                            (mcp/mcp-canonical-path) ".")}
-                   (:body response)))))
+            (is (= 200 (:status response)) (pr-str (:body response)))
+            (is (= ["agent:content:write"] (offered-scopes response)))
+            (is (= (mcp-resource-uri) (extract-hidden-field "resource" (:body response))))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
@@ -3162,3 +3160,71 @@
                 (is (= error (:error response)))
                 (is (= (refresh client tokens nil) response)
                     "the same answer as the refresh without `scope`")))))))))
+
+;;; ------------------------------------ Clients that omit the resource indicator ------------------------------------
+
+(deftest authorize-without-resource-defaults-to-mcp-for-mcp-only-scopes-test
+  (testing (str "BOT-2689: an MCP client that never sends `resource` (Microsoft Copilot Studio) and asks only for MCP "
+                "scopes is treated as asking for the MCP server. Without that default the request asks for a REST "
+                "token, every scope is dropped, and the user sees `invalid_scope` instead of the consent page.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client       (register-app-client! "Copilot Studio" "https://example.com/callback")
+              ;; see [[register-then-authorize-mcp!]] for why the session is revalidated first
+              _            (mt/user-http-request :crowberto :get 200 "api/user/current")
+              consent-resp (mt/user-http-request-full-response
+                            :crowberto :get "oauth/authorize"
+                            :client_id     (:client_id client)
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"
+                            :scope         all-v2-scopes
+                            :state         "test-state")
+              body         (:body consent-resp)]
+          (testing "the consent page offers the MCP scopes, signed with the MCP resource"
+            (is (= 200 (:status consent-resp)) (pr-str body))
+            (is (= v2-scope-set (set (offered-scopes consent-resp))))
+            (is (= (mcp-resource-uri) (extract-hidden-field "resource" body))))
+          (let [decision (form-post-decision!
+                          :crowberto
+                          {:approved      "true"
+                           :csrf_token    (extract-csrf-token-from-consent body)
+                           :params_sig    (extract-params-sig-from-consent body)
+                           :client_id     (:client_id client)
+                           :redirect_uri  "https://example.com/callback"
+                           :response_type "code"
+                           :scope         (extract-hidden-field "scope" body)
+                           ;; the browser posts back the hidden field; the client itself never names a resource
+                           :resource      (extract-hidden-field "resource" body)
+                           :state         "test-state"
+                           :granted_scope (vec v2-scope-set)}
+                          302
+                          :csrf-cookie (extract-csrf-cookie consent-resp))
+                tokens   (token-request! {:grant_type   "authorization_code"
+                                          :code         (extract-query-param (get-in decision [:headers "Location"])
+                                                                             "code")
+                                          :redirect_uri "https://example.com/callback"}
+                                         :authorization (basic-auth-header (:client_id client) (:client_secret client)))]
+            (testing "the code exchange, which names no resource either, yields an MCP token bound to the MCP resource"
+              (is (=? {:scope    string?
+                       :resource [(mcp-resource-uri)]}
+                      tokens))
+              (is (= v2-scope-set (token-scope-set tokens)))
+              (is (= v2-scope-set (access-token-scopes tokens))))
+            (testing "a refresh that names the MCP scopes but no resource keeps them, narrowed to the token's resource"
+              (let [refreshed (refresh-with-scope! client tokens all-v2-scopes)]
+                (is (= v2-scope-set (token-scope-set refreshed)))
+                (is (= v2-scope-set (access-token-scopes refreshed)))))))))))
+
+(deftest authorize-without-resource-stays-rest-for-mixed-scopes-test
+  (testing (str "BOT-2689: the MCP default applies only when every scope is an MCP scope. A request without a "
+                "resource that also asks for a non-MCP scope still asks for a REST token, so the MCP scopes are "
+                "dropped and no resource is added.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [not-mcp  (first-non-mcp-default-scope)
+              response (register-then-authorize-without-resource! {} (str all-v2-scopes " " not-mcp))]
+          (is (= 200 (:status response)) (pr-str (:body response)))
+          (is (= [not-mcp] (offered-scopes response)))
+          (is (nil? (extract-hidden-field "resource" (:body response)))))))))
