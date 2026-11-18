@@ -64,7 +64,7 @@
 
 (def ^:private dimension-columns
   "The columns of a Dimension whose update changes the remap it describes."
-  #{:field_id :human_readable_field_id :type})
+  #{:field_id :human_readable_field_id :name :type})
 
 (def ^:private dependency-columns
   "For each model, the columns whose update has the dependency job compute the entity's dependencies again."

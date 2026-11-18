@@ -368,3 +368,17 @@
              #(serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false)))
           (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
           (is (seq @submitted)))))))
+
+(deftest dimension-rename-marks-remapped-dependents-test
+  (testing "renaming a Dimension changes the remapped column's name, so the cards on its table are marked (master marked any Dimension update)"
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (deps.test/table-query :venues)}
+                       :model/Dimension {dim-id :id} {:field_id (mt/id :venues :price) :name "Price" :type :internal}]
+          (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                         :to_entity_type   :table :to_entity_id (mt/id :venues)})
+          (deps.test/record-result-metadata-processed! card-id)
+          (is (not (deps.test/result-metadata-pending? card-id)))
+          (t2/update! :model/Dimension :id dim-id {:name "Cost"})
+          (is (deps.test/result-metadata-pending? card-id)
+              "after a Dimension rename the card's result metadata status should be stale"))))))
