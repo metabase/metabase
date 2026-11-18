@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -17,7 +18,10 @@
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.transforms-base.db :as transforms-base.db]
+   [metabase.transforms-base.ordering :as ordering]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli.registry :as mr]
@@ -507,3 +511,68 @@
               (is (not (t2/exists? :model/Transform :id transform-id)))))
           (finally
             (t2/delete! :model/Transform :id transform-id)))))))
+
+(defn- cycle-table-query [table-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp table-id))))
+
+(defn- cycle-transform [query name]
+  {:source {:type :query :query query}
+   :name   (str "transform_" name)
+   :target {:schema "PUBLIC" :name name :type "table"}})
+
+(defmacro ^:private with-cycle-scan-count
+  "Run `body` and return how many times it scanned the transforms for a cycle."
+  [& body]
+  `(let [scans# (atom 0)
+         scan#  (dynamic-redefs/original-fn #'ordering/get-transform-cycle)]
+     (mt/with-dynamic-fn-redefs [ordering/get-transform-cycle (fn [& args#]
+                                                                (swap! scans# inc)
+                                                                (apply scan# args#))]
+       ~@body)
+     @scans#))
+
+(deftest cycle-check-runs-when-the-definition-changes-test
+  (mt/with-temp [:model/Table {table-1 :id} {:schema "PUBLIC", :name "cycle_1"}
+                 :model/Field _ {:table_id table-1, :name "foo"}
+                 :model/Table {table-2 :id} {:schema "PUBLIC", :name "cycle_2"}
+                 :model/Field _ {:table_id table-2, :name "foo"}
+                 :model/Table {table-3 :id} {:schema "PUBLIC", :name "cycle_3"}
+                 :model/Field _ {:table_id table-3, :name "foo"}
+                 :model/Transform _ (-> (cycle-transform (cycle-table-query table-1) "cycle_2")
+                                        (assoc :target_table_id table-2))
+                 :model/Transform {reader :id} (cycle-transform (cycle-table-query table-2) "cycle_4")
+                 :model/Transform {writer :id} (-> (cycle-transform (cycle-table-query table-3) "cycle_1")
+                                                   (assoc :target_table_id table-1))]
+    (let [schema "PUBLIC"]
+      (testing "an update that leaves the definition alone scans nothing"
+        (is (zero? (with-cycle-scan-count
+                     (t2/update! :model/Transform :id reader {:name "renamed" :description "described"})
+                     (t2/update! :model/Transform :id reader {:last_checkpoint_value "5"})))))
+      (testing "closing a loop from the target side, with the source untouched, is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
+                              (t2/update! :model/Transform :id reader {:target {:schema schema :name "cycle_1" :type "table"}}))))
+      (testing "closing a loop from the source side is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
+                              (t2/update! :model/Transform :id writer {:source {:type :query :query (cycle-table-query table-2)}}))))
+      (testing "an update of the source scans once"
+        (is (= 1 (with-cycle-scan-count
+                   (t2/update! :model/Transform :id reader {:source {:type :query :query (cycle-table-query table-3)}}))))))))
+
+(deftest cycle-check-runs-once-per-update-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Table {table-1 :id} {:schema "PUBLIC", :name "once_1"}
+                     :model/Field _ {:table_id table-1, :name "foo"}
+                     :model/Table {table-2 :id} {:schema "PUBLIC", :name "once_2"}
+                     :model/Field _ {:table_id table-2, :name "foo"}
+                     :model/Transform {id :id} (cycle-transform (cycle-table-query table-1) "once_3")]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [& _] true)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "an update through the write function scans once"
+              (is (= 1 (with-cycle-scan-count
+                         (transforms.core/update-transform! id {:source {:type :query :query (cycle-table-query table-2)}})))))
+            (testing "writing the stored definition again, as a SerDes reimport does, scans nothing"
+              (let [stored (t2/select-one :model/Transform :id id)]
+                (is (zero? (with-cycle-scan-count
+                             (t2/update! :model/Transform :id id (select-keys stored [:name :source :target])))))))))))))

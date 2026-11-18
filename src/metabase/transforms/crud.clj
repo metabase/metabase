@@ -213,8 +213,6 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (when (seq (written-parts body))
-                        (transform.model/check-cycle new))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
