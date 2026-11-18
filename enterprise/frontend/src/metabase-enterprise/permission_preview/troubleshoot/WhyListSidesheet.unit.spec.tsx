@@ -219,6 +219,20 @@ describe("WhyListSidesheet", () => {
     expect(name).not.toContainElement(who);
   });
 
+  it("keeps See everything's heading on one line that truncates, at the default size", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await userEvent.click(
+      await screen.findByText("See everything Sandy Sales can access"),
+    );
+
+    const heading = await screen.findByText(
+      "Everything Sandy Sales can access",
+    );
+
+    expect(heading).toHaveAttribute("data-truncate", "end");
+    expect(heading).toHaveAttribute("data-size", "md");
+  });
+
   it("says on hover or focus that the dashboard's collection decides", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
     const info = await screen.findByRole("button", {

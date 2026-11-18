@@ -375,8 +375,23 @@ const ITEM_ICONS: Record<ItemType, IconName> = {
   metric: "metric",
 };
 
-/** Under the title: the item's icon and name, which wraps, a table's database after it, then "as {name}" on its own line. */
+/**
+ * Under the title: the item's icon and name, which wraps, a table's database after it, then "as {name}" on its own
+ * line. See everything's line has no "as {name}": its name is one bold line that truncates.
+ */
 function ItemLine({ icon, name, databaseName, whoName }: SheetHeading) {
+  if (whoName == null) {
+    return (
+      <Flex align="center" gap="xs" wrap="nowrap" miw={0}>
+        <Icon name={icon} c="text-secondary" style={{ flexShrink: 0 }} />
+        <Tooltip label={name}>
+          <Text fw="bold" truncate="end" miw={0}>
+            {name}
+          </Text>
+        </Tooltip>
+      </Flex>
+    );
+  }
   return (
     <Flex align="flex-start" gap="xs" wrap="nowrap" miw={0}>
       <Icon
