@@ -223,6 +223,23 @@
                                        :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}]
                                        :channels [(assoc daily-email-channel :details {:subject subject})]})))))))
 
+(deftest create-pulse-refuses-incomplete-schedule-test
+  (testing "POST /api/pulse refuses a channel whose schedule lacks what its type takes, a key left out counting as nil"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       card       {}]
+      (api.card-test/with-cards-in-readable-collection! [card]
+        (mt/with-model-cleanup [:model/Pulse]
+          (doseq [channel [(dissoc daily-email-channel :schedule_hour)
+                           (-> daily-email-channel (assoc :schedule_type "weekly") (dissoc :schedule_day))
+                           (-> daily-email-channel (assoc :schedule_type "monthly") (dissoc :schedule_day))]]
+            (testing (pr-str channel)
+              (mt/user-http-request :rasta :post 400 "pulse"
+                                    {:name          "Incomplete schedule"
+                                     :collection_id (u/the-id collection)
+                                     :cards         [{:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}]
+                                     :channels      [channel]})
+              (is (not (t2/exists? :model/Pulse :collection_id (u/the-id collection)))))))))))
+
 (deftest create-pulse-with-email-subject-test
   (testing "POST /api/pulse stores an email subject that GET /api/pulse/:id returns"
     (mt/with-temp [:model/Collection collection {}

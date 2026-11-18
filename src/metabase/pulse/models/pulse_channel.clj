@@ -29,41 +29,6 @@
    {:id "sat", :name "Sat"},
    {:id "sun", :name "Sun"}])
 
-(def ^{:arglists '([day])} day-of-week?
-  "Is `day` a valid `day-of-week` choice?"
-  (partial contains? (set (map :id days-of-week))))
-
-(defn hour-of-day?
-  "Is `hour` is a valid hour of the day (24 hour)?"
-  [hour]
-  (and (integer? hour) (<= 0 hour 23)))
-
-(def ^:private schedule-frames
-  "Set of possible schedule-frames allow for a PulseChannel."
-  #{:first :mid :last})
-
-(defn schedule-frame?
-  "Is `frame` a valid schedule frame?"
-  [frame]
-  (contains? schedule-frames frame))
-
-(def ^:private schedule-types
-  "Set of the possible schedule-types allowed for a PulseChannel."
-  #{:hourly :daily :weekly :monthly})
-
-(defn schedule-type?
-  "Is `schedule-type` a valid PulseChannel schedule type?"
-  [schedule-type]
-  (contains? schedule-types schedule-type))
-
-(defn valid-schedule?
-  "Is this combination of scheduling choices valid?"
-  [schedule-type schedule-hour schedule-day schedule-frame]
-  (pulse.schema/schedule-fits-type? {:schedule_type  schedule-type
-                                     :schedule_hour  schedule-hour
-                                     :schedule_day   schedule-day
-                                     :schedule_frame schedule-frame}))
-
 (def channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
    which contains any other relevant information for defining the channel.  E.g.
@@ -88,11 +53,6 @@
            :name              "Webhook"
            :allows_recipients false
            :schedules         [:hourly :daily :weekly :monthly]}})
-
-(defn channel-type?
-  "Is `channel-type` a valid value as a channel type? :tv:"
-  [channel-type]
-  (contains? (set (keys channel-types)) channel-type))
 
 (defn supports-recipients?
   "Does given `channel` type support a list of recipients? :tv:"
@@ -184,6 +144,7 @@
 
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
+  (pulse.schema/check-schedule (merge (zipmap schedule-columns (repeat nil)) pulse-channel))
   (validate-email-domains pulse-channel))
 
 (t2/define-after-insert :model/PulseChannel

@@ -16,57 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; Test out our predicate functions
-
-(deftest day-of-week?-test
-  (doseq [[x expected] {nil   false
-                        []    false
-                        {}    false
-                        "abc" false
-                        "mon" true
-                        :mon  false}]
-    (testing x
-      (is (= expected
-             (pulse-channel/day-of-week? x))))))
-
-(deftest hour-of-day?-test
-  (doseq [[x expected] {nil   false
-                        500   false
-                        -12   false
-                        8.5   false
-                        "abc" false
-                        11    true
-                        0     true
-                        23    true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/hour-of-day? x))))))
-
-(deftest schedule-type?-test
-  (doseq [[x expected] {nil     false
-                        "abc"   false
-                        123     false
-                        "daily" false
-                        :hourly true
-                        :daily  true
-                        :weekly true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/schedule-type? x))))))
-
-(deftest schedule-frame?-test
-  (doseq [[x expected] {nil     false
-                        "abc"   false
-                        123     false
-                        "first" false
-                        :first  true
-                        :mid    true
-                        :last   true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/schedule-frame? x))))))
-
-(deftest valid-schedule?-test
+(deftest schedule-fits-type?-test
   (doseq [[group args->expected] {"nil"
                                   {[nil nil nil nil]  false
                                    [:foo nil nil nil] false}
@@ -99,21 +49,9 @@
                                    [:monthly 12 "fri" :last]  true}}
           [args expected]        args->expected]
     (testing group
-      (testing (cons 'valid-schedule? args)
+      (testing (cons 'schedule-fits-type? args)
         (is (= expected
-               (apply pulse-channel/valid-schedule? args)))))))
-
-(deftest channel-type?-test
-  (doseq [[x expected] {nil     false
-                        "abc"   false
-                        123     false
-                        :sms    false
-                        "email" false
-                        :email  true
-                        :slack  true}]
-    (testing x
-      (is (= expected
-             (pulse-channel/channel-type? x))))))
+               (pulse.schema/schedule-fits-type? (zipmap [:schedule_type :schedule_hour :schedule_day :schedule_frame] args))))))))
 
 (deftest supports-recipients?-test
   (doseq [[x expected] {nil    false
