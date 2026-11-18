@@ -227,12 +227,6 @@
     (-> transform
         transforms.u/add-source-readable)))
 
-(mu/defn publish-update-event! :- :nil
-  "Publishes the update event of `transform`, which the audit log records, for a moment that writes no row of it."
-  [transform :- ::transforms.schema/transform]
-  (events/publish-event! :event/update-transform {:object transform})
-  nil)
-
 (mu/defn delete-transform! :- :nil
   "Delete a transform."
   [transform :- ::transforms.schema/transform]

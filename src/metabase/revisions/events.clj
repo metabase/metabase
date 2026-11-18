@@ -22,28 +22,13 @@
   whose reversion writes a Revision of its own update."
   #{:model/CardTest :model/TransformTest})
 
-(def ^:private ignored-columns
-  "For each model, the columns whose update alone is not a change to record."
-  {:model/Card      #{:updated_at :last_used_at :view_count :collection_position :cache_invalidated_at}
-   :model/Dashboard #{:updated_at :last_viewed_at :view_count :collection_position :position}
-   :model/Document  #{:updated_at :last_viewed_at :view_count :collection_position}})
-
-(defn- carried-by-archive?
-  "Whether `event` is an update that the archive or restore of another entity carried to its row, which records no
-  Revision."
-  [{:keys [operation context]}]
-  (and (= :update operation)
-       (some? (:archived-with context))))
-
 (defn- entity
   "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none."
   [{:keys [model operation object previous-object context] :as event}]
   (cond
     (and (contains? revisioned-models model) (#{:create :update} operation))
     (when (and (or (not (:reverting? context)) (creator-recorded model))
-               (not (carried-by-archive? event))
-               (not (and (= :update operation)
-                         (every? (get ignored-columns model #{:updated_at}) (u.events/changed-keys event)))))
+               (u.events/user-edit? event))
       [model (:id object)])
 
     (#{:model/DashboardCard :model/DashboardTab} model)
