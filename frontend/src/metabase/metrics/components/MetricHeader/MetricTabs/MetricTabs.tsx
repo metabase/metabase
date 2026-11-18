@@ -79,11 +79,9 @@ function getTabs(
   }
 
   if (PLUGIN_DATA_TESTING.isEnabled && urls.tests != null) {
-    const testListUrl = urls.tests(card.id);
     tabs.push({
       label: t`Tests`,
-      to: testListUrl,
-      isSelected: (pathname) => pathname.startsWith(testListUrl),
+      to: urls.tests(card.id),
     });
   }
 
@@ -101,12 +99,7 @@ function getTabs(
 
   return tabs.map((tab) => ({
     ...tab,
-    isSelected: (pathname) => {
-      const metricPathname = stripMetricSlug(pathname, aboutUrl);
-      return typeof tab.isSelected === "function"
-        ? tab.isSelected(metricPathname)
-        : metricPathname === tab.to;
-    },
+    isSelected: (pathname) => stripMetricSlug(pathname, aboutUrl) === tab.to,
   }));
 }
 

@@ -9,6 +9,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupGetCardTestEndpoint,
   setupListCardTestsEndpoint,
   setupMetricEndpoint,
   setupRunCardTestEndpoint,
@@ -46,6 +47,8 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import { CardTestOverviewPage } from "../CardTestOverviewPage";
 
 import { CardTestListPage } from "./CardTestListPage";
 
@@ -91,6 +94,7 @@ function setup({ tests = [], canRunNativeQueries = true }: SetupOpts = {}) {
   setupBookmarksEndpoints([]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
   setupListCardTestsEndpoint(tests);
+  tests.forEach(setupGetCardTestEndpoint);
 
   const storeInitialState = createMockState({
     settings: mockSettings({
@@ -102,10 +106,16 @@ function setup({ tests = [], canRunNativeQueries = true }: SetupOpts = {}) {
   setupEnterpriseOnlyPlugin("data-testing");
 
   const { router } = renderWithProviders(
-    <Route
-      path="/data-studio/library/metrics/:cardId/tests"
-      element={<CardTestListPage />}
-    />,
+    <>
+      <Route
+        path="/data-studio/library/metrics/:cardId/tests"
+        element={<CardTestListPage />}
+      />
+      <Route
+        path="/data-studio/library/metrics/:cardId/tests/:testId"
+        element={<CardTestOverviewPage />}
+      />
+    </>,
     {
       withRouter: true,
       initialRoute: Urls.dataStudioMetricTestList(CARD_ID),
@@ -167,12 +177,12 @@ describe("CardTestListPage", () => {
     setup();
 
     expect(await screen.findByText("No tests yet")).toBeInTheDocument();
-    const call = fetchMock.callHistory.lastCall("path:/api/ee/card-test", {
-      method: "GET",
-    });
     expect(
-      new URL(call?.url ?? "", "http://localhost").searchParams.get("card-id"),
-    ).toBe(String(CARD_ID));
+      fetchMock.callHistory.called("path:/api/ee/card-test", {
+        method: "GET",
+        query: { "card-id": String(CARD_ID) },
+      }),
+    ).toBe(true);
   });
 
   it("shows the Tests tab of the metric as selected", async () => {
@@ -223,6 +233,7 @@ describe("CardTestListPage", () => {
 
     await userEvent.click(await screen.findByText("Refunds"));
 
+    expect(await screen.findByTestId("card-test-overview")).toBeInTheDocument();
     expect(router?.location.pathname).toBe(
       Urls.dataStudioMetricTest(CARD_ID, 5),
     );
