@@ -5,7 +5,7 @@ summary: Click on charts, column headers, and table cells to filter, zoom in, se
 
 # Drill-through
 
-Each click on a chart, column header, or table cell opens a menu with options like **Filter by this value**, **See these records**, **Break out by**, and **Zoom in**. Selecting one of these options generates a new query and visualizes the result.
+Drill-through lets you explore data in your Metabase by clicking a chart, a column header, or a table cell. Each click opens a menu with options like **Filter by this value**, **See these records**, **Break out by**, and **Zoom in**. Selecting one of these options generates a new query and visualizes the result.
 
 ![Drill-through menu](../images/drill-through-menu.png)
 

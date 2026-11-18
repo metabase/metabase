@@ -7,6 +7,8 @@ redirect_from:
 
 # Numbers
 
+The **Numbers** option is for displaying a single number, nice and big.
+
 ![Number](../images/number.png)
 
 If you want to display the change in the number from period to period, you can use the [Trend chart](../visualizations/trend.md) instead.

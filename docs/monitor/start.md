@@ -5,7 +5,7 @@ summary: Monitor contains Metabase's troubleshooting and observability tools, so
 
 # Monitor
 
-You can use Monitor to check on the work that Metabase performs in the background, like syncs and alerts.
+Monitor contains Metabase's troubleshooting and observability tools. Use it to find and fix problems with your content, like broken dependencies and failing questions. You can also check on the work Metabase performs in the background, like syncs and alerts.
 
 To open Monitor:
 

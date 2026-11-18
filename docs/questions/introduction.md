@@ -10,7 +10,7 @@ redirect_from:
 
 ![Metabase question](./images/question.png)
 
-Questions are the basic analytical unit in Metabase. You can think about questions as saved queries that you can display as tables or charts.
+Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about questions as saved queries that you can display as tables or charts. You can organize questions into collections and dashboards. You can [embed questions](../embedding/start.md), share links to them, export their results, and have them alert you when results are interesting.
 
 ## Creating a new question
 

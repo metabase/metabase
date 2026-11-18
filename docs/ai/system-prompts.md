@@ -9,7 +9,7 @@ summary: Write custom instructions for Metabot to match your organization's tone
 
 _Admin > AI > System prompts_
 
-You can write a separate prompt for each of Metabot's three main tools:
+System prompts let you customize instructions for Metabot. You can write a separate prompt for each of Metabot's three main tools:
 
 - **Metabot chat**: the general chat sidebar.
 - **Natural language queries**: query-builder questions generated from natural language.

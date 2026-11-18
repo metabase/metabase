@@ -7,6 +7,8 @@ summary: View and revoke specific sessions or all sessions.
 
 {% include plans-blockquote.html feature="Session management" %} 
 
+Admins can use session management to see who's signed in to your Metabase, and sign people out if necessary.
+
 To open the session management tools:
 
 1. Open [Monitor](./start.md).

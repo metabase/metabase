@@ -14,6 +14,8 @@ section: Migrate
 
 > This guide outlines migrating _from_ Metabase Cloud to a self-hosted Metabase. If you want to migrate _to_ Metabase Cloud, check out [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide) instead.
 
+Migration from Metabase Cloud to self-hosted will keep all of your questions, dashboards, people, settings---everything in your existing Metabase.
+
 To migrate, you'll need to [contact our success team](https://www.metabase.com/help-premium) to get a snapshot of your Metabase's [application database](../../installation-and-operation/migrating-from-h2.md#metabases-application-database). This application database contains information about all the settings, questions, dashboards, models, users, etc from your Metabase Cloud instance. The application database is distinct from any of the databases you have connected to your Metabase. You'll need to host your own PostgreSQL database and import your data by restoring from this snapshot of your application database.
 
 ## Preparing to migrate from cloud to self-hosted

@@ -1,6 +1,6 @@
 ---
 title: Modular embedding - authentication
-summary: Adding SSO with JWT or SAML for authenticating modular embeds.
+summary: Set up SSO with JWT or SAML to authenticate people in your modular embeds.
 redirect_from:
   - /docs/latest/embedding/sdk/authentication
 ---
@@ -9,7 +9,11 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Authenticated embeds" sdk=true is_plural=true%}
 
-Use SSO in production. If you're developing locally, you can authenticate with [API keys](#authenticating-locally-with-api-keys) instead.
+For using modular embedding with SSO in production, you'll need to set up authentication.
+
+If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
+
+You can set up SSO with JWT or SAML.
 
 ## Setting up JWT SSO
 

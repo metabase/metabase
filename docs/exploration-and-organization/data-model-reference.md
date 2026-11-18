@@ -10,6 +10,8 @@ redirect_from:
 
 ![Data reference field](./images/data-reference-fields.png)
 
+Metabase's data reference section is a way to browse your metadata.
+
 The data reference includes:
 
 - [Databases](#databases)

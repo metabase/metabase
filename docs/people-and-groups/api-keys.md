@@ -5,6 +5,8 @@ summary: Create API keys for programmatic requests to the Metabase API, with per
 
 # API keys
 
+Metabase can create API keys to authenticate programmatic requests to the API. To set the permissions for an API key, you can assign the key to a [group](./managing.md#groups).
+
 ## Fair warning about Metabase's API
 
 We don't version the [Metabase API](../api.html). We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.

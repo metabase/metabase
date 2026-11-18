@@ -5,6 +5,8 @@ summary: Authenticate people against your LDAP directory and map LDAP groups to 
 
 # LDAP
 
+Metabase supports authentication with Lightweight Directory Access Protocol (LDAP).
+
 ## Required LDAP attributes
 
 You need to set up your LDAP directory with these attributes:

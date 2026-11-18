@@ -5,6 +5,8 @@ summary: Field filters let you create smart filter widgets for your SQL question
 
 # Field filters
 
+Field filters are special variables that you can connect directly to database fields.
+
 ## When to use a field filter variable vs a basic variable
 
 In general, prefer using field filter variables. They offer "smart" filter widgets with dropdown menus and dynamic date pickers.

@@ -7,6 +7,8 @@ redirect_from:
 
 # Tooltips
 
+When you hover over a data point on a chart in Metabase, you'll see a tooltip about that data.
+
 ![Tooltip](../images/tooltip.png)
 
 ## Customizing tooltips with multiple metrics

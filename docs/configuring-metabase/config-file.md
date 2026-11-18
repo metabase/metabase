@@ -1,13 +1,13 @@
 ---
 title: "Configuration file"
-summary: Set up people, databases, API keys, and settings from a config.yml file when Metabase launches, on self-hosted Pro and Enterprise plans.
+summary: On self-hosted Pro and Enterprise plans, set up people, databases, API keys, and settings from a config.yml file when Metabase starts.
 ---
 
 # Configuration file
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-The config file should be located at:
+On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, Metabase supports initialization on launch from a config file. The config file should be located at:
 
 - A file named `config.yml` or `config.yaml` in the current directory (the directory where the running Metabase JAR is located).
 - The path specified by the [`MB_CONFIG_FILE_PATH`](./environment-variables.md#mb_config_file_path) environment variable.

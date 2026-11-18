@@ -9,6 +9,8 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
+With the modular embedding SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
+
 ## Example apps built with the modular embedding SDK
 
 To give you an idea of what's possible with the SDK, we've put together example sites at [metaba.se/sdk-demo](https://metaba.se/sdk-demo). Navigate between different shop websites. Check them out and poke around their products and analytics sections, as well as the New Question and New Dashboard options.

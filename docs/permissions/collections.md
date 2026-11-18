@@ -9,6 +9,8 @@ redirect_from:
 
 ![Collection detail](./images/collection-detail.png)
 
+You can use [collections](../exploration-and-organization/collections.md) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
+
 Metabase starts out with a default top-level collection which is called **Our analytics**, which every other collection is saved inside of.
 
 ## Collection permission levels

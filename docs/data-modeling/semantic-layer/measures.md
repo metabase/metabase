@@ -7,7 +7,7 @@ redirect_from:
 
 # Measures
 
-You can use measures to create an official definition of a calculation—like Net Promoter Score—so everyone in your Metabase uses the same formula instead of writing their own versions.
+Measures are saved aggregations associated with a table. You can use measures to create an official definition of a calculation—like Net Promoter Score—so everyone in your Metabase uses the same formula instead of writing their own versions.
 
 People will see measures as options in the Summarize block of the [query builder](../../questions/query-builder/editor.md).
 

@@ -8,7 +8,9 @@ redirect_from:
 
 # Embedding parameters
 
-Most of this page covers [modular embeds](./modular-embedding.md) with web components or the React SDK. If you're embedding with an iframe, check out [Parameters in iframe embeds](#parameters-in-iframe-embeds).
+This page covers how to pass parameter values to embedded dashboards and SQL questions in [modular embeds](./modular-embedding.md), with either the web components or the React SDK.
+
+If you're embedding with an iframe instead, check out [Parameters in iframe embeds](#parameters-in-iframe-embeds).
 
 ## Parameters differ between guest and SSO embeds
 

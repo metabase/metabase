@@ -7,7 +7,7 @@ summary: "Embed Metabase's visual query builder or SQL editor in your app, so pe
 
 {% include plans-blockquote.html feature="Embedding the query builder" convert_pro_link_to_embedding=true %}
 
-You can embed two editors:
+You can embed one of Metabase's query editors so people can build questions from scratch.
 
 - [Visual query builder](#embed-the-visual-query-builder)
 - [SQL editor](#embed-the-sql-editor)

@@ -7,7 +7,9 @@ redirect_from:
 
 # SSL certificate
 
-You might want to use an SSL certificate if:
+If you'd like to connect your Metabase Cloud or self-hosted instance to a database, you can secure the connection using Secure Socket Layer (SSL) encryption with a certificate.
+
+Why you'd want to do this:
 
 - You're using Metabase Cloud and want to ensure the identity of the data warehouse you're connecting to (e.g., PostgreSQL, MySQL).
 - You're self-hosting Metabase and want to ensure the identity of a data warehouse hosted by an external provider. You can also use this method to ensure you're using the strictest connection parameters when connecting to your application database.

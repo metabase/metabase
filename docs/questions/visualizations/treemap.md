@@ -5,7 +5,7 @@ summary: Visualize hierarchical data as nested rectangles, where a metric sets t
 
 # Treemaps
 
-The rectangles at the lowest level of the hierarchy are called leaves. The value of a metric determines the size of each leaf. Larger values take up more area than smaller values.
+Treemap visualizations display hierarchical data (a tree) as nested rectangles. The rectangles at the lowest level of the hierarchy are called leaves. The value of a metric determines the size of each leaf. Larger values take up more area than smaller values.
 
 When you group by two dimensions, the first dimension determines the parent categories. The second dimension nests inside the parent categories as leaves.
 

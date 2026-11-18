@@ -10,6 +10,8 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Dependency diagnostics" %}
 
+Dependency diagnostics shows you content with broken dependencies, and content that nothing else references.
+
 To open Dependency diagnostics:
 
 1. Open [Monitor](./start.md).

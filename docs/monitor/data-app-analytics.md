@@ -9,7 +9,7 @@ summary: See the questions and actions that your data apps run, who runs them, a
 
 _Monitor > Data app analytics_
 
-For each question and action that your [data apps](../data-apps/start.md) run, data app analytics logs which app ran it, who ran it, when it ran, how long it took, and whether it failed.
+Data app analytics logs each question and action that your [data apps](../data-apps/start.md) run: which app ran it, who ran it, when it ran, how long it took, and whether it failed. Use data app analytics to see which apps people use, and which questions and actions fail.
 
 To view the analytics:
 

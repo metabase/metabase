@@ -5,7 +5,7 @@ summary: Build and run Metabase from source on your own computer to test feature
 
 # Building Metabase
 
-To run a development branch without compiling it, use a [pre-built Docker image](dev-branch-docker.md).
+This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
 
 ## Install the prerequisites
 

@@ -9,6 +9,8 @@ redirect_from:
 
 _Admin > Settings > Slack_
 
+If you want to have your [dashboard subscriptions](../dashboards/subscriptions.md) or [alerts](../questions/alerts.md) sent to Slack channels (or people on Slack), you need to first integrate your Metabase with Slack.
+
 Both admins and people with [settings access](../permissions/application.md#settings-access) can set up Slack.
 
 ## Create your Slack App

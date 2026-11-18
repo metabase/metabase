@@ -7,6 +7,8 @@ redirect_from:
 
 # Questions overview
 
+Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
+
 ## [Question introduction](./introduction.md)
 
 Questions are the basic building blocks of Metabase.

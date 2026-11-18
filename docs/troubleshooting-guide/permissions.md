@@ -5,7 +5,7 @@ summary: Work out whether someone's wrong level of access comes from their group
 
 # Troubleshooting permissions
 
-To find the cause:
+If someone has the wrong level of access to a dashboard or a question, the problem may be coming from group settings, collection permissions, or data permissions.
 
 1. Go to **Admin** > **People** and check if the person is in [more than one group with different permissions][group-permissions].
 2. If a person **can't view or edit** questions or dashboards, see [Troubleshooting collection permissions](#troubleshooting-collection-permissions).

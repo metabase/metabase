@@ -7,7 +7,9 @@ redirect_from:
 
 # Permissions introduction
 
-> Looking for the data that Metabase the company can see? Check out [data privacy and security](https://www.metabase.com/security).
+There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they're supposed to.
+
+If instead you're wondering about what data Metabase the company can see, check out our page on [data privacy and security](https://www.metabase.com/security).
 
 ## Key points regarding permissions
 

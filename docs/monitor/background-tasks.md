@@ -5,6 +5,8 @@ summary: See the status of the tasks and runs that Metabase performs in the back
 
 # Background tasks
 
+The Background tasks page lists the work Metabase performs in the background, including database syncs, alerts, and notifications. Use this page to check the status of tasks and to troubleshoot failures.
+
 To open Background tasks:
 
 1. Open [Monitor](./start.md).

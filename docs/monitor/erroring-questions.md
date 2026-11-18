@@ -10,6 +10,8 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Erroring questions" %}
 
+The Erroring questions page lists the questions that returned an error the last time they ran.
+
 To open Erroring questions:
 
 1. Open [Monitor](./start.md).

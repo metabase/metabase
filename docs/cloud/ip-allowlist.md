@@ -1,6 +1,6 @@
 ---
 title: "IP allowlist"
-summary: Limit access to your Metabase Cloud instance to approved IP addresses, covering the API, embeds, and public links too.
+summary: Limit access to your Metabase Cloud instance, including its API, embeds, and public links, to approved IP addresses.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -10,6 +10,8 @@ layout: new-docs
 ---
 
 # IP allowlist
+
+Use an IP allowlist to limit access to your Metabase instance to approved IP addresses. The allowlist applies to all access to your instance, so people outside the allowlist can't reach the API, embedded dashboards and questions, or public links.
 
 IP allowlists are only available on Metabase Cloud [Pro or Enterprise](https://www.metabase.com/pricing) plans. To restrict access to a self-hosted Metabase, use your own firewall or load balancer, or consider [air-gapping](https://www.metabase.com/product/air-gapping).
 

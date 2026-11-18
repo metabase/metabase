@@ -1,6 +1,6 @@
 ---
 title: Dashboard filters
-summary: Make your dashboards do more with filters and parameters. Instead of creating a bunch of similar dashboards, just add widgets to change variables.
+summary: Add filter and parameter widgets so people can change what data a dashboard shows, and how the dashboard shows it.
 redirect_from:
   - /docs/latest/users-guide/08-dashboard-filters
 ---
@@ -9,11 +9,11 @@ redirect_from:
 
 ![Dashboard Filters](./images/filters.png)
 
-Filter widgets change _what_ data a dashboard shows. Parameter widgets change _how_ the dashboard shows that data.
+Instead of creating duplicate dashboards to show different cuts of the same data (like a different dashboard for each quarter), you can add filter or parameter widgets to let people change _what_ data is displayed (filter the data), or _how_ it's displayed (parameterize the data).
 
 ## Filter and parameter widgets
 
-The type of filter or parameter widget you choose determines how the widget works, including which fields you can connect to the widget.
+There are two basic types of widgets you can add: filters or parameters. The type of filter or parameter widget you choose determines how the widget works, including which fields you can connect to the widget.
 
 ### Filter widgets
 

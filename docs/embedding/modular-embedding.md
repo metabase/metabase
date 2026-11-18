@@ -9,7 +9,7 @@ redirect_from:
 
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
 
-You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.
+Modular embedding lets you embed and customize Metabase [components](./components.md) (like dashboards, the query builder, AI chat, and more) into your own application. You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.
 
 If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 

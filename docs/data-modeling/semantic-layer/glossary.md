@@ -7,7 +7,7 @@ summary: Define terms to help your team and Metabot understand your data.
 
 _Data Studio > Glossary_
 
-Here's an example glossary term:
+The glossary is a place to define terms relevant to your data. Example:
 
 ```txt
 Credit note: An amount applied after the invoice total to reduce what is due. Excluded from ARR; recognized as a one-time revenue impact in accounting, and avoided where possible.

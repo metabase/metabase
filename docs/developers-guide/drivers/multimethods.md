@@ -5,6 +5,8 @@ summary: Implement driver multimethods to extend Metabase's existing driver code
 
 # Implementing multimethods for your driver
 
+Implementing multimethods lets you take advantage of Metabase's existing driver code by extending those methods to work for your particular database.
+
 Let's first focus on the main driver file for our Fox Pro '98 `src/metabase/driver/foxpro98.clj`. Take a look at this sample code:
 
 ```clj

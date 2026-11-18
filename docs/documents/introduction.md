@@ -7,6 +7,8 @@ summary: Create documents to combine text and charts for long-form analysis. Add
 
 ![Document with comment](./images/document-with-comment.png)
 
+Documents let you tell a story with your data by combining text, charts, and other content.
+
 ## Create a document
 
 1. Click the **+ New** button in the top right.
