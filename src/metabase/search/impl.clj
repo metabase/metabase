@@ -73,12 +73,8 @@
   (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
-  [search-ctx instance]
-  (let [user-id (:current-user-id search-ctx)
-        db-id   (:database_id instance)]
-    (and
-     (= :query-builder-and-native (get (perms/every-table-in-database-permissions-for-user (perms/user-info user-id) :perms/create-queries [db-id]) db-id))
-     (= :unrestricted (get (perms/every-table-in-database-permissions-for-user (perms/user-info user-id) :perms/view-data [db-id]) db-id)))))
+  [_search-ctx instance]
+  (boolean (::queryable-database? (meta instance))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -419,6 +415,12 @@
    :model/Measure     [:can_read :can_write]
    :model/Database    [:can_read]})
 
+(def ^:private page-checks
+  "The checks to hydrate on the page of search results, which [[add-can-write]] returns."
+  {:model/Card      [:can_write]
+   :model/Dashboard [:can_write]
+   :model/Table     [:can_write]})
+
 (def ^:private archived-checks
   "The checks to hydrate on archived search results of the models [[hydrated-checks]] leaves out, which only the
   archived permission check reads."
@@ -445,7 +447,7 @@
         (mapcat (fn [[model rows]]
                   (when-let [checks (not-empty (case phase
                                                  :read     (remove #{:can_write} (get hydrated-checks model))
-                                                 :page     (get hydrated-checks model)
+                                                 :page     (get page-checks model)
                                                  :archived (or (get hydrated-checks model)
                                                                (get archived-checks model))))]
                     (for [row (apply t2/hydrate
@@ -455,6 +457,17 @@
                       [[model (:id row)] (merge (select-keys (meta row) checks) (select-keys row checks))]))))
         (group-by t2/model results)))
 
+(defn- queryable-database-ids
+  "The ids of the Databases of the indexed-entity `results` on whose every Table the user of `search-ctx` has unrestricted
+  data access and native query creation, from two permission queries."
+  [search-ctx results]
+  (let [db-ids (into [] (comp (filter #(= "indexed-entity" (:model %))) (keep :database_id) (distinct)) results)]
+    (when (seq db-ids)
+      (let [user   (perms/user-info (:current-user-id search-ctx))
+            create (perms/every-table-in-database-permissions-for-user user :perms/create-queries db-ids)
+            view   (perms/every-table-in-database-permissions-for-user user :perms/view-data db-ids)]
+        (into #{} (filter #(and (= :query-builder-and-native (create %)) (= :unrestricted (view %)))) db-ids)))))
+
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
   per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`."
@@ -463,11 +476,14 @@
         collection-ids (when (not= phase :read)
                          (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
         answers        (with-search-user search-ctx
-                         (merge (collection-check-answers collection-ids) (model-check-answers phase results)))]
+                         (merge (collection-check-answers collection-ids) (model-check-answers phase results)))
+        queryable-dbs  (queryable-database-ids search-ctx results)]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))
-          (vary-meta merge (select-keys answer [:can_read]))))))
+          (vary-meta merge (select-keys answer [:can_read]))
+          (cond-> (= "indexed-entity" (:model result))
+            (vary-meta assoc ::queryable-database? (contains? queryable-dbs (:database_id result))))))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's

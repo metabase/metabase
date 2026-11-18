@@ -1000,6 +1000,57 @@
          :archived_directly true
          :collection_id (:collection_id m)))
 
+(deftest indexed-entity-perms-query-count-test
+  (testing "The database permission check of indexed entities runs once per search, not once per result"
+    (mt/dataset airports
+      (mt/with-temp [:model/Card model {:type          :model
+                                        :dataset_query (mt/mbql-query municipality)}]
+        (model-index/add-values! (model-index/create
+                                  (mt/$ids {:model-id   (:id model)
+                                            :pk-ref     $municipality.id
+                                            :value-ref  $municipality.name
+                                            :creator-id (mt/user->id :rasta)})))
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                       :create-queries :query-builder-and-native}}
+          (let [calls   (atom 0)
+                orig    (mt/original-fn #'perms/every-table-in-database-permissions-for-user)
+                search! (fn [q]
+                          (reset! calls 0)
+                          {:results (count (:data (make-search-request :rasta [:q q :models "indexed-entity" :limit 1000
+                                                                               :search_engine "in-place"])))
+                           :calls   @calls})]
+            (mt/with-dynamic-fn-redefs [perms/every-table-in-database-permissions-for-user
+                                        (fn [& args] (swap! calls inc) (apply orig args))]
+              (let [narrow (search! "san")
+                    broad  (search! "a")]
+                (is (< (* 10 (:results narrow)) (:results broad)))
+                (is (= (:calls narrow) (:calls broad)))))))))))
+
+(deftest document-page-query-count-test
+  (testing "A page of Documents costs no more app DB queries than a single Document"
+    (let [search-string (mt/random-name)]
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (doseq [i (range 10)]
+          (t2/insert! :model/Document {:name          (str search-string " " i)
+                                       :collection_id coll-id
+                                       :creator_id    (mt/user->id :crowberto)
+                                       :document      {:type "doc" :content []}
+                                       :content_type  "application/json+vnd.prose-mirror"}))
+        (try
+          (let [search! (fn [limit]
+                          (t2/with-call-count [call-count]
+                            {:results (count (:data (make-search-request :rasta [:q search-string :models "document"
+                                                                                 :limit limit :search_engine "in-place"])))
+                             :calls   (call-count)}))
+                ;; the first search loads caches the later ones reuse
+                _       (search! 10)
+                one     (search! 1)
+                ten     (search! 10)]
+            (is (= [1 10] [(:results one) (:results ten)]))
+            (is (= (:calls one) (:calls ten))))
+          (finally
+            (t2/delete! :model/Document :collection_id coll-id)))))))
+
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
