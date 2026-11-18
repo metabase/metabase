@@ -14,7 +14,6 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -55,11 +54,6 @@
       (for [saved-test tests]
         (assoc saved-test :last_run (get id->run (:id saved-test)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
-  "Add the newest run, or nil, to each transform test."
-  [_model _k transform-tests]
-  (with-last-runs :transform transform-tests))
-
 (defmethod audit-app/model-details :model/TransformTest
   [transform-test _event-type]
   (select-keys transform-test [:transform_id :name :description]))
@@ -86,21 +80,16 @@
           (or (mi/superuser?)
               (some-> (not-empty query) lib/database-id can-run-native-query?))))))
 
-(defn- can-save-for-transform?
-  "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
-  and run the native SQL of a test against its source Database, as `can-run-native-query?` says."
-  [transform transform-writable? can-run-native-query?]
-  (boolean
-   (and transform
-        transform-writable?
-        (or (mi/superuser?)
-            (some-> (transforms-base.i/source-db-id transform) can-run-native-query?)))))
-
 (mu/defn- can-save? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
+  "Whether the current user may save or delete a test of the Transform `transform-id`: they may write the transform, and
+  run the native SQL of a test against its source Database."
   [transform-id :- ::lib.schema.id/transform]
   (let [transform (data-testing.db/transform transform-id)]
-    (can-save-for-transform? transform (some-> transform (t2/hydrate :can_write) mi/can-write?) can-run-native-query?)))
+    (boolean
+     (and transform
+          (mi/can-write? (t2/hydrate transform :can_write))
+          (or (mi/superuser?)
+              (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
 (mu/defn can-run-test? :- :boolean
   "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
@@ -113,39 +102,114 @@
           (or (mi/superuser?)
               (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TransformTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/transform (:transform_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+;;; ------------------------------------------------- Saved tests --------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
-  "Add whether the current user can write each transform test, loading their transforms at once and checking each
-  source Database once."
-  [_model k transform-tests]
-  (mi/instances-with-hydrated-data
-   transform-tests k
-   #(let [transforms (u/index-by :id (t2/hydrate (data-testing.db/transforms
-                                                  (into [] (comp (keep :transform_id) (distinct)) transform-tests))
-                                                 :can_write))
-          native?    (memoize can-run-native-query?)]
-      (into {}
-            (map (fn [{:keys [id transform_id]}]
-                   [id (and (not (remote-sync/read-only?))
-                            (let [transform (get transforms transform_id)]
-                              (can-save-for-transform? transform (:can_write transform) native?)))]))
-            (remove nil? transform-tests)))
-   :id
-   {:default false}))
+(defmulti saved-test-spec
+  "How a test of the saved-test `model` reaches its subject, as a map:
 
-(defmethod mi/can-create? :model/TransformTest
-  [_model instance]
-  (can-save? (:transform_id instance)))
+  - `:test-type`: the test type its runs record.
+  - `:subject-key`: the column that holds the subject's id.
+  - `:subject`: a function from a subject id to the subject, or nil when no subject has that id.
+  - `:subjects`: a function from subject ids to the subjects that exist.
+  - `:can-save?`: a function from a subject id to whether the current user may save or delete a test of that subject.
+  - `:remote-sync-guard?` (optional): true when, on a read-only remote-sync instance, nobody may write the test and no
+    update may change a column that remote sync exports, whatever the subject allows."
+  {:arglists '([model])}
+  keyword)
 
-(defmethod mi/can-update? :model/TransformTest
+(defn- event-topic
+  "The topic of the `action` (\"create\", \"update\" or \"delete\") event of a test of `test-type`."
+  [test-type action]
+  (keyword "event" (str (name test-type) "-test-" action)))
+
+(methodical/defmethod t2/batched-hydrate [::saved-test :last_run]
+  "Add the newest run, or nil, to each saved test."
+  [model _k saved-tests]
+  (with-last-runs (:test-type (saved-test-spec model)) saved-tests))
+
+(methodical/defmethod t2/simple-hydrate [::saved-test :can_read]
+  [model k instance]
+  (let [{:keys [subject subject-key]} (saved-test-spec model)]
+    (vary-meta instance assoc k (boolean (some-> (subject (subject-key instance)) (t2/hydrate :can_read) mi/can-read?)))))
+
+(defn- remote-sync-refuses-writes?
+  "Whether the remote-sync rule of the saved-test `model` refuses writes now."
+  [model]
+  (boolean (and (:remote-sync-guard? (saved-test-spec model)) (remote-sync/read-only?))))
+
+(methodical/defmethod t2/batched-hydrate [::saved-test :can_write]
+  "Add whether the current user can write each saved test, checking each subject once."
+  [model k saved-tests]
+  (let [{:keys [subject-key can-save?]} (saved-test-spec model)]
+    (mi/instances-with-hydrated-data
+     saved-tests k
+     #(let [writable? (memoize (fn [subject-id]
+                                 (and (not (remote-sync-refuses-writes? model))
+                                      (some? subject-id)
+                                      (can-save? subject-id))))]
+        (into {}
+              (map (fn [saved-test] [(:id saved-test) (boolean (writable? (subject-key saved-test)))]))
+              (remove nil? saved-tests)))
+     :id
+     {:default false})))
+
+(defmethod mi/can-create? ::saved-test
+  [model instance]
+  (let [{:keys [subject-key can-save?]} (saved-test-spec model)]
+    (can-save? (subject-key instance))))
+
+(defmethod mi/can-update? ::saved-test
   [instance changes]
-  (and (can-save? (:transform_id instance))
-       (can-save? (:transform_id changes (:transform_id instance)))
-       (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-           (not (remote-sync/read-only?)))))
+  (let [model                         (t2/model instance)
+        {:keys [subject-key can-save?]} (saved-test-spec model)]
+    (and (can-save? (subject-key instance))
+         (can-save? (subject-key changes (subject-key instance)))
+         (or (not (remote-sync-refuses-writes? model))
+             (not (remote-sync/synced-changes? model instance changes))))))
+
+(defmethod revision/revisions-readable? ::saved-test
+  [model objects]
+  ;; An older revision can name a subject that has since been deleted; nobody may read a revision about it.
+  (let [{:keys [subjects subject-key]} (saved-test-spec model)
+        readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (subjects (into [] (comp (keep subject-key) (distinct)) objects)) :can_read))]
+    (mapv #(contains? readable-ids (subject-key %)) objects)))
+
+(t2/define-after-insert ::saved-test [saved-test]
+  (when-not mi/*deserializing?*
+    (let [model (t2/model saved-test)]
+      (events/publish-event! (event-topic (:test-type (saved-test-spec model)) "create")
+                             {:object  (t2/instance model saved-test)
+                              :user-id (:creator_id saved-test)})))
+  saved-test)
+
+(t2/define-after-update ::saved-test [saved-test]
+  (when-not mi/*deserializing?*
+    (let [model (t2/model saved-test)]
+      (events/publish-event! (event-topic (:test-type (saved-test-spec model)) "update")
+                             {:object (t2/instance model saved-test)})))
+  saved-test)
+
+(t2/define-before-delete ::saved-test [saved-test]
+  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
+  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a database cascade from
+  ;; the subject's table or database, say) leaves the runs' test id naming no test; such runs are never listed or shown
+  ;; as `last_run`.
+  (let [test-type (:test-type (saved-test-spec (t2/model saved-test)))]
+    (data-testing.db/clear-test-id-of-runs! test-type (:id saved-test))
+    (when-not mi/*deserializing?*
+      (events/publish-event! (event-topic test-type "delete") {:object saved-test})))
+  saved-test)
+
+(defmethod saved-test-spec :model/TransformTest
+  [_model]
+  {:test-type          :transform
+   :subject-key        :transform_id
+   :subject            data-testing.db/transform
+   :subjects           data-testing.db/transforms
+   :can-save?          can-save?
+   :remote-sync-guard? true})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -155,10 +219,6 @@
 (defmethod revision/serialize-instance :model/TransformTest
   [_model _id transform-test]
   (select-keys transform-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/TransformTest
-  [_model objects]
-  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/TransformTest %) objects) :can_read)))
 
 (defmethod revision/check-revert-available ::saved-test
   [_model]
@@ -170,19 +230,6 @@
 
 ;;; ---------------------------------------------------- Events ----------------------------------------------------
 
-(t2/define-after-insert :model/TransformTest [transform-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-create
-                           {:object  (t2/instance :model/TransformTest transform-test)
-                            :user-id (:creator_id transform-test)}))
-  transform-test)
-
-(t2/define-after-update :model/TransformTest [transform-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-update
-                           {:object (t2/instance :model/TransformTest transform-test)}))
-  transform-test)
-
 (defenterprise delete-transform-tests!
   "Enterprise implementation: delete the tests of the transform `transform-id`, each through its own hook. Runs
   whatever the token says, since the rows outlive the feature. See the OSS declaration in
@@ -190,14 +237,6 @@
   :feature :none
   [transform-id]
   (data-testing.db/delete-transform-tests! transform-id))
-
-(t2/define-before-delete :model/TransformTest [transform-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook.
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-delete {:object transform-test}))
-  transform-test)
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

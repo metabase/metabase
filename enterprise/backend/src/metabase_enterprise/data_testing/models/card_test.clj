@@ -5,7 +5,6 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.audit-app.core :as audit-app]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -32,11 +31,6 @@
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
-  "Add the newest run, or nil, to each card test."
-  [_model _k card-tests]
-  (data-testing.models/with-last-runs :card card-tests))
-
 (defmethod audit-app/model-details :model/CardTest
   [card-test _event-type]
   (select-keys card-test [:card_id :name :description]))
@@ -49,29 +43,6 @@
   :feature :none
   [card-id]
   (data-testing.db/delete-card-tests! card-id))
-
-(t2/define-before-delete :model/CardTest [card-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
-  ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
-  ;; runs are never listed or shown as `last_run`.
-  (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/card-test-delete {:object card-test}))
-  card-test)
-
-(t2/define-after-insert :model/CardTest [card-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/card-test-create
-                           {:object  (t2/instance :model/CardTest card-test)
-                            :user-id (:creator_id card-test)}))
-  card-test)
-
-(t2/define-after-update :model/CardTest [card-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/card-test-update
-                           {:object (t2/instance :model/CardTest card-test)}))
-  card-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -96,22 +67,13 @@
   ;; expectations read, and not the tables an input reads. So reading the card is not enough.
   (card-allows? mi/can-read? :can_read (:card_id card-test)))
 
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/card (:card_id instance)) (t2/hydrate :can_read) mi/can-read?))))
-
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:card_id instance)))))
-
-(defmethod mi/can-create? :model/CardTest
-  [_model instance]
-  (can-save-test? (:card_id instance)))
-
-(defmethod mi/can-update? :model/CardTest
-  [instance changes]
-  (and (can-save-test? (:card_id instance))
-       (can-save-test? (:card_id changes (:card_id instance)))))
+(defmethod data-testing.models/saved-test-spec :model/CardTest
+  [_model]
+  {:test-type   :card
+   :subject-key :card_id
+   :subject     data-testing.db/card
+   :subjects    data-testing.db/cards-by-ids
+   :can-save?   can-save-test?})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -121,15 +83,6 @@
 (defmethod revision/serialize-instance :model/CardTest
   [_model _id card-test]
   (select-keys card-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/CardTest
-  [_model objects]
-  ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
-  (let [readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))
-                                       :can_read))]
-    (mapv #(contains? readable-ids (:card_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/CardTest
   [_model id _user-id serialized-instance]

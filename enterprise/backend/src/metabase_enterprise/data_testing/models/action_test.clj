@@ -6,7 +6,6 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.actions.core :as actions]
    [metabase.audit-app.core :as audit-app]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -41,11 +40,6 @@
    :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/ActionTest :last_run]
-  "Add the newest run, or nil, to each action test."
-  [_model _k action-tests]
-  (data-testing.models/with-last-runs :action action-tests))
-
 (defmethod audit-app/model-details :model/ActionTest
   [action-test _event-type]
   (select-keys action-test [:action_id :name :description]))
@@ -65,27 +59,6 @@
   :feature :none
   [model-id]
   (data-testing.db/delete-model-action-tests! model-id))
-
-(t2/define-before-delete :model/ActionTest [action-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction.
-  (data-testing.db/clear-test-id-of-runs! :action (:id action-test))
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/action-test-delete {:object action-test}))
-  action-test)
-
-(t2/define-after-insert :model/ActionTest [action-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/action-test-create
-                           {:object  (t2/instance :model/ActionTest action-test)
-                            :user-id (:creator_id action-test)}))
-  action-test)
-
-(t2/define-after-update :model/ActionTest [action-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/action-test-update
-                           {:object (t2/instance :model/ActionTest action-test)}))
-  action-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -132,24 +105,13 @@
   (action-allows? mi/can-read? :can_read (:action_id action-test)
                   #(can-run-query-with-values? % (:parameters action-test))))
 
-(methodical/defmethod t2/simple-hydrate [:model/ActionTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/action (:action_id instance))
-                                               (t2/hydrate :can_read)
-                                               mi/can-read?))))
-
-(methodical/defmethod t2/simple-hydrate [:model/ActionTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:action_id instance)))))
-
-(defmethod mi/can-create? :model/ActionTest
-  [_model instance]
-  (can-save-test? (:action_id instance)))
-
-(defmethod mi/can-update? :model/ActionTest
-  [instance changes]
-  (and (can-save-test? (:action_id instance))
-       (can-save-test? (:action_id changes (:action_id instance)))))
+(defmethod data-testing.models/saved-test-spec :model/ActionTest
+  [_model]
+  {:test-type   :action
+   :subject-key :action_id
+   :subject     data-testing.db/action
+   :subjects    data-testing.db/actions-by-ids
+   :can-save?   can-save-test?})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -159,16 +121,6 @@
 (defmethod revision/serialize-instance :model/ActionTest
   [_model _id action-test]
   (select-keys action-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/ActionTest
-  [_model objects]
-  ;; An older revision can name an action that has since been deleted; nobody may read a revision about it.
-  (let [readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (data-testing.db/actions-by-ids
-                                        (into [] (comp (keep :action_id) (distinct)) objects))
-                                       :can_read))]
-    (mapv #(contains? readable-ids (:action_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/ActionTest
   [_model id _user-id serialized-instance]
