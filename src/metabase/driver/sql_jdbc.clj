@@ -104,6 +104,7 @@
 
 (doseq [feature [:jdbc/statements
                  :jdbc/set-query-timeout
+                 :jdbc/set-max-rows
                  :mbql-5-native-query-execution]]
   (defmethod driver/database-supports? [:sql-jdbc feature]
     [_driver _feature _db]

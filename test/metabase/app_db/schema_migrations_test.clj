@@ -5078,6 +5078,67 @@
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
 
+(deftest segment-test-table-test
+  (testing "lcbmfh..nxuoll: segment_test holds the tests of a segment, and the rollback drops it"
+    (impl/test-migrations ["lcbmfh" "nxuoll"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                              :last_name     "Owner"
+                                                              :email         "segment-test-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                      :engine     "h2"
+                                                                      :created_at :%now
+                                                                      :updated_at :%now
+                                                                      :details    "{}"})
+            table-id     (t2/insert-returning-pk! :metabase_table {:name       "customers"
+                                                                   :db_id      db-id
+                                                                   :active     true
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+            segment-id   (t2/insert-returning-pk! :segment {:name       "Active customers"
+                                                            :entity_id  (u/generate-nano-id)
+                                                            :table_id   table-id
+                                                            :creator_id user-id
+                                                            :definition "{}"
+                                                            :created_at :%now
+                                                            :updated_at :%now})
+            boundary     (with-open [conn (.getConnection (mdb/data-source))]
+                           (liquibase/with-liquibase [liquibase conn]
+                             (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            segment-test (fn [entity-id]
+                           {:entity_id    entity-id
+                            :segment_id   segment-id
+                            :creator_id   user-id
+                            :name         "Churned customers are excluded"
+                            :inputs       "[]"
+                            :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :segment_test (segment-test entity-id))]
+          (testing "a segment test is stored with its timestamps"
+            (is (=? {:segment_id segment-id :creator_id user-id :entity_id entity-id :created_at some? :updated_at some?}
+                    (t2/select-one :segment_test :id test-id))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :segment_test (segment-test entity-id)))))
+          (testing "a segment test must name a segment that exists"
+            (is (thrown? Exception (t2/insert! :segment_test (assoc (segment-test (u/generate-nano-id))
+                                                                    :segment_id Integer/MAX_VALUE)))))
+          (when (= :postgres (mdb/db-type))
+            (testing "entity_id compares byte by byte"
+              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
+                                                          WHERE table_name = 'segment_test' AND column_name = 'entity_id'"]))))))
+          (testing "deleting the segment deletes its tests"
+            (t2/delete! :segment :id segment-id)
+            (is (nil? (t2/select-one :segment_test :id test-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops segment_test"
+          (is (thrown? Exception (t2/select :segment_test))))))))
+
 (deftest backfill-collection-permission-columns-test
   (impl/test-migrations ["fonded" "fonder"] [migrate!]
     (let [group-id      (t2/select-one-fn :id :permissions_group {:order-by [[:id :asc]]})

@@ -85,6 +85,8 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          false
+                              ;; A capped query left a data-test run's transaction aborted; see `:jdbc/set-max-rows`.
+                              :jdbc/set-max-rows                false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false
