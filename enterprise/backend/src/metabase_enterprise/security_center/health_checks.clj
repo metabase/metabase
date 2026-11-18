@@ -30,9 +30,14 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::entry
-  "One check as registered: the texts and the docs link the API returns, and the functions that compute the check.
-  `:applicable?` says whether the check is returned at all. `:run` computes the items and is always fast. `:refresh`,
-  on a background check only, does the slow work and returns a JSON value; `:run` reads it with [[stored-result]]."
+  "One check as registered: the texts and the docs link that the API returns, and the functions that compute the check.
+
+  - `:applicable?` says whether the API returns the check at all.
+  - `:run` computes the items, and must return quickly. It reads only settings, the config and the app DB. It never
+    opens a connection to a connected database and never calls the network.
+  - `:refresh`, on a background check only, does the slow work that `:run` must not do, such as connecting to
+    databases. It returns a JSON value that [[refresh-and-run-checks]] stores, and `:run` reads that value back with
+    [[stored-result]]."
   [:map {:closed true}
    [:id                ::security-center.schema/health-check-id]
    [:severity          ::security-center.schema/severity]
