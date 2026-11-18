@@ -1,7 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
-import type { ColorSettings } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/color-settings";
 
 import Styles from "./Theme.module.css";
 import { DEFAULT_METABASE_COMPONENT_THEME } from "./component-theme";
