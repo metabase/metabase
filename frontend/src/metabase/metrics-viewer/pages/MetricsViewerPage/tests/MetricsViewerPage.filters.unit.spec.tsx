@@ -73,6 +73,21 @@ function getRequestedFilterValues(dimensionId: string) {
   );
 }
 
+/** The bounds of every date range filter the dataset requests sent. */
+function getRequestedDateRanges(dimensionId: string) {
+  return getDatasetRequests().flatMap(({ definition }) =>
+    (definition.filters ?? []).flatMap(({ filter }) => {
+      if (!Array.isArray(filter) || filter[0] !== "between") {
+        return [];
+      }
+      const [, , ref, ...bounds] = filter;
+      return Array.isArray(ref) && ref[2] === dimensionId
+        ? [bounds.map((bound) => String(bound).slice(0, 10))]
+        : [];
+    }),
+  );
+}
+
 async function navigate(
   direction: "back" | "forward",
   page: { router: { back(): void; forward(): void } },
@@ -270,10 +285,16 @@ describe("MetricsViewerPage > filters", () => {
     await click(within(popover).getByRole("button", { name: "Add filter" }));
 
     await waitFor(() =>
-      expect(Object.keys(getLegendColors()).length).toBeLessThan(
-        Object.keys(colorsBefore).length,
-      ),
+      expect(getRequestedDateRanges("orders-created-at")).toContainEqual([
+        "2027-02-01",
+        "2027-02-07",
+      ]),
     );
+    // A 7-day range leaves 3 of the 6 Quantity values in the fixture
+    await waitFor(() =>
+      expect(Object.keys(getLegendColors())).toEqual(["1", "2", "3"]),
+    );
+    expect(Object.keys(colorsBefore)).toHaveLength(6);
     const colorsAfter = getLegendColors();
     Object.entries(colorsAfter).forEach(([label, color]) =>
       expect(colorsBefore[label]).toBe(color),

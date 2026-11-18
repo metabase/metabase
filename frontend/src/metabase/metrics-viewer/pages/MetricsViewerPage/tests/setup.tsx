@@ -52,8 +52,11 @@ import { MetricsViewerPage } from "../MetricsViewerPage";
 
 type DimensionValues = {
   values: RowValue[];
-  /** Values left when the request filters on a time dimension. */
-  valuesWithTimeFilter?: RowValue[];
+  /**
+   * With a date range filter, one value is left for each `daysPerValue` days
+   * of the range, so the rows depend on the bounds the request sends.
+   */
+  daysPerValue?: number;
 };
 
 const CATEGORY_VALUES = ["Doohickey", "Gadget", "Gizmo", "Widget"];
@@ -347,7 +350,7 @@ const DIMENSION_VALUES: Record<string, DimensionValues> = {
   "type/Currency": { values: [20, 40] },
   "type/Quantity": {
     values: [1, 2, 3, 4, 5, 6],
-    valuesWithTimeFilter: [2, 4],
+    daysPerValue: 3,
   },
 };
 
@@ -398,6 +401,29 @@ function isTimeDimension(dimension: MetricDimension) {
   return /Date|Time/.test(dimension.effective_type);
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The number of days a `between` filter on a time dimension covers. */
+function getDateRangeDays(
+  filters: InstanceFilter[],
+  dimensions: MetricDimension[],
+): number | null {
+  for (const { filter } of filters) {
+    const filterRef = findFilterDimensionRef(filter);
+    if (
+      !Array.isArray(filter) ||
+      filter[0] !== "between" ||
+      !filterRef ||
+      !isTimeDimension(findDimension(dimensions, filterRef[2]))
+    ) {
+      continue;
+    }
+    const [start, end] = filter.slice(3).map((value) => Date.parse(value));
+    return Math.round((end - start) / DAY_MS) + 1;
+  }
+  return null;
+}
+
 function getValuesForDimension(
   dimension: MetricDimension,
   ref: DimensionRef,
@@ -408,20 +434,14 @@ function getValuesForDimension(
     return TIME_VALUES_BY_UNIT[ref[1]["temporal-unit"] ?? "month"] ?? [];
   }
 
-  const hasTimeFilter = filters.some((filter) => {
-    const filterRef = findFilterDimensionRef(filter.filter);
-    return (
-      filterRef != null &&
-      isTimeDimension(findDimension(dimensions, filterRef[2]))
-    );
-  });
   const catalog = DIMENSION_VALUES[dimension.semantic_type ?? ""];
   if (!catalog) {
     throw new Error(`No fixture values for dimension ${dimension.id}`);
   }
+  const rangeDays = getDateRangeDays(filters, dimensions);
   const values =
-    hasTimeFilter && catalog.valuesWithTimeFilter
-      ? catalog.valuesWithTimeFilter
+    rangeDays != null && catalog.daysPerValue != null
+      ? catalog.values.slice(0, Math.ceil(rangeDays / catalog.daysPerValue))
       : catalog.values;
 
   // Apply "is" filters on this dimension's column: the backend returns only
@@ -764,7 +784,9 @@ export async function findPills(count: number) {
 
 export function getPillColors(pill: HTMLElement): string[] {
   const container = within(pill).getByTestId("color-indicator-container");
-  return Array.from(container.children).map((child) => {
+  const indicators = Array.from(container.children);
+  expect(indicators.length).toBeGreaterThan(0);
+  return indicators.map((child) => {
     if (!(child instanceof HTMLElement) && !(child instanceof SVGElement)) {
       throw new Error("Unexpected color indicator");
     }
