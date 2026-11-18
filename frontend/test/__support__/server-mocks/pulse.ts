@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type {
   ChannelApiResponse,
+  DashboardSubscription,
   UnsubscribeResponse,
 } from "metabase-types/api";
 
@@ -23,4 +24,10 @@ export const setupUndoUnsubscribeFromPulseEndpoint = (
   response: UnsubscribeResponse,
 ) => {
   fetchMock.post("path:/api/pulse/unsubscribe/undo", response);
+};
+
+export const setupSubscriptionsEndpoint = (
+  subscriptions: DashboardSubscription[],
+) => {
+  fetchMock.get("path:/api/pulse", subscriptions);
 };

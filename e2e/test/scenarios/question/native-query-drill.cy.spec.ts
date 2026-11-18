@@ -377,6 +377,7 @@ describe("scenarios > question > native query drill", () => {
       H.getDashboardCard().within(() => H.cartesianChartCircle().eq(0).click());
       H.popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
+        cy.findByText(/See this/).should("not.exist");
         cy.findByText("=").click();
         cy.wait("@dataset");
       });
