@@ -2204,7 +2204,9 @@
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query {}
+                                            :dataset_query (lib/native-query
+                                                            (lib-be/application-database-metadata-provider (:id db))
+                                                            "SELECT 1")
                                             :database_id   (:id db)})]
             (reset! serialized
                     (->> (serdes.extract/extract {:include-h2? true})

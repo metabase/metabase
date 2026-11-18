@@ -34,6 +34,7 @@
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
@@ -46,6 +47,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -1135,6 +1137,23 @@
                 (is (some? metadata))
                 (is (=? {:id pos-int?}
                         (mt/user-http-request :crowberto :post 200 "card" card)))))))))))
+
+(deftest card-writes-need-real-query-test
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+    (testing "POST /api/card refuses an empty query"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/user-http-request :crowberto :post 400 "card"
+                              (assoc (mt/with-temp-defaults :model/Card) :name "Empty query" :dataset_query {}))))
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+      (testing "PUT /api/card/:id refuses an empty query"
+        (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dataset_query {}}))
+      (testing "a Card whose stored query is empty reads as a stored row and takes edits of its other columns"
+        (t2/query-one {:update :report_card :set {:dataset_query "{}"} :where [:= :id card-id]})
+        (is (mr/validate ::queries.schema/card (t2/select-one :model/Card :id card-id)))
+        (is (not (mr/validate ::queries.schema/card.update {:dataset_query {}})))
+        (is (=? {:name "Renamed"}
+                (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Renamed"})))))))
 
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
