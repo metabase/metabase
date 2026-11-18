@@ -5,14 +5,12 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
-import { getLibraryCollectionDisplayName } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
+import { DataStudioMetricBreadcrumbs } from "metabase-enterprise/data-studio/library/metrics/components/DataStudioMetricBreadcrumbs";
 import type { Card, CardTest } from "metabase-types/api";
 
 type CardTestHeaderProps = {
@@ -20,21 +18,23 @@ type CardTestHeaderProps = {
   test: CardTest;
 };
 
-export function CardTestHeader({ card, test }: CardTestHeaderProps) {
-  const { path, isLoadingPath } = useCollectionPath({
-    collectionId: card.collection_id,
-  });
+function isRunsPathname(pathname: string) {
+  return pathname.endsWith("/runs");
+}
 
+export function CardTestHeader({ card, test }: CardTestHeaderProps) {
+  const overviewUrl = Urls.dataStudioMetricTest(card.id, test.id);
   const runsUrl = Urls.dataStudioMetricTestRuns(card.id, test.id);
   const tabs: PillTab[] = [
     {
       label: t`Overview`,
-      to: Urls.dataStudioMetricTest(card.id, test.id),
+      to: overviewUrl,
+      isSelected: (pathname: string) => !isRunsPathname(pathname),
     },
     {
       label: t`Runs`,
       to: runsUrl,
-      isSelected: (pathname: string) => pathname.startsWith(runsUrl),
+      isSelected: isRunsPathname,
     },
   ];
 
@@ -44,20 +44,10 @@ export function CardTestHeader({ card, test }: CardTestHeaderProps) {
       icon="test_tube"
       tabs={<PillTabNavigation tabs={tabs} />}
       breadcrumbs={
-        <DataStudioBreadcrumbs loading={isLoadingPath}>
-          {path?.map((collection, index) => (
-            <Link
-              key={collection.id}
-              to={Urls.dataStudioLibrary({
-                expandedIds: path.slice(1, index + 1).map(({ id }) => id),
-              })}
-            >
-              {getLibraryCollectionDisplayName(collection)}
-            </Link>
-          ))}
+        <DataStudioMetricBreadcrumbs card={card}>
           <Link to={Urls.dataStudioMetricTestList(card.id)}>{card.name}</Link>
           {test.name}
-        </DataStudioBreadcrumbs>
+        </DataStudioMetricBreadcrumbs>
       }
       data-testid="card-test-header"
     />

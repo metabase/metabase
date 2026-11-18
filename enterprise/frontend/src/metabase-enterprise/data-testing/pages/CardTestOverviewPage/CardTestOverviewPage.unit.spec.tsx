@@ -34,6 +34,7 @@ import { CardTestOverviewPage } from "./CardTestOverviewPage";
 type SetupOpts = {
   test?: CardTest;
   canRunNativeQueries?: boolean;
+  initialRoute?: string;
 };
 
 function setup({
@@ -43,6 +44,7 @@ function setup({
     name: "Revenue ignores refunds",
   }),
   canRunNativeQueries = true,
+  initialRoute = Urls.dataStudioMetricTest(1, test.id),
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupDatabasesEndpoints([
@@ -58,6 +60,10 @@ function setup({
     createMockCard({ id: 1, type: "metric", name: "Revenue", database_id: 1 }),
   );
   setupGetCardTestEndpoint(test);
+  fetchMock.get("path:/api/ee/card-test/99", {
+    status: 404,
+    body: "No such test",
+  });
   setupRunCardTestEndpoint(test.id, {
     status: "passed",
     expectations: [],
@@ -71,7 +77,7 @@ function setup({
     />,
     {
       withRouter: true,
-      initialRoute: Urls.dataStudioMetricTest(1, test.id),
+      initialRoute,
     },
   );
 }
@@ -86,6 +92,37 @@ describe("CardTestOverviewPage", () => {
     expect(
       await screen.findByRole("link", { name: "Revenue" }),
     ).toHaveAttribute("href", Urls.dataStudioMetricTestList(1));
+  });
+
+  it("selects the Overview tab on a URL that carries the metric name", async () => {
+    setup({ initialRoute: "/data-studio/library/metrics/1-revenue/tests/2" });
+
+    expect(
+      await screen.findByRole("tab", { name: "Overview" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Runs" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("says not found when the test belongs to another metric", async () => {
+    setup({ test: createMockCardTest({ id: 2, card_id: 7 }) });
+
+    expect(await screen.findByText("Not found.")).toBeInTheDocument();
+    expect(screen.queryByTestId("card-test-overview")).not.toBeInTheDocument();
+  });
+
+  it("says not found when the test id in the URL is not a number", async () => {
+    setup({ initialRoute: "/data-studio/library/metrics/1/tests/nope" });
+
+    expect(await screen.findByText("Not found.")).toBeInTheDocument();
+  });
+
+  it("shows the error when the test can't be loaded", async () => {
+    setup({ initialRoute: Urls.dataStudioMetricTest(1, 99) });
+
+    expect(await screen.findByText("No such test")).toBeInTheDocument();
   });
 
   it("says when the test has never run", async () => {
