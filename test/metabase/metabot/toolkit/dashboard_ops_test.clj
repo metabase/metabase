@@ -1524,7 +1524,18 @@
                                 [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}
                                  {:op "replace_card" :dashcard_id 7 :card_id 99}
                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
-                                 {:op "replace_card" :dashcard_id 7 :card_id 98}])))))
+                                 {:op "replace_card" :dashcard_id 7 :card_id 98}]))))
+  (testing "a patch that drops the card's own connection doesn't hide its series card's, once that is promoted"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 11)]}}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 11}]))))
+  (testing "an unwire after a promotion drops both connections it stands for on purpose"
+    (is (= []
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}])))))
 
 (deftest dropped-connections-stored-mappings-test
   (testing "a mapping stored without a card id never filtered anything, so losing it is not reported"

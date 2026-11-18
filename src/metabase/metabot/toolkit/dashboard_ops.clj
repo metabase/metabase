@@ -1035,13 +1035,36 @@
    `parameter_mappings`."
   #{"unwire_parameter" "patch_dashcard"})
 
+(defn- promote-origins
+  "`origins` after `op`: for each dashcard id, the stored slots each of its current slots stands for.
+   A slot missing from it stands for itself."
+  [origins state {:keys [op dashcard_id card_id]}]
+  (let [dashcard (some #(when (= dashcard_id (:id %)) %) (:dashcards state))
+        promoted (when (= "replace_card" op) (slot dashcard card_id))]
+    ;; A promoted series card's connection now shares the dashcard's own slot with the stored card's, but a drop
+    ;; asked for before the promotion meant only one of them.
+    (cond-> origins
+      (int? promoted) (update dashcard_id
+                              (fn [m]
+                                (assoc m :card (set/union (get m :card #{:card}) (get m promoted #{promoted}))))))))
+
+(defn- stored-connections
+  "The [[slot-connections]] of `dashcards`, with each slot replaced by the stored slots it stands for in `origins`."
+  [origins dashcards]
+  (into #{}
+        (for [[parameter-id dashcard-id s] (slot-connections dashcards)
+              stored-slot                  (get-in origins [dashcard-id s] #{s})]
+          [parameter-id dashcard-id stored-slot])))
+
 (defn- apply-op-tracking-drops
-  "Runs [[apply-op-at]], and keeps `::asked-drops`, the connections, as [[slot-connections]] gives them, that an op
+  "Runs [[apply-op-at]], and keeps `::asked-drops`, the connections, as [[stored-connections]] gives them, that an op
    in [[intentional-drop-ops]] removed and no later op restored."
   [state idx op]
-  (let [before (slot-connections (:dashcards state))
-        state' (apply-op-at state idx op)
-        after  (slot-connections (:dashcards state'))]
+  (let [origins  (::slot-origins state)
+        origins' (promote-origins origins state op)
+        before   (stored-connections origins (:dashcards state))
+        state'   (assoc (apply-op-at state idx op) ::slot-origins origins')
+        after    (stored-connections origins' (:dashcards state'))]
     (update state' ::asked-drops
             (fn [asked]
               (cond-> (set/difference (or asked #{}) after)
@@ -1072,7 +1095,7 @@
                :when (and (surviving-parameter? parameter-id)
                           new-slot
                           (not (contains? after [parameter-id dashcard-id new-slot]))
-                          (not (contains? asked-drops [parameter-id dashcard-id new-slot])))]
+                          (not (contains? asked-drops [parameter-id dashcard-id stored-slot])))]
            {:parameter_id parameter-id
             :dashcard_id  dashcard-id
             :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
