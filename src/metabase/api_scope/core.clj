@@ -90,3 +90,11 @@
   (when (string? scope-string)
     (when-not (str/blank? scope-string)
       (into #{} (str/split (str/trim scope-string) #"\s+")))))
+
+(defn jwt-claim-scopes
+  "Return the allowed scopes from verified JWT `claims`, or nil when there is no `scope` claim.
+
+  A blank claim, or one that isn't a string, allows no scopes."
+  [claims]
+  (when-let [[_ claim] (find claims :scope)]
+    (or (parse-scopes claim) #{})))
