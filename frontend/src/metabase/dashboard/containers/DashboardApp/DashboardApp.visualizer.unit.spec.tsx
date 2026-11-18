@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import { getInstanceByDom } from "echarts/core";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupBookmarksEndpoints,
   setupCardEndpoints,
@@ -19,6 +21,9 @@ import { mockSettings } from "__support__/settings";
 import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  type TestRouter,
+  act,
+  fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -26,6 +31,7 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
@@ -34,6 +40,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import { GOAL_LINE_DASH } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
@@ -42,6 +49,10 @@ import type {
   Dataset,
   DatasetColumn,
   Field,
+  FieldId,
+  OpaqueDatasetQuery,
+  TableId,
+  TestBreakoutSpec,
   VisualizerColumnValueSource,
   VisualizerDashboardCard,
 } from "metabase-types/api";
@@ -63,7 +74,13 @@ import {
   createMockSearchResult,
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import { isObject } from "metabase-types/guards";
 
 registerVisualizations();
@@ -71,33 +88,71 @@ registerDashboardVisualizations();
 
 const DASHBOARD_ID = 10;
 const DATABASE = createSampleDatabase();
+const METADATA = createMockMetadata({ databases: [DATABASE] });
 const STRUCTURED_QUERY = Lib.toJsQuery(
   Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 );
 
-const createdAtColumn = createMockDatetimeColumn({
-  id: 101,
-  name: "CREATED_AT",
-  display_name: "Created At: Month",
-  unit: "month",
-});
+const COUNT = { type: "operator", operator: "count", args: [] } as const;
+
+const countByQuery = (
+  tableId: TableId,
+  breakout: TestBreakoutSpec,
+): OpaqueDatasetQuery =>
+  Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: tableId },
+        aggregations: [COUNT],
+        breakouts: [breakout],
+      },
+    ],
+  });
+
+const createdAtColumn = (fieldId: FieldId) =>
+  createMockDatetimeColumn({
+    id: fieldId,
+    name: "CREATED_AT",
+    display_name: "Created At: Month",
+    unit: "month",
+    source: "breakout",
+    field_ref: ["field", fieldId, { "temporal-unit": "month" }],
+  });
 const countColumn = createMockNumericColumn({
   id: undefined,
   name: "count",
   display_name: "Count",
   source: "aggregation",
 });
-const categoryColumn = createMockCategoryColumn({
-  id: 102,
+const ordersCategoryColumn = createMockCategoryColumn({
+  id: PRODUCTS.CATEGORY,
   name: "CATEGORY",
   display_name: "Product → Category",
+  source: "breakout",
+  fk_field_id: ORDERS.PRODUCT_ID,
+  field_ref: [
+    "field",
+    PRODUCTS.CATEGORY,
+    { "source-field": ORDERS.PRODUCT_ID },
+  ],
+});
+const productsCategoryColumn = createMockCategoryColumn({
+  id: PRODUCTS.CATEGORY,
+  name: "CATEGORY",
+  display_name: "Category",
+  source: "breakout",
+  field_ref: ["field", PRODUCTS.CATEGORY, null],
 });
 
 const ORDERS_BY_CREATED_AT = createMockCard({
   id: 1,
   name: "Orders by Created At (Month)",
   display: "line",
-  dataset_query: STRUCTURED_QUERY,
+  dataset_query: countByQuery(ORDERS_ID, {
+    type: "column",
+    fieldId: ORDERS.CREATED_AT,
+    unit: "month",
+  }),
   visualization_settings: {
     "graph.dimensions": ["CREATED_AT"],
     "graph.metrics": ["count"],
@@ -107,7 +162,11 @@ const PRODUCTS_BY_CREATED_AT = createMockCard({
   id: 2,
   name: "Products by Created At (Month)",
   display: "bar",
-  dataset_query: STRUCTURED_QUERY,
+  dataset_query: countByQuery(PRODUCTS_ID, {
+    type: "column",
+    fieldId: PRODUCTS.CREATED_AT,
+    unit: "month",
+  }),
   visualization_settings: {
     "graph.dimensions": ["CREATED_AT"],
     "graph.metrics": ["count"],
@@ -117,7 +176,11 @@ const ORDERS_BY_CATEGORY = createMockCard({
   id: 3,
   name: "Orders by Product Category",
   display: "bar",
-  dataset_query: STRUCTURED_QUERY,
+  dataset_query: countByQuery(ORDERS_ID, {
+    type: "column",
+    fieldId: PRODUCTS.CATEGORY,
+    sourceFieldId: ORDERS.PRODUCT_ID,
+  }),
   visualization_settings: {
     "graph.dimensions": ["CATEGORY"],
     "graph.metrics": ["count"],
@@ -127,7 +190,10 @@ const PRODUCTS_BY_CATEGORY = createMockCard({
   id: 4,
   name: "Products by Category",
   display: "bar",
-  dataset_query: STRUCTURED_QUERY,
+  dataset_query: countByQuery(PRODUCTS_ID, {
+    type: "column",
+    fieldId: PRODUCTS.CATEGORY,
+  }),
   visualization_settings: {
     "graph.dimensions": ["CATEGORY"],
     "graph.metrics": ["count"],
@@ -164,10 +230,13 @@ const ORDERS_TABLE = createMockCard({
   dataset_query: STRUCTURED_QUERY,
 });
 
-const timeseriesDataset = (counts: [number, number, number]) =>
+const timeseriesDataset = (
+  counts: [number, number, number],
+  fieldId: FieldId = ORDERS.CREATED_AT,
+) =>
   createMockDataset({
     data: createMockDatasetData({
-      cols: [createdAtColumn, countColumn],
+      cols: [createdAtColumn(fieldId), countColumn],
       rows: [
         ["2024-01-01T00:00:00Z", counts[0]],
         ["2024-02-01T00:00:00Z", counts[1]],
@@ -176,7 +245,10 @@ const timeseriesDataset = (counts: [number, number, number]) =>
     }),
   });
 
-const categoryDataset = (counts: [number, number, number, number]) =>
+const categoryDataset = (
+  counts: [number, number, number, number],
+  categoryColumn: DatasetColumn,
+) =>
   createMockDataset({
     data: createMockDatasetData({
       cols: [categoryColumn, countColumn],
@@ -224,18 +296,38 @@ const ordersTableColumns: DatasetColumn[] = [
 
 const DATASETS: Record<CardId, Dataset> = {
   [ORDERS_BY_CREATED_AT.id]: timeseriesDataset([10, 20, 30]),
-  [PRODUCTS_BY_CREATED_AT.id]: timeseriesDataset([4, 5, 6]),
-  [ORDERS_BY_CATEGORY.id]: categoryDataset([1, 2, 3, 4]),
-  [PRODUCTS_BY_CATEGORY.id]: categoryDataset([5, 6, 7, 8]),
+  [PRODUCTS_BY_CREATED_AT.id]: timeseriesDataset(
+    [4, 5, 6],
+    PRODUCTS.CREATED_AT,
+  ),
+  [ORDERS_BY_CATEGORY.id]: categoryDataset([1, 2, 3, 4], ordersCategoryColumn),
+  [PRODUCTS_BY_CATEGORY.id]: categoryDataset(
+    [5, 6, 7, 8],
+    productsCategoryColumn,
+  ),
   [STEP_COLUMN.id]: createMockDataset({
     data: createMockDatasetData({
-      cols: [createMockCategoryColumn({ name: "Step", display_name: "Step" })],
+      cols: [
+        createMockCategoryColumn({
+          id: undefined,
+          name: "Step",
+          display_name: "Step",
+          source: "native",
+        }),
+      ],
       rows: [["Landing page"], ["Checkout page"], ["Payment done page"]],
     }),
   }),
   [VIEWS_COLUMN.id]: createMockDataset({
     data: createMockDatasetData({
-      cols: [createMockNumericColumn({ name: "Views", display_name: "Views" })],
+      cols: [
+        createMockNumericColumn({
+          id: undefined,
+          name: "Views",
+          display_name: "Views",
+          source: "native",
+        }),
+      ],
       rows: [[1000], [600], [100]],
     }),
   }),
@@ -249,6 +341,41 @@ const DATASETS: Record<CardId, Dataset> = {
     }),
   }),
 };
+
+/**
+ * A `field_ref` as the backend sends it for aggregation and native columns.
+ * Drills map a clicked column back to the query by it.
+ */
+function getBackendFieldRef(column: DatasetColumn): DatasetColumn["field_ref"] {
+  if (column.source === "aggregation") {
+    return ["aggregation", 0];
+  }
+  if (column.source === "native" && column.base_type != null) {
+    return ["field", column.name, { "base-type": column.base_type }];
+  }
+  return column.field_ref;
+}
+
+const DATASETS_WITH_FIELD_REFS: Record<CardId, Dataset> = Object.fromEntries(
+  Object.entries(DATASETS).map(([cardId, dataset]) => [
+    cardId,
+    {
+      ...dataset,
+      data: {
+        ...dataset.data,
+        cols: dataset.data.cols.map((column) => ({
+          ...column,
+          field_ref: getBackendFieldRef(column),
+        })),
+      },
+    },
+  ]),
+);
+
+function isNativeCard(card: Card) {
+  const query = Lib.fromJsQueryAndMetadata(METADATA, card.dataset_query);
+  return Lib.queryDisplayInfo(query).isNative;
+}
 
 /** A query result column as the search API describes it in `result_metadata` */
 const toResultMetadata = (column: DatasetColumn): Field =>
@@ -542,7 +669,16 @@ function setupEndpoints({
   setupDatabasesEndpoints([DATABASE]);
   setupDashboardQueryMetadataEndpoint(
     dashboard,
-    createMockDashboardQueryMetadata({ databases: [DATABASE] }),
+    createMockDashboardQueryMetadata({
+      databases: [DATABASE],
+      // the backend adds native cards, whose columns their drills need
+      cards: cards
+        .filter((card) => isNativeCard(card))
+        .map((card) => ({
+          ...card,
+          result_metadata: datasets[card.id]?.data.cols ?? null,
+        })),
+    }),
   );
   setupCollectionsEndpoints({
     collections: [
@@ -833,6 +969,106 @@ async function hoverInfoIcon(dashcardId: number) {
   const dashcard = await findDashcard(dashcardId);
   await userEvent.hover(within(dashcard).getByLabelText("info icon"));
   return screen.findByRole("tooltip");
+}
+
+/** zrender element types: "path" for line chart points, "rect" for bars */
+type ChartElementType = "path" | "rect" | "sector";
+
+type ChartElementTarget = {
+  type: ChartElementType;
+  color: string;
+  index: number;
+};
+
+function getChart(dashcard: HTMLElement) {
+  const chartRoot = within(dashcard).getByTestId("chart-container");
+  return checkNotNull(getInstanceByDom(chartRoot));
+}
+
+/**
+ * The coordinates of a point that hits a chart element, which zrender finds by
+ * geometry rather than by DOM target. Elements of the given type and color are
+ * ordered from left to right.
+ */
+function getChartElementPoint(
+  dashcard: HTMLElement,
+  { type, color, index }: ChartElementTarget,
+) {
+  const zr = getChart(dashcard).getZr();
+  const elements = zr.storage
+    .getDisplayList()
+    .filter(
+      (element) =>
+        element.type === type &&
+        (element.style.fill === color || element.style.stroke === color),
+    )
+    .map((element) => {
+      const rect = element.getBoundingRect().clone();
+      rect.applyTransform(element.getComputedTransform());
+      return { element, rect };
+    })
+    .sort((a, b) => a.rect.x - b.rect.x);
+  const { element, rect } = checkNotNull(elements.at(index));
+  const STEPS = 20;
+  for (let i = 1; i < STEPS; i++) {
+    for (let j = 1; j < STEPS; j++) {
+      const x = rect.x + (rect.width * i) / STEPS;
+      const y = rect.y + (rect.height * j) / STEPS;
+      if (zr.handler.findHover(x, y).target === element) {
+        return { x, y };
+      }
+    }
+  }
+  throw new Error(`No point hits the ${type} element at ${index}`);
+}
+
+function getChartSurface(dashcard: HTMLElement) {
+  const chartRoot = getChart(dashcard).getDom();
+  return checkNotNull(chartRoot.querySelector("svg"));
+}
+
+function clickChartElement(dashcard: HTMLElement, target: ChartElementTarget) {
+  const { x, y } = getChartElementPoint(dashcard, target);
+  const surface = getChartSurface(dashcard);
+  const coords = { clientX: x, clientY: y };
+  fireEvent.mouseMove(surface, coords);
+  fireEvent.mouseDown(surface, coords);
+  fireEvent.mouseUp(surface, coords);
+  fireEvent.click(surface, coords);
+}
+
+/** Drags across the chart from one element to another */
+function brushChart(
+  dashcard: HTMLElement,
+  from: ChartElementTarget,
+  to: ChartElementTarget,
+) {
+  const start = getChartElementPoint(dashcard, from);
+  const end = getChartElementPoint(dashcard, to);
+  const surface = getChartSurface(dashcard);
+  fireEvent.mouseDown(surface, { clientX: start.x, clientY: start.y });
+  fireEvent.mouseMove(surface, { clientX: end.x, clientY: end.y });
+  fireEvent.mouseUp(surface, { clientX: end.x, clientY: end.y });
+}
+
+/** The ad-hoc question that a drill opens, as the query builder would show it */
+async function findDrilledQuestion(router: TestRouter) {
+  await waitFor(() => expect(router.location.pathname).toBe("/question"));
+  const card = deserializeCardFromUrl(router.location.hash);
+  const query = new Question(card, METADATA).query();
+  const getNames = (clauses: Lib.Clause[]) =>
+    clauses.map((clause) => Lib.displayInfo(query, -1, clause).longDisplayName);
+  return {
+    originalCardId: card.original_card_id,
+    sourceTableId: Lib.primarySourceTableId(query),
+    filters: getNames(Lib.filters(query, -1)),
+    aggregations: getNames(Lib.aggregations(query, -1)),
+    breakouts: getNames(Lib.breakouts(query, -1)),
+  };
+}
+
+async function findClickActions() {
+  return screen.findByTestId("click-actions-view");
 }
 
 describe("DashboardApp > visualizer", () => {
@@ -1842,5 +2078,215 @@ describe("DashboardApp > visualizer", () => {
         ).toBeInTheDocument();
       },
     );
+  });
+
+  describe("drill-through", () => {
+    const ORDERS_COLOR = "#509EE3";
+    const PRODUCTS_LINE_COLOR = "#88BF4D";
+    const PRODUCTS_BAR_COLOR = "#EF8C8C";
+
+    async function setupDrills() {
+      const view = await setup({
+        dashcards: VISUALIZER_DASHBOARD_DASHCARDS,
+        datasets: DATASETS_WITH_FIELD_REFS,
+      });
+      return view;
+    }
+
+    it("should drill into the series of a timeseries chart that is clicked (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const dashcard = await findDashcard(MULTI_SERIES_LINE_DASHCARD.id);
+
+      clickChartElement(dashcard, {
+        type: "path",
+        color: PRODUCTS_LINE_COLOR,
+        index: 1,
+      });
+      await userEvent.click(
+        within(await findClickActions()).getByText("See these Products"),
+      );
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: PRODUCTS_BY_CREATED_AT.id,
+        sourceTableId: PRODUCTS_ID,
+        filters: ["Created At is Feb 1–29, 2024"],
+        aggregations: [],
+        breakouts: [],
+      });
+    });
+
+    it("should break out the clicked point of the first series of a timeseries chart (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const dashcard = await findDashcard(MULTI_SERIES_LINE_DASHCARD.id);
+
+      clickChartElement(dashcard, {
+        type: "path",
+        color: ORDERS_COLOR,
+        index: 1,
+      });
+      const clickActions = await findClickActions();
+      await userEvent.click(within(clickActions).getByText("Break out by…"));
+      await userEvent.click(
+        within(await findClickActions()).getByText("Category"),
+      );
+      const columnPicker = screen.getByTestId("click-actions-popover");
+      await userEvent.click(within(columnPicker).getByText("User"));
+      await userEvent.click(await within(columnPicker).findByText("Source"));
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: ORDERS_BY_CREATED_AT.id,
+        sourceTableId: ORDERS_ID,
+        filters: ["Created At is Feb 1–29, 2024"],
+        aggregations: ["Count"],
+        breakouts: ["User → Source"],
+      });
+    });
+
+    it.each([
+      {
+        name: ORDERS_BY_CREATED_AT.name,
+        path: `/question/${ORDERS_BY_CREATED_AT.id}-orders-by-created-at-month`,
+      },
+      {
+        name: PRODUCTS_BY_CREATED_AT.name,
+        path: `/question/${PRODUCTS_BY_CREATED_AT.id}-products-by-created-at-month`,
+      },
+    ])(
+      "should open the question of the legend item $name (VIZ-979)",
+      async ({ name, path }) => {
+        const { router } = await setupDrills();
+        const dashcard = await findDashcard(MULTI_SERIES_LINE_DASHCARD.id);
+
+        const legend = within(dashcard).getByLabelText("Legend");
+        await userEvent.click(within(legend).getByText(name));
+
+        await waitFor(() => expect(router.location.pathname).toBe(path));
+      },
+    );
+
+    it("should drill into the series of a category chart that is clicked (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const dashcard = await findDashcard(MULTI_SERIES_BAR_DASHCARD.id);
+
+      clickChartElement(dashcard, {
+        type: "rect",
+        color: ORDERS_COLOR,
+        index: 1,
+      });
+      await userEvent.click(
+        within(await findClickActions()).getByText("See these Orders"),
+      );
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: ORDERS_BY_CATEGORY.id,
+        sourceTableId: ORDERS_ID,
+        filters: ["Product → Category is Gadget"],
+        aggregations: [],
+        breakouts: [],
+      });
+    });
+
+    it("should filter by the value of the second series of a category chart (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const dashcard = await findDashcard(MULTI_SERIES_BAR_DASHCARD.id);
+
+      clickChartElement(dashcard, {
+        type: "rect",
+        color: PRODUCTS_BAR_COLOR,
+        index: 2,
+      });
+      await userEvent.click(
+        within(await findClickActions()).getByRole("button", { name: ">" }),
+      );
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: PRODUCTS_BY_CATEGORY.id,
+        sourceTableId: PRODUCTS_ID,
+        filters: ["Count is greater than 7"],
+        aggregations: [],
+        breakouts: [],
+      });
+    });
+
+    it("should drill into the clicked slice of a pie chart (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const dashcard = await findDashcard(PIE_DASHCARD.id);
+
+      clickChartElement(dashcard, {
+        type: "sector",
+        color: "#F9D45C",
+        index: 0,
+      });
+      await userEvent.click(
+        within(await findClickActions()).getByText("See these Products"),
+      );
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: PRODUCTS_BY_CATEGORY.id,
+        sourceTableId: PRODUCTS_ID,
+        filters: ["Category is Gadget"],
+        aggregations: [],
+        breakouts: [],
+      });
+    });
+
+    it("should hide the tooltip of a funnel step once its click actions open (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const dashcard = await findDashcard(FUNNEL_DASHCARD.id);
+      const [, paymentDoneStep] = Array.from(
+        // eslint-disable-next-line testing-library/no-node-access -- funnel steps are SVG polygons without a role or label
+        dashcard.querySelectorAll("polygon"),
+      );
+
+      await userEvent.hover(paymentDoneStep);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Payment done page",
+      );
+
+      await userEvent.click(paymentDoneStep);
+      const clickActions = await findClickActions();
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(clickActions).getByRole("button", { name: "=" }),
+      );
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: VIEWS_COLUMN.id,
+        sourceTableId: null,
+        filters: ["Views is equal to 100"],
+        aggregations: [],
+        breakouts: [],
+      });
+    });
+
+    it("should brush filter a single-series timeseries chart but not a multi-series one (VIZ-979)", async () => {
+      const { router } = await setupDrills();
+      const multiSeries = await findDashcard(MULTI_SERIES_LINE_DASHCARD.id);
+      const singleSeries = await findDashcard(REGULAR_LINE_DASHCARD.id);
+      // the brush is turned on once the chart has rendered
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+      brushChart(
+        multiSeries,
+        { type: "path", color: ORDERS_COLOR, index: 1 },
+        { type: "path", color: ORDERS_COLOR, index: 2 },
+      );
+      expect(router.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`);
+
+      brushChart(
+        singleSeries,
+        { type: "rect", color: ORDERS_COLOR, index: 1 },
+        { type: "rect", color: ORDERS_COLOR, index: 2 },
+      );
+
+      expect(await findDrilledQuestion(router)).toEqual({
+        originalCardId: PRODUCTS_BY_CREATED_AT.id,
+        sourceTableId: PRODUCTS_ID,
+        filters: ["Created At is Feb 1, 12:00 AM – Mar 1, 2024, 12:00 AM"],
+        aggregations: ["Count"],
+        breakouts: ["Created At: Week"],
+      });
+    });
   });
 });
