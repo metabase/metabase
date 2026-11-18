@@ -347,6 +347,34 @@
                               {:entity :card, :id card-id, :revision_id earlier-revision-id})
         (is (= 2 (-> (t2/select-one :model/Card :id card-id) :dataset_query lib/fields count)))))))
 
+(deftest revert-native-model-restores-edited-metadata-test
+  (testing "editing the column metadata of a native model records a revision that a revert restores"
+    (let [column   (fn [display-name]
+                     {:name "TOTAL" :display_name display-name :base_type "type/Float" :effective_type "type/Float"
+                      :field_ref ["field" "TOTAL" {:base-type "type/Float"}]})
+          query    (lib/native-query (mt/metadata-provider) "SELECT TOTAL FROM ORDERS LIMIT 5")
+          {card-id :id} (mt/user-http-request :crowberto :post 200 "card"
+                                              {:name                   "Native Model"
+                                               :type                   "model"
+                                               :dataset_query          query
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :result_metadata        [(column "TOTAL")]})
+          display  #(-> (t2/select-one :model/Card :id card-id) :result_metadata first :display_name)]
+      (try
+        (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:result_metadata [(column "Pre-tax")]})
+        (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:result_metadata [(column "Tax")]})
+        (is (= "Tax" (display)))
+        (let [revisions (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)
+              pre-tax   (some #(when (= "Pre-tax" (-> % :diff :after :result_metadata first :display_name)) %) revisions)]
+          (is (= 3 (count revisions)))
+          (is (some? pre-tax))
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity :card, :id card-id, :revision_id (:id pre-tax)})
+          (is (= "Pre-tax" (display))))
+        (finally
+          (t2/delete! :model/Card :id card-id))))))
+
 (deftest revert-card-to-revision-stored-with-public-link-and-embedding-columns-test
   (testing "a non-admin who writes a card reverts it to a revision whose object carries unchanged public-link and embedding columns"
     (mt/with-temp [:model/Card {card-id :id} {:name "Before", :dataset_query (mt/mbql-query venues)}]
