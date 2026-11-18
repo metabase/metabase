@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -8,9 +9,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.core :as workspaces]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -36,7 +39,7 @@
                                                   [:sequential
                                                    [:map {:closed true}
                                                     [:name               ms/NonBlankString]
-                                                    [:details            ms/DatabaseDetails]]]]]]
+                                                    [:details            ::warehouses.schema/database.connection-details]]]]]]
   (workspaces/check-not-in-workspace-mode! "Database routing")
   (api/check-400 (database-routing.db/router-exists? router_database_id))
   (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
@@ -55,44 +58,31 @@
                                        seq)]
       {:status 400
        :body (into {} invalid-destinations)}
-      (u/prog1 (database-routing.db/insert-databases!
-                (map (fn [{:keys [name details]}]
-                       {:name               name
-                        :engine             engine
-                        :details            details
-                        :auto_run_queries   auto_run_queries
-                        :is_full_sync       false
-                        :is_on_demand       is_on_demand
-                        :cache_ttl          nil
-                        :router_database_id router_database_id
-                        :creator_id         api/*current-user-id*})
-                     destinations))
-        (doseq [database <>]
-          (events/publish-event! :event/database-create {:object database
-                                                         :user-id api/*current-user-id*
-                                                         :details {:slug name
-                                                                   :primary_db_name (:name router-db)
-                                                                   :primary_db_id (:id router-db)}}))))))
+      (events/with-event-context {:details {:primary_db_name (:name router-db)
+                                            :primary_db_id   (:id router-db)}}
+        (u/prog1 (database-routing.db/insert-databases!
+                  (map (fn [{:keys [name details]}]
+                         {:name               name
+                          :engine             engine
+                          :details            details
+                          :auto_run_queries   auto_run_queries
+                          :is_full_sync       false
+                          :is_on_demand       is_on_demand
+                          :cache_ttl          nil
+                          :router_database_id router_database_id
+                          :creator_id         api/*current-user-id*})
+                       destinations))
+          (run! #(sync/start-initial-sync! % nil) <>))))))
 
 (defn- delete-router!
   [db-id]
-  (let [db (database-routing.db/database db-id)]
-    (events/publish-event! :event/database-update {:object db
-                                                   :previous-object db
-                                                   :user-id api/*current-user-id*
-                                                   :details {:db_routing :disabled}})
-    (database-routing.db/delete-router! db-id)))
+  (database-routing.db/delete-router! db-id))
 
 (defn- create-or-update-router!
   [db-id user-attribute]
   (let [db (database-routing.db/database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
-    (events/publish-event! :event/database-update {:object db
-                                                   :previous-object db
-                                                   :user-id api/*current-user-id*
-                                                   :details {:db_routing :enabled
-                                                             :routing_attribute user-attribute}})
     (if (database-routing.db/router-for-database db-id)
       (database-routing.db/update-router-user-attribute! db-id user-attribute)
       (database-routing.db/insert-router! db-id user-attribute))))
@@ -109,7 +99,7 @@
   depending on the value of `user_attribute`"
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ::database-routing.schema/database-router.user-attribute]]]]
   (workspaces/check-not-in-workspace-mode! "Database routing")
   (let [db (database-routing.db/database id)]
     (api/check-404 db)

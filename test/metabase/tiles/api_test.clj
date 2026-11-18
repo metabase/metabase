@@ -77,7 +77,7 @@
   [field-name]
   (let [col (m/find-first #(= (:id %) (mt/id :people field-name))
                           (lib/visible-columns (implicit-join-query)))]
-    (json/encode (lib/->legacy-MBQL (lib/ref col)))))
+    (json/encode (lib/->legacy-MBQL-ref (lib/ref col)))))
 
 (deftest ^:parallel ad-hoc-query-test
   (testing "GET /api/tiles/:zoom/:x/:y with latField and lonField query params"

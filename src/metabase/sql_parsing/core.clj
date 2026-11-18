@@ -7,7 +7,6 @@
   API:
     (referenced-tables sql dialect) → [[catalog schema table] ...]
     (referenced-fields dialect sql) → [[catalog schema table field] ...]
-    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
   GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
@@ -21,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
+   (java.util IdentityHashMap)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -355,38 +355,6 @@
   [dialect sql]
   (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
 
-(defn validate-query
-  "Validate a SQL query against a schema using sqlglot's qualify optimizer.
-
-   Operates in two modes based on whether a schema is provided:
-
-   **Strict mode** (sqlglot-schema provided):
-   Validates that column and table references exist in the provided schema.
-   Returns errors for unknown tables, unresolved columns, missing table aliases.
-
-   **Permissive mode** (sqlglot-schema is nil or empty):
-   Only checks SQL syntax. Infers schema from query structure.
-   Useful for UDTFs and queries where the schema is unknown.
-
-   Parameters:
-   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil
-   - sql: The SQL query string to validate
-   - default-table-schema: Default schema name for unqualified table references
-   - sqlglot-schema: Schema map of {schema-name {table-name {column-name type}}},
-                     or nil/empty for permissive mode
-
-   Returns a map with:
-   - If valid: {:status \"ok\"}
-   - If error: {:status \"error\", :type \"...\", :message \"...\", ...}
-
-   Error types (strict mode):
-   - \"unknown_table\": Table not found in schema
-   - \"column_not_resolved\": Column not found (includes :column key)
-   - \"invalid_expression\": Syntax/parse error
-   - \"unhandled\": Other errors"
-  [dialect sql default-table-schema & [sqlglot-schema]]
-  (protocol/validate-query (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
-
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
 
@@ -480,9 +448,18 @@
 
       :else error)))
 
+(defn cached-by-identity!
+  "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`."
+  [^IdentityHashMap cache k compute]
+  (if (.containsKey cache k)
+    (.get cache k)
+    (let [result (compute)]
+      (.put cache k result)
+      result)))
+
 (defn- convert-field
-  "Convert a field spec from Python format to Clojure format."
-  [field]
+  "Convert a field spec from Python format to Clojure format. `cache` holds the composite fields converted so far."
+  [cache field]
   (when field
     (let [field-type (some-> (or (:type field) (get field "type")) convert-field-type)]
       (case field-type
@@ -491,7 +468,7 @@
          :column (or (:column field) (get field "column"))
          :alias (or (:alias field) (get field "alias"))
          :source-columns (mapv (fn [scope]
-                                 (mapv convert-field scope))
+                                 (mapv #(convert-field cache %) scope))
                                (or (:source-columns field)
                                    (:source_columns field)
                                    (get field "source_columns")
@@ -512,21 +489,20 @@
 
         :custom-field
         {:type :custom-field
-         :alias (or (:alias field) (get field "alias"))
-         :used-fields (set (map convert-field
-                                (or (:used-fields field)
-                                    (:used_fields field)
-                                    (get field "used_fields")
-                                    [])))}
+         :alias (or (:alias field) (get field "alias"))}
 
         :composite-field
-        {:type :composite-field
-         :alias (or (:alias field) (get field "alias"))
-         :member-fields (mapv convert-field
-                              (or (:member-fields field)
-                                  (:member_fields field)
-                                  (get field "member_fields")
-                                  []))}
+        (cached-by-identity!
+         cache
+         field
+         (fn []
+           {:type          :composite-field
+            :alias         (or (:alias field) (get field "alias"))
+            :member-fields (mapv #(convert-field cache %)
+                                 (or (:member-fields field)
+                                     (:member_fields field)
+                                     (get field "member_fields")
+                                     []))}))
 
         :unknown-columns
         {:type :unknown-columns}
@@ -549,7 +525,6 @@
    - :alias - column alias (nil if none)
    - :source-columns - nested list of possible source columns
    - :table - table info (for all-columns)
-   - :used-fields - set of fields used (for custom-field)
    - :member-fields - list of fields (for composite-field)
 
    On timeout, returns an error map instead of throwing, consistent with the
@@ -559,9 +534,10 @@
     (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-          errors (or (:errors raw) (get raw "errors") [])]
-      {:used-fields (set (map convert-field used-fields))
-       :returned-fields (vec (map convert-field returned-fields))
+          errors (or (:errors raw) (get raw "errors") [])
+          cache (IdentityHashMap.)]
+      {:used-fields (set (map #(convert-field cache %) used-fields))
+       :returned-fields (vec (map #(convert-field cache %) returned-fields))
        :errors (set (map convert-error errors))})
     (catch TimeoutException e
       {:used-fields #{}
@@ -684,8 +660,6 @@
 
 (comment
   (referenced-tables "postgres" "select * from transactions")
-
-  (validate-query "postgres" "SELECT * FROM users" nil)
 
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
 

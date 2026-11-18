@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -20,7 +21,7 @@
 (defn- create-document-revision!
   "Helper function to create a Document revision manually for testing."
   [document-id is-creation? user]
-  (revision/push-revision!
+  (revisions.tu/push-revision!
    {:object (t2/select-one :model/Document :id document-id)
     :entity :model/Document
     :id document-id
@@ -34,36 +35,36 @@
 
 (deftest document-create-event-triggers-revision-test
   (testing "Document creation triggers revision creation via events"
-    (mt/with-temp [:model/Document {doc-id :id, :as document} {:name "Test Document"
-                                                               :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]}
-                                                               :creator_id (mt/user->id :crowberto)}]
-      (events/publish-event! :event/document-create {:object document :user-id (mt/user->id :crowberto)})
-      (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
-        (is revision "Revision should be created")
-        (is (= "Document" (:model revision)))
-        (is (= doc-id (:model_id revision)))
-        (is (= (mt/user->id :crowberto) (:user_id revision)))
-        (is (:is_creation revision))
-        (is (not (:is_reversion revision)))
-        (testing "serialized object excludes metadata fields"
-          (let [object (:object revision)]
-            (is (= "Test Document" (:name object)))
-            (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]} (:document object)))
-            (is (not (contains? object :id)))
-            (is (not (contains? object :creator_id)))
-            (is (not (contains? object :created_at)))
-            (is (not (contains? object :updated_at)))
-            (is (not (contains? object :collection_id)))))))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
+                                                   :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]}
+                                                   :creator_id (mt/user->id :crowberto)}]
+        (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
+          (is revision "Revision should be created")
+          (is (= "Document" (:model revision)))
+          (is (= doc-id (:model_id revision)))
+          (is (= (mt/user->id :crowberto) (:user_id revision)))
+          (is (:is_creation revision))
+          (is (not (:is_reversion revision)))
+          (testing "serialized object excludes metadata fields"
+            (let [object (:object revision)]
+              (is (= "Test Document" (:name object)))
+              (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]} (:document object)))
+              (is (not (contains? object :id)))
+              (is (not (contains? object :creator_id)))
+              (is (not (contains? object :created_at)))
+              (is (not (contains? object :updated_at)))
+              (is (not (contains? object :collection_id))))))))))
 
 (deftest document-update-event-triggers-revision-test
   (testing "Document update triggers revision creation via events"
-    (mt/with-temp [:model/Document {doc-id :id, :as document} {:name "Original Document"
-                                                               :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
-                                                               :creator_id (mt/user->id :crowberto)}]
-      (let [updated-document (assoc document
-                                    :name "Updated Document"
-                                    :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]})]
-        (events/publish-event! :event/document-update {:object updated-document :user-id (mt/user->id :rasta)})
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Original Document"
+                                                 :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (let [updated-document {:name "Updated Document"
+                              :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (t2/update! :model/Document :id doc-id updated-document))
         (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id :user_id (mt/user->id :rasta))]
           (is revision "Revision should be created for update")
           (is (= "Document" (:model revision)))
@@ -129,7 +130,7 @@
                      (:document reverted-document)))))
           (testing "Reversion creates new revision entry"
             (let [final-revisions (get-document-revisions doc-id)]
-              (is (= 4 (count final-revisions)))
+              (is (= 3 (count final-revisions)))
               (let [latest-revision (first final-revisions)]
                 (is (:is_reversion latest-revision))
                 (is (= "reverted to an earlier version." (:description latest-revision)))))))))))
@@ -194,26 +195,25 @@
       (with-redefs [events/publish-event! (fn [topic event]
                                             (swap! events-received conj [topic event])
                                             (original-event topic event))]
-        (mt/with-temp [:model/Document {doc-id :id, :as document} {:name "Event Test Document"
-                                                                   :document {:type "doc" :content []}
-                                                                   :creator_id (mt/user->id :rasta)}]
-          (testing "Create event triggers revision creation"
-            (events/publish-event! :event/document-create {:object document :user-id (mt/user->id :rasta)})
-            (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
-              (is revision)
-              (is (:is_creation revision))))
-          (testing "Update event triggers revision creation"
-            (let [updated-document (assoc document :name "Updated Event Document")]
-              (events/publish-event! :event/document-update {:object updated-document :user-id (mt/user->id :rasta)})
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-temp [:model/Document {doc-id :id} {:name "Event Test Document"
+                                                       :document {:type "doc" :content []}
+                                                       :creator_id (mt/user->id :rasta)}]
+            (testing "Create event triggers revision creation"
+              (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
+                (is revision)
+                (is (:is_creation revision))))
+            (testing "Update event triggers revision creation"
+              (t2/update! :model/Document :id doc-id {:name "Updated Event Document"})
               (let [revisions (t2/select :model/Revision :model "Document" :model_id doc-id {:order-by [[:id :desc]]})]
                 (is (= 2 (count revisions)))
                 (let [latest-revision (first revisions)]
                   (is (not (:is_creation latest-revision)))
-                  (is (= "Updated Event Document" (get-in latest-revision [:object :name])))))))
-          (testing "Events were published correctly"
-            (is (>= (count @events-received) 2))
-            (is (some #(= :event/document-create (first %)) @events-received))
-            (is (some #(= :event/document-update (first %)) @events-received))))))))
+                  (is (= "Updated Event Document" (get-in latest-revision [:object :name]))))))
+            (testing "Events were published correctly"
+              (is (>= (count @events-received) 2))
+              (is (some #(= :event/document-create (first %)) @events-received))
+              (is (some #(= :event/document-update (first %)) @events-received)))))))))
 
 (deftest document-revision-diff-and-descriptions-test
   (testing "Document revision diffs and descriptions work correctly"

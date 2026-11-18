@@ -14,6 +14,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
@@ -330,6 +331,7 @@
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
       (mapv (fn [{:as card :keys [in_dashboards]}]
+              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
               (queries/update-card! {:card-before-update card
                                      :card-updates {:dashboard_id (-> in_dashboards first :id)}
                                      :actor @api/*current-user*
@@ -473,18 +475,12 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
-;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
-;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
-;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
-;; `validate-new-tenant-collection!`, etc.
-
 (api.macros/defendpoint :post "/" :- ::Collection
   "Create a new Collection."
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:name            ms/NonBlankString]
+            [:name            ::collections.schema/collection.name]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
@@ -608,9 +604,9 @@
                     [:id ms/PositiveInt]]
    _query-params
    collection-updates :- [:map {:closed true}
-                          [:name             {:optional true} [:maybe ms/NonBlankString]]
+                          [:name             {:optional true} [:maybe ::collections.schema/collection.name]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
-                          [:archived         {:default false} [:maybe ms/BooleanValue]]
+                          [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collection-detail (collections/update-collection! id collection-updates)))
@@ -631,7 +627,7 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (t2/with-transaction [_tx]
+    (events/with-batched-events
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
       (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
         (collection/move-collection! child new-children-location))

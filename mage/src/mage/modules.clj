@@ -136,7 +136,6 @@
      core.version
      dashboards
      data-apps
-     dependencies
      documents
      embedding
      enterprise/transforms

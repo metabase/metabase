@@ -62,7 +62,7 @@
 
 (defn- raw-template-tags
   "The stored template-tags of a native `dataset-query`, keyed by tag name — read from whichever
-   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a pMBQL native
+   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a MBQL 5 native
    stage's tag vector."
   [dataset-query]
   (or (not-empty (get-in dataset-query [:native :template-tags]))
@@ -286,7 +286,7 @@
   (mapv (fn [node]
           (u/remove-nils {:type    (:type node)
                           :card_id (when (= (:type node) prose-mirror/card-embed-type)
-                                     (get-in node [:attrs "id"]))
+                                     (get-in node [:attrs :id]))
                           :text    (not-empty (prose-mirror/ast->text node))}))
         (get-in row [::document :document :content])))
 
@@ -308,7 +308,7 @@
    in one, while their `supportingText` children are emitted verbatim and do have spans."
   [row]
   (letfn [(walk [node ancestors]
-            (let [id       (get-in node [:attrs "_id"])
+            (let [id       (get-in node [:attrs :_id])
                   inherited (cond->> ancestors id (cons id))]
               (concat (when id [[id ancestors]])
                       (mapcat #(walk % inherited) (:content node)))))]

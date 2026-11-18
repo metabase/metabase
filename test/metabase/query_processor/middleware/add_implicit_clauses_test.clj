@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -28,6 +27,8 @@
      (qp.add-implicit-clauses/add-implicit-clauses query)
      (-> (lib/query metadata-provider query)
          qp.add-implicit-clauses/add-implicit-clauses
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          lib/->legacy-MBQL))))
 
 (defn- add-implicit-clauses-to-legacy-inner-query
@@ -37,6 +38,8 @@
   ([metadata-provider inner-query]
    (-> (lib/query-from-legacy-inner-query metadata-provider (meta/id) inner-query)
        add-implicit-clauses
+       ;; existing usage -- do not use going forward
+       #_{:clj-kondo/ignore [:deprecated-var]}
        lib/->legacy-MBQL
        :query)))
 
@@ -352,7 +355,7 @@
                mp
                {:cards [{:id            1
                          :type          :model
-                         :dataset-query (lib.convert/->legacy-MBQL query)}]})
+                         :dataset-query query}]})
         query (lib/query mp (lib.metadata/card mp 1))
         ;; It is irrelevant which provider is used to get card and create query. Important is that one used in qp
         ;; contains the coercion.
