@@ -49,6 +49,14 @@
       redaction/redact-dashboard
       projections/dashboard-row))
 
+(defn- visible-connections
+  "The `dropped-connections` of the saved or dry-run `dash` whose card the current user can read."
+  [dash dropped-connections]
+  ;; Redaction hides the mappings to a card the user can't read, so a lost one isn't reported either.
+  (when (seq dropped-connections)
+    (let [readable (redaction/readable-card-ids dash)]
+      (filterv (comp readable :card_id) dropped-connections))))
+
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
 (def ^:private dashboard-write-args-schema
@@ -127,8 +135,8 @@
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
-  them down, and pushed_dashcard_ids lists them. Filter connections lost without unwire_parameter are listed in
-  dropped_connections; reconnect them or tell the user. Returns the resulting dashboard, so no follow-up read is needed.
+  them down, and pushed_dashcard_ids lists them. Filter connections lost without unwire_parameter or
+  patch_dashcard are listed in dropped_connections; reconnect them or tell the user. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
@@ -160,10 +168,13 @@
                                                   :attrs          (dashboard-attrs body)
                                                   :ops            (:ops body)
                                                   :validate-only? (boolean (:validate_only body))}))))
-        {dash :dashboard {:keys [pushed-dashcard-ids dropped-connections]} :effects} written]
+        {dash :dashboard {:keys [pushed-dashcard-ids dropped-connections]} :effects} written
+        dropped    (visible-connections dash dropped-connections)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
                           (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
-                          (seq dropped-connections) (assoc :dropped_connections dropped-connections))
-                        nil))))
+                          (seq dropped)             (assoc :dropped_connections      dropped
+                                                           :dropped_connection_count (count dropped)))
+                        ;; A token that can't read the dashboard back still learns that filters were disconnected.
+                        [:dropped_connection_count]))))

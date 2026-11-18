@@ -258,6 +258,11 @@
     (let [args {:method "update"
                 :id     (:id dash)
                 :ops    [{:op "replace_card", :dashcard_id (:id dc), :card_id (:id new)}]}]
+      (testing "a token that can't read the dashboard back gets only the count"
+        (let [result (tool-result (call-tool! :crowberto #{"agent:content:write"} "dashboard_write"
+                                              (wire (assoc args :validate_only true))))]
+          (is (=? {:id (:id dash), :dropped_connection_count 1} result))
+          (is (not (contains? result :dropped_connections)))))
       (doseq [validate-only? [true false]]
         (testing (if validate-only? "dry run" "save")
           (is (= [{:parameter_id "cat", :dashcard_id (:id dc), :card_id (:id new), :series false}]
@@ -265,6 +270,46 @@
                                  (wire (assoc args :validate_only validate-only?)))
                      tool-result
                      :dropped_connections))))))))
+
+(deftest dropped-connections-leave-out-unreadable-cards-test
+  (testing "a lost connection to a series card the user can't read isn't reported, as redaction hides its mapping"
+    (mt/with-temp [:model/Collection          {open-id :id}     {}
+                   :model/Collection          {locked-id :id}   {}
+                   :model/Dashboard           {dash-id :id}     {:name          "Sales"
+                                                                 :collection_id open-id
+                                                                 :parameters    [{:id   "cat"
+                                                                                  :name "Category"
+                                                                                  :slug "category"
+                                                                                  :type "category"}]}
+                   :model/Card                {open-card :id}   {:collection_id open-id
+                                                                 :dataset_query (mt/mbql-query venues)}
+                   :model/Card                {hidden-card :id} {:collection_id locked-id
+                                                                 :dataset_query (mt/mbql-query venues)}
+                   :model/DashboardCard       {dc-id :id}       {:dashboard_id       dash-id
+                                                                 :card_id            open-card
+                                                                 :parameter_mappings
+                                                                 (for [card-id [open-card hidden-card]]
+                                                                   {:parameter_id "cat"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension
+                                                                                   [:field (mt/id :venues :price)
+                                                                                    nil]]})}
+                   :model/DashboardCardSeries _                 {:dashboardcard_id dc-id
+                                                                 :card_id          hidden-card
+                                                                 :position         0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (let [args (wire {:method        "update"
+                          :id            dash-id
+                          :validate_only true
+                          :ops           [{:op           "wire_parameter"
+                                           :parameter_id "cat"
+                                           :dashcard_id  dc-id
+                                           :target_field (mt/id :venues :price)}]})]
+          (is (=? [{:card_id hidden-card, :series true}]
+                  (:dropped_connections (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" args))))
+              "a user who can read the card is told")
+          (is (not (contains? (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write" args))
+                              :dropped_connections))))))))
 
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
