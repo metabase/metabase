@@ -52,6 +52,9 @@
     (is (= {:support :yes} (cell postgres [:nested-fields :nested-field-columns]))))
   (testing "the note gives the version where support starts, from the driver's own check"
     (is (= {:support :depends :note "MySQL 8.0 and later."} (cell mysql :stage-ctes))))
+  (testing "the note gives a version by its name, when it has one"
+    (is (= {:support :depends :note "MySQL Eight and later."}
+           (cell (assoc mysql :version-names {[8 0] "Eight"}) :stage-ctes))))
   (testing "an oldest version above that check makes the note unnecessary"
     (is (= {:support :yes} (cell (assoc mysql :oldest-version [8 0]) :stage-ctes))))
   (testing "the note names the editions that support the feature"

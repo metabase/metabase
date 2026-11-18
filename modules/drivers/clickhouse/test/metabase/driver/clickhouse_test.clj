@@ -736,6 +736,14 @@
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
 
+(deftest ^:parallel table-writing-features-need-cloud-or-single-node-test
+  (testing "a feature that writes a table needs ClickHouse Cloud or a single node: on a cluster, only one node has the table"
+    (doseq [feature [:uploads :transforms/table :transforms/python]]
+      (testing feature
+        (is (true? (driver/database-supports? :clickhouse feature {:dbms-version {:cloud true}})))
+        (is (true? (driver/database-supports? :clickhouse feature {:dbms-version {:cloud false :single-node true}})))
+        (is (false? (driver/database-supports? :clickhouse feature {:dbms-version {:cloud false :single-node false}})))))))
+
 (deftest ^:synchronized csv-upload-and-sync-test
   (testing "ClickHouse CSV uploads work correctly"
     (mt/test-driver :clickhouse

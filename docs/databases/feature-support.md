@@ -51,7 +51,7 @@ Metabase supports these features on every database on this page:
 | [DistinctIf](../questions/query-builder/expressions-list.md#distinctif)                            | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ✅       | ❌       | ✅     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 | [Offset](../questions/query-builder/expressions/offset.md)                                         | ✅             | ✅               | ✅        | ✅          | ✅          | ✅          | ❌       | ❌       | ❌     | ✅      | ✅          | ✅      | ✅         | ✅         | ✅          | ✅      | ✅                 | ✅       |
 
-1. SQL Server 16.0 and later.
+1. SQL Server 2022 and later.
 
 ## Custom expression functions
 
@@ -80,9 +80,11 @@ Metabase supports these features on every database on this page:
 | ----------------------------------------------------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
 | [Model persistence](../data-modeling/models/model-persistence.md) | ❌             | ✅               | ❌        | ❌          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ❌         | ❌         | ❌          | ❌      | ❌                 | ❌       |
 | [JSON unfolding](../data-modeling/metadata/json-unfolding.md)     | ❌             | ❌               | ✅        | ❌          | ❌          | ✅          | ❌       | ✅       | ✅     | ❌      | ✅          | ❌      | ❌         | ❌         | ❌          | ❌      | ❌                 | ❌       |
-| [Query transforms](../data-modeling/transforms/query.md)          | ❌             | ✅               | ✅        | ✅          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
-| [Python transforms](../data-modeling/transforms/python.md)        | ❌             | ✅               | ✅        | ✅          | ❌          | ❌          | ✅       | ✅       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
+| [Query transforms](../data-modeling/transforms/query.md)          | ❌             | ✅               | ✅        | ✅ (1)      | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
+| [Python transforms](../data-modeling/transforms/python.md)        | ❌             | ✅               | ✅        | ✅ (1)      | ❌          | ❌          | ✅       | ✅       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
 | [Transform tests](../data-modeling/transforms/tests.md)           | ❌             | ✅               | ❌        | ✅          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ❌         | ❌         | ✅          | ❌      | ❌                 | ❌       |
+
+1. ClickHouse Cloud and self-managed single-node deployments.
 
 ## Writing data
 

@@ -99,10 +99,13 @@
 
 (defn- supports?
   "Whether `feature` works on `column`'s `edition` at `version`. A vector row, like JSON unfolding, works when any of
-  its features does. Throws when the driver does: `driver.u/supports?` would turn that into a wrong ❌."
+  its features does. Throws when the driver does."
   [{:keys [driver label] :as column} feature edition version]
   (let [database (fake-database column edition version)]
     (try
+      ;; not `driver.u/supports?`, for two reasons. In prod mode, which the `:doc` alias runs in, it memoizes by
+      ;; database `:id`. All fake databases have `:id` 1, so the first version asked would answer for all of them. It
+      ;; also turns a throw into false, which would print a wrong ❌.
       #_{:clj-kondo/ignore [:discouraged-var]}
       (boolean (some #(driver/database-supports? driver % database) (u/one-or-many feature)))
       (catch Throwable e
@@ -131,9 +134,11 @@
 
 (defn- note
   "The note for a cell that only some versions or editions support, for example \"SQL Server 16.0 and later.\", from
-  the `support` of each of `column`'s `editions`."
-  [{:keys [label]} editions support]
-  (let [since (fn [[major minor]] (format " %d.%d and later" major minor))]
+  the `support` of each of `column`'s `editions`. A version in `version-names` shows as its name: \"SQL Server 2022
+  and later.\""
+  [{:keys [label version-names]} editions support]
+  (let [since (fn [[major minor :as version]]
+                (str " " (get version-names version (format "%d.%d" major minor)) " and later"))]
     (if (and (apply = support) (vector? (first support)))
       ;; every edition starts at the same version: "SQL Server 16.0 and later."
       (str label (since (first support)) ".")

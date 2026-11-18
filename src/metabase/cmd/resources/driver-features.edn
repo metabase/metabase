@@ -10,6 +10,8 @@
  ;;   - `:oldest-version`: the oldest version that Metabase supports, when the driver checks for an older one. Without
  ;;     it, notes give versions that no one runs.
  ;;   - `:version-shape :map`: the driver keeps the version as `{:major :minor}`, not `[major minor]`.
+ ;;   - `:version-names`: the names that people know versions by, keyed by `[major minor]`. Notes use them in place of
+ ;;     the number.
  :drivers
  {:clickhouse {:version-shape :map
                :editions      [{:label "ClickHouse Cloud" :dbms-version {:cloud true}}
@@ -25,7 +27,9 @@
   :mongo      {:oldest-version [7 0]}
   ;; sync stores the `:flavor`
   :mysql      {:columns [{:label "MariaDB" :dbms-version {:flavor "MariaDB"}}
-                         {:label "MySQL" :dbms-version {:flavor "MySQL"}}]}}
+                         {:label "MySQL" :dbms-version {:flavor "MySQL"}}]}
+  ;; SQL Server 16.0 is SQL Server 2022
+  :sqlserver  {:version-names {[16 0] "2022"}}}
 
  ;; The tables, in page order. A row's `:feature` is a keyword, or a vector of keywords that the page shows as one
  ;; feature. `:doc` paths are relative to `docs/databases/`.
