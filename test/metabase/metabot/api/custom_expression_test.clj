@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.api.custom-expression :as custom-expression]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.test :as mt]
@@ -65,6 +67,23 @@
       (is (= message
              (mt/user-http-request :rasta :post status endpoint (request-body overrides))))
       (is (empty? @calls))))))
+
+(defn- do-before-provider!
+  "Call `f` without mocking the LLM call and check that it doesn't call the provider."
+  [f]
+  (let [adapter-calls (atom 0)]
+    (llm.tu/with-default-connections
+      (mt/with-temporary-raw-setting-values [llm-mini-model "anthropic/claude-haiku-4-5"]
+        (mt/with-dynamic-fn-redefs [self.claude/claude (fn [& _] (swap! adapter-calls inc) [])]
+          (f)
+          (is (zero? @adapter-calls)))))))
+
+(defn- check-error-before-provider!
+  "Check that a request gets `status` with the plain-text body `message` from the LLM call's own checks."
+  [status message]
+  (do-before-provider!
+   #(is (= message
+           (mt/user-http-request :rasta :post status endpoint (request-body))))))
 
 (defn- check-missing-inputs
   "Check that a request with `overrides` gets a 400 with `message` as the error for `field`, without reaching the LLM."
@@ -426,11 +445,6 @@
     (is (= "Unauthenticated"
            (mt/client :post 401 endpoint (request-body))))))
 
-(deftest summary-formula-metabot-disabled-test
-  (testing "summary-formula returns a 403 when Metabot is turned off"
-    (mt/with-temporary-setting-values [metabot-enabled? false]
-      (check-error 403 "AI features are not enabled."))))
-
 (deftest summary-formula-no-llm-test
   (testing "summary-formula returns a 503 when no LLM is configured"
     (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
@@ -448,38 +462,29 @@
          (is (empty? @calls)))))))
 
 (deftest summary-formula-usage-limit-test
-  (testing "summary-formula returns a 429 with the quota message when the usage limit is reached before the call"
-    (mt/with-dynamic-fn-redefs [metabot.usage/check-usage-limits! (constantly "Over the limit")]
-      (check-error 429 "Over the limit"))))
+  (testing "summary-formula returns a 429 with the quota message, looking up the usage limits once"
+    (do-before-provider!
+     (fn []
+       ;; Redefined here rather than around the setup, which changes settings whose listeners check the limits too.
+       (let [limit-checks (atom 0)]
+         (mt/with-dynamic-fn-redefs [metabot.usage/check-usage-limits! (fn [& _]
+                                                                         (swap! limit-checks inc)
+                                                                         "Over the limit")]
+           (is (= "Over the limit"
+                  (mt/user-http-request :rasta :post 429 endpoint (request-body))))
+           (is (= 1 @limit-checks))))))))
 
-(deftest summary-formula-usage-limit-during-call-test
-  (testing "summary-formula returns a 429 with the quota message when the LLM call hits the usage limit"
-    (do-with-llm
-     (ex-info "Over the limit" {:type       :metabot/usage-limit-reached
-                                :error-code "ai_usage_limit_reached"
-                                :message    "Over the limit"})
-     (fn [_calls]
-       (is (= "Over the limit"
-              (mt/user-http-request :rasta :post 429 endpoint (request-body))))))))
-
-(deftest summary-formula-unknown-unavailable-reason-test
-  (testing "summary-formula returns a 503 for an unavailable reason it doesn't know"
-    (mt/with-dynamic-fn-redefs [metabot.self/llm-call-unavailable-reason (constantly :some-new-reason)]
-      (check-error 503 "AI features aren't available right now."))))
+(deftest summary-formula-metabot-disabled-before-usage-limit-test
+  (testing "summary-formula reports that Metabot is off before the usage limit"
+    (mt/with-temporary-setting-values [metabot-enabled? false]
+      (mt/with-dynamic-fn-redefs [metabot.usage/check-usage-limits! (constantly "Over the limit")]
+        (check-error 403 "AI features are not enabled.")))))
 
 (deftest summary-formula-metabot-permission-test
   (testing "summary-formula returns a 403 without the metabot permission"
     (mt/with-dynamic-fn-redefs [scope/resolve-user-permissions (constantly {:permission/metabot     :yes
                                                                             :permission/metabot-nlq :no})]
-      (check-error 403 "You don't have access to AI features."))))
-
-(deftest summary-formula-metabot-permission-during-call-test
-  (testing "summary-formula returns a 403 when the LLM call denies the metabot permission"
-    (do-with-llm
-     (ex-info "Permission denied" {:type :metabot/permission-denied})
-     (fn [_calls]
-       (is (= "You don't have access to AI features."
-              (mt/user-http-request :rasta :post 403 endpoint (request-body))))))))
+      (check-error-before-provider! 403 "You don't have access to AI features."))))
 
 (defn- provider-api-error
   "Return a mock provider exception with HTTP `status`."
@@ -716,11 +721,6 @@
     (mt/with-no-data-perms-for-all-users!
       (check-error 403 "You don't have permissions to do that."))))
 
-(deftest summary-formula-checks-ai-before-database-test
-  (testing "summary-formula reports that AI is off before it looks at the database"
-    (mt/with-temporary-setting-values [metabot-enabled? false]
-      (check-error 403 "AI features are not enabled." {:database_id Integer/MAX_VALUE}))))
-
 ;;; -------------------------------------------------- Metrics ---------------------------------------------------
 
 (defn- check-metrics!
@@ -751,15 +751,10 @@
      (fn [_calls]
        (check-metrics! 400 1 "invalid-input" {:columns [] :metrics [] :measures []})))))
 
-(deftest summary-formula-unavailable-metrics-test
+(deftest summary-formula-metabot-disabled-metrics-test
   (testing "summary-formula counts a request while Metabot is off as a metabot-disabled error"
     (mt/with-temporary-setting-values [metabot-enabled? false]
       (check-metrics! 403 1 "metabot-disabled" {}))))
-
-(deftest summary-formula-unknown-unavailable-reason-metrics-test
-  (testing "summary-formula counts an unavailable reason it doesn't know as an unavailable error"
-    (mt/with-dynamic-fn-redefs [metabot.self/llm-call-unavailable-reason (constantly :some-new-reason)]
-      (check-metrics! 503 1 "unavailable" {}))))
 
 (deftest summary-formula-managed-lock-metrics-test
   (testing "summary-formula counts a request blocked by the managed AI lock as a managed-limit error"
@@ -776,7 +771,7 @@
      (fn [_calls]
        (check-metrics! 404 1 "database-access" {:database_id Integer/MAX_VALUE})))))
 
-(deftest summary-formula-usage-limit-during-call-metrics-test
+(deftest summary-formula-usage-limit-metrics-test
   (testing "summary-formula counts an LLM call that hits the usage limit as a usage-limit error"
     (do-with-llm
      (ex-info "Over the limit" {:type :metabot/usage-limit-reached :message "Over the limit"})

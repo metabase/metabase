@@ -36,7 +36,6 @@
     "no-llm"
     "no-match"
     "permission-denied"
-    "unavailable"
     "unexpected"
     "usage-limit"})
 
@@ -265,18 +264,15 @@
       "aggregation" (when-not (or (seq columns) (seq metrics) (seq measures))
                       (invalid! :columns (tru "Provide at least one column, metric or measure."))))))
 
-(defn- unavailable-error
-  "Return an HTTP exception for an unavailable LLM call with `reason`."
-  [reason]
-  (let [[status-code error-reason message]
-        (case reason
-          :metabot-disabled  [403 "metabot-disabled" (tru "AI features are not enabled.")]
-          :no-llm            [503 "no-llm" (tru "No AI provider is connected.")]
-          :usage-limit       [429 "usage-limit" (or (metabot.usage/check-usage-limits!)
-                                                    (tru "The AI usage limit has been reached."))]
-          :permission-denied [403 "permission-denied" (tru "You don''t have access to AI features.")]
-          [503 "unavailable" (tru "AI features aren''t available right now.")])]
-    (ex-info message {:status-code status-code ::error-reason error-reason})))
+(defn- check-llm-available!
+  "Throw an HTTP exception when Metabot is off or has no usable connection."
+  []
+  (cond
+    (not (metabot.settings/metabot-enabled?))
+    (throw (ex-info (tru "AI features are not enabled.") {:status-code 403 ::error-reason "metabot-disabled"}))
+
+    (not (metabot.settings/llm-metabot-configured?))
+    (throw (ex-info (tru "No AI provider is connected.") {:status-code 503 ::error-reason "no-llm"}))))
 
 (defn- provider-status->response-code
   "Map a provider's HTTP `status` to the response status."
@@ -356,8 +352,7 @@
   ;; Drop tagged inputs before checking that enough are left.
   (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)]
     (check-inputs! request)
-    (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
-      (throw (unavailable-error reason)))
+    (check-llm-available!)
     (with-error-reason "managed-limit" metabot.usage/check-metabase-managed-free-limit!)
     (with-error-reason "database-access" #(api/query-check :model/Database database_id))
     (let [{:keys [expression name]} (try
