@@ -173,13 +173,19 @@ function setupFromBrowsePage() {
 describe("NewMetricPage", () => {
   it("does not offer a new stage after the formula of a metric based on a model", async () => {
     setup();
+    // The source and its Count load only after the card metadata arrives.
+    fetchMock.modifyRoute(`card-${ORDERS_MODEL.id}-query-metadata`, {
+      delay: 750,
+    });
 
     await pickFromMiniPicker(["Our analytics", "Orders Model"]);
 
     const dataStep = await screen.findByTestId("step-data-0-0");
-    expect(within(dataStep).getByText("Orders Model")).toBeInTheDocument();
+    expect(
+      await within(dataStep).findByText("Orders Model"),
+    ).toBeInTheDocument();
     const summarizeStep = await screen.findByTestId("step-summarize-0-0");
-    expect(within(summarizeStep).getByText("Count")).toBeInTheDocument();
+    expect(await within(summarizeStep).findByText("Count")).toBeInTheDocument();
     ["Join data", "Custom column"].forEach((name) => {
       expect(
         within(dataStep).getByRole("button", { name }),
