@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
@@ -75,6 +76,11 @@
   {:create :event/pulse-channel-create
    :update :event/pulse-channel-update
    :delete :event/pulse-channel-delete})
+
+(defmethod change-log/spec :model/PulseChannel [_model]
+  {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled
+           :entity_id :channel_id]
+   :skip  []})
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")

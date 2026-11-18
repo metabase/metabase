@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-channel-recipient
   (:require
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [methodical.core :as methodical]
@@ -17,6 +18,10 @@
   {:create :event/pulse-channel-recipient-create
    :update :event/pulse-channel-recipient-update
    :delete :event/pulse-channel-recipient-delete})
+
+(defmethod change-log/spec :model/PulseChannelRecipient [_model]
+  {:track [:pulse_channel_id :user_id]
+   :skip  []})
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 

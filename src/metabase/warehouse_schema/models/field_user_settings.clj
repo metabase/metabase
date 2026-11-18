@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -37,6 +38,12 @@
   {:create :event/field-user-settings-create
    :update :event/field-user-settings-update
    :delete :event/field-user-settings-delete})
+
+(defmethod change-log/spec :model/FieldUserSettings [_model]
+  {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
+           :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
+           :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
+   :skip  []})
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."

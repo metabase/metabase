@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -27,6 +28,10 @@
   {:create :event/group-membership-create
    :update :event/group-membership-update
    :delete :event/group-membership-delete})
+
+(defmethod change-log/spec :model/PermissionsGroupMembership [_model]
+  {:track [:user_id :group_id :is_group_manager]
+   :skip  []})
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."

@@ -61,8 +61,12 @@
    :update :event/dashboard-update
    :delete :event/dashboard-delete})
 
-(methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
-  #{:last_viewed_at :view_count})
+(defmethod change-log/spec :model/Dashboard [_model]
+  {:track [:name :description :creator_id :parameters :points_of_interest :caveats :show_in_getting_started
+           :public_uuid :made_public_by_id :enable_embedding :embedding_params :archived :position :collection_id
+           :collection_position :cache_ttl :entity_id :auto_apply_filters :width :initially_published_at
+           :archived_directly :embedding_type :public_uuid_prefix]
+   :skip  [:last_viewed_at :view_count]})
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

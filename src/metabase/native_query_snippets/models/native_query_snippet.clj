@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [metabase.api.common :as api]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -33,6 +34,11 @@
   {:create :event/snippet-create
    :update :event/snippet-update
    :delete :event/snippet-delete})
+
+(defmethod change-log/spec :model/NativeQuerySnippet [_model]
+  {:track [:name :description :content :creator_id :archived :collection_id :entity_id :template_tags
+           :archived_directly]
+   :skip  []})
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet

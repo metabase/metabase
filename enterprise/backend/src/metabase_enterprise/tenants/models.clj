@@ -3,6 +3,7 @@
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -31,6 +32,10 @@
   {:create :event/tenant-create
    :update :event/tenant-update
    :delete :event/tenant-delete})
+
+(defmethod change-log/spec :model/Tenant [_model]
+  {:track [:name :slug :is_active :attributes :tenant_collection_id]
+   :skip  []})
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]

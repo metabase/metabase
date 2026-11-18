@@ -22,6 +22,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -58,6 +59,11 @@
   {:create :event/pulse-create
    :update :event/pulse-update
    :delete :event/pulse-delete})
+
+(defmethod change-log/spec :model/Pulse [_model]
+  {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id
+           :collection_position :archived :dashboard_id :parameters :entity_id :disable_links :archived_directly]
+   :skip  []})
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."

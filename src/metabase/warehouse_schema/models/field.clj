@@ -138,8 +138,14 @@
    :update :event/field-update
    :delete :event/field-delete})
 
-(methodical/defmethod change-log/ignored-columns :model/Field [_model]
-  #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
+(defmethod change-log/spec :model/Field [_model]
+  {:track [:name :base_type :semantic_type :active :description :preview_display :position :table_id :parent_id
+           :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
+           :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
+           :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
+           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
+   :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+           :is_defective_duplicate :unique_field_helper]})
 
 (t2/define-after-select :model/Field
   [field]

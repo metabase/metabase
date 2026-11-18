@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -45,6 +46,12 @@
   {:create :event/user-create
    :update :event/user-update
    :delete :event/user-delete})
+
+(defmethod change-log/spec :model/User [_model]
+  {:track [:email :first_name :last_name :password :password_salt :date_joined :last_login :is_superuser :is_active
+           :reset_token :reset_triggered :is_qbnewb :login_attributes :sso_source :locale :is_datasetnewb :settings
+           :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
+   :skip  []})
 
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."

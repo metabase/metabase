@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -85,6 +86,14 @@
   {:create :event/database-create
    :update :event/database-update
    :delete :event/database-delete})
+
+(defmethod change-log/spec :model/Database [_model]
+  {:track [:name :description :details :engine :is_sample :is_full_sync :points_of_interest :caveats
+           :metadata_sync_schedule :cache_field_values_schedule :timezone :is_on_demand :auto_run_queries
+           :refingerprint :cache_ttl :initial_sync_status :creator_id :settings :dbms_version :is_audit
+           :uploads_enabled :uploads_schema_name :uploads_table_prefix :is_attached_dwh :router_database_id
+           :provider_name :write_data_details :is_stub :default_schema :initial_sync_error :admin_details]
+   :skip  []})
 
 (defn is-destination?
   "Is this database a destination database for some router database?"

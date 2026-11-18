@@ -145,8 +145,15 @@
    :update :event/card-update
    :delete :event/card-delete})
 
-(methodical/defmethod change-log/ignored-columns :model/Card [_model]
-  #{:last_used_at :view_count :cache_invalidated_at})
+(defmethod change-log/spec :model/Card [_model]
+  {:track [:name :description :display :dataset_query :visualization_settings :creator_id :database_id :table_id
+           :query_type :archived :collection_id :public_uuid :made_public_by_id :enable_embedding :embedding_params
+           :cache_ttl :result_metadata :collection_position :entity_id :parameters :parameter_mappings
+           :metabase_version :type :initially_published_at :archived_directly
+           :dataset_query_metrics_v2_migration_backup :source_card_id :dashboard_id :card_schema :document_id
+           :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings :metabot_conversation_id
+           :metabot_chart_id]
+   :skip  [:last_used_at :view_count :cache_invalidated_at]})
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it

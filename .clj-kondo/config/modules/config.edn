@@ -556,27 +556,7 @@
            premium-features
            task
            util
-           util.config}
-   :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/Database
-                    :model/Field
-                    :model/FieldUserSettings
-                    :model/NativeQuerySnippet
-                    :model/Notification
-                    :model/NotificationCard
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/NotificationSubscription
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/Pulse
-                    :model/PulseCard
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
-                    :model/Table
-                    :model/Tenant
-                    :model/User}}
+           util.config}}
 
   ;; TODO -- way too many API namespaces.
   channel
@@ -1952,6 +1932,7 @@
   {:team "Graphy"
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
+           change-log
            collections
            events
            lib
@@ -1980,6 +1961,7 @@
            api
            app-db
            appearance
+           change-log
            channel
            dashboards
            driver
@@ -2088,6 +2070,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            events
            lib.metadata
@@ -3416,6 +3399,7 @@
    :uses #{analytics
            api
            batch-processing
+           change-log
            events
            lib.schema
            models
@@ -3517,6 +3501,7 @@
            app-db
            audit-app
            cache
+           change-log
            driver
            events
            lib
@@ -4823,6 +4808,7 @@
    :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            audit-app
+           change-log
            collections
            events
            lib.schema

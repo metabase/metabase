@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
@@ -23,6 +24,11 @@
   {:create :event/pulse-card-create
    :update :event/pulse-card-update
    :delete :event/pulse-card-delete})
+
+(defmethod change-log/spec :model/PulseCard [_model]
+  {:track [:pulse_id :card_id :position :include_csv :include_xls :dashboard_card_id :entity_id :format_rows
+           :pivot_results]
+   :skip  []})
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 

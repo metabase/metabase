@@ -11,6 +11,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -42,6 +43,10 @@
   {:create :event/group-create
    :update :event/group-update
    :delete :event/group-delete})
+
+(defmethod change-log/spec :model/PermissionsGroup [_model]
+  {:track [:name :entity_id :magic_group_type :is_tenant_group]
+   :skip  []})
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 

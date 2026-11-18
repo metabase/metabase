@@ -107,8 +107,12 @@
    :update :event/table-update
    :delete :event/table-delete})
 
-(methodical/defmethod change-log/ignored-columns :model/Table [_model]
-  #{:initial_sync_status :view_count})
+(defmethod change-log/spec :model/Table [_model]
+  {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
+           :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
+           :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
+           :owner_user_id :collection_id :is_published :transform_id :transform_target]
+   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (def transform-data-authority
   "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
