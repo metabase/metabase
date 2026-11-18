@@ -157,8 +157,6 @@ You can use the arrow keys to move the selection, and press **Esc** to clear it.
 
 Metabase copies the values as they're formatted in the table. To copy the raw, unformatted values instead, press **Cmd/Ctrl + Shift + C**.
 
-To copy all the results of a question in the query builder, click the **clipboard** icon at the bottom right of the question, next to the download button. Metabase copies the columns that are visible in the table. You'll only see the button if you can [download the results](../exporting-results.md).
-
 ## Detail views
 
 ![Detail view](../images/detail-view.png)
