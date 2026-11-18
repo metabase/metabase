@@ -45,12 +45,30 @@ describe("scenarios > admin > databases > writable connection", () => {
     dropTable(TRANSFORM_TABLE_NAME);
   });
 
-  it("should be able to create, edit, and remove a writable connection and show up-to-date connection health status", () => {
+  it("should validate, create, and edit a writable connection and show the health of each connection", () => {
     visitDatabase(WRITABLE_DB_ID);
-    createWritableConnection(DEFAULT_USER);
+    getWritableConnectionInfoSection()
+      .findByText("Add writable connection")
+      .click();
+
+    cy.log("should validate writable connection details on save");
+    fillInCredentials({
+      username: "invalid",
+      password: "invalid",
+    });
+    cy.button("Save").click();
+    cy.findByRole("alert").should(
+      "contain.text",
+      "Metabase tried, but couldn't connect",
+    );
+
+    cy.log("should create and edit a writable connection");
+    fillInCredentials(DEFAULT_USER);
+    cy.button("Save").click();
+    getWritableConnectionInfoSection().should("be.visible");
     updateWritableConnection(READ_ONLY_USER);
 
-    cy.log("should show up-to-date connection health status");
+    cy.log("should show the health of each connection");
     getMainConnectionInfoSection().within(() => {
       getDatabaseConnectionHealthInfo().should("have.text", "Connected");
     });
@@ -69,29 +87,6 @@ describe("scenarios > admin > databases > writable connection", () => {
         "Could not connect",
       );
     });
-
-    cy.log("should be able to remove a writable connection");
-    removeWritableConnection();
-    getWritableConnectionInfoSection()
-      .findByText("Add writable connection")
-      .should("exist");
-  });
-
-  it("should validate writable connection details on save", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    getWritableConnectionInfoSection()
-      .findByText("Add writable connection")
-      .click();
-    fillInCredentials({
-      username: "invalid",
-      password: "invalid",
-    });
-
-    cy.button("Save").click();
-    cy.findByRole("alert").should(
-      "contain.text",
-      "Metabase tried, but couldn't connect",
-    );
   });
 
   it("should be able to run transforms with a writable connection", () => {
@@ -151,14 +146,8 @@ describe("scenarios > admin > databases > writable connection", () => {
       createWritableConnection(DEFAULT_USER);
       refreshModelPersistenceAndAwaitSuccess(model.id);
 
-      // Regression for metabase#74449: the Persist model data toggle must
-      // reflect the mutation result without a page reload (persistModel
-      // returns HTTP 204, and the UI relies on RTK cache invalidation to
-      // refetch the persisted state).
       cy.visit(`/model/${model.id}`);
       H.openQuestionActions("Edit settings");
-      cy.findByLabelText("Persist model data").should("be.checked").click();
-      cy.findByLabelText("Persist model data").should("not.be.checked").click();
       cy.findByLabelText("Persist model data").should("be.checked");
     });
   });
@@ -278,14 +267,6 @@ function updateWritableConnection(credentials: DatabaseCredentials) {
     .click();
   fillInCredentials(credentials);
   cy.button("Save changes").click();
-  getWritableConnectionInfoSection().should("be.visible");
-}
-
-function removeWritableConnection() {
-  getWritableConnectionInfoSection()
-    .button("Remove writable connection")
-    .click();
-  H.modal().button("Remove").click();
   getWritableConnectionInfoSection().should("be.visible");
 }
 

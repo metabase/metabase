@@ -5,6 +5,10 @@ import type {
   ModelCacheRefreshStatus,
 } from "metabase-types/api";
 
+/**
+ * Mocks the model persistence endpoints. Persisting or unpersisting a model
+ * updates the state that `GET /api/persist/card/:id` returns afterwards.
+ */
 export function setupModelPersistenceEndpoints(
   persistedModels: ModelCacheRefreshStatus[],
 ) {
@@ -22,13 +26,21 @@ export function setupModelPersistenceEndpoints(
   });
 
   for (const persistedModel of persistedModels) {
-    fetchMock.get(
-      `path:/api/persist/card/${persistedModel.card_id}`,
-      persistedModel,
-    );
+    const cardId = persistedModel.card_id;
+    let currentModel = persistedModel;
+
+    fetchMock.get(`path:/api/persist/card/${cardId}`, () => currentModel);
     fetchMock.post(
-      `path:/api/persist/card/${persistedModel.card_id}/refresh`,
-      persistedModel,
+      `path:/api/persist/card/${cardId}/refresh`,
+      () => currentModel,
     );
+    fetchMock.post(`path:/api/persist/card/${cardId}/persist`, () => {
+      currentModel = { ...currentModel, state: "creating" };
+      return { status: 204 };
+    });
+    fetchMock.post(`path:/api/persist/card/${cardId}/unpersist`, () => {
+      currentModel = { ...currentModel, state: "off" };
+      return { status: 204 };
+    });
   }
 }
