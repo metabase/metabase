@@ -656,6 +656,10 @@
                            (lib/breakout (lib/with-temporal-bucket created-at :month))
                            lib/append-stage
                            (lib/expression "Foo Bar" (lib/+ 57910 1)))
+            month      (m/find-first #(= "Created At: Month" (:display-name %)) (lib/orderable-columns query))
+            _          (assert (some? month))
+            ;; the outer stage has no implicit order, so sort by month for the first and last rows
+            query      (lib/order-by query month :asc)
             result     (qp/process-query query)]
         (is (= ["Created At: Month" "Cumulative count" "Foo Bar"]
                (map :display_name (mt/cols result))))

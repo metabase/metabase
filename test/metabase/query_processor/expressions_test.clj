@@ -1095,8 +1095,11 @@
                              (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
                              (lib/breakout (lib/with-temporal-bucket created-at :month))
                              lib/append-stage)
-              query      (lib/expression base "MegaTotal" (lib/+ (column-with-display-name base "Sum of Subtotal")
-                                                                 (column-with-display-name base "Sum of Total")))
+              query      (-> base
+                             (lib/expression "MegaTotal" (lib/+ (column-with-display-name base "Sum of Subtotal")
+                                                                (column-with-display-name base "Sum of Total")))
+                             ;; the outer stage has no implicit order, so sort by month for the first rows
+                             (lib/order-by (column-with-display-name base "Created At: Month") :asc))
               result     (qp/process-query query)]
           (is (= ["Created At: Month" "Sum of Subtotal" "Sum of Total" "MegaTotal"]
                  (map :display_name (mt/cols result))))
@@ -1121,7 +1124,9 @@
                              lib/append-stage)
               query      (-> base
                              (lib/expression "Double the fun" (lib/* (column-with-display-name base "Sum of Total") 2))
-                             (lib/expression "13857_CC" (lib/* (column-with-display-name base "13857_CE") 1234)))
+                             (lib/expression "13857_CC" (lib/* (column-with-display-name base "13857_CE") 1234))
+                             ;; the outer stage has no implicit order, so sort by year for the first row
+                             (lib/order-by (column-with-display-name base "Created At: Year") :asc))
               unfiltered (lib/remove-clause query 0 (first (lib/filters query 0)))
               first-row  (fn [query]
                            (let [result (qp/process-query query)]
