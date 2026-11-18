@@ -95,7 +95,9 @@
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
   the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id} :- [:or ::sandbox.schema/sandbox ::sandbox.schema/sandbox.update]]
+  ([{card-id :card_id, table-id :table_id} :- [:map
+                                               [:card_id {:optional true} [:maybe ::lib.schema.id/card]]
+                                               [:table_id ::lib.schema.id/table]]]
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
