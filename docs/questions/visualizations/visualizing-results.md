@@ -49,12 +49,12 @@ Each visualization type has its own advanced options. To change the settings for
 
 ## Questions and dashboard cards have separate visualization settings
 
-Metabase stores visualization settings in two places:
+For questions that are also displayed on dashboards, Metabase stores visualization settings in two places:
 
 - **Question settings**: the settings that you save with the question. When you add the question to a dashboard, the dashboard card starts with these settings.
 - **Dashboard card settings**: the settings that you change on a card in dashboard edit mode. These settings only apply to that card. The question, and other cards that show the same question, don't change.
 
-A dashboard card shows the question's settings, except for each setting that you changed on the card. So if you change a setting on the question, the card shows the change, unless the card has its own value for that setting. See [Changing a card's visualization settings](../../dashboards/introduction.md#changing-a-cards-visualization-settings) and [Changes to a question don't show up on a dashboard card](../../troubleshooting-guide/visualization.md#changes-to-a-question-dont-show-up-on-a-dashboard-card).
+A dashboard card shows the question's settings, except for each setting that you or someone else changed on the card. So if you change a setting on the question, the card  will only shows the change if the same setting hasn't already been configured on the dashboard level. See [Changing a card's visualization settings](../../dashboards/introduction.md#changing-a-cards-visualization-settings) and [Changes to a question don't show up on a dashboard card](../../troubleshooting-guide/visualization.md#changes-to-a-question-dont-show-up-on-a-dashboard-card).
 
 ## Area charts
 

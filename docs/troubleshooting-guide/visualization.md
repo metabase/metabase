@@ -24,14 +24,14 @@ Questions and dashboard cards have [separate visualization settings](../question
 
 Pick one of these fixes:
 
-- **To match the question once**: [reset the card's visualization settings](../dashboards/introduction.md#resetting-a-cards-visualization-settings). The card gets a copy of the question's current visualization settings, and keeps its click behavior. Because the card now has its own copy of those settings, later changes to the same settings on the question won't show up on the card.
-- **To keep following the question**: [replace the card](../dashboards/introduction.md#moving-cards-around) with the same question. The new card has no settings of its own, so it uses the question's visualization settings, including later changes. Replacing a card also clears its click behavior and its filter connections, so you'll need to set those up again.
+- **To match the question settings once**: [reset the card's visualization settings](../dashboards/introduction.md#resetting-a-cards-visualization-settings). The card gets a copy of the question's current visualization settings, and keeps its click behavior. Because the card now has its own copy of those settings, later changes to the same settings on the question won't show up on the card.
+- **To keep following the question settings**: [replace the card](../dashboards/introduction.md#moving-cards-around) with the same question. The new card has no settings of its own, so it uses the question's visualization settings, including later changes. Replacing a card also clears its click behavior and its filter connections, so you'll need to set those up again.
 
 **Explanation**
 
-When you change a visualization setting on a question, the dashboard card shows the change, unless the card has its own value for the same setting. A card's own settings win over the question's settings, and Metabase doesn't show which settings a card overrides.
+When you change a visualization setting on a question, the dashboard card shows the change, unless the card has its own value for the same setting. Setting configured through the dashboard will win over the question's settings, and Metabase doesn't show which settings a card overrides.
 
-For example, say you change the color of a series on a dashboard card, and later change the color of the same series on the question. The card keeps the color that you picked on the dashboard. But if you add a goal line to the question (and didn't change the goal line on the card), the card shows the goal line.
+For example, say you change the color of a series on a dashboard card, and later change the color of the same series on the question. The card keeps the color that you picked on the dashboard. But if you add a goal line to the question (and didn't change the goal line on the card), the card shows the goal line, because the goal line setting hasn't been configured on the dashboard.
 
 ## Visualizing SQL questions
 
