@@ -45,6 +45,28 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
+(mu/defn dashcards
+  "The DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+
+(mu/defn active-card-ids-for-dashboard
+  "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
+  [card-ids     :- [:sequential ::lib.schema.id/card]
+   dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-pks-set :model/Card
+                     {:where [:and
+                              [:in :id card-ids]
+                              [:= :archived false]
+                              [:or
+                               [:= :dashboard_id dashboard-id]
+                               [:= :dashboard_id nil]]]}))
+
+(mu/defn active-card-ids
+  "The ids among `card-ids` of unarchived Cards."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
+
 (mu/defn dashboard-collection-rows
   "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
   read."

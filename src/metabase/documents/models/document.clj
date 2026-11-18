@@ -16,6 +16,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -54,6 +55,11 @@
   {:create :event/document-create
    :update :event/document-update
    :delete :event/document-delete})
+
+(defmethod revisions/spec :model/Document [_model]
+  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
+           :public_uuid :public_uuid_prefix :view_count]})
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 

@@ -39,8 +39,10 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
+   [metabase.queries.revisions :as queries.revisions]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -755,7 +757,7 @@
   [[card-schema/schema-upgrade-triggers]] along.
 
   `:id` is required as well, and not as a formality: Card *revisions* are Card-shaped maps that go through this
-  same after-select, and `metabase.revisions.impl.card` deliberately drops `:id`, `:dimensions`, and
+  same after-select, and the `:model/Card` revision spec deliberately drops `:id`, `:dimensions`, and
   `:dimension_mappings` from the snapshot it stores. Those are historical records rather than live rows, so they
   are left alone here; upgrading one would mean recomputing a dimension set for a card as it looked in the past."
   [card]
@@ -1606,6 +1608,34 @@
                                 :moderator_id        (:id actor)
                                 :status              nil
                                 :text                (tru "Unverified due to edit")})))
+
+(defn- before-revert
+  "The `snapshot` of a Card revision to write to the card `card-id` for the user `user-id`, after the checks that a
+  revert needs, with the `:dataset` that revisions of fewer than 50 cards recorded made the `:type`."
+  [card-id user-id snapshot]
+  (let [snapshot (cond-> snapshot
+                   (contains? snapshot :dataset) (-> (dissoc :dataset)
+                                                     (assoc :type (if (:dataset snapshot) :model :question))))]
+    (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
+    (maybe-unverify! (t2/hydrate (queries.db/card card-id) [:moderation_reviews :moderator_details])
+                     snapshot
+                     {:id user-id})
+    snapshot))
+
+(defmethod revisions/spec :model/Card [_model]
+  {:track         [:name :description :display :type :dataset_query :visualization_settings :parameters
+                   :parameter_mappings :cache_ttl :result_metadata :card_schema :collection_id :dashboard_id
+                   :database_id :table_id :query_type :source_card_id :archived :archived_directly
+                   :dataset_query_metrics_v2_migration_backup]
+   :skip          [:cache_invalidated_at :collection_position :creator_id :dimension_mappings :dimensions
+                   :document_id :embedding_params :embedding_type :enable_embedding :entity_id
+                   :initially_published_at :last_used_at :legacy_query :made_public_by_id :metabase_version
+                   :metabot_chart_id :metabot_conversation_id :public_uuid :public_uuid_prefix :view_count]
+   :same?         {:card_schema     (constantly true)
+                   :result_metadata queries.revisions/same-result-metadata?}
+   :snapshot      queries.revisions/snapshot-metadata
+   :defaults      {:card_schema starting-card-schema-version}
+   :before-revert before-revert})
 
 (mu/defn- mbql-clause->identifier-for-parameter-updates
   "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause

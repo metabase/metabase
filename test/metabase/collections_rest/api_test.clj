@@ -966,18 +966,15 @@
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id rasta-card-id
                                                                          :user_id  (mt/user->id :rasta)
-                                                                         :object   (revision/serialize-instance
-                                                                                    rasta-card rasta-card-id rasta-card)}
+                                                                         :object   (revision/snapshot :model/Card rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id rasta-card-id
                                                                          :user_id  (mt/user->id :crowberto)
-                                                                         :object   (revision/serialize-instance
-                                                                                    rasta-card rasta-card-id rasta-card)}
+                                                                         :object   (revision/snapshot :model/Card rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id lucky-card-id
                                                                          :user_id  (mt/user->id :lucky)
-                                                                         :object   (revision/serialize-instance
-                                                                                    lucky-card lucky-card-id lucky-card)}]
+                                                                         :object   (revision/snapshot :model/Card lucky-card)}]
       (letfn [(item-names [q]
                 (->> (mt/user-http-request :crowberto :get 200
                                            (str "collection/" (u/the-id collection) "/items")
@@ -1559,11 +1556,11 @@
          :model/Revision   revision1                {:model    "Card"
                                                      :model_id card1-id
                                                      :user_id  user2-id
-                                                     :object   (revision/serialize-instance card1 card1-id card1)}
+                                                     :object   (revision/snapshot :model/Card card1)}
          :model/Revision   _revision2               {:model    "Card"
                                                      :model_id card2-id
                                                      :user_id  user1-id
-                                                     :object   (revision/serialize-instance card2 card2-id card2)}]
+                                                     :object   (revision/snapshot :model/Card card2)}]
         ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
         (is (= 1
                (t2/query-one {:update :revision
@@ -1659,19 +1656,19 @@
                      :model/Revision   card-revision1 {:model    "Card"
                                                        :model_id card-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance card card-id card)}
+                                                       :object   (revision/snapshot :model/Card card)}
                      :model/Revision   card-revision2 {:model    "Card"
                                                        :model_id card-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance card card-id card)}
+                                                       :object   (revision/snapshot :model/Card card)}
                      :model/Revision   dash-revision1 {:model    "Dashboard"
                                                        :model_id dashboard-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance dashboard dashboard-id dashboard)}
+                                                       :object   (revision/snapshot :model/Dashboard dashboard)}
                      :model/Revision   dash-revision2 {:model    "Dashboard"
                                                        :model_id dashboard-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]
+                                                       :object   (revision/snapshot :model/Dashboard dashboard)}]
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
           (t2/query-one {:update :revision
                          ;; in the past
@@ -4308,16 +4305,14 @@
                       {:model       "Exploration"
                        :model_id    (:id e)
                        :user_id     (mt/user->id :crowberto)
-                       :object      (revision/serialize-instance :model/Exploration (:id e)
-                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                       :object      (revision/snapshot :model/Exploration (t2/select-one :model/Exploration :id (:id e)))
                        :timestamp   (.minusSeconds t 60)
                        :is_creation true})
           (t2/insert! :model/Revision
                       {:model     "Document"
                        :model_id  (:id doc)
                        :user_id   (mt/user->id :rasta)
-                       :object    (revision/serialize-instance :model/Document (:id doc)
-                                                               (t2/select-one :model/Document :id (:id doc)))
+                       :object    (revision/snapshot :model/Document (t2/select-one :model/Document :id (:id doc)))
                        :timestamp t}))
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))

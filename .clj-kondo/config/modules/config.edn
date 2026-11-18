@@ -821,7 +821,6 @@
            metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
-           metabase.dashboards.models.dashboard-tab
            metabase.dashboards.schema
            metabase.dashboards.settings
            metabase.dashboards.write}
@@ -969,6 +968,7 @@
            query-permissions
            query-processor
            remote-sync
+           revisions
            search
            serialization
            settings
@@ -1145,6 +1145,7 @@
            query-permissions
            query-processor
            request
+           revisions
            search
            settings
            task
@@ -1567,6 +1568,7 @@
            models
            premium-features
            remote-sync
+           revisions
            search
            serialization
            util}
@@ -2540,7 +2542,6 @@
    :api  #{metabase.revisions.api
            metabase.revisions.core
            metabase.revisions.init
-           metabase.revisions.models.revision
            metabase.revisions.sql}
    :uses #{api
            app-db
@@ -2548,7 +2549,6 @@
            dashboards
            events
            explorations.schema
-           lib
            lib.schema
            measures.schema
            models
@@ -2567,7 +2567,6 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
-                    :model/DashboardTab
                     :model/Document
                     :model/Exploration
                     :model/Measure
@@ -2694,6 +2693,7 @@
            models
            premium-features
            remote-sync
+           revisions
            search
            segments.schema
            serialization

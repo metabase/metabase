@@ -1,7 +1,6 @@
 (ns metabase.change-log.events-test
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
@@ -13,6 +12,7 @@
    [metabase.core.init-test :as init-test]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.resolution :as models.resolution]
+   [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.core :as perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.pulse.db :as pulse.db]
@@ -237,17 +237,9 @@
         (let [tracked (change-log.cascade/tracked-models)]
           (is (every? #(or (contains? tracked (:child %)) (contains? fks (:child %))) (mapcat val fks))))))))
 
-(defn- load-models!
-  "Loads the namespace of every model, and returns the models. A model derives the hook when its namespace loads, and
-  Metabase loads some only when they are first used. Without EE, it leaves out the EE models."
-  []
-  (vec (for [[model nspace] models.resolution/model->namespace
-             :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
-         (t2/resolve-model model))))
-
 (deftest tracked-model-keys-test
   (testing "each tracked model's key is one integer column"
-    (load-models!)
+    (spec-test-util/load-models!)
     (let [column-types (t2/with-connection [^Connection conn]
                          (with-open [rs (.getColumns (.getMetaData conn) (.getCatalog conn) (.getSchema conn) "%" "%")]
                            (into {}
@@ -264,13 +256,13 @@
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"
-    (load-models!)
+    (spec-test-util/load-models!)
     (doseq [model (vals (change-log.cascade/tracked-models))]
       (is (isa? model :hook/events) (str model " does not derive :hook/events")))))
 
 (deftest cascade-sources-derive-events-test
   (testing "a model whose delete cascades to a tracked table derives the events trait, so the delete is captured"
-    (let [models  (load-models!)
+    (let [models  (spec-test-util/load-models!)
           fks     (change-log.cascade/foreign-keys)
           sources (set (filter #(seq (change-log.cascade/referenced-columns fks (name (t2/table-name %)))) models))]
       (doseq [model sources]
@@ -292,7 +284,7 @@
 
 (deftest tracked-models-load-at-startup-test
   (testing "each tracked model's namespace loads at startup, so a delete that cascades to its rows logs them"
-    (load-models!)
+    (spec-test-util/load-models!)
     (let [startup (startup-namespaces)]
       (doseq [model (vals (change-log.cascade/tracked-models))]
         (is (contains? startup (models.resolution/model->namespace model))
@@ -465,7 +457,7 @@
     :model/WorkspaceDatabase})
 
 (deftest tracked-models-test
-  (let [models (set (load-models!))]
+  (let [models (set (spec-test-util/load-models!))]
     (testing "each model is in `tracked-models` or `untracked-models`, and not in both"
       (is (= models (set (filter models (concat tracked-models untracked-models)))))
       (is (empty? (filter tracked-models untracked-models))))
@@ -475,16 +467,8 @@
     (testing "both name only models"
       (is (empty? (remove models.resolution/model->namespace (concat tracked-models untracked-models)))))))
 
-(defn- table-columns
-  "The columns of the table of `model` in the app DB."
-  [model]
-  (into #{}
-        (map (comp keyword u/lower-case-en :column_name))
-        (t2/query ["SELECT column_name AS column_name FROM information_schema.columns WHERE lower(table_name) = ?"
-                   (name (t2/table-name model))])))
-
 (deftest spec-columns-test
-  (load-models!)
+  (spec-test-util/load-models!)
   (doseq [model (change-log.spec/tracked-models)
           :let  [{:keys [track skip]} (change-log/spec model)]]
     (testing (str model)
@@ -492,13 +476,13 @@
         (is (= (count (concat track skip)) (count (set (concat track skip)))))
         (is (empty? (filter change-log.spec/implicit-columns (concat track skip)))))
       (testing "lists each column of its table under `:track` or `:skip`: put a new column where it belongs"
-        (is (= (set/difference (table-columns model) change-log.spec/implicit-columns)
+        (is (= (set/difference (spec-test-util/table-columns model) change-log.spec/implicit-columns)
                (set (concat track skip))))))))
 
 (deftest lint-tables-test
   (testing "the `:metabase/change-log-raw-write` lint knows each tracked model and its table"
     (is (= tracked-models (set (keys toucan.db-ns/change-log-tables))))
-    (doseq [model (load-models!)
+    (doseq [model (spec-test-util/load-models!)
             :when (tracked-models model)]
       (is (= (t2/table-name model) (toucan.db-ns/change-log-tables model))))))
 

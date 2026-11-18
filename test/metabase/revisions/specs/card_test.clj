@@ -1,13 +1,12 @@
-(ns metabase.revisions.impl.card-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.impl.card-test]}}}}}}
+(ns metabase.revisions.specs.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.specs.card-test]}}}}}}
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
-   [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -16,9 +15,9 @@
 (comment metabase.revisions.init/keep-me)
 
 (defn- diff-strings
-  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  "The `revision/describe` of `o1` and `o2`, naming the Collections and Dashboards they reference."
   [model o1 o2]
-  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+  (revision/describe model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
 
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
@@ -113,7 +112,7 @@
                                                     :type       "category"}]}
      :model/Collection coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [columns     (disj (set/difference (set (keys card)) @#'impl.card/excluded-columns-for-card-revision)
+      (let [columns     (disj (set (revisions.spec/tracked-columns :model/Card))
                               ;; we only record result metadata for models, so we'll test that seperately
                               :result_metadata)
             update-col  (fn [col value]
@@ -198,7 +197,7 @@
 (deftest card-revision-excludes-metabot-origin-test
   (testing "the Metabot origin columns are not captured in revisions, so reverting can never write back a stale conversation id"
     (mt/with-temp [:model/Card card {:metabot_chart_id "chart-1"}]
-      (let [serialized (revision/serialize-instance :model/Card (:id card) card)]
+      (let [serialized (revision/snapshot :model/Card card)]
         (is (not (contains? serialized :metabot_chart_id)))
         (is (not (contains? serialized :metabot_conversation_id)))))))
 
@@ -209,7 +208,7 @@
                                               :display       :table}]
       ;; Get the full card and serialize it
       (let [full-card       (t2/select-one :model/Card :id card-id)
-            serialized-card (revision/serialize-instance :model/Card card-id full-card)
+            serialized-card (revision/snapshot :model/Card full-card)
             ;; Remove card_schema to simulate pre-v0.55 revision
             old-card-data   (dissoc serialized-card :card_schema)]
         ;; Manually create a revision without :card_schema to simulate pre-v0.55 data

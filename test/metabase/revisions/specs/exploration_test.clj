@@ -1,4 +1,4 @@
-(ns metabase.revisions.impl.exploration-test
+(ns metabase.revisions.specs.exploration-test
   (:require
    [clojure.test :refer :all]
    [metabase.revisions.init]
@@ -11,10 +11,10 @@
 (deftest serialize-instance-strips-bookkeeping-columns-test
   (mt/with-temp [:model/Exploration {expl-id :id} {:name "expl" :creator_id (mt/user->id :crowberto)}]
     (let [instance   (t2/select-one :model/Exploration :id expl-id)
-          serialized (revision/serialize-instance :model/Exploration expl-id instance)]
+          serialized (revision/snapshot :model/Exploration instance)]
       (testing "bookkeeping/identity columns are excluded from the snapshot"
-        ;; Hardcoded on purpose (rather than derefing the impl's own exclusion set) so that an
-        ;; accidental change to `excluded-columns-for-exploration-revision` fails this test.
+        ;; Hardcoded on purpose (rather than reading the spec) so that an accidental change to the columns that the
+        ;; spec skips fails this test.
         (doseq [k [:id :entity_id :creator_id :created_at :updated_at :archived_directly]]
           (testing k
             (is (not (contains? serialized k))))))
@@ -22,8 +22,9 @@
         (is (contains? serialized :name))
         (is (contains? serialized :description))
         (is (contains? serialized :archived))
-        (is (contains? serialized :collection_id))
-        (is (contains? serialized :collection_position))))))
+        (is (contains? serialized :collection_id)))
+      (testing "the pinned position is not"
+        (is (not (contains? serialized :collection_position)))))))
 
 (defn- create-exploration!
   "Create an Exploration as `crowberto`, which records its creation revision."

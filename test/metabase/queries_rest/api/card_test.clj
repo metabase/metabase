@@ -1873,7 +1873,7 @@
                          :model/Revision _             {:model    "Card"
                                                         :model_id (:id card)
                                                         :user_id  user-id
-                                                        :object   (revision/serialize-instance card (:id card) card)}]
+                                                        :object   (revision/snapshot :model/Card card)}]
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps

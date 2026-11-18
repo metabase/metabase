@@ -1,9 +1,9 @@
-(ns metabase.revisions.impl.document-test
+(ns metabase.revisions.specs.document-test
   "Unit tests for Document revision serialization and reversion functionality."
   (:require
    [clojure.test :refer :all]
-   [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -17,7 +17,7 @@
                     :updated_at #t "2023-01-02T00:00:00Z"
                     :collection_id 789
                     :archived false}
-          serialized (revision/serialize-instance :model/Document 123 document)]
+          serialized (revision/snapshot :model/Document document)]
       (testing "includes Document-specific fields"
         (is (= "Test Document" (:name serialized)))
         (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]}
@@ -40,11 +40,11 @@
                     :updated_at #t "2023-01-02T00:00:00Z"
                     :collection_id 789}]
       (testing "works with matching ID"
-        (let [serialized (revision/serialize-instance :model/Document 123 document)]
+        (let [serialized (revision/snapshot :model/Document document)]
           (is (= "Test Document" (:name serialized)))
           (is (not (contains? serialized :id)))))
       (testing "works with different ID"
-        (let [serialized (revision/serialize-instance :model/Document 999 document)]
+        (let [serialized (revision/snapshot :model/Document document)]
           (is (= "Test Document" (:name serialized)))
           (is (not (contains? serialized :id))))))))
 
@@ -57,7 +57,7 @@
                     :created_at #t "2023-01-01T00:00:00Z"
                     :updated_at #t "2023-01-01T00:00:00Z"
                     :collection_id nil}
-          serialized (revision/serialize-instance :model/Document 1 document)]
+          serialized (revision/snapshot :model/Document document)]
       (is (= "Minimal Doc" (:name serialized)))
       (is (= {:type "doc"} (:document serialized)))
       (is (nil? (:collection_id serialized)) "collection_id should be excluded even when nil")
@@ -69,7 +69,7 @@
     (mt/with-temp [:model/Document {doc-id :id, :as document} {:name "Original Document"
                                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
                                                                :creator_id (mt/user->id :crowberto)}]
-      (let [original-serialized (revision/serialize-instance :model/Document doc-id document)
+      (let [original-serialized (revision/snapshot :model/Document document)
             _ (t2/update! :model/Document :id doc-id {:name "Updated Document"
                                                       :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
             updated-document (t2/select-one :model/Document :id doc-id)]
@@ -89,14 +89,11 @@
               (is (:created_at reverted-document))
               (is (:updated_at reverted-document)))))))))
 
-(deftest excluded-columns-test
-  (testing "excluded columns constant contains expected fields"
-    (let [excluded-columns @#'metabase.revisions.impl.document/excluded-columns-for-document-revision]
-      (is (contains? excluded-columns :id))
-      (is (contains? excluded-columns :creator_id))
-      (is (contains? excluded-columns :created_at))
-      (is (contains? excluded-columns :updated_at))
-      (is (contains? excluded-columns :collection_id))
-      (is (contains? excluded-columns :collection_position))
-      (is (contains? excluded-columns :public_uuid_prefix))
-      (is (= 11 (count excluded-columns)) "Should exclude exactly 11 metadata fields"))))
+(deftest skipped-columns-test
+  (testing "the spec skips the metadata columns and tracks the content"
+    (let [{:keys [track skip]} (revisions.spec/spec :model/Document)]
+      (is (= #{:creator_id :entity_id :view_count :last_viewed_at :collection_id :collection_position :public_uuid
+               :public_uuid_prefix :made_public_by_id}
+             (set skip)))
+      (is (contains? (set track) :document))
+      (is (contains? (set track) :name)))))

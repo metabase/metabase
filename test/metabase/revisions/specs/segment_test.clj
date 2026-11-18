@@ -1,4 +1,4 @@
-(ns metabase.revisions.impl.segment-test
+(ns metabase.revisions.specs.segment-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -15,27 +15,23 @@
 
 (deftest ^:parallel serialize-segment-test
   (mt/with-temp [:model/Segment segment {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
-    (is (=? {:id                      true
-             :table_id                true
-             :creator_id              (mt/user->id :rasta)
+    (is (=? {:table_id                true
              :name                    "Toucans in the rainforest"
              :description             "Lookin' for a blueberry"
              :show_in_getting_started false
              :caveats                 nil
              :points_of_interest      nil
-             :entity_id               (:entity_id segment)
              :definition              {:lib/type :mbql/query
                                        :stages [{:lib/type :mbql.stage/mbql
                                                  :source-table (mt/id :venues)
                                                  :filters [[:> {} [:field {} (mt/id :venues :price)] 4]]}]
                                        :database (mt/id)}
              :archived                false}
-            (into {} (-> (revision/serialize-instance :model/Segment (:id segment) segment)
-                         (update :id boolean)
+            (into {} (-> (revision/snapshot :model/Segment segment)
                          (update :table_id boolean)))))
-    (testing "excluded columns are not present"
-      (is (not-any? #{:created_at :updated_at}
-                    (keys (revision/serialize-instance :model/Segment (:id segment) segment)))))))
+    (testing "skipped columns are not present"
+      (is (not-any? #{:id :creator_id :entity_id :created_at :updated_at}
+                    (keys (revision/snapshot :model/Segment segment)))))))
 
 (deftest ^:parallel diff-segments-test
   (mt/with-temp [:model/Segment segment {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 4)}]
@@ -49,7 +45,7 @@
                            :after  "BBB"}
              :name        {:before "Toucans in the rainforest"
                            :after  "Something else"}}
-            (revision/diff-map
+            (revision/diff
              :model/Segment
              segment
              (assoc segment
@@ -61,7 +57,7 @@
   (testing "test case where definition doesn't change"
     (is (= {:name {:before "A"
                    :after  "B"}}
-           (revision/diff-map
+           (revision/diff
             :model/Segment
             {:name        "A"
              :description "Unchanged"
@@ -75,7 +71,7 @@
     (is (= {:name        {:after "A"}
             :description {:after "Unchanged"}
             :definition  {:after {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}}
-           (revision/diff-map
+           (revision/diff
             :model/Segment
             nil
             {:name        "A"
@@ -86,7 +82,7 @@
   (testing "removals only"
     (is (= {:definition {:before {:filter [:and [:> [:field 4 nil] "2014-10-19"] [:= 5 "yes"]]}
                          :after  {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}}
-           (revision/diff-map
+           (revision/diff
             :model/Segment
             {:name        "A"
              :description "Unchanged"

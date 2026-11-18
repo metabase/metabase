@@ -1,65 +1,31 @@
-(ns metabase.revisions.impl.dashboard
+(ns metabase.dashboards.revisions
+  "What a Dashboard needs of the revisions beyond its columns: its revert, which puts back its tabs and dashcards, and
+  the description of what changed in it."
   (:require
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.queries.core :as queries]
-   [metabase.revisions.db :as revisions.db]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
-
-(def ^:private excluded-columns-for-dashboard-revision
-  #{:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
-    ;; not sure what position is for, from the column remark:
-    ;; > The position this Dashboard should appear in the Dashboards list,
-    ;;   lower-numbered positions appearing before higher numbered ones.
-    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
-    :public_uuid :public_uuid_prefix :made_public_by_id :enable_embedding :embedding_params :embedding_type
-    :position :initially_published_at :view_count
-    :last_viewed_at})
-
-(def ^:private excluded-columns-for-dashcard-revision
-  [:entity_id :created_at :updated_at :collection_authority_level])
-
-(def ^:private excluded-columns-for-dashboard-tab-revision
-  [:created_at :updated_at :entity_id])
-
-(defmethod revision/serialize-instance :model/Dashboard
-  [_model _id dashboard]
-  (let [dashcards (or (:dashcards dashboard)
-                      (:dashcards (t2/hydrate dashboard :dashcards)))
-        dashcards (when (seq dashcards)
-                    (if (contains? (first dashcards) :series)
-                      dashcards
-                      (t2/hydrate dashcards :series)))
-        tabs  (or (:tabs dashboard)
-                  (:tabs (t2/hydrate dashboard :tabs)))]
-    (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
-        (assoc :cards (vec (for [dashboard-card dashcards]
-                             (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
-                                 (assoc :series (mapv :id (:series dashboard-card)))))))
-        (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) tabs)))))
 
 (defn- check-reverted-dashcards-timeline-permissions!
   "Reverting can put a card back on a publicly shared or embedded dashboard, exposing its selected timeline events, so
   the current user needs read access to those timelines."
   [dashboard-id current-cards reverted-cards]
   (queries/check-newly-exposed-dashcards-timeline-permissions!
-   (revisions.db/entity :model/Dashboard dashboard-id) current-cards reverted-cards))
+   (dashboards.db/dashboard dashboard-id) current-cards reverted-cards))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (->> (t2/hydrate (revisions.db/dashcards dashboard-id) :series)
-                              (mapv (fn [dashcard]
-                                      (-> (apply dissoc (t2.realize/realize dashcard)
-                                                 excluded-columns-for-dashcard-revision)
-                                          (assoc :series (mapv :id (:series dashcard)))))))
+  (let [current-cards    (->> (t2/hydrate (dashboards.db/dashcards dashboard-id) :series)
+                              (mapv #(revisions/snapshot :model/DashboardCard %)))
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (check-reverted-dashcards-timeline-permissions! dashboard-id current-cards (concat to-create to-update))
@@ -78,7 +44,7 @@
   [dashboard-id dashcards]
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (revisions.db/active-card-ids-for-dashboard card-ids dashboard-id))
+                            (dashboards.db/active-card-ids-for-dashboard card-ids dashboard-id))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -88,7 +54,7 @@
   [parameters]
   (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
         active-card-ids (when (seq card-ids)
-                          (revisions.db/active-card-ids card-ids))
+                          (dashboards.db/active-card-ids card-ids))
         invalid-card-ids (set/difference card-ids active-card-ids)]
     (if (empty? invalid-card-ids)
       parameters
@@ -98,21 +64,22 @@
                 param))
             parameters))))
 
-(defmethod revision/revert-to-revision! :model/Dashboard
-  [model dashboard-id user-id serialized-dashboard]
+(defn revert-dashboard!
+  "Return the Dashboard `dashboard-id` to the `serialized-dashboard` that a Revision recorded: its columns, its tabs and
+  its dashcards."
+  [dashboard-id _user-id serialized-dashboard]
   ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
   (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))
         serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
     (queries/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
     ;; Update the dashboard description / name / permissions
-    ((get-method revision/revert-to-revision! :default) model dashboard-id user-id
-                                                        (apply dissoc serialized-dashboard :cards :tabs excluded-columns-for-dashboard-revision))
+    (revisions/revert-columns! :model/Dashboard dashboard-id serialized-dashboard)
     ;; Now update the tabs and cards as needed
     (let [serialized-dashcards      (:cards serialized-dashboard)
           current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                          (revisions.db/dashboard-tabs dashboard-id))
+                                          (dashboards.db/dashboard-tabs-for-dashboards [dashboard-id]))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
-          _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
+          _                         (dashboard-card/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
           serialized-dashcards      (cond->> serialized-dashcards
                                       true
                                       (remove-invalid-dashcards dashboard-id)
@@ -126,8 +93,10 @@
       (revert-dashcards dashboard-id serialized-dashcards))
     serialized-dashboard))
 
-(defmethod revision/diff-strings :model/Dashboard
-  [_model prev-dashboard dashboard names]
+(defn describe-change
+  "The strings that describe how the snapshot `prev-dashboard` of a Dashboard changed into `dashboard`, naming the
+  Collections and Dashboards they moved between from `names`."
+  [prev-dashboard dashboard names]
   (let [[removals changes]  (diff prev-dashboard dashboard)
         check-series-change (fn [idx card-changes]
                               (when (and (:series card-changes)
@@ -143,7 +112,7 @@
 
                                     :else
                                     (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description (u/build-sentence ((get-method revision/diff-strings :default) :model/Dashboard prev-dashboard dashboard names))]
+    (-> [(when-let [default-description (u/build-sentence (revisions/describe-columns :model/Dashboard prev-dashboard dashboard names))]
            (cond-> default-description
              (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)

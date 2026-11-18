@@ -13,6 +13,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -50,6 +51,12 @@
   {:create :event/transform-create
    :update :event/transform-update
    :delete :event/transform-delete})
+
+(defmethod revisions/spec :model/Transform [_model]
+  {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
+               :target :target_db_id]
+   :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :authorize :snapshot})
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
   "Deserialize a transform source map from JSON storage format, normalized to its schema."

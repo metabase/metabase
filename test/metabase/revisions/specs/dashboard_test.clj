@@ -1,10 +1,9 @@
-(ns metabase.revisions.impl.dashboard-test
+(ns metabase.revisions.specs.dashboard-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -12,9 +11,9 @@
    [toucan2.core :as t2]))
 
 (defn- diff-strings
-  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  "The `revision/describe` of `o1` and `o2`, naming the Collections and Dashboards they reference."
   [model o1 o2]
-  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+  (revision/describe model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
 
 (deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
@@ -46,10 +45,9 @@
                                      :dashboard_id           dashboard-id}]
               :tabs                []
               :archived            false
-              :collection_position nil
               :parameters          []
               :width               "fixed"}
-             (update (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard)
+             (update (revision/snapshot :model/Dashboard dashboard)
                      :cards
                      (fn [[{:keys [id card_id series], :as card}]]
                        [(assoc card
@@ -76,7 +74,7 @@
                :tabs                       [{:id       tab-id
                                              :name     "Test Tab"
                                              :position 0}]}
-              (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard))))))
+              (revision/snapshot :model/Dashboard dashboard))))))
 
 (deftest ^:parallel diff-dashboards-str-test
   (testing "update general info ---"
@@ -250,7 +248,7 @@
                                                             :type "category"}]}
          :model/Collection       coll      {:name "A collection"}]
         (mt/with-temporary-setting-values [enable-public-sharing true]
-          (let [columns    (disj (set/difference (set (keys dashboard)) @#'impl.dashboard/excluded-columns-for-dashboard-revision)
+          (let [columns    (disj (set (revisions.spec/tracked-columns :model/Dashboard))
                                  :archived_directly)
                 update-col (fn [col value]
                              (cond
@@ -304,7 +302,7 @@
          :model/Action               action    {:model_id (:id card)
                                                 :type     :implicit
                                                 :name     "An action"}]
-        (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'impl.dashboard/excluded-columns-for-dashcard-revision))
+        (let [columns    (disj (set (revisions.spec/tracked-columns :model/DashboardCard))
                                :dashboard_id :id)
               update-col (fn [col value]
                            (cond
@@ -336,7 +334,7 @@
       (mt/with-temp
         [:model/Dashboard     dashboard {:name "A Dashboard"}
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
-        (let [columns    (disj (set/difference (set (keys dashtab)) (set @#'impl.dashboard/excluded-columns-for-dashboard-tab-revision))
+        (let [columns    (disj (set (revisions.spec/tracked-columns :model/DashboardTab))
                                :dashboard_id :id)
               update-col (fn [_col value]
                            (cond
@@ -372,10 +370,9 @@
                                 :cards               []
                                 :tabs                []
                                 :archived            false
-                                :collection_position nil
                                 :parameters          []
                                 :width               "fixed"}
-          serialized-dashboard (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard)]
+          serialized-dashboard (revision/snapshot :model/Dashboard dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
                 :archived_directly   false
@@ -398,7 +395,6 @@
                                        :dashboard_id           dashboard-id}]
                 :tabs                []
                 :archived            false
-                :collection_position nil
                 :parameters          []
                 :width               "fixed"}
                (update serialized-dashboard :cards check-ids))))
@@ -411,7 +407,7 @@
         (testing "capture updated Dashboard state"
           (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)]
             (is (= (assoc empty-dashboard :auto_apply_filters false)
-                   (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard))))))
+                   (revision/snapshot :model/Dashboard dashboard))))))
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! :model/Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name                "Test Dashboard"
@@ -435,15 +431,14 @@
                                        :dashboard_id           dashboard-id}]
                 :tabs                []
                 :archived            false
-                :collection_position nil
                 :parameters          []
                 :width               "fixed"}
-               (update (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))
+               (update (revision/snapshot :model/Dashboard (t2/select-one :model/Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
         (revision/revert-to-revision! :model/Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))))))))
+               (revision/snapshot :model/Dashboard (t2/select-one :model/Dashboard :id dashboard-id))))))))
 
 (defn- create-dashboard-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."

@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.revisions.events]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -67,12 +68,15 @@
                   (is (= expected (call-count))))))))))))
 
 (defn- ignored-columns-of
-  "The columns that the audit log and revisions each ignore for `model`, from their own lists."
+  "The columns that the audit log ignores for `model` from its list, and the counters and computed columns that the revision spec of `model` skips."
   [model]
-  (let [lists [@#'metabase.audit-app.events.audit-log/ignored-columns
-               @#'metabase.revisions.events/ignored-columns]]
-    {:audit     (into (get-in lists [0 :default]) (get-in lists [0 model]))
-     :revisions (into (get-in lists [1 :default]) (get-in lists [1 model]))}))
+  (let [audit-list @#'metabase.audit-app.events.audit-log/ignored-columns]
+    {:audit     (into (:default audit-list) (get audit-list model))
+     :revisions (into #{}
+                      (filter #{:view_count :last_used_at :last_viewed_at :cache_invalidated_at :collection_position
+                                :entity_id :position :last_checkpoint_value :target_table_id :table_dependencies
+                                :dimensions :dimension_mappings})
+                      (:skip (revisions.spec/spec model)))}))
 
 (deftest ignored-columns-record-nothing-test
   (testing "an update of only a column that a consumer ignores is recorded by none of the consumers that ignore it"

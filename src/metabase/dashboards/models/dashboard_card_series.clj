@@ -2,6 +2,7 @@
   (:require
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -20,6 +21,11 @@
   {:create :event/dashboard-card-series-create
    :update :event/dashboard-card-series-update
    :delete :event/dashboard-card-series-delete})
+
+(defmethod revisions/spec :model/DashboardCardSeries [_model]
+  {:track  [:card_id :position]
+   :skip   [:dashboardcard_id]
+   :parent {:model :model/DashboardCard :key :dashboardcard_id}})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

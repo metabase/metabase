@@ -6,6 +6,7 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
+   [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -54,6 +55,10 @@
   {:create :event/exploration-create
    :update :event/exploration-update
    :delete :event/exploration-delete})
+
+(defmethod revisions/spec :model/Exploration [_model]
+  {:track [:name :description :collection_id :archived]
+   :skip  [:archived_directly :collection_position :creator_id :entity_id]})
 
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]

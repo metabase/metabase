@@ -186,13 +186,6 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards-by-ids
-  "The Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
-
 (mu/defn card-test :- [:maybe ::data-testing.schema/card-test]
   "The CardTest with `id`, or nil."
   [id :- ms/PositiveInt]
@@ -233,13 +226,6 @@
   "The Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one :model/Segment :id segment-id))
-
-(mu/defn segments-by-ids
-  "The Segments with `segment-ids`."
-  [segment-ids :- [:sequential ::lib.schema.id/segment]]
-  (if (seq segment-ids)
-    (t2/select :model/Segment :id [:in segment-ids])
-    []))
 
 (mu/defn segment-test :- [:maybe ::data-testing.schema/segment-test]
   "The SegmentTest with `id`, or nil."

@@ -10,6 +10,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.revisions :as dashboards.revisions]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
@@ -25,6 +26,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -67,6 +69,17 @@
            :collection_position :cache_ttl :entity_id :auto_apply_filters :width :initially_published_at
            :archived_directly :embedding_type :public_uuid_prefix]
    :skip  [:last_viewed_at :view_count]})
+
+(defmethod revisions/spec :model/Dashboard [_model]
+  {:track    [:name :description :archived :archived_directly :auto_apply_filters :cache_ttl :collection_id
+              :parameters :width]
+   :skip     [:caveats :collection_position :creator_id :embedding_params :embedding_type :enable_embedding :entity_id
+              :initially_published_at :last_viewed_at :made_public_by_id :points_of_interest :position
+              :public_uuid :public_uuid_prefix :show_in_getting_started :view_count]
+   :children {:cards :model/DashboardCard
+              :tabs  :model/DashboardTab}
+   :revert!  dashboards.revisions/revert-dashboard!
+   :describe dashboards.revisions/describe-change})
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -306,32 +319,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- set-questions-archived!
-  "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
-  [card-ids archived?]
-  (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived card-ids archived?) {:archived archived?}))
-  (dashboards.db/set-cards-archived! card-ids archived?))
-
-(defn archive-or-unarchive-internal-dashboard-questions!
-  "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
-  dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
-  Questions that *are* on the Dashboard as *not* archived. This function takes a dashboard and the set of dashcards
-  about to be saved, and ensures that all DQs that appear on the dashboard are unarchived and all DQs that DON'T
-  appear on the dashboard are archived."
-  [dashboard-id new-cards]
-  (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
-        internal-dashboard-question-ids (dashboards.db/internal-dashboard-question-ids dashboard-id)
-        ;; the set of all card IDs that are present on the dashboard
-        used-card-ids (into #{} (map :card_id new-cards))
-        ;; DQs that aren't used get archived
-        internal-dashboard-questions-to-archive (set/difference internal-dashboard-question-ids used-card-ids)
-        ;; DQs that ARE used get unarchived
-        internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
-    (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (set-questions-archived! (vec ids) true))
-    (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (set-questions-archived! (vec ids) false))))
 
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."

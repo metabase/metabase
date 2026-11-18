@@ -8,6 +8,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -32,6 +33,11 @@
   {:create :event/dashboard-tab-create
    :update :event/dashboard-tab-update
    :delete :event/dashboard-tab-delete})
+
+(defmethod revisions/spec :model/DashboardTab [_model]
+  {:track  [:name :position :dashboard_id]
+   :skip   [:entity_id]
+   :parent {:model :model/Dashboard :key :dashboard_id :as :tabs}})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

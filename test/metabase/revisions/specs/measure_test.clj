@@ -1,4 +1,4 @@
-(ns metabase.revisions.impl.measure-test
+(ns metabase.revisions.specs.measure-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -12,9 +12,9 @@
 (comment metabase.revisions.init/keep-me)
 
 (defn- diff-strings
-  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  "The `revision/describe` of `o1` and `o2`, naming the Collections and Dashboards they reference."
   [model o1 o2]
-  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+  (revision/describe model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
 
 (defn- measure-definition [agg-fn field-key]
   (let [mp    (mt/metadata-provider)
@@ -43,7 +43,7 @@
            diff sentence -- diff-strings has no :definition case, unlike diff-map which does track it structurally"
     (let [before {:name "Orders Total" :definition (measure-definition lib/count :id)}
           after  (assoc before :definition (measure-definition lib/sum :price))]
-      (is (some? (:definition (revision/diff-map :model/Measure before after)))
+      (is (some? (:definition (revision/diff :model/Measure before after)))
           "diff-map does track the definition change...")
       (is (nil? (u/build-sentence (diff-strings :model/Measure before after)))
           "...but diff-strings has no wording for it, so no sentence is produced"))))
@@ -53,10 +53,10 @@
                                                       :table_id   (mt/id :venues)
                                                       :definition (measure-definition lib/sum :price)}]
     (testing "the serialized measure has no dimension"
-      (let [serialized (revision/serialize-instance :model/Measure id (t2/select-one :model/Measure :id id))]
+      (let [serialized (revision/snapshot :model/Measure (t2/select-one :model/Measure :id id))]
         (is (not-any? #(contains? serialized %) [:dimensions :dimension_mappings]))))
     (testing "reverting a stored revision that holds dimensions does not write them back"
-      (let [stored (assoc (revision/serialize-instance :model/Measure id measure)
+      (let [stored (assoc (revision/snapshot :model/Measure measure)
                           :name "Reverted" :dimensions [{:id (str (random-uuid)) :name "stale" :status :status/active}] :dimension_mappings [])]
         (revision/revert-to-revision! :model/Measure id (mt/user->id :crowberto) stored)
         (is (=? {:name "Reverted" :dimensions nil}

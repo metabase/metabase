@@ -52,7 +52,7 @@
             :description  "Checks the output"
             :inputs       []
             :expectations []}
-           (revisions/serialize-instance :model/TransformTest 1 transform-test)))))
+           (revisions/snapshot :model/TransformTest transform-test)))))
 
 (deftest transform-test-create-and-update-revisions-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -164,7 +164,7 @@
             :description  "Checks the output"
             :inputs       []
             :expectations []}
-           (revisions/serialize-instance :model/CardTest 1 card-test)))))
+           (revisions/snapshot :model/CardTest card-test)))))
 
 (deftest card-test-create-and-update-revisions-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -567,18 +567,17 @@
 
 (deftest segment-test-revision-serialization-test
   (is (= {:segment_id 2 :name "No nulls" :description "Checks the output" :inputs [] :expectations []}
-         (revisions/serialize-instance :model/SegmentTest 1
-                                       (t2/instance :model/SegmentTest
-                                                    {:id           1
-                                                     :entity_id    "test-entity-id"
-                                                     :segment_id   2
-                                                     :creator_id   3
-                                                     :name         "No nulls"
-                                                     :description  "Checks the output"
-                                                     :inputs       []
-                                                     :expectations []
-                                                     :created_at   :not-revisioned
-                                                     :updated_at   :not-revisioned})))))
+         (revisions/snapshot :model/SegmentTest (t2/instance :model/SegmentTest
+                                                             {:id           1
+                                                              :entity_id    "test-entity-id"
+                                                              :segment_id   2
+                                                              :creator_id   3
+                                                              :name         "No nulls"
+                                                              :description  "Checks the output"
+                                                              :inputs       []
+                                                              :expectations []
+                                                              :created_at   :not-revisioned
+                                                              :updated_at   :not-revisioned})))))
 
 (deftest segment-test-create-update-and-revert-test
   (mt/with-premium-features #{:transforms-testing}

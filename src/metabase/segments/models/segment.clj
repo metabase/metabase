@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
@@ -41,6 +42,13 @@
   {:create :event/segment-create
    :update :event/segment-update
    :delete :event/segment-delete})
+
+(defmethod revisions/spec :model/Segment [_model]
+  {:track        [:name :description :definition :archived :table_id :caveats :points_of_interest
+                  :show_in_getting_started]
+   :skip         [:entity_id :creator_id]
+   :same?        {:definition revisions/same-definition?}
+   :diff-columns [:name :description :definition]})
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."

@@ -11,7 +11,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
@@ -202,21 +202,20 @@
 (def ^:private revision-columns
   [:transform_id :name :description :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/TransformTest
-  [_model _id transform-test]
-  (select-keys transform-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/TransformTest
-  [_model objects]
-  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/TransformTest %) objects) :can_read)))
-
-(defmethod revision/check-revert-available ::saved-test
-  [_model]
+(defn check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of a saved test needs."
+  []
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
-(defmethod revision/revert-to-revision! :model/TransformTest
-  [_model id _user-id serialized-instance]
-  (update-transform-test! id (select-keys serialized-instance revision-columns)))
+(defmethod revisions/spec :model/TransformTest [_model]
+  {:track           revision-columns
+   :skip            [:creator_id :entity_id]
+   :authorize       :snapshot
+   :author          :creator_id
+   :revert-update?  true
+   :revert!         (fn [id _user-id snapshot]
+                      (update-transform-test! id (select-keys snapshot revision-columns)))
+   :check-available check-revert-available})
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

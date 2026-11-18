@@ -10,7 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -133,21 +133,15 @@
 (def ^:private revision-columns
   [:card_id :name :description :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/CardTest
-  [_model _id card-test]
-  (select-keys card-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/CardTest
-  [_model objects]
-  ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
-  (let [readable-ids (into #{}
-                           (map :id)
-                           (mi/readable (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))))]
-    (mapv #(contains? readable-ids (:card_id %)) objects)))
-
-(defmethod revision/revert-to-revision! :model/CardTest
-  [_model id _user-id serialized-instance]
-  (update-card-test! id (select-keys serialized-instance revision-columns)))
+(defmethod revisions/spec :model/CardTest [_model]
+  {:track           revision-columns
+   :skip            [:creator_id :entity_id]
+   :authorize       :snapshot
+   :author          :creator_id
+   :revert-update?  true
+   :revert!         (fn [id _user-id snapshot]
+                      (update-card-test! id (select-keys snapshot revision-columns)))
+   :check-available data-testing.models/check-revert-available})
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
