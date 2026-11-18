@@ -64,6 +64,20 @@
   ["oauthRedirectUri" "nonProxyHosts" "proxyPort" "proxyUser" "proxyPassword" "proxyProtocol" "useProxy"
    "disableSocksProxy" "allowUnderscoresInHost" "disableSamlURLCheck"])
 
+(defmethod driver/disallowed-connection-parameters :snowflake
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Reads a local config file that sets where the client writes its logs
+         "client_config_file"
+         ;; Picks a local directory to write the CRL cache to (the client reads it as a system property)
+         "CRL_RESPONSE_CACHE_DIR"
+         ;; Makes the client connect to every host in the diagnostics allowlist
+         "ENABLE_DIAGNOSTICS"
+         ;; Reads a local file
+         "DIAGNOSTICS_ALLOWLIST_FILE"
+         ;; Reads a private key from a local file
+         "private_key_file"]))
+
 (defn- authenticator-values
   "Every `authenticator` the client could be handed by `spec`: each one in the connection string, as written and as the
   client percent-decodes it, and each property whose name matches regardless of case -- the client looks property
