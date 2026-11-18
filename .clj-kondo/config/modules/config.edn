@@ -4123,6 +4123,7 @@
                     :model/Database
                     :model/Document
                     :model/Segment
+                    :model/Table
                     :model/Transform
                     :model/User}}
 

@@ -101,6 +101,14 @@
         (let [response (mt/user-http-request :crowberto :post 400 "ee/segment-test" (assoc (body segment-id) :inputs []))]
           (is (= "segment-test.missing-inputs" (:error-code response)))
           (is (= ["PUBLIC.PEOPLE"] (:tables response)))))
+      (testing "POST refuses an input that lacks a column the segment's query reads, naming the table and the column"
+        (is (=? {:error-code "segment-test.missing-input-columns"
+                 :columns    {:PUBLIC.PEOPLE ["SOURCE"]}}
+                (mt/user-http-request :crowberto :post 400 "ee/segment-test"
+                                      (assoc (body segment-id)
+                                             :inputs [(-> (first inputs)
+                                                          (assoc :columns [{:name "ID" :cast_type "INTEGER"}])
+                                                          (assoc :rows [{"ID" 1} {"ID" 2}]))])))))
       (testing "POST refuses a test with no expectations"
         (is (= "segment-test.no-expectations"
                (:error-code (mt/user-http-request :crowberto :post 400 "ee/segment-test"
@@ -109,6 +117,17 @@
         (is (= "segment-test.missing-inputs"
                (:error-code (mt/user-http-request :crowberto :put 400 (str "ee/segment-test/" test-id) {:inputs []}))))
         (is (= 1 (count (:inputs (t2/select-one :model/SegmentTest :id test-id)))))))))
+
+(deftest a-test-of-a-segment-with-no-definition-is-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Segment     {segment-id :id} {:table_id (mt/id :people) :definition {}}
+                   :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+      (testing "POST refuses a test of a segment with no definition, as one whose query cannot be compiled"
+        (is (=? {:error-code "segment-test.uncompilable-subject"}
+                (mt/user-http-request :crowberto :post 422 "ee/segment-test" (body segment-id)))))
+      (testing "a run of a saved test of it is refused the same way"
+        (is (=? {:error-code "segment-test.uncompilable-subject"}
+                (mt/user-http-request :crowberto :post 422 (str "ee/segment-test/" test-id "/run"))))))))
 
 (deftest run-saved-test-test
   (mt/with-premium-features #{:transforms-testing}

@@ -94,12 +94,6 @@
 (defmethod where :model/Segment [_ {:keys [table-ids]}]
   (when table-ids (in-ids :table_id table-ids)))
 
-(declare ^:private where-clause)
-
-(defmethod where :model/SegmentTest [_ opts]
-  ;; The tests of the Segments that an export with the same options takes. `:ids` names segment tests, not Segments.
-  [:in :segment_id ^:allow-subquery {:select [:id] :from [:segment] :where (where-clause :model/Segment (dissoc opts :ids))}])
-
 (defmethod where :model/Measure [_ {:keys [table-ids]}]
   (when table-ids (in-ids :table_id table-ids)))
 
@@ -121,6 +115,10 @@
    (when ids (in-ids (first (t2/primary-keys model)) ids))
    (when (and skip-archived (archived-column? model)) [:not :archived])
    (where model opts)])
+
+(defmethod where :model/SegmentTest [_ opts]
+  ;; The tests of the Segments that an export with the same options takes. `:ids` names segment tests, not Segments.
+  [:in :segment_id ^:allow-subquery {:select [:id] :from [:segment] :where (where-clause :model/Segment (dissoc opts :ids))}])
 
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the

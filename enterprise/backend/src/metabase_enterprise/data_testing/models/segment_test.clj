@@ -16,6 +16,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/SegmentTest [_model] :segment_test)
 
 (doto :model/SegmentTest
@@ -147,10 +149,22 @@
                :creator_id serialization/user-transform}})
 
 (defmethod serialization/storage-paths :model/SegmentTest [_ entities _ctx]
-  ;; A segment's path comes from its table, and only the segment's exported definition names that table.
-  (let [segments (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities) nil))
-        exported (zipmap (map :entity_id segments) (serialization/export-batch :model/Segment segments))
-        paths    (serialization/batch-storage-paths (mapv #(get exported (:segment_id %)) entities))]
+  ;; A segment's path comes from the table its exported definition reads. A stub segment, whose definition names only
+  ;; that table, gives the same path without exporting the segment, which fails for a definition that cannot export.
+  (let [segments   (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities)
+                                                     [:entity_id :name :table_id]))
+        table-refs (zipmap (map :entity_id segments)
+                           (serialization/column-refs serialization/app-db-store :model/Table (map :table_id segments)))
+        stubs      (into {}
+                         (map (fn [{eid :entity_id segment-name :name}]
+                                [eid {:serdes/meta [{:model "Segment"}]
+                                      :entity_id   eid
+                                      :name        segment-name
+                                      :definition  {:lib/type :mbql/query
+                                                    :stages   [{:lib/type     :mbql.stage/mbql
+                                                                :source-table (get table-refs eid)}]}}]))
+                         segments)
+        paths      (serialization/batch-storage-paths (mapv #(get stubs (:segment_id %)) entities))]
     (mapv (fn [segment-test path]
             (conj path {:label (:name segment-test) :key (:entity_id segment-test)}))
           entities paths)))

@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -205,3 +206,16 @@
     (testing "another user may not run it: the segment has no Database to write native SQL against"
       (mt/with-current-user (mt/user->id :rasta)
         (is (false? (boolean (data-testing.models.segment-test/can-run? segment-test))))))))
+
+(deftest storage-path-of-a-test-of-a-segment-whose-definition-cannot-be-exported-test
+  (testing "a test is stored under its segment's table even when the segment's definition cannot be exported"
+    (mt/with-temp [:model/Segment     {segment-eid :entity_id segment-id :id} {:table_id   (mt/id :people)
+                                                                               :name       "Empty"
+                                                                               :definition {}}
+                   :model/SegmentTest {test-eid :entity_id}                   {:segment_id segment-id :name "A test"}]
+      (is (=? [[{:label "databases"} {:label string?} {:label "schemas"} {:label string?}
+                {:label "tables"} {:label #"(?i)people"} {:label "segments"} {:label "Empty" :key segment-eid}
+                {:label "A test" :key test-eid}]]
+              (serialization/storage-paths :model/SegmentTest
+                                           [{:segment_id segment-eid :name "A test" :entity_id test-eid}]
+                                           nil))))))

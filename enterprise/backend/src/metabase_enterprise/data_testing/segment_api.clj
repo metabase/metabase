@@ -10,6 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -21,12 +22,23 @@
   [thunk :- ifn?]
   (data-testing.errors/refusing "segment-test" thunk))
 
+(mu/defn- testable-segment
+  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when it has no definition: there is
+  then no query to test."
+  [segment-id :- ms/PositiveInt]
+  (let [segment (data-testing.db/segment segment-id)]
+    (when (and segment (empty? (:definition segment)))
+      (throw (data-testing.errors/ex ::data-testing.errors/uncompilable-subject
+                                     (tru "The segment has no definition, so there is no query to test.")
+                                     {})))
+    segment))
+
 (mu/defn- validate-test! :- :nil
   "Refuse a test of the Segment `segment-id` with `inputs` and `expectations` unless it could run."
   [segment-id   :- ms/PositiveInt
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :segment (data-testing.db/segment segment-id) inputs expectations)))
+  (refusing #(data-testing.runner/validate-test :segment (testable-segment segment-id) inputs expectations)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/segment-test.response]
   "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. Needs Data
@@ -109,7 +121,7 @@
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/check-403 (data-testing.models.segment-test/can-run? segment-test))
     (refusing #(data-testing.runner/run-test! :segment
-                                              (data-testing.db/segment (:segment_id segment-test))
+                                              (testable-segment (:segment_id segment-test))
                                               segment-test))))
 
 (def ^{:arglists '([request respond raise])} routes

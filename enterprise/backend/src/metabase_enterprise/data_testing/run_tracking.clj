@@ -19,12 +19,17 @@
 (defonce ^:private active-runs
   (atom #{}))
 
+(def ^:private run-topics
+  "The audit topic of each event of a run, by test type and event."
+  {:transform {:start :event/transform-test-run-start, :timeout :event/transform-test-run-timeout}
+   :card      {:start :event/card-test-run-start,      :timeout :event/card-test-run-timeout}
+   :segment   {:start :event/segment-test-run-start,   :timeout :event/segment-test-run-timeout}})
+
 (defn- run-topic
-  "The audit topic of the `event` (`:start` or `:timeout`) of a run of a `test-type` test, such as
-  `:event/card-test-run-start`, or nil for a test type this version does not know."
+  "The audit topic of the `event` (`:start` or `:timeout`) of a run of a `test-type` test, or nil for a test type this
+  version does not know."
   [test-type event]
-  (when (contains? data-testing.db/test-type->model test-type)
-    (keyword "event" (str (name test-type) "-test-run-" (name event)))))
+  (get-in run-topics [test-type event]))
 
 (mu/defn start-run! :- ::data-testing.schema/data-test-run
   "Create a started run of the `test-type` test `test-id`, publish the start event of `test-type`, and register the run
