@@ -180,9 +180,14 @@ describe("NewMetricPage", () => {
     expect(within(dataStep).getByText("Orders Model")).toBeInTheDocument();
     const summarizeStep = await screen.findByTestId("step-summarize-0-0");
     expect(within(summarizeStep).getByText("Count")).toBeInTheDocument();
-    expect(
-      within(dataStep).getByRole("button", { name: "Join data" }),
-    ).toBeInTheDocument();
+    ["Join data", "Custom column"].forEach((name) => {
+      expect(
+        within(dataStep).getByRole("button", { name }),
+      ).toBeInTheDocument();
+      expect(
+        within(summarizeStep).queryByRole("button", { name }),
+      ).not.toBeInTheDocument();
+    });
     expect(
       screen.queryByRole("button", { name: "Summarize" }),
     ).not.toBeInTheDocument();
