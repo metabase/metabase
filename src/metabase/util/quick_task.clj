@@ -29,6 +29,27 @@
   []
   (u/minutes->ms (or (config/config-int :mb-quick-task-timeout-minutes) 120)))
 
+(defn run-with-timeout!
+  "Run `f` on a thread of its own and return its result, or log a warning and return nil when `f` throws or runs longer
+  than `timeout-ms`, by default [[task-timeout-ms]], in which case its thread is interrupted and not waited for."
+  ([f]
+   (run-with-timeout! f (task-timeout-ms)))
+  ([f timeout-ms]
+   (let [timeout-ms (long timeout-ms)
+         fut        (FutureTask. ^Callable (bound-fn* f))
+         t          (.newThread ^ThreadFactory thread-factory ^Runnable fut)]
+     (.start t)
+     (try
+       (.get fut timeout-ms TimeUnit/MILLISECONDS)
+       (catch TimeoutException _
+         (log/warnf "Task exceeded timeout of %d ms, interrupting it" timeout-ms)
+         (.cancel fut true)
+         nil)
+       (catch InterruptedException _
+         (.interrupt (Thread/currentThread)))
+       (catch Exception e
+         (log/warnf "Task threw exception: %s" (ex-message e)))))))
+
 (defn submit-task!
   "Submit a task to the single thread executor. Each task is run on a separate thread with a timeout
    controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
@@ -36,19 +57,6 @@
    single stuck task from blocking all subsequent tasks."
   ^Future [^Callable f]
   {:pre [(some? f)]}
-  (let [timeout-ms (long (task-timeout-ms))
-        task       (bound-fn* f)
-        wrapped    (fn []
-                     (let [fut (FutureTask. ^Callable task)
-                           t   (.newThread ^ThreadFactory thread-factory ^Runnable fut)]
-                       (.start t)
-                       (try
-                         (.get fut timeout-ms TimeUnit/MILLISECONDS)
-                         (catch TimeoutException _
-                           (log/warnf "quick-task exceeded timeout of %d ms, cancelling" timeout-ms)
-                           (.cancel fut true))
-                         (catch InterruptedException _
-                           (.interrupt (Thread/currentThread)))
-                         (catch Exception e
-                           (log/warnf "quick-task threw exception: %s" (ex-message e))))))]
-    (.submit ^ExecutorService @executor ^Callable wrapped)))
+  (let [task       (bound-fn* f)
+        timeout-ms (task-timeout-ms)]
+    (.submit ^ExecutorService @executor ^Callable (fn [] (run-with-timeout! task timeout-ms)))))
