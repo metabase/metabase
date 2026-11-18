@@ -45,7 +45,7 @@
   "A connection that implements no method, so any use of it throws."
   (reify java.sql.Connection))
 
-(defn- with-recorder
+(defn- with-recorder!
   "Calls `thunk` with the warehouse replaced by a recorder. Returns `{:result :sent :roles}`: what `thunk` returned or
   `{:thrown message}`, each statement handed to the warehouse in order, and the impersonation role of the current user
   at each connection checkout, as `set-role-if-supported!` computes it outside a query."
@@ -94,26 +94,26 @@
     (do-with-unreachable-postgres
      (fn [db-id]
        (testing "control: a test of single SELECTs runs, and the recorder sees each statement"
-         (let [{:keys [result sent]} (with-recorder #(run-card-test! db-id "SELECT 1 AS id"
-                                                                     "SELECT * FROM {{output}} WHERE 1 = 0"))]
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
            (is (= :passed (:status result)) (pr-str result))
            (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id$" %) sent) (pr-str sent))
            (is (= [] (more-than-one-statement sent)))))
        (testing "input SQL of more than one statement is refused or never sent"
          (is (= [] (more-than-one-statement
-                    (:sent (with-recorder #(run-card-test! db-id "SELECT 1 AS id; COMMIT; DELETE FROM public.orders"
-                                                           "SELECT * FROM {{output}} WHERE 1 = 0")))))))
+                    (:sent (with-recorder! #(run-card-test! db-id "SELECT 1 AS id; COMMIT; DELETE FROM public.orders"
+                                                            "SELECT * FROM {{output}} WHERE 1 = 0")))))))
        (testing "`empty` expectation SQL of more than one statement is refused or never sent"
          (is (= [] (more-than-one-statement
-                    (:sent (with-recorder #(run-card-test! db-id "SELECT 1 AS id"
-                                                           (str "SELECT * FROM {{output}} WHERE 1 = 0; COMMIT; "
-                                                                "DO $$ BEGIN EXECUTE 'DELETE FROM public.orders'; END $$"))))))))))))
+                    (:sent (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
+                                                            (str "SELECT * FROM {{output}} WHERE 1 = 0; COMMIT; "
+                                                                 "DO $$ BEGIN EXECUTE 'DELETE FROM public.orders'; END $$"))))))))))))
 
 (def ^:private escape-sql
   "Native SQL that leaves the impersonated role, then reads."
   "RESET ROLE; SELECT 1 AS id")
 
-(defn- process-native-query
+(defn- process-native-query!
   "Runs native `sql` on the Database `db-id` through the query processor, with the warehouse replaced by a recorder.
   Returns `{:result :sent}`: the result or `{:thrown message}`, and the native SQL of each query handed to the
   warehouse."
@@ -144,7 +144,7 @@
   (mt/with-premium-features #{:advanced-permissions :transforms-testing :transforms-basic}
     (do-with-unreachable-postgres
      (fn [db-id]
-       (mt/with-db (t2/select-one :model/Database db-id)
+       (mt/with-db (t2/select-one :model/Database :id db-id)
          ;; Real policy rows: rasta's group is impersonated on the Database with the role `limited_role`, and has
          ;; unrestricted view-data and native query permission on it.
          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id db-id :attribute "role_attr"}]
@@ -153,44 +153,44 @@
                                                                      (lib-be/application-database-metadata-provider db-id)
                                                                      card-sql)}]
              (testing "control: the query processor sends rasta's single SELECT"
-               (is (= ["SELECT 1 AS id"] (:sent (process-native-query db-id "SELECT 1 AS id")))))
+               (is (= ["SELECT 1 AS id"] (:sent (process-native-query! db-id "SELECT 1 AS id")))))
              (testing "control: the query processor refuses rasta's native query that resets the role, and sends nothing"
-               (let [{:keys [result sent]} (process-native-query db-id escape-sql)]
+               (let [{:keys [result sent]} (process-native-query! db-id escape-sql)]
                  (is (re-find #"Must be a single select statement" (str (:thrown result))))
                  (is (= [] sent))))
              (testing "control: rasta's data test of single SELECTs runs under rasta's role"
-               (let [{:keys [result sent roles]} (with-recorder #(create-and-run-as-rasta!
-                                                                  card-id "SELECT 1 AS id"
-                                                                  "SELECT * FROM {{output}} WHERE 1 = 0"))]
+               (let [{:keys [result sent roles]} (with-recorder! #(create-and-run-as-rasta!
+                                                                   card-id "SELECT 1 AS id"
+                                                                   "SELECT * FROM {{output}} WHERE 1 = 0"))]
                  (is (= "passed" (:status result)) (pr-str result))
                  (is (= ["limited_role"] roles))
                  (is (seq sent))
                  (is (= [] (more-than-one-statement sent)))))
              (testing "rasta's data test whose SQL resets the role is refused or never sent"
                (is (= [] (more-than-one-statement
-                          (:sent (with-recorder #(create-and-run-as-rasta!
-                                                  card-id (str "SELECT 1 AS id; " escape-sql)
-                                                  "RESET ROLE; SELECT * FROM {{output}} WHERE 1 = 0"))))))))))))))
+                          (:sent (with-recorder! #(create-and-run-as-rasta!
+                                                   card-id (str "SELECT 1 AS id; " escape-sql)
+                                                   "RESET ROLE; SELECT * FROM {{output}} WHERE 1 = 0"))))))))))))))
 
 (deftest data-test-sends-the-checked-statement-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
     (do-with-unreachable-postgres
      (fn [db-id]
        (testing "the run sends input SQL as the statement check rebuilt it"
-         (let [{:keys [result sent]} (with-recorder #(run-card-test! db-id "SELECT 1 AS id -- one"
-                                                                     "SELECT * FROM {{output}} WHERE 1 = 0"))]
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id -- one"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
            (is (= :passed (:status result)) (pr-str result))
            (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id /\* one \*/$" %) sent) (pr-str sent))))
        (testing "input SQL whose rebuild Postgres reads as more than one statement is refused or never sent"
          (is (= [] (more-than-one-statement
-                    (:sent (with-recorder #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
-                                                           "SELECT * FROM {{output}} WHERE 1 = 0")))))))
+                    (:sent (with-recorder! #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
+                                                            "SELECT * FROM {{output}} WHERE 1 = 0")))))))
        (testing "input SQL whose CTE writes is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
-                                                                     "SELECT * FROM {{output}} WHERE 1 = 0"))]
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
            (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
            (is (= [] sent))))
        (testing "the card's own SQL of more than one statement is refused or never sent"
          (is (= [] (more-than-one-statement
-                    (:sent (with-recorder #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
-                                                           "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0")))))))))))
+                    (:sent (with-recorder! #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
+                                                            "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0")))))))))))
