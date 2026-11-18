@@ -349,27 +349,26 @@
 
 (defn- curation-key
   "The `[curation-model id]` pair [[curation/curated-ids]] judges `item` by, or nil for items without a direct
-   curation signal (including metrics, judged separately by [[curated-items]])."
+   curation signal."
   [{:keys [type id]}]
   (when-let [model (item-type->curation-model type)]
     [model id]))
 
 (defn- curated-items
   "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, uncurated metrics whose
-   definition passes [[curation/usable-metric-ids]] (the same rule a `metric/{id}` read applies), plus
-   navigation items (databases, schemas, collections, documents, dashcards without a card, ...) that carry no
-   data of their own. Callers pass only items the current user can read: the curation verdict on an unreadable
-   item would tell them whether it, or what a metric reads, is curated."
+   definition passes [[curation/usable-metric-ids]] (the same rule a `metric/{id}` read applies), plus navigation
+   items (databases, schemas, collections, documents, dashcards without a card, ...) that carry no data of their own.
+   Callers pass only items the current user can read."
   [items]
+  ;; a verdict on an unreadable item would tell the user whether it, or what a metric reads, is curated
   (let [usable-metrics (curation/usable-metric-ids
                         (into [] (comp (filter #(= "metric" (:type %))) (map :id)) items))
         curated        (curation/curated-ids (keep curation-key items))]
-    (filterv (fn [{:keys [type] :as item}]
-               (if (= "metric" type)
-                 (contains? usable-metrics (:id item))
-                 (if-let [k (curation-key item)]
-                   (contains? curated k)
-                   (not (uncuratable-item-types type)))))
+    (filterv (fn [{:keys [type id] :as item}]
+               (cond
+                 (= "metric" type)   (contains? usable-metrics id)
+                 (curation-key item) (contains? curated (curation-key item))
+                 :else               (not (uncuratable-item-types type))))
              items)))
 
 (defn- list-result

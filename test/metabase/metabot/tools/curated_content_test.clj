@@ -750,7 +750,8 @@
                                          ["metric" plain-metric]}
                                        (juxt :type :id))
                                  (get-in (first (read-uris metabot :internal "metabase://user/recent-items"))
-                                         [:content :structured-output :items])))]
+                                         [:content :structured-output :items])))
+                pairs (fn [metabot] (into #{} (map (juxt :type :id)) (items metabot)))]
             ;; key on type and id: a temp Card's id can coincide with a temp Table's
             (is (=? [{:type "model" :id verified-model}] (items metabot)))
             (testing "the unrestricted Metabot lists them all, with their public types and URIs"
@@ -760,11 +761,9 @@
                       (items nil))))
             (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
               (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
-              (is (= #{["model" verified-model]}
-                     (into #{} (map (juxt :type :id)) (items metabot))))
+              (is (= #{["model" verified-model]} (pairs metabot)))
               (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
-                (is (= #{["model" verified-model] ["metric" plain-metric]}
-                       (into #{} (map (juxt :type :id)) (items metabot))))))))))))
+                (is (= #{["model" verified-model] ["metric" plain-metric]} (pairs metabot)))))))))))
 
 (deftest curation-subject-test
   (testing "transforms can never be curated"
