@@ -2,9 +2,11 @@ import {
   Box,
   type BoxProps,
   type ElementProps,
+  type MantineComponent,
   Modal as MantineModal,
   type ModalProps as MantineModalProps,
   type ModalRootProps as MantineModalRootProps,
+  type ModalContentProps,
 } from "@mantine/core";
 import cx from "classnames";
 import type { ReactNode } from "react";
@@ -18,16 +20,17 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useGatedCloseProps } from "metabase/ui/components/overlays/overlay-stack";
-import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
 import { InModalProvider } from "./InModalContext";
 import S from "./Modal.module.css";
+import { useModalOpenEffect } from "./ModalOpenEffectContext";
 
 export { useModalsStack } from "@mantine/core";
 
 export * from "./Modal.config";
 export * from "./constants";
 export * from "./InModalContext";
+export * from "./ModalOpenEffectContext";
 
 export const MODAL_LAYOUTS = ["default", "centered"] as const;
 
@@ -141,9 +144,7 @@ export function Modal({
   const isCentered = layout === "centered";
   const hasCenteredHeading = isCentered && (illustration != null || !!title);
 
-  useDisableCommandPalette({
-    disabled: props.opened,
-  });
+  useModalOpenEffect(props.opened);
 
   return (
     <PreventEagerPortal {...props}>
@@ -231,9 +232,7 @@ function ModalRoot({
 }: ModalRootProps) {
   const closeProps = useGatedCloseProps(props);
 
-  useDisableCommandPalette({
-    disabled: props.opened,
-  });
+  useModalOpenEffect(props.opened);
   return (
     <PreventEagerPortal>
       <MantineModal.Root
@@ -307,7 +306,13 @@ function ModalFooter({ className, ...props }: ModalFooterProps) {
 
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;
-Modal.Content = MantineModal.Content;
+// Explicit type: TS cannot name Mantine's inferred type in declaration output.
+Modal.Content = MantineModal.Content as MantineComponent<{
+  props: ModalContentProps;
+  ref: HTMLDivElement;
+  stylesNames: "content" | "inner";
+  compound: true;
+}>;
 Modal.CloseButton = MantineModal.CloseButton;
 Modal.Header = MantineModal.Header;
 Modal.Heading = ModalHeading;
