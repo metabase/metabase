@@ -9,6 +9,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
@@ -271,6 +273,12 @@
                      tool-result
                      :dropped_connections))))))))
 
+(defn- venues-query
+  "A query on the venues table, for a card a filter can be wired to."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (deftest dropped-connections-leave-out-unreadable-cards-test
   (testing "a lost connection to a series card the user can't read isn't reported, as redaction hides its mapping"
     (mt/with-temp [:model/Collection          {open-id :id}     {}
@@ -282,9 +290,9 @@
                                                                                   :slug "category"
                                                                                   :type "category"}]}
                    :model/Card                {open-card :id}   {:collection_id open-id
-                                                                 :dataset_query (mt/mbql-query venues)}
+                                                                 :dataset_query (venues-query)}
                    :model/Card                {hidden-card :id} {:collection_id locked-id
-                                                                 :dataset_query (mt/mbql-query venues)}
+                                                                 :dataset_query (venues-query)}
                    :model/DashboardCard       {dc-id :id}       {:dashboard_id       dash-id
                                                                  :card_id            open-card
                                                                  :parameter_mappings
