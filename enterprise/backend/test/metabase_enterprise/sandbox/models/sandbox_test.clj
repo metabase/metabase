@@ -4,18 +4,26 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.sandbox :as sandboxes]
+   [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase-enterprise.sandbox.test-util :as sbx.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest disallow-changing-table-id-test
@@ -24,8 +32,70 @@
                                         :group_id (u/the-id (perms-group/all-users))}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"You cannot change the table ID of a sandbox once it has been created"
+           #"You cannot change the table of a sandbox"
            (t2/update! :model/Sandbox :id (:id gtap) {:table_id (mt/id :checkins)}))))))
+
+(deftest group-id-is-frozen-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/PermissionsGroup {other-group-id :id} {}
+                 :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id}]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"You cannot change the group of a sandbox"
+         (t2/update! :model/Sandbox :id sandbox-id {:group_id other-group-id})))
+    (is (= group-id (t2/select-one-fn :group_id :model/Sandbox :id sandbox-id)))
+    (testing "writing the same group id is no change"
+      (is (= 0 (t2/update! :model/Sandbox :id sandbox-id {:group_id group-id}))))))
+
+(deftest attribute-remappings-shape-test
+  (testing "schema"
+    (doseq [remappings [{"cat" true} {"" "CATEGORY_ID"}]]
+      (is (not (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings remappings}))))
+    (is (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings {"cat" "CATEGORY_ID"}})))
+  (testing "update normalizes the stored remappings"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
+                                                    :group_id             group-id
+                                                    :attribute_remappings {"cat" "CATEGORY_ID"}}]
+      (is (= 1 (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {:cat (mt/id :venues :category_id)}})))
+      (is (= {"cat" (mt/id :venues :category_id)}
+             (t2/select-one-fn :attribute_remappings :model/Sandbox :id sandbox-id))))))
+
+(deftest card-columns-checked-only-when-card-changes-test
+  (testing "an update checks the sandbox Card's columns against the Table only when it sets the Card"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Card             {card-id :id}  {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                     :model/Card             {other-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                     :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id :card_id card-id}]
+        (let [checks (atom 0)]
+          (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
+                                                                          (fn [table-id] (swap! checks inc) (f table-id)))]
+            (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {"cat" "CATEGORY_ID"}})
+            (is (= 0 @checks))
+            (t2/update! :model/Sandbox :id sandbox-id {:card_id other-id})
+            (is (= 1 @checks))))))))
+
+(deftest insert-removes-native-access-of-each-group-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/PermissionsGroup {group-3 :id} {}]
+    (perms/set-database-permission! group-1 (mt/id) :perms/create-queries :query-builder-and-native)
+    (perms/set-database-permission! group-2 (mt/id) :perms/create-queries :query-builder-and-native)
+    (perms/set-database-permission! group-3 (mt/id) :perms/create-queries :no)
+    (try
+      (t2/insert! :model/Sandbox [{:table_id (mt/id :venues) :group_id group-1}
+                                  {:table_id (mt/id :checkins) :group_id group-2}
+                                  {:table_id (mt/id :venues) :group_id group-3}])
+      (is (= {(mt/id :venues) :query-builder}
+             (perms/table-permissions-for-groups #{group-1} :perms/create-queries {(mt/id :venues) (mt/id)})))
+      (is (= {(mt/id :checkins) :query-builder}
+             (perms/table-permissions-for-groups #{group-2} :perms/create-queries {(mt/id :checkins) (mt/id)})))
+      (testing "a group without native access keeps its access"
+        (is (= {(mt/id :venues) :no}
+               (perms/table-permissions-for-groups #{group-3} :perms/create-queries {(mt/id :venues) (mt/id)}))))
+      (finally
+        (t2/delete! :model/Sandbox :group_id [:in #{group-1 group-2 group-3}])))))
 
 (deftest disallow-queries-that-add-columns-test
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
@@ -152,46 +222,10 @@
 
 ;;; ------------------------------------------ sandbox dependency set guard -------------------------------------------
 
-(def ^:private card-msg
-  #"You do not have permissions to modify a question that is used for row and column level security")
-(def ^:private snippet-msg
-  #"You do not have permissions to modify a snippet that is used for row and column level security")
-(def ^:private segment-msg
-  #"You do not have permissions to modify a segment that is used for row and column level security")
-(def ^:private measure-msg
-  #"You do not have permissions to modify a measure that is used for row and column level security")
-
-(defn- guarded-writes-test
-  "Runs the sandbox-guard contract against a policy built by `with-policy`, a function that creates the policy's
-  entities and a sandbox on VENUES and calls its argument with a map of those entities. `ops` is a function of that
-  map returning the guarded writes in order, as `[op-name expected-message thunk]` triples, deletes last; every thunk
-  returns the number of rows it writes.
-
-  Every write is refused with its message for a non-admin, and all of them go through, in order, for an admin and for
-  a server-side write with no user bound; each pass gets its own policy."
-  [with-policy ops]
-  (testing "a non-admin is refused"
-    (with-policy
-      (fn [policy]
-        (mt/with-test-user :rasta
-          (doseq [[op-name msg f] (ops policy)]
-            (testing op-name
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (f)))))))))
-  (testing "an admin may do all of it"
-    (with-policy
-      (fn [policy]
-        (mt/with-test-user :crowberto
-          (doseq [[op-name _msg f] (ops policy)]
-            (testing op-name
-              (is (= 1 (f)))))))))
-  (testing "a server-side write with no user bound may do all of it"
-    (with-policy
-      (fn [policy]
-        (mt/with-test-user :rasta
-          (binding [api/*current-user-id* nil]
-            (doseq [[op-name _msg f] (ops policy)]
-              (testing op-name
-                (is (= 1 (f)))))))))))
+(def ^:private forbidden-msg
+  #"You don't have permissions to do that")
+(def ^:private forbidden-message
+  "You don't have permissions to do that.")
 
 (defn- untouched-test
   "Asserts a non-admin may still write an unrelated entity of the same kind: `write` is called with the map from
@@ -221,20 +255,105 @@
                  :model/Sandbox          _     {:table_id (mt/id :venues), :group_id (:id group), :card_id (:id card)}]
     (f {:card card, :other other})))
 
-(deftest only-admins-can-change-a-card-a-sandbox-is-built-out-of-test
+(deftest only-admins-delete-sandbox-source-card-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-card-policy
-     (fn [{:keys [card]}]
-       [["query"           card-msg #(t2/update! :model/Card :id (:id card) {:dataset_query (mt/mbql-query venues {:limit 1})})]
-        ["result metadata" card-msg #(t2/update! :model/Card :id (:id card)
-                                                 {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")})]
-        ["archive"         card-msg #(t2/update! :model/Card :id (:id card) {:archived true})]
-        ["delete"  card-msg #(t2/delete! :model/Card :id (:id card))]]))
+    (testing "a non-admin who writes the card may not delete it, through the permission question or the endpoint"
+      (with-card-policy
+        (fn [{:keys [card]}]
+          (mt/with-test-user :rasta
+            (is (false? (boolean (queries/can-delete? card)))))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 (str "card/" (:id card)))))
+          (is (t2/exists? :model/Card :id (:id card))))))
+    (testing "an admin may delete it"
+      (with-card-policy
+        (fn [{:keys [card]}]
+          (mt/with-test-user :crowberto
+            (is (true? (boolean (queries/can-delete? card)))))
+          (mt/user-http-request :crowberto :delete 204 (str "card/" (:id card)))
+          (is (not (t2/exists? :model/Card :id (:id card)))))))
+    (testing "a non-admin may delete an unrelated card"
+      (with-card-policy
+        (fn [{:keys [other]}]
+          (mt/user-http-request :rasta :delete 204 (str "card/" (:id other)))
+          (is (not (t2/exists? :model/Card :id (:id other)))))))
     (untouched-test
      with-card-policy
      (fn [{:keys [other]}]
        (t2/update! :model/Card :id (:id other) {:dataset_query (mt/mbql-query venues {:limit 1})})))))
+
+(deftest only-admins-pass-update-check-on-sandbox-source-card-test
+  (mt/with-premium-features #{:sandboxes}
+    (letfn [(update-check [card changes]
+              (api/update-check (t2/select-one :model/Card :id (:id card)) changes))
+            (guarded-changes []
+              [["query"           {:dataset_query (mt/mbql-query venues {:limit 1})}]
+               ["result metadata" {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")}]
+               ["archive"         {:archived true}]])]
+      (testing "a non-admin is refused"
+        (with-card-policy
+          (fn [{:keys [card]}]
+            (mt/with-test-user :rasta
+              (doseq [[change-name changes] (guarded-changes)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check card changes)))))))))
+      (testing "an admin may do all of it"
+        (with-card-policy
+          (fn [{:keys [card]}]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name changes] (guarded-changes)]
+                (testing change-name
+                  (is (true? (update-check card changes)))))))))
+      (testing "a value the card already has is no change"
+        (with-card-policy
+          (fn [{:keys [card]}]
+            (mt/with-test-user :rasta
+              (is (true? (update-check card {:dataset_query   (:dataset_query card)
+                                             :result_metadata (:result_metadata card)
+                                             :archived        false
+                                             :name            "Renamed"})))))))
+      (testing "an unrelated card is untouched"
+        (with-card-policy
+          (fn [{:keys [other]}]
+            (mt/with-test-user :rasta
+              (is (true? (update-check other {:dataset_query (mt/mbql-query venues {:limit 1})}))))))))))
+
+(deftest only-admins-change-sandbox-source-card-through-every-write-path-test
+  (mt/with-premium-features #{:sandboxes}
+    (with-card-policy
+      (fn [{:keys [card]}]
+        (let [card-id (:id card)
+              query   (:dataset_query card)]
+          (testing "PUT /api/card/:id"
+            (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dataset_query (mt/mbql-query venues {:limit 1})})
+            (is (= query (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+          (testing "POST /api/revision/revert"
+            (revisions.tu/push-revision! {:object       (t2/select-one :model/Card :id card-id)
+                                          :entity       :model/Card
+                                          :id           card-id
+                                          :user-id      (mt/user->id :crowberto)
+                                          :is-creation? true})
+            (let [first-revision-id (t2/select-one-fn :id :model/Revision :model "Card" :model_id card-id)]
+              (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:limit 2})})
+              (let [changed (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                (revisions.tu/push-revision! {:object       (t2/select-one :model/Card :id card-id)
+                                              :entity       :model/Card
+                                              :id           card-id
+                                              :user-id      (mt/user->id :crowberto)
+                                              :is-creation? false})
+                (mt/user-http-request :rasta :post 403 "revision/revert" {:entity      :card
+                                                                          :id          card-id
+                                                                          :revision_id first-revision-id})
+                (is (= changed (t2/select-one-fn :dataset_query :model/Card :id card-id))))))
+          (testing "PUT /api/agent/v1/question/:id"
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id) {:archived true})
+            (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))
+          (testing "the question_write MCP tool"
+            (mt/with-test-user :rasta
+              (let [{:keys [result error]} (registry/call-tool v2.tu/all-scopes (str (random-uuid)) "question_write"
+                                                               {:method "update" :id card-id :archived true})]
+                (is (or (:isError result) error) (some-> error :message message/render))
+                (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))))))
 
 (defn- with-snippet-policy
   "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
@@ -256,26 +375,80 @@
                                                           :card_id  (:id policy)}]
       (f {:inner inner, :outer outer, :other other, :nested-card nested-card}))))
 
+(deftest only-admins-change-card-read-by-sandbox-through-snippet-test
+  (mt/with-premium-features #{:sandboxes}
+    (letfn [(update-check [nested-card]
+              (api/update-check (t2/select-one :model/Card :id (:id nested-card)) {:dataset_query (mt/mbql-query venues)}))]
+      (testing "a non-admin is refused the query of the nested Card"
+        (with-snippet-policy
+          (fn [{:keys [nested-card]}]
+            (mt/with-test-user :rasta
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
+      (testing "an admin may change it"
+        (with-snippet-policy
+          (fn [{:keys [nested-card]}]
+            (mt/with-test-user :crowberto
+              (is (true? (update-check nested-card))))))))))
+
 (deftest only-admins-can-change-a-snippet-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-snippet-policy
-     (fn [{:keys [inner outer nested-card]}]
-       [["content"                       snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
-                                                                  {:content "1 = 1"})]
-        ["name"                          snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
-                                                                  {:name (mt/random-name)})]
-        ["archive"                       snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
-                                                                  {:archived true})]
-        ["content of the nested snippet" snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id inner)
-                                                                  {:content "2 = 2"})]
-        ["query of the nested Card"      card-msg    #(t2/update! :model/Card :id (:id nested-card)
-                                                                  {:dataset_query (mt/mbql-query venues)})]
-        ["delete"                        snippet-msg #(t2/delete! :model/NativeQuerySnippet :id (:id outer))]]))
-    (untouched-test
-     with-snippet-policy
-     (fn [{:keys [other]}]
-       (t2/update! :model/NativeQuerySnippet :id (:id other) {:content "2 = 2"})))))
+    (letfn [(update-check [snippet changes]
+              (api/update-check (t2/select-one :model/NativeQuerySnippet :id (:id snippet)) changes))
+            (guarded-changes [{:keys [inner outer]}]
+              [["content"                       outer {:content "1 = 1"}]
+               ["name"                          outer {:name (mt/random-name)}]
+               ["archive"                       outer {:archived true}]
+               ["content of the nested snippet" inner {:content "2 = 2"}]])]
+      (testing "a non-admin is refused"
+        (with-snippet-policy
+          (fn [policy]
+            (mt/with-test-user :rasta
+              (doseq [[change-name snippet changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check snippet changes)))))))))
+      (testing "an admin may do all of it"
+        (with-snippet-policy
+          (fn [policy]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name snippet changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (true? (update-check snippet changes)))))))))
+      (testing "a change that does not touch what the sandbox reads is allowed"
+        (with-snippet-policy
+          (fn [{:keys [outer]}]
+            (mt/with-test-user :rasta
+              (is (true? (update-check outer {:description "A description"})))))))
+      (testing "an unrelated snippet is untouched"
+        (with-snippet-policy
+          (fn [{:keys [other]}]
+            (mt/with-test-user :rasta
+              (is (true? (update-check other {:content "2 = 2"}))))))))))
+
+(deftest only-admins-change-sandbox-source-snippet-through-endpoint-test
+  (mt/with-premium-features #{:sandboxes}
+    (letfn [(put-url [snippet]
+              (str "native-query-snippet/" (:id snippet)))]
+      (with-snippet-policy
+        (fn [{:keys [inner outer other]}]
+          (testing "a non-admin is refused"
+            (doseq [[change-name snippet changes] [["content"                       outer {:content "1 = 1"}]
+                                                   ["name"                          outer {:name (mt/random-name)}]
+                                                   ["archive"                       outer {:archived true}]
+                                                   ["content of the nested snippet" inner {:content "2 = 2"}]]]
+              (testing change-name
+                (is (= forbidden-message
+                       (mt/user-http-request :rasta :put 403 (put-url snippet) changes))))))
+          (testing "the snippets are unchanged"
+            (is (= (:content outer) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id outer))))
+            (is (= (:name outer) (t2/select-one-fn :name :model/NativeQuerySnippet :id (:id outer))))
+            (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id outer))))
+            (is (= (:content inner) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id inner)))))
+          (testing "an admin may change them"
+            (is (=? {:content "1 = 1"}
+                    (mt/user-http-request :crowberto :put 200 (put-url outer) {:content "1 = 1"}))))
+          (testing "a non-admin may change an unrelated snippet"
+            (is (=? {:content "2 = 2"}
+                    (mt/user-http-request :rasta :put 200 (put-url other) {:content "2 = 2"})))))))))
 
 (defn- venues-query []
   (let [mp (mt/metadata-provider)]
@@ -284,7 +457,8 @@
 (defn- price-above
   "A Segment definition: VENUES.PRICE above `n`."
   [n]
-  (measures.tu/segment-definition (mt/id :venues) (mt/id :venues :price) n))
+  (lib/filter (venues-query)
+              (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) n)))
 
 (defn- with-segment-policy
   "A policy filtering on Segment `outer`, whose definition filters on Segment `inner`."
@@ -304,21 +478,47 @@
                                                  :card_id  (:id policy)}]
     (f {:inner inner, :outer outer, :other other})))
 
+(defn- with-table-writer!
+  "Calls `thunk` as a data analyst, not an admin, who may write the Segments and Measures of VENUES."
+  [thunk]
+  (mt/with-premium-features #{:sandboxes :advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/User             {analyst-id :id} {:is_data_analyst true}]
+      (perms/add-user-to-group! analyst-id group-id)
+      (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+      (mt/with-current-user analyst-id
+        (thunk)))))
+
 (deftest only-admins-can-change-a-segment-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-segment-policy
-     (fn [{:keys [inner outer]}]
-       [["definition"                       segment-msg #(t2/update! :model/Segment :id (:id outer)
-                                                                     {:definition (price-above 4)})]
-        ["archive"                          segment-msg #(t2/update! :model/Segment :id (:id outer) {:archived true})]
-        ["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id inner)
-                                                                     {:definition (price-above 4)})]
-        ["delete"                           segment-msg #(t2/delete! :model/Segment :id (:id outer))]]))
-    (untouched-test
-     with-segment-policy
-     (fn [{:keys [other]}]
-       (t2/update! :model/Segment :id (:id other) {:definition (price-above 5)})))))
+    (letfn [(update-check [segment changes]
+              (api/update-check (t2/select-one :model/Segment :id (:id segment)) changes))
+            (guarded-changes [{:keys [inner outer]}]
+              [["definition"                       outer {:definition (price-above 4)}]
+               ["archive"                          outer {:archived true}]
+               ["definition of the nested segment" inner {:definition (price-above 4)}]])]
+      (testing "a non-admin is refused"
+        (with-segment-policy
+          (fn [policy]
+            (mt/with-test-user :rasta
+              (doseq [[change-name segment changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check segment changes)))))))))
+      (testing "an admin may do all of it"
+        (with-segment-policy
+          (fn [policy]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name segment changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (true? (update-check segment changes)))))))))
+      (testing "an unrelated segment is untouched, for a non-admin who writes the Table's Segments"
+        (with-segment-policy
+          (fn [{:keys [other outer]}]
+            (with-table-writer!
+              (fn []
+                (is (true? (update-check other {:definition (price-above 5)})))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
+                                      (update-check outer {:definition (price-above 5)})))))))))))
 
 (defn- sum-where-measure-definition
   "A Measure definition summing VENUES.PRICE over the rows matching `segment-id`."
@@ -354,9 +554,8 @@
   [f]
   (mt/with-temp [:model/PermissionsGroup group   {}
                  :model/Segment          segment {:table_id (mt/id :venues), :definition (price-above 2)}
-                 :model/Measure          measure {:table_id   (mt/id :venues)
-                                                  :definition (sum-where-measure-definition (:id segment))}
-                 :model/Measure          other   {:table_id (mt/id :venues), :definition (sum-of-price 1)}
+                 :model/Measure          measure {:definition (sum-where-measure-definition (:id segment))}
+                 :model/Measure          other   {:definition (sum-of-price 1)}
                  :model/Card             policy  {:dataset_query (measure-then-filter-query (:id measure))}
                  :model/Sandbox          _       {:table_id (mt/id :venues)
                                                   :group_id (:id group)
@@ -365,19 +564,35 @@
 
 (deftest only-admins-can-change-a-measure-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
-    (guarded-writes-test
-     with-measure-policy
-     (fn [{:keys [segment measure]}]
-       [["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id segment)
-                                                                     {:definition (price-above 3)})]
-        ["definition"                       measure-msg #(t2/update! :model/Measure :id (:id measure)
-                                                                     {:definition (sum-of-price 2)})]
-        ["archive"                          measure-msg #(t2/update! :model/Measure :id (:id measure) {:archived true})]
-        ["delete"                           measure-msg #(t2/delete! :model/Measure :id (:id measure))]]))
-    (untouched-test
-     with-measure-policy
-     (fn [{:keys [other]}]
-       (t2/update! :model/Measure :id (:id other) {:definition (sum-of-price 2)})))))
+    (letfn [(update-check [model instance changes]
+              (api/update-check (t2/select-one model :id (:id instance)) changes))
+            (guarded-changes [{:keys [segment measure]}]
+              [["definition of the nested segment" :model/Segment segment {:definition (price-above 3)}]
+               ["definition"                       :model/Measure measure {:definition (sum-of-price 2)}]
+               ["archive"                          :model/Measure measure {:archived true}]])]
+      (testing "a non-admin is refused"
+        (with-measure-policy
+          (fn [policy]
+            (mt/with-test-user :rasta
+              (doseq [[change-name model instance changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
+                                        (update-check model instance changes)))))))))
+      (testing "an admin may do all of it"
+        (with-measure-policy
+          (fn [policy]
+            (mt/with-test-user :crowberto
+              (doseq [[change-name model instance changes] (guarded-changes policy)]
+                (testing change-name
+                  (is (true? (update-check model instance changes)))))))))
+      (testing "an unrelated measure is untouched, for a non-admin who writes the Table's Measures"
+        (with-measure-policy
+          (fn [{:keys [other measure]}]
+            (with-table-writer!
+              (fn []
+                (is (true? (update-check :model/Measure other {:definition (sum-of-price 2)})))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg
+                                      (update-check :model/Measure measure {:definition (sum-of-price 2)})))))))))))
 
 (deftest non-admin-cannot-rewrite-a-policy-snippet-through-the-api-test
   (testing "SEC-1094: a non-admin with native access to an unrelated Database only cannot rewrite a policy snippet"
@@ -392,7 +607,7 @@
           (letfn [(sandboxed-row-count []
                     (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues)))))]
             (is (= 1 (sandboxed-row-count)))
-            (is (= "You do not have permissions to modify a snippet that is used for row and column level security."
+            (is (= forbidden-message
                    (mt/user-http-request editor :put 403 (str "native-query-snippet/" (:id snippet))
                                          {:content "1 = 1"})))
             (is (= "ID = 1" (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))
@@ -423,7 +638,7 @@
               original (t2/select-one-fn :result_metadata :model/Card :id card-id)
               latitude (api-venues-col "LATITUDE")]
           (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
-          (is (= "You do not have permissions to modify a question that is used for row and column level security."
+          (is (= forbidden-message
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id)
                                        {:result_metadata (conj (vec original) latitude)})))
           (is (= original (t2/select-one-fn :result_metadata :model/Card :id card-id)))
@@ -489,8 +704,7 @@
                        :model/Collection         free-snippet-coll   {:namespace "snippets"}
                        :model/Segment            seg-1       {:table_id (mt/id :venues), :definition (price-above 2)}
                        :model/Segment            seg-2       {:table_id (mt/id :venues), :definition (price-above 3)}
-                       :model/Measure            measure     {:table_id   (mt/id :venues)
-                                                              :definition (sum-where-measure-definition (:id seg-2))}
+                       :model/Measure            measure     {:definition (sum-where-measure-definition (:id seg-2))}
                        :model/Card               nested-card {:collection_id (:id chain-coll)
                                                               :dataset_query (lib/filter (venues-query)
                                                                                          (lib.metadata/segment mp (:id seg-1)))}
@@ -527,7 +741,7 @@
             (f colls)))))))
 
 (defn- archive-collection! [coll]
-  (collection/archive-collection! (t2/select-one :model/Collection :id (:id coll))))
+  (collections/update-collection! (:id coll) {:archived true}))
 
 (defn- archived? [coll]
   (t2/select-one-fn :archived :model/Collection :id (:id coll)))
@@ -539,23 +753,16 @@
         (with-mixed-policies!
           (fn [{:keys [policy chain free policy-snippet dep-snippet free-snippet]}]
             (mt/with-test-user :rasta
-              (doseq [[coll msg] [[policy         card-msg]
-                                  [chain          card-msg]
-                                  [policy-snippet snippet-msg]
-                                  [dep-snippet    snippet-msg]]]
+              (doseq [coll [policy chain policy-snippet dep-snippet]]
                 (testing (str "a Collection with a policy dependency in it: " (:name coll))
                   (testing "archiving is refused and rolled back"
-                    (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (archive-collection! coll)))
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (archive-collection! coll)))
                     (is (false? (archived? coll)))
                     (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
                     (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))
-                  (testing "deleting is refused and nothing is deleted"
-                    (let [before (+ (t2/count :model/Card :collection_id (:id coll))
-                                    (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
-                      (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection :id (:id coll))))
-                      (is (t2/exists? :model/Collection :id (:id coll)))
-                      (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
-                                       (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))))))))
+                  (testing "deleting is for admins only"
+                    (mt/user-http-request :rasta :delete 403 (str "collection/" (:id coll)))
+                    (is (t2/exists? :model/Collection :id (:id coll))))))
               (doseq [coll [free free-snippet]]
                 (testing (str "a Collection with no policy dependency in it: " (:name coll))
                   (testing "may be archived"

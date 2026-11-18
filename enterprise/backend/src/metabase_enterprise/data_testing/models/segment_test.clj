@@ -13,6 +13,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -22,7 +23,14 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
+  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
+
+(defmethod events/spec :model/SegmentTest
+  [_model]
+  {:create :event/segment-test-create
+   :update :event/segment-test-update
+   :delete :event/segment-test-delete})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
   [_original-model _k]
@@ -41,36 +49,10 @@
   [segment-test _event-type]
   (select-keys segment-test [:segment_id :name :description]))
 
-;;; ---------------------------------------------------- Events ----------------------------------------------------
-
-(defenterprise delete-segment-tests!
-  "Enterprise implementation: delete the tests of the segment `segment-id`, each through its own hook. Runs whether
-  or not the premium token grants the feature, since the tests outlive the feature."
-  :feature :none
-  [segment-id]
-  (data-testing.db/delete-segment-tests! segment-id))
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (the delete of a Table
-  ;; or Database, whose segments and their tests the database deletes by cascade) leaves the runs' test id naming no
-  ;; test; such runs are never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/segment-test-delete {:object segment-test}))
-  segment-test)
-
-(t2/define-after-insert :model/SegmentTest [segment-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/segment-test-create
-                           {:object  (t2/instance :model/SegmentTest segment-test)
-                            :user-id (:creator_id segment-test)}))
-  segment-test)
-
-(t2/define-after-update :model/SegmentTest [segment-test]
-  (when-not mi/*deserializing?*
-    (events/publish-event! :event/segment-test-update
-                           {:object (t2/instance :model/SegmentTest segment-test)}))
   segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -112,8 +94,37 @@
 
 (defmethod mi/can-update? :model/SegmentTest
   [instance changes]
-  (and (can-save-test? (:segment_id instance))
+  (and (mi/can-write? instance)
        (can-save-test? (:segment_id changes (:segment_id instance)))))
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-segment-test! :- ::data-testing.schema/segment-test
+  "Insert the SegmentTest `segment-test` returning the inserted test."
+  [segment-test :- [:merge
+                    ::data-testing.schema/segment-test.create
+                    [:map {:closed true}
+                     [:creator_id ::lib.schema.id/user]]]]
+  (data-testing.db/insert-segment-test! segment-test))
+
+(mu/defn update-segment-test! :- :nil
+  "Apply `changes` to the SegmentTest with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/segment-test.update]
+  (data-testing.db/update-segment-test! id changes)
+  nil)
+
+(mu/defn delete-segment-test! :- :nil
+  "Delete the SegmentTest with `id`."
+  [id :- ms/PositiveInt]
+  (data-testing.db/delete-segment-test! id)
+  nil)
+
+(defenterprise delete-segment-tests!
+  "Deletes the tests of the segment `segment-id` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [segment-id]
+  (data-testing.db/delete-segment-tests! segment-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -128,15 +139,14 @@
   [_model objects]
   ;; An older revision can name a segment that has since been deleted; nobody may read a revision about it.
   (let [readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (data-testing.db/segments-by-ids
-                                        (into [] (comp (keep :segment_id) (distinct)) objects))
-                                       :can_read))]
+                           (map :id)
+                           (mi/readable (data-testing.db/segments-by-ids
+                                         (into [] (comp (keep :segment_id) (distinct)) objects))))]
     (mapv #(contains? readable-ids (:segment_id %)) objects)))
 
 (defmethod revision/revert-to-revision! :model/SegmentTest
   [_model id _user-id serialized-instance]
-  (data-testing.db/update-segment-test! id (select-keys serialized-instance revision-columns)))
+  (update-segment-test! id (select-keys serialized-instance revision-columns)))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

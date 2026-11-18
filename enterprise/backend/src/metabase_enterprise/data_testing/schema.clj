@@ -165,17 +165,18 @@
   "The moment the subject reads as the current time when a run compiles it: an ISO-8601 date-time with an offset, such
   as `2026-10-13T00:00:00Z`, that every app DB can store. SQL the test's author writes, in inputs and expectations,
   reads the database's own clock."
-  [:and
-   {:decode/normalize ->offset-date-time
-    :json-schema      {:type "string" :format "date-time"}}
-   (mu/with-api-error-message
-    (ms/InstanceOfClass java.time.OffsetDateTime)
-    (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))
-   ;; Passes a value that is not an OffsetDateTime, which the check above refuses, so its 400 carries one message.
-   (mu/with-api-error-message
-    [:fn #(or (not (instance? java.time.OffsetDateTime %)) (in-now-range? %))]
-    (let [[first-moment last-moment] now-range]
-      (deferred-tru "must be from {0} to {1}, inclusive" (str first-moment) (str last-moment))))])
+  ;; One check, so a refused value gets one message, the one for the reason it was refused.
+  (let [[first-moment last-moment] now-range
+        offset-message             (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z")
+        range-message              (deferred-tru "must be from {0} to {1}, inclusive" (str first-moment) (str last-moment))]
+    [:fn
+     {:decode/normalize ->offset-date-time
+      :json-schema      {:type "string" :format "date-time"}
+      :description      (deferred-tru "an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z, from {0} to {1}, inclusive"
+                                      (str first-moment) (str last-moment))
+      :error/fn         (fn [{:keys [value]} _]
+                          (if (instance? java.time.OffsetDateTime value) range-message offset-message))}
+     #(and (instance? java.time.OffsetDateTime %) (in-now-range? %))]))
 
 (mr/def ::now-string
   "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset."

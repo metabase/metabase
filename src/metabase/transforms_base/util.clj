@@ -8,7 +8,6 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.database-routing.core :as database-routing]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -41,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
@@ -51,7 +51,8 @@
 
 (set! *warn-on-reflection* true)
 
-(events/derive! :event/transform-run-complete :metabase/event)
+(events/derive! ::transform-run-complete :metabase/event)
+(events/derive! :event/transform-run-complete ::transform-run-complete)
 
 ;;; ------------------------------------------------- Constants -------------------------------------------------
 
@@ -73,7 +74,7 @@
   "A driver's connection spec: an opaque JDBC spec or data source."
   [:or
    [:map {:closed true} [:datasource (ms/InstanceOfClass DataSource)]]
-   ms/DatabaseDetails])
+   ::warehouses.schema/database.connection-details])
 
 (mr/def ::checkpoint-value
   "A parsed checkpoint value: a number or a temporal."
@@ -952,9 +953,9 @@
         (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
-      (dependencies.hooks/after-transform-run (:id transform) (:id table))
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id          db-id
+                                       :table-id       (:id table)
                                        :transform-id   (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema  (:schema target)
@@ -1024,10 +1025,10 @@
   `:database_id`/`:schema`/`:table` (looked up to fill in `:table_id`), so only `:alias` is required."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:alias :string]
-   [:database_id {:optional true} [:maybe ::lib.schema.id/database]]
+   [:database_id {:optional true} [:maybe ::lib.schema.id/database-or-older-export-id]]
    [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
-   [:table_id {:optional true} [:maybe ::lib.schema.id/table]]])
+   [:table_id {:optional true} [:maybe ::lib.schema.id/table-or-older-export-id]]])
 
 (mu/defn normalize-source-tables :- [:sequential ::source-table-entry]
   "Normalize source-table entries by enriching them with full metadata.

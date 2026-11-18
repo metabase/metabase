@@ -231,7 +231,7 @@
                             (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
-                                     (filter mi/can-read? (t2/hydrate candidate-tables :can_read)))
+                                     (mi/readable candidate-tables))
                             can-query? (#(t2/hydrate % :can_query))
                             can-query? (filter mi/can-query?))
          hydration-keys   (cond-> []

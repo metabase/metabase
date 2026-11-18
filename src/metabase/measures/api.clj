@@ -5,13 +5,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.measures.db :as measures.db]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -35,27 +33,13 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
-(defn- definition-table-id
-  "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
-  [normalized-definition]
-  (api/check-400 (when (seq normalized-definition)
-                   (lib/primary-source-table-id normalized-definition))
-                 (tru "Measure definition must specify a source table.")))
-
 (defn create-measure!
-  "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
-  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
-  the create-check runs wherever a Measure is authored."
+  "Create-check and insert a new Measure and return the hydrated Measure."
   [{:keys [name description definition], :as body}]
-  ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
-  ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
-  ;; `definition-table-id` requires a normalized definition.
-  (let [definition (lib-be/normalize-query definition)
-        table-id   (definition-table-id definition)]
-    (api/create-check :model/Measure (assoc body :table_id table-id))
+  (let [definition (lib-be/normalize-query definition)]
+    (api/create-check :model/Measure (assoc body :definition definition))
     (let [measure (api/check-500
                    (measures.db/insert-measure! api/*current-user-id* name description definition))]
-      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
 (api.macros/defendpoint :post "/" :- ::measure
@@ -63,7 +47,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:name        ms/NonBlankString]
+            [:name        ::measures.schema/measure.name]
             [:definition  ::measures.schema/definition]
             [:description {:optional true} [:maybe :string]]]]
   (create-measure! body))
@@ -99,18 +83,14 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (->> (t2/hydrate (filterv mi/can-read? (t2/hydrate (measures.db/unarchived-measures) :can_read)) :creator :definition_description)
+  (->> (t2/hydrate (mi/readable (measures.db/unarchived-measures)) :creator :definition_description)
        (mapv with-api-dimensions)))
 
 (defn write-check-and-update-measure!
-  "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure. The shared domain update path, so the write-check runs
-  wherever a Measure is edited."
+  "Applies `body` to the Measure with `id` after its update check, with `revision_message` as the message of the
+  revision, and returns the hydrated Measure."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
-        ;; Normalized for the same reason as in `create-measure!` — non-REST callers (MCP's
-        ;; measure_write) arrive undecoded, and both the stored definition and the table-id
-        ;; derivation below need MBQL 5.
         clean-body (cond-> (u/select-keys-when body
                                                :present #{:description}
                                                :non-nil #{:archived :definition :name})
@@ -118,18 +98,11 @@
         new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]
-    ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
-    ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
-    ;; new one.
-    (when-let [new-def (:definition clean-body)]
-      (let [new-table-id (definition-table-id new-def)]
-        (when (not= new-table-id (:table_id existing))
-          (api/create-check :model/Measure {:table_id new-table-id}))))
+    (api/update-check existing new-body)
     (when changes
-      (measures.db/update-measure! id changes))
-    (u/prog1 (hydrated-measure id false)
-      (events/publish-event! :event/measure-update
-                             {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
+      (events/with-event-context {:revision-message revision_message}
+        (measures.db/update-measure! id changes)))
+    (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID."
@@ -137,7 +110,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    body :- [:map {:closed true}
-            [:name                    {:optional true} [:maybe ms/NonBlankString]]
+            [:name                    {:optional true} [:maybe ::measures.schema/measure.name]]
             [:definition              {:optional true} [:maybe ::measures.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]

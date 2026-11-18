@@ -405,7 +405,7 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))
 
-  With `checked-name`, the form also checks with [[mu.closed-schemas/check-args!]] that every argument map is closed."
+  With `checked-name`, the form also checks with [[mu.closed-schemas/check-args!]] that no argument schema accepts a value of any shape."
   [error-context lang parsed & [fn-name checked-name]]
   (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
     `(let [~'&f ~(deparameterized-fn-form lang parsed fn-name)

@@ -63,6 +63,27 @@
              (sql-tools.common/find-table-or-transform
               :h2 database tables [] {:table "orders" :schema "public"}))))))
 
+(deftest resolve-shared-composite-field-test
+  (testing "a composite field that more than one member shares is resolved one time"
+    (let [leaf                   {:type :custom-field, :alias "v"}
+          composite              (reduce (fn [member _]
+                                           {:type :composite-field, :alias "v", :member-fields [member member]})
+                                         leaf
+                                         (range 16))
+          original-resolve-field sql-tools.common/resolve-field
+          calls                  (atom 0)]
+      (with-redefs [sql-tools.common/resolve-field (fn [& args]
+                                                     (swap! calls inc)
+                                                     (apply original-resolve-field args))]
+        (is (= [{:col {:name                     "v"
+                       :lib/desired-column-alias "v"
+                       :display-name             "V"
+                       :base-type                :type/*
+                       :effective-type           :type/*
+                       :semantic-type            :Semantic/*}}]
+               (sql-tools.common/resolve-field :h2 nil composite)))
+        (is (< @calls 5))))))
+
 (def ^:private events-and-users
   "A Postgres database whose `public.events` has the columns `id`, `CreatedAt`, `Name` and `name`, and whose
   `public.users` has `id` and `Email`."

@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.pulse.models.pulse-card :as pulse-card]
-   [metabase.test :as mt]))
+   [metabase.pulse.schema :as pulse.schema]
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,3 +22,8 @@
                                                             :dashboard_card_id dashcard-id
                                                             :position          2}]
       (is (= 3 (pulse-card/next-position-for pulse-id))))))
+
+(deftest ^:parallel position-schema-test
+  (testing "PulseCard position is not negative"
+    (is (not (mr/validate ::pulse.schema/pulse-card.update {:position -1})))
+    (is (mr/validate ::pulse.schema/pulse-card.update {:position 5}))))

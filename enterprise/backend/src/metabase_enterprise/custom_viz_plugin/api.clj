@@ -6,12 +6,12 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events.core :as events]
    [metabase.server.streaming-response :as sr]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
@@ -154,8 +154,6 @@
                           (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
                           (format "A custom visualization with identifier \"%s\" already exists." identifier))
             plugin       (cache/insert-bundle! identifier validated)]
-        (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
-                                                                :user-id api/*current-user-id*})
         (plugin->response (dissoc plugin :bundle)))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
@@ -167,7 +165,7 @@
   [_route-params
    _query-params
    {:keys [identifier dev_bundle_url]} :- [:map {:closed true}
-                                           [:identifier     {:optional true} [:maybe ms/NonBlankString]]
+                                           [:identifier     {:optional true} [:maybe ::custom-viz-plugin.schema/custom-viz-plugin.identifier]]
                                            [:dev_bundle_url ms/NonBlankString]]]
   (api/check-superuser)
   (check-dev-mode-enabled!)
@@ -195,8 +193,6 @@
                                                            :manifest         manifest
                                                            :metabase_version version-str})]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
-    (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
-                                                            :user-id api/*current-user-id*})
     (plugin->response plugin)))
 
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
@@ -228,8 +224,6 @@
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (custom-viz-plugin.db/delete-plugin! id)
     (cache/purge-plugin-cache! plugin)
-    (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
-                                                            :user-id api/*current-user-id*})
     nil))
 
 (api.macros/defendpoint :put "/:id" :- CustomVizPluginResponse
@@ -238,14 +232,11 @@
    _query-params
    body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
-        updates  (select-keys body [:enabled])]
+  (let [_       (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+        updates (select-keys body [:enabled])]
     (when (seq updates)
       (custom-viz-plugin.db/update-plugin! id updates))
     (let [result (custom-viz-plugin.db/non-blob-plugin id)]
-      (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                              :previous-object existing
-                                                              :user-id         api/*current-user-id*})
       (plugin->response result))))
 
 (api.macros/defendpoint :put "/:id/bundle" :- CustomVizPluginResponse
@@ -268,10 +259,6 @@
             validated    (->> (cache/validate-bundle! bundle-bytes)
                               (cache/check-bundle-identifier! (:identifier existing)))
             result       (cache/save-bundle! existing validated)]
-        (events/publish-event! :event/custom-viz-plugin-update
-                               {:object          result
-                                :previous-object existing
-                                :user-id         api/*current-user-id*})
         (plugin->response (dissoc result :bundle)))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
@@ -411,9 +398,6 @@
                                             :manifest         manifest
                                             :metabase_version version-str})
       (let [result (custom-viz-plugin.db/non-blob-plugin id)]
-        (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                                :previous-object plugin
-                                                                :user-id         api/*current-user-id*})
         (plugin->response result)))))
 
 (def routes

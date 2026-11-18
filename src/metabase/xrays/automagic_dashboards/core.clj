@@ -399,9 +399,7 @@
   [table]
   (let [fields   (field/with-targets
                    (xrays.db/active-fk-fields-for-table (u/the-id table)))
-        readable (into #{}
-                       (comp (filter mi/can-read?) (map :id))
-                       (t2/hydrate (into [] (keep :target) fields) :can_read))]
+        readable (into #{} (map :id) (mi/readable (into [] (keep :target) fields)))]
     (for [{:keys [id target]} fields
           :when (contains? readable (:id target))]
       (-> target field/table (assoc :link id)))))
@@ -546,8 +544,7 @@
     (->> available-dimensions
          vals
          (mapcat :matches)
-         (#(t2/hydrate % :can_read))
-         (filter mi/can-read?)
+         mi/readable
          filters/interesting-fields
          (map ->related-entity)
          (hash-map :drilldown-fields))))
@@ -940,8 +937,7 @@
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])
          tables              (load-tables-with-enhanced-table-stats (u/the-id database) schema)]
      (->> tables
-          (#(t2/hydrate % :can_read))
-          (filter mi/can-read?)
+          mi/readable
           (map (fn [table]
                  (let [root      (->root table)
                        {:keys [dashboard-template-name]
