@@ -72,6 +72,19 @@
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
       (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
 
+(t/deftest ^:parallel duration-conversion-test
+  (let [db-form   {:column_settings {"[\"name\",\"Seconds\"]" {:number_style       "duration"
+                                                               :duration_unit      "millisecond"
+                                                               :duration_style     "narrow"
+                                                               :duration_precision "minute"}}}
+        norm-form {::mb.viz/column-settings {{::mb.viz/column-name "Seconds"}
+                                             {::mb.viz/number-style       "duration"
+                                              ::mb.viz/duration-unit      "millisecond"
+                                              ::mb.viz/duration-style     "narrow"
+                                              ::mb.viz/duration-precision "minute"}}}]
+    (t/is (= norm-form (mb.viz/db->norm db-form)))
+    (t/is (= db-form (mb.viz/norm->db norm-form)))))
+
 (t/deftest ^:parallel form-transformation-test
   (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
     (let [db-col-settings-old {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "k:mm"}}}

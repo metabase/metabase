@@ -32,6 +32,8 @@ Settings access defines which groups can view and edit the settings under the Ad
 
 Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
 
+Authentication settings aren't included either, even though people with Settings access can see the **Authentication** tab. Only admins can change [API keys](../people-and-groups/api-keys.md), [Google Sign-In](../people-and-groups/google-sign-in.md), [LDAP](../people-and-groups/ldap.md), [SAML](../people-and-groups/authenticating-with-saml.md), [JWT](../people-and-groups/authenticating-with-jwt.md), [OIDC](../people-and-groups/authenticating-with-oidc.md), and [user provisioning](../people-and-groups/user-provisioning.md). These settings control which groups people get added to (for example, through group mappings), so someone who could edit them could give themselves admin access. If someone without admin access tries to save these settings, Metabase shows the error: "You don't have permissions to do that."
+
 ## Monitoring access
 
 People in groups with Monitoring access can view:

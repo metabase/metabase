@@ -314,6 +314,9 @@
    :currency_in_header            ::currency-in-header
    :number_separators             ::number-separators
    :decimals                      ::decimals
+   :duration_unit                 ::duration-unit
+   :duration_style                ::duration-style
+   :duration_precision            ::duration-precision
    :scale                         ::scale
    :prefix                        ::prefix
    :suffix                        ::suffix

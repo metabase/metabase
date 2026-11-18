@@ -1,5 +1,10 @@
+import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
-import type { DatasetColumn, Series } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -149,6 +154,49 @@ describe("column settings", () => {
 
       onChange(options[1].value);
       expect(onChangeSpy).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("duration style", () => {
+    it("should format plain number column with stored duration settings", () => {
+      const series = seriesWithColumn({
+        base_type: "type/Integer",
+        semantic_type: null,
+      });
+      const column = series[0].data.cols[0];
+      const formatWith = (settings: VisualizationSettings) =>
+        formatNumber(
+          4_442_706_500,
+          getComputedSettings(columnSettings(), series, {
+            column_settings: { '["name","foo"]': settings },
+          }).column?.(column),
+        );
+
+      expect(
+        formatWith({ number_style: "duration", duration_unit: "millisecond" }),
+      ).toBe("1,234:05:07");
+      expect(
+        formatWith({
+          number_style: "duration",
+          duration_unit: "millisecond",
+          duration_style: "narrow",
+          duration_precision: "millisecond",
+          number_separators: ", ",
+        }),
+      ).toBe("51d 10h 5m 6s 500ms");
+    });
+
+    it("should default to seconds, digital style, and seconds precision", () => {
+      const series = seriesWithColumn({ base_type: "type/Integer" });
+      const computed = checkNotNull(
+        getComputedSettings(columnSettings(), series, {
+          column_settings: { '["name","foo"]': { number_style: "duration" } },
+        }).column?.(series[0].data.cols[0]),
+      );
+
+      expect(computed.duration_unit).toBe("second");
+      expect(computed.duration_style).toBe("digital");
+      expect(computed.duration_precision).toBe("second");
     });
   });
 

@@ -2,6 +2,7 @@
   "Code for handling parameter substitution in MBQL queries."
   (:refer-clojure :exclude [every?])
   (:require
+   [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -73,6 +74,17 @@
     :else
     (to-numeric param-value)))
 
+(mu/defn- date-param-value :- ::lib.schema.parameter/parameter.value.scalar
+  "Returns `param-value` without its time when the target is a date-only column, which cannot be bucketed by time."
+  [query       :- ::lib.schema/query
+   stage-path  :- ::lib.walk/path
+   param-value :- ::lib.schema.parameter/parameter.value.scalar
+   a-ref       :- [:or :mbql.clause/field :mbql.clause/expression]]
+  (cond-> param-value
+    (and (string? param-value)
+         (isa? (field-type query stage-path a-ref) :type/Date))
+    (str/replace #"T[0-9:]+" "")))
+
 (mu/defn- build-filter-clause :- [:maybe ::lib.schema.expression/boolean]
   [query                                                             :- ::lib.schema/query
    stage-path                                                        :- ::lib.walk/path
@@ -96,7 +108,7 @@
       (and (params.dates/date-type? param-type)
            a-ref)
       (params.dates/date-string->filter
-       (parse-param-value-for-type query stage-path param-type param-value a-ref)
+       (date-param-value query stage-path param-value a-ref)
        a-ref)
 
       ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
