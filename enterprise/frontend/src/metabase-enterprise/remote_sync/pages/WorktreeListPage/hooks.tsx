@@ -5,12 +5,8 @@ import { useUpdateUserMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
-import { useDispatch, useSelector } from "metabase/redux";
-import {
-  EnterpriseApi,
-  useImportChangesMutation,
-} from "metabase-enterprise/api";
-import { listTag, tag } from "metabase-enterprise/api/tags";
+import { useSelector } from "metabase/redux";
+import { useImportChangesMutation } from "metabase-enterprise/api";
 import type {
   RemoteSyncTaskId,
   RemoteSyncWorktreeId,
@@ -23,18 +19,10 @@ type WorktreeCheckout = {
   currentWorktreeId: RemoteSyncWorktreeId | null;
   checkout: (worktreeId: RemoteSyncWorktreeId) => Promise<void>;
   leave: () => Promise<void>;
-  modal: ReactNode;
+  checkoutModal: ReactNode;
 };
 
-const REMOTE_SYNC_STATE_TAGS = [
-  tag("remote-sync-changes"),
-  tag("remote-sync-current-task"),
-  tag("remote-sync-remote-changes"),
-  listTag("remote-sync-worktree"),
-];
-
 export function useWorktreeCheckout(): WorktreeCheckout {
-  const dispatch = useDispatch();
   const user = useSelector(getUser);
   const currentWorktreeId = useSelector(getCurrentWorktreeId);
   const [updateUser] = useUpdateUserMutation();
@@ -47,7 +35,6 @@ export function useWorktreeCheckout(): WorktreeCheckout {
       return;
     }
     await updateUser({ id: user.id, worktree_id: worktreeId }).unwrap();
-    dispatch(EnterpriseApi.util.invalidateTags(REMOTE_SYNC_STATE_TAGS));
   };
 
   const checkout = async (worktreeId: RemoteSyncWorktreeId) => {
@@ -80,7 +67,7 @@ export function useWorktreeCheckout(): WorktreeCheckout {
     currentWorktreeId,
     checkout,
     leave,
-    modal: (
+    checkoutModal: (
       <SyncTaskModal
         title={t`Pulling changes`}
         taskId={taskId}

@@ -39,7 +39,8 @@ function WorktreeList() {
   const [isCreateModalOpened, setIsCreateModalOpened] = useState(false);
   const { data: worktrees = [], isLoading, error } = useListWorktreesQuery();
   const [deleteWorktree] = useDeleteWorktreeMutation();
-  const { currentWorktreeId, checkout, leave, modal } = useWorktreeCheckout();
+  const { currentWorktreeId, checkout, leave, checkoutModal } =
+    useWorktreeCheckout();
   const { show: showConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const [sendToast] = useToast();
@@ -121,7 +122,7 @@ function WorktreeList() {
         onClose={() => setIsCreateModalOpened(false)}
       />
       {confirmationModal}
-      {modal}
+      {checkoutModal}
     </PageContainer>
   );
 }
