@@ -139,11 +139,11 @@
 
 (defn- save-update!
   "Saves `updates` to `dashboard` and returns `[saved archived]`: the saved dashboard hydrated, and the subscriptions
-   the save archived, as [[dashboards.write/update-dashboard!]] returns them, or nil."
+   the save archived, as [[dashboards.write/archived-subscriptions]] reads them, or nil."
   [dashboard updates]
   (let [saved (dashboards.write/update-dashboard! (u/the-id dashboard) updates)]
-    [(hydrated (dissoc saved :archived-subscriptions))
-     (seq (:archived-subscriptions saved))]))
+    [(hydrated saved)
+     (seq (dashboards.write/archived-subscriptions saved))]))
 
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns `{:dashboard :effects}`.

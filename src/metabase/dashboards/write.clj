@@ -301,8 +301,7 @@
   dashboard attributes plus `:dashcards` and `:tabs`, which fully replace the current layout — entries
   with negative ids are created, missing entries are deleted. Requires write permission on the dashboard;
   runs in one transaction and may notify owners of broken subscriptions.
-  The row carries `:archived-subscriptions` when the update archived any, as
-  [[pulse.broken-subscriptions/handle-broken-subscriptions!]] returns them."
+  [[archived-subscriptions]] reads the subscriptions the update archived from the row's metadata."
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
@@ -317,7 +316,7 @@
                                                 [:dashcards :card]
                                                 :resolved-params))
           changes-stats                      (atom nil)
-          archived-subscriptions             (atom nil)
+          archived                           (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
@@ -341,7 +340,7 @@
                                            (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
                                          ;; Handle broken subscriptions, if any, when parameters changed
                                          (when parameters
-                                           (reset! archived-subscriptions
+                                           (reset! archived
                                                    (pulse.broken-subscriptions/handle-broken-subscriptions! id original-params))))
                                        (when update-dashcards-and-tabs?
                                          (when (not (false? (:archived dash-updates)))
@@ -383,8 +382,15 @@
          true))
       (let [dashboard (dashboards.db/dashboard id)]
         (track-dashcard-and-tab-events! dashboard @changes-stats)
+        ;; In metadata, so a caller that returns the row, as the REST API does, can't send them on.
         (cond-> dashboard
-          (seq @archived-subscriptions) (assoc :archived-subscriptions @archived-subscriptions))))))
+          (seq @archived) (vary-meta assoc ::archived-subscriptions @archived))))))
+
+(defn archived-subscriptions
+  "The subscriptions the [[update-dashboard!]] that returned `dashboard` archived, as
+   [[pulse.broken-subscriptions/handle-broken-subscriptions!]] returns them, or nil."
+  [dashboard]
+  (::archived-subscriptions (meta dashboard)))
 
 (def DashUpdates
   "Schema for the `dash-updates` argument to [[update-dashboard!]]: dashboard attributes plus the

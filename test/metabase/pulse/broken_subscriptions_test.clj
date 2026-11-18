@@ -186,3 +186,16 @@
                                {"kept" {:id "kept"}, "gone" {:id "gone"}})))))
         (is (= #{removed-id stale-id}
                (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))
+
+(deftest ^:parallel unreadable-archived-subscription-test
+  (testing "a subscription the user can't read is described without its creator, channels or recipient count"
+    (is (= {:id              1
+            :parameters      [{:id "gone", :name "Gone"}]
+            :already-broken? false
+            :readable?       false}
+           (#'pulse.broken-subscriptions/archived-subscription
+            {"gone" {:id "gone"}}
+            #{}
+            {:pulse-id       1
+             :bad-parameters [{:id "gone", :name "Gone", :value ["secret"]}]
+             :pulse-creator  {:common_name "Rasta Toucan"}})))))

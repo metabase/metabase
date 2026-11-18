@@ -120,18 +120,28 @@
    The `:parameters` are the missing filters' ids and names.
    The `:channels` and `:recipient-count` are what [[delivery]] describes.
    The `:already-broken?` flag is true when none of the missing filters was on the dashboard before the update.
-   The `:readable?` flag says whether the current user can read the subscription, which decides what a caller may
-   show about it.
-   It leaves out the recipients' names and emails and the filter values."
-  [original-dashboard-params {:keys [pulse-id bad-parameters pulse-creator]}]
-  (merge {:id              pulse-id
-          :creator-name    (:common_name pulse-creator)
-          ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
-          :parameters      (mapv #(select-keys % [:id :name]) bad-parameters)
-          ;; A filter missing before this update, for example after a revision revert, which doesn't run this handler.
-          :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)
-          :readable?       (boolean (some-> (pulse.db/pulse-row pulse-id) (t2/hydrate :can_read) mi/can-read?))}
-         (delivery pulse-id)))
+   The `:readable?` flag says whether the current user can read the subscription, from `readable-ids`.
+   An unreadable one leaves out `:creator-name`, `:channels` and `:recipient-count`.
+   It always leaves out the recipients' names and emails and the filter values."
+  [original-dashboard-params readable-ids {:keys [pulse-id bad-parameters pulse-creator]}]
+  (let [readable? (contains? readable-ids pulse-id)]
+    (cond-> {:id              pulse-id
+             ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
+             :parameters      (mapv #(select-keys % [:id :name]) bad-parameters)
+             ;; A filter missing before this update, for example after a revision revert, which doesn't run this
+             ;; handler.
+             :already-broken? (not-any? #(contains? original-dashboard-params (:id %)) bad-parameters)
+             :readable?       readable?}
+      readable? (merge {:creator-name (:common_name pulse-creator)} (delivery pulse-id)))))
+
+(defn- readable-pulse-ids
+  "The ids among `pulse-ids` of the Pulses the current user can read."
+  [pulse-ids]
+  (if (seq pulse-ids)
+    (into #{}
+          (comp (filter mi/can-read?) (map :id))
+          (t2/hydrate (pulse.db/pulses-with-ids pulse-ids) :can_read))
+    #{}))
 
 (defn handle-broken-subscriptions!
   "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard
@@ -140,12 +150,14 @@
   Returns what [[archived-subscription]] describes for each archived subscription, in archive order.
   `original-dashboard-params` is the dashboard's `:resolved-params` from before the update."
   [dashboard-id original-dashboard-params]
-  (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
-          ;; Described before archiving, so the description doesn't depend on what archiving leaves behind.
-          (let [archived (archived-subscription original-dashboard-params broken-subscription)]
-            ;; Archive the pulse
-            (pulse/update-pulse! {:id pulse-id :archived true})
-            ;; Let the pulse and subscription creator know about the broken pulse
-            (messages/send-broken-subscription-notification! broken-subscription)
-            archived))
-        (broken-subscription-data dashboard-id original-dashboard-params)))
+  (let [broken       (broken-subscription-data dashboard-id original-dashboard-params)
+        ;; Judged before archiving, so the description doesn't depend on what archiving leaves behind.
+        readable-ids (readable-pulse-ids (map :pulse-id broken))]
+    (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
+            (let [archived (archived-subscription original-dashboard-params readable-ids broken-subscription)]
+              ;; Archive the pulse
+              (pulse/update-pulse! {:id pulse-id :archived true})
+              ;; Let the pulse and subscription creator know about the broken pulse
+              (messages/send-broken-subscription-notification! broken-subscription)
+              archived))
+          broken)))

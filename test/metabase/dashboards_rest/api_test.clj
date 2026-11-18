@@ -5063,6 +5063,20 @@
       :email-body-pattern        "href="
       :match-email-body-pattern? false})))
 
+(deftest update-response-leaves-out-archived-subscriptions-test
+  (testing "a REST save that archives a subscription doesn't return what the archive reports"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard {dash-id :id}  {:parameters [{:id   "gone"
+                                                                    :name "Gone"
+                                                                    :slug "gone"
+                                                                    :type "category"}]}
+                     :model/Pulse     {pulse-id :id} {:dashboard_id dash-id
+                                                      :creator_id   (mt/user->id :rasta)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+        (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:parameters []})]
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+          (is (not-any? #(str/includes? (name %) "archived-subscriptions") (keys response))))))))
+
 (deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
     (testing "Should be able to run a query for a DashCard with an MBQL 5 query (#39024)"
