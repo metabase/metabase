@@ -6,6 +6,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -884,6 +885,36 @@
              :where  [:and
                       [:in :f.table_id table-ids]
                       (top-level-field-clause :f)]}))
+
+(defn- insert-rows-as-written!
+  "Insert `rows` of `model` with one multi-row insert, into its table and not through the model, so none of its hooks
+  run, but with its transforms applied to each value and the insert time."
+  [model rows]
+  (let [transforms (t2/transforms model)
+        now        (mi/now)]
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the callers' callers log the rows
+    (t2/insert! (t2/table-name model)
+                (mapv (fn [row]
+                        (-> (reduce-kv (fn [row column {to-db :in}]
+                                         (cond-> row
+                                           (and to-db (some? (get row column))) (update column to-db)))
+                                       row
+                                       transforms)
+                            (assoc :created_at now :updated_at now)))
+                      rows))))
+
+(mu/defn insert-table-rows!
+  "Insert the Table `rows` with one multi-row insert, not through the model, so none of the model's hooks run: the
+  caller does what they do, and logs the rows to the change log once it knows their ids. Every row must have the same
+  columns."
+  [rows :- [:sequential ::warehouse-schema.schema/table.update]]
+  (insert-rows-as-written! :model/Table rows))
+
+(mu/defn insert-field-rows!
+  "Insert the Field `rows` with one multi-row insert, not through the model, so none of the model's hooks run: the
+  caller does what they do, and logs the rows to the change log. Every row must have the same columns."
+  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
+  (insert-rows-as-written! :model/Field rows))
 
 (mu/defn field-keys-of-tables :- [:sequential [:map {:closed true}
                                                [:id        ::lib.schema.id/field]

@@ -13,9 +13,12 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.change-log.core :as change-log]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.core :as search]
    [metabase.sync.db :as sync.db]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.tables :as tables]
@@ -28,6 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -182,27 +186,29 @@
       (sync.db/update-database! (:id database) changes))
     {:database_updated (if (seq changes) 1 0)}))
 
-(defn- insert-table!
-  "Insert the Table that `entry` describes into the Database with `database-id`, without its Fields, and return its
-  id. The Table counts as synced at once, since it has its metadata."
+(defn- table-row
+  "The row of the Table that `entry` describes, in the Database with `database-id`. The Table counts as synced at
+  once, since it has its metadata. A multi-row insert writes NULL for a column that a row leaves out, so the row has
+  every column."
   [database-id entry]
-  (:id (sync.db/insert-table! (merge {:db_id               database-id
-                                      :schema              (:schema entry)
-                                      :name                (:name entry)
-                                      :active              true
-                                      :initial_sync_status "complete"}
-                                     (u/remove-nils
-                                      (values-of (remove #{:schema :name} tables/table-columns)
-                                                 entry
-                                                 (table-defaults (:name entry))))))))
+  (merge (values-of (remove #{:schema :name} tables/table-columns) entry (table-defaults (:name entry)))
+         {:db_id               database-id
+          :schema              (:schema entry)
+          :name                (:name entry)
+          :active              true
+          :initial_sync_status "complete"}))
 
 (defn- field-row
   "The row of the Field that `field-entry` describes, in the Table with `table-id`, under the Field with `parent-id`
   or at the top. A multi-row insert writes NULL for a column that a row leaves out, so the row has every column."
   [table-id parent-id {:keys [path] :as field-entry}]
-  (let [field-name (peek path)]
-    (merge (values-of tables/field-columns field-entry (field-defaults field-name (row-value field-entry :base_type)))
-           {:table_id table-id :parent_id parent-id :name field-name :active true})))
+  (let [field-name (peek path)
+        row        (values-of tables/field-columns
+                              field-entry
+                              (field-defaults field-name (row-value field-entry :base_type)))]
+    (cond-> (assoc row :table_id table-id :parent_id parent-id :name field-name :active true)
+      ;; Without a coercion, the effective type is the base type, as the Field model makes it.
+      (nil? (:coercion_strategy row)) (assoc :effective_type (:base_type row)))))
 
 (defn- field-ids-by-key
   "The ids of the Fields of the Tables with `table-ids`, by `[table-id parent-id name]`."
@@ -227,7 +233,7 @@
         (let [rows (for [[table-id {:keys [path] :as field-entry}] level]
                      (field-row table-id (ids [table-id (pop path)]) field-entry))]
           (doseq [batch (partition-all pages/query-batch-size rows)]
-            (sync.db/insert-fields! (vec batch)))
+            (sync.db/insert-field-rows! (vec batch)))
           (recur deeper
                  ;; Only a deeper level needs the ids of this one.
                  (if (seq deeper)
@@ -237,14 +243,33 @@
                    ids)
                  (+ inserted (count rows))))))))
 
+(defn- after-insert!
+  "Do for the new `tables` of the Database with `database-id`, all at once, what the Table and Field models' insert
+  hooks do for each row: the default permissions, the change log, the dependency jobs and the search index."
+  [database-id tables]
+  (table/set-new-tables-permissions! database-id tables)
+  (doseq [batch (partition-all pages/query-batch-size (map :id tables))]
+    (change-log/log-rows! :model/Table :insert :id [:in batch])
+    (change-log/log-rows! :model/Field :insert :table_id [:in batch]))
+  (run! #(dependencies.hooks/before-insert :model/Table %) tables)
+  (search/bulk-update! tables))
+
 (defn- apply-tables!
-  "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not, once for each key."
+  "Insert each Table of `batch` that the Database with `database-id` has no row for, active or not, once for each key,
+  with its Fields. They are inserted a batch of rows at a time, not through the models, and [[after-insert!]] does
+  what the models' hooks would."
   [database-id {:keys [tables]}]
-  (let [existing (tables-by-key database-id (map pages/table-key tables))
+  (let [existing    (tables-by-key database-id (map pages/table-key tables))
         new-entries (m/distinct-by unique-key (remove (comp existing unique-key) tables))]
-    {:tables_inserted (count new-entries)
-     :tables_existing (count (filter (comp existing unique-key) tables))
-     :fields_inserted (insert-fields! (mapv (juxt #(insert-table! database-id %) identity) new-entries))}))
+    (doseq [batch (partition-all pages/query-batch-size new-entries)]
+      (sync.db/insert-table-rows! (mapv #(table-row database-id %) batch)))
+    (let [inserted (tables-by-key database-id (map pages/table-key new-entries))
+          fields   (insert-fields! (mapv (juxt (comp :id inserted unique-key) identity) new-entries))]
+      (when (seq inserted)
+        (after-insert! database-id (vals inserted)))
+      {:tables_inserted (count new-entries)
+       :tables_existing (count (filter (comp existing unique-key) tables))
+       :fields_inserted fields})))
 
 (defn- target-key [{{table-schema :schema table-name :table} :target}]
   [table-schema table-name])
@@ -373,7 +398,8 @@
   [database batches]
   (try
     (t2/with-transaction [_conn]
-      (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches))
+      (dependencies.hooks/with-batched-marks
+        (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches)))
     (catch Throwable e
       (throw (ex-info (tru "The answer of the other Metabase could not be applied, and nothing of it was written.")
                       {:status-code 422 :error-code "metadata-sync-apply-failed"}

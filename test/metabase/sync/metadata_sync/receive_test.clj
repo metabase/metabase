@@ -1,12 +1,14 @@
 (ns metabase.sync.metadata-sync.receive-test
   (:require
    [clojure.test :refer :all]
+   [metabase.search.core :as search]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.receive :as receive]
    [metabase.sync.metadata-sync.send :as send]
    [metabase.sync.metadata-sync.wire :as wire]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -374,3 +376,93 @@
       (testing "a parent after its child is fine"
         (is (=? {:counts {:fields_inserted 2}}
                 (receive/apply-response! receiver-id (answer (field "place" "lat") (field "place")))))))))
+
+;;; ------------------------------------------- What the model would do -------------------------------------------
+
+(def ^:private instance-columns
+  "The columns that differ between two rows for the same warehouse table or column in two Databases."
+  [:id :db_id :table_id :parent_id :created_at :updated_at :entity_id :fk_target_field_id])
+
+(defn- one-table-answer []
+  {:format_version wire/format-version
+   :batches        [{:type   "tables"
+                     :tables [{:schema "PUBLIC" :name "bird_sightings" :description "Every bird seen"
+                               :fields [{:path ["id"] :base_type "type/Integer" :database_type "INT"
+                                         :database_is_pk true :semantic_type "type/PK"}
+                                        {:path ["species"] :base_type "type/Text" :database_type "TEXT"
+                                         :fingerprint {:global {:distinct-count 3}} :fingerprint_version 5
+                                         :last_analyzed "2026-01-01T00:00:00Z" :has_field_values "list"}
+                                        {:path ["seen_at"] :base_type "type/Text" :database_type "TEXT"
+                                         :coercion_strategy "Coercion/ISO8601->DateTime"
+                                         :effective_type "type/DateTime"}
+                                        {:path ["wings"] :base_type "type/Text" :database_type "TEXT"
+                                         :effective_type "type/Integer"}]}]}]})
+
+(defn- through-the-model!
+  "Insert, through the models, a copy of the Table with `table-id` and its Fields into the Database with `db-id`, from
+  the values the seed wrote that a sync sets, and return the new Table's id."
+  [db-id table-id]
+  (let [table     (t2/select-one :model/Table :id table-id)
+        new-id    (t2/insert-returning-pk! :model/Table (-> (apply dissoc table :data_layer :data_authority
+                                                                   instance-columns)
+                                                            (dissoc :display_name)
+                                                            (assoc :db_id db-id)
+                                                            u/remove-nils))]
+    (doseq [field (t2/select :model/Field :table_id table-id)]
+      (t2/insert! :model/Field (-> (apply dissoc field :display_name instance-columns)
+                                   (assoc :table_id new-id)
+                                   u/remove-nils)))
+    new-id))
+
+(defn- row-columns
+  "The rows of the Table with `table-id` and its Fields, without the columns that belong to one Database."
+  [table-id]
+  {:table  (apply dissoc (t2/select-one :model/Table :id table-id) instance-columns)
+   :fields (into {} (map (juxt :name #(apply dissoc % instance-columns)))
+                 (t2/select :model/Field :table_id table-id))})
+
+(deftest a-seeded-table-is-the-same-as-one-inserted-through-the-model-test
+  (mt/with-temp [:model/Database         {receiver-id :id} {:initial_sync_status "incomplete"}
+                 :model/Database         {other-id :id}    {}
+                 :model/PermissionsGroup {group-id :id}    {}]
+    ;; A group with no permission on a Database gets one row per new Table and permission type.
+    (t2/delete! :model/DataPermissions :group_id group-id :db_id [:in [receiver-id other-id]])
+    (receive/apply-response! receiver-id (one-table-answer))
+    (let [seeded   (t2/select-one-pk :model/Table :db_id receiver-id)
+          modelled (through-the-model! other-id seeded)]
+      (testing "the Table and its Fields have the values a model insert gives them"
+        (is (= (row-columns modelled) (row-columns seeded))))
+      (testing "an effective type with no coercion is the base type, as the model makes it"
+        (is (= :type/Text (t2/select-one-fn :effective_type :model/Field :table_id seeded :name "wings"))))
+      (testing "the Table gets the permissions a model insert gives"
+        (let [perms #(set (map (fn [p] (dissoc p :id :db_id :table_id))
+                               (t2/select :model/DataPermissions :table_id %)))]
+          (is (some #(= group-id (:group_id %)) (perms seeded)))
+          (is (= (perms modelled) (perms seeded))))))))
+
+(defn- change-log-entries
+  "The change log entries written while `thunk` runs, as `[table-name action]` and their count."
+  [thunk]
+  (let [top (or (:id (t2/query-one ["SELECT MAX(id) AS id FROM change_log"])) 0)]
+    (thunk)
+    (frequencies (map (juxt :table_name :action)
+                      (t2/query ["SELECT table_name, action FROM change_log WHERE id > ?" top])))))
+
+(deftest a-seed-writes-the-change-log-test
+  (mt/with-premium-features #{:change-log}
+    (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+      (testing "each inserted Table and Field has an entry, as a model insert gives it"
+        (is (=? {["metabase_table" "insert"] 1
+                 ["metabase_field" "insert"] 4}
+                (change-log-entries #(receive/apply-response! receiver-id (one-table-answer)))))))))
+
+(deftest a-seed-queues-the-new-tables-for-the-search-index-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [queued (atom [])
+          update (mt/original-fn #'search/bulk-update!)]
+      (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [instances]
+                                                        (swap! queued into instances)
+                                                        (update instances))]
+        (receive/apply-response! receiver-id (one-table-answer)))
+      (is (= [[:model/Table (t2/select-one-pk :model/Table :db_id receiver-id)]]
+             (map (juxt t2/model :id) @queued))))))
