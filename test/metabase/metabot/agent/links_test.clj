@@ -272,7 +272,6 @@
 (deftest resolve-metabase-uri-measure-link-test
   (let [mp (mt/metadata-provider)]
     (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue Count"
-                                                    :table_id   (mt/id :venues)
                                                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                     (lib/aggregate (lib/count)))}]
       (testing "resolves measure links to the measure's Data Studio page"
@@ -285,7 +284,6 @@
 (deftest resolve-metabase-uri-segment-link-test
   (let [mp (mt/metadata-provider)]
     (mt/with-temp [:model/Segment {segment-id :id} {:name       "Cheap Venues"
-                                                    :table_id   (mt/id :venues)
                                                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                     (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 2)))}]
       (testing "resolves segment links to an ad-hoc question filtered by the segment"

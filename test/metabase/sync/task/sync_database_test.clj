@@ -60,9 +60,7 @@
 (deftest schedule-database-sync-without-scheduler-test
   (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
     (is (= [[:sync (mt/id)] [:analyze (mt/id)]]
-           (sync-calls! #(task.sync-database/schedule-database-sync! (mt/id)))))
-    (testing "Database that does not exist is skipped"
-      (is (= [] (sync-calls! #(task.sync-database/schedule-database-sync! Integer/MAX_VALUE)))))))
+           (sync-calls! #(task.sync-database/schedule-database-sync! (mt/id)))))))
 
 (deftest sync-database-job-test
   (is (= [[:sync (mt/id)] [:analyze (mt/id)]]

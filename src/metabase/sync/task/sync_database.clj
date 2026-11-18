@@ -8,7 +8,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task.core :as task]
    [metabase.util.malli :as mu]
@@ -19,11 +18,10 @@
 (set! *warn-on-reflection* true)
 
 (defn- sync-database!
-  "Sync and analyze the Database with `database-id`, if it exists."
+  "Sync and analyze the Database with `database-id`."
   [database-id]
-  (when (sync.db/database-exists? database-id)
-    (sync-metadata/sync-db-metadata-explicit! database-id)
-    (analyze/analyze-db-explicit! database-id)))
+  (sync-metadata/sync-db-metadata-explicit! database-id)
+  (analyze/analyze-db-explicit! database-id))
 
 (task/defjob SyncDatabase
   "Sync and analyze one Database under the timeout of quick tasks, and throw what the sync throws so that Quartz records

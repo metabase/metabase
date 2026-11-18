@@ -97,10 +97,9 @@
   [parameterized-object-type :- ::parameterized-object-type
    parameterized-object-id   :- pos-int?
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
-  (when-not mi/*deserializing?*
-    (when-let [wanted (not-empty (values-source-card-ids parameters))]
-      (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
-        (read-check-cards (into #{} (remove #(contains? existing %)) wanted))))))
+  (when-let [wanted (not-empty (values-source-card-ids parameters))]
+    (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
+      (read-check-cards (into #{} (remove #(contains? existing %)) wanted)))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,

@@ -10,6 +10,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -704,8 +705,8 @@
                                                         :archived          true
                                                         :archived_directly true}
                    :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
-      (collection/archive-collection! emea)
-      (collection/archive-collection! ops)
+      (t2/update! :model/Collection :id (:id emea) {:archived true})
+      (t2/update! :model/Collection :id (:id ops) {:archived true})
       (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
         (testing "a dashboard in a trashed collection has its path through the Trash, and both are archived"
           (let [output (read-dashboard trashed-id)]
@@ -811,8 +812,7 @@
   (let [mp         (mt/metadata-provider)
         definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                        (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
-    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :definition definition}]
+    (mt/with-temp [:model/Segment {segment-id :id} {:definition definition}]
       (let [query (fn [] {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (mt/id :venues)
@@ -1459,7 +1459,6 @@
         (mt/with-temp [:model/Measure {measure-id :id}
                        {:name       "Order Revenue"
                         :description "sum of order totals"
-                        :table_id   orders
                         :creator_id (mt/user->id :crowberto)
                         :definition (measure-definition orders total)}]
           (testing "metabase://measure/{id} returns the measure with parent-table context + portable entity id"
@@ -1494,7 +1493,6 @@
         (mt/with-temp [:model/Segment {segment-id :id}
                        {:name       "Big Orders"
                         :description "totals over 100"
-                        :table_id   orders
                         :definition (segment-definition orders total 100)}]
           (testing "metabase://segment/{id} returns the segment with parent-table context + portable entity id"
             (let [result     (read-uris {:uris [(str "metabase://segment/" segment-id)]})
@@ -1524,12 +1522,10 @@
             total  (mt/id :orders :total)]
         (mt/with-temp [:model/Measure {measure-id :id}
                        {:name       "Order Revenue"
-                        :table_id   orders
                         :creator_id (mt/user->id :crowberto)
                         :definition (measure-definition orders total)}
                        :model/Segment {segment-id :id}
                        {:name       "Big Orders"
-                        :table_id   orders
                         :definition (segment-definition orders total 100)}]
           (mt/with-temp-vals-in-db :model/Table orders {:active false}
             (is (=? {:resources [{:content {:structured-output {:type :measure :name "Order Revenue"}}}
@@ -1890,8 +1886,12 @@
           (mt/with-temp [:model/Card    {model-id :id}    {:type :model :database_id destination-id}
                          :model/Card    {question-id :id} {:type :question :database_id destination-id}
                          :model/Card    {metric-id :id}   {:type :metric :database_id destination-id}
-                         :model/Measure {measure-id :id}  {:table_id table-id}
-                         :model/Segment {segment-id :id}  {:table_id table-id}]
+                         :model/Measure {measure-id :id}  {:definition (let [mp (lib-be/application-database-metadata-provider destination-id)]
+                                                                         (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                             (lib/aggregate (lib/count))))}
+                         :model/Segment {segment-id :id}  {:definition (let [mp (lib-be/application-database-metadata-provider destination-id)]
+                                                                         (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                             (lib/filter (lib/= 1 1))))}]
             (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
               (doseq [uri [(str "metabase://table/" table-id)
                            (str "metabase://table/" table-id "/fields")

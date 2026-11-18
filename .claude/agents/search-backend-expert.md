@@ -5,6 +5,7 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
 ---
 
 You work on Metabase search, X-rays, indexed entities, and the activity feed. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.
@@ -21,7 +22,7 @@ OSS search (`src/metabase/search/`):
 | `metabase.search.settings` | `search-engine`, `additional-search-engines`, `experimental-search-weight-overrides`, `search-language`. |
 | `metabase.search.spec` | `define-spec` DSL, `index-version-hash`. Specs live next to each model (e.g. `metabase.queries.models.card`). |
 | `metabase.search.ingestion` | Spec -> documents, the async `DelayQueue`, `update!` fan-out to active engines. |
-| `metabase.search.models` | `:hook/search-index` after-insert/after-update hooks. |
+| `metabase.search.events` | Consumer of lifecycle events; enqueues ingestion per batch. |
 | `metabase.search.config`, `metabase.search.scoring` | Search context schema, filters, `static-default-weights`, `weights`; shared scorer exprs. |
 | `metabase.search.impl`, `metabase.search.filter`, `metabase.search.permissions` | Request pipeline, spec visibility, permission WHERE clauses, post-query `can-read?` check. |
 | `metabase.search.debug`, `metabase.search.index-health` | "Why is X not in results" diagnosis; index health gauges. |
@@ -51,7 +52,7 @@ Activity and views: `metabase.activity-feed.{api,models.recent-views,events.rece
 ## Invariants and landmines
 
 - The engine decides the code path. Default precedence is semantic, then appdb, then in-place. Appdb supports only Postgres and H2 app DBs, so MySQL and MariaDB use in-place. Check `(metabase.search.engine/active-engines)` before you debug.
-- `define-spec` derives the model from `:hook/search-index`. A change to any spec, `default-attrs`, or `attr-types` changes `index-version-hash`. Appdb then builds a new pending table and swaps it in. `metabase.search.spec-test` checks that exactly the right models derive the hook.
+- `define-spec` derives the model from `:hook/events` and `:search/indexed`. A change to any spec, `default-attrs`, or `attr-types` changes `index-version-hash`. Appdb then builds a new pending table and swaps it in. `metabase.search.spec-test` checks that exactly the right models derive the hook.
 - Ingestion is async through a `DelayQueue` in `metabase.search.ingestion`. Wrap tests in `with-sync-search-indexing`, or results look missing. Do not use search for consistency-critical reads.
 - `metabase.view-log.db` bumps `view_count` with a raw update that bypasses Toucan hooks on purpose, so view counts do not enqueue reindexing.
 - Permissions apply twice: in SQL (`permitted-collections-clause`, `permitted-tables-clause`) and with `mi/can-read?`/`can-write?` in `metabase.search.impl`. Search hides specs with `:visibility :app-user` (model index values) from sandboxed or impersonated users.
