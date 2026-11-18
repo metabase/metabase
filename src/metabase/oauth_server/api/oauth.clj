@@ -165,15 +165,14 @@
   "None of the requested scopes were granted to this refresh token. Omit scope to refresh with the original grant.")
 
 (defn- narrowed-away-scope-description
-  "The `error_description` for an authorization request in which no requested scope is accepted by `resources`."
-  [resources]
+  "The `error_description` for an authorization request in which no requested scope is accepted by the resource."
+  []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  (let [mcp-resource (oauth-server/mcp-resource-url)]
-    (if (empty? resources)
-      (str "No resource was requested, so no MCP scopes can be granted. "
-           "Send the MCP server's resource URL, which is " mcp-resource ".")
-      (str "The requested scopes are not accepted by the requested resource. "
-           "The MCP server's resource URL is " mcp-resource "."))))
+  ;; A request naming no resource never gets here: one asking only for MCP scopes is given the MCP resource by
+  ;; [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The provider cannot be built without a
+  ;; Site URL, so the URL is always there.
+  (str "The requested scopes are not accepted by the requested resource. "
+       "The MCP server's resource URL is " (oauth-server/mcp-resource-url) "."))
 
 (defn- authorization-server-metadata-url
   "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
@@ -597,7 +596,7 @@
     (or (narrow-scope-to-resource (:resource parsed) registered)
         (throw (ex-info "no requested scope is accepted by the named resource"
                         {:oauth-error       "invalid_scope"
-                         :error-description (narrowed-away-scope-description (:resource parsed))
+                         :error-description (narrowed-away-scope-description)
                          :resource          (:resource parsed)})))))
 
 (defn- with-default-mcp-resource
