@@ -393,13 +393,15 @@
             (driver/run-transform! driver/*driver* transform-details nil)
             (is (= [:compile-transform :execute-raw-queries!] @calls))))
         (testing "prefer atomic renames strategy second"
-          (when (driver/database-supports? driver/*driver* :atomic-renames nil)
+          (when (and (driver/database-supports? driver/*driver* :atomic-renames nil)
+                     (not (driver/database-supports? driver/*driver* :create-or-replace-table nil)))
             (reset! calls [])
             (driver/run-transform! driver/*driver* transform-details nil)
             (is (= [:compile-transform :execute-raw-queries! :rename-tables! :drop-table!] @calls))))
         (testing "prefer partial atomic renames strategy third"
           (when (and (driver/database-supports? driver/*driver* :rename nil)
-                     (not (driver/database-supports? driver/*driver* :atomic-renames nil)))
+                     (not (driver/database-supports? driver/*driver* :atomic-renames nil))
+                     (not (driver/database-supports? driver/*driver* :create-or-replace-table nil)))
             (reset! calls [])
             (driver/run-transform! driver/*driver* transform-details nil)
             (is (= [:compile-transform :execute-raw-queries! :drop-table! :rename-table!] @calls))))

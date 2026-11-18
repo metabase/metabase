@@ -658,6 +658,13 @@
     :type/IPAddress      [:text]
     ((get-method driver/type->database-type :postgres) driver base-type)))
 
+;; Not the Postgres method, which turns on pgjdbc's autosave so that a failed statement doesn't abort the rest of a
+;; transform test. Autosave sets a savepoint before each statement, and the endpoint has no savepoints. As on Redshift,
+;; a failed statement in a transform test therefore aborts the transaction for every statement after it.
+(defmethod driver/do-with-test-connection :motherduck
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc) driver database f))
+
 ;; The endpoint refuses `CREATE TEMPORARY TABLE` ("Creating temp tables is not allowed"), and MotherDuck has said temp
 ;; tables aren't coming. Transform tests run on one connection inside a transaction that is always rolled back, and
 ;; DDL is transactional here, so an ordinary table does the job: it's visible on that connection alone, dropped by the
