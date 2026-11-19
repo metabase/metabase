@@ -206,7 +206,7 @@
 
 (deftest action-test-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                       {:keys [action-id]} {}]
       (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id   action-id
                                                              :creator_id  (mt/user->id :crowberto)
@@ -234,7 +234,7 @@
 
 (deftest action-test-run-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                       {:keys [action-id]} {}]
       (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id action-id}]
         (let [initiated-by (mt/user->id :rasta)

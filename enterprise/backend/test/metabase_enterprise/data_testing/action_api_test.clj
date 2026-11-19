@@ -40,7 +40,7 @@
   ([collection-id action-fn f]
    (mt/test-driver :postgres
      (mt/with-actions-test-data-and-actions-enabled
-       (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)
+       (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                               :collection_id collection-id}
                          {:keys [action-id]} (action-fn)]
          (f action-id))))))

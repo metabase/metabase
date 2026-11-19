@@ -38,7 +38,7 @@
     :transform (mt/with-temp [:model/Transform {id :id} {}] (f id))
     :card      (mt/with-temp [:model/Card {id :id} {}] (f id))
     :segment   (mt/with-temp [:model/Segment {id :id} (data-testing.test-util/from-google-segment)] (f id))
-    :action    (mt/with-actions [_ {:type :model :dataset_query (data-testing.test-util/categories-query)}
+    :action    (mt/with-actions [_ {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                                  {:keys [action-id]} {}]
                  (f action-id))))
 
@@ -114,11 +114,11 @@
                      :model/Collection {read-only :id}      {}
                      :model/Collection {hidden :id}         {}
                      :model/Card       {writable-card :id}  {:collection_id writable
-                                                             :dataset_query (data-testing.test-util/categories-query)}
+                                                             :dataset_query (data-testing.test-util/table-query :categories)}
                      :model/Card       {read-only-card :id} {:collection_id read-only
-                                                             :dataset_query (data-testing.test-util/categories-query)}
+                                                             :dataset_query (data-testing.test-util/table-query :categories)}
                      :model/Card       {hidden-card :id}    {:collection_id hidden
-                                                             :dataset_query (data-testing.test-util/categories-query)}
+                                                             :dataset_query (data-testing.test-util/table-query :categories)}
                      :model/CardTest   {writable-test :id}  {:card_id writable-card :name "On the writable card"}
                      :model/CardTest   {read-only-test :id} {:card_id read-only-card :name "On the read-only card"}
                      :model/CardTest   {hidden-test :id}    {:card_id hidden-card :name "On the hidden card"}

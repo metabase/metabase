@@ -42,7 +42,7 @@
 (deftest query-action-runs-on-the-inputs-test
   (mt/test-drivers (drivers)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                         {:keys [action-id]} {}]
         (testing "the action's SQL, with the test's parameter values, changes the input's rows"
           ;; The default query action renames category `id` to `<name> Shop`.
@@ -57,7 +57,7 @@
 (deftest parameters-are-filled-as-a-run-of-the-action-fills-them-test
   (mt/test-drivers (drivers)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                         {:keys [action-id]} slugged-parameters]
         (testing "a value keyed by slug reaches the parameter, and the hidden parameter takes its default"
           (is (=? {:status :passed}
@@ -72,7 +72,7 @@
 (deftest only-query-actions-on-databases-with-actions-enabled-are-tested-test
   (mt/test-drivers (drivers)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [_                     {:type :model :dataset_query (data-testing.test-util/categories-query)}
+      (mt/with-actions [_                     {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                         {query-action :action-id}    {}
                         {implicit-action :action-id} {:type :implicit :kind "row/update"}]
         (testing "control: the query action runs"
@@ -115,7 +115,7 @@
           sql)))
   (mt/test-drivers (drivers)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/categories-query)}
+      (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                         {:keys [action-id]} {}]
         (let [action     (data-testing.db/action action-id)
               parameters {"id" 1 "name" "Wood"}]

@@ -553,7 +553,7 @@
 (deftest action-test-revisions-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+      (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                         {:keys [action-id]} {}]
         (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id  action-id
                                                                :creator_id (mt/user->id :crowberto)
@@ -582,10 +582,10 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection {readable :id} {}
                        :model/Collection {hidden :id}   {}]
-          (mt/with-actions [_                     {:type :model :dataset_query (data-testing.test-util/categories-query)
+          (mt/with-actions [_                     {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                    :collection_id hidden}
                             {hidden-action :action-id} {}]
-            (mt/with-actions [_                      {:type :model :dataset_query (data-testing.test-util/categories-query)
+            (mt/with-actions [_                      {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                       :collection_id readable}
                               {visible-action :action-id} {}]
               (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
@@ -607,7 +607,7 @@
 
 (deftest action-test-revert-requires-feature-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                       {:keys [action-id]} {}]
       (mt/with-temp [:model/ActionTest {action-test-id :id} {:action_id action-id :name "Original"}]
         (t2/update! :model/ActionTest :id action-test-id {:name "Renamed"})
@@ -658,7 +658,7 @@
 
 (deftest action-test-revisions-describe-a-change-of-action-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-actions [_                 {:type :model :dataset_query (data-testing.test-util/categories-query)}
+    (mt/with-actions [_                 {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                       {from :action-id} {:name "Rename category"}
                       {to :action-id}   {:name "Reprice category"}]
       (let [before  {:action_id from :name "t" :description nil :parameters nil :inputs [] :expectations []}

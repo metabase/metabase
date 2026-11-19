@@ -9,7 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest json-columns-round-trip-test
-  (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)}
+  (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                     {:keys [action-id]} {}]
     (mt/with-temp [:model/ActionTest {test-id :id}  {:action_id  action-id
                                                      :parameters {"id" 1 "name" "Wood"}
@@ -35,7 +35,7 @@
                                   (fn [coll-id _model-id _action-id] (t2/delete! :model/Collection :id coll-id))]]]
     (testing description
       (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/categories-query)
+        (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                :collection_id coll-id}
                           {:keys [action-id]} {}]
           (mt/with-temp [:model/ActionTest  {test-id :id} {:action_id action-id}
@@ -54,7 +54,7 @@
                                   (fn [coll-id _model-id] (t2/delete! :model/Collection :id coll-id))]]]
     (testing description
       (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (mt/with-actions [{model-id :id}         {:type :model :dataset_query (data-testing.test-util/categories-query)
+        (mt/with-actions [{model-id :id}         {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                   :collection_id coll-id}
                           {first-action :action-id}  {}
                           {second-action :action-id} {}]

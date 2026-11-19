@@ -22,11 +22,11 @@
   (mt/with-premium-features #{:remote-sync}
     (mt/with-temp [:model/Collection synced   {:name "Synced" :is_remote_synced true :location "/"}
                    :model/Collection unsynced {:name "Unsynced" :location "/"}]
-      (mt/with-actions [_                       {:type :model :dataset_query (data-testing.test-util/categories-query)
+      (mt/with-actions [_                       {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                  :collection_id (:id synced)}
                         {synced-action :action-id}   {}
                         {archived-action :action-id} {:archived true}]
-        (mt/with-actions [_                         {:type :model :dataset_query (data-testing.test-util/categories-query)
+        (mt/with-actions [_                         {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                      :collection_id (:id unsynced)}
                           {unsynced-action :action-id} {}]
           (mt/with-temp [:model/ActionTest t-synced   {:action_id synced-action}
@@ -44,7 +44,7 @@
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}]
-        (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/categories-query)
+        (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                :collection_id (:id synced)}
                           {:keys [action-id]} {:name "Refund"}]
           (mt/with-temp [:model/ActionTest t {:action_id action-id :name "Refunds one order" :parameters {"id" 1}}]
@@ -60,7 +60,7 @@
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}]
-          (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/categories-query)
+          (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/table-query :categories)
                                                  :name "Synced model" :collection_id (:id synced)}
                             {:keys [action-id]} {:name "Refund"}]
             (mt/with-temp [:model/ActionTest t {:action_id action-id :name "Edited test"}]
