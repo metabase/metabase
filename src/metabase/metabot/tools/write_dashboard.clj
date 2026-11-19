@@ -784,10 +784,12 @@
      "Tell the user about any you don't connect again."]))
 
 (defn- archived-subscriptions-text
-  "The lines telling the model which subscriptions the save archived, and what to tell the user.
+  "The lines telling the model which of `subscriptions`, the `:archived-subscriptions` effect of
+  [[dashboard-write/write!]], the save archived, and what to tell the user.
   A subscription the user can't read is counted, not described."
   [subscriptions]
-  ;; Channel types and the creator's name are stored values, so a channel shows by a fixed label, and the name quoted.
+  ;; The creator's name, filter names and channel types are stored values that could carry instructions, so channels
+  ;; show by fixed labels and names are quoted.
   (let [channel-label  {:email "email", :slack "Slack", :http "webhook"}
         filter-label   (fn [{:keys [id name]}]
                          (pr-str (if (str/blank? name) id name)))

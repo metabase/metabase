@@ -297,11 +297,11 @@
                              :total-num-tabs total-num-tabs})))
 
 (defn update-dashboard!
-  "Update the Dashboard with `id` and return the saved row. `dash-updates` may carry
-  dashboard attributes plus `:dashcards` and `:tabs`, which fully replace the current layout — entries
-  with negative ids are created, missing entries are deleted. Requires write permission on the dashboard;
-  runs in one transaction and may notify owners of broken subscriptions.
-  [[archived-subscriptions]] reads the subscriptions the update archived from the row's metadata."
+  "Update the Dashboard with `id` and return the saved row.
+  The `dash-updates` may carry dashboard attributes plus `:dashcards` and `:tabs`, which fully replace the current
+  layout — entries with negative ids are created, missing entries are deleted.
+  Requires write permission on the dashboard; runs in one transaction and may notify owners of broken subscriptions.
+  Read the subscriptions it archived from the returned row with [[archived-subscriptions]]."
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
@@ -340,8 +340,8 @@
                                            (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
                                          ;; Handle broken subscriptions, if any, when parameters changed
                                          (when parameters
-                                           (reset! archived
-                                                   (pulse.broken-subscriptions/handle-broken-subscriptions! id original-params))))
+                                           (reset! archived (pulse.broken-subscriptions/handle-broken-subscriptions!
+                                                             id original-params))))
                                        (when update-dashcards-and-tabs?
                                          (when (not (false? (:archived dash-updates)))
                                            (api/check-not-archived current-dash))
@@ -387,8 +387,9 @@
           (seq @archived) (vary-meta assoc ::archived-subscriptions @archived))))))
 
 (defn archived-subscriptions
-  "The subscriptions the [[update-dashboard!]] that returned `dashboard` archived, as
-   [[pulse.broken-subscriptions/handle-broken-subscriptions!]] returns them, or nil."
+  "The subscriptions archived by the [[update-dashboard!]] call that returned `dashboard`, as
+  [[pulse.broken-subscriptions/handle-broken-subscriptions!]] returns them.
+  Returns nil when that call archived none, or when `dashboard` didn't come from it."
   [dashboard]
   (::archived-subscriptions (meta dashboard)))
 

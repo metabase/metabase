@@ -144,7 +144,7 @@
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
    Either way `:effects` is what [[dashboard-ops/effects]] describes, empty when there are no ops.
-   A saved update adds `:archived-subscriptions` to it when the save archived any.
+   A saved update also puts the subscriptions it archived, if any, in `:effects` under `:archived-subscriptions`.
    It checks write permission on the dashboard, or create permission on the collection, first after the ops' shape.
    A dry run skips the save's other permission checks, such as moving to a collection and per-field mapping checks.
    Ops edit the layout and parameters, so `attrs` must not carry `:dashcards`, `:tabs` or `:parameters`.

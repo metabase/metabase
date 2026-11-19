@@ -125,20 +125,22 @@
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-returns-what-it-archived-test
-  (testing "the handler archives each broken subscription and returns what a caller may report about it, counting
-            the active destinations of enabled channels"
+  (testing "returns what it archived, counting active destinations of enabled channels"
     (mt/with-fake-inbox
       (mt/with-temp [:model/User                {former-id :id}    {:is_active false}
                      :model/Channel             {webhook-id :id}   {:type    :channel/http
                                                                     :details {:url         "https://example.com/hook"
                                                                               :auth-method "none"}}
                      :model/Dashboard           {dash-id :id}      {:name       "Sales"
-                                                                    :parameters [{:id "kept", :name "Kept", :slug "kept"
+                                                                    :parameters [{:id   "kept"
+                                                                                  :name "Kept"
+                                                                                  :slug "kept"
                                                                                   :type "category"}]}
                      :model/Pulse               {removed-id :id}   {:name         "Removed filter"
                                                                     :dashboard_id dash-id
                                                                     :creator_id   (mt/user->id :rasta)
-                                                                    :parameters   [{:id "gone", :name "Gone"
+                                                                    :parameters   [{:id    "gone"
+                                                                                    :name  "Gone"
                                                                                     :value ["secret"]}]}
                      :model/PulseChannel        {channel-id :id}   {:channel_type :email
                                                                     :pulse_id     removed-id
@@ -152,7 +154,8 @@
                      :model/Pulse               {stale-id :id}     {:name         "Stale filter"
                                                                     :dashboard_id dash-id
                                                                     :creator_id   (mt/user->id :rasta)
-                                                                    :parameters   [{:id "stale", :name "Stale"
+                                                                    :parameters   [{:id    "stale"
+                                                                                    :name  "Stale"
                                                                                     :value ["x"]}]}
                      :model/PulseChannel        _                  {:channel_type :http
                                                                     :pulse_id     stale-id
@@ -170,9 +173,11 @@
                      :model/Pulse               {mixed-id :id}     {:name         "Mixed"
                                                                     :dashboard_id dash-id
                                                                     :creator_id   (mt/user->id :rasta)
-                                                                    :parameters   [{:id "stale", :name "Stale"
+                                                                    :parameters   [{:id    "stale"
+                                                                                    :name  "Stale"
                                                                                     :value ["x"]}
-                                                                                   {:id "gone", :name "Gone"
+                                                                                   {:id    "gone"
+                                                                                    :name  "Gone"
                                                                                     :value ["y"]}]}]
         (is (= [{:id              removed-id
                  :creator-name    "Rasta Toucan"

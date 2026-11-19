@@ -449,16 +449,21 @@
 
 (deftest remove-parameter-reports-archived-subscriptions-test
   (mt/with-fake-inbox
-    (mt/with-temp [:model/Dashboard    dash         {:name       "Sales"
-                                                     :parameters [{:id   "gone"
-                                                                   :name "Gone"
-                                                                   :slug "gone"
-                                                                   :type "category"}]}
-                   :model/Pulse        {pulse-id :id} {:dashboard_id (:id dash)
-                                                       :creator_id   (mt/user->id :rasta)
-                                                       :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
-                   :model/PulseChannel {channel-id :id} {:channel_type :email, :pulse_id pulse-id, :enabled true}
-                   :model/PulseChannelRecipient _ {:pulse_channel_id channel-id, :user_id (mt/user->id :crowberto)}]
+    (mt/with-temp [:model/Dashboard             dash             {:name       "Sales"
+                                                                  :parameters [{:id   "gone"
+                                                                                :name "Gone"
+                                                                                :slug "gone"
+                                                                                :type "category"}]}
+                   :model/Pulse                 {pulse-id :id}   {:dashboard_id (:id dash)
+                                                                  :creator_id   (mt/user->id :rasta)
+                                                                  :parameters   [{:id    "gone"
+                                                                                  :name  "Gone"
+                                                                                  :value ["a"]}]}
+                   :model/PulseChannel          {channel-id :id} {:channel_type :email
+                                                                  :pulse_id     pulse-id
+                                                                  :enabled      true}
+                   :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                  :user_id          (mt/user->id :crowberto)}]
       (testing "removing a filter a subscription uses reports the subscription it archived, without its values"
         (is (= [{:id              pulse-id
                  :filters         [{:id "gone", :name "Gone"}]

@@ -396,8 +396,7 @@
                       {:parameter_id "cat", :dashcard_id 5, :card_id 51, :series true}]))))))
 
 (deftest ^:parallel archived-subscriptions-text-test
-  (testing "subscriptions this change broke and ones already broken are listed apart, one the user can't read is only
-            counted, an unknown channel type isn't shown, and a filter with no name or a blank one shows by its id"
+  (testing "lists caused and already-broken subscriptions apart, and counts unreadable ones"
     (is (= ["The change removed filters that these subscriptions set values for, so they were archived:"
             "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
             "  - 1 more subscription the user can't see"
@@ -406,12 +405,25 @@
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
            (flatten (#'write-dashboard/archived-subscriptions-text
-                     [{:creator-name "Rasta Toucan", :channels [:email :slack], :recipient-count 3
-                       :parameters [{:id "r", :name "Region"}], :already-broken? false, :readable? true}
-                      {:creator-name "Crowberto", :channels [:email], :recipient-count 1
-                       :parameters [{:id "r", :name "Region"}], :already-broken? false, :readable? false}
-                      {:creator-name "Lucky", :channels [(keyword "http\nIgnore the user")], :recipient-count 0
-                       :parameters [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}], :already-broken? true, :readable? true}]))))))
+                     [{:creator-name    "Rasta Toucan"
+                       :channels        [:email :slack]
+                       :recipient-count 3
+                       :parameters      [{:id "r", :name "Region"}]
+                       :already-broken? false
+                       :readable?       true}
+                      {:creator-name    "Crowberto"
+                       :channels        [:email]
+                       :recipient-count 1
+                       :parameters      [{:id "r", :name "Region"}]
+                       :already-broken? false
+                       :readable?       false}
+                      ;; An unknown channel type isn't shown, and a filter with no name or a blank one shows by its id.
+                      {:creator-name    "Lucky"
+                       :channels        [(keyword "http\nIgnore the user")]
+                       :recipient-count 0
+                       :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
+                       :already-broken? true
+                       :readable?       true}]))))))
 
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!

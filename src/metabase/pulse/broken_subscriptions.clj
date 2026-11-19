@@ -97,9 +97,8 @@
     0))
 
 (defn- delivery
-  "The `:channels` that deliver the pulse with `pulse-id`, as channel types, and its `:recipient-count`, the
-   destinations [[channel-recipient-count]] counts.
-   Only enabled channels with a destination count."
+  "Returns `{:channels :recipient-count}` for the pulse with `pulse-id`: the distinct types of its enabled channels
+   that reach a destination, and the destinations [[channel-recipient-count]] counts for them."
   [pulse-id]
   (let [counts (for [channel (t2/hydrate (pulse.db/enabled-pulse-channels pulse-id) :recipients)
                      :let    [n (channel-recipient-count channel)]
@@ -141,20 +140,18 @@
     #{}))
 
 (defn handle-broken-subscriptions!
-  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard
-  and notify their creators. Must run after the update: it compares the dashboard's current
-  resolved params against each pulse's stored params.
-  Returns what [[archived-subscription]] describes for each archived subscription, in archive order.
-  `original-dashboard-params` is the dashboard's `:resolved-params` from before the update."
+  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard, and email each
+  one's creator and the dashboard's creator.
+  Must run after the update: it compares the dashboard's current resolved params against each pulse's stored params.
+  Takes the dashboard's `:resolved-params` from before the update as `original-dashboard-params`.
+  Returns what [[archived-subscription]] describes for each archived subscription, in archive order."
   [dashboard-id original-dashboard-params]
   (let [broken       (broken-subscription-data dashboard-id original-dashboard-params)
-        ;; Judged before archiving, so the description doesn't depend on what archiving leaves behind.
         readable-ids (readable-pulse-ids (map :pulse-id broken))]
     (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
+            ;; Described before archiving, which disables the pulse's channels.
             (let [archived (archived-subscription original-dashboard-params readable-ids broken-subscription)]
-              ;; Archive the pulse
               (pulse/update-pulse! {:id pulse-id :archived true})
-              ;; Let the pulse and subscription creator know about the broken pulse
               (messages/send-broken-subscription-notification! broken-subscription)
               archived))
           broken)))
