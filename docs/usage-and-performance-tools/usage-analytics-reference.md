@@ -554,20 +554,16 @@ Some columns in the models above hold one of a fixed set of values.
 The Topic column on the [Activity log](#activity-log) model takes one of:
 
 - action-v2-execute
-- alert-create
-- alert-delete
 - alert-send
 - alert-unsubscribe
-- alert-update
 - api-key-create
 - api-key-delete
-- api-key-regenerate
 - api-key-update
+- cache-config-create
+- cache-config-delete
 - cache-config-update
 - card-create
 - card-delete
-- card-public-link-created
-- card-public-link-deleted
 - card-test-create
 - card-test-delete
 - card-test-run-start
@@ -584,17 +580,16 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - custom-viz-plugin-create
 - custom-viz-plugin-delete
 - custom-viz-plugin-update
-- dashboard-add-cards
 - dashboard-create
 - dashboard-delete
-- dashboard-public-link-created
-- dashboard-public-link-deleted
-- dashboard-remove-cards
 - database-create
 - database-delete
 - database-discard-field-values
 - database-manual-scan
 - database-manual-sync
+- database-router-create
+- database-router-delete
+- database-router-update
 - database-update
 - document-create
 - document-delete
@@ -606,7 +601,6 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - group-delete
 - group-membership-create
 - group-membership-delete
-- group-membership-update
 - group-update
 - install
 - mcp-jwt-token-issued
@@ -643,17 +637,12 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - session-revoked
 - sessions-revoked
 - setting-update
-- subscription-create
-- subscription-delete
 - subscription-send
 - subscription-unsubscribe
 - subscription-unsubscribe-undo
-- subscription-update
 - table-data-edit
 - table-manual-scan
 - table-manual-sync
-- table-publish
-- table-unpublish
 - tenant-create
 - tenant-update
 - transform-create
@@ -668,15 +657,14 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-test-run-start
 - transform-test-run-timeout
 - transform-test-update
+- transform-update
 - update-permission-failure
 - update-transform
 - upload-append
 - upload-create
 - upload-replace
-- user-deactivated
 - user-invited
 - user-joined
-- user-reactivated
 - user-update
 - write-permission-failure
 
