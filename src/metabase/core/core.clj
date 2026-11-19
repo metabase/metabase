@@ -113,6 +113,29 @@
   {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}})
 
+;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
+;; needs: requests queue search updates, MQ messages, API key usage and notifications; queue listeners and notification
+;; sends record metrics and traces; MQ runs on the scheduler; scheduled jobs send notifications and run queries.
+;; [[shutdown-steps]] must run each step before every step it uses, which a test checks.
+;; Public only so the test can read it; nothing else should.
+(def shutdown-step-uses
+  "Shutdown step label -> the labels of the steps whose stops it uses, each of which must run after it."
+  {"stop the web server"      #{"stop queue listeners"
+                                "run shutdown logic"
+                                "shut down notifications"
+                                "shut down tracing"
+                                "shut down analytics"
+                                "halt the global system"}
+   "stop queue listeners"     #{"shut down tracing" "shut down analytics"}
+   "stop the token refresher" #{"shut down analytics"}
+   "run shutdown logic"       #{"stop the scheduler"}
+   "stop the scheduler"       #{"shut down notifications"
+                                "shut down tracing"
+                                "shut down analytics"
+                                "halt the global system"}
+   "shut down notifications"  #{"shut down tracing" "shut down analytics" "halt the global system"}
+   "release migration locks"  #{"halt the global system"}})
+
 ;; TODO (Chris 2026-11-13) -- Move these stops into the halt one component at a time, until the halt stops them all.
 ;; A component can move once it is started through the global system and what it uses is in [[system-dependencies]],
 ;; since the halt takes its order from those edges and not from this list.
