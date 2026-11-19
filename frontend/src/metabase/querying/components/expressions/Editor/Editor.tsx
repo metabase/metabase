@@ -47,11 +47,12 @@ import type { ExpressionSidebarName } from "../ExpressionSidebar";
 import { ExpressionSidebarPanel } from "../ExpressionSidebar";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
+import { AiPromptBar } from "./AiPromptBar";
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
-import { InlinePrompt, InlinePromptStatus } from "./InlinePrompt";
+import { InlinePromptStatus } from "./InlinePrompt";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
@@ -62,11 +63,6 @@ import { useColumnHover } from "./column-hover";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import {
-  closeInlinePrompt,
-  inlinePrompt,
-  openInlinePromptAtEnd,
-} from "./inline-prompt";
 import { showErrors as showErrorMarks } from "./language";
 import { useEditorSidebar } from "./use-editor-sidebar";
 import { useGenerateExpression } from "./use-generate-expression";
@@ -153,9 +149,9 @@ export type EditorProps = {
   formatRef?: MutableRefObject<FormatNow | null>;
   /** Set to a function that sends the whole text to the AI as a request. */
   generateRef?: MutableRefObject<GenerateNow | null>;
-  /** False or missing hides the AI: no prompt on "?", and a placeholder with no AI. */
+  /** False or missing hides the AI: no prompt, and a placeholder with no AI. */
   isAiAvailable?: boolean;
-  /** Set to a function that opens the prompt to the AI at the end of the code. */
+  /** Set to a function that opens the prompt to the AI under the code. */
   askAiRef?: MutableRefObject<(() => void) | null>;
   /**
    * True for a new column: text that reads like a request offers to
@@ -201,17 +197,12 @@ const INLINE_BASIC_SETUP = {
 };
 
 function getPlaceholder({
-  isPromptOpen,
   inline,
   isAiAvailable,
 }: {
-  isPromptOpen: boolean;
   inline?: boolean;
   isAiAvailable?: boolean;
 }) {
-  if (isPromptOpen) {
-    return undefined;
-  }
   if (!inline) {
     return t`Type your expression, press '[' for columns…`;
   }
@@ -447,7 +438,7 @@ export function Editor(props: EditorProps) {
   // After an AI text goes into the code, the cursor goes to its end, and no
   // autocomplete opens for the text.
   // The editor gets the text a few frames later, so wait for it.
-  const focusEnd = useCallback((text: string) => {
+  const focusEnd = useCallback((text: string, shouldFocus = true) => {
     let frames = 10;
     const run = () => {
       const view = ref.current?.view;
@@ -458,7 +449,9 @@ export function Editor(props: EditorProps) {
         requestAnimationFrame(run);
         return;
       }
-      view.focus();
+      if (shouldFocus) {
+        view.focus();
+      }
       view.dispatch({
         selection: { anchor: view.state.doc.length },
         scrollIntoView: true,
@@ -480,7 +473,13 @@ export function Editor(props: EditorProps) {
   );
 
   const proposeSource = useCallback(
-    async (source: string, name?: string, breakouts?: GeneratedBreakout[]) => {
+    async (
+      source: string,
+      name?: string,
+      breakouts?: GeneratedBreakout[],
+      // False keeps the focus where it is, like in the prompt to the AI.
+      shouldFocus = true,
+    ) => {
       const formatted = await formatProposedSource(source);
       if (isComplexEdit(sourceRef.current, formatted)) {
         setProposal({ source: formatted, name, breakouts });
@@ -494,7 +493,7 @@ export function Editor(props: EditorProps) {
         acceptSource(formatted);
         reportGenerated(formatted, name?.trim());
       }
-      focusEnd(formatted);
+      focusEnd(formatted, shouldFocus);
     },
     [
       formatProposedSource,
@@ -570,10 +569,10 @@ export function Editor(props: EditorProps) {
     onRejectProposed: handleRejectProposed,
   });
 
-  // "?" in the code opens a prompt to the AI at the cursor.
-  const promptContainer = useMemo(() => document.createElement("span"), []);
-  const [promptPos, setPromptPos] = useState<number | null>(null);
+  // The prompt to the AI under the code. It stays open after each result.
+  const [isPromptOpen, setIsPromptOpen] = useState(false);
   const [promptError, setPromptError] = useState<string>();
+  const promptInputRef = useRef<HTMLInputElement>(null);
   const {
     generate,
     cancel: cancelGenerate,
@@ -589,74 +588,50 @@ export function Editor(props: EditorProps) {
     validate,
   });
 
-  const handlePromptChange = useCallback(
-    (pos: number | null) => {
-      setPromptPos(pos);
-      setPromptError(undefined);
-      if (pos == null) {
-        cancelGenerate();
-      }
-    },
-    [cancelGenerate],
-  );
-
-  const inlinePromptExtensions = useMemo(
-    () =>
-      inline && isAiAvailable && !readOnly && !isProposing
-        ? inlinePrompt({
-            container: promptContainer,
-            onChange: handlePromptChange,
-          })
-        : [],
-    [
-      inline,
-      isAiAvailable,
-      readOnly,
-      isProposing,
-      promptContainer,
-      handlePromptChange,
-    ],
-  );
-
   if (askAiRef) {
     askAiRef.current = () => {
       const view = ref.current?.view;
       if (view) {
         closeCompletion(view);
-        openInlinePromptAtEnd(view);
       }
+      setIsPromptOpen(true);
+      promptInputRef.current?.focus();
     };
   }
 
   const handleClosePrompt = useCallback(() => {
-    const view = ref.current?.view;
-    if (view) {
-      closeInlinePrompt(view);
-    }
-  }, []);
+    setIsPromptOpen(false);
+    setPromptError(undefined);
+    cancelGenerate();
+    ref.current?.view?.focus();
+  }, [cancelGenerate]);
 
   const handleSubmitPrompt = useCallback(
     async (prompt: string) => {
-      if (promptPos == null) {
-        return;
+      // A new request builds on the change in the diff, so it accepts it.
+      const base = proposal?.source ?? sourceRef.current;
+      if (proposal != null) {
+        handleAcceptProposed();
       }
       setPromptError(undefined);
-      const result = await generate({
-        prompt,
-        source: sourceRef.current,
-        cursor: promptPos,
-      });
+      const result = await generate({ prompt, source: base });
       if (result == null) {
-        return;
+        return false;
       }
       if ("message" in result) {
         setPromptError(result.message);
-        return;
+        return false;
       }
-      handleClosePrompt();
-      proposeSource(result.expression, result.name, result.breakouts);
+      // The next request goes to the prompt, so it keeps the focus.
+      await proposeSource(
+        result.expression,
+        result.name,
+        result.breakouts,
+        false,
+      );
+      return true;
     },
-    [promptPos, generate, handleClosePrompt, proposeSource],
+    [proposal, handleAcceptProposed, generate, proposeSource],
   );
 
   const textRequest = useTextRequest({
@@ -706,13 +681,8 @@ export function Editor(props: EditorProps) {
             unifiedMergeView({ original: diffOriginal, mergeControls: false }),
             ...diffControlsExtensions,
           ]
-        : [...baseExtensions, ...inlinePromptExtensions],
-    [
-      diffOriginal,
-      baseExtensions,
-      diffControlsExtensions,
-      inlinePromptExtensions,
-    ],
+        : baseExtensions,
+    [diffOriginal, baseExtensions, diffControlsExtensions],
   );
 
   const handleSourceChange = useCallback(
@@ -827,11 +797,7 @@ export function Editor(props: EditorProps) {
       id={id}
       ref={ref}
       data-testid="custom-expression-query-editor"
-      placeholder={getPlaceholder({
-        isPromptOpen: promptPos != null,
-        inline,
-        isAiAvailable,
-      })}
+      placeholder={getPlaceholder({ inline, isAiAvailable })}
       className={S.editor}
       extensions={extensions}
       readOnly={readOnly || isFormatting || textRequest.isLoading}
@@ -883,15 +849,15 @@ export function Editor(props: EditorProps) {
         ) : (
           codeMirror
         )}
-        {promptPos != null &&
-          createPortal(
-            <InlinePrompt
-              isLoading={isGenerating}
-              onSubmit={handleSubmitPrompt}
-              onClose={handleClosePrompt}
-            />,
-            promptContainer,
-          )}
+        {isPromptOpen && (
+          <AiPromptBar
+            isLoading={isGenerating}
+            error={promptError}
+            inputRef={promptInputRef}
+            onSubmit={handleSubmitPrompt}
+            onClose={handleClosePrompt}
+          />
+        )}
         {proposal != null && (
           <ExpressionDiffControls
             portalTarget={portalTarget}
@@ -902,22 +868,18 @@ export function Editor(props: EditorProps) {
             onRejectProposed={handleRejectProposed}
           />
         )}
-        {promptPos != null ? (
-          <InlinePromptStatus isLoading={isGenerating} error={promptError} />
-        ) : (
-          textRequest.isShown && (
-            <InlinePromptStatus
-              isLoading={textRequest.isLoading}
-              error={textRequest.error}
-            />
-          )
+        {textRequest.isShown && (
+          <InlinePromptStatus
+            isLoading={textRequest.isLoading}
+            error={textRequest.error}
+          />
         )}
         <Errors
           error={
             !showErrors ||
             isSnippetActive ||
             isProposing ||
-            promptPos != null ||
+            promptError != null ||
             textRequest.isShown
               ? null
               : error
@@ -974,8 +936,8 @@ export function Editor(props: EditorProps) {
           </Flex>
         )}
 
-        {/* The help popup would cover the diff controls and the prompt. */}
-        {!isProposing && promptPos == null && portal}
+        {/* The help popup would cover the diff controls. */}
+        {!isProposing && portal}
         {columnHoverCard}
       </LayoutMain>
 

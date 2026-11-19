@@ -165,42 +165,6 @@
   transition: opacity 300ms;
 }
 
-/* The prompt to the AI has the font of the code. */
-.inlinePrompt {
-  display: inline-flex;
-  align-items: baseline;
-  padding: 0 4px;
-  border-radius: 4px;
-  background-color: var(--mb-color-background_page-highlighted);
-  color: var(--mb-color-text-brand-strong);
-
-  &.loading {
-    background-color: transparent;
-    color: var(--mb-color-text-disabled);
-  }
-}
-
-.inlinePromptIcon {
-  flex-shrink: 0;
-  align-self: center;
-  margin-right: 6px;
-}
-
-.inlinePromptInput {
-  min-width: 0;
-  border: none;
-  outline: none;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-
-  &::placeholder {
-    color: inherit;
-    opacity: 0.6;
-  }
-}
-
 .promptStatus {
   align-items: center;
   color: var(--mb-color-text-primary);
