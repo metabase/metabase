@@ -704,7 +704,8 @@ describe("QueryBuilder > structured models", () => {
     });
 
     it("lists the table ID fields as foreign key targets in the model metadata editor (metabase#31663)", async () => {
-      setupDatabaseIdFieldsEndpoints({ database: SAMPLE_DB });
+      // The picker stays disabled until the ID fields arrive
+      setupDatabaseIdFieldsEndpoints({ database: SAMPLE_DB, delay: 1500 });
       await setup({
         card: MODEL,
         database: SAMPLE_DB,
@@ -721,9 +722,11 @@ describe("QueryBuilder > structured models", () => {
       expect(await screen.findByLabelText("Display name")).toHaveValue(
         "Product ID",
       );
-      await userEvent.click(
-        await screen.findByRole("textbox", { name: "Foreign key target" }),
-      );
+      const targetInput = await screen.findByRole("textbox", {
+        name: "Foreign key target",
+      });
+      await waitFor(() => expect(targetInput).toBeEnabled());
+      await userEvent.click(targetInput);
 
       const listbox = await screen.findByRole("listbox");
       ["Orders → ID", "People → ID", "Products → ID", "Reviews → ID"].forEach(
