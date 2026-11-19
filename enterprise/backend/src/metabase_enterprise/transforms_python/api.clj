@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,7 +15,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn get-python-library-by-path
@@ -28,9 +28,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/library/:path"
+(api.macros/defendpoint :get ["/library/:path" :path #"[^/]+"]
   "Get the Python library for user modules."
-  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map {:closed true} [:path ::transforms-python.schema/python-library.request-path]]
    _query-params]
   (get-python-library-by-path path))
 
@@ -38,9 +38,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/library/:path"
+(api.macros/defendpoint :put ["/library/:path" :path #"[^/]+"]
   "Update the Python library source code for user modules."
-  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map {:closed true} [:path ::transforms-python.schema/python-library.request-path]]
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]

@@ -84,7 +84,8 @@
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
           converted-query (lib.convert/->mbql5
-                           (match/replace-all (lib.convert/->legacy-MBQL query)
+                           ;; existing usage -- do not use going forward
+                           (match/replace-all #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
                              #'map? (dissoc &match :base-type :effective-type)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
                                                 [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
@@ -523,8 +524,7 @@
                        (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/breakout (meta/field-metadata :venues :latitude))
-                       (lib/breakout (meta/field-metadata :venues :longitude))
-                       lib.convert/->legacy-MBQL)}
+                       (lib/breakout (meta/field-metadata :venues :longitude)))}
         base-mp (lib.tu/mock-metadata-provider
                  meta/metadata-provider
                  {:cards [(assoc base-card :id question-id           :type :question)
@@ -539,8 +539,7 @@
                       :source-card-id model-id
                       :dataset-query
                       (-> (lib/query base-mp (lib.metadata/card base-mp model-id))
-                          (lib/aggregate (lib/count))
-                          lib.convert/->legacy-MBQL)
+                          (lib/aggregate (lib/count)))
                       :type :metric}]})]
     (is (=? {:lib/type :mbql/query
              :database (meta/id)

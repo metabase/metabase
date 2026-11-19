@@ -75,7 +75,7 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/card-test-delete topic)
-                                                (swap! published conj (:id (:object event)))))]
+                                                (swap! published conj (:id (:previous-object event)))))]
           (t2/delete! :model/Card :id card-id))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))
@@ -111,7 +111,7 @@
              :read-pk   (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/CardTest :id test-id) :can_read)))
              :run       (boolean (data-testing.models.card-test/can-run? card-test))
              :create    (boolean (mi/can-create? :model/CardTest {:card_id card-id}))
-             :update    (boolean (mi/can-update? card-test {:name "renamed"}))
+             :update    (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))
              :write     (boolean (mi/can-write? (t2/hydrate card-test :can_write)))
              :write-pk  (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/CardTest :id test-id) :can_write)))}))))))
 
@@ -144,8 +144,8 @@
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
       (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
       (mt/with-current-user (mt/user->id :rasta)
-        (is (true? (boolean (mi/can-update? card-test {:name "renamed"}))))
-        (is (false? (boolean (mi/can-update? card-test {:card_id other-id}))))))))
+        (is (true? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))))
+        (is (false? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:card_id other-id}))))))))
 
 (deftest permissions-take-the-database-of-the-card-query-test
   ;; Card hooks set `database_id` from the query on every insert and update, so only a direct row update makes the
@@ -168,7 +168,7 @@
               (is (= {:run true :create true :update true :write true}
                      {:run    (boolean (data-testing.models.card-test/can-run? card-test))
                       :create (boolean (mi/can-create? :model/CardTest {:card_id card-id}))
-                      :update (boolean (mi/can-update? card-test {:name "renamed"}))
+                      :update (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))
                       :write  (boolean (mi/can-write? (t2/hydrate card-test :can_write)))})))))))))
 
 (deftest permissions-of-a-test-of-a-card-with-no-query-test

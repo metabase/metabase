@@ -4,14 +4,18 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.audit-app.core :as audit-app]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -21,6 +25,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
+  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
@@ -30,19 +35,6 @@
 (t2/deftransforms :model/SegmentTest
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
-
-(defmethod audit-app/model-details :model/SegmentTest
-  [segment-test _event-type]
-  (select-keys segment-test [:segment_id :name :description]))
-
-;;; ---------------------------------------------------- Events ----------------------------------------------------
-
-(defenterprise delete-segment-tests!
-  "Enterprise implementation: delete the tests of the segment `segment-id`, each through its own hook. Runs whether
-  or not the premium token grants the feature, since the tests outlive the feature."
-  :feature :none
-  [segment-id]
-  (data-testing.db/delete-segment-tests! segment-id))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -67,6 +59,47 @@
   ;; segment is not enough.
   (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-segment-test! :- ::data-testing.schema/segment-test
+  "Insert the SegmentTest `segment-test` returning the inserted test."
+  [segment-test :- [:merge
+                    ::data-testing.schema/segment-test.create
+                    [:map {:closed true}
+                     [:creator_id ::lib.schema.id/user]]]]
+  (data-testing.db/insert-segment-test! segment-test))
+
+(mu/defn update-segment-test! :- :nil
+  "Apply `changes` to the SegmentTest with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/segment-test.update]
+  (data-testing.db/update-segment-test! id changes)
+  nil)
+
+(mu/defn delete-segment-test! :- :nil
+  "Delete the SegmentTest with `id`."
+  [id :- ms/PositiveInt]
+  (data-testing.db/delete-segment-test! id)
+  nil)
+
+(defenterprise delete-segment-tests!
+  "Deletes the tests of the segment `segment-id` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [segment-id]
+  (data-testing.db/delete-segment-tests! segment-id))
+
+;;; -------------------------------------------------- Revisions ---------------------------------------------------
+
+(def ^:private revision-columns
+  [:segment_id :name :description :inputs :expectations])
+
+(defn- revert-segment-test!
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (update-segment-test! id (select-keys snapshot revision-columns)))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
 (defmethod data-testing.models/saved-test-spec :model/SegmentTest
   [_model]
   {:test-type   :segment
@@ -74,44 +107,35 @@
    :subjects    data-testing.db/segments-by-ids
    :can-save?   can-save-test?})
 
-;;; -------------------------------------------------- Revisions ---------------------------------------------------
+(defmethod events/spec :model/SegmentTest
+  [_model]
+  {:create :event/segment-test-create
+   :update :event/segment-test-update
+   :delete :event/segment-test-delete})
 
-(def ^:private revision-columns
-  [:segment_id :name :description :inputs :expectations])
-
-(defmethod revision/serialize-instance :model/SegmentTest
-  [_model _id segment-test]
-  (select-keys segment-test revision-columns))
-
-(defmethod revision/revert-to-revision! :model/SegmentTest
-  [_model id _user-id serialized-instance]
-  (data-testing.db/update-segment-test! id (select-keys serialized-instance revision-columns)))
-
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod app-db-copy/spec :model/SegmentTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/SegmentTest [_]
-  {:schema    ::data-testing.schema/external-segment-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:segment_id (serialization/fk-transform :model/Segment)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/SegmentTest [_ entities _ctx]
-  ;; A segment's path comes from its table, and only the segment's exported definition names that table.
-  (let [segments (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities) nil))
-        exported (zipmap (map :entity_id segments) (serialization/export-batch :model/Segment segments))
-        paths    (serialization/batch-storage-paths (mapv #(get exported (:segment_id %)) entities))]
-    (mapv (fn [segment-test path]
-            (conj path {:label (:name segment-test) :key (:entity_id segment-test)}))
-          entities paths)))
-
-(defmethod serialization/import-dependencies :model/SegmentTest [_ entities]
-  (mapv (fn [{:keys [segment_id]}]
-          #{[:model/Segment segment_id]})
-        entities))
-
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
+  {:schema              ::data-testing.schema/external-segment-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:segment_id (serialization/fk-transform :model/Segment)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/segment-test-storage-paths
+   :import-dependencies data-testing.serialization/segment-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/SegmentTest
   [_model]
   {:synced-items         data-testing.db/synced-segment-test-items
    :synced-filter-clause data-testing.db/synced-segment-tests-clause})
+
+(defmethod revisions/spec :model/SegmentTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-segment-test!})
+
+(defmethod audit/spec :model/SegmentTest [_model]
+  {:track          [:segment_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

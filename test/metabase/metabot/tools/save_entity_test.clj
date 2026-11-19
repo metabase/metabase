@@ -211,7 +211,8 @@
                 ;; A chart seeded from the viewing context holds the user's query as legacy MBQL.
                 seeded      (atom {:state   {:queries {}
                                              :charts  {"c-1" {:chart_id     "c-1"
-                                                              :queries      [(lib/->legacy-MBQL (venues-query))]
+                                                              ;; existing usage -- do not use going forward
+                                                              :queries      [#_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (venues-query))]
                                                               :chart_config {:display_type "bar"}}}}
                                    :context {}})
                 as-metabot  (fn [metabot thunk]
@@ -249,7 +250,7 @@
 
 (defn- card-embed [card-id]
   {:type "resizeNode"
-   :content [{:type "cardEmbed" :attrs {"id" card-id "_id" string?}}]})
+   :content [{:type "cardEmbed" :attrs {:id card-id :_id string?}}]})
 
 (deftest save-to-document-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -433,12 +434,11 @@
         (with-redefs [events/publish-event! (fn [topic _event]
                                               (when (= :event/card-create topic)
                                                 (throw (ex-info "A subscriber failed." {}))))]
-          (testing "the save succeeds and creates one card even when a card-create subscriber fails"
+          (testing "a failing card-create subscriber fails the save in its transaction, which leaves no card behind"
             (let [outcome (invoke-save-entity
                            (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)}))]
-              (is (nil? (:error outcome)))
-              (is (= [(get-in outcome [:structured-output :card-id])]
-                     (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
+              (is (=? {:class :unrecoverable} (:error outcome)))
+              (is (empty? (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
 
 (deftest undeclared-failure-test
   (testing "an unexpected failure ends the turn without reaching the model"

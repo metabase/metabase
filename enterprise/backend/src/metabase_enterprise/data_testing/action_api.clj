@@ -22,10 +22,11 @@
   (data-testing.errors/refusing "action-test" thunk))
 
 (mu/defn- validate-test! :- :nil
-  "Refuse `test` of the Action `action-id` unless it could run."
-  [action-id :- ms/PositiveInt
-   test      :- ::data-testing.runner/test]
-  (refusing #(data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) test)))
+  "Refuse a test of the Action `action-id` with the inputs, expectations and parameter values of `definition` unless it
+  could run."
+  [action-id  :- ms/PositiveInt
+   definition :- ::data-testing.runner/definition]
+  (refusing #(data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/action-test.response]
   "List the action tests the caller can read, with their newest runs, optionally only those of one action. Needs Data
@@ -37,7 +38,7 @@
    {:keys [action-id]} :- [:map {:closed true}
                            [:action-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/action-tests {:action-id action-id}) :can_read))
+  (-> (mi/readable (data-testing.db/action-tests {:action-id action-id}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/action-test.response
@@ -64,7 +65,7 @@
    _query-params
    {:keys [action_id] :as body} :- ::data-testing.schema/action-test.create]
   (api/create-check :model/ActionTest body)
-  (validate-test! action_id body)
+  (validate-test! action_id (data-testing.runner/test-definition body))
   (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
@@ -76,9 +77,9 @@
    body :- ::data-testing.schema/action-test.update]
   (let [action-test (api/read-check :model/ActionTest id)]
     (api/update-check action-test body)
-    (when (some #(contains? body %) [:action_id :inputs :expectations :parameters])
+    (when (some #(contains? body %) (cons :action_id data-testing.runner/definition-keys))
       (let [{:keys [action_id] :as merged} (merge action-test body)]
-        (validate-test! action_id merged)))
+        (validate-test! action_id (data-testing.runner/test-definition merged))))
     (when (seq body)
       (data-testing.db/update-action-test! id body)))
   (data-testing.db/action-test id))

@@ -70,7 +70,7 @@
 
 (mr/def ::query
   "A query at any stage of QP processing, carrying the internal keys that QP middleware, drivers, and sandboxing own."
-  [:map {:closed false, ::mr/deliberately-open true, :description "a query at any stage of QP processing"}])
+  [:map {:closed false, :description "a query at any stage of QP processing"}])
 
 (defn- merge-source-ids
   "Merge function which takes the union of two sets of IDs, if they are both sets"
@@ -95,7 +95,7 @@
     ;; convert MBQL 5 to legacy
     ;;
     ;; legacy usage -- don't do things like this going forward
-    #_{:clj-kondo/ignore [:discouraged-var]}
+    #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
     (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
     ;; already legacy MBQL
     (apply merge-with merge-source-ids
@@ -358,7 +358,7 @@
     (-> query
         lib/normalize
         ;; allowing for now until we convert this namespace to be MBQL-5-only
-        #_{:clj-kondo/ignore [:discouraged-var]}
+        #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
         lib/->legacy-MBQL
         (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 

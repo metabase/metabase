@@ -21,6 +21,8 @@
      (resolve-joins/resolve-joins query)
      (-> (lib/query mp query)
          resolve-joins/resolve-joins
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          lib/->legacy-MBQL))))
 
 (deftest ^:parallel joins->fields-test
@@ -376,7 +378,8 @@
               [:field "People__LONGITUDE" {:base-type :type/Float}]
               [:field "People__BIRTH_DATE" {:inherited-temporal-unit :default, :base-type :type/Date}]
               [:field "Products__PRICE" {:base-type :type/Float}]]
-             (-> query qp.preprocess/preprocess lib/->legacy-MBQL :query :fields))))))
+             ;; existing usage -- do not use going forward
+             (-> query qp.preprocess/preprocess #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL :query :fields))))))
 
 ;;; adapted from [[metabase.query-processor.explicit-joins-test/join-against-saved-question-with-sort-test]]
 (deftest ^:parallel join-against-same-table-returned-columns-test
@@ -444,4 +447,6 @@
                                 [:field "ID" {:base-type :type/Integer, :join-alias "native_card"}]]}}
               (-> query
                   qp.preprocess/preprocess
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL))))))

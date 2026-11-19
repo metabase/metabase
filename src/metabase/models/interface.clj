@@ -16,7 +16,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.core :as mdb]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.batch :as events.batch]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -41,7 +41,8 @@
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
-   [toucan2.tools.before-delete :as t2.before-delete]
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.after :as t2.after]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
@@ -64,13 +65,6 @@
   instance-of?
   model
   instance])
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *deserializing?*
-  "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
-  deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
-  `:entity_id` whenever it is missing, deserializing or not — ingested entities carry their own.)"
-  false)
 
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
@@ -552,37 +546,14 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
-(t2/define-before-insert :hook/dependencies
-  [instance]
-  (dependencies.hooks/before-insert &model instance)
-  instance)
+(defn prefer-hook-trait!
+  "Orders the hooks of `trait` after those of the timestamp and entity id traits, so they see the row those complete."
+  [trait]
+  (doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
+    (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
+  (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+    (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
 
-(t2/define-before-update :hook/dependencies
-  [instance]
-  (dependencies.hooks/before-update &model instance)
-  instance)
-
-(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
-  "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
-  opens only after them, so the dependency marks commit or roll back with the UPDATE and after-commit work sees it."
-  [rf query-type model parsed-args resolved-query]
-  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
-    (next-method rf query-type model parsed-args resolved-query)))
-
-(t2/define-before-delete :hook/dependencies
-  [instance]
-  instance)
-
-(methodical/defmethod t2.before-delete/before-delete :before :hook/dependencies
-  [model instance]
-  (dependencies.hooks/before-delete model instance)
-  instance)
-
-(doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
-  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/dependencies))
-
-(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
-  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -602,6 +573,59 @@
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
                         e))))))
+
+(defmulti after-archived-change
+  "Writes what an UPDATE of a `model` row that changed `:archived` takes to the rows that follow it, called by
+  [[define-update-in-transaction]] after the UPDATE with the rows as they were before it, so the parent is written first."
+  {:arglists '([model rows changes])}
+  (fn [model _rows _changes] model))
+
+(defmethod after-archived-change :default
+  [_model _rows _changes]
+  nil)
+
+(defn rows-changing-archived
+  "The rows of `model` that the UPDATE given by `parsed-args` and `resolved-query` selects and whose `:archived` differs
+  from the one in `changes`."
+  [model parsed-args resolved-query changes]
+  (filterv #(not= (boolean (:archived %)) (boolean (:archived changes)))
+           (t2.pipeline/transduce-query ((map t2.realize/realize) conj)
+                                        :toucan.query-type/select.instances.from-update
+                                        model parsed-args resolved-query)))
+
+(defn runs-statement?
+  "Whether the UPDATE of `model` as `query-type` runs its statement here, rather than handing it to Toucan's after-update
+  tool, which runs it again as a query returning instances."
+  [query-type model]
+  (or (isa? query-type :toucan.result-type/instances)
+      (methodical/is-default-primary-method? t2.after/each-row-fn [query-type model])))
+
+(defmacro define-update-in-transaction
+  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, and calls [[after-archived-change]]
+  after it for the rows whose `:archived` it changed, with the events of the UPDATE and of the cascade delivered as one
+  batch."
+  [model]
+  `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
+     [rf# query-type# model# parsed-args# resolved-query#]
+     (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
+       (let [changes# (:changes parsed-args#)
+             rows#    (when (and (contains? changes# :archived)
+                                 (contains? (methods after-archived-change) model#)
+                                 (runs-statement? query-type# model#))
+                        (rows-changing-archived model# parsed-args# resolved-query# changes#))]
+         (if (seq rows#)
+           (events.batch/do-with-write-batch
+            #(u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
+               (after-archived-change model# rows# changes#)))
+           (~'next-method rf# query-type# model# parsed-args# resolved-query#))))))
+
+(defn archived-directly
+  "The `archived_directly` of `row`, an update that changes `:archived`: the one the write gives, else true when `row` is
+  archived by itself, which is when `parent-archived?`, a function of no arguments, says that its parent is not."
+  [row parent-archived?]
+  (if (contains? (t2/changes row) :archived_directly)
+    (:archived_directly row)
+    (boolean (and (:archived row) (not (parent-archived?))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -641,6 +665,16 @@
   [instance]
   (hydrated-answer instance :can_query (:can_query instance)))
 
+(defn readable
+  "Those of `instances` the current user can read, in a vector, their `:can_read` hydrated together."
+  [instances]
+  (filterv can-read? (t2/hydrate instances :can_read)))
+
+(defn writable
+  "Those of `instances` the current user can write, in a vector, their `:can_write` hydrated together."
+  [instances]
+  (filterv can-write? (t2/hydrate instances :can_write)))
+
 (methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
   "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
   the row."
@@ -670,12 +704,7 @@
       (assoc instance k (can-read? instance)))))
 
 (defmulti can-create?
-  "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
-    `m`.
-
-  Because this method was added YEARS after [[can-read?]] and [[can-write?]], most models do not have an implementation
-  for this method, and instead `POST` API endpoints themselves contain the appropriate permissions logic (ick).
-  Implement this method as you come across models that are missing it."
+  "Whether the current user may create a `model` row with the properties in the map `m`, the question `api/create-check` asks."
   {:added "0.32.0", :arglists '([model m])}
   dispatch-on-model)
 
@@ -687,14 +716,8 @@
          "Please consider adding one. See dox for [[can-create?]] for more details."))))
 
 (defmulti can-update?
-  "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
-   the `changes` map. This is equivalent to checking whether you're allowed to perform
-
-    (toucan2.core/update! model id changes)
-
-  This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
-  most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
-  in the API endpoints themselves. Use this method going forward!"
+  "Whether the current user may apply the `changes` map to `instance`, as `(t2/update! model id changes)` would, the
+  question `api/update-check` asks."
   {:added "0.36.0", :arglists '([instance changes])}
   dispatch-on-model)
 
@@ -704,6 +727,55 @@
    (NoSuchMethodException.
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
+
+(defn changes-archived?
+  "Whether `changes` give `row` another value of `:archived`."
+  [row changes]
+  (and (contains? changes :archived)
+       (not= (boolean (:archived row)) (boolean (:archived changes)))))
+
+(defn changes-only-archived?
+  "Whether `changes` give `row` another value of `:archived` and change nothing else."
+  [row changes]
+  (and (changes-archived? row changes)
+       (every? #{:archived} (keys changes))))
+
+(defmulti can-update-all?
+  "Whether the current user may apply `changes` to every one of the `model` `rows`, each hydrated with `:can_write`; a
+  model implements it to answer once for all rows what its [[can-update?]] would ask for each."
+  {:arglists '([model rows changes])}
+  dispatch-on-model)
+
+(defmethod can-update-all? :default
+  [model rows changes]
+  (if (contains? (methods can-update?) model)
+    (every? #(can-update? % changes) rows)
+    (every? can-write? rows)))
+
+(defn can-update-each?
+  "Whether the current user may apply `changes` to each of the `model` `rows`, which are hydrated with `:can_write`
+  once together and answered by [[can-update-all?]]."
+  [model rows changes]
+  (or (empty? rows)
+      (can-update-all? model (t2/hydrate (vec rows) :can_write) changes)))
+
+(defmulti can-update-followers?
+  "Whether the current user may apply `changes`, an archive or restore of the row the `model` `rows` follow, to them: by
+  default what [[can-update-each?]] answers, and for a model whose write access is not about archiving, what an archive
+  asks of it."
+  {:arglists '([model rows changes])}
+  dispatch-on-model)
+
+(defmethod can-update-followers? :default
+  [model rows changes]
+  (can-update-each? model rows changes))
+
+(defn archive-followers-updatable?
+  "Whether the current user may apply `changes` to the `model` rows that archiving or restoring `row` takes along, which
+  `followers` selects given whether `changes` archive."
+  [row changes model followers]
+  (or (not (changes-archived? row changes))
+      (can-update-followers? model (followers (boolean (:archived changes))) changes)))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
@@ -767,7 +839,7 @@
 (mr/def ::hydratable-item
   "An item to hydrate: usually a Toucan instance, but callers may pass a plain map (or nil, for a sparse position)
   since this helper only assocs a hydration key onto it."
-  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "a Toucan instance or a plain map"}]])
+  [:maybe [:map {:closed false, :description "a Toucan instance or a plain map"}]])
 
 (mu/defn instances-with-hydrated-data
   ;; TODO: this example is wrong, we don't get a vector of tables
@@ -796,13 +868,12 @@
         (when item
           (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
 
-(defmulti exclude-internal-content-hsql
-  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
-   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
-   or keyword) is provided any columns will have a table alias in the returned expression."
-  {:arglists '([model & {:keys [table-alias]}])}
+(defmulti non-internal-filter-clause
+  "The HoneySQL clause over the table of `model` aliased `alias` selecting the rows that are no internal content, such
+  as Metabase Analytics, the sample database or the internal user; every row by default."
+  {:arglists '([model alias])}
   dispatch-on-model)
 
-(defmethod exclude-internal-content-hsql :default
-  [_model & _]
+(defmethod non-internal-filter-clause :default
+  [_model _alias]
   [:= [:inline 1] [:inline 1]])

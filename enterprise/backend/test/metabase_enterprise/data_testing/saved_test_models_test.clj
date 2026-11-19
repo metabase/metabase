@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.saved-test-models-test
   "What the four saved-test models share and where they differ: reading and writing a test through its subject, the
-  remote-sync rule only transform tests follow, which revisions a user may read, a test's newest run, and the events
-  and run cleanup of their hooks."
+  remote-sync rule only transform tests follow, which revisions a user may read, a test's newest run, the topics of
+  their lifecycle events, and the run cleanup of their delete hook."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models :as data-testing.models]
@@ -232,57 +232,29 @@
                (testing "in one batch, each test gets its own newest run, or none"
                  (is (= [nil newest] (last-run-ids [never-id test-id]))))))))))))
 
-(defn- published-topics!
-  "The topics `thunk` publishes, in order, with the `:user-id` of each event that has one."
-  [thunk]
-  (let [published (atom [])]
-    (with-redefs [events/publish-event! (fn [topic event]
-                                          (swap! published conj (cond-> [topic]
-                                                                  (:user-id event) (conj (:user-id event))))
-                                          event)]
-      (thunk))
-    @published))
-
-(deftest hooks-publish-events-and-clear-runs-test
+(deftest lifecycle-topics-and-run-cleanup-test
   (mt/with-premium-features #{:transforms-basic :transforms-testing}
     (doseq [{:keys [model test-type subject-key]} test-types
             :let [topic   #(keyword "event" (str (name test-type) "-test-" %))
                   creator (mt/user->id :crowberto)]]
       (testing model
+        (testing "a write publishes the lifecycle event named after the test type"
+          (is (= {:create (topic "create") :update (topic "update") :delete (topic "delete")}
+                 (events/spec model))))
         (do-with-subject!
          test-type
          (fn [subject-id]
-           (let [test-id (atom nil)
-                 run-id  (atom nil)]
+           (let [test-id (t2/insert-returning-pk! model {subject-key  subject-id
+                                                         :creator_id   creator
+                                                         :name         "A test"
+                                                         :inputs       []
+                                                         :expectations []})
+                 run-id  (:id (data-testing.run-tracking/start-run! test-type test-id creator))]
              (try
-               (testing "an insert publishes the create event with the creator, an update the update event"
-                 (is (= [[(topic "create") creator] [(topic "update")]]
-                        (published-topics!
-                         (fn []
-                           (reset! test-id (t2/insert-returning-pk! model {subject-key  subject-id
-                                                                           :creator_id   creator
-                                                                           :name         "A test"
-                                                                           :inputs       []
-                                                                           :expectations []}))
-                           (t2/update! model :id @test-id {:name "Renamed"}))))))
-               (reset! run-id (:id (data-testing.run-tracking/start-run! test-type @test-id creator)))
-               (testing "a delete publishes the delete event and clears the test id of the test's runs"
-                 (is (= [[(topic "delete")]]
-                        (published-topics! #(t2/delete! model :id @test-id))))
+               (testing "a delete clears the test id of the test's runs"
+                 (t2/delete! model :id test-id)
                  (is (= {:test_type test-type :test_id nil}
-                        (t2/select-one [:model/DataTestRun :test_type :test_id] :id @run-id))))
-               (testing "while deserializing, no hook publishes"
-                 (is (= []
-                        (published-topics!
-                         (fn []
-                           (binding [mi/*deserializing?* true]
-                             (let [id (t2/insert-returning-pk! model {subject-key  subject-id
-                                                                      :creator_id   creator
-                                                                      :name         "Imported"
-                                                                      :inputs       []
-                                                                      :expectations []})]
-                               (t2/update! model :id id {:name "Renamed"})
-                               (t2/delete! model :id id))))))))
+                        (t2/select-one [:model/DataTestRun :test_type :test_id] :id run-id))))
                (finally
-                 (some->> @run-id (t2/delete! :model/DataTestRun :id))
-                 (some->> @test-id (t2/delete! model :id)))))))))))
+                 (t2/delete! :model/DataTestRun :id run-id)
+                 (t2/delete! model :id test-id))))))))))

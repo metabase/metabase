@@ -36,6 +36,8 @@
          (let [mp meta/metadata-provider]
            (-> (lib/query mp query)
                f
+               ;; existing usage -- do not use going forward
+               #_{:clj-kondo/ignore [:deprecated-var]}
                lib/->legacy-MBQL)))))))
 
 (deftest ^:parallel wrap-integers-test
@@ -485,10 +487,7 @@
                                      {}
                                      [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
                                      [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :day]]]}]}
-              (->> query
-                   lib/->legacy-MBQL
-                   wrap-value-literals
-                   (lib/query query)))))))
+              (wrap-value-literals query))))))
 
 (deftest ^:parallel model-source-type-info-test
   (testing "type info is added to fields coming from model source query (#46059)"
@@ -552,6 +551,8 @@
                                    :aggregation  [[:count]]
                                    :breakout     [$category]}}))
                 qp.preprocess/preprocess
+                ;; existing usage -- do not use going forward
+                #_{:clj-kondo/ignore [:deprecated-var]}
                 lib/->legacy-MBQL
                 wrap-value-literals)))))
 

@@ -3,8 +3,6 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
-   [metabase.dependencies.hooks :as dependencies.hooks]
-   [metabase.models.interface :as mi]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.protocol :as protocol]
@@ -18,23 +16,32 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti before-load
+(defn before-load
   "The load `items` of `model`, each `{:entity entity :row row :local local}`: the entity, the row it deserializes to,
   and the row of the store it updates, or nil when it is new. Returns the items to load, so a model can leave items
   out, adjust their `:row` against their `:local` row, adjust the `:entity` whose after-insert columns it imports, or
-  throw to refuse them, much like a t2 `before-update`. By default, the items."
-  {:arglists '([model items])}
-  (fn [model _items] model))
+  throw to refuse them, much like a t2 `before-update`, by the `:before-load` of the spec of `model`. By default, the
+  items."
+  [model items]
+  (if-let [f (:before-load (serialization.spec/spec model))]
+    (f items)
+    items))
 
-(defmethod before-load :default [_ items] items)
+(defn loaded-entities
+  "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so that a model
+  can leave out the shapes of older exports it no longer loads, by the `:loaded-entities` of the spec of `model`, by
+  default all of them."
+  [model entities]
+  (if-let [f (:loaded-entities (serialization.spec/spec model))]
+    (f entities)
+    entities))
 
-(defmulti after-load
+(defn after-load
   "Runs the side effects of loading `items` of `model`, each a load item (see [[before-load]]) with the loaded
-  `:instance`. By default, none."
-  {:arglists '([model items])}
-  (fn [model _items] model))
-
-(defmethod after-load :default [_ _items] nil)
+  `:instance`, by the `:after-load` of the spec of `model`. By default, none."
+  [model items]
+  (when-let [f (:after-load (serialization.spec/spec model))]
+    (f items)))
 
 (def ^:private import-opts
   "The options of an import into the app DB, which creates the Users, Databases, Tables and Fields it lacks."
@@ -137,7 +144,8 @@
     (when (seq parent-pks)
       (let [pk       (serialization.spec/primary-key model)
             existing (protocol/select-by-parent-pks store model parent-pks nil)
-            prepared (prepare-items model store entities opts #(rows-by-identity model existing %))
+            prepared (prepare-items model store entities (assoc opts :nested? true)
+                                    #(rows-by-identity model existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
             stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
         (when (seq stale)
@@ -151,10 +159,9 @@
   ([model entities]
    (load model protocol.app-db/store entities import-opts))
   ([model store entities opts]
-   (binding [mi/*deserializing?* true]
-     (let [entities (vec entities)]
-       (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
-                    opts)))))
+   (let [entities (vec (loaded-entities model entities))]
+     (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
+                  opts))))
 
 (defn import
   "The rows that `entities` of `model` import to, with their references resolved at once in the app DB."
@@ -284,7 +291,7 @@
   "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
   marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
   [thunk]
-  (protocol/transact protocol.app-db/store {:retries 3} #(dependencies.hooks/with-batched-marks (thunk))))
+  (protocol/transact protocol.app-db/store {:retries 3} thunk))
 
 (defmacro with-import-transaction
   "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
@@ -296,8 +303,8 @@
   depends on. `read-batch` is a fn of a batch of keys returning their entities, called a batch at a
   time so that the whole import need not fit in memory. Retries the whole import on a transient DB error. With
   `continue-on-error`, an entity that fails to load is left out and its error returned; otherwise the first failure
-  rolls the whole import back. With `skip-schema-validation`, queries load even when this instance's query schema
-  rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
+  rolls the whole import back. With `skip-schema-validation`, entities are only normalized, not checked against their spec
+  schema, and queries load even when this instance's query schema rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
   [ks read-batch & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
   (let [order (load-order ks read-batch)
         opts  {:create-missing?         true

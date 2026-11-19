@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
@@ -62,22 +63,27 @@
       (testing (str schema " refuses a key a run does not read")
         (is (not (mr/validate schema (assoc definition :name "a test"))))))))
 
-(deftest validate-test-takes-the-test-as-a-caller-holds-it-test
+(deftest validate-test-takes-the-definition-of-the-test-as-a-caller-holds-it-test
   (mt/with-temp [:model/Transform {transform-id :id} (data-testing.test-util/id-transform :people)]
     (let [transform  (t2/select-one :model/Transform :id transform-id)
           definition {:inputs       [(data-testing.test-util/people-rows-input "ID")]
                       :expectations [{:type :empty :name "none" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY"}]}]
       (testing "control: the inputs and expectations alone validate"
         (is (nil? (data-testing.runner/validate-test :transform transform definition))))
-      (testing "the body of a request to create the test validates the same, its other keys ignored"
+      (testing "the body of a request to create the test validates the same, its other keys left out"
         (is (nil? (data-testing.runner/validate-test
                    :transform transform
-                   (assoc definition :name "a test" :description nil :transform_id transform-id)))))
+                   (data-testing.runner/test-definition
+                    (assoc definition :name "a test" :description nil :transform_id transform-id))))))
       (testing "so does the saved test"
         (is (nil? (data-testing.runner/validate-test
                    :transform transform
-                   (assoc definition
-                          :id 1 :name "a test" :transform_id transform-id :creator_id (mt/user->id :crowberto)))))))))
+                   (data-testing.runner/test-definition
+                    (assoc definition
+                           :id 1 :name "a test" :transform_id transform-id :creator_id (mt/user->id :crowberto)))))))
+      (testing "control: a definition holding a key a run does not read is refused"
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (data-testing.runner/validate-test :transform transform (assoc definition :name "a test"))))))))
 
 (deftest parameter-values-for-a-subject-without-parameters-are-refused-test
   (mt/with-temp [:model/Card      {card-id :id}      {:dataset_query (lib/native-query (mt/metadata-provider)
@@ -402,7 +408,7 @@
 
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
-    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform transform

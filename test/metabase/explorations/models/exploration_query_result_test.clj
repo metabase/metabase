@@ -18,8 +18,8 @@
   schema — an invalid `dataset_query` here would drag that score down for the whole run."
   []
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (def ^:private stats-with-warehouse-values
   "The shape `compute-chart-stats` produces for a categorical chart: each top category's `:name`

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.test-util
   "Helpers shared by the data-testing tests."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -30,10 +31,22 @@
     {:schema schema :name name}))
 
 (defn qualified
-  "`schema.name` of the test-data table `table-key`, for SQL."
+  "`schema.name` of the test-data table `table-key`, for SQL, or `name` when the table has no schema."
   [table-key]
   (let [{:keys [schema name]} (table-ref table-key)]
-    (str schema "." name)))
+    (if schema (str schema "." name) name)))
+
+(defn table-query
+  "An MBQL query of the test-data table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(defn column
+  "The column of `query` for the field `table-key`.`field-key`, through an implicit join when it is on another table."
+  [query table-key field-key]
+  (let [field-id (mt/id table-key field-key)]
+    (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
 
 (defn id+name
   "An `id` and a `name` column, typed as the current driver spells an integer and a text type."
@@ -89,6 +102,14 @@
      :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
                              (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
 
+(defn segment-on
+  "Segment attributes for a segment named `segment-name` on the table `table-id`, selecting every row."
+  [table-id segment-name]
+  (let [mp (mt/metadata-provider)]
+    {:name       segment-name
+     :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                             (lib/= 1 1))}))
+
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."
   [features & body]
@@ -136,3 +157,13 @@
    :sql  (format (str "SELECT * FROM %s WHERE (id = 1 AND name <> '%s') OR (id = 2 AND name <> '%s')"
                       " OR id NOT IN (1, 2)")
                  (qualified :categories) name-1 name-2)})
+
+(defn refusal-type
+  "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw. Rethrows any other exception."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (or (:error-type (ex-data e))
+          (throw e)))))

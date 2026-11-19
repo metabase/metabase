@@ -130,17 +130,24 @@ describe("metabase-data-app", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "A valid data app path must be provided.",
+        code: "EMBED_TAG_ERROR",
+        message:
+          'path must be a data app slug with an optional subpath, such as "my-store/orders". Received "sales/../other".',
       }),
     );
   });
 
-  it.each([
-    { isGuest: true },
-    { apiKey: "secret" },
-    { useExistingUserSession: true },
-    { guestEmbedProviderUri: "/guest" },
-  ])("rejects unsupported auth methods: %p", (config) => {
+  it.each<[Record<string, unknown>, string]>([
+    [{ isGuest: true }, "Guest embeds are not supported for data apps."],
+    [
+      { useExistingUserSession: true },
+      "Existing browser sessions are not supported for data apps.",
+    ],
+    [
+      { guestEmbedProviderUri: "/guest" },
+      "Guest embeds are not supported for data apps.",
+    ],
+  ])("rejects unsupported auth methods: %p", (config, message) => {
     window.metabaseConfig = { instanceUrl: INSTANCE_URL, ...config };
     const element = setup();
     expect(element.querySelector("iframe")).toBeNull();
@@ -148,8 +155,28 @@ describe("metabase-data-app", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "Data apps require SSO authentication.",
+        message,
       }),
+    );
+  });
+
+  it("sends a local API key in its settings, not in the iframe URL", () => {
+    window.metabaseConfig = {
+      instanceUrl: INSTANCE_URL,
+      apiKey: "development-key",
+    };
+    const element = setup();
+    const iframe = element.querySelector("iframe")!;
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+    ready(iframe);
+
+    expect(iframe.src).not.toContain("development-key");
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({ apiKey: "development-key" }),
+      },
+      new URL(INSTANCE_URL).origin,
     );
   });
 

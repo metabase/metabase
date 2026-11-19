@@ -2,10 +2,7 @@
   "Public API for sql-tools SQL parsing functionality.
 
    This namespace provides parser-agnostic functions that delegate to the
-   configured backend (Macaw or SQLGlot) via multimethods.
-
-   Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
-   metabase.sql-tools.init to avoid circular dependencies."
+   configured backend (Macaw or SQLGlot) via multimethods."
   (:require
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as common]
@@ -161,7 +158,7 @@
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and SQL string, return table references. With `:fail-on-parse-error?`, propagate
-  SQLGlot parse errors instead of treating them as an empty set of references."
+  parse errors instead of treating them as an empty set of references."
   ([driver :- :keyword
     sql-str :- [:maybe :string]]
    (referenced-tables-raw driver sql-str {}))
@@ -254,32 +251,47 @@
   [sql :- :string
    from-dialect :- [:maybe :string]
    to-dialect :- [:maybe :string]]
-  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+  (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
+
+(defn sqlglot-backend
+  "The current backend when it is one of [[metabase.sql-parsing.core/backends]], else `:sqlglot`. Statement checks
+  always parse with sqlglot, so with Macaw selected they use the default sqlglot backend."
+  []
+  (let [backend (sql-tools.settings/current-parser-backend)]
+    (if (sql-parsing/backends backend) backend :sqlglot)))
+
+(defn sqlglot-parser
+  "The sqlglot parser for [[sqlglot-backend]]."
+  []
+  (sql-parsing/parser (sqlglot-backend)))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
   **execute** the `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or
   DELETE, `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its
-  tree (see [[read-only-select?]]), `\"confined-write\"` = a write statement that also returns no rows and calls no
-  function known to write outside the tables it names (`nextval`, `setval`, Postgres large objects).
+  tree (see [[read-only-select?]]), `\"confined-write\"` = a write statement that also returns no rows, assigns no
+  user variable, calls no function known to write outside the tables it names (`nextval`, `setval`, Postgres large
+  objects) or to read or act beyond them (`table_to_xml`, `pg_read_file`, `setseed`), and whose rebuild passes the
+  same checks, rebuilds to itself and, in Postgres, reads as one statement with `standard_conforming_strings` on or
+  off.
 
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
-  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy
-  OOM) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
+  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk the parser
+  running out of memory) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
   original one. Only `:verdict :allowed` is permission to proceed.
 
   See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
   for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
-  (sql-parsing/validate-executable-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (defn classify-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
   the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than
   [[validate-executable-stmt]]; do not execute the `:sql` it returns."
   [driver sql stmt-type]
-  (sql-parsing/classify-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/classify-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,

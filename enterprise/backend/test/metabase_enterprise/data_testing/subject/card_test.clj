@@ -2,7 +2,6 @@
   "The `:card` subject plan: the database, the compiled SQL and the output names of a card. H2 only."
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
@@ -30,27 +29,6 @@
   [plan]
   (data-testing.compile/referenced-tables :h2 (get-in plan [:compiled :query])))
 
-(defn- refusal-type
-  "The `:error-type` of the refusal `thunk` throws, or nil when it does not throw."
-  [thunk]
-  (try
-    (thunk)
-    nil
-    (catch ExceptionInfo e
-      (:error-type (ex-data e)))))
-
-(defn- table-query
-  "An MBQL query of the test-data table `table-key`."
-  [table-key]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
-
-(defn- column
-  "The column of `query` for the field `table-key`.`field-key`, through an implicit join when it is on another table."
-  [query table-key field-key]
-  (let [field-id (mt/id table-key field-key)]
-    (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
-
 (defn- native-query
   "A native query of `sql`, with `template-tags` by name."
   [sql & {:as template-tags}]
@@ -59,8 +37,8 @@
 
 (deftest mbql-card-plan-test
   (mt/test-driver :h2
-    (let [orders (table-query :orders)
-          query  (lib/aggregate orders (lib/sum (column orders :orders :total)))]
+    (let [orders (data-testing.test-util/table-query :orders)
+          query  (lib/aggregate orders (lib/sum (data-testing.test-util/column orders :orders :total)))]
       (mt/with-temp [:model/Card {card-id :id} {:name "Total revenue" :dataset_query query}]
         (let [plan (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition)]
           (testing "a saved MBQL card runs on its query's database"
@@ -78,10 +56,10 @@
 
 (deftest mbql-card-implicit-join-plan-test
   (mt/test-driver :h2
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (table-query :orders)]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (data-testing.test-util/table-query :orders)]
                                                                (-> orders
-                                                                   (lib/aggregate (lib/sum (column orders :orders :total)))
-                                                                   (lib/breakout (column orders :products :category))))}]
+                                                                   (lib/aggregate (lib/sum (data-testing.test-util/column orders :orders :total)))
+                                                                   (lib/breakout (data-testing.test-util/column orders :products :category))))}]
       (testing "an implicit join reads the joined table too"
         (is (= #{(data-testing.test-util/table-ref :orders) (data-testing.test-util/table-ref :products)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition))))))))
@@ -89,9 +67,9 @@
 (deftest mbql-card-with-a-foreign-key-remap-plan-test
   (mt/test-driver :h2
     (mt/with-column-remappings [orders.product_id products.title]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (table-query :orders)]
-                                                                 (lib/with-fields orders [(column orders :orders :id)
-                                                                                          (column orders :orders :product_id)]))}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (data-testing.test-util/table-query :orders)]
+                                                                 (lib/with-fields orders [(data-testing.test-util/column orders :orders :id)
+                                                                                          (data-testing.test-util/column orders :orders :product_id)]))}]
         (testing "a foreign-key remap adds no join: the test need not declare the remapped table"
           (is (= #{(data-testing.test-util/table-ref :orders)}
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition)))))))))
@@ -138,9 +116,9 @@
 (deftest metric-and-model-card-plan-test
   (mt/test-driver :h2
     (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
-                                                :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
+                                                :dataset_query (lib/aggregate (data-testing.test-util/table-query :orders) (lib/count))}
                    :model/Card {model-id :id}  {:type          :model
-                                                :dataset_query (table-query :venues)}
+                                                :dataset_query (data-testing.test-util/table-query :venues)}
                    :model/Card {over-model-id :id} {:dataset_query (let [mp (mt/metadata-provider)]
                                                                      (-> (lib/query mp (lib.metadata/card mp model-id))
                                                                          (lib/aggregate (lib/count))))}]
@@ -203,11 +181,11 @@
 
 (deftest card-on-a-database-without-testing-is-refused-test
   (mt/test-driver :h2
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (data-testing.test-util/table-query :venues)}]
       (let [supports? driver/database-supports?]
         (with-redefs [driver/database-supports? (fn [driver feature database]
                                                   (and (not= :transforms/testing feature)
                                                        (supports? driver feature database)))]
           (testing "a card on a database whose driver cannot run tests is refused"
             (is (= ::data-testing.errors/unsupported-driver
-                   (refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id) empty-definition))))))))))
+                   (data-testing.test-util/refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id) empty-definition))))))))))

@@ -39,9 +39,10 @@ ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
 
 # sqlglot (as of 30.20.0) reads a Postgres E'' string into its value only in part: `\\` becomes one backslash and
 # `\n` a newline, while `\x41` and `\101` stay as written. It writes that value back without doubling a backslash, so
-# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. Neither
-# reading can be undone from the value, so the parser keeps the text between the quotes as written, and the Postgres
-# generator writes that text back while the node still holds the value it was parsed with.
+# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. The
+# value cannot give back the text: `E'\\x41'` and `E'\x41'` both give `\x41`. So the parser keeps the text between
+# the quotes as written, and the Postgres generator writes that text back while the node still holds the value it was
+# parsed with.
 _E_STRING_AS_WRITTEN = "metabase_e_string_as_written"
 
 
@@ -719,7 +720,6 @@ def field_references(sql: str, dialect: str = "postgres") -> str:
     - alias: column alias (null if none)
     - source_columns: nested list of possible source columns
     - table: table info (for all_columns)
-    - used_fields: list of fields used (for custom_field)
     - member_fields: list of fields (for composite_field)
     """
     try:
@@ -1146,19 +1146,13 @@ class FieldReferenceWalker:
                 return [{"col": subquery_result["returned_fields"][0]}]
             return []
 
-        # Everything else is a custom field (function, case, binary expression, etc.)
-        used_fields = []
-        for result in self._find_used_fields(expr, sources, withs):
-            if "col" in result:
-                used_fields.append(result["col"])
-
+        # Everything else is a custom field (function, case, binary expression, etc.). It does not list the fields it
+        # reads: those are in the query's used_fields, and a copy in each field that reads it grows with each level.
         alias = expr.alias if hasattr(expr, "alias") and expr.alias else None
         return [{
             "col": {
                 "type": "custom_field",
                 "alias": alias,
-                # Don't freeze - these go directly to returned_fields which isn't unfrozen
-                "used_fields": used_fields
             }
         }]
 
@@ -1395,8 +1389,6 @@ class FieldReferenceWalker:
                                         "col": {
                                             "type": "custom_field",
                                             "alias": column_name,
-                                            # Don't freeze - goes directly to returned_fields
-                                            "used_fields": list(source.get("returned_fields", []))
                                         }
                                     }]
                                 else:
@@ -1408,8 +1400,6 @@ class FieldReferenceWalker:
                                         "col": {
                                             "type": "custom_field",
                                             "alias": column_name,
-                                            # Don't freeze - goes directly to returned_fields
-                                            "used_fields": list(source.get("returned_fields", []))
                                         }
                                     }]
                                 else:
@@ -1880,15 +1870,21 @@ def _function_name(node: exp.Expression):
     return None
 
 
-def _session_effect_function(stmt: exp.Expression, dialect: str):
-    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
-    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
-    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
+def _first_function_in(stmt: exp.Expression, names):
+    """The name of the first function in `stmt` that is one of `names`, or None."""
     for node in stmt.walk():
         name = _function_name(node)
         if name in names:
             return name
     return None
+
+
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    return _first_function_in(
+        stmt, _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
+    )
 
 
 def _external_table(stmt: exp.Expression, dialect: str) -> bool:
@@ -1969,14 +1965,20 @@ def _write_function_name(node: exp.Expression):
     return name if name in _WRITE_FUNCTIONS else None
 
 
+def _user_variable_assignment(node: exp.Expression) -> bool:
+    """Whether `node` assigns a MySQL user variable, `@x := ...`, whose value outlives the query on its connection."""
+    # A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing. The variable
+    # is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    return isinstance(node, exp.PropertyEQ) and node.this.find(exp.Parameter) is not None
+
+
 def _writes_or_locks(node: exp.Expression) -> bool:
-    if isinstance(node, _NOT_READ_ONLY_NODES) or _write_function_name(node) is not None:
+    if (
+        isinstance(node, _NOT_READ_ONLY_NODES)
+        or _write_function_name(node) is not None
+        or _user_variable_assignment(node)
+    ):
         return True
-    # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
-    # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
-    # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
-    if isinstance(node, exp.PropertyEQ):
-        return node.this.find(exp.Parameter) is not None
     if isinstance(node, exp.WithTableHint):
         return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
     # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
@@ -2004,9 +2006,9 @@ def _read_only(stmt: exp.Expression) -> bool:
 
 
 # Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
-# a string, which the table check never sees, reads or writes the database server's files, or changes state that the
-# run's rollback leaves changed (the random seed, the statistics, replication slots and origins). Most need privileges
-# a connection user rarely has.
+# a string, which the table check never sees, reads or writes the database server's files, reads or changes
+# replication slots and origins, or changes state that the run's rollback leaves changed (the random seed, the
+# statistics).
 _UNCONFINED_FUNCTIONS = frozenset(
     {
         # Postgres: a table, a schema or the database as XML, read by the name passed in
@@ -2036,20 +2038,6 @@ _UNCONFINED_FUNCTIONS = frozenset(
         "pg_replication_origin_progress",
     }
 )
-
-
-def _unconfined_function(stmt: exp.Expression):
-    """The name of the first function in `stmt` that is one of `_UNCONFINED_FUNCTIONS`, or None."""
-    for node in stmt.walk():
-        name = _function_name(node)
-        if name in _UNCONFINED_FUNCTIONS:
-            return name
-    return None
-
-
-def _assigns_user_variable(stmt: exp.Expression) -> bool:
-    """Whether `stmt` assigns a MySQL user variable, `@x := ...`, whose value outlives the run on its connection."""
-    return any(node.this.find(exp.Parameter) is not None for node in stmt.find_all(exp.PropertyEQ))
 
 
 def _write_function(stmt: exp.Expression):
@@ -2210,8 +2198,9 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
 
 def _hidden_by_string_setting(sql: str) -> bool:
     """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
-    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote in a
-    standard literal, written so or made by rebuilding a dollar-quoted string as one, moves the end of that literal."""
+    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote moves
+    the end of a standard literal, whether the author wrote the literal or the rebuild made it from a dollar-quoted
+    string."""
     return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
@@ -2281,12 +2270,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _statement_reason(stmts[0], sql, dialect)
             if problem is None and stmt_type == "confined-write":
                 function = _write_function(stmts[0])
-                unconfined = _unconfined_function(stmts[0])
+                unconfined = _first_function_in(stmts[0], _UNCONFINED_FUNCTIONS)
                 if function is not None:
                     problem = ("write-function", function)
                 elif unconfined is not None:
                     problem = ("unconfined-function", unconfined)
-                elif _assigns_user_variable(stmts[0]):
+                elif any(map(_user_variable_assignment, stmts[0].walk())):
                     problem = ("user-variable", None)
                 elif stmts[0].args.get("returning") is not None:
                     problem = ("returning", None)
@@ -2302,10 +2291,16 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 and _hidden_by_string_setting(rebuilt)
             ):
                 problem = ("backslash-quote", None)
-            # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
-            # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
-            # the rebuild must pass the same checks and rebuild to itself.
-            if problem is None and stmt_type == "confined-write" and recheck:
+            # The checks above, except the backslash check, read `sql`, and the caller runs `rebuilt`. SQLGlot's
+            # writer does not always produce text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN`
+            # for one case it got wrong), so the rebuild must pass the same checks and rebuild to itself. No input
+            # known at sqlglot 30.20.0 reaches this refusal, so no test does either.
+            if (
+                problem is None
+                and stmt_type == "confined-write"
+                and recheck
+                and isinstance(_unbracketed(stmts[0]), allowed_types)
+            ):
                 again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect, recheck=False))
                 if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
                     problem = ("rebuild-differs", again.get("reason"))

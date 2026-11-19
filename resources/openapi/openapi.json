@@ -8894,100 +8894,6 @@
         "minLength" : 7,
         "type" : "string"
       },
-      "metabase.cache.api..cache-strategy.ee" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ttl"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee.duration"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee.schedule"
-        } ],
-        "description" : "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule"
-      },
-      "metabase.cache.api..cache-strategy.ee.duration" : {
-        "additionalProperties" : false,
-        "description" : "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units.",
-        "properties" : {
-          "duration" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "refresh_automatically" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "duration"
-          },
-          "unit" : {
-            "enum" : [ "hours", "minutes", "seconds", "days" ],
-            "type" : "string"
-          }
-        },
-        "required" : [ "type", "duration", "unit" ],
-        "type" : "object"
-      },
-      "metabase.cache.api..cache-strategy.ee.schedule" : {
-        "additionalProperties" : false,
-        "description" : "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule.",
-        "properties" : {
-          "refresh_automatically" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "schedule" : {
-            "description" : "value must be a non-blank string.",
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "type" : {
-            "const" : "schedule"
-          }
-        },
-        "required" : [ "type", "schedule" ],
-        "type" : "object"
-      },
-      "metabase.cache.api..cache-strategy.nocache" : {
-        "$ref" : "#/components/schemas/metabase.lib.schema..cache-strategy.nocache"
-      },
-      "metabase.cache.api..cache-strategy.oss" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ttl"
-        } ],
-        "description" : "cache strategy :type must be one of :nocache, :ttl"
-      },
-      "metabase.cache.api..cache-strategy.ttl" : {
-        "additionalProperties" : false,
-        "description" : "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers.",
-        "properties" : {
-          "min_duration_ms" : {
-            "description" : "value must be an integer greater or equal to than zero.",
-            "minimum" : 0,
-            "type" : "integer"
-          },
-          "multiplier" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "type" : {
-            "const" : "ttl"
-          }
-        },
-        "required" : [ "type", "multiplier", "min_duration_ms" ],
-        "type" : "object"
-      },
       "metabase.cache.api.cache-config-item" : {
         "properties" : {
           "collection" : {
@@ -9124,10 +9030,104 @@
       },
       "metabase.cache.api.cache-strategy" : {
         "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee"
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ee"
         }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.oss"
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.oss"
         } ]
+      },
+      "metabase.cache.schema..cache-strategy.ee" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.nocache"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ttl"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ee.duration"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ee.schedule"
+        } ],
+        "description" : "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule"
+      },
+      "metabase.cache.schema..cache-strategy.ee.duration" : {
+        "additionalProperties" : false,
+        "description" : "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units.",
+        "properties" : {
+          "duration" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "refresh_automatically" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "duration"
+          },
+          "unit" : {
+            "enum" : [ "hours", "minutes", "seconds", "days" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "duration", "unit" ],
+        "type" : "object"
+      },
+      "metabase.cache.schema..cache-strategy.ee.schedule" : {
+        "additionalProperties" : false,
+        "description" : "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule.",
+        "properties" : {
+          "refresh_automatically" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "schedule" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "schedule"
+          }
+        },
+        "required" : [ "type", "schedule" ],
+        "type" : "object"
+      },
+      "metabase.cache.schema..cache-strategy.nocache" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema..cache-strategy.nocache"
+      },
+      "metabase.cache.schema..cache-strategy.oss" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.nocache"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ttl"
+        } ],
+        "description" : "cache strategy :type must be one of :nocache, :ttl"
+      },
+      "metabase.cache.schema..cache-strategy.ttl" : {
+        "additionalProperties" : false,
+        "description" : "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers.",
+        "properties" : {
+          "min_duration_ms" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "multiplier" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "ttl"
+          }
+        },
+        "required" : [ "type", "multiplier", "min_duration_ms" ],
+        "type" : "object"
       },
       "metabase.channel.models.channel.Channel" : {
         "anyOf" : [ {
@@ -42867,13 +42867,6 @@
                     "minLength" : 1,
                     "type" : "string"
                   },
-                  "provider_name" : {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "schedules" : {
                     "anyOf" : [ {
                       "$ref" : "#/components/schemas/metabase.sync.schedules.ExpandedSchedulesMap"
@@ -43165,13 +43158,6 @@
                     } ]
                   },
                   "points_of_interest" : {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "provider_name" : {
                     "anyOf" : [ {
                       "type" : "string"
                     }, {

@@ -1499,6 +1499,8 @@
 ;;; # IGNORE ME!
 ;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
 ;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+;; re-exported vars keep their deprecated status for callers
+#_{:clj-kondo/ignore [:deprecated-var]}
 (shared.ns/import-fns
  [lib.binning
   available-binning-strategies
@@ -1516,6 +1518,7 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
+  ->legacy-MBQL-ref
   ->mbql5
   legacy-default-join-alias
   without-cleaning]

@@ -24,6 +24,7 @@
   temp table exists."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [malli.core :as mc]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
@@ -46,6 +47,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
@@ -86,20 +88,14 @@
   "What a run reads of a test."
   ::data-testing.subject/definition)
 
-(mr/def ::test
-  "A test as a caller holds it: saved, as the body of a request to create one, or as a [[::definition]]. A run reads
-  only the keys of a definition."
-  [:or
-   ::definition
-   ::data-testing.schema/saved-test
-   ::data-testing.schema/transform-test.create
-   ::data-testing.schema/card-test.create
-   ::data-testing.schema/action-test.create
-   ::data-testing.schema/segment-test.create])
-
-(def ^:private definition-keys
+(def definition-keys
   "The keys of a [[::definition]]."
   (mc/explicit-keys (mr/resolve-schema ::definition)))
+
+(defn test-definition
+  "The [[::definition]] of `test-fields`, a saved test or a request body that may hold other keys."
+  [test-fields]
+  (select-keys test-fields definition-keys))
 
 (mr/def ::built-expectation
   "An expectation built by [[expectations.protocol/build]]."
@@ -327,6 +323,24 @@
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
+(mu/defn- subject-plan :- ::data-testing.subject/subject-plan
+  "The [[data-testing.subject/subject-plan]] of `subject` for a test with `definition`, compiled with its `now` standing
+  for the current time when it is given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the
+  subject's SQL includes SQL written by hand."
+  [subject-type                 :- ::data-testing.subject/subject-type
+   subject                      :- ::data-testing.subject/subject
+   {:keys [now] :as definition} :- ::definition]
+  (if-not now
+    (data-testing.subject/subject-plan subject-type subject definition)
+    (let [plan (qp.timezone/with-pinned-now (t/instant now)
+                 (data-testing.subject/subject-plan subject-type subject definition))]
+      (when (:native? plan)
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/now-on-native-sql
+                (tru "This test cannot set `now`: its query is written in SQL, or built on a question written in SQL, and `now` does not change the current time inside SQL. Remove `now`, or test a query built without SQL.")
+                {})))
+      plan)))
+
 (mu/defn- validated-plan :- ::plan
   "Everything a run needs, resolved and checked but not yet executed: the database and driver the subject runs
   against, a temp table per input and one for its output unless it modifies tables, the subject's query rewritten to
@@ -335,11 +349,11 @@
   Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a write that is not one
   INSERT, UPDATE or DELETE, returns rows or cannot be checked, a test the validator rejects — so a caller that only
   wants the answer to \"could this run?\" gets it by asking for the plan and discarding it."
-  [subject-type                           :- ::data-testing.subject/subject-type
-   subject                                :- ::data-testing.subject/subject
+  [subject-type                                 :- ::data-testing.subject/subject-type
+   subject                                      :- ::data-testing.subject/subject
    {:keys [inputs expectations] :as definition} :- ::definition]
   (let [{:keys [database compiled writes? output-tables output-token output-label]}
-        (data-testing.subject/subject-plan subject-type subject definition)
+        (subject-plan subject-type subject definition)
         writes?        (boolean writes?)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
@@ -374,15 +388,15 @@
      :writes?      writes?}))
 
 (mu/defn validate-test :- :nil
-  "Refuse `test` of `subject`, a `subject-type`, unless it could run: the same checks a run makes, up to but not
-  including the connection. Only the keys of a [[::definition]] are read.
+  "Refuse a test of `subject`, a `subject-type`, with `definition` unless it could run: the same checks a run makes,
+  up to but not including the connection.
 
   Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
   is turned away as it is authored rather than only when somebody runs it."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
-   test         :- ::test]
-  (validated-plan subject-type subject (select-keys test definition-keys))
+   definition   :- ::definition]
+  (validated-plan subject-type subject definition)
   nil)
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
@@ -395,7 +409,7 @@
    subject                                                  :- ::data-testing.subject/subject
    {test-id :id :keys [expectations] :as saved-test}        :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled writes?]}
-        (validated-plan subject-type subject (select-keys saved-test definition-keys))
+        (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
     (try

@@ -8,6 +8,7 @@
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -351,6 +352,8 @@
             *rollback-required*           nil
             *open-savepoints*             nil]
     (thunk)))
+
+(quick-task/register-submission-wrapper! ::outside-transaction call-outside-transaction)
 
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still

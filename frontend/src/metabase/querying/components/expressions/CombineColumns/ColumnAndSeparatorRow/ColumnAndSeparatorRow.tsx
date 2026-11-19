@@ -61,7 +61,6 @@ export const ColumnAndSeparatorRow = ({
       {showRemove && (
         <ActionIcon
           variant="subtle"
-          size="lg"
           aria-label={t`Remove column`}
           onClick={() => {
             onRemove(index);

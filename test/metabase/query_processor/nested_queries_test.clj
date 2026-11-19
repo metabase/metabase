@@ -1700,8 +1700,7 @@
     (let [mp              (mt/metadata-provider)
           card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))
-                              (lib/limit 1)
-                              lib/->legacy-MBQL)
+                              (lib/limit 1))
           results         (qp/process-query card-query)
           mp              (lib.tu/mock-metadata-provider
                            mp

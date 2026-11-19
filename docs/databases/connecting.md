@@ -11,8 +11,6 @@ redirect_from:
 
 # Adding and managing databases
 
-Connect Metabase to your data sources.
-
 ## Adding a database connection
 
 To add a database connection:

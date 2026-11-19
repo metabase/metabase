@@ -4,6 +4,8 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
+import { ADD_METABOT_CARD_BASELINE } from "metabase/redux/query-builder";
+import type { MetabotCardBaseline, State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -18,6 +20,8 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { QUERY_COMPLETED } from "../store/actions";
+import { queryBuilderReducer } from "../store/reducer";
+import { getMetabotCardBaseline, getQuestion } from "../store/selectors";
 
 import { queryCompleted } from "./querying";
 
@@ -120,5 +124,79 @@ describe("queryCompleted", () => {
       { name: "VISIBLE", enabled: true },
       { name: "HIDDEN", enabled: false },
     ]);
+  });
+});
+
+describe("queryCompleted on a question Metabot opened", () => {
+  // the query builder switches an unlocked table to a scalar for a single value
+  const card = createMockCard({
+    display: "table",
+    displayIsLocked: false,
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select 1 as one",
+    }),
+  });
+
+  const setup = async (
+    getBaselines: (state: State) => MetabotCardBaseline[],
+  ) => {
+    const metadata = createMockMetadata({ databases: [DATABASE] });
+    let state = createMockState({
+      entities: createMockEntitiesState({ databases: [DATABASE] }),
+      qb: createMockQueryBuilderState({ card }),
+    });
+    state = {
+      ...state,
+      qb: { ...state.qb, metabotCardBaselines: getBaselines(state) },
+    };
+    // the store's reducer runs, so the thunk reads the completed card back
+    const dispatch = jest.fn((action) => {
+      state = { ...state, qb: queryBuilderReducer(state.qb, action) };
+    });
+
+    await queryCompleted(new Question(card, metadata), [getDataset(["ONE"])])(
+      dispatch,
+      () => state,
+    );
+
+    return { dispatch, state };
+  };
+
+  const baselineOf = (state: State) =>
+    getMetabotCardBaseline(checkNotNull(getQuestion(state)));
+
+  it("adds the display the query builder picked and keeps the loaded one for Back", async () => {
+    let loaded: MetabotCardBaseline | undefined;
+    const { state } = await setup((state) => {
+      loaded = baselineOf(state);
+      return [loaded];
+    });
+
+    expect(getQuestion(state)?.display()).toBe("scalar");
+    expect(state.qb.metabotCardBaselines).toEqual([
+      checkNotNull(loaded),
+      baselineOf(state),
+    ]);
+  });
+
+  it("adds a baseline only once when the query reruns", async () => {
+    const { state } = await setup((state) => [baselineOf(state)]);
+    const qb = queryBuilderReducer(state.qb, {
+      type: ADD_METABOT_CARD_BASELINE,
+      payload: baselineOf(state),
+    });
+
+    expect(qb.metabotCardBaselines).toEqual(state.qb.metabotCardBaselines);
+  });
+
+  it("leaves the baselines alone when the question is not Metabot's", async () => {
+    const { dispatch } = await setup(() => []);
+
+    expect(
+      dispatch.mock.calls.filter(
+        ([action]) => action?.type === ADD_METABOT_CARD_BASELINE,
+      ),
+    ).toEqual([]);
   });
 });

@@ -5,14 +5,17 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.subject.action :as data-testing.subject.action]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -24,6 +27,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
+  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/ActionTest :action]
@@ -40,26 +44,6 @@
   {:parameters   parameters-column
    :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
-
-(defmethod audit-app/model-details :model/ActionTest
-  [action-test _event-type]
-  (select-keys action-test [:action_id :name :description]))
-
-;;; ---------------------------------------------------- Events ----------------------------------------------------
-
-(defenterprise delete-action-tests!
-  "Enterprise implementation: delete the tests of the action `action-id`, each through its own hook. Runs whatever the
-  token says, since the rows outlive the feature."
-  :feature :none
-  [action-id]
-  (data-testing.db/delete-action-tests! action-id))
-
-(defenterprise delete-model-action-tests!
-  "Enterprise implementation: delete the tests of the actions of the model `model-id`, each through its own hook. Runs
-  whatever the token says, since the rows outlive the feature."
-  :feature :none
-  [model-id]
-  (data-testing.db/delete-model-action-tests! model-id))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -106,6 +90,26 @@
   (action-allows? mi/can-read? :can_read (:action_id action-test)
                   #(can-run-query-with-values? % (:parameters action-test))))
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(defenterprise delete-action-tests!
+  "Deletes the tests of the action `action-id` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [action-id]
+  (data-testing.db/delete-action-tests! action-id))
+
+;;; -------------------------------------------------- Revisions ---------------------------------------------------
+
+(def ^:private revision-columns
+  [:action_id :name :description :parameters :inputs :expectations])
+
+(defn- revert-action-test!
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (data-testing.db/update-action-test! id (select-keys snapshot revision-columns)))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
 (defmethod data-testing.models/saved-test-spec :model/ActionTest
   [_model]
   {:test-type   :action
@@ -113,40 +117,35 @@
    :subjects    data-testing.db/actions-by-ids
    :can-save?   can-save-test?})
 
-;;; -------------------------------------------------- Revisions ---------------------------------------------------
+(defmethod events/spec :model/ActionTest
+  [_model]
+  {:create :event/action-test-create
+   :update :event/action-test-update
+   :delete :event/action-test-delete})
 
-(def ^:private revision-columns
-  [:action_id :name :description :parameters :inputs :expectations])
-
-(defmethod revision/serialize-instance :model/ActionTest
-  [_model _id action-test]
-  (select-keys action-test revision-columns))
-
-(defmethod revision/revert-to-revision! :model/ActionTest
-  [_model id _user-id serialized-instance]
-  (data-testing.db/update-action-test! id (select-keys serialized-instance revision-columns)))
-
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod app-db-copy/spec :model/ActionTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/ActionTest [_]
-  {:schema    ::data-testing.schema/external-action-test
-   :copy      [:entity_id :name :description :parameters :inputs :expectations]
-   :transform {:action_id  (serialization/fk-transform :model/Action)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/ActionTest [_ entities _ctx]
-  ;; An action's path reads its collection, and whether it belongs to a model.
-  (data-testing.models/subject-storage-paths entities :model/Action :action_id {:collection_id :model/Collection
-                                                                                :model_id      :model/Card}))
-
-(defmethod serialization/import-dependencies :model/ActionTest [_ entities]
-  (mapv (fn [{:keys [action_id]}]
-          #{[:model/Action action_id]})
-        entities))
-
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
+  {:schema              ::data-testing.schema/external-action-test
+   :copy                [:entity_id :name :description :parameters :inputs :expectations]
+   :transform           {:action_id  (serialization/fk-transform :model/Action)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/action-test-storage-paths
+   :import-dependencies data-testing.serialization/action-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/ActionTest
   [_model]
   {:synced-items         data-testing.db/synced-action-test-items
    :synced-filter-clause data-testing.db/synced-action-tests-clause})
+
+(defmethod revisions/spec :model/ActionTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-action-test!})
+
+(defmethod audit/spec :model/ActionTest [_model]
+  {:track          [:action_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs :parameters]
+   :skip           [:entity_id]})

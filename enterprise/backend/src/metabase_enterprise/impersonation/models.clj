@@ -4,12 +4,18 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; --------------------------------------------------- Definition ---------------------------------------------------
+
+(methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
 
 (doto :model/ConnectionImpersonation
   (derive :metabase/model)
@@ -17,7 +23,20 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-before-update :model/ConnectionImpersonation
+  [impersonation]
+  (let [changes (t2/changes impersonation)]
+    (when (contains? changes :group_id)
+      (throw (ex-info (tru "You cannot change the group of a connection impersonation.")
+                      {:status-code 400})))
+    (when (contains? changes :db_id)
+      (throw (ex-info (tru "You cannot change the database of a connection impersonation.")
+                      {:status-code 400})))
+    impersonation))
+
+;;; ----------------------------------------------- Permissions graph ------------------------------------------------
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."
@@ -76,3 +95,8 @@
   (doseq [group-id (set (keys changes))]
     (delete-impersonations-for-group! {:group-id group-id} (get changes group-id)))
   (log/debug "Done deleting unneeded Connection Impersonations."))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ConnectionImpersonation [_model]
+  {:skip? false})

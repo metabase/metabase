@@ -24,6 +24,8 @@
     (limit/add-default-limit query)
     (-> (lib/query meta/metadata-provider query)
         limit/add-default-limit
+        ;; existing usage -- do not use going forward
+        #_{:clj-kondo/ignore [:deprecated-var]}
         lib/->legacy-MBQL)))
 
 (deftest limit-results-rows-test

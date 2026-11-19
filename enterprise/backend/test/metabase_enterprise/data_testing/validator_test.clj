@@ -7,7 +7,9 @@
    [metabase-enterprise.data-testing.errors :as errors]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as validator]
-   [metabase.driver :as driver])
+   [metabase.driver :as driver]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.test :as mt])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -165,7 +167,18 @@
 (deftest refused-write-says-why-test
   (testing "a write that calls a function that waits is refused, and the refusal's data names the function"
     (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
-           (write-refusal "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1")))))
+           (write-refusal "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1"))))
+  (testing "a write whose rebuild reads differently is refused for its rebuild, not for what the author wrote"
+    ;; No input known to the parser's SQLGlot version reaches this refusal, so the verdict is stubbed.
+    (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt (constantly {:verdict      :disallowed
+                                                                                :single-stmt? true
+                                                                                :reason       "rebuild-differs"})]
+      (is (= {:error-type ::errors/not-a-single-write
+              :message    (str "The test cannot run this SQL: the parser rebuilds it as SQL that reads differently. "
+                               "Write the statement another way.")
+              :reason     "rebuild-differs"}
+             (data-testing.test-util/refusal #(validator/ensure-single-write :postgres "UPDATE t SET name = 'x'")
+                                             :reason))))))
 
 (deftest write-calling-a-known-writing-function-is-refused-test
   (testing "control: a plain UPDATE comes back as the SQL to run"
@@ -188,10 +201,10 @@
   (testing "an E'' string with an escaped quote is rebuilt as written"
     (is (= "UPDATE t SET name = e'it\\'s' WHERE id = 1"
            (write-refusal "UPDATE t SET name = E'it\\'s' WHERE id = 1"))))
-  (testing "an E'' string ending in a doubled backslash passes the re-check of its rebuild, and keeps both backslashes"
+  (testing "control: an E'' string ending in a doubled backslash is rebuilt as written, keeping both backslashes"
     (is (= "UPDATE t SET name = e'a\\\\' WHERE id = 1"
            (write-refusal "UPDATE t SET name = E'a\\\\' WHERE id = 1"))))
-  (testing "text after such a string that holds `setval` stays a string, so the write passes and calls nothing"
+  (testing "the text after such a string stays a string though it holds `setval`, so the write passes and calls nothing"
     (is (= "UPDATE t SET name = e'\\\\' || ''' || (SELECT setval($z$s$z$, 1))::text --' WHERE id = 1"
            (write-refusal (str "UPDATE t SET name = E'\\\\' || $q$' || (SELECT setval($z$s$z$, 1))::text --$q$"
                                " WHERE id = 1"))))))

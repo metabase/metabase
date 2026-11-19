@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
@@ -22,18 +21,6 @@
    (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
-
-(defn- table-query
-  "An MBQL query of the test-data table `table-key`."
-  [table-key]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
-
-(defn- column
-  "The column of `query` for the field `table-key`.`field-key`, through an implicit join when it is on another table."
-  [query table-key field-key]
-  (let [field-id (mt/id table-key field-key)]
-    (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
 
 (defn- native-card
   "Card columns for a native card running `sql`."
@@ -214,11 +201,11 @@
 (deftest model-and-metric-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [[int-type]  (data-testing.test-util/cast-types)
-          orders      (table-query :orders)
+          orders      (data-testing.test-util/table-query :orders)
           two-orders  (orders-rows [:id :user_id] [[1 7] [2 8]])
           model       {:type          :model
-                       :dataset_query (lib/with-fields orders [(column orders :orders :id)
-                                                               (column orders :orders :user_id)])}
+                       :dataset_query (lib/with-fields orders [(data-testing.test-util/column orders :orders :id)
+                                                               (data-testing.test-util/column orders :orders :user_id)])}
           metric      {:type          :metric
                        :dataset_query (lib/aggregate orders (lib/count))}]
       (testing "a model is the subject: its result set is the rows of its query"
@@ -239,13 +226,13 @@
 (deftest card-on-a-persisted-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models :transforms/testing)
     (mt/with-persistence-enabled! [persist-models!]
-      (let [orders     (table-query :orders)
+      (let [orders     (data-testing.test-util/table-query :orders)
             two-orders (orders-rows [:id :user_id] [[1 7] [2 8]])
             no-other   [{:type :empty :name "only the input rows" :sql "SELECT * FROM {{output}} WHERE id NOT IN (1, 2)"}]]
         (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                    :database_id   (mt/id)
-                                                   :dataset_query (lib/with-fields orders [(column orders :orders :id)
-                                                                                           (column orders :orders :user_id)])}]
+                                                   :dataset_query (lib/with-fields orders [(data-testing.test-util/column orders :orders :id)
+                                                                                           (data-testing.test-util/column orders :orders :user_id)])}]
           (let [card-on-model {:dataset_query (let [mp (mt/metadata-provider)]
                                                 (lib/query mp (lib.metadata/card mp model-id)))}]
             (testing "control: a card on a model that is not persisted runs the model's query on the inputs"
@@ -258,10 +245,10 @@
 (defn- category-count-card
   "An MBQL card counting orders by the category of their product, through an implicit join to products."
   []
-  (let [orders (table-query :orders)]
+  (let [orders (data-testing.test-util/table-query :orders)]
     {:dataset_query (-> orders
                         (lib/aggregate (lib/count))
-                        (lib/breakout (column orders :products :category)))}))
+                        (lib/breakout (data-testing.test-util/column orders :products :category)))}))
 
 (defn- two-orders-of-product-1
   "An input standing in for the orders table with two orders of product 1."
@@ -350,9 +337,9 @@
 (deftest date-column-under-a-report-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (mt/with-report-timezone-id! "Asia/Tokyo"
-      (let [orders    (table-query :orders)
-            card      {:dataset_query (lib/with-fields orders [(column orders :orders :id)
-                                                               (column orders :orders :created_at)])}
+      (let [orders    (data-testing.test-util/table-query :orders)
+            card      {:dataset_query (lib/with-fields orders [(data-testing.test-util/column orders :orders :id)
+                                                               (data-testing.test-util/column orders :orders :created_at)])}
             timestamp (sql.qp/inline-value driver/*driver* (t/local-date-time 2024 1 2 23 30))
             result    (run-card-test! card
                                       [{:table  (data-testing.test-util/table-ref :orders) :format :sql
