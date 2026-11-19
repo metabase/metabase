@@ -389,3 +389,11 @@
                    {:model "indexed-entity", :id 1, :database_id (mt/id)})))
       (is (=? [{:message #"Denying an indexed entity search result that was not tagged by hydrate-checks"}]
               (messages))))))
+
+(deftest indexed-entity-without-database-is-denied-quietly-test
+  (testing "An indexed entity with no database is tagged by `hydrate-checks`, so its denial is not logged"
+    (mt/with-log-messages-for-level [messages [metabase.search.impl :warn]]
+      (let [search-ctx {:current-user-id (mt/user->id :crowberto), :is-superuser? true}
+            [row]      (#'search.impl/hydrate-checks search-ctx :read [{:model "indexed-entity", :id 1, :database_id nil}])]
+        (is (false? (#'search.impl/check-permissions-for-model search-ctx row)))
+        (is (= [] (messages)))))))

@@ -429,4 +429,4 @@
 (mu/defn document-exploration-ids
   "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :exploration_id :model/Document :id [:in document-ids]))
+  (t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in document-ids]))

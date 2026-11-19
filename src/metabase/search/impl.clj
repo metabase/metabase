@@ -477,14 +477,15 @@
 
 (defn- indexed-entity-queryable-db-ids
   "The ids of the Databases of the indexed-entity `results` that the user of `search-ctx` can query natively, with
-  unrestricted data access to every Table."
+  unrestricted data access to every Table. Empty, not nil, when no result has a Database."
   [search-ctx results]
   (let [db-ids (into [] (comp (filter #(= "indexed-entity" (:model %))) (keep :database_id) (distinct)) results)]
-    (when (seq db-ids)
+    (if (seq db-ids)
       (let [user   (perms/user-info (:current-user-id search-ctx))
             create (perms/every-table-in-database-permissions-for-user user :perms/create-queries db-ids)
             view   (perms/every-table-in-database-permissions-for-user user :perms/view-data db-ids)]
-        (into #{} (filter #(and (= :query-builder-and-native (create %)) (= :unrestricted (view %)))) db-ids)))))
+        (into #{} (filter #(and (= :query-builder-and-native (create %)) (= :unrestricted (view %)))) db-ids))
+      #{})))
 
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
