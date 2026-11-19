@@ -1,17 +1,21 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupSearchErrorEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockSetupState, createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { Route } from "metabase/router";
-import type { TokenFeatures } from "metabase-types/api";
+import { Route, useParams } from "metabase/router";
+import type { TokenFeatures, UserSettings } from "metabase-types/api";
 import {
+  createMockBookmark,
   createMockCard,
   createMockCollection,
   createMockDataset,
@@ -207,6 +211,14 @@ export type SetupOpts = {
   tokenFeatures?: Partial<TokenFeatures>;
   canCreateQueries?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  searchError?: boolean;
+  /**
+   * Metrics served by a stateful search endpoint: bookmark and archive
+   * requests for a metric change it, and `verified=true` keeps only the
+   * verified ones. Replaces the default fixture metrics.
+   */
+  metrics?: MetricResult[];
+  verifiedMetricsFilter?: UserSettings["browse-filter-only-verified-metrics"];
 };
 
 export function setup({
@@ -216,6 +228,9 @@ export function setup({
   tokenFeatures = {},
   canCreateQueries = true,
   enterprisePlugins = [],
+  searchError = false,
+  metrics: statefulMetrics,
+  verifiedMetricsFilter,
 }: SetupOpts = {}) {
   const state = createMockState({
     setup: createMockSetupState({
@@ -224,6 +239,7 @@ export function setup({
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),
+      "browse-filter-only-verified-metrics": verifiedMetricsFilter,
     }),
     currentUser: createMockUser({
       id: 1,
@@ -243,14 +259,22 @@ export function setup({
     createMockRecentMetric(metric as RecentMetric),
   );
 
-  const metrics = mockMetricResults.slice(0, metricCount);
+  const metrics = statefulMetrics ?? mockMetricResults.slice(0, metricCount);
   const recentMetrics = mockRecentMetrics.slice(0, recentMetricCount);
 
   setupSettingsEndpoints([]);
-  setupSearchEndpoints(metrics.map(createMockSearchResult));
+  if (statefulMetrics) {
+    setupStatefulMetricsEndpoints(statefulMetrics);
+  } else if (searchError) {
+    setupSearchErrorEndpoint();
+  } else {
+    setupSearchEndpoints(metrics.map(createMockSearchResult));
+  }
   setupRecentViewsEndpoints(recentMetrics);
 
-  for (const metric of metrics) {
+  // The stateful endpoints mock the card update themselves
+  const metricsWithCardEndpoints = statefulMetrics ? [] : metrics;
+  for (const metric of metricsWithCardEndpoints) {
     const card = createMockCard({
       id: metric.id,
     });
@@ -266,10 +290,84 @@ export function setup({
         path="/metric/:cardId"
         element={<div data-testid="metric-detail-page" />}
       />
+      <Route path="/collection/:slug" element={<CollectionPage />} />
     </>,
     {
       storeInitialState: state,
       withRouter: true,
     },
   );
+}
+
+function CollectionPage() {
+  const { slug } = useParams();
+  return <h1>{`Collection page ${slug}`}</h1>;
+}
+
+function isArchiveRequest(body: unknown): body is { archived: boolean } {
+  return (
+    typeof body === "object" &&
+    body != null &&
+    "archived" in body &&
+    typeof body.archived === "boolean"
+  );
+}
+
+/**
+ * Stands in for the backend: each metric changes only when the request for
+ * its own id arrives, so the page shows the change only after it refetches.
+ */
+function setupStatefulMetricsEndpoints(metrics: MetricResult[]) {
+  fetchMock.get(
+    "path:/api/search",
+    (call) => {
+      const params = new URL(call.url).searchParams;
+      const isMetricSearch =
+        params.getAll("models").length === 1 &&
+        params.get("models") === "metric";
+      const verifiedOnly = params.get("verified") === "true";
+      const limit = Number(params.get("limit") ?? 50);
+      const matching = isMetricSearch
+        ? metrics.filter(
+            (metric) =>
+              !metric.archived &&
+              (!verifiedOnly || metric.moderated_status === "verified"),
+          )
+        : [];
+      return {
+        data: matching.slice(0, limit),
+        total: matching.length,
+        models: params.getAll("models"),
+        available_models: ["metric"],
+        limit,
+        offset: 0,
+        table_db_id: null,
+      };
+    },
+    { name: "search" },
+  );
+
+  metrics.forEach((metric) => {
+    fetchMock.post(`path:/api/bookmark/card/${metric.id}`, () => {
+      metric.bookmark = true;
+      return createMockBookmark({
+        id: `card-${metric.id}`,
+        type: "card",
+        item_id: metric.id,
+        name: metric.name,
+      });
+    });
+    fetchMock.delete(`path:/api/bookmark/card/${metric.id}`, () => {
+      metric.bookmark = false;
+      return { status: 204 };
+    });
+    fetchMock.put(`path:/api/card/${metric.id}`, (call) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      if (!isArchiveRequest(body)) {
+        return { status: 400 };
+      }
+      metric.archived = body.archived;
+      return createMockCard({ id: metric.id, archived: body.archived });
+    });
+  });
 }
