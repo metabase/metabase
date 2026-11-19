@@ -41,7 +41,8 @@ describe(
       cy.wait("@runTest");
       H.undoToast().should("contain.text", "Test passed");
       H.expectUnstructuredSnowplowEvent({
-        event: "transform_test_trigger_manual_run",
+        event: "data_test_trigger_manual_run",
+        event_detail: "transform",
         triggered_from: "test_list",
       });
 

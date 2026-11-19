@@ -5,7 +5,10 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { RunButton } from "metabase/transforms/components/RunButton";
 import type { DataTestType } from "metabase-types/api";
 
-import type { DataTestRunTriggeredFrom } from "../../analytics";
+import {
+  type DataTestRunTriggeredFrom,
+  trackDataTestTriggerManualRun,
+} from "../../analytics";
 import { getDataTestTypeDefinition } from "../../test-types";
 import type { DataTest } from "../../types";
 import { getRunDataTestCacheKey, getRunStatusInfo } from "../../utils";
@@ -31,7 +34,11 @@ export function DataTestRunButton({
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
-    definition.trackManualRun({ testId: test.id, triggeredFrom });
+    trackDataTestTriggerManualRun({
+      testType,
+      testId: test.id,
+      triggeredFrom,
+    });
     const { error } = await runTest(test.id);
     if (error) {
       sendErrorToast(t`Failed to run the test`);
