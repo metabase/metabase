@@ -1,6 +1,7 @@
 (ns metabase.pulse.broken-subscriptions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.util :as perms-util]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.test :as mt]
@@ -225,3 +226,23 @@
                   {"kept" {:id "kept"}, "gone" {:id "gone"}}))))
         (is (= #{removed-id stale-id mixed-id unreadable-id}
                (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))
+
+(deftest sandboxed-user-recipient-count-test
+  (testing "a sandboxed user's count leaves out the other users the read path hides from them"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard             {dash-id :id}    {:name "Sales"}
+                     :model/Pulse                 {pulse-id :id}   {:dashboard_id dash-id
+                                                                    :creator_id   (mt/user->id :rasta)
+                                                                    :parameters   [{:id "gone", :name "Gone"}]}
+                     :model/PulseChannel          {channel-id :id} {:channel_type :email
+                                                                    :pulse_id     pulse-id
+                                                                    :details      {:emails ["outside@example.com"]}
+                                                                    :enabled      true}
+                     :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                    :user_id          (mt/user->id :rasta)}
+                     :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                    :user_id          (mt/user->id :crowberto)}]
+        (is (=? [{:id pulse-id, :readable? true, :recipient-count 2}]
+                (mt/with-current-user (mt/user->id :rasta)
+                  (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+                    (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {"gone" {:id "gone"}})))))))))

@@ -100,10 +100,14 @@
   "Returns `{:channels :recipient-count}` for the pulse with `pulse-id`: the distinct types of its enabled channels
    that reach a destination, and the destinations [[channel-recipient-count]] counts for them."
   [pulse-id]
-  (let [counts (for [channel (t2/hydrate (pulse.db/enabled-pulse-channels pulse-id) :recipients)
-                     :let    [n (channel-recipient-count channel)]
-                     :when   (pos? n)]
-                 [(:channel_type channel) n])]
+  (let [;; Filtered as the read path filters them, so the count leaves out the recipients a sandboxed or
+        ;; tenant-scoped user isn't shown.
+        channels (:channels (pulse/maybe-filter-pulse-recipients
+                             {:channels (t2/hydrate (pulse.db/enabled-pulse-channels pulse-id) :recipients)}))
+        counts   (for [channel channels
+                       :let    [n (channel-recipient-count channel)]
+                       :when   (pos? n)]
+                   [(:channel_type channel) n])]
     {:channels        (vec (distinct (map first counts)))
      :recipient-count (transduce (map second) + counts)}))
 
