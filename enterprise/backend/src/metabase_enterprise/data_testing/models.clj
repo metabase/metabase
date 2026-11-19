@@ -266,6 +266,6 @@
    :revert!   revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]
-  {:track          [:transform_id :name :description]
+  {:track          [:transform_id :name :description :now]
    :track-redacted [:creator_id :expectations :inputs]
    :skip           [:entity_id]})

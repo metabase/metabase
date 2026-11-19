@@ -166,6 +166,6 @@
    :revert!   revert-card-test!})
 
 (defmethod audit/spec :model/CardTest [_model]
-  {:track          [:card_id :name :description]
+  {:track          [:card_id :name :description :now]
    :track-redacted [:creator_id :expectations :inputs]
    :skip           [:entity_id]})
