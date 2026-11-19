@@ -171,6 +171,13 @@ describe("iframe broker, served from a separate isolated origin", () => {
     expect(new TextDecoder().decode(bytes(sentRequest().body))).toBe(body);
   });
 
+  it("keeps an empty request body, so the host sends it as fetch does", async () => {
+    void window.fetch("/api/card/1", { method: "PATCH", body: "" });
+
+    await waitFor(() => expect(hostPort.postMessage).toHaveBeenCalledTimes(1));
+    expect(sentRequest().body).toEqual(new ArrayBuffer(0));
+  });
+
   it("hands the request body to the host instead of copying it", async () => {
     void window.fetch("/api/upload", { method: "POST", body: UPLOAD });
 
