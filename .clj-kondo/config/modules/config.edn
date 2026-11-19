@@ -2965,6 +2965,7 @@
           metabase.sql-tools.init}
    :uses #{analytics
            analytics.interface
+           app-db
            driver
            lib
            lib.metadata

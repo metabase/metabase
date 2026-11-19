@@ -648,9 +648,8 @@
                                                                 :attrs {:id -10}}]}
                                           :cards {-10 {:name "Ad hoc Card"
                                                        ;; Lib, not the deprecated `mt/mbql-query`
-                                                       :dataset_query (lib/->legacy-MBQL
-                                                                       (let [mp (mt/metadata-provider)]
-                                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+                                                       :dataset_query (let [mp (mt/metadata-provider)]
+                                                                        (lib/query mp (lib.metadata/table mp (mt/id :venues))))
                                                        :display :table
                                                        :visualization_settings {}}}})
             new-card-id (-> result :document :content first :attrs :id)]

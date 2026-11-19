@@ -124,8 +124,7 @@
    :display                :table
    :query_type             :query
    :type                   :question
-   :dataset_query          (-> (lib/native-query metadata-provider sql)
-                               lib/->legacy-MBQL)
+   :dataset_query          (lib/native-query metadata-provider sql)
    :visualization_settings {}})
 
 (deftest ^:synchronized card-deps-graph-test-2-native-card-chain

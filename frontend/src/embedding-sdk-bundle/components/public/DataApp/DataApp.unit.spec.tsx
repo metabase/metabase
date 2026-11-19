@@ -7,6 +7,7 @@ import {
 import type { ReactNode } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
@@ -21,6 +22,8 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import { defer } from "metabase/utils/promise";
 
 import { DataApp, type DataAppProps } from "./DataApp";
+
+jest.mock("embedding-sdk-bundle/lib/get-is-localhost");
 
 const CONFIG = {
   metabaseInstanceUrl: "https://metabase.example.com/mb",
@@ -77,6 +80,7 @@ function setup(props: DataAppProps = { path: "boba-hq" }) {
 describe("DataApp", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(getIsLocalhost).mockReturnValue(true);
 
     requestSession = jest
       .spyOn(PLUGIN_EMBEDDING_SDK_AUTH, "getOrRefreshSession")
@@ -348,25 +352,18 @@ describe("DataApp", () => {
     expect(requestSession).not.toHaveBeenCalled();
   });
 
-  it.each([
-    { name: "guest embeds", auth: { isGuest: true as const } },
-
-    // TODO(DAT-18): support API keys for local development
-    { name: "an API key", auth: { apiKey: "development-key" } },
-  ])("does not load the iframe with $name", ({ auth }) => {
+  it("does not load the iframe for guest embeds", () => {
     ensureMetabaseProviderPropsStore().setProps({
       authConfig: {
         metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
-        ...auth,
+        isGuest: true,
       },
     });
-
     render(<DataApp path="boba-hq" />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Guest embedding and API keys are not supported for data apps.",
+      "Guest embeds are not supported for data apps.",
     );
-
     expect(screen.queryByTestId("data-app-frame")).not.toBeInTheDocument();
     expect(requestSession).not.toHaveBeenCalled();
   });
@@ -393,5 +390,50 @@ describe("DataApp", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "SSO is unavailable",
     );
+  });
+
+  it("accepts an API key in localhost without requesting SSO session", () => {
+    ensureMetabaseProviderPropsStore().setProps({
+      authConfig: {
+        metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
+        apiKey: "development-key",
+      },
+    });
+
+    const { iframe, postMessage } = setup({ path: "sales" });
+
+    message(iframe, "metabase.embed.iframeReady");
+    message(iframe, "metabase.embed.requestSessionToken");
+
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({ apiKey: "development-key" }),
+      },
+      ORIGIN,
+    );
+
+    expect(iframe.src).not.toContain("development-key");
+    expect(requestSession).not.toHaveBeenCalled();
+  });
+
+  it("shows an error when using API keys outside localhost", () => {
+    jest.mocked(getIsLocalhost).mockReturnValue(false);
+
+    ensureMetabaseProviderPropsStore().setProps({
+      authConfig: {
+        metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
+        apiKey: "development-key",
+      },
+    });
+
+    render(<DataApp path="sales" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Using an API key in production is not allowed.",
+    );
+
+    expect(screen.queryByTestId("data-app-frame")).not.toBeInTheDocument();
+    expect(requestSession).not.toHaveBeenCalled();
   });
 });

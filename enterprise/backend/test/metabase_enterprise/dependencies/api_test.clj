@@ -304,7 +304,6 @@
                                               :col 0
                                               :size_x 4
                                               :size_y 4})
-            (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (testing "single dependent-types value (backward compatibility)"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
@@ -2259,7 +2258,6 @@
                 {high-id :id} (create-dependent! base-card user "High")]
             (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id base-card-id
                                               :row 0 :col 0 :size_x 4 :size_y 4})
-            (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (t2/update! :model/Card :id low-id {:view_count 10})
             (t2/update! :model/Card :id high-id {:view_count 100})

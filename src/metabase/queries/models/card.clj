@@ -1675,7 +1675,7 @@
         [action arg] (get identifier->action identifier)]
     (case action
       ;; allowed for now since parameter mappings still use Legacy MBQL fields refs (for now)
-      :update (assoc-in mapping [:target 1] #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL arg))
+      :update (assoc-in mapping [:target 1] (lib/->legacy-MBQL-ref arg))
       mapping)))
 
 (defn- updates-for-dashcards

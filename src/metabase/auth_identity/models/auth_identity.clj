@@ -93,7 +93,7 @@
 
 (mi/define-batched-hydration-method add-has-used-password
   :has_used_password
-  "Adds `has_used_password`, whether each of `users` has a password that has been used to log in and has not expired."
+  "Adds `has_used_password`, whether each of `users` has a password that has been used to log in."
   [users]
   (let [user-ids (auth-identity.db/user-ids-with-used-password (set (map u/the-id users)))]
     (for [user users]
