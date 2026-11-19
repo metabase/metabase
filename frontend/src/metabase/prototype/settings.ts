@@ -9,12 +9,13 @@ export const EXPRESSION_EDITOR_VERSION_SETTING: SegmentedPrototypeSetting = {
   type: "segmented",
   label: "Expression editor",
   description:
-    "A: one code editor for everything: an expression, a request in words, or an inline AI prompt; templates and functions in the side panel. B: separate AI and code modes; a prompt by default, = or the f button to write code, and f again to ask the AI about the code. C: like B, with a + menu at the start of the input for the modes and for converting SQL, Python or Excel. D: like B, with the prompt and the code one above the other, both on screen; f or = opens the code and the docs.",
+    "A: one code editor for everything: an expression, a request in words, or an inline AI prompt; templates and functions in the side panel. B: separate AI and code modes; a prompt by default, = or the f button to write code, and f again to ask the AI about the code. C: like B, with a + menu at the start of the input for the modes and for converting SQL, Python or Excel. D: like B, with the prompt and the code one above the other, both on screen; f or = opens the code and the docs. E: like B, with a switch between the AI and the code at the start of the input.",
   options: [
     { value: "a", label: "Version A" },
     { value: "b", label: "Version B" },
     { value: "c", label: "Version C" },
     { value: "d", label: "Version D" },
+    { value: "e", label: "Version E" },
   ],
   defaultValue: "a",
 };

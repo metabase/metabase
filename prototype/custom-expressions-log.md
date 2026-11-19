@@ -13,6 +13,7 @@ Try it: `bun run dev-prototype`, then a new question in the notebook on Prototyp
 | B | Separate AI mode and code mode, switched by `=` and the `f` button | `notebook/components/InlineExpressionEditorB/`, `components/expressions/EditorB/` | A | active |
 | C | B with a `+` menu at the start of the input: the modes and code conversions | `notebook/components/InlineExpressionEditorC/`, `components/expressions/EditorC/` | B | active |
 | D | B with the prompt and the code one above the other, both on screen | `notebook/components/InlineExpressionEditorD/`, `components/expressions/EditorD/` | B | active |
+| E | B with a sparkle/f switch at the start of the input instead of the f button | `notebook/components/InlineExpressionEditorE/`, `components/expressions/EditorE/` | B | active |
 
 Version A is the code as it was when the switcher was added (2026-11-19). It was not moved: Oleh also commits to this branch, and moving files would conflict with his work. Later versions copy the folders they change.
 
@@ -29,6 +30,8 @@ Version B copies the notebook editor (host only; it imports A's `ExpressionPrevi
 Version C copies B's two folders. Figma: frames 337:19006 to 337:19623.
 
 Version D copies B's two folders. Figma: frames 337:19670, 337:19712, 337:20070, 337:20227.
+
+Version E copies B's two folders (without B's unit spec). Figma: frame 304:15005, with the switch moved from the right of the input to the left.
 
 ## Constraints
 - Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves and keeps the editor open.
@@ -50,6 +53,7 @@ Version D copies B's two folders. Figma: frames 337:19670, 337:19712, 337:20070,
 - D: a large change from the AI to a long expression shows as a diff with Accept and Reject, and the preview runs it; a small change goes in directly. A new prompt accepts the diff first. While the diff shows, f and Done do nothing.
 - D: the code row has a preview button only while no preview shows, and a docs button while the docs side panel is closed.
 - D: the preview is a separate card below the editor, 16px apart.
+- E: everything in B, except: a segmented switch (sparkle for Ask AI, f for the code) at the start of the input replaces the f button; no "=" before the code; the prompt's placeholder is "Ask AI".
 - B: the "Open the docs" row is always the last row of the suggestions and never shows on its own.
 
 ## Decisions
