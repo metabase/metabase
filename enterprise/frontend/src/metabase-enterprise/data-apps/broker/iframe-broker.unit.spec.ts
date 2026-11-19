@@ -112,6 +112,7 @@ describe("iframe broker, served from a separate isolated origin", () => {
   afterEach(() => {
     window.fetch = fetchBeforeInstall;
     hostPort.postMessage.mockClear();
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -141,6 +142,33 @@ describe("iframe broker, served from a separate isolated origin", () => {
 
     const response = await pendingResponse;
     expect(bytes(await response.arrayBuffer())).toEqual(DOWNLOAD);
+  });
+
+  it("sends the request body when the browser doesn't expose it as a stream, as Firefox without streaming uploads", async () => {
+    const NativeRequest = window.Request;
+
+    jest
+      .spyOn(window, "Request")
+      .mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+        const request = new NativeRequest(input, init);
+        const copy = request.clone();
+
+        // Firefox leaves `body` unset, while the body still reads as usual.
+        return Object.defineProperties(request, {
+          body: { value: undefined },
+          arrayBuffer: { value: () => copy.arrayBuffer() },
+        });
+      });
+
+    const body = JSON.stringify({ entity_ids: { card: ["abc"] } });
+
+    void window.fetch("/api/eid-translation/translate", {
+      method: "POST",
+      body,
+    });
+
+    await waitFor(() => expect(hostPort.postMessage).toHaveBeenCalledTimes(1));
+    expect(new TextDecoder().decode(bytes(sentRequest().body))).toBe(body);
   });
 
   it("hands the request body to the host instead of copying it", async () => {
