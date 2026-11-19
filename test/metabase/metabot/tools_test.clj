@@ -43,12 +43,13 @@
             (is (string? description))
             (is (some? args))))))))
 
-(deftest ^:synchronized tool-parameters-have-no-one-of-test
-  (testing "OpenAI's GPT-6.2 models reject a tool whose parameters contain `oneOf` anywhere"
+(deftest ^:synchronized tool-parameters-have-no-one-of-or-all-of-test
+  (testing "OpenAI rejects a tool whose parameters contain `oneOf` (GPT-6.2 even outside strict mode) or `allOf`"
     ;; every feature on, so feature-gated parameters are published too
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [tool-vars (distinct (conj (mapcat :tools (vals @@#'profiles/*profiles)) #'agent-tools/load-skill-tool))
-            free?     (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf) schema)))]
+            ;; a schema is free of both when dropping them from every subschema changes nothing
+            free?     (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf :allOf) schema)))]
         (is (= []
                ;; one tool at a time, since tools in different profiles may share a name
                (for [tool-var tool-vars
