@@ -136,3 +136,19 @@
         (let [before (max-id)]
           (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
           (is (= [[:user-deactivated "User" user-id]] (topics-since before))))))))
+
+(deftest deleting-dashboard-with-subscription-records-dashboard-delete-only-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/Pulse {pulse-id :id} {:dashboard_id dashboard-id :name "Dashboard" :creator_id (mt/user->id :rasta)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id :position 0}
+                   :model/PulseChannel {channel-id :id} {:pulse_id pulse-id :channel_type :email
+                                                         :schedule_type :daily :schedule_hour 8}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+      (let [before (max-id)]
+        (mt/user-http-request :crowberto :delete 204 (str "dashboard/" dashboard-id))
+        (testing "the subscription is deleted with the dashboard"
+          (is (false? (t2/exists? :model/Pulse :id pulse-id))))
+        (testing "only the deletion of the dashboard is recorded"
+          (is (= [[:dashboard-delete "Dashboard" dashboard-id]] (topics-since before))))))))

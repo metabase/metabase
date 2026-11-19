@@ -14,7 +14,8 @@
   the other keys are optional:
 
   - `:details`, a fn of a row and the lifecycle event returning the details to store beside the tracked columns, which
-    it overrides, for what the columns alone do not say.
+    it overrides, for what the columns alone do not say; it returns nil for a row that no longer exists, and a write of
+    such a row records nothing.
   - `:state`, a fn of a row and the lifecycle event returning what the row of an update stores whole, beside the changes,
     for what cannot be compared before and after; the row of any other write stores it with the details.
   - `:same?`, a map from a column to a fn of the row before and the row after, true when the column is unchanged, `=`

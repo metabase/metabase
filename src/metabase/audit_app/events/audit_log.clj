@@ -26,11 +26,14 @@
   (or object previous-object))
 
 (defn- details-of
-  "The details that the spec of `model` stores for `row`, as the lifecycle `event` leaves it."
+  "The details that the spec of `model` stores for `row`, as the lifecycle `event` leaves it, nil when its `:details` fn
+  returns nil because the row no longer exists."
   [model row event]
   (let [{:keys [track details]} (audit.spec/spec model)]
-    (merge (select-keys row track)
-           (when details (details row event)))))
+    (if details
+      (when-let [extra (details row event)]
+        (merge (select-keys row track) extra))
+      (select-keys row track))))
 
 (defn- spec-edit?
   "Whether the lifecycle `event` of a model with an audit spec is a write whose row should say a user made it: not one
@@ -68,13 +71,15 @@
 
 (defn- event-details
   "The details of the row that the lifecycle `event` records: the changes of an update, or the details of the row, and
-  the state of the row."
+  the state of the row, nil when the row no longer exists."
   [{:keys [model object previous-object] :as event}]
   (if (and object (not-empty previous-object))
-    (merge (audit-log/update-details (details-of model object event) (details-of model previous-object event))
-           (state-of model object event))
+    (when-let [details (details-of model object event)]
+      (merge (audit-log/update-details details (details-of model previous-object event))
+             (state-of model object event)))
     (let [row (row-of event)]
-      (merge (details-of model row event) (state-of model row event)))))
+      (when-let [details (details-of model row event)]
+        (merge details (state-of model row event))))))
 
 (defn- context-details
   "The details that the context of the lifecycle `event` of a write adds to its row."
@@ -95,11 +100,12 @@
   spec stores a topic for it."
   [event user-id extra]
   (when-let [topic (stored-topic event)]
-    (let [[model model-id] (subject-of event)]
-      (record! topic {:user-id  user-id
-                      :model    model
-                      :model-id model-id
-                      :details  (merge extra (event-details event))}))))
+    (when-let [details (event-details event)]
+      (let [[model model-id] (subject-of event)]
+        (record! topic {:user-id  user-id
+                        :model    model
+                        :model-id model-id
+                        :details  (merge extra details)})))))
 
 (defn- chain-parent
   "The `:parent` of `model` when a write of its rows counts as a write of the parent, nil otherwise."
