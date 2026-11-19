@@ -196,7 +196,7 @@ describe("SummaryWells", () => {
       "[Total] + 100 + 100 + 100 + 100 + 100 + 100",
     );
     await userEvent.unhover(groupBy.getByText(name));
-    await userEvent.hover(groupBy.getByText(`${dateName}: Month`));
+    await userEvent.hover(groupBy.getByText(`${dateName}:`));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "coalesce([Created At], [Created At])",
     );
@@ -350,6 +350,33 @@ describe("SummaryWells", () => {
         "Created At: Month",
       ]);
     });
+
+    it.each([
+      { breakout: { name: "CREATED_AT", unit: "month" }, bucket: "Month" },
+      {
+        breakout: { name: "TOTAL", binning: { strategy: "default" } },
+        bucket: "Auto binned",
+      },
+    ] as const)(
+      "opens the bucket menu from the $bucket text of a grouping",
+      async ({ breakout, bucket }) => {
+        setup({
+          spec: {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                aggregations: [{ type: "operator", operator: "count" }],
+                breakouts: [{ type: "column", ...breakout }],
+              },
+            ],
+          },
+        });
+
+        await userEvent.click(screen.getByText(bucket));
+
+        expect(await screen.findAllByRole("menuitem")).not.toHaveLength(0);
+      },
+    );
 
     it("changes a number grouping's bins from its menu", async () => {
       const { getLastChange } = setup({
@@ -583,7 +610,7 @@ describe("SummaryWells", () => {
     it("renames a custom column grouping with its unit and hands the new name over", async () => {
       const { onChange, getLastChange } = setup({ spec });
 
-      await renameChip("Next day: Month", "Next day", "{Enter}");
+      await renameChip("Next day:", "Next day", "{Enter}");
 
       expect(getLastChange().dimensions).toEqual([
         "Created At: Month",
@@ -597,7 +624,7 @@ describe("SummaryWells", () => {
     it("offers no renaming to a column grouping", async () => {
       setup({ spec });
 
-      await userEvent.dblClick(screen.getByText("Created At: Month"));
+      await userEvent.dblClick(screen.getByText("Created At:"));
 
       expect(
         screen.queryByRole("textbox", { name: /^Rename/ }),
@@ -635,18 +662,21 @@ describe("SummaryWells", () => {
     });
 
     it.each([
-      "Count",
-      "Sum of Total",
-      "Created At: Month",
-      "Product → Category",
-    ])("shows the cut-off %s chip label in full on hover", async (label) => {
-      mockTextOverflow();
-      setup({ spec });
+      ["Count", "Count"],
+      ["Sum of Total", "Sum of Total"],
+      ["Created At:", "Created At: Month"],
+      ["Product → Category", "Product → Category"],
+    ])(
+      "shows the cut-off %s chip label in full on hover",
+      async (text, label) => {
+        mockTextOverflow();
+        setup({ spec });
 
-      await userEvent.hover(screen.getByText(label));
+        await userEvent.hover(screen.getByText(text));
 
-      expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
-    });
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+      },
+    );
 
     it("shows the full name of a renamed formula instead of its formula", async () => {
       mockTextOverflow();

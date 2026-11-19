@@ -1015,6 +1015,21 @@ describe("editing a formula chip", () => {
     },
   );
 
+  it("opens the bucket menu when the grouping's bucket is clicked", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await setupFormulaQuery();
+
+    await user.click(screen.getByText("Year"));
+    act(() => jest.advanceTimersByTime(500));
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Month" }),
+    ).toBeInTheDocument();
+    // The formula bar should not open up as a side-effect
+    expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
+  });
+
   it("renames on a double-click without opening the bar", async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });

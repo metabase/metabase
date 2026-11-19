@@ -15,6 +15,7 @@ import { FormulaEditButton } from "./FormulaEditButton";
 import { FormulaLabel } from "./FormulaLabel";
 import { useWellFieldRef } from "./SummaryWell";
 import { WellChip, type WellChipRename } from "./WellChip";
+import { splitBucketLabel } from "./utils";
 
 type DimensionChipProps = {
   query: Lib.Query;
@@ -66,21 +67,27 @@ export function DimensionChip({
     };
   };
 
+  const hasBucketMenu = item.bucketOptions.length > 0;
+  const bucketLabel = hasBucketMenu
+    ? splitBucketLabel(query, stageIndex, item)
+    : null;
+  const name = bucketLabel?.name ?? item.label;
   const label = item.expression ? (
     <FormulaLabel
       query={query}
       stageIndex={stageIndex}
       clause={item.expression}
-      label={item.label}
+      label={name}
     />
   ) : (
-    <Ellipsified fw="inherit">{item.label}</Ellipsified>
+    <Ellipsified fw="inherit" tooltip={item.label}>
+      {name}
+    </Ellipsified>
   );
   const handleEdit =
     item.expression && formulaInput
       ? () => formulaInput.edit(item.key, wellFieldRef?.current ?? null)
       : undefined;
-  const hasBucketMenu = item.bucketOptions.length > 0;
 
   return (
     <WellChip
@@ -89,7 +96,7 @@ export function DimensionChip({
       isSelected={isEditing}
       onRemove={onRemove}
     >
-      {handleEdit && (
+      {handleEdit ? (
         <FormulaEditButton
           label={item.label}
           isEditing={isEditing}
@@ -98,13 +105,14 @@ export function DimensionChip({
         >
           {label}
         </FormulaEditButton>
+      ) : (
+        label
       )}
       {hasBucketMenu && (
         <DimensionBucketMenu item={item} onSelect={handleBucketSelect}>
-          {handleEdit ? null : label}
+          {bucketLabel?.bucket}
         </DimensionBucketMenu>
       )}
-      {!hasBucketMenu && !handleEdit && label}
     </WellChip>
   );
 }
