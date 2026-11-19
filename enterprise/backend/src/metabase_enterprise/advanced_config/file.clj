@@ -191,12 +191,18 @@
   (throw (ex-info (trs "Don''t know how to expand template form: {0}" (pr-str form))
                   {:form form})))
 
+;; Verbatim copy of the private `environ.core/keywordize`, which builds the keys of [[environ.core/env]]. Lookups
+;; must normalize names the same way. `file-test/keywordize-matches-environ-test` checks it hasn't drifted.
+#_{:clj-kondo/ignore [:discouraged-var]} ; must use the default locale, like environ does
+(defn- keywordize [s]
+  (-> (str/lower-case s)
+      (str/replace "_" "-")
+      (str/replace "." "-")
+      (keyword)))
+
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
-  ;; Match how environ builds its keys: lower case, with `_` and `.` turned into `-`. `/` is turned into `-` too, so
-  ;; `{{env user/dir}}` finds the `user.dir` system property. A camel-snake-kebab conversion would not match: it puts
-  ;; a `-` between a letter and a digit, so `PG2` would look up `:pg-2` instead of `:pg2`.
-  (get *env* (keyword (str/replace (u/lower-case-en (str env-var-name)) #"[_./]" "-"))))
+  (get *env* (keywordize env-var-name)))
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}
