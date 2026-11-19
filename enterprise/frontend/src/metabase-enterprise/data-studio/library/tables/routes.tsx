@@ -5,8 +5,8 @@ import { Route } from "metabase/router";
 
 /**
  * The Data Studio library table pages, in one chunk. Every loader names it, so
- * moving between a table's overview, fields, segments and measures tabs does
- * not cost a fetch each time.
+ * moving between a table's overview, fields, segments, measures and events
+ * tabs does not cost a fetch each time.
  *
  * The core data model routes load their own measure and segment pages from the
  * same two directories, under a chunk name of their own. See the note there for
@@ -34,6 +34,11 @@ const tableMeasuresPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableMeasuresPage"
   ).then(({ TableMeasuresPage }) => ({ Component: TableMeasuresPage }));
+
+const tableEventsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableEventsPage"
+  ).then(({ TableEventsPage }) => ({ Component: TableEventsPage }));
 
 const tableDependenciesPage = () =>
   import(
@@ -119,6 +124,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
+      <Route path=":tableId/events" lazy={tableEventsPage} />
       <Route path=":tableId/measures" lazy={tableMeasuresPage} />
       <Route path=":tableId/measures/new" element={<IsAdmin />}>
         <Route index lazy={newMeasurePage} />

@@ -52,6 +52,7 @@ type SetupOpts = {
   canWrite?: boolean;
   isConfigured?: boolean;
   metabotPermissions?: Partial<UserMetabotPermissions>;
+  canCreateQueries?: boolean;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -62,6 +63,7 @@ async function setup({
   canWrite = true,
   isConfigured = true,
   metabotPermissions,
+  canCreateQueries = true,
 }: SetupOpts = {}) {
   const settings = mockSettings({
     "llm-metabot-configured?": isConfigured,
@@ -93,7 +95,7 @@ async function setup({
         settings,
         currentUser: createMockUser({
           permissions: createMockUserPermissions({
-            can_create_queries: true,
+            can_create_queries: canCreateQueries,
             can_create_native_queries: true,
           }),
           can_write_any_collection: canWrite,
@@ -153,6 +155,7 @@ describe("NewItemMenu", () => {
 
     await userEvent.keyboard("{ArrowDown}");
     await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowDown}");
 
     expect(
       await screen.findByRole("menuitem", { name: /Dashboard/ }),
@@ -163,6 +166,51 @@ describe("NewItemMenu", () => {
     expect(
       await screen.findByRole("dialog", { name: /New dashboard/ }),
     ).toBeInTheDocument();
+  });
+
+  it("lists the kinds of analysis under Product analysis", async () => {
+    const { store } = await setup();
+
+    await userEvent.click(await screen.findByText("Product analysis"));
+
+    const habit = await screen.findByRole("menuitem", { name: /Habit/ });
+    expect(habit).toHaveAttribute("href", "/product-analysis/new?kind=habit");
+    expect(screen.queryByText("Question")).not.toBeInTheDocument();
+
+    await userEvent.click(habit);
+    expect(store.getState().app.isNavbarOpen).toBe(false);
+  });
+
+  it("doesn't offer Product analysis without data access", async () => {
+    await setup({ canCreateQueries: false });
+
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Product analysis")).not.toBeInTheDocument();
+  });
+
+  it("keeps focus in the menu when it shows the kinds of analysis", async () => {
+    await setup();
+
+    await userEvent.click(await screen.findByText("Product analysis"));
+    const habit = await screen.findByRole("menuitem", { name: /Habit/ });
+    expect(habit).toHaveFocus();
+
+    // A key pressed with focus outside the menu closes it, so this checks
+    // that Cmd-clicking a kind, to open it in a new tab, keeps the menu open.
+    await userEvent.keyboard("{Meta}");
+    expect(screen.getByRole("menuitem", { name: /Habit/ })).toBeInTheDocument();
+  });
+
+  it("shows the usual items again when reopened", async () => {
+    await setup();
+
+    await userEvent.click(await screen.findByText("Product analysis"));
+    await screen.findByRole("menuitem", { name: /Habit/ });
+    await userEvent.click(screen.getByText("New"));
+    await userEvent.click(screen.getByText("New"));
+
+    expect(await screen.findByText("Question")).toBeInTheDocument();
+    expect(screen.queryByText("Habit")).not.toBeInTheDocument();
   });
 
   describe("navbar collapsing", () => {

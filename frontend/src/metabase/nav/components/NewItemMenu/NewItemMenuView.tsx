@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -7,6 +7,7 @@ import { getUserCanWriteToCollections } from "metabase/current-user";
 import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { getAnalysisKinds } from "metabase/product-analytics-core";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
@@ -15,6 +16,8 @@ import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
+
+const focusElement = (element: HTMLElement | null) => element?.focus();
 
 export interface NewItemMenuProps {
   className?: string;
@@ -37,6 +40,8 @@ export const NewItemMenuView = ({
   onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
+  // "Product analysis" swaps the menu's items for the kinds of analysis.
+  const [isPickingAnalysisKind, setIsPickingAnalysisKind] = useState(false);
   const buildQuestion = useQuestionFromOptsBuilder();
 
   const lastUsedDatabaseId = useSelector((state) =>
@@ -93,6 +98,19 @@ export const NewItemMenuView = ({
       );
     }
 
+    if (hasDataAccess) {
+      items.push(
+        <Menu.Item
+          key="product-analysis"
+          closeMenuOnClick={false}
+          onClick={() => setIsPickingAnalysisKind(true)}
+          leftSection={<Icon name="funnel" />}
+        >
+          {t`Product analysis`}
+        </Menu.Item>,
+      );
+    }
+
     if (canWriteToCollections) {
       items.push(
         <Menu.Item
@@ -139,11 +157,28 @@ export const NewItemMenuView = ({
   }
 
   return (
-    <Menu position="bottom-end">
+    <Menu position="bottom-end" onOpen={() => setIsPickingAnalysisKind(false)}>
       <Menu.Target>
         <Box>{trigger}</Box>
       </Menu.Target>
-      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      <Menu.Dropdown>
+        {isPickingAnalysisKind
+          ? getAnalysisKinds().map(({ kind, name, icon }, index) => (
+              <Menu.Item
+                key={kind}
+                // The swap unmounts the focused item, so focus moves to the
+                // first kind instead of the page.
+                ref={index === 0 ? focusElement : undefined}
+                component={ForwardRefLink}
+                to={Urls.newProductAnalysis(kind)}
+                onClick={onCloseNavbar}
+                leftSection={<Icon name={icon} />}
+              >
+                {name}
+              </Menu.Item>
+            ))
+          : menuItems}
+      </Menu.Dropdown>
     </Menu>
   );
 };

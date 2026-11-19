@@ -1,0 +1,30 @@
+## Event table settings for product analytics: which column is the timestamp, the person, and so on.
+## A user sets them; nothing infers them. They live in metabase_table_user_settings.event_settings, written through
+## to metabase_table.event_settings like the other user-settable Table columns.
+
+databaseChangeLog:
+  - changeSet:
+      id: cnbvlo
+      author: dpsutton
+      comment: Add event_settings to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: event_settings
+                  type: ${text.type}
+                  remarks: JSON event table settings a user set
+
+  - changeSet:
+      id: y21w17
+      author: dpsutton
+      comment: Add event_settings to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: event_settings
+                  type: ${text.type}
+                  remarks: JSON event table settings a user set for the table

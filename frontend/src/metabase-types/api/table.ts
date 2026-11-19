@@ -76,7 +76,26 @@ export type Table = {
   is_published: boolean;
   collection?: Collection;
   can_write?: boolean;
+
+  event_settings?: EventTableSettings | null;
 };
+
+export type EventTableColumnRole =
+  | "timestamp"
+  | "person"
+  | "session"
+  | "event_name"
+  | "url_path";
+
+export type EventTableSettingKey = `columns.${EventTableColumnRole}`;
+
+/**
+ * The column that plays each role in an event table, by name. `null` means a
+ * user said no column plays it.
+ */
+export type EventTableSettings = Partial<
+  Record<EventTableSettingKey, string | null>
+>;
 
 export type TableOwner = Pick<
   UserInfo,
@@ -117,6 +136,7 @@ export type TableListQuery = {
   "can-query"?: boolean;
 
   term?: string;
+  "entity-type"?: TableEntityType;
   "data-layer"?: TableDataLayer;
   "data-source"?: string | null;
   "owner-user-id"?: UserId | null;
@@ -162,6 +182,8 @@ export interface UpdateTableRequest {
   owner_email?: string | null;
   owner_user_id?: UserId | null;
   collection_id?: CollectionId | null;
+  /** Replaces every role. An empty object clears them. */
+  event_settings?: EventTableSettings;
 }
 
 export interface UpdateTableListRequest {

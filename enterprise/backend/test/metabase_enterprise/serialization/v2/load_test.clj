@@ -245,6 +245,26 @@
             (testing "the imported Dimension replaces the Field's local one"
               (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension :field_id (:id email)))))))))))
 
+(deftest event-settings-round-trip-test
+  (testing "A Table's event settings round-trip with its settings, by column name, and are written to the Table"
+    (let [serialized (atom nil)
+          settings   {:columns.timestamp "created_at" :columns.person "user_id" :columns.session nil}]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "events" :db_id (:id db))]
+            (t2/insert! :model/TableUserSettings {:table_id (:id table) :event_settings settings})
+            (reset! serialized (into [(ts/extract-one "Database" (:id db))
+                                      (ts/extract-one "Table" (:id table))]
+                                     (extract-where "TableUserSettings" :table_id [(:id table)])))))
+        (is (= settings (:event_settings (first (by-model @serialized "TableUserSettings")))))
+        (ts/with-db dest-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "events" :db_id (:id db))]
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (is (= settings (t2/select-one-fn :event_settings :model/TableUserSettings :table_id (:id table))))
+            (is (= settings (t2/select-one-fn :event_settings :model/Table :id (:id table))))))))))
+
 (deftest user-settings-import-on-missing-database-test
   (testing "Table settings, Field settings and Dimensions alone create a stub database when theirs is missing"
     (let [serialized (atom nil)

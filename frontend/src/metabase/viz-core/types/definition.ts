@@ -59,10 +59,45 @@ export type SettingsExtra = {
   transformedSeries?: RawSeries | TransformedSeries;
 };
 
+/**
+ * The settings viz definitions read today. Every key is optional, and an
+ * `any` index signature lets any key through, so these aren't checked by key.
+ */
+type DefaultSettings<T> = T extends DatasetColumn
+  ? ColumnSettings
+  : ComputedVisualizationSettings;
+
+/**
+ * The settings `isValid` receives. They hold this setting's stored value,
+ * which `isValid` is there to check, so a keyed definition sees that value as
+ * `unknown`. An unkeyed definition sees it typed like every other setting:
+ * every viz `isValid` reads it that way today, and would need to narrow it
+ * once its visualization's definitions are keyed.
+ */
+type SettingsToValidate<TSettings, K extends PropertyKey> = [K] extends [never]
+  ? TSettings
+  : Partial<Omit<TSettings, K>> & { [P in K]?: unknown };
+
+/**
+ * A setting computed over an object `T`, such as a series or a column.
+ *
+ * `TSettings` and `K` key a definition: `TSettings` types the settings its
+ * callbacks read, and `K` is this setting's key among them.
+ * `CompleteSettingDefinitions` builds keyed definitions for a settings type.
+ * Viz definitions are unkeyed, and read the loosely typed `DefaultSettings`.
+ * TODO: key viz definitions one visualization at a time. Once they all are,
+ * `VisualizationSettings` can lose its `any` index signature.
+ *
+ * `getDefault`, `getValue` and `isValid` run while the settings are being
+ * computed, so they see them as `Partial`, and may only rely on the keys in
+ * `readDependencies`.
+ */
 export type VisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
+  TSettings = DefaultSettings<T>,
+  K extends PropertyKey = never,
 > = {
   id?: string;
   title?: string;
@@ -76,51 +111,33 @@ export type VisualizationSettingDefinition<
     | WidgetMount<CustomVizSettingWidgetProps>;
   isValid?: (
     object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: SettingsToValidate<TSettings, K>,
     extra?: SettingsExtra,
   ) => boolean;
   getHidden?: (
     object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: TSettings,
     extra?: SettingsExtra,
   ) => boolean;
   getDefault?: (
     object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: Partial<TSettings>,
     extra?: SettingsExtra,
   ) => TValue;
   getValue?: (
     object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: Partial<TSettings>,
     extra?: SettingsExtra,
   ) => TValue;
   getSection?: (
     object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: TSettings,
     extra?: SettingsExtra,
   ) => string | undefined;
-  getTitle?: (
-    object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => string;
+  getTitle?: (object: T, settings: TSettings, extra?: SettingsExtra) => string;
   getWrapperStyle?: (
     object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    settings: TSettings,
     extra?: SettingsExtra,
   ) => CSSProperties | undefined;
   autoOpenWhenUnset?: boolean;
@@ -129,9 +146,7 @@ export type VisualizationSettingDefinition<
   inline?: boolean;
   getProps?: (
     object: T,
-    vizSettings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
+    vizSettings: TSettings,
     onChange: (value: TValue) => void,
     extra: SettingsExtra | undefined,
     onChangeSettings: (value: Partial<VisualizationSettings>) => void,
@@ -139,12 +154,42 @@ export type VisualizationSettingDefinition<
   onChange?: (value: TValue) => void;
   onChangeSettings?: (value: Partial<VisualizationSettings>) => void;
   onUpdate?: (value: TValue, extra: SettingsExtra) => void;
-  readDependencies?: string[];
+  readDependencies?: Exclude<keyof TSettings & string, K>[];
   writeDependencies?: string[];
   eraseDependencies?: string[];
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
   useRawSeries?: boolean;
+};
+
+type KeyedSettingDefinition<
+  TObject,
+  TSettings,
+  K extends keyof TSettings,
+> = VisualizationSettingDefinition<
+  TObject,
+  TSettings[K],
+  Record<string, unknown>,
+  TSettings,
+  K
+>;
+
+/**
+ * Definitions for every key of `TSettings`, each typed by its own value. Each
+ * one checks stored values with `isValid` and has a default, so every computed
+ * setting has a valid value. Values can't be `undefined`, which would look
+ * like a definition that threw: a setting with no value uses `null`.
+ */
+export type CompleteSettingDefinitions<TObject, TSettings> = {
+  [K in keyof TSettings & string]: undefined extends TSettings[K]
+    ? never
+    : KeyedSettingDefinition<TObject, TSettings, K> &
+        Required<
+          Pick<
+            KeyedSettingDefinition<TObject, TSettings, K>,
+            "getDefault" | "isValid"
+          >
+        >;
 };
 
 export type CompleteVisualizationSettingDefinition<

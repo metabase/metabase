@@ -2,6 +2,7 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [medley.core :as m]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -88,11 +89,12 @@
   - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
     tables the user can read"
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
+   {:keys [term visibility-type entity-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
+       [:entity-type {:optional true} EntityType]
        [:data-layer {:optional true} ::data-layers]
        [:data-source {:optional true} ::data-sources]
        [:owner-user-id {:optional true} [:maybe :int]]
@@ -108,6 +110,7 @@
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term
             :visibility-type            visibility-type
+            :entity-type                (some-> entity-type u/qualified-name)
             :data-layer                 data-layer
             :data-source                data-source
             :owner-user-id              owner-user-id
@@ -194,7 +197,8 @@
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
-   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:event_settings          {:optional true} [:maybe :metabase.warehouse-schema.schema/event-settings]]])
 
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
@@ -215,9 +219,12 @@
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
                           :present [:description :caveats :points_of_interest :visibility_type
-                                    :data_layer :data_authority :data_source :owner_email :owner_user_id])
+                                    :data_layer :data_authority :data_source :owner_email :owner_user_id
+                                    :event_settings])
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
+                         ;; an empty object clears the settings
+                         (m/update-existing :event_settings not-empty)
                          not-empty)]
     (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
   (let [updated-table (warehouse-schema-rest.db/table id)]
