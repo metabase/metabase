@@ -302,6 +302,95 @@ describe("MetricAbout", () => {
       ).toHaveLength(0);
     });
 
+    it("uses the configured time bucket of the default time dimension", async () => {
+      const defaultDimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: "total",
+            display_name: "Total",
+            effective_type: "type/Float",
+            semantic_type: null,
+            status: "status/active",
+          }),
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            default_temporal_unit: "week",
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: "total",
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.TOTAL],
+          },
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
+      });
+      const weeklyDataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "created_at",
+              display_name: "Created At: Week",
+              base_type: "type/DateTime",
+              unit: "week",
+            }),
+            createMockNumericColumn({ name: "count" }),
+          ],
+          rows: [
+            ["2024-01-01T00:00:00Z", 100],
+            ["2024-01-08T00:00:00Z", 150],
+          ],
+        }),
+      });
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+      });
+      fetchMock.modifyRoute("metric-dataset", {
+        response: (call) =>
+          isWeeklyProjectionOf(String(call.options.body), defaultDimensionId)
+            ? weeklyDataset
+            : SCALAR_DATASET,
+      });
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Select dimension: Created At: Week",
+        }),
+      ).toHaveTextContent("Created At: Week");
+      expect(screen.getByTestId("visualization-root")).toHaveAttribute(
+        "data-viz-ui-name",
+        "Line",
+      );
+      expect(await getMetricDatasetRequest()).toEqual({
+        definition: expect.objectContaining({
+          projections: [
+            expect.objectContaining({
+              projection: [
+                [
+                  "dimension",
+                  expect.objectContaining({ "temporal-unit": "week" }),
+                  defaultDimensionId,
+                ],
+              ],
+            }),
+          ],
+        }),
+      });
+    });
+
     it("preserves a curated joined-field label when showing a time bucket (UXW-4945)", async () => {
       const defaultDimensionId = "created-at";
       const categoryDimensionId = "product-category";
@@ -593,3 +682,9 @@ describe("MetricAbout", () => {
     });
   });
 });
+
+function isWeeklyProjectionOf(body: string, dimensionId: string) {
+  return body.includes(
+    `"temporal-unit":"week"},${JSON.stringify(dimensionId)}]`,
+  );
+}
