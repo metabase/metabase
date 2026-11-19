@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -460,3 +461,90 @@
               (is (= "denied"
                      (:decision (permission-debug.impl/debug-permissions
                                  {:user-id (mt/user->id :rasta) :model-id model-id :action-type action-type})))))))))))
+
+(defn- venues-category-remapping
+  []
+  {"cat" [:dimension [:field (mt/id :venues :category_id) nil]]})
+
+(defn- do-with-second-venues-sandbox!
+  "Inside `met/with-gtaps!`, whose group sandboxes Venues for rasta: a second group of rasta with its own sandbox on
+  Venues, so two sandboxes apply to the table."
+  [f]
+  (mt/with-temp [:model/PermissionsGroup           {other-group-id :id} {}
+                 :model/PermissionsGroupMembership _ {:group_id other-group-id :user_id (mt/user->id :rasta)}
+                 :model/Sandbox                    _ {:group_id             other-group-id
+                                                      :table_id             (mt/id :venues)
+                                                      :attribute_remappings (venues-category-remapping)}]
+    ;; only Venues, or Can view on the other tables would lift the sandboxes on them
+    (perms/set-table-permission! other-group-id (mt/id :venues) :perms/view-data :unrestricted)
+    (f)))
+
+(defn- query-check
+  "The check Explain access asks for, as the admin about rasta."
+  [model-id action-type]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (permission-debug.impl/debug-permissions
+     {:user-id (mt/user->id :rasta) :model-id model-id :action-type action-type})))
+
+(deftest debug-permissions-card-query-two-sandboxes-on-a-table-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings (venues-category-remapping)}}
+                    :attributes {"cat" 50}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (testing "one group's row and column security on a table still loads"
+        (is (= {:decision "allow" :data {}}
+               (select-keys (query-check (:id card) :card/query) [:decision :data]))))
+      (do-with-second-venues-sandbox!
+       (fn []
+         (testing "two groups' row and column security on a table the card reads fail it"
+           (is (= {:decision "denied" :data {:conflicting-tables [(mt/id :venues)]}}
+                  (select-keys (query-check (:id card) :card/query) [:decision :data]))))
+         (testing "another group's Can view lifts both, so nothing conflicts"
+           (mt/with-temp [:model/PermissionsGroup           {lifting-group-id :id} {}
+                          :model/PermissionsGroupMembership _ {:group_id lifting-group-id :user_id (mt/user->id :rasta)}]
+             (perms/set-database-permission! lifting-group-id (mt/id) :perms/view-data :unrestricted)
+             (is (= {:decision "allow" :data {}}
+                    (select-keys (query-check (:id card) :card/query) [:decision :data]))))))))))
+
+(deftest debug-permissions-card-query-two-sandboxes-reached-through-a-filter-test
+  (met/with-gtaps! {:gtaps      {:venues   {:remappings (venues-category-remapping)}
+                                 ;; Checkins filters by its venue's category, so it reads Venues too
+                                 :checkins {:remappings {"cat" [:dimension [:field (mt/id :venues :category_id)
+                                                                            {:source-field (mt/id :checkins :venue_id)}]]}}}
+                    :attributes {"cat" 50}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query checkins {:limit 1})}]
+      (do-with-second-venues-sandbox!
+       (fn []
+         (testing "a card that reads only Checkins fails on the table its policy filters through"
+           (is (= {:decision "denied" :data {:conflicting-tables [(mt/id :venues)]}}
+                  (select-keys (query-check (:id card) :card/query) [:decision :data]))))
+         (testing "as the query processor does when the card runs"
+           (is (re-find #"Found more than one group table access policy"
+                        (str (mt/user-http-request :rasta :post 400 "dataset" (mt/mbql-query checkins {:limit 1})))))))))))
+
+(deftest debug-permissions-dashboard-query-two-sandboxes-on-a-table-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings (venues-category-remapping)}}
+                    :attributes {"cat" 50}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard dashboard {:collection_id (:id collection)}
+                   :model/Card venues-card {:collection_id (:id collection)
+                                            :dataset_query (mt/mbql-query venues)}
+                   :model/Card users-card {:collection_id (:id collection)
+                                           :dataset_query (mt/mbql-query users)}
+                   :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id venues-card)}
+                   :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id users-card)}]
+      (do-with-second-venues-sandbox!
+       (fn []
+         (testing "the card that reads the conflicting table can't load, the other loads"
+           (is (= {:decision "limited"
+                   :data     {:card-count         2
+                              :blocked-card-count 1
+                              :conflicting-tables [(mt/id :venues)]
+                              :blocked-cards      [{:id                 (:id venues-card)
+                                                    :name               (:name venues-card)
+                                                    :tables             []
+                                                    :conflicting-tables [(mt/id :venues)]}]}}
+                  (select-keys (query-check (:id dashboard) :dashboard/query) [:decision :data])))))))))

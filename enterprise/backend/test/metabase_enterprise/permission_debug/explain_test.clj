@@ -138,6 +138,34 @@
                    (:note view_data)))
             (is (nil? security))))))))
 
+(deftest data-lists-every-policy-on-a-table-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                    :attributes {"cat" 50}}
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup           {other-group-id :id} {:name "Another group"}
+                     :model/PermissionsGroupMembership _ {:group_id other-group-id :user_id (mt/user->id :rasta)}
+                     :model/Sandbox                    _ {:group_id             other-group-id
+                                                          :table_id             (mt/id :venues)
+                                                          :attribute_remappings {:cat ["variable" [:field (mt/id :venues :price) nil]]}}]
+        (perms/set-database-permission! other-group-id (mt/id) :perms/view-data :unrestricted)
+        (let [{:keys [security policies]} (table-entry (preview "data" "user" (mt/user->id :rasta)) :venues)]
+          (testing "both groups' rules are listed, each with its group"
+            (is (= #{(:name &group) "Another group"} (set (map :group_name policies)))))
+          (testing "the rule shown as the table's own is the first listed"
+            (is (= security (first policies)))))))))
+
+(deftest data-lists-one-policy-and-none-when-lifted-test
+  (met/with-gtaps! {:gtaps {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}}
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (testing "one group's rule is the only policy"
+        (is (= [(:name &group)]
+               (map :group_name (:policies (table-entry (preview "data" "user" (mt/user->id :rasta)) :venues))))))
+      (mt/with-temp [:model/PermissionsGroup           {unrestricted-id :id} {}
+                     :model/PermissionsGroupMembership _ {:group_id unrestricted-id :user_id (mt/user->id :rasta)}]
+        (perms/set-database-permission! unrestricted-id (mt/id) :perms/view-data :unrestricted)
+        (testing "another group's Can view lifts the rule, so no policy applies"
+          (is (= [] (:policies (table-entry (preview "data" "user" (mt/user->id :rasta)) :venues)))))))))
+
 (deftest data-admin-analyst-and-permissions-test
   (mt/with-premium-features #{:advanced-permissions}
     (testing "an admin gets the top value of every permission, from Administrators"

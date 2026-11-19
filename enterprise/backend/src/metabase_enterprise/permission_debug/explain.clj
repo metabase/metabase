@@ -85,7 +85,10 @@
    [:create_queries        Cell]
    [:download_results      Cell]
    [:manage_table_metadata Cell]
-   [:security              [:maybe Security]]])
+   [:security              [:maybe Security]]
+   ;; every group's rule that applies on the table, `:security` being the winning group's; more than one row and column
+   ;; security rule fails every query that reaches the table
+   [:policies              [:sequential Security]]])
 
 (def DataAccessResponse
   "What [[explain-data-access]] returns."
@@ -397,18 +400,21 @@
                                :else                        value)))
         view-data        (cell group-rows view-data-of view-data-rank)
         group-name       (into {} (map (juxt :id :name)) group-rows)
-        security         (some-> (case (:value view-data)
-                                   "sandboxed"    (sandbox-security (some #(when (= (:group_id view-data) (:group_id %)) %)
-                                                                          table-sandboxes)
-                                                                    (group-name (:group_id view-data))
-                                                                    attributes)
-                                   "impersonated" (impersonation-security (some #(when (= (:group_id view-data) (:group_id %)) %)
-                                                                                impersonations)
-                                                                          (group-name (:group_id view-data))
-                                                                          attributes)
-                                   nil)
-                                 (assoc :database_name database-name
-                                        :table_name (or (:display_name table) (:name table))))
+        policies         (for [{:keys [group_id value]} (:groups view-data)
+                               :when (and (#{"sandboxed" "impersonated"} (:value view-data))
+                                          (= value (:value view-data)))]
+                           (-> (case value
+                                 "sandboxed"    (sandbox-security (some #(when (= group_id (:group_id %)) %) table-sandboxes)
+                                                                  (group-name group_id)
+                                                                  attributes)
+                                 "impersonated" (impersonation-security (some #(when (= group_id (:group_id %)) %)
+                                                                              impersonations)
+                                                                        (group-name group_id)
+                                                                        attributes))
+                               (assoc :database_name database-name
+                                      :table_name (or (:display_name table) (:name table)))))
+        ;; the winner is the first group with the highest value, so it's the first policy
+        security         (first policies)
         overridden       (when (= "unrestricted" (:value view-data))
                            (seq (keep #(when (#{"sandboxed" "impersonated"} (:value %)) (:name %)) (:groups view-data))))
         metadata         (cell group-rows (value-of :perms/manage-table-metadata) (ranks :perms/manage-table-metadata))
@@ -424,7 +430,8 @@
      :download_results      (cell group-rows (value-of :perms/download-results) (ranks :perms/download-results))
      :manage_table_metadata (cond-> metadata
                               analyst-winner? (assoc :note (tru "Data analysts can manage every table''s metadata.")))
-     :security              security}))
+     :security              security
+     :policies              (vec policies)}))
 
 (defn- database-cell
   [{:keys [group-rows group-ids]} perm-type database-id]

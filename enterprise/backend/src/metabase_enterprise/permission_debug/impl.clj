@@ -48,15 +48,20 @@
                                                [:blocked-tables           {:optional true} [:map-of :string [:set :string]]]
                                                [:download-limited-tables  {:optional true} [:map-of :string [:set :string]]]
                                                [:download-no-tables       {:optional true} [:map-of :string [:set :string]]]
-                                               ;; a dashboard's cards, and how many of them have a blocked table
+                                               ;; a dashboard's cards, and how many of them can't load: a blocked table, or a conflicting one
                                                [:card-count               {:optional true} nat-int?]
                                                [:blocked-card-count       {:optional true} nat-int?]
-                                               ;; each such card, with the names of its blocked tables
+                                               ;; the tables the queries reach that more than one group's row and column
+                                               ;; security applies to
+                                               [:conflicting-tables       {:optional true} [:sequential pos-int?]]
+                                               ;; each card that can't load, with the names of its blocked tables
                                                [:blocked-cards            {:optional true}
                                                 [:sequential [:map {:closed true}
                                                               [:id     pos-int?]
                                                               [:name   :string]
-                                                              [:tables [:sequential :string]]]]]]]
+                                                              [:tables [:sequential :string]]
+                                                              [:conflicting-tables {:optional true}
+                                                               [:sequential pos-int?]]]]]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
@@ -212,6 +217,48 @@
      (map (juxt (juxt :db_name :schema :table_name) :group_name))
      (reduce #(update %1 (first %2) set/union (set [(second %2)])) {}))))
 
+(defn- field-id-in-target
+  "The Field ID a sandbox's attribute remapping target points at (`[:dimension [:field 18 nil]]`), or nil."
+  [target]
+  (some (fn [form]
+          (when (and (sequential? form)
+                     (= "field" (some-> (first form) name))
+                     (pos-int? (second form)))
+            (second form)))
+        (tree-seq sequential? seq target)))
+
+(defn- enforced-sandboxes-by-table
+  "The sandboxes the query processor enforces for the User with `user-id`, by table id: the ones another group's Can
+  view doesn't lift (`metabase-enterprise.sandbox.api.util/enforce-sandbox?`)."
+  [user-id]
+  (group-by :table_id (request/with-current-user user-id
+                        (perms/sandboxes-for-user))))
+
+(defn- filtered-table-ids
+  "The ids of the tables `sandbox`'s filters reach: a rule on Orders that filters by Products.Category reads Products."
+  [{:keys [attribute_remappings]}]
+  (into #{}
+        (keep #(some-> (field-id-in-target %) permission-debug.db/field-table-id))
+        (vals attribute_remappings)))
+
+(defn- conflicting-table-ids
+  "The ids of the tables a query on `table-ids` reaches that have more than one enforced sandbox, which fails it
+  (`metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-sandbox-per-table`). A query reaches
+  the tables its enforced sandboxes filter by, and theirs in turn."
+  [sandboxes-by-table table-ids]
+  (loop [reached #{}
+         pending (set table-ids)]
+    (if (empty? pending)
+      (vec (sort (filter #(> (count (sandboxes-by-table %)) 1) reached)))
+      (let [reached (into reached pending)]
+        (recur reached
+               (set/difference (into #{} (mapcat #(mapcat filtered-table-ids (sandboxes-by-table %))) pending)
+                               reached))))))
+
+(defn- card-table-ids
+  [card]
+  (-> card :dataset_query qp.preprocess/preprocess lib/all-source-table-ids set))
+
 (mu/defmethod debug-permissions :card/query :- DebuggerSchema
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
@@ -219,16 +266,19 @@
    (let [card (permission-debug.db/card model-id)
          blocked-by-group (check-table-permissions user-id card
                                                    {:perms/view-data :blocked}
-                                                   {:perms/view-data :legacy-no-self-service})]
-     {:decision    (if (seq blocked-by-group) "denied" "allow")
+                                                   {:perms/view-data :legacy-no-self-service})
+         conflicting      (conflicting-table-ids (enforced-sandboxes-by-table user-id) (card-table-ids card))
+         fails?           (or (seq blocked-by-group) (seq conflicting))]
+     {:decision    (if fails? "denied" "allow")
       :segment     #{}
       :model-type  "card"
       :model-id    (str model-id)
-      :message     [(if (seq blocked-by-group)
+      :message     [(if fails?
                       (tru "User does not have permission to query this card")
                       (tru "User has permission to query this card"))]
       :data        (cond-> {}
-                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)))
+                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group))
+                     (seq conflicting)            (assoc :conflicting-tables conflicting))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :card/download-data :- DebuggerSchema
@@ -282,27 +332,33 @@
                                                      {:perms/view-data :blocked}
                                                      {:perms/view-data :legacy-no-self-service}))
          blocked-by-group (apply merge-with set/union {} blocked-by-card)
-         blocked-count    (count (filter seq blocked-by-card))
-         blocked-cards    (for [[card blocked] (map vector cards blocked-by-card)
-                                :when (seq blocked)]
-                            {:id     (:id card)
-                             :name   (:name card)
-                             ;; keyed by [db-name schema table-name]
-                             :tables (vec (sort (distinct (map last (keys blocked)))))})]
+         sandboxes-by-table (enforced-sandboxes-by-table user-id)
+         conflicts-by-card  (for [card cards]
+                              (conflicting-table-ids sandboxes-by-table (card-table-ids card)))
+         failing-cards    (for [[card blocked conflicting] (map vector cards blocked-by-card conflicts-by-card)
+                                :when (or (seq blocked) (seq conflicting))]
+                            (cond-> {:id     (:id card)
+                                     :name   (:name card)
+                                     ;; keyed by [db-name schema table-name]
+                                     :tables (vec (sort (distinct (map last (keys blocked)))))}
+                              (seq conflicting) (assoc :conflicting-tables conflicting)))
+         failing-count    (count failing-cards)
+         conflicting      (vec (sort (distinct (apply concat conflicts-by-card))))]
      {:decision    (cond
-                     (zero? blocked-count)               "allow"
-                     (= blocked-count (count card-ids)) "denied"
+                     (zero? failing-count)               "allow"
+                     (= failing-count (count card-ids)) "denied"
                      :else                               "limited")
       :model-type  "dashboard"
       :model-id    (str model-id)
       :segment     #{}
-      :message     [(if (pos? blocked-count)
+      :message     [(if (pos? failing-count)
                       (tru "User does not have permission to query some cards on this dashboard")
                       (tru "User has permission to query every card on this dashboard"))]
       :data        (cond-> {:card-count         (count card-ids)
-                            :blocked-card-count blocked-count}
-                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)
-                                                         :blocked-cards  (vec blocked-cards)))
+                            :blocked-card-count failing-count}
+                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group))
+                     (seq failing-cards)          (assoc :blocked-cards (vec failing-cards))
+                     (seq conflicting)            (assoc :conflicting-tables conflicting))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :collection/read :- DebuggerSchema
@@ -340,16 +396,6 @@
                 [:member_values [:sequential [:map [:value :string] [:count pos-int?]]]]
                 [:other_values [:sequential :string]]
                 [:default [:maybe :string]]]])
-
-(defn- field-id-in-target
-  "The Field ID a sandbox's attribute remapping target points at (`[:dimension [:field 18 nil]]`), or nil."
-  [target]
-  (some (fn [form]
-          (when (and (sequential? form)
-                     (= "field" (some-> (first form) name))
-                     (pos-int? (second form)))
-            (second form)))
-        (tree-seq sequential? seq target)))
 
 (defn- field-column-label
   ;; the field's own table: a rule on Orders can filter by its product's category, Products.Category
