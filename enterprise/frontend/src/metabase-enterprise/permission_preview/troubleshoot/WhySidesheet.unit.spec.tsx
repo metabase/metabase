@@ -146,4 +146,33 @@ describe("WhyContent", () => {
       "--stack-gap": "var(--mantine-spacing-lg)",
     });
   });
+
+  it("shows a group's name in full and lets its status drop under it where the row is narrow", () => {
+    renderWithProviders(
+      <WhyContent
+        target={{
+          ...SANDBOXED_ORDERS,
+          security: null,
+        }}
+      />,
+    );
+
+    const name = screen.getByText("Sales");
+    expect(name).not.toHaveAttribute("data-truncate");
+    // the row has no role or label to find it by
+    const nameAndApplies = name.closest('[class*="Flex-root"]');
+    expect(nameAndApplies?.parentElement).toHaveStyle({ flexWrap: "wrap" });
+  });
+
+  it("puts each label of the rule card above its value, at every width", () => {
+    renderWithProviders(<WhyContent target={SANDBOXED_ORDERS} />);
+
+    // the label and its value have no role or label to find them by
+    expect(
+      screen.getByText("Set by").closest('[class*="Stack-root"]'),
+    ).toHaveTextContent(/^Set bySales$/);
+    expect(
+      screen.getByText("Columns").closest('[class*="Stack-root"]'),
+    ).toHaveTextContent(/^ColumnsAll columns$/);
+  });
 });

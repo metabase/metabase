@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
-import { Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import type { PreviewCell, PreviewSecurity } from "../api";
 
@@ -77,11 +77,18 @@ export function WhyContent({ target }: { target: WhyTarget }) {
                 key={group.group_id}
                 align="center"
                 justify="space-between"
-                gap="md"
-                wrap="nowrap"
+                columnGap="md"
+                rowGap="xxs"
+                // where it's narrow, the status goes under the name rather than squeezing it to nothing
+                wrap="wrap"
               >
-                <Flex align="center" gap="sm" miw={0}>
-                  <Text truncate>{group.name}</Text>
+                <Flex
+                  align="center"
+                  gap="sm"
+                  miw={0}
+                  style={{ flex: "1 1 8rem" }}
+                >
+                  <Text>{group.name}</Text>
                   {group.group_id === cell.group_id && sameValue == null && (
                     <Badge variant="light" style={{ flexShrink: 0 }}>
                       {t`Applies`}
@@ -261,21 +268,16 @@ function PreviewValue({
 }
 
 function KeyValues({ children }: { children: ReactNode }) {
-  return (
-    <Box
-      display="grid"
-      style={{ gridTemplateColumns: "9rem minmax(0, 1fr)", gap: "0.5rem 1rem" }}
-    >
-      {children}
-    </Box>
-  );
+  return <Stack gap="lg">{children}</Stack>;
 }
 
 function KeyValue({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <>
-      <Text c="text-secondary">{label}</Text>
+    <Stack gap={0}>
+      <Text size="sm" c="text-secondary">
+        {label}
+      </Text>
       <Text component="div">{children}</Text>
-    </>
+    </Stack>
   );
 }
