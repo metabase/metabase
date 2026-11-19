@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
@@ -13,6 +14,11 @@
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
+
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:sqlserver :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]

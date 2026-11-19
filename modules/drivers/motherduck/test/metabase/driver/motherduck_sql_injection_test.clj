@@ -192,8 +192,6 @@
    (fn [^Connection conn]
      (doseq [^String sql statements]
        (with-open [stmt (.createStatement conn)]
-         ;; TODO: The endpoint returns result sets for DDL, which executeUpdate rejects. See QUE-1012.
-         ;; (bshepherdson 2026-11-04)
          (.execute stmt sql))))))
 
 (defn- table-exists? [db-id schema table]
@@ -213,7 +211,7 @@
 (deftest drop-table-schema-test
   (mt/test-driver :motherduck
     (mt/dataset sql-injection
-      (testing "drop-table! drops the table in the named schema, even when HoneySQL would rewrite its dashes"
+      (testing "drop-table! and rename-tables! use the named schema, even when HoneySQL would rewrite its dashes"
         (let [db-id (mt/id)]
           (try
             (execute-ddl! db-id
@@ -221,8 +219,13 @@
                           "CREATE SCHEMA IF NOT EXISTS \"sqli_dash\""
                           "CREATE TABLE IF NOT EXISTS \"sqli-dash\".\"t\" (x INTEGER)"
                           "CREATE TABLE IF NOT EXISTS \"sqli_dash\".\"t\" (x INTEGER)")
-            (driver/drop-table! :motherduck db-id :sqli-dash/t)
-            (is (false? (table-exists? db-id "sqli-dash" "t")))
+            (testing "rename-tables! renames the table in the named schema"
+              (driver/rename-tables! :motherduck db-id {:sqli-dash/t :sqli-dash/renamed})
+              (is (true?  (table-exists? db-id "sqli-dash" "renamed")))
+              (is (false? (table-exists? db-id "sqli-dash" "t")))
+              (is (true?  (table-exists? db-id "sqli_dash" "t"))))
+            (driver/drop-table! :motherduck db-id :sqli-dash/renamed)
+            (is (false? (table-exists? db-id "sqli-dash" "renamed")))
             (is (true?  (table-exists? db-id "sqli_dash" "t")))
             (finally
               (execute-ddl! db-id
