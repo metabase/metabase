@@ -9,7 +9,10 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
@@ -21,6 +24,8 @@ import {
 
 import {
   blurEditor,
+  clickCompletion,
+  createProductsQuery,
   focusEditor,
   getCompletionLabels,
   getEditorValue,
@@ -33,6 +38,7 @@ import {
   setup,
   typeText,
   waitForCompletions,
+  waitForHelpTextExample,
   waitForValidationDebounce,
 } from "./setup";
 
@@ -272,6 +278,38 @@ describe("ExpressionWidget > completion", () => {
       "case([ID] = 1, [Price] * 1.21, [Price] [Price])",
     );
   });
+
+  it("should apply a completion on a new line inside case (metabase#31964)", async () => {
+    await setup({ query: createOrdersQuery() });
+
+    await typeText("case()");
+    await pressKey("ArrowLeft");
+    await waitForHelpTextExample();
+    await typeText('[Product -> Category] = "Widget", 1,');
+    await pressKey("Enter");
+    await typeText("[Product -> Categ");
+    expect(await waitForCompletions()).toContain("Product → Category");
+    await pressKey("Tab");
+
+    expect(getEditorValue()).toBe(
+      'case([Product → Category] = "Widget", 1,\n[Product → Category])',
+    );
+    await waitForHelpTextExample();
+  });
+
+  it("should complete non-aggregation functions in a custom aggregation (metabase#62987)", async () => {
+    await setup({ query: createOrdersQuery(), expressionMode: "aggregation" });
+
+    await typeText("Coun");
+    await waitForCompletions();
+    await clickCompletion("CountIf");
+
+    await typeText("notEm");
+    await waitForCompletions();
+    await clickCompletion("notEmpty");
+
+    expect(getEditorValue()).toBe("CountIf(notEmpty(column))");
+  });
 });
 
 describe("ExpressionWidget > keyboard", () => {
@@ -402,6 +440,139 @@ describe("ExpressionWidget > validation", () => {
       screen.getByRole("button", { name: "Auto-format" }),
     ).toBeInTheDocument();
     expect(getEditorValue()).toBe("concat('foo','bar') ");
+  });
+});
+
+describe("ExpressionWidget > type validation", () => {
+  it("should show a type error for year of a string but not for case with compatible branches (metabase#57674)", async () => {
+    await setup({ query: createOrdersQuery() });
+
+    await pasteText('year("a string")');
+    await blurEditor();
+    expect(
+      await screen.findByText(/Types are incompatible/),
+    ).toBeInTheDocument();
+
+    await replaceSource('case([Total] > 100, "foo", "bar")');
+    await blurEditor();
+    await waitForValidationDebounce();
+    expect(
+      screen.queryByText(/Types are incompatible/),
+    ).not.toBeInTheDocument();
+
+    await typeName("Foo");
+    expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+  });
+
+  it("should accept an aggregation in a custom aggregation (metabase#58230)", async () => {
+    const { onChangeClause } = await setup({
+      query: createOrdersQuery(),
+      expressionMode: "aggregation",
+    });
+
+    await pasteText("Average([Total])");
+    await typeName("Foo");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    expect(
+      screen.queryByText(/Aggregations like Average are not allowed/),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(doneButton);
+    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    const [name, clause] = onChangeClause.mock.calls[0];
+    expect(name).toBe("Foo");
+    expect(Lib.expressionParts(createOrdersQuery(), -1, clause)).toMatchObject({
+      operator: "avg",
+    });
+  });
+
+  it("should validate a constant, an unsupported function and a bad date expression (metabase#41381, metabase#33439, metabase#33441)", async () => {
+    await setup({
+      query: createOrdersQuery(),
+      database: createSampleDatabase({
+        features: [...COMMON_DATABASE_FEATURES, "datetime-diff"],
+      }),
+    });
+    const doneButton = screen.getByRole("button", { name: "Done" });
+
+    await pasteText("'Test'");
+    await blurEditor();
+    await typeName("Constant");
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    expect(screen.queryByText("Invalid expression")).not.toBeInTheDocument();
+
+    await replaceSource(
+      'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+    );
+    await blurEditor();
+    expect(
+      await screen.findByText("Unsupported function convertTimezone"),
+    ).toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+
+    await replaceSource('datetimeDiff([Created At] , now(), "days")');
+    await blurEditor();
+    expect(
+      await screen.findByText("Types are incompatible."),
+    ).toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+  });
+
+  it("should reject convertTimezone with an invalid timezone (metabase#38498)", async () => {
+    await setup({
+      query: createOrdersQuery(),
+      database: createSampleDatabase({
+        features: [...COMMON_DATABASE_FEATURES, "convert-timezone"],
+      }),
+    });
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await typeName("Converted");
+
+    await pasteText('convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")');
+    await blurEditor();
+    await waitFor(() => expect(doneButton).toBeEnabled());
+
+    await replaceSource(
+      'convertTimezone([Created At], "Asia/Ho_Chi_Mihn", "UTC")',
+    );
+    await blurEditor();
+    expect(
+      await screen.findByText("Types are incompatible."),
+    ).toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+  });
+});
+
+describe("ExpressionWidget > formatting", () => {
+  it("should keep the backslash of an escaped character when formatting (metabase#56596)", async () => {
+    const source = String.raw`regexExtract([Vendor], "\s.*")`;
+    const { onChangeClause } = await setup({
+      database: createSampleDatabase({
+        features: [...COMMON_DATABASE_FEATURES, "regex"],
+      }),
+    });
+
+    // the extra spaces show that the formatter ran
+    await pasteText(String.raw`regexExtract( [Vendor] ,  "\s.*" )`);
+    await blurEditor();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Auto-format" }),
+    );
+    await waitFor(() => expect(getEditorValue()).toBe(source));
+    await waitForValidationDebounce();
+
+    await typeName("Last name");
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    const [name, clause] = onChangeClause.mock.calls[0];
+    expect(name).toBe("Last name");
+    const query = createProductsQuery();
+    const parts = Lib.expressionParts(query, -1, clause);
+    expect(parts).toMatchObject({
+      operator: "regex-match-first",
+      args: [expect.anything(), String.raw`\s.*`],
+    });
   });
 });
 
