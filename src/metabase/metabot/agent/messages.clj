@@ -6,6 +6,7 @@
   is responsible for converting these parts into its own wire format (Claude
   messages, Chat Completions messages, OpenAI Responses input items, etc.)."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
@@ -154,14 +155,17 @@
 (defn- later-turn-context
   "The template variables of a later turn's `<context>` block: the current time and what the user is viewing."
   [context]
-  (assoc (user-context/time-context context)
-         :viewing_context
-         ;; The history replays the block of each earlier turn, and that block can name an item that the user no
-         ;; longer views. So say that the user views no item. Decide from the items, not from the formatted text:
-         ;; the text is blank also when every item fails to format, and then the user does view an item.
-         (if (empty? (:user_is_viewing context))
-           "The user is not looking at any item now."
-           (user-context/format-viewing-context context))))
+  ;; The history replays the block of each earlier turn, and that block can name an item that the user no longer
+  ;; views. So this block always says something about what the user views now, also when it cannot describe the item:
+  ;; the formatted text is blank when every item fails to format or the user cannot read it.
+  (let [viewing-text (when (seq (:user_is_viewing context))
+                       (user-context/format-viewing-context context))]
+    (assoc (user-context/time-context context)
+           :viewing_context
+           (cond
+             (empty? (:user_is_viewing context)) "The user is not looking at any item now."
+             (str/blank? viewing-text)           "The user is looking at an item that cannot be described now."
+             :else                               viewing-text))))
 
 (defn render-context-block
   "The `<context>` block for the most recent input message, rendered from `context`, as `{:block <block> :full?
@@ -173,7 +177,7 @@
   block holds the user information.
 
   When `full?` is false, the block holds only the date lines (see [[user-context/time-context]]) and what the user is
-  viewing. When the user views no item, it says so.
+  viewing. When the user views no item, or no viewed item can be described, it says so.
 
   Only the web chat stores and replays the block. It sends a full block on each turn where
   `metabase.metabot.persistence/replays-full-context?` is false, for example on the first turn of a conversation.

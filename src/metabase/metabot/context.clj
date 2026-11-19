@@ -417,9 +417,13 @@
   (try
     ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so this turn's
     ;; context has no recent views, even for a caller-supplied context that already carries the key.
-    ;; This does not change the history: a full `<context>` block that an earlier turn stored replays with the
-    ;; recent views it was sent with, also after a profile switch (`/profile`) or a setting change
-    ;; (see `metabase.metabot.persistence/replays-full-context?`).
+    ;; This decides only this turn's context, and a later turn sends no recent views. So the full `<context>` block
+    ;; that the history replays decides the recent views of the whole conversation, in both directions (see
+    ;; `metabase.metabot.persistence/replays-full-context?`), also after a profile switch (`/profile`) or a setting
+    ;; change:
+    ;; - When that block holds recent views, it replays them also in a turn that excludes them here.
+    ;; - When that block was sent without recent views, it still counts as full. So no later turn sends them, also
+    ;;   when that turn allows them.
     (if (or (not (metabot.settings/metabot-recent-views-enabled?))
             (contains? profiles-excluding-recent-views profile-id))
       (dissoc context :user_recently_viewed)

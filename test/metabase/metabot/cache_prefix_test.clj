@@ -4,9 +4,11 @@
   between two turns: the first request of a turn must start with the last request of the turn before it, in the
   wire format of each adapter.
 
-  They cover the `<context>` block sent before each user message. The history does not replay some other parts of a
-  turn as they were sent: the SQL dialect preload, thinking, text streamed in deltas, parallel tool calls and failed
-  tool calls. No conversation here has those parts."
+  They cover the `<context>` block sent before each user message, and a turn with one successful tool call. The
+  history does not replay some other parts of a turn as they were sent: the SQL dialect preload, thinking, text
+  streamed in deltas, parallel tool calls and failed tool calls. No conversation here has those parts, except
+  DeepSeek's thinking directive, which the tool-call test leaves out: after a tool call with no signed thinking, it
+  differs between the two turns."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -26,6 +28,7 @@
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -36,24 +39,27 @@
   "The agent-streaming request body for `turn`, as the frontend sends it. `previous` holds the ids of the turn before
   it, or is nil for the first turn. A new turn names the previous answer as its parent. A turn with `:retry? true`
   asks for a new answer to the previous user message: it names that message, and no parent."
-  [conversation-id {:keys [message context retry?]} previous answer-id user-id]
+  [conversation-id {:keys [message context retry? profile-id]} previous answer-id user-id]
   (cond-> {:message              message
            :context              context
            :conversation_id      conversation-id
            :user_message_id      user-id
            :assistant_message_id answer-id
            :state                {}}
+    profile-id                  (assoc :profile_id profile-id)
     retry?                      (assoc :retry_message_id user-id)
     (and previous (not retry?)) (assoc :parent_message_id (:answer-id previous))))
 
 (defn- run-turns!
   "Send `turns` in one conversation through the agent-streaming endpoint. A turn is `{:message :context :response}`,
-  where `:response` is what the provider streams back to the turn's one LLM call. `:crowberto` sends every turn. A
-  turn can also hold `:retry? true` (see [[turn-request]]). Returns the request options the adapter got on each LLM
-  call, in order."
+  where `:response` is what the provider streams back to the turn's one LLM call. A turn that makes more than one LLM
+  call holds `:responses`, one per call, in place of `:response`. `:crowberto` sends every turn. A turn can also hold
+  `:retry? true` (see [[turn-request]]), a `:profile-id`, and `:recent-views-enabled? false` to send it with the
+  `metabot-recent-views-enabled?` setting off. Returns the request options the adapter got on each LLM call, in
+  order."
   [turns]
   (let [conversation-id (str (random-uuid))
-        pending         (atom (map :response turns))
+        pending         (atom (mapcat #(or (:responses %) [(:response %)]) turns))
         requests        (atom [])]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider "anthropic/claude-opus-5-5"]
@@ -63,12 +69,13 @@
                                   conversation-title/ensure-title! (constantly nil)]
         (mt/with-model-cleanup [:model/MetabotMessage
                                 [:model/MetabotConversation :created_at]]
-          (reduce (fn [previous {:keys [retry?] :as turn}]
+          (reduce (fn [previous {:keys [retry? recent-views-enabled?] :or {recent-views-enabled? true} :as turn}]
                     (let [answer-id (str (random-uuid))
                           ;; a retry keeps the id of the user message it retries
                           user-id   (if retry? (:user-id previous) (str (random-uuid)))]
-                      (mt/user-http-request :crowberto :post 202 "metabot/agent-streaming"
-                                            (turn-request conversation-id turn previous answer-id user-id))
+                      (mt/with-temporary-setting-values [metabot-recent-views-enabled? recent-views-enabled?]
+                        (mt/user-http-request :crowberto :post 202 "metabot/agent-streaming"
+                                              (turn-request conversation-id turn previous answer-id user-id)))
                       {:answer-id answer-id :user-id user-id}))
                   nil
                   turns))))
@@ -160,11 +167,14 @@
 
 (defn- check-turn-edge
   "Check, for each adapter, that the first request of a turn, `next-request`, starts with the last request of the
-  turn before it, `request`."
-  [request next-request]
-  (doseq [{:keys [adapter history render]} adapters]
-    (testing (str adapter ": turn 2's first request starts with turn 1's last request, cache markers aside")
-      (is (nil? (prefix-break history (render request) (render next-request)))))))
+  turn before it, `request`. `ignored` maps an adapter name to the top-level body keys that the check leaves out."
+  ([request next-request]
+   (check-turn-edge request next-request {}))
+  ([request next-request ignored]
+   (doseq [{:keys [adapter history render]} adapters
+           :let [render #(apply dissoc (render %) (get ignored adapter))]]
+     (testing (str adapter ": turn 2's first request starts with turn 1's last request, cache markers aside")
+       (is (nil? (prefix-break history (render request) (render next-request))))))))
 
 (defn- user-messages
   "The content of each user message in the request options `opts`."
@@ -185,7 +195,38 @@
                    (second (user-messages turn-2)))))
     (check-turn-edge turn-1 turn-2)))
 
-(deftest later-turn-sends-only-the-viewing-context-test
+(deftest turn-with-a-tool-call-replays-as-sent-test
+  (mt/with-temp [:model/Card _ {:name "Orders by month"}]
+    (let [turns             [{:message   "Which questions show orders?"
+                              :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+                              :responses [(mut/mock-llm-response
+                                           [{:type :start :id "msg-1"}
+                                            {:type      :tool-input
+                                             :id        "call-search"
+                                             :function  "search"
+                                             :arguments {:keyword_queries ["orders by month"] :limit 5}}])
+                                          (answer "msg-2" "The question Orders by month shows them.")]}
+                             {:message  "And products?"
+                              :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+                              :response (answer "msg-3" "No question shows products.")}]
+          ;; the in-place engine searches without an index
+          requests          (search.tu/with-legacy-search (run-turns! turns))
+          [_ turn-1 turn-2] requests
+          tool-output       (fn [request]
+                              (some #(when (= :tool-output (:type %)) %) (:input request)))]
+      (testing "turn 1 makes two LLM calls, the search call and the answer; turn 2 makes one"
+        (is (= 3 (count requests))))
+      (testing "the search call finds the card, and turn 2 replays the call from the history"
+        (is (=? {:result {:output #"(?s).*<search-results>.*Orders by month.*</search-results>.*"}}
+                (tool-output turn-1)))
+        (is (not (get-in (tool-output turn-1) [:result :error])))
+        (is (=? {:result {:output #"(?s).*<search-results>.*Orders by month.*</search-results>.*"}}
+                (tool-output turn-2))))
+      ;; DeepSeek turns thinking off while the open turn holds a tool call with no signed thinking, and on again in
+      ;; the next turn. That is part of the thinking, which the history does not replay as sent.
+      (check-turn-edge turn-1 turn-2 {"deepseek" [:thinking]}))))
+
+(deftest later-turn-sends-its-time-and-the-viewing-context-test
   (mt/with-temp [:model/Card      {card-id :id}   {:name "Question A" :dataset_query (mt/mbql-query venues)}
                  :model/Dashboard {dash-id :id}   {:name "Dashboard B"}
                  :model/Card      {viewed-id :id} {:name "Question C"}]
@@ -245,9 +286,9 @@
   (let [lookups (atom 0)
         orig    (mt/original-fn #'entity-details/get-current-user)]
     (mt/with-dynamic-fn-redefs [entity-details/get-current-user (fn [args]
-                                                                   (when (= 1 (swap! lookups inc))
-                                                                     (throw (ex-info "app DB unavailable" {})))
-                                                                   (orig args))]
+                                                                  (when (= 1 (swap! lookups inc))
+                                                                    (throw (ex-info "app DB unavailable" {})))
+                                                                  (orig args))]
       (let [[turn-1 turn-2]         (run-turns! two-turns)
             [first-message message] (user-messages turn-2)]
         (testing "the first turn's block has no user information, because the lookup failed"
@@ -257,6 +298,32 @@
           (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*information about the user" message))
           (is (re-find #"</context>\nAnd last month\?$" message)))
         (check-turn-edge turn-1 turn-2)))))
+
+(deftest replayed-full-block-decides-the-recent-views-test
+  ;; This pins a known trade-off, not a goal: a later turn sends no recent views, so the replayed full block decides
+  ;; them for the whole conversation (see the comment in `metabase.metabot.context/add-recent-views`).
+  (mt/with-temp [:model/Card {viewed-id :id} {:name "Question C"}]
+    (mt/with-model-cleanup [:model/RecentViews]
+      (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card viewed-id :view)
+      (let [turn     (fn [n & {:as more}]
+                       (merge {:message  (str "Question " n "?")
+                               :context  {:current_time_with_timezone (format "2026-10-20T10:0%d:00+00:00" n)}
+                               :response (answer (str "msg-" n) "An answer.")}
+                              more))
+            recents? #(boolean (re-find #"(?s)recently viewed:.*Question C" (str/join "\n" (user-messages %))))]
+        (testing "a turn that excludes recent views still replays the recent views of the full block"
+          (doseq [[label second-turn] [["the setting is off" (turn 2 :recent-views-enabled? false)]
+                                       ["a switch to the nlq profile" (turn 2 :profile-id "nlq")]]]
+            (testing label
+              (let [[turn-1 turn-2] (run-turns! [(turn 1) second-turn])]
+                (is (recents? turn-1))
+                (is (recents? turn-2))))))
+        (testing "a full block sent without recent views counts as full, so a later turn that allows them gets none"
+          (let [[turn-1 turn-2] (run-turns! [(turn 1 :profile-id "nlq") (turn 2)])]
+            (is (not (recents? turn-1)))
+            (is (not (re-find #"information about the user" (last (user-messages turn-2))))
+                "the later turn sends no new full block")
+            (is (not (recents? turn-2)))))))))
 
 (deftest turn-after-a-failed-or-retried-first-turn-sends-the-full-context-test
   (let [first-turn {:message  "How many orders do we have?"

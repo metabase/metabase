@@ -467,18 +467,30 @@
                    (:block (messages/render-context-block (assoc context :user_is_viewing viewing)
                                                           memory
                                                           false)))))))
-      (testing "a later turn whose viewed items all fail to format holds only the time: the user does view an item"
-        (is (= (str "<context>\n\n"
-                    "Current date: 2026-10-20T10:05:00Z\n"
-                    "In the system, the first day of the week (index 1) is: Sunday\n\n"
-                    "</context>\n")
-               (:block (messages/render-context-block (assoc context :user_is_viewing [{:type "no-such-type"}])
-                                                      memory
-                                                      false)))))
       (testing "the first turn's block holds all of the context"
         (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*code editor"
                      (:block (messages/render-context-block context memory true))))
         (is (= 1 @calls))))))
+
+(deftest render-context-block-of-a-later-turn-with-items-that-fail-to-format-test
+  (let [context {:current_user_time "2026-10-20T10:05:00Z"}
+        memory  (memory/initialize [{:role :user :content "Hello"}] {})
+        block   (fn [viewing]
+                  (:block (messages/render-context-block (assoc context :user_is_viewing viewing) memory false)))]
+    (testing "when every viewed item fails to format, the block says so, so that no earlier turn's viewing block applies"
+      (doseq [viewing [[{:type "no-such-type"}]
+                       [{:type "no-such-type"} {:type "no-such-type"}]]]
+        (is (= (str "<context>\n\n"
+                    "Current date: 2026-10-20T10:05:00Z\n"
+                    "In the system, the first day of the week (index 1) is: Sunday\n\n"
+                    "The user is looking at an item that cannot be described now.\n\n"
+                    "</context>\n")
+               (block viewing))
+            (pr-str viewing))))
+    (testing "when only some viewed items fail to format, the block describes the others"
+      (let [text (block [{:type "code_editor" :buffers []} {:type "no-such-type"}])]
+        (is (str/includes? text "The user is in the code editor but no active buffers are available."))
+        (is (not (str/includes? text "cannot be described")))))))
 
 (deftest render-context-block-is-full-only-with-the-user-info-test
   (let [context {:current_user_time "2026-10-20T10:05:00Z"}
