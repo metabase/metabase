@@ -502,6 +502,20 @@
      #(mt/with-no-data-perms-for-all-users!
         (check-error 403 "You don't have access to AI features.")))))
 
+(deftest summary-formula-looks-up-metabot-permissions-once-test
+  (testing "summary-formula looks up the metabot permissions once"
+    (let [lookups       (atom 0)
+          adapter-calls (atom 0)]
+      (llm.tu/with-default-connections
+        (mt/with-temporary-raw-setting-values [llm-mini-model "anthropic/claude-haiku-4-5"]
+          (mt/with-dynamic-fn-redefs [self.claude/claude             (fn [& _] (swap! adapter-calls inc) [])
+                                      scope/resolve-user-permissions #(do (swap! lookups inc)
+                                                                          ((mt/original-fn #'scope/resolve-user-permissions) %))]
+            ;; the adapter returns nothing, so the request fails after the LLM call's checks pass
+            (mt/user-http-request :rasta :post 502 endpoint (request-body))
+            (is (= 1 @adapter-calls))
+            (is (= 1 @lookups))))))))
+
 (defn- provider-api-error
   "Return a mock provider exception with HTTP `status`."
   [status]

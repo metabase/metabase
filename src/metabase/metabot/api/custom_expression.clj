@@ -268,15 +268,14 @@
                       (invalid! :columns (tru "Provide at least one column, metric or measure."))))))
 
 (defn- check-llm-available!
-  "Throw an HTTP exception when Metabot is off, the current user lacks AI access, or `model` has no usable connection."
-  [model]
+  "Throw an HTTP exception when Metabot is off, `permissions` lack AI access, or `model` has no usable connection."
+  [model permissions]
   (cond
     (not (metabot.settings/metabot-enabled?))
     (throw (ex-info (tru "AI features are not enabled.") {:status-code 403 ::error-reason "metabot-disabled"}))
 
     ;; The LLM call checks this too, but too late to come before the managed-limit and database checks.
-    (metabot.scope/missing-permission (metabot.scope/resolve-user-permissions api/*current-user-id*)
-                                      required-permission)
+    (metabot.scope/missing-permission permissions required-permission)
     (throw (ex-info (tru "You don''t have access to AI features.")
                     {:status-code 403 ::error-reason "permission-denied"}))
 
@@ -360,13 +359,16 @@
   [request :- ::request-schema]
   ;; Drop tagged inputs before checking that enough are left.
   (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)
-        model (metabot.settings/llm-mini-model)]
+        model       (metabot.settings/llm-mini-model)
+        permissions (metabot.scope/resolve-user-permissions api/*current-user-id*)]
     (check-inputs! request)
-    (check-llm-available! model)
+    (check-llm-available! model permissions)
     (with-error-reason "managed-limit" #(metabot.usage/check-metabase-managed-free-limit! model))
     (with-error-reason "database-access" #(api/query-check :model/Database database_id))
     (let [{:keys [expression name]} (try
-                                      (call-llm model (llm-messages request))
+                                      ;; Lets the LLM call's own permission check reuse `permissions`.
+                                      (binding [metabot.scope/*current-user-metabot-permissions* permissions]
+                                        (call-llm model (llm-messages request)))
                                       (catch Exception e
                                         (log/warn e "Summary formula LLM call failed")
                                         (throw (llm-call-error model e))))
