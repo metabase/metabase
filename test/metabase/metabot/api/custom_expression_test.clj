@@ -79,13 +79,6 @@
           (f)
           (is (zero? @adapter-calls)))))))
 
-(defn- check-error-before-provider!
-  "Check that a request gets `status` with the plain-text body `message` from the LLM call's own checks."
-  [status message]
-  (do-before-provider!
-   #(is (= message
-           (mt/user-http-request :rasta :post status endpoint (request-body))))))
-
 (defn- check-missing-inputs
   "Check that a request with `overrides` gets a 400 with `message` as the error for `field`, without reaching the LLM."
   [field message overrides]
@@ -501,7 +494,7 @@
 (deftest summary-formula-metabot-permission-test
   (testing "summary-formula returns a 403 without the metabot permission"
     (do-without-nlq-permission
-     #(check-error-before-provider! 403 "You don't have access to AI features."))))
+     #(check-error 403 "You don't have access to AI features."))))
 
 (deftest summary-formula-metabot-permission-before-database-test
   (testing "summary-formula reports the missing metabot permission before the database access check"
