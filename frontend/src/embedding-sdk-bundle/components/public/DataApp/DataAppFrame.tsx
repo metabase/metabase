@@ -60,6 +60,12 @@ export function DataAppFrame({
   const currentAuthRef = useRef({ authConfig, store });
   const pathRef = useRef(path);
 
+  // The path the iframe was last asked to show, sent with every settings message.
+  const requestedPathRef = useRef(path);
+
+  // The page the iframe is on, as far as the host knows: the last path it reported or was asked to show.
+  const iframePathRef = useRef(path);
+
   // A ref so an inline callback does not re-send the settings on every render.
   const onPathChangeRef = useLatest(onPathChange);
 
@@ -110,13 +116,28 @@ export function DataAppFrame({
         type: "metabase.embed.setSettings",
         data: {
           componentName: "metabase-data-app",
-          path,
+          path: requestedPathRef.current,
           instanceUrl: authConfig.metabaseInstanceUrl,
           locale,
           ...(authConfig.apiKey && { apiKey: authConfig.apiKey }),
           _embedReferrer: window.location.href,
         },
       });
+
+    const navigateIframe = (nextPath: string) => {
+      requestedPathRef.current = nextPath;
+      iframePathRef.current = nextPath;
+
+      if (readyRef.current) {
+        sendSettings();
+
+        // The iframe may already have `nextPath` in its settings, so ask it to navigate as well.
+        send({
+          type: "metabase.embed.navigateToDataAppPath",
+          data: { path: nextPath },
+        });
+      }
+    };
 
     const authenticate = async () => {
       if (authConfig.apiKey) {
@@ -174,11 +195,14 @@ export function DataAppFrame({
               data: { path: P.string },
             },
             ({ data }) => {
-              // Ignore paths that `path` rejects, so `onPathChange={setPath}` cannot break the embed.
+              // `path` cannot name this page, so `onPathChange={setPath}` would break the embed. Send the app
+              // back to the host's path instead, or the host could not navigate to that path again.
               if (getEmbeddedAppSlugFromPath(data.path) !== slug) {
+                navigateIframe(pathRef.current);
                 return;
               }
 
+              iframePathRef.current = data.path;
               onPathChangeRef.current?.(data.path);
             },
           )
@@ -191,8 +215,11 @@ export function DataAppFrame({
           .otherwise(() => undefined),
     });
 
-    // Send every path, echoes of reported paths included, so the iframe's copy of `path` matches the host's.
-    if (readyRef.current) {
+    // Echoes of reported paths are not sent. The user may have moved on before the echo arrives,
+    // and sending it would pull them back.
+    if (path !== iframePathRef.current) {
+      navigateIframe(path);
+    } else if (readyRef.current) {
       sendSettings();
     }
 

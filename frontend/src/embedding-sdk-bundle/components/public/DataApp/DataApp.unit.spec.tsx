@@ -78,6 +78,11 @@ const settingsMessage = (path: string) => ({
   },
 });
 
+const navigateMessage = (path: string) => ({
+  type: "metabase.embed.navigateToDataAppPath",
+  data: { path },
+});
+
 const message = (
   iframe: HTMLIFrameElement,
   type: string,
@@ -286,11 +291,10 @@ describe("DataApp", () => {
 
     expect(screen.getByTestId("data-app-frame")).toBe(iframe);
     expect(iframe.src).toBe(initialSrc);
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith(
-      settingsMessage("boba-hq/orders?active=true"),
-      ORIGIN,
-    );
+    expect(postMessage.mock.calls).toEqual([
+      [settingsMessage("boba-hq/orders?active=true"), ORIGIN],
+      [navigateMessage("boba-hq/orders?active=true"), ORIGIN],
+    ]);
   });
 
   it("ignores route changes to initialPath and reloads the iframe when its app slug changes", () => {
@@ -351,7 +355,7 @@ describe("DataApp", () => {
 
     rerender(<DataApp initialPath="boba-hq" path="boba-hq/orders/42" />);
     expect(postMessage).toHaveBeenLastCalledWith(
-      settingsMessage("boba-hq/orders/42"),
+      navigateMessage("boba-hq/orders/42"),
       ORIGIN,
     );
     postMessage.mockClear();
@@ -360,6 +364,23 @@ describe("DataApp", () => {
 
     expect(screen.getByTestId("data-app-frame")).toBe(iframe);
     expect(postMessage).not.toHaveBeenCalled();
+
+    warn.mockRestore();
+  });
+
+  it("stays on the last path when path is removed and initialPath names another app", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { iframe, rerender } = setup({
+      initialPath: "milk-tea-hq",
+      path: "boba-hq/orders/42",
+    });
+
+    rerender(<DataApp initialPath="milk-tea-hq" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(new URL(iframe.src).pathname).toBe(
+      "/mb/embed/embedded-apps/boba-hq/orders/42",
+    );
 
     warn.mockRestore();
   });
@@ -406,20 +427,58 @@ describe("DataApp", () => {
       "boba-hq/orders/42?tab=items",
     );
 
-    // the reported path is sent back, so the iframe's settings match the host
-    expect(postMessage).toHaveBeenLastCalledWith(
-      settingsMessage("boba-hq/orders/42?tab=items"),
-      ORIGIN,
-    );
-
     postMessage.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Home" }));
 
     expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-    expect(postMessage).toHaveBeenLastCalledWith(
-      settingsMessage("boba-hq"),
+    expect(postMessage.mock.calls).toEqual([
+      [settingsMessage("boba-hq"), ORIGIN],
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
+  });
+
+  it("does not send a late echo of an earlier page back to the iframe", () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    // e.g. a page that redirects as soon as it loads
+    pathChangeMessage(iframe, "boba-hq/orders");
+    pathChangeMessage(iframe, "boba-hq/orders/latest");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/orders/latest",
+    );
+    expect(postMessage).not.toHaveBeenCalledWith(
+      navigateMessage("boba-hq/orders"),
       ORIGIN,
     );
+    expect(postMessage).not.toHaveBeenCalledWith(
+      settingsMessage("boba-hq/orders"),
+      ORIGIN,
+    );
+  });
+
+  it("sends the app back to the host's path when it reports a page that `path` rejects", async () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/customers/acme%2Feu");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+    expect(postMessage.mock.calls).toEqual([
+      [settingsMessage("boba-hq"), ORIGIN],
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
   });
 
   it.each(["boba-hq/customers/acme%2Feu", "boba-hq/notes#a\\b", "other-app"])(
