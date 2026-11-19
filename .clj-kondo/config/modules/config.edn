@@ -3542,7 +3542,6 @@
            audit-app
            cache
            change-log
-           dependencies
            driver
            events
            lib
@@ -4242,6 +4241,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
+                    :model/Database
                     :model/Dimension
                     :model/Document
                     :model/Field

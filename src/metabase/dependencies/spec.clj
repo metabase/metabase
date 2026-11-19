@@ -19,8 +19,8 @@
   - `:after-dependencies`, a fn of a row and its direct dependents as `{entity-type #{entity-id}}` returning the
     dependents whose edges to the entity no longer hold, which the job drops after it stores the dependencies.
 
-  The consumer that marks the statuses a write makes stale reads the writes of every model with a spec, even an empty
-  one, through these plain data keys:
+  The consumer that marks the statuses a write makes stale reads the writes of every model with a spec, through these
+  plain data keys:
 
   - `:dependency-columns`, the columns whose update has the dependency job compute the entity's dependencies again.
   - `:analysis-columns`, the columns whose update has the analysis job analyze the entity again.

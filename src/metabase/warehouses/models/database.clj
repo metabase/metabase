@@ -10,7 +10,6 @@
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
-   [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
@@ -910,6 +909,3 @@
   (analytics/clear! :metabase-database/status)
   (doseq [database (health-check-candidates)]
     (health-check-database! database)))
-
-(defmethod dependencies/spec :model/Database [_model]
-  {})

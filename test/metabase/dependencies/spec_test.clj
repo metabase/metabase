@@ -36,3 +36,10 @@
             :let  [spec (dependencies/spec model)]]
       (testing model
         (is (= (contains? spec :part-of) (contains? spec :part-columns)))))))
+
+(deftest ^:parallel no-empty-spec-test
+  (testing "no model declares an empty spec only to have its writes read"
+    (dependencies/type->model)
+    (doseq [model (keys (dissoc (methods dependencies/spec) :default))]
+      (testing model
+        (is (seq (dependencies/spec model)))))))

@@ -255,10 +255,16 @@
   (when-let [entity-type (dependencies/model-type model)]
     (mark-output-changed! batched entity-type row)))
 
+(def ^:private spec-less-models
+  "The models without a dependencies spec whose writes the jobs read all the same: the remaps of Dimensions and
+  FieldValues, which the marking above handles, and Databases, whose creation and deletion trigger the jobs."
+  #{:model/Database :model/Dimension :model/FieldValues})
+
 (defn- owner
-  "The one owner of the `event`s of a batch of the models with a dependencies spec, whose writes the jobs read."
+  "The one owner of the `event`s of a batch of the models whose writes the jobs read: those with a dependencies spec
+  and the [[spec-less-models]]."
   [{:keys [model]}]
-  (when (dependencies/spec model)
+  (when (or (contains? spec-less-models model) (dependencies/spec model))
     ::batch))
 
 (defn- mark-event!

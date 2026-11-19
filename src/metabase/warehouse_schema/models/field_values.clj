@@ -29,7 +29,6 @@
    [metabase.analyze.core :as analyze]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.database-routing.core :as database-routing]
-   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -728,6 +727,3 @@
    :storage-paths warehouse-schema.serialization/field-values-storage-paths
    :before-load   warehouse-schema.serialization/field-values-before-load
    :rows-by-refs  serialization/field-values-rows-by-refs})
-
-(defmethod dependencies/spec :model/FieldValues [_model]
-  {})
