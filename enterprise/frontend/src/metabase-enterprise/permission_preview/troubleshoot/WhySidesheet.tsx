@@ -88,7 +88,7 @@ export function WhyContent({ target }: { target: WhyTarget }) {
                   miw={0}
                   style={{ flex: "1 1 8rem" }}
                 >
-                  <Text>{group.name}</Text>
+                  <Text style={{ overflowWrap: "anywhere" }}>{group.name}</Text>
                   {group.group_id === cell.group_id && sameValue == null && (
                     <Badge variant="light" style={{ flexShrink: 0 }}>
                       {t`Applies`}
