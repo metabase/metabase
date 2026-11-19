@@ -320,8 +320,7 @@
                               :dropped_connections))))))))
 
 (deftest dropped-connections-leave-out-dashcards-with-unreadable-cards-test
-  (testing "a lost connection to a readable series card isn't reported when the dashcard's own card is hidden, as
-            redaction empties that dashcard's mappings"
+  (testing "a series card's lost connection isn't reported when redaction hides the dashcard's own card"
     (mt/with-temp [:model/Collection          {open-id :id}     {}
                    :model/Collection          {locked-id :id}   {}
                    :model/Dashboard           {dash-id :id}     {:name          "Sales"

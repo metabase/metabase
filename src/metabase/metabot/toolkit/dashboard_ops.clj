@@ -1005,11 +1005,11 @@
     (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
 
 (defn- slot
-  "Where `card-id` shows on `dashcard`: `:card` for the dashcard's own card, its id for one of its series cards, and
-   nil when the dashcard doesn't show it."
+  "Where `card-id` shows on `dashcard`: `:card` for the dashcard's own card, the card's id for a series card, and nil
+   when the dashcard doesn't show it."
   [{:keys [card_id series]} card-id]
   (cond
-    (= card-id card_id)                 :card
+    (= card-id card_id)                :card
     (some #(= card-id (:id %)) series) card-id))
 
 (defn- connections
@@ -1034,7 +1034,7 @@
   "The connections among `stored`, as [[slot-connections]] gives them, that `op` asks to drop.
    Those are a filter's for `remove_parameter` and `unwire_parameter`, on its one dashcard when the unwire names one,
    and a dashcard's for a `patch_dashcard` that sets its `parameter_mappings`."
-  [stored {op-name :op :keys [parameter_id dashcard_id patch] :as op}]
+  [stored {op-name :op, :keys [parameter_id dashcard_id patch], :as op}]
   ;; Judged by what the op names rather than what it removed, so asking to drop a connection an earlier op already
   ;; cleared still counts.
   (case op-name
@@ -1054,7 +1054,9 @@
   (get dashcard-origins s #{s}))
 
 (defn- track-promotions
-  "The origins after `op`: for each dashcard id, the stored slots each of its current slots stands for.
+  "The origins after `op`, given the `origins` and `state` before it: for each dashcard id, a map from each current
+   slot to the stored slots it stands for.
+   Only a `replace_card` that promotes a series card changes them.
    A slot missing from them stands for itself."
   [origins state {:keys [op dashcard_id card_id]}]
   (let [promoted (when (= "replace_card" op)
@@ -1075,9 +1077,11 @@
           [parameter-id dashcard-id stored-slot])))
 
 (defn- apply-op-tracking-drops
-  "Runs [[apply-op-at]], and keeps `::slot-origins`, as [[track-promotions]] gives them, and `::asked-drops`, the
-   stored connections an op asked to drop, as [[asked-drops]] finds them, that no later op restored.
-   The `state` holds the stored connections in `::stored-connections`."
+  "Runs [[apply-op-at]] on `op`, the op at `idx`, and updates two keys of `state`.
+   It keeps the origins [[track-promotions]] gives under `::slot-origins`.
+   It keeps under `::asked-drops` the stored connections an op asked to drop, as [[asked-drops]] finds them, less those
+   a later op restored.
+   It reads the stored connections from `::stored-connections`."
   [state idx op]
   (let [origins (track-promotions (::slot-origins state) state op)
         state'  (assoc (apply-op-at state idx op) ::slot-origins origins)
@@ -1094,8 +1098,7 @@
     (= stored-slot (slot dashcard stored-slot))          stored-slot))
 
 (defn- dropped-connections
-  "The filter connections of `current` that `payload` no longer has, as `{:parameter_id :dashcard_id :card_id :series}`
-   maps.
+  "The filter connections of `current` that `payload` lost, as `{:parameter_id :dashcard_id :card_id :series}` maps.
    The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
    A connection counts only when its filter and its dashcard survive, its card is still on the dashcard or was
    replaced, and the ops didn't drop it on purpose.
@@ -1138,7 +1141,7 @@
    A card that an op gives a position stays where the op put it, and a resized card keeps its place unless such a
    card covers it.
    Either pushes down the cards it covers.
-   [[effects]] reads what else the ops did from the payload's metadata.
+   The ops' other effects ride in the payload's metadata, read by [[effects]].
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
   (let [ops     (prepare-ops ops)
@@ -1154,14 +1157,13 @@
                     (select-keys [:dashcards :tabs :parameters])
                     (update :dashcards (partial mapv series-ids)))]
     (with-meta payload
-               {::effects {:pushed-dashcard-ids  (::pushed state)
+               {::effects {:pushed-dashcard-ids (::pushed state)
                            :dropped-connections (dropped-connections current payload state)}})))
 
 (defn effects
   "What the ops did beyond the payload [[compile-ops]] returns, read from its metadata.
-   `:pushed-dashcard-ids` holds the ids of the stored dashcards pushed down to make room for cards the ops placed, in
-   save order.
-   `:dropped-connections` holds the filter connections the ops dropped without asking to, as
+   Its `:pushed-dashcard-ids` are the ids of the stored dashcards pushed down for cards the ops placed, in save order.
+   Its `:dropped-connections` are the filter connections the ops dropped without asking, as
    `{:parameter_id :dashcard_id :card_id :series}` maps, with `:series` true for a series card's connection."
   [payload]
   (::effects (meta payload)))

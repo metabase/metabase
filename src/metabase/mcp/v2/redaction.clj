@@ -109,7 +109,7 @@
       (redact-hidden-series readable))))
 
 (defn readable-card-ids
-  "The ids of the cards on `dash`'s dashcards that the current user can read, so [[redact-dashboard]] leaves them be.
+  "The ids of the cards on `dash`'s dashcards that the current user can read, which [[redact-dashboard]] keeps.
    Its dashcards' `:card` and `:series` must be populated, as for [[redact-dashboard]]."
   [dash]
   (into #{} (map :id) (mi/readable (dashcard-card-rows (:dashcards dash)))))

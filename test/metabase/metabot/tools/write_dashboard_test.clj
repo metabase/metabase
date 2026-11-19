@@ -362,7 +362,9 @@
 (deftest replace-chart-reports-dropped-filter-test
   (sales-dashboard!
    (fn [{:keys [card-id dash-id dashcard-id]}]
-     (t2/update! :model/Dashboard :id dash-id {:parameters [{:id "cat", :name "Category", :slug "category"
+     (t2/update! :model/Dashboard :id dash-id {:parameters [{:id   "cat"
+                                                             :name "Category"
+                                                             :slug "category"
                                                              :type "category"}]})
      (t2/update! :model/DashboardCard :id dashcard-id
                  {:parameter_mappings [{:parameter_id "cat"

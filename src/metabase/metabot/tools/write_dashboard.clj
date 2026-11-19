@@ -766,7 +766,7 @@
                          (let [ids (distinct (map :dashcard_id connections))]
                            (str (if (next ids) "dashcards " "dashcard ") (ids-text ids))))]
     [(for [[parameter-id connections] (group-by :parameter_id dropped)
-           :let [{series true cards false} (group-by (comp boolean :series) connections)]]
+           :let [{series true, cards false} (group-by (comp boolean :series) connections)]]
        (str "The " (pr-str (or (parameter-name parameter-id) parameter-id)) " filter is no longer connected to "
             (str/join " or to "
                       (cond-> []

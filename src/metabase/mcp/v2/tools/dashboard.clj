@@ -172,7 +172,7 @@
                                                   :attrs          (dashboard-attrs body)
                                                   :ops            (:ops body)
                                                   :validate-only? (boolean (:validate_only body))}))))
-        {dash :dashboard {:keys [pushed-dashcard-ids dropped-connections]} :effects} written
+        {dash :dashboard, {:keys [pushed-dashcard-ids dropped-connections]} :effects} written
         dropped    (visible-connections dash dropped-connections)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
