@@ -223,5 +223,6 @@
 (defmethod dependencies/spec :model/Measure [_model]
   {:type     :measure
    :inlined? true
+   :items    measures.db/dependency-measure-items
 
    :dependencies measures.dependencies/dependencies})

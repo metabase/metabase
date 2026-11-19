@@ -293,7 +293,8 @@
    :synced-items data-apps.db/synced-data-app-items})
 
 (defmethod dependencies/spec :model/DataApp [_model]
-  {:type :data-app
+  {:type  :data-app
+   :items data-apps.db/dependency-data-app-items
 
    :hydrate      data-apps.dependencies/hydrate
    :dependencies data-apps.dependencies/dependencies})

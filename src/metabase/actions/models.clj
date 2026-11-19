@@ -844,7 +844,8 @@
                    :collection   [:model/Collection [:= :collection.id :this.collection_id]]}}})
 
 (defmethod dependencies/spec :model/Action [_model]
-  {:type :action
+  {:type  :action
+   :items actions.db/dependency-action-items
 
    :hydrate      actions.dependencies/hydrate
    :dependencies actions.dependencies/dependencies})

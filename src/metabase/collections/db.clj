@@ -604,3 +604,8 @@
   [ids :- [:sequential pos-int?]]
   (-> (t2/select [:model/Collection :id :name :type :location] :id [:in ids])
       (t2/hydrate :effective_ancestors)))
+
+(mu/defn personal-root-collection-ids :- [:sequential ::lib.schema.id/collection]
+  "The IDs of the personal Collections at the root, those of the users."
+  []
+  (or (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/") []))

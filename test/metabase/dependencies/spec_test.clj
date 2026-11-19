@@ -17,3 +17,14 @@
             :when (or (:dependencies spec) (:inlined? spec) (:after-dependencies spec))]
       (testing model
         (is (keyword? (:type spec)))))))
+
+(def ^:private not-listed-types
+  "The entity types whose models declare no `:items`, so that no list holds them."
+  #{})
+
+(deftest ^:parallel every-entity-type-is-listed-test
+  (testing "every model with a `:type` declares `:items`, or is explicitly not listed"
+    (doseq [[entity-type model] (dependencies/type->model)
+            :when (not (contains? not-listed-types entity-type))]
+      (testing model
+        (is (some? (:items (dependencies/spec model))))))))

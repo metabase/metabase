@@ -639,4 +639,5 @@
                    :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}}})
 
 (defmethod dependencies/spec :model/Table [_model]
-  {:type :table})
+  {:type  :table
+   :items warehouse-schema.db/dependency-table-items})

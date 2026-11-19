@@ -5,10 +5,13 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.embedding.settings :as embed.settings]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
@@ -592,3 +595,23 @@
                   [nil :database_id]]
                  :id [:in dashboard-ids])
       (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location])))
+
+(mu/defn dependency-dashboard-items :- :map
+  "The query of the Dashboards the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
+  collections the user reads, without the internal ones unless `:include-internal?` and those in personal collections
+  unless `:include-personal-collections?`, located by their collection."
+  [{:keys [include-archived include-personal-collections? include-internal? search-text] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location (collections.listing/collection-location :collection nil)]
+    {:select    [[:dashboard.id :entity_id] [:dashboard.name :name] [location :location]]
+     :from      [[:report_dashboard :dashboard]]
+     :left-join [:collection [:= :dashboard.collection_id :collection.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [(collections.listing/visible-in-collections-clause :dashboard opts include-archived nil)
+                       (collections.listing/archived-clause :dashboard include-archived)
+                       (when-not include-internal?
+                         (mi/non-internal-filter-clause :model/Dashboard :dashboard))
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :dashboard :collection))
+                       (dependencies/search-clause :dashboard.name location search-text)])}))

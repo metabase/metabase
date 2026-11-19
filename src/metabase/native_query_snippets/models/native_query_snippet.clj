@@ -236,5 +236,6 @@
 (defmethod dependencies/spec :model/NativeQuerySnippet [_model]
   {:type     :snippet
    :inlined? true
+   :items    native-query-snippets.db/dependency-snippet-items
 
    :dependencies native-query-snippets.dependencies/dependencies})

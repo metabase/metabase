@@ -1925,7 +1925,8 @@
    :synced-filter-clause queries.db/synced-cards-clause})
 
 (defmethod dependencies/spec :model/Card [_model]
-  {:type :card
+  {:type  :card
+   :items queries.db/dependency-card-items
 
    :hydrate      queries.dependencies/hydrate
    :dependencies queries.dependencies/dependencies

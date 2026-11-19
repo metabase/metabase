@@ -7,6 +7,10 @@
   - `:type`, the entity type the graph stores the model's rows under, which makes the model an entity.
   - `:inlined?`, true for an entity that its dependents expand inline, such as a snippet or a measure, so that its
     dependents are all its transitive dependents, and the job computes its type first; false by default.
+  - `:items`, a fn of the `:metabase.dependencies.items/items-opts` returning the full HoneySQL query of the entities
+    the dependencies lists hold for them, as `entity_id`, `name` and `location`, which reads the user's permissions
+    itself, or nil when the user reads none; the lists and the visibility of the graph hold no entity of a model
+    without it.
   - `:hydrate`, a fn of a vector of rows returning them with what `:dependencies` needs, loaded in bulk.
   - `:dependencies`, a pure fn of a hydrated row returning its dependencies as `{entity-type #{entity-id}}`, which
     makes the job compute the entity's dependencies.
@@ -24,6 +28,7 @@
   [:map {:closed true}
    [:type               {:optional true} :keyword]
    [:inlined?           {:optional true} :boolean]
+   [:items              {:optional true} ifn?]
    [:hydrate            {:optional true} ifn?]
    [:dependencies       {:optional true} ifn?]
    [:after-dependencies {:optional true} ifn?]

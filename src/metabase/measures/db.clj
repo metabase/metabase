@@ -3,7 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.remote-sync.core :as remote-sync]
@@ -76,3 +78,18 @@
     (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
         (t2/hydrate [:table [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn dependency-measure-items :- :map
+  "The query of the Measures the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
+  tables the user queries, located by their table."
+  [{:keys [include-archived search-text] :as opts} :- :metabase.dependencies.items/items-opts]
+  {:select    [[:measure.id :entity_id] [:measure.name :name] [:table.display_name :location]]
+   :from      [:measure]
+   :left-join [[:metabase_table :table] [:= :measure.table_id :table.id]]
+   :where     (into [:and]
+                    (remove nil?)
+                    [[:in :measure.table_id ^:allow-subquery {:select [:metabase_table.id]
+                                                              :from   [:metabase_table]
+                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                     (collections.listing/archived-clause :measure include-archived)
+                     (dependencies/search-clause :measure.name :table.display_name search-text)])})

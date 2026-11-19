@@ -4,11 +4,14 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.embedding.settings :as embed.settings]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
@@ -669,3 +672,30 @@
                  :id [:in card-ids])
       (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count
                   [:dashboard :moderation_status])))
+
+(mu/defn dependency-card-items :- [:maybe :map]
+  "The query of the Cards the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
+  collections the user reads, of the `:card-types`, without the internal ones unless `:include-internal?` and those in
+  personal collections unless `:include-personal-collections?`, located by their dashboard, document or collection."
+  [{:keys [include-archived include-personal-collections? include-internal? card-types search-text] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location [:case
+                  [:not= :card.dashboard_id nil] :dashboard.name
+                  [:not= :card.document_id nil]  :document.name
+                  :else                          (collections.listing/collection-location :collection nil)]]
+    {:select    [[:card.id :entity_id] [:card.name :name] [location :location]]
+     :from      [[:report_card :card]]
+     :left-join [:collection                  [:= :card.collection_id :collection.id]
+                 [:report_dashboard :dashboard] [:= :card.dashboard_id :dashboard.id]
+                 :document                    [:= :card.document_id :document.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [(collections.listing/visible-in-collections-clause :card opts include-archived nil)
+                       (collections.listing/archived-clause :card include-archived)
+                       (when (seq card-types)
+                         [:in :card.type (mapv name card-types)])
+                       (when-not include-internal?
+                         (mi/non-internal-filter-clause :model/Card :card))
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :card :collection))
+                       (dependencies/search-clause :card.name location search-text)])}))

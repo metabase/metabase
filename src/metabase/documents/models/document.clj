@@ -609,6 +609,7 @@
   {:candidates documents.db/stale-document-candidates})
 
 (defmethod dependencies/spec :model/Document [_model]
-  {:type :document
+  {:type  :document
+   :items documents.db/dependency-document-items
 
    :dependencies documents.dependencies/dependencies})

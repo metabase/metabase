@@ -333,6 +333,7 @@
        (sandbox.db/insert-sandbox! sandbox)))))
 
 (defmethod dependencies/spec :model/Sandbox [_model]
-  {:type :sandbox
+  {:type  :sandbox
+   :items sandbox.db/dependency-sandbox-items
 
    :dependencies sandbox.dependencies/dependencies})

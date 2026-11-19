@@ -578,7 +578,8 @@
   {:candidates transforms.staleness/stale-transform-candidates})
 
 (defmethod dependencies/spec :model/Transform [_model]
-  {:type :transform
+  {:type  :transform
+   :items transforms.db/dependency-transform-items
 
    :hydrate            transforms.dependencies/hydrate
    :dependencies       transforms.dependencies/dependencies

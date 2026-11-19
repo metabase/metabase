@@ -212,3 +212,12 @@
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
   (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))
+
+(mu/defn dependency-sandbox-items :- [:maybe :map]
+  "The query of the Sandboxes the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, both the
+  id as text: all of them for a superuser, none for anyone else, the search text keeping them all."
+  [{:keys [is-superuser?]} :- :metabase.dependencies.items/items-opts]
+  (when is-superuser?
+    (let [id-text [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
+      {:select [[:sandboxes.id :entity_id] [id-text :name] [id-text :location]]
+       :from   [:sandboxes]})))

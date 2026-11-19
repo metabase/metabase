@@ -3,9 +3,12 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -65,3 +68,23 @@
     (-> (t2/select [:model/NativeQuerySnippet :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn dependency-snippet-items :- [:maybe :map]
+  "The query of the NativeQuerySnippets the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`:
+  none for a sandboxed user or one who creates no query anywhere, else those in the snippet collections the user
+  reads, without those in personal collections unless `:include-personal-collections?`, located by their collection."
+  [{:keys [user-id include-archived include-personal-collections? search-text] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (when-not (or (perms/sandboxed-user?)
+                (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries)))
+    (let [location (collections.listing/collection-location :collection :snippets)]
+      {:select    [[:snippet.id :entity_id] [:snippet.name :name] [location :location]]
+       :from      [[:native_query_snippet :snippet]]
+       :left-join [:collection [:= :snippet.collection_id :collection.id]]
+       :where     (into [:and]
+                        (remove nil?)
+                        [(collections.listing/visible-in-collections-clause :snippet opts include-archived :snippets)
+                         (collections.listing/archived-clause :snippet include-archived)
+                         (when-not include-personal-collections?
+                           (collections.listing/outside-personal-collections-clause :snippet :collection))
+                         (dependencies/search-clause :snippet.name location search-text)])})))

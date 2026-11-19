@@ -3,7 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.actions.schema :as actions.schema]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
@@ -296,3 +298,34 @@
   "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
+
+(mu/defn dependency-action-items :- :map
+  "The query of the Actions the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of a
+  model in the collections the user reads, and those without one in the data actions collections the user reads,
+  without those in personal collections unless `:include-personal-collections?`, located by their collection or the
+  root they sit in."
+  [{:keys [include-archived include-personal-collections? search-text] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location [:coalesce
+                  :collection.name
+                  [:case
+                   [:= :action.model_id nil]
+                   (:name (collection.root/root-collection-with-ui-details :data-actions))
+                   :else
+                   (:name (collection.root/root-collection-with-ui-details nil))]]]
+    {:select    [[:action.id :entity_id] [:action.name :name] [location :location]]
+     :from      [:action]
+     :left-join [:collection [:= :action.collection_id :collection.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [[:or
+                        [:and
+                         [:not= :action.model_id nil]
+                         (collections.listing/visible-in-collections-clause :action opts include-archived nil)]
+                        [:and
+                         [:= :action.model_id nil]
+                         (collections.listing/visible-in-collections-clause :action opts include-archived :data-actions)]]
+                       (collections.listing/archived-clause :action include-archived)
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :action :collection))
+                       (dependencies/search-clause :action.name location search-text)])}))

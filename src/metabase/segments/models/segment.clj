@@ -231,7 +231,8 @@
                           [:= :collection.id :table.collection_id]]]}}})
 
 (defmethod dependencies/spec :model/Segment [_model]
-  {:type :segment
+  {:type  :segment
+   :items segments.db/dependency-segment-items
 
    :dependencies segments.dependencies/dependencies
    :analysis     segments.dependencies/analysis})

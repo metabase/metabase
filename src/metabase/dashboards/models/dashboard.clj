@@ -590,7 +590,8 @@
    :render     dashboards.staleness/render})
 
 (defmethod dependencies/spec :model/Dashboard [_model]
-  {:type :dashboard
+  {:type  :dashboard
+   :items dashboards.db/dependency-dashboard-items
 
    :hydrate      dashboards.dependencies/hydrate
    :dependencies dashboards.dependencies/dependencies})
