@@ -53,9 +53,7 @@
     properties :- ::run-changes]
    (finish-active-run! model
                        run-id
-                       (merge properties
-                              {:status    :succeeded
-                               :is_active nil}))))
+                       (merge properties {:status :succeeded}))))
 
 (mu/defn fail-started-run! :- :int
   "Mark the started active run as failed and inactive."
@@ -64,9 +62,7 @@
    properties :- ::run-changes]
   (finish-active-run! model
                       run-id
-                      (merge properties
-                             {:status    :failed
-                              :is_active nil})))
+                      (merge properties {:status :failed})))
 
 (mu/defn cancel-started-run! :- :int
   "Mark an active run as canceled; a finished run is never resurrected into a canceled state.
@@ -75,9 +71,8 @@
    run-id :- ms/PositiveInt]
   (finish-active-run! model
                       run-id
-                      {:status    :canceled
-                       :is_active nil
-                       :message   "Canceled"}))
+                      {:status  :canceled
+                       :message "Canceled"}))
 
 (mu/defn cancel! :- :boolean
   "Cancel an in-progress coordinated run: mark it canceled and request cancellation of its

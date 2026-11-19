@@ -33,8 +33,9 @@
 
 (t2/define-before-update :model/TransformRun
   [run]
-  (cond-> run
-    (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
+  (when (transforms.models.u/ends-run? run)
+    (transforms.db/delete-cancelation! (:id run)))
+  (transforms.models.u/with-end-of-run run))
 
 (t2/deftransforms :model/TransformRun
   {:status     mi/transform-keyword
@@ -42,12 +43,13 @@
 
 (t2/define-before-insert :model/TransformRun
   [{:keys [transform_id] :as run}]
-  (if-let [transform (some-> transform_id transforms.db/transform-snapshot)]
-    (assoc run
-           :transform_name      (:name transform)
-           :transform_entity_id (:entity_id transform)
-           :metered_as          (premium-features/transform-metered-as (:source_type transform)))
-    run))
+  (let [run (transforms.models.u/with-activity-of-new-run run)]
+    (if-let [transform (some-> transform_id transforms.db/transform-snapshot)]
+      (assoc run
+             :transform_name      (:name transform)
+             :transform_entity_id (:entity_id transform)
+             :metered_as          (premium-features/transform-metered-as (:source_type transform)))
+      run)))
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
 (methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
@@ -106,8 +108,7 @@
     properties   :- ::transforms.schema/transform-run.update]
    (let [run (transforms.db/insert-run! (assoc properties
                                                :transform_id transform-id
-                                               :status :started
-                                               :is_active true))]
+                                               :status :started))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start
                             (cond-> {:object run}
@@ -120,21 +121,13 @@
    (succeed-started-run! run-id {}))
   ([run-id     :- ms/PositiveInt
     properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:status    :succeeded
-                                                      :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+   (transforms.db/finish-active-run! run-id (merge properties {:status :succeeded}))))
 
 (mu/defn fail-started-run! :- :int
   "Mark the started active run as failed and inactive."
   [run-id     :- ms/PositiveInt
    properties :- ::transforms.schema/transform-run.update]
-  (u/prog1 (transforms.db/finish-active-run! run-id
-                                             (merge properties
-                                                    {:status    :failed
-                                                     :is_active nil}))
-    (cancel/delete-cancelation! run-id)))
+  (transforms.db/finish-active-run! run-id (merge properties {:status :failed})))
 
 (mu/defn cancel-run! :- :int
   "Cancel a started run."
@@ -142,11 +135,7 @@
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id     :- ms/PositiveInt
     properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:status    :canceled
-                                                      :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+   (transforms.db/finish-active-run! run-id (merge properties {:status :canceled}))))
 
 (mu/defn- publish-timeout-event! :- :nil
   "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
@@ -168,10 +157,8 @@
     properties :- ::transforms.schema/transform-run.update]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:message   "Timed out"
-                                                      :status    :timeout
-                                                      :is_active nil}))
-     (cancel/delete-cancelation! run-id)
+                                                     {:message "Timed out"
+                                                      :status  :timeout}))
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
        (when-let [run (transforms.db/run run-id)]

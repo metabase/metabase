@@ -22,8 +22,7 @@
 
 (t2/define-before-update :model/TransformJobRun
   [run]
-  (cond-> run
-    (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
+  (transforms.models.u/with-end-of-run run))
 
 (t2/deftransforms :model/TransformJobRun
   {:status mi/transform-keyword
@@ -31,9 +30,10 @@
 
 (t2/define-before-insert :model/TransformJobRun
   [{:keys [job_id] :as run}]
-  (if-let [job (some-> job_id transforms.db/job-snapshot)]
-    (assoc run :job_name (some-> (:name job) str) :job_entity_id (:entity_id job))
-    run))
+  (let [run (transforms.models.u/with-activity-of-new-run run)]
+    (if-let [job (some-> job_id transforms.db/job-snapshot)]
+      (assoc run :job_name (some-> (:name job) str) :job_entity_id (:entity_id job))
+      run)))
 
 (mu/defn latest-runs :- [:maybe [:vector ::transforms.schema/transform-job-run]]
   "Return the latest runs for `job-ids`."
@@ -49,8 +49,7 @@
     run-method :- [:enum :manual :cron]]
    (transforms.db/insert-job-run! {:job_id     job-id
                                    :run_method run-method
-                                   :status     :started
-                                   :is_active  true})))
+                                   :status     :started})))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-job-run]]
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator

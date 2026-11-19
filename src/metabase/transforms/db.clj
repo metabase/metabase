@@ -533,10 +533,9 @@
   (t2/update! :model/TransformRun
               :id [:in run-ids]
               :is_active true
-              {:status    :canceled
-               :end_time  :%now
-               :is_active nil
-               :message   "Canceled by user but could not guarantee run stopped."}))
+              {:status   :canceled
+               :end_time :%now
+               :message  "Canceled by user but could not guarantee run stopped."}))
 
 (mu/defn mark-run-canceling!
   "Set the status of the TransformRun with `run-id` to canceling."
@@ -568,10 +567,10 @@
   (t2/select [:model/TransformRunCancelation :run_id :time]
              :time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]))
 
-(mu/defn delete-cancelation-for-inactive-run!
-  "Delete the TransformRunCancelation of the TransformRun with `run-id` if that run is no longer active."
+(mu/defn delete-cancelation!
+  "Delete the TransformRunCancelation of the TransformRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/delete! :model/TransformRunCancelation {:where [:and [:= :run_id run-id] no-active-run-clause]}))
+  (t2/delete! :model/TransformRunCancelation :run_id run-id))
 
 (mu/defn delete-cancelations-for-inactive-runs!
   "Delete every TransformRunCancelation whose run is no longer active."

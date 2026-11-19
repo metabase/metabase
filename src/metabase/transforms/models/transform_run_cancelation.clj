@@ -33,11 +33,6 @@
   []
   (transforms.db/cancelations-reducible))
 
-(mu/defn delete-cancelation!
-  "Delete a cancelation once it has been handled."
-  [run-id :- ms/PositiveInt]
-  (transforms.db/delete-cancelation-for-inactive-run! run-id))
-
 (mu/defn delete-old-canceling-runs!
   "Delete cancelations for runs that are no longer running."
   []

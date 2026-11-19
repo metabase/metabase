@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.util
   (:require
+   [metabase.models.interface :as mi]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -13,12 +14,28 @@
   "The statuses of a run that has ended."
   #{:succeeded :failed :canceled :timeout})
 
-(defn ended-without-end-time?
-  "Whether the pending changes of `run` move it to a terminal status and leave its `end_time` unset."
+(defn- ended?
+  "Whether `status` is one of a run that has ended."
+  [status]
+  (contains? terminal-statuses (keyword status)))
+
+(defn with-activity-of-new-run
+  "`run`, a row an INSERT writes, with the `is_active` its status gives."
+  [run]
+  (assoc run :is_active (when-not (ended? (:status run)) true)))
+
+(defn with-end-of-run
+  "`run`, an update, made inactive and given an `end_time` when its pending changes move it to a terminal status."
   [run]
   (let [changes (t2/changes run)]
-    (and (contains? terminal-statuses (keyword (:status changes)))
-         (not (contains? changes :end_time)))))
+    (cond-> run
+      (ended? (:status changes))                                            (assoc :is_active nil)
+      (and (ended? (:status changes)) (not (contains? changes :end_time))) (assoc :end_time (mi/now)))))
+
+(defn ends-run?
+  "Whether the pending changes of `run` move it to a terminal status."
+  [run]
+  (ended? (:status (t2/changes run))))
 
 (mu/defn timestamp-range :- [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]
   "Parse `date-string` (in the same format as the query-processor date parameter, e.g. \"2025-01\",
