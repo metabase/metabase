@@ -1279,7 +1279,7 @@ async function findRowStatus(rowName: string) {
 /** All permissions on a dashboard with two tables: one value per table more than the cards above it show. */
 function findAllPermissions() {
   return screen.findByRole("button", {
-    name: /All permissions on this dashboard \(5\)/,
+    name: /All permissions \(5\)/,
   });
 }
 

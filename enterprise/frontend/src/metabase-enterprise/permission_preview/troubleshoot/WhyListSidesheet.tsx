@@ -841,7 +841,7 @@ function getItemSectionsCopy(itemType: ItemType, permissionCount: number) {
         dataInfo: t`View data on each table decides whether the dashboard's results load. Row and column security shows only the rows that match the person's user attributes.`,
         explore: t`Exploring this dashboard`,
         exploreInfo: t`Create queries on each table decides whether the person can explore the dashboard's results or start a new question from those results. Editing the dashboard also needs Curate on the dashboard's collection.`,
-        allPermissions: t`All permissions on this dashboard (${permissionCount})`,
+        allPermissions: t`All permissions (${permissionCount})`,
       };
     case "question":
       return {
@@ -851,7 +851,7 @@ function getItemSectionsCopy(itemType: ItemType, permissionCount: number) {
         dataInfo: t`View data on each table decides whether the question's results load. Row and column security shows only the rows that match the person's user attributes.`,
         explore: t`Exploring this question`,
         exploreInfo: t`Create queries on each table decides whether the person can explore the question's results or start a new question from those results. Editing the question also needs Curate on the question's collection.`,
-        allPermissions: t`All permissions on this question (${permissionCount})`,
+        allPermissions: t`All permissions (${permissionCount})`,
       };
     case "model":
       return {
@@ -861,7 +861,7 @@ function getItemSectionsCopy(itemType: ItemType, permissionCount: number) {
         dataInfo: t`View data on each table decides whether the model's results load. Row and column security shows only the rows that match the person's user attributes.`,
         explore: t`Exploring this model`,
         exploreInfo: t`Create queries on each table decides whether the person can explore the model's results or start a new question from those results. Editing the model also needs Curate on the model's collection.`,
-        allPermissions: t`All permissions on this model (${permissionCount})`,
+        allPermissions: t`All permissions (${permissionCount})`,
       };
     case "metric":
       return {
@@ -871,7 +871,7 @@ function getItemSectionsCopy(itemType: ItemType, permissionCount: number) {
         dataInfo: t`View data on each table decides whether the metric's results load. Row and column security shows only the rows that match the person's user attributes.`,
         explore: t`Exploring this metric`,
         exploreInfo: t`Create queries on each table decides whether the person can explore the metric's results or start a new question from those results. Editing the metric also needs Curate on the metric's collection.`,
-        allPermissions: t`All permissions on this metric (${permissionCount})`,
+        allPermissions: t`All permissions (${permissionCount})`,
       };
   }
 }
