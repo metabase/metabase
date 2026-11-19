@@ -1,3 +1,5 @@
+import Color from "color";
+
 const { H } = cy;
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -432,6 +434,15 @@ describe("scenarios > metrics > explorer", () => {
           cy.findByText(year).should("be.visible");
         });
       });
+
+      cy.log("each breakout color reaches the real chart");
+      H.MetricsViewer.breakoutLegend()
+        .findAllByTestId("breakout-legend-dot")
+        .should("have.length", 5)
+        .each(($dot) => {
+          const hex = Color($dot.css("background-color")).hex();
+          H.echartsContainer().find(`path[stroke="${hex}"]`).should("exist");
+        });
 
       H.MetricsViewer.searchBarPills()
         .contains("[data-testid=metrics-viewer-pill]", "Count of orders")
