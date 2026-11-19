@@ -12,7 +12,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.test-util :as driver.tu]
-   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -42,6 +41,15 @@
   [field-name :- :keyword]
   (name (mt/format-name (name field-name))))
 
+(defn- row-input
+  "A `:model.row/*` input for `table` of the current test dataset, with the primary key `pk` (e.g. `{:id 1}`) when it is
+  given."
+  ([table]
+   {:database (mt/id)
+    :table-id (mt/id table)})
+  ([table pk]
+   (assoc (row-input table) :pk (update-keys pk format-field-name))))
+
 (defn- categories-row-count []
   (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
 
@@ -50,7 +58,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action! :model.row/create
-                                                (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
+                                                (assoc (row-input :categories) :create-row {(format-field-name :name) "created_row"}))]
           (is (=? {:created-row {(format-field-name :id)   76
                                  (format-field-name :name) "created_row"}}
                   response)
@@ -74,7 +82,7 @@
                                           :mysql    #"Field 'name' doesn't have a default value|Incorrect integer value: 'created_row' for column 'id'")
                               ;; bad data -- ID is a string instead of an Integer.
                               (actions/perform-action! :model.row/create
-                                                       (assoc (mt/mbql-query categories) :create-row {(format-field-name :id) "created_row"}))))
+                                                       (assoc (row-input :categories) :create-row {(format-field-name :id) "created_row"}))))
         (testing "no row should have been inserted"
           (is (= 75
                  (categories-row-count))))))))
@@ -85,7 +93,7 @@
       (with-actions-test-data-and-actions-permissively-enabled!
         (is (= {:rows-updated 1}
                (actions/perform-action! :model.row/update
-                                        (assoc (mt/mbql-query categories {:filter [:= $id 50]})
+                                        (assoc (row-input :categories {:id 50})
                                                :update-row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
@@ -98,7 +106,7 @@
       (with-actions-test-data-and-actions-permissively-enabled!
         (is (= {:rows-deleted 1}
                (actions/perform-action! :model.row/delete
-                                        (mt/mbql-query categories {:filter [:= $id 50]})))
+                                        (row-input :categories {:id 50})))
             "Delete should return the right shape")
         (is (= 74
                (categories-row-count)))
@@ -110,7 +118,7 @@
   wrap your head around them. Use them for validating preconditions and stuff like that."
   []
   [{:action       :model.row/create
-    :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
+    :request-body (assoc (row-input :categories) :create-row {(format-field-name :name) "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row
                     (is (malli= [:map {:closed true}
@@ -119,14 +127,14 @@
                                                 [(format-field-name :name) ms/NonBlankString]]]]
                                 result)))}
    {:action       :model.row/update
-    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
+    :request-body (assoc (row-input :categories {:id 1})
                          :update-row {(format-field-name :name) "updated_row"})
     :expected     {:rows-updated 1}}
    {:action       :model.row/delete
-    :request-body (mt/mbql-query categories {:filter [:= $id 1]})
+    :request-body (row-input :categories {:id 1})
     :expected     {:rows-deleted 1}}
    {:action       :model.row/update
-    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
+    :request-body (assoc (row-input :categories {:id 10})
                          :update-row {(format-field-name :name) "new-category-name"})
     :expected     {:rows-updated 1}}])
 
@@ -173,65 +181,88 @@
                                                           :table-id table-id
                                                           :values   {"name" "Toucannery"}}]))))))
 
-(defn- row-action? [action]
-  (= (namespace action) "row"))
+(defn- make-venues-price-the-entity-key!
+  "Make `venues.price` the entity key of `venues`, in place of `id`. Many venues share a price, so a row action by
+  entity key matches several rows."
+  []
+  (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
+  (t2/update! :model/Field :id (mt/id :venues :price) {:semantic_type :type/PK}))
 
-(deftest validation-test
-  (mt/with-actions-enabled
-    (doseq [{:keys [action request-body]} (mock-requests)
-            :when (row-action? action)]
-      (testing (str action " without :query")
-        (is (thrown-with-msg?
-             Exception
-             #"\QNative queries must not specify `:query`; MBQL queries must not specify `:native`.\E"
-             (actions/perform-action! action (-> request-body
-                                                 (dissoc :query)
-                                                 (assoc :native {:query "Not really a SQL query"})))))))))
+(defn- venues-with-price-count [price]
+  (first (mt/first-row (mt/run-mbql-query venues {:aggregation [[:count]], :filter [:= $price price]}))))
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-enabled
-      (mt/with-test-user :crowberto
-        (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
-                                                      :update-row {(format-field-name :name) "new-name"})
-              query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
-                                                      :update-row {(format-field-name :name) "new-name"})
-              result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+    (mt/with-actions-test-data-tables #{"venues" "categories"}
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (make-venues-price-the-entity-key!)
+        (let [result-count (venues-with-price-count 2)]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
-                                (actions/perform-action! :model.row/update query-that-returns-more-than-one)))
+                                (actions/perform-action! :model.row/update
+                                                         (assoc (row-input :venues {:price 2})
+                                                                :update-row {(format-field-name :name) "new-name"}))))
           (is (thrown-with-msg? Exception #"Sorry, the row you're trying to update doesn't exist"
-                                (actions/perform-action! :model.row/update query-that-returns-zero-row)))
-          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
-              "The result-count after a rollback must remain the same!"))))))
+                                (actions/perform-action! :model.row/update
+                                                         (assoc (row-input :venues {:price 999})
+                                                                :update-row {(format-field-name :name) "new-name"}))))
+          (is (= result-count
+                 (venues-with-price-count 2))
+              "The result-count after a rollback must remain the same!")
+          (is (= []
+                 (mt/rows (mt/run-mbql-query venues {:filter [:= $name "new-name"]})))
+              "No venue may have been renamed"))))))
 
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-enabled
-      (mt/with-test-user :crowberto
-        (let [query-that-returns-more-than-one (mt/mbql-query checkins {:filter [:>= $id 1]})
-              query-that-returns-zero-row      (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
-              result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
+    (mt/with-actions-test-data-tables #{"venues" "categories"}
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (make-venues-price-the-entity-key!)
+        (let [result-count (venues-with-price-count 2)]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
-                                (actions/perform-action! :model.row/delete query-that-returns-more-than-one)))
+                                (actions/perform-action! :model.row/delete (row-input :venues {:price 2}))))
           (is (thrown-with-msg? Exception #"Sorry, the row you're trying to delete doesn't exist"
-                                (actions/perform-action! :model.row/delete query-that-returns-zero-row)))
-          (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
+                                (actions/perform-action! :model.row/delete (row-input :venues {:price 999}))))
+          (is (= result-count
+                 (venues-with-price-count 2))
               "The result-count after a rollback must remain the same!"))))))
+
+(deftest row-update-and-delete-need-the-whole-primary-key-test
+  (testing ":model.row/update and :model.row/delete need a value for each primary key column, and nothing else"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (is (thrown-with-msg? Exception #"The primary key must have a value for each primary key column"
+                              (actions/perform-action! :model.row/delete (row-input :categories {:name "Winery"}))))
+        (is (thrown-with-msg? Exception #"The primary key must have a value for each primary key column"
+                              (actions/perform-action! :model.row/update
+                                                       (assoc (row-input :categories {:id 1, :name "Winery"})
+                                                              :update-row {(format-field-name :name) "new-name"}))))
+        (is (= 75
+               (categories-row-count)))))))
+
+(defn- not-an-integer-error
+  "The error the database of the current driver gives for comparing an integer column with the string `s`."
+  [s]
+  (re-pattern (str "(?s).*"
+                   (case driver/*driver*
+                     :h2       (format "Data conversion error converting \"%s\"" s)
+                     :postgres (format "invalid input syntax for (?:type )?integer: \"%s\"" s)
+                     :mysql    (format "Truncated incorrect DOUBLE value: '%s'" s))
+                   ".*")))
 
 (deftest row-delete-unparseable-values-test
   (testing "row/delete"
     (testing "should return error message if value cannot be parsed correctly for Field in question"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (with-actions-test-data-and-actions-permissively-enabled!
-          (is (thrown-with-msg? Exception #"Error filtering against :type/(Big)?Integer Field: unable to parse String \"one\" to a :type/(Big)?Integer"
-                                ;; TODO -- this really should be returning a 400 but we need to rework the code in
-                                ;; [[metabase.driver.sql-jdbc.actions]] a little to have that happen without changing other stuff
-                                ;; that SHOULD be returning a 404
-                                (actions/perform-action! :model.row/delete
-                                                         (mt/mbql-query categories {:filter [:= $id "one"]})))
-              "Delete should return the right shape")
+          (is (= {:status-code 400}
+                 (try
+                   (actions/perform-action! :model.row/delete (row-input :categories {:id "one"}))
+                   nil
+                   (catch Exception e
+                     (is (re-find (not-an-integer-error "one") (ex-message e)))
+                     (select-keys (ex-data e) [:status-code])))))
           (testing "no rows should have been deleted"
             (is (= 75
                    (categories-row-count)))))))))
@@ -250,7 +281,7 @@
                                               :h2       #"Referential integrity constraint violation.*PUBLIC\.VENUES FOREIGN KEY\(CATEGORY_ID\) REFERENCES PUBLIC\.CATEGORIES\(ID\).*"
                                               :postgres #"violates foreign key constraint .*"
                                               :mysql    #"Cannot delete or update a parent row: a foreign key constraint fails .*")
-                                  (actions/perform-action! :model.row/delete (mt/mbql-query categories {:filter [:= $id 58]})))
+                                  (actions/perform-action! :model.row/delete (row-input :categories {:id 58})))
                 "Delete should return the right shape")
             (testing "no rows should have been deleted"
               (is (= 75
@@ -264,6 +295,32 @@
        (is (~'=?
             ~expected-schema
             (assoc (ex-data e#) ::message (ex-message e#)))))))
+
+;; A driver that can act on only one row at a time.
+(driver/register! ::no-bulk-actions, :parent :h2)
+
+(defmethod driver/database-supports? [::no-bulk-actions :actions/bulk]
+  [_driver _feature _database]
+  false)
+
+(deftest bulk-row-actions-need-actions-bulk-test
+  (testing "Without :actions/bulk, a row action acts on one row at a time"
+    (driver/with-driver ::no-bulk-actions
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [table-id (mt/id :categories)
+              name-col (format-field-name :name)
+              input    (fn [new-name]
+                         {:database (mt/id), :table-id table-id, :row {name-col new-name}})]
+          (testing "two rows are refused before any is written"
+            (is (thrown-with-msg? Exception #"table.row/create can only act on one row at a time for this database, but got 2\."
+                                  (actions/perform-action-v2! :table.row/create test-scope [(input "NEW_A") (input "NEW_B")])))
+            (is (= 75
+                   (categories-row-count))))
+          (testing "one row is fine"
+            (is (=? [{:table-id table-id, :op :created, :row {name-col "NEW_A"}}]
+                    (:outputs (actions/perform-action-v2! :table.row/create test-scope [(input "NEW_A")]))))
+            (is (= 76
+                   (categories-row-count)))))))))
 
 (deftest table-row-create-happy-path-test
   (testing "table.row/create"
@@ -419,7 +476,7 @@
             (is-ex-data
              {:errors
               [{:index 1
-                :error #".*Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
+                :error (not-an-integer-error "foo")}
                {:index 3
                 :error #"Sorry, the row you're trying to delete doesn't exist"}]
               :status-code 400}
@@ -698,7 +755,7 @@
         (is (= {:rows-updated 1}
                (actions/perform-action!
                 :model.row/update
-                (assoc (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
+                (assoc (row-input :ants {:id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"})
                        :update-row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
@@ -714,7 +771,7 @@
       (with-uuids-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action!
                         :model.row/create
-                        (assoc (mt/mbql-query ants)
+                        (assoc (row-input :ants)
                                :create-row {(format-field-name :id) "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
                                             (format-field-name :name) "created_row"}))]
           (is (=? {:created-row {(format-field-name :id)   #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
@@ -735,11 +792,54 @@
         (is (= {:rows-deleted 1}
                (actions/perform-action!
                 :model.row/delete
-                (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
+                (row-input :ants {:id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"})))
             "Delete should return the right shape")
         (is (= 2 (first (mt/first-row (mt/run-mbql-query ants {:aggregation [[:count]], :limit 1})))))
         (is (= [] (mt/rows (mt/run-mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Selecting for deleted rows should return an empty result")))))
+
+(defmacro ^:private with-text-pk-test-data-and-actions-permissively-enabled!
+  "A temporary `codes` table with a text primary key, with actions enabled and full permissions."
+  {:style/indent 0}
+  [& body]
+  `(mt/with-temp-test-data [["codes"
+                             [{:field-name "code"
+                               :base-type  {:native "VARCHAR(32)"}
+                               :pk?        true}
+                              {:field-name "name"
+                               :base-type  :type/Text}]
+                             [["a-1" "Tim"]
+                              ["b-2" "Bob"]
+                              ["c-3" "Jane"]]]]
+     (mt/with-actions-enabled
+       (mt/with-test-user :crowberto
+         ~@body))))
+
+(defn- codes-names []
+  (mapv last (mt/rows (mt/run-mbql-query codes {:order-by [[:asc $code]]}))))
+
+(deftest text-pk-row-actions-test
+  (testing "row/update and row/delete on a table with a text primary key"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-text-pk-test-data-and-actions-permissively-enabled!
+        (is (= {:rows-updated 1}
+               (actions/perform-action!
+                :model.row/update
+                (assoc (row-input :codes {:code "b-2"})
+                       :update-row {(format-field-name :name) "Robert"}))))
+        (is (= ["Tim" "Robert" "Jane"]
+               (codes-names)))
+        (is (= {:rows-deleted 1}
+               (actions/perform-action!
+                :model.row/delete
+                (row-input :codes {:code "a-1"}))))
+        (is (= ["Robert" "Jane"]
+               (codes-names)))
+        (testing "a key that matches no row"
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to delete doesn't exist"
+                                (actions/perform-action!
+                                 :model.row/delete
+                                 (row-input :codes {:code "zzz"})))))))))
 
 (deftest test-permission-denied-errors
   (testing "Permission denied errors should return nice error messages"
@@ -845,7 +945,7 @@
               (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (mt/with-test-user :crowberto
               (actions/perform-action! :model.row/create
-                                       (assoc (mt/mbql-query categories)
+                                       (assoc (row-input :categories)
                                               :create-row {(format-field-name :name) "write_pool_test"})))
             (testing "write pool is created during action execution"
               (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key)))
@@ -857,7 +957,7 @@
     (with-actions-test-data-and-actions-permissively-enabled!
       (let [since (mt/latest-query-execution-id)
             _     (actions/perform-action! :model.row/create
-                                           (assoc (mt/mbql-query categories)
+                                           (assoc (row-input :categories)
                                                   :create-row {(format-field-name :name) "audited_row"}))
             rows  (mt/action-executions since)]
         (is (= 1 (count rows)))

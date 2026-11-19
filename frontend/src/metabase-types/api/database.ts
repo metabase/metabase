@@ -14,6 +14,7 @@ export type DatabaseSettings = {
 
 export type DatabaseFeature =
   | "actions"
+  | "actions/bulk"
   | "actions/data-editing"
   | "basic-aggregations"
   | "binning"

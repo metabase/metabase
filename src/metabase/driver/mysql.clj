@@ -138,7 +138,7 @@
   [_driver database]
   (:db (:details database)))
 
-(doseq [feature [:actions :actions/custom :actions/data-editing]]
+(doseq [feature [:actions :actions/bulk :actions/custom :actions/data-editing]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
     ;; Only supported for MySQL right now. Revise when a child driver is added.

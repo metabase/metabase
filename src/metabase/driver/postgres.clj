@@ -126,6 +126,7 @@
 
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
+                 :actions/bulk
                  :actions/custom
                  :actions/data-editing
                  :table-privileges

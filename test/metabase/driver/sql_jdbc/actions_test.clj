@@ -66,7 +66,9 @@
           ;; this `category_id` -- it's an FK constraint violation.
           (mt/as-admin
             (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                  (actions/perform-action! :model.row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+                                  (actions/perform-action! :model.row/delete {:database (mt/id)
+                                                                              :table-id (mt/id :categories)
+                                                                              :pk       {(mt/format-name "id") 58}}))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
 
@@ -121,8 +123,7 @@
                 :status-code 400}
                (perform-action-ex-data! :model.row/create (mt/$ids {:create-row {group-name "admin"}
                                                                     :database   db-id
-                                                                    :query      {:source-table $$group}
-                                                                    :type       :query}))))))))
+                                                                    :table-id   $$group}))))))))
 
 (deftest action-error-handling-not-null-constraint-creating-test-2
   (test-action-error-handling!
@@ -135,8 +136,7 @@
                   :status-code 400}
                  (perform-action-ex-data! :model.row/create (mt/$ids {:create-row {group-name "admin"}
                                                                       :database   db-id
-                                                                      :query      {:source-table $$group}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$group})))))))))
 
 (deftest action-error-handling-not-null-constraint-updating-test
   (test-action-error-handling!
@@ -149,9 +149,8 @@
                   :status-code 400}
                  (perform-action-ex-data! :model.row/update (mt/$ids {:update-row {group-ranking nil}
                                                                       :database   db-id
-                                                                      :query      {:filter       [:= $group.id 1]
-                                                                                   :source-table $$group}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$group
+                                                                      :pk         {(field-id->name %group.id) 1}})))))))))
 
 (deftest action-error-handling-unique-constraint-creating-test
   (test-action-error-handling!
@@ -165,8 +164,7 @@
                  (perform-action-ex-data! :model.row/create (mt/$ids {:create-row {group-name    "new"
                                                                                    group-ranking 1}
                                                                       :database   db-id
-                                                                      :query      {:source-table $$group}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$group})))))))))
 
 (deftest action-error-handling-unique-constraint-updating-test
   (test-action-error-handling!
@@ -179,9 +177,8 @@
                   :status-code 400}
                  (perform-action-ex-data! :model.row/update (mt/$ids {:update-row {group-ranking 2}
                                                                       :database   db-id
-                                                                      :query      {:filter [:= $group.id 1]
-                                                                                   :source-table $$group}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$group
+                                                                      :pk         {(field-id->name %group.id) 1}})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::action-error-handling-incorrect-type-error-message]
   [_driver _feature _database]
@@ -209,8 +206,7 @@
                  (perform-action-ex-data! :model.row/create (mt/$ids {:create-row {group-name    "new"
                                                                                    group-ranking "S"}
                                                                       :database   db-id
-                                                                      :query      {:source-table $$group}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$group})))))))))
 
 (deftest action-error-handling-incorrect-type-updating-test
   (test-action-error-handling!
@@ -228,9 +224,8 @@
                                  {})}
                  (perform-action-ex-data! :model.row/update (mt/$ids {:update-row {group-ranking "S"}
                                                                       :database   db-id
-                                                                      :query      {:filter [:= $group.id 1]
-                                                                                   :source-table $$group}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$group
+                                                                      :pk         {(field-id->name %group.id) 1}})))))))))
 
 (deftest action-error-handling-fk-constraint-creating-test
   (test-action-error-handling!
@@ -244,8 +239,7 @@
                  (perform-action-ex-data! :model.row/create (mt/$ids {:create-row {user-name    "new"
                                                                                    user-group-id 999}
                                                                       :database   db-id
-                                                                      :query      {:source-table $$user}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$user})))))))))
 
 (deftest action-error-handling-fk-constraint-updating-test
   (test-action-error-handling!
@@ -258,9 +252,8 @@
                   :status-code 400}
                  (perform-action-ex-data! :model.row/update (mt/$ids {:update-row {user-group-id 999}
                                                                       :database   db-id
-                                                                      :query      {:filter [:= $user.id 1]
-                                                                                   :source-table $$user}
-                                                                      :type       :query})))))))))
+                                                                      :table-id   $$user
+                                                                      :pk         {(field-id->name %user.id) 1}})))))))))
 
 (deftest action-error-handling-fk-constraint-deleting-test
   (test-action-error-handling!
@@ -272,9 +265,8 @@
                   :type        actions.error/violate-foreign-key-constraint
                   :status-code 400}
                  (perform-action-ex-data! :model.row/delete (mt/$ids {:database db-id
-                                                                      :query    {:filter [:= $group.id 1]
-                                                                                 :source-table $$group}
-                                                                      :type     :query})))))))))
+                                                                      :table-id $$group
+                                                                      :pk       {(field-id->name %group.id) 1}})))))))))
 
 (deftest actions-return-rows-with-correct-names-test
   (testing "rows returned by perform action should match the name in metabase_field.name"

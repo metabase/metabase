@@ -94,6 +94,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:actions                   true
+                              :actions/bulk              true
                               :actions/custom            true
                               :actions/data-editing      true
                               :datetime-diff             true
