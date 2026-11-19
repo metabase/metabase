@@ -129,6 +129,29 @@
                                     :model_id "123\n"
                                     :action_type "card/read"))))))
 
+(deftest permission-debug-card-query-preview-attribute-values-test
+  (testing "GET /api/ee/permission_debug for card/query with the values picked in a preview"
+    (met/with-gtaps! {:gtaps {:venues {:remappings {"cat" [:dimension [:field (mt/id :venues :category_id) nil]]}}}}
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card card {:collection_id (:id collection)
+                                       :dataset_query (mt/mbql-query venues)}]
+        (let [check         (fn [& params]
+                              (apply mt/user-http-request :crowberto :get 200 "ee/permission_debug"
+                                     :user_id (str (mt/user->id :rasta))
+                                     :model_id (str (:id card))
+                                     :action_type "card/query"
+                                     params))
+              {:keys [preview_id]} (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                                         {:principal_type "user"
+                                                          :principal_id   (mt/user->id :rasta)
+                                                          :attributes     {"cat" "50"}})]
+          (testing "without the preview, the user's own attributes lack the value"
+            (is (= "denied" (:decision (check)))))
+          (testing "with the preview, the picked value counts"
+            (is (= "allow" (:decision (check :preview_id preview_id)))))
+          (testing "another preview's id doesn't"
+            (is (= "denied" (:decision (check :preview_id "another"))))))))))
+
 (deftest permission-debug-response-schema-test
   (testing "GET /api/ee/permission_debug response schema validation"
     (mt/with-temp [:model/Collection collection {}

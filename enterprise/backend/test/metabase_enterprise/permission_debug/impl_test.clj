@@ -480,11 +480,14 @@
     (f)))
 
 (defn- query-check
-  "The check Explain access asks for, as the admin about rasta."
-  [model-id action-type]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (permission-debug.impl/debug-permissions
-     {:user-id (mt/user->id :rasta) :model-id model-id :action-type action-type})))
+  "The check Explain access asks for, as the admin about rasta, with the attribute values picked in the preview."
+  ([model-id action-type]
+   (query-check model-id action-type nil))
+  ([model-id action-type attribute-overrides]
+   (mt/with-current-user (mt/user->id :crowberto)
+     (permission-debug.impl/debug-permissions
+      (cond-> {:user-id (mt/user->id :rasta) :model-id model-id :action-type action-type}
+        attribute-overrides (assoc :attribute-overrides attribute-overrides))))))
 
 (deftest debug-permissions-card-query-two-sandboxes-on-a-table-test
   (met/with-gtaps! {:gtaps      {:venues {:remappings (venues-category-remapping)}}
@@ -548,3 +551,81 @@
                                                     :tables             []
                                                     :conflicting-tables [(mt/id :venues)]}]}}
                   (select-keys (query-check (:id dashboard) :dashboard/query) [:decision :data])))))))))
+
+(deftest debug-permissions-card-query-sandbox-attribute-missing-test
+  (met/with-gtaps! {:gtaps {:venues {:remappings (venues-category-remapping)}}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (testing "a user without the attribute a row and column security rule reads can't load the card"
+        (is (= {:decision "denied"
+                :data     {:missing-attributes [{:attribute "cat" :table-id (mt/id :venues) :group-id (:id &group)}]}}
+               (select-keys (query-check (:id card) :card/query) [:decision :data])))
+        (testing "as the query processor does when the card runs"
+          (is (re-find #"Query requires user attribute `cat`"
+                       (str (mt/user-http-request :rasta :post 400 "dataset" (mt/mbql-query venues)))))))
+      (testing "a value picked in the preview makes it load"
+        (is (= {:decision "allow" :data {}}
+               (select-keys (query-check (:id card) :card/query {"cat" "50"}) [:decision :data]))))
+      (testing "an empty value picked in the preview takes the attribute away again"
+        (met/with-user-attributes! :rasta {"cat" 50}
+          (is (= {:decision "allow" :data {}}
+                 (select-keys (query-check (:id card) :card/query) [:decision :data])))
+          (is (= "denied"
+                 (:decision (query-check (:id card) :card/query {"cat" ""})))))))))
+
+(deftest debug-permissions-card-query-sandbox-attribute-missing-reached-through-a-filter-test
+  (met/with-gtaps! {:gtaps {:venues   {:remappings (venues-category-remapping)}
+                            ;; Checkins filters by its venue's category, so it reads Venues too
+                            :checkins {:remappings {"cat" [:dimension [:field (mt/id :venues :category_id)
+                                                                       {:source-field (mt/id :checkins :venue_id)}]]}}}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query checkins {:limit 1})}]
+      (testing "a card that reads only Checkins also needs what the policy on Venues reads"
+        (is (= #{{:attribute "cat" :table-id (mt/id :venues)   :group-id (:id &group)}
+                 {:attribute "cat" :table-id (mt/id :checkins) :group-id (:id &group)}}
+               (set (:missing-attributes (:data (query-check (:id card) :card/query))))))))))
+
+(deftest debug-permissions-card-query-sandbox-attribute-missing-and-two-sandboxes-test
+  (met/with-gtaps! {:gtaps {:venues {:remappings (venues-category-remapping)}}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (do-with-second-venues-sandbox!
+       (fn []
+         (testing "the conflict and the missing attribute are both reported, each group's rule once"
+           (let [{:keys [decision data]} (query-check (:id card) :card/query)]
+             (is (= "denied" decision))
+             (is (= [(mt/id :venues)] (:conflicting-tables data)))
+             (is (= [["cat" (mt/id :venues)] ["cat" (mt/id :venues)]]
+                    (map (juxt :attribute :table-id) (:missing-attributes data))))
+             (is (= 2 (count (set (map :group-id (:missing-attributes data))))))))
+         (testing "once a value is picked, only the conflict is left"
+           (is (= {:decision "denied" :data {:conflicting-tables [(mt/id :venues)]}}
+                  (select-keys (query-check (:id card) :card/query {"cat" "50"}) [:decision :data])))))))))
+
+(deftest debug-permissions-dashboard-query-sandbox-attribute-missing-test
+  (met/with-gtaps! {:gtaps {:venues {:remappings (venues-category-remapping)}}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard dashboard {:collection_id (:id collection)}
+                   :model/Card venues-card {:collection_id (:id collection)
+                                            :dataset_query (mt/mbql-query venues)}
+                   :model/Card users-card {:collection_id (:id collection)
+                                           :dataset_query (mt/mbql-query users)}
+                   :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id venues-card)}
+                   :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id users-card)}]
+      (let [missing [{:attribute "cat" :table-id (mt/id :venues) :group-id (:id &group)}]]
+        (testing "the card that reads the table can't load, the other loads"
+          (is (= {:decision "limited"
+                  :data     {:card-count         2
+                             :blocked-card-count 1
+                             :missing-attributes missing
+                             :blocked-cards      [{:id                 (:id venues-card)
+                                                   :name               (:name venues-card)
+                                                   :tables             []
+                                                   :missing-attributes missing}]}}
+                 (select-keys (query-check (:id dashboard) :dashboard/query) [:decision :data]))))
+        (testing "a value picked in the preview makes both load"
+          (is (= {:decision "allow" :data {:card-count 2 :blocked-card-count 0}}
+                 (select-keys (query-check (:id dashboard) :dashboard/query {"cat" "50"}) [:decision :data]))))))))

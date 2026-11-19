@@ -38,6 +38,10 @@
   "Format of the response the Debugger will return"
   [:schema {:registry
             {::group-id :int
+             ::missing-attribute [:map {:closed true}
+                                  [:attribute :string]
+                                  [:table-id  pos-int?]
+                                  [:group-id  ::group-id]]
              ::perm-debug-info [:map {:closed true}
                                 [:model-type  [:enum "card" "dashboard" "collection" "invalid"]]
                                 [:model-id    :string]
@@ -54,6 +58,9 @@
                                                ;; the tables the queries reach that more than one group's row and column
                                                ;; security applies to
                                                [:conflicting-tables       {:optional true} [:sequential pos-int?]]
+                                               ;; the attributes the previewed person lacks that a row and column security
+                                               ;; rule on a table the queries reach reads
+                                               [:missing-attributes       {:optional true} [:sequential ::missing-attribute]]
                                                ;; each card that can't load, with the names of its blocked tables
                                                [:blocked-cards            {:optional true}
                                                 [:sequential [:map {:closed true}
@@ -61,7 +68,9 @@
                                                               [:name   :string]
                                                               [:tables [:sequential :string]]
                                                               [:conflicting-tables {:optional true}
-                                                               [:sequential pos-int?]]]]]]]
+                                                               [:sequential pos-int?]]
+                                                              [:missing-attributes {:optional true}
+                                                               [:sequential ::missing-attribute]]]]]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
@@ -70,11 +79,13 @@
   [:enum :card/read :card/query :card/download-data :dashboard/read :dashboard/query :collection/read])
 
 (def DebuggerArguments
-  "Arguments for the Debugger function. The model type being operated on is inferred by the requested action type"
+  "Arguments for the Debugger function. The model type being operated on is inferred by the requested action type.
+  `:attribute-overrides` are the attribute values an admin picked in a preview of the user, in place of the user's own."
   [:map
    [:user-id pos-int?]
    [:model-id pos-int?]
-   [:action-type ActionType]])
+   [:action-type ActionType]
+   [:attribute-overrides {:optional true} [:maybe [:map-of :string :string]]]])
 
 (defmulti debug-permissions
   "Debug permissions for a given entity and user.
@@ -241,34 +252,61 @@
         (keep #(some-> (field-id-in-target %) permission-debug.db/field-table-id))
         (vals attribute_remappings)))
 
-(defn- conflicting-table-ids
-  "The ids of the tables a query on `table-ids` reaches that have more than one enforced sandbox, which fails it
-  (`metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-sandbox-per-table`). A query reaches
-  the tables its enforced sandboxes filter by, and theirs in turn."
+(defn- reached-table-ids
+  "The ids of the tables a query on `table-ids` reaches: those, the tables their enforced sandboxes filter by, and
+  theirs in turn."
   [sandboxes-by-table table-ids]
   (loop [reached #{}
          pending (set table-ids)]
     (if (empty? pending)
-      (vec (sort (filter #(> (count (sandboxes-by-table %)) 1) reached)))
+      reached
       (let [reached (into reached pending)]
         (recur reached
                (set/difference (into #{} (mapcat #(mapcat filtered-table-ids (sandboxes-by-table %))) pending)
                                reached))))))
+
+(defn- conflicting-table-ids
+  "The ids of the tables a query on `table-ids` reaches that have more than one enforced sandbox, which fails it
+  (`metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-sandbox-per-table`)."
+  [sandboxes-by-table table-ids]
+  (vec (sort (filter #(> (count (sandboxes-by-table %)) 1) (reached-table-ids sandboxes-by-table table-ids)))))
+
+(defn- user-attributes
+  "The attribute values the query processor reads for the User with `user-id`, with the preview's picked
+  `attribute-overrides` in place of their own."
+  [user-id attribute-overrides]
+  (request/with-attribute-overrides (request/with-current-user user-id (api/current-user-attributes))
+    attribute-overrides))
+
+(defn- missing-attributes
+  "One `{:attribute :table-id :group-id}` per enforced sandbox on a table a query on `table-ids` reaches that reads an
+  attribute `attributes` lacks, which fails it (`metabase-enterprise.sandbox.query-processor.middleware.sandboxing/
+  attr-remapping->parameter`)."
+  [sandboxes-by-table attributes table-ids]
+  (vec (sort-by (juxt :table-id :attribute :group-id)
+                (for [table-id                                (reached-table-ids sandboxes-by-table table-ids)
+                      {:keys [group_id attribute_remappings]} (sandboxes-by-table table-id)
+                      attribute                               (keys attribute_remappings)
+                      :when                                   (not (get attributes attribute))]
+                  {:attribute attribute :table-id table-id :group-id group_id}))))
 
 (defn- card-table-ids
   [card]
   (-> card :dataset_query qp.preprocess/preprocess lib/all-source-table-ids set))
 
 (mu/defmethod debug-permissions :card/query :- DebuggerSchema
-  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
+  [{:keys [user-id model-id attribute-overrides] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/read))
    (let [card (permission-debug.db/card model-id)
          blocked-by-group (check-table-permissions user-id card
                                                    {:perms/view-data :blocked}
                                                    {:perms/view-data :legacy-no-self-service})
-         conflicting      (conflicting-table-ids (enforced-sandboxes-by-table user-id) (card-table-ids card))
-         fails?           (or (seq blocked-by-group) (seq conflicting))]
+         sandboxes-by-table (enforced-sandboxes-by-table user-id)
+         table-ids        (card-table-ids card)
+         conflicting      (conflicting-table-ids sandboxes-by-table table-ids)
+         missing          (missing-attributes sandboxes-by-table (user-attributes user-id attribute-overrides) table-ids)
+         fails?           (or (seq blocked-by-group) (seq conflicting) (seq missing))]
      {:decision    (if fails? "denied" "allow")
       :segment     #{}
       :model-type  "card"
@@ -278,7 +316,8 @@
                       (tru "User has permission to query this card"))]
       :data        (cond-> {}
                      (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group))
-                     (seq conflicting)            (assoc :conflicting-tables conflicting))
+                     (seq conflicting)            (assoc :conflicting-tables conflicting)
+                     (seq missing)                (assoc :missing-attributes missing))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :card/download-data :- DebuggerSchema
@@ -322,7 +361,7 @@
      :suggestions {}}))
 
 (mu/defmethod debug-permissions :dashboard/query :- DebuggerSchema
-  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
+  [{:keys [user-id model-id attribute-overrides] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :dashboard/read))
    (let [card-ids         (permission-debug.db/dashboard-card-ids model-id)
@@ -335,15 +374,20 @@
          sandboxes-by-table (enforced-sandboxes-by-table user-id)
          conflicts-by-card  (for [card cards]
                               (conflicting-table-ids sandboxes-by-table (card-table-ids card)))
-         failing-cards    (for [[card blocked conflicting] (map vector cards blocked-by-card conflicts-by-card)
-                                :when (or (seq blocked) (seq conflicting))]
+         attributes         (user-attributes user-id attribute-overrides)
+         missing-by-card    (for [card cards]
+                              (missing-attributes sandboxes-by-table attributes (card-table-ids card)))
+         failing-cards    (for [[card blocked conflicting missing] (map vector cards blocked-by-card conflicts-by-card missing-by-card)
+                                :when (or (seq blocked) (seq conflicting) (seq missing))]
                             (cond-> {:id     (:id card)
                                      :name   (:name card)
                                      ;; keyed by [db-name schema table-name]
                                      :tables (vec (sort (distinct (map last (keys blocked)))))}
-                              (seq conflicting) (assoc :conflicting-tables conflicting)))
+                              (seq conflicting) (assoc :conflicting-tables conflicting)
+                              (seq missing)     (assoc :missing-attributes missing)))
          failing-count    (count failing-cards)
-         conflicting      (vec (sort (distinct (apply concat conflicts-by-card))))]
+         conflicting      (vec (sort (distinct (apply concat conflicts-by-card))))
+         missing          (vec (sort-by (juxt :table-id :attribute :group-id) (distinct (apply concat missing-by-card))))]
      {:decision    (cond
                      (zero? failing-count)               "allow"
                      (= failing-count (count card-ids)) "denied"
@@ -358,7 +402,8 @@
                             :blocked-card-count failing-count}
                      (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group))
                      (seq failing-cards)          (assoc :blocked-cards (vec failing-cards))
-                     (seq conflicting)            (assoc :conflicting-tables conflicting))
+                     (seq conflicting)            (assoc :conflicting-tables conflicting)
+                     (seq missing)                (assoc :missing-attributes missing))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :collection/read :- DebuggerSchema

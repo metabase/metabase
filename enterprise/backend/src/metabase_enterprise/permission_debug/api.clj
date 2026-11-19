@@ -20,7 +20,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- permission-debug.impl/DebuggerSchema
   "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `action_type`.
-  The type of model we are debugging against is inferred by the `action_type`.
+  The type of model we are debugging against is inferred by the `action_type`. With `preview_id`, the attribute
+  values that preview of the user runs with replace the user's own.
 
   It will return:
   - `decision`: The overall permission decision (\"allow\", \"denied\", or \"limited\")
@@ -76,16 +77,19 @@
     }
     ```"
   [_route-params
-   {:keys [user_id model_id action_type]
+   {:keys [user_id model_id action_type preview_id]
     :or {}} :- [:map {:closed true}
                 [:user_id pos-int?]
                 [:model_id ms/PositiveInt]
-                [:action_type permission-debug.impl/ActionType]]
+                [:action_type permission-debug.impl/ActionType]
+                [:preview_id {:optional true} ms/NonBlankString]]
    _body]
   (permission-debug.impl/debug-permissions
-   {:user-id user_id
-    :model-id model_id
-    :action-type action_type}))
+   {:user-id             user_id
+    :model-id            model_id
+    :action-type         action_type
+    :attribute-overrides (when preview_id
+                           (preview/attribute-overrides-of api/*current-user-id* user_id preview_id))}))
 
 (api.macros/defendpoint :post "/preview/card/:card-id" :- :map
   "Run the Card with `card-id` as the User with `user_id` would see it: their permissions, attributes, sandboxes,
