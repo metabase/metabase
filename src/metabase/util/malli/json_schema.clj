@@ -250,6 +250,120 @@
                     node
                     subschema-keywords)))))
 
+(def ^:private keyword-types
+  "JSON Schema assertion keywords that apply only to values of one type, mapped to that type."
+  (merge (zipmap [:additionalProperties :dependentRequired :dependentSchemas :maxProperties :minProperties
+                  :patternProperties :properties :propertyNames :required]
+                 (repeat "object"))
+         (zipmap [:contains :items :maxContains :maxItems :minContains :minItems :prefixItems :uniqueItems]
+                 (repeat "array"))
+         (zipmap [:contentEncoding :contentMediaType :contentSchema :format :maxLength :minLength :pattern]
+                 (repeat "string"))
+         (zipmap [:exclusiveMaximum :exclusiveMinimum :maximum :minimum :multipleOf]
+                 (repeat "number"))))
+
+(def ^:private null-neutral-keys
+  "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
+  (into annotation-keys (keys keyword-types)))
+
+(def ^:private type-array-keys
+  "JSON Schema keywords a schema can carry and still take `null` into its `:type`: [[null-neutral-keys]], the `:type`
+  itself, and an `:enum`, which `null` joins."
+  (conj null-neutral-keys :type :enum))
+
+(defn- types
+  "The types the `:type` of JSON Schema `schema` names, as a vector, or nil when it has none."
+  [{:keys [type]}]
+  (cond
+    (string? type)     [type]
+    (sequential? type) (vec type)))
+
+(defn- value-type
+  "The type of the values a JSON Schema `type` describes, for telling which types overlap and which keywords apply."
+  [type]
+  ;; every integer is a number
+  (if (= "integer" type) "number" type))
+
+(defn- union->type-array
+  "A JSON Schema with a type array that accepts what the `anyOf` `branches` accept, or nil when no type array can.
+  Each branch must name its own types, no two branches' overlapping, and assert only [[keyword-types]] keywords that
+  apply to those types.
+  A branch may carry a string `:description`, which is joined, but no other annotation, since the type array would
+  lose it."
+  [branches]
+  (let [branch-types (map types branches)
+        own-keyword? (fn [branch k]
+                       (contains? (set (map value-type (types branch))) (keyword-types k)))]
+    (when (and (seq branches)
+               (every? seq branch-types)
+               (apply distinct? (map value-type (apply concat branch-types)))
+               ;; a localized description is translated when it is serialized, so joining it here would fix the
+               ;; locale of whoever builds the cached manifest first
+               (every? (comp (some-fn nil? string?) :description) branches)
+               (every? (fn [branch]
+                         (every? #(own-keyword? branch %) (remove #{:type :description} (keys branch))))
+                       branches))
+      (let [description (str/join " " (keep :description branches))]
+        (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
+            (assoc :type (into [] cat branch-types))
+            (cond-> (not (str/blank? description)) (assoc :description description)))))))
+
+(defn- flatten-union
+  "The JSON Schema `schema` with an `anyOf` beside only annotations replaced by its [[union->type-array]], joining the
+  descriptions, or `schema` itself when there is no such union."
+  [{:keys [anyOf description] :as schema}]
+  (or (when (and anyOf
+                 (every? annotation-keys (keys (dissoc schema :anyOf)))
+                 ((some-fn nil? string?) description))
+        (when-let [union (union->type-array anyOf)]
+          (let [descriptions (remove str/blank? [description (:description union)])]
+            (cond-> (merge (dissoc schema :anyOf :description) (dissoc union :description))
+              (seq descriptions) (assoc :description (str/join " " descriptions))))))
+      schema))
+
+(defn- nullable
+  "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
+  Where `schema`, or its [[flatten-union]], has a `:type` and otherwise only [[type-array-keys]], returns it with
+  `null` added to that type and to any `:enum`.
+  Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
+  [schema]
+  ;; A coercing client tries `anyOf` branches in order and coerces into the first one it can, so an explicit `null`
+  ;; becomes `0`, `false` or `""` there; a type array keeps it `null`.
+  (let [flat       (flatten-union schema)
+        type-names (types flat)]
+    ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
+    (if (and (seq type-names)
+             (every? type-array-keys (keys flat)))
+      (cond-> (assoc flat :type (vec (distinct (conj type-names "null"))))
+        ;; an enum rejects a `null` it does not list
+        (:enum flat) (update :enum #(vec (distinct (conj (vec %) nil)))))
+      (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
+        (:description schema) (assoc :description (:description schema))))))
+
+(defn- one-of-replacement
+  "What replaces the `oneOf` `branches`.
+  For `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`, returns [[nullable]] X.
+  For any other branches, returns [[branches->any-of]]."
+  [[x y :as branches]]
+  (if (and (= 2 (count branches)) (= {:type "null"} y))
+    (nullable x)
+    (branches->any-of branches)))
+
+(defn without-one-of
+  "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]], keeping the keywords beside it as
+  [[replace-one-of]] does."
+  [json-schema]
+  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so a falsy value valid for X matches
+  ;; both branches of a nullable `oneOf` and fails it, where an `anyOf` or a type array passes it.
+  ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
+  ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
+  ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
+  (postwalk-schemas
+   (fn [{branches :oneOf :as node}]
+     (cond-> node
+       branches (replace-one-of (one-of-replacement branches))))
+   json-schema))
+
 (defn- subschemas
   "The subschemas of the JSON Schema `node`."
   [node]
