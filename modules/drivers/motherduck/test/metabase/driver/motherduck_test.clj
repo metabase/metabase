@@ -37,7 +37,7 @@
   (:import
    (com.mchange.v2.c3p0 ConnectionTester)
    (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime OffsetTime)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZoneId ZonedDateTime)
    (metabase.driver.motherduck ResetDatabaseConnectionTester)
    (org.postgresql.util PSQLException PSQLState)))
 
@@ -338,6 +338,13 @@
       (is (thrown-with-msg? SQLException #"Bad value"
                             (read-unparseable jdbc-type type-name s))
           s))))
+
+(deftest ^:parallel inline-timestamptz-test
+  (testing "the offset follows the time with no space, because DuckDB reads text after a space as a zone name"
+    (are [t] (= "timestamp with time zone '2020-06-07 12:00:00.000+05:30'"
+                (sql.qp/inline-value :motherduck t))
+      (OffsetDateTime/parse "2020-06-07T12:00:00+05:30")
+      (ZonedDateTime/of 2020 6 7 12 0 0 0 (ZoneId/of "Asia/Kolkata")))))
 
 (deftest ^:parallel duckdb-only-base-types-test
   (are [database-type base-type] (= base-type (sql-jdbc.sync/database-type->base-type :motherduck database-type))
