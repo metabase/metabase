@@ -225,8 +225,8 @@ function getValueItem(
   operators: Lib.AggregationOperator[],
   entityKind: "metric" | "measure" | null,
 ): SummaryValueItem {
-  const { displayName } = Lib.displayInfo(query, stageIndex, clause);
-  const base = { clause, key, label: displayName };
+  const { displayName, isNamed } = Lib.displayInfo(query, stageIndex, clause);
+  const base = { clause, key, label: displayName, isNamed: isNamed === true };
   const clauseOperators = Lib.selectedAggregationOperators(operators, clause);
   const selectedOperator = clauseOperators.find(
     (operator) => Lib.displayInfo(query, stageIndex, operator).selected,

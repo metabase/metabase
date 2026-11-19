@@ -6,6 +6,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -15,7 +16,9 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -332,16 +335,30 @@
   [reference]
   (lib.options/update-options reference assoc :lib/uuid (str (random-uuid))))
 
-(defn- local-replace-expression-references [stage target-ref-id replacement-ref]
+(defn- with-bucketing-of
+  "Return `a-ref` with exactly the temporal unit and binning of `source-ref`."
+  [a-ref source-ref]
+  (let [{:keys [temporal-unit binning]} (lib.options/options source-ref)]
+    (cond-> a-ref
+      ;; `with-temporal-bucket` with a nil unit restores `:lib/original-effective-type`, which is wrong for a ref
+      ;; that never had a unit.
+      (or temporal-unit (lib.temporal-bucket/raw-temporal-bucket a-ref))
+      (lib.temporal-bucket/with-temporal-bucket temporal-unit)
+
+      true
+      (lib.options/update-options u/assoc-dissoc :binning binning))))
+
+(defn- local-replace-expression-references [stage target-ref-id replacement-ref keep-bucketing?]
   (let [replace-embedded-refs (fn replace-refs [stage]
                                 (match/replace stage
                                   [:expression _ (id :guard (= id target-ref-id))]
                                   (-> replacement-ref
+                                      (cond-> keep-bucketing? (with-bucketing-of &match))
                                       fresh-ref)))]
     (replace-embedded-refs stage)))
 
 (defn- local-replace-expression
-  [stage target replacement]
+  [stage target replacement keep-bucketing?]
   (let [replacement-name (or (lib.util/expression-name replacement)
                              (-> replacement lib.options/options :name))
         top-level-replacement (-> replacement
@@ -351,12 +368,14 @@
         target-name (lib.util/expression-name target)
         replacement-type (-> replacement lib.options/options :effective-type)
         replacement-ref [:expression {:effective-type replacement-type} replacement-name]]
-    (local-replace-expression-references replaced target-name replacement-ref)))
+    (local-replace-expression-references replaced target-name replacement-ref keep-bucketing?)))
 
 (defn- local-replace
-  [stage target replacement]
+  "Replace `target` with `replacement` in `stage`. References to a replaced expression keep their bucketing when
+  `keep-bucketing?` is true."
+  [stage target replacement keep-bucketing?]
   (->> (if (lib.util/expression-name target)
-         (local-replace-expression stage target replacement)
+         (local-replace-expression stage target replacement keep-bucketing?)
          (perf/postwalk #(if (= % target) replacement %) stage))
        (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
 
@@ -372,11 +391,33 @@
     (->> (map vector cols replaced-cols)
          (filter #(not= (first %) (second %))))))
 
+(def ^:private truncation-unit-order
+  (zipmap lib.schema.temporal-bucketing/ordered-datetime-truncation-units (range)))
+
+(defn- drop-unit-if-finer-than-inherited
+  "Drop the truncation unit of `a-ref` when it is finer than the unit the previous stage truncated its column to."
+  [a-ref]
+  (let [{:keys [temporal-unit inherited-temporal-unit]} (lib.options/options a-ref)
+        order           (truncation-unit-order temporal-unit)
+        inherited-order (truncation-unit-order inherited-temporal-unit)]
+    (cond-> a-ref
+      (and order inherited-order (< order inherited-order))
+      (lib.temporal-bucket/with-temporal-bucket nil))))
+
 (defn- next-stage-replacement
-  [query next-stage-number [col replaced-col]]
-  (let [target-ref-id (:lib/desired-column-alias col)
-        replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
-    (mapv (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+  "Replacements for the references in stage `next-stage-number` to `col`, a column that stage `stage-number` returned
+  before the change and returns as `replaced-col` after it. A reference keeps its own bucketing when the column keeps
+  its type, unless its truncation unit is finer than the column's new one, in which case that unit is dropped."
+  [query stage-number next-stage-number [col replaced-col]]
+  (let [target-ref-id   (:lib/desired-column-alias col)
+        replaced-ref    (lib.ref/ref (lib.field.util/update-keys-for-col-from-previous-stage replaced-col))
+        keep-bucketing? (= (lib.metadata.calculation/type-of query stage-number col)
+                           (lib.metadata.calculation/type-of query stage-number replaced-col))]
+    (mapv (fn [target-ref]
+            [target-ref (-> replaced-ref
+                            (cond-> keep-bucketing? (with-bucketing-of target-ref))
+                            drop-unit-if-finer-than-inherited
+                            fresh-ref)])
           (match/match-many (lib.util/query-stage query next-stage-number)
             [:field _ (id :guard (= id target-ref-id))] &match))))
 
@@ -416,14 +457,16 @@
   (let [unmodified-query query
         replacement (->> replacement
                          (with-default-name target)
-                         (typed-expression query stage-number))]
-    (loop [query (lib.util/update-query-stage query stage-number local-replace target replacement)
+                         (typed-expression query stage-number))
+        keep-bucketing? (= (lib.metadata.calculation/type-of query stage-number target)
+                           (-> replacement lib.options/options :effective-type))]
+    (loop [query (lib.util/update-query-stage query stage-number local-replace target replacement keep-bucketing?)
            stage-number stage-number]
       (if-let [next-stage-number (lib.util/next-stage-number query stage-number)]
         (let [next-replacements (->> (replaced-columns unmodified-query stage-number query)
-                                     (mapcat #(next-stage-replacement query next-stage-number %)))]
+                                     (mapcat #(next-stage-replacement query stage-number next-stage-number %)))]
           (recur (reduce (fn [query [target replacement]]
-                           (lib.util/update-query-stage query next-stage-number local-replace target replacement))
+                           (lib.util/update-query-stage query next-stage-number local-replace target replacement false))
                          query
                          next-replacements)
                  next-stage-number))

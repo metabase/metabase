@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  fireEvent,
   mockTextOverflow,
   renderWithProviders,
   screen,
@@ -11,7 +12,11 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import type { SummaryField, SummaryWellId } from "../types";
+import type {
+  SummaryField,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "../types";
 import { getDimensionItems, getFieldSections, getValueItems } from "../utils";
 
 import { SummaryWells } from "./SummaryWells";
@@ -42,7 +47,7 @@ type SetupOpts = {
 function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
-  const onChange = jest.fn<void, [Lib.Query]>();
+  const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
   renderWithProviders(
     <SummaryWells
       query={query}
@@ -142,6 +147,7 @@ describe("SummaryWells", () => {
 
   it("shows full grouping formulas in tooltips and keeps their bucket menus", async () => {
     const name = "Total + 100 + 100 + 100 + 100 +…";
+    const dateName = "coalesce(Created At, Created At)";
     const { getLastChange } = setup({
       spec: {
         stages: [
@@ -164,7 +170,7 @@ describe("SummaryWells", () => {
                 },
               },
               {
-                name: "Order date",
+                name: dateName,
                 value: {
                   type: "operator",
                   operator: "coalesce",
@@ -177,7 +183,7 @@ describe("SummaryWells", () => {
             ],
             breakouts: [
               { type: "column", name },
-              { type: "column", name: "Order date", unit: "month" },
+              { type: "column", name: dateName, unit: "month" },
             ],
           },
         ],
@@ -190,21 +196,21 @@ describe("SummaryWells", () => {
       "[Total] + 100 + 100 + 100 + 100 + 100 + 100",
     );
     await userEvent.unhover(groupBy.getByText(name));
-    await userEvent.hover(groupBy.getByText("Order date: Month"));
+    await userEvent.hover(groupBy.getByText(`${dateName}: Month`));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "coalesce([Created At], [Created At])",
     );
-    expect(getChipLabels("columns")).toEqual([name, "Order date: Month"]);
+    expect(getChipLabels("columns")).toEqual([name, `${dateName}: Month`]);
 
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Change how Order date: Month is grouped",
+        name: `Change how ${dateName}: Month is grouped`,
       }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Year" }),
     );
-    expect(getLastChange().dimensions).toEqual([name, "Order date: Year"]);
+    expect(getLastChange().dimensions).toEqual([name, `${dateName}: Year`]);
   });
 
   it("takes a chip off from its remove button", async () => {
@@ -487,6 +493,118 @@ describe("SummaryWells", () => {
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
   });
 
+  describe("renaming", () => {
+    const spec: TestQuerySpec = {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            { name: "Next day", value: { type: "column", name: "CREATED_AT" } },
+          ],
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              name: "Revenue",
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
+          ],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            { type: "column", name: "Next day", unit: "month" },
+          ],
+        },
+      ],
+    };
+
+    async function renameChip(label: string, name: string, ending: string) {
+      await userEvent.dblClick(screen.getByText(label));
+      const input = screen.getByRole("textbox", { name: `Rename ${name}` });
+      await userEvent.clear(input);
+      await userEvent.type(input, `New ${name}${ending}`);
+    }
+
+    it("renames a named value on double-click, unless Escape drops the new name", async () => {
+      const { onChange, getLastChange } = setup({ spec });
+
+      await renameChip("Revenue", "Revenue", "{Escape}");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+      expect(getValuesField()).toHaveFocus();
+
+      await renameChip("Revenue", "Revenue", "{Enter}");
+      expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+      expect(getValuesField()).toHaveFocus();
+    });
+
+    it("renames from the keyboard with F2 on a control of the chip", async () => {
+      const { getLastChange } = setup({ spec });
+      const removeButton = screen.getByRole("button", {
+        name: "Remove Revenue",
+      });
+
+      expect(removeButton).toHaveAttribute("aria-keyshortcuts", "F2");
+      expect(
+        screen.getByRole("button", { name: "Remove Count" }),
+      ).not.toHaveAttribute("aria-keyshortcuts");
+      removeButton.focus();
+      await userEvent.keyboard("{F2}");
+      const input = screen.getByRole("textbox", { name: "Rename Revenue" });
+      await userEvent.clear(input);
+      await userEvent.type(input, "New Revenue{Enter}");
+
+      expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+    });
+
+    it("keeps the new name and moves to the well's field when the well is clicked", async () => {
+      const { getLastChange } = setup({ spec });
+
+      await renameChip("Revenue", "Revenue", "");
+      await userEvent.click(screen.getByText("Summarize by"));
+
+      expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+      expect(getValuesField()).toHaveFocus();
+    });
+
+    it("lets Enter end an IME composition without applying the name", async () => {
+      const { onChange } = setup({ spec });
+
+      await userEvent.dblClick(screen.getByText("Revenue"));
+      const input = screen.getByRole("textbox", { name: "Rename Revenue" });
+      fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+
+      expect(input).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("renames a custom column grouping with its unit and hands the new name over", async () => {
+      const { onChange, getLastChange } = setup({ spec });
+
+      await renameChip("Next day: Month", "Next day", "{Enter}");
+
+      expect(getLastChange().dimensions).toEqual([
+        "Created At: Month",
+        "New Next day: Month",
+      ]);
+      expect(onChange.mock.calls[0][1]).toEqual({
+        renamedFormula: { name: "Next day", nextName: "New Next day" },
+      });
+    });
+
+    it("offers no renaming to a column grouping", async () => {
+      setup({ spec });
+
+      await userEvent.dblClick(screen.getByText("Created At: Month"));
+
+      expect(
+        screen.queryByRole("textbox", { name: /^Rename/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("labels that don't fit", () => {
     const spec: TestQuerySpec = {
       stages: [
@@ -528,6 +646,42 @@ describe("SummaryWells", () => {
       await userEvent.hover(screen.getByText(label));
 
       expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+    });
+
+    it("shows the full name of a renamed formula instead of its formula", async () => {
+      mockTextOverflow();
+      setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: "Revenue after discounts",
+                  value: {
+                    type: "operator",
+                    operator: "/",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [{ type: "column", name: "TOTAL" }],
+                      },
+                      { type: "operator", operator: "count" },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      await userEvent.hover(screen.getByText("Revenue after discounts"));
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Revenue after discounts");
+      expect(tooltip).not.toHaveTextContent("Count()");
     });
 
     it("shows no tooltip for a label that fits", async () => {
