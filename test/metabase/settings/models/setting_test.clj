@@ -602,6 +602,9 @@
   (testing "stores entries without surrounding spaces, and drops blank ones"
     (is (= {:db-value "A,B,C,D", :parsed-value ["A" "B" "C" "D"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "" "C" " D "]))))
+  (testing "stores numbers and booleans in a list as text"
+    (is (= {:db-value "1,true,A", :parsed-value ["1" "true" "A"]}
+           (set-and-fetch-csv-setting-value! [1 true "A"]))))
   (testing "keeps spaces and newlines inside an entry"
     (is (= {:db-value "A,\"B\nC\",D E", :parsed-value ["A" "B\nC" "D E"]}
            (set-and-fetch-csv-setting-value! ["A" "B\nC" "D E"]))))
@@ -1750,6 +1753,13 @@
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
 
+(defsetting test-csv-custom-getter-setting
+  "Test setting - this only shows up in dev (CSV with a custom getter)"
+  :visibility :internal
+  :type       :csv
+  :encryption :no
+  :getter     (constantly []))
+
 (deftest csv-setting-ignored-lines-warning-test
   (letfn [(warnings [raw-value]
             (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
@@ -1763,6 +1773,11 @@
           (is (= [(str "Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. "
                        "Put comma-separated values on one line.")]
                  (warnings raw-value))))))
+    (testing "says nothing about a setting with a custom getter, which may read every line"
+      (mt/with-temp-env-var-value! [mb-test-csv-custom-getter-setting "1\n2"]
+        (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (setting/validate-settings-formatting!)
+          (is (not-any? #(str/includes? (:message %) "MB_TEST_CSV_CUSTOM_GETTER_SETTING") (messages))))))
     (testing "says nothing about one line, or about a first line that does not parse, which fails validation instead"
       (doseq [raw-value ["1,2" "1,\"2"]]
         (testing (pr-str raw-value)

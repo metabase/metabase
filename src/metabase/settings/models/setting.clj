@@ -220,6 +220,7 @@
    [:type Type]
    ;; different getters/setters take care of parsing/unparsing
    [:getter ifn?]
+   [:custom-getter? :boolean]
    [:setter ifn?]
    ;; an init function can be used to seed initial values
    [:init [:maybe ifn?]]
@@ -735,9 +736,9 @@
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
 (defn- csv-entries
-  "The entries in `row`, a parsed CSV row, without surrounding spaces or blank entries."
+  "The entries in `row`, a parsed CSV row or a list of values, as strings without surrounding spaces or blank entries."
   [row]
-  (into [] (comp (map str/trim) (remove str/blank?)) row))
+  (into [] (comp (map (comp str/trim str)) (remove str/blank?)) row))
 
 (defn- parse-string-value
   "The value of `setting-type` that its stored string form `string-value` encodes."
@@ -1223,6 +1224,7 @@
                  :default            default
                  :on-change          nil
                  :getter             (partial (default-getter-for-type setting-type) setting-name)
+                 :custom-getter?     (contains? setting :getter)
                  :setter             (partial (default-setter-for-type setting-type) setting-name)
                  :init               nil
                  :tag                (default-tag-for-type setting-type)
@@ -1841,7 +1843,9 @@
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
   (doseq [setting (vals @registered-settings)
-          :when   (= :csv (:type setting))]
+          ;; A custom getter reads the raw value its own way, so it may not ignore later lines.
+          :when   (and (= :csv (:type setting))
+                       (not (:custom-getter? setting)))]
     (warn-about-ignored-csv-lines! setting))
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
