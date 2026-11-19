@@ -9,7 +9,7 @@ summary: Check that a query transform produces the output you expect by running 
 
 _Data Studio > Data transformation > [transform name] > Tests_
 
-A transform test runs your transform on test data you provide, then checks the output against what you expected. Your real data tables aren't touched: Metabase loads the test data into temporary tables, swaps them in for the tables your transform reads, and drops them when the test finishes.
+A transform test runs your transform on test data you provide, then checks the output against what you expected. Your actual data tables aren't touched: Metabase loads the test data into temporary tables, swaps them in for the tables your transform reads, and drops them once the test is done.
 
 Use transform tests to verify that your transforms work as expected, and to catch problems before a scheduled job writes wrong data to your warehouse.
 
@@ -60,11 +60,11 @@ The **Output** section lists the checks, along with the rows or queries each che
 
 Each test has a name, an optional description, inputs, and checks.
 
-**Inputs** are the test data that stands in for the tables the transform reads. You can specify the data values, or use the results of a SQL query that runs against the transform's source database. Every table the transform reads needs an input, or the test won't run.
+**Inputs** are the test data that stands in for the tables the transform reads. You can specify the data values, or use the results of a SQL query that runs against the transform's source database. An input is required for every table the transform reads, or the test won't run.
 
-For example, the input for the discount test above is a short list of orders with a range of **Discount** values, including zero, negative, and empty ones.
+For example, the input for the discount test shown above is a short list of orders with a range of **Discount** values, including zero, negative, and empty ones.
 
-**Checks** describe the output you expect. A check can require the output to contain exactly the rows you list (or the rows a query returns), or it can require a query against the output to return no rows.
+**Checks** describe the output you expect. A check can require the output to contain exactly the rows you list or the rows a query returns. Checks can also require a query against the output to return no rows.
 
 For example, the check _no order without a positive discount_ is a query that selects every output row whose discount is zero, negative, or empty. If that query returns no rows, the check passes.
 
@@ -92,9 +92,9 @@ _Data Studio > Data transformation > [transform name] > Tests_
 
 The **Tests** tab on a transform page lists the transform's tests, their checks, and the time and status of each test's last run.
 
-On a test's **Overview** tab, you'll see the status of the last run and the test's **Inputs** and **Output** sections. To see every run of the test, click the **Runs** tab. Click a run to see when it started and ended, its status, and who ran it.
-
 ![The Runs tab of a transform test showing when it was run and the status of each run](../images/transform-test-runs.png)
+
+On a test's **Overview** tab, you'll see the status of the last run and the test's **Inputs** and **Output** sections. To see every run of the test, click the **Runs** tab. Click a run to see when it started and ended, its status, and who ran it.
 
 ## Run transform tests in CI
 
