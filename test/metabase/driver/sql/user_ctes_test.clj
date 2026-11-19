@@ -8,7 +8,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as nb]
    [metabase.query-processor :as qp]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]))
@@ -137,8 +136,9 @@
           (let [native (-> aggregated qp/process-query :data :native_form :query)]
             (is (re-find #"(?i)WITH\s+[\"`]?events_base[\"`]?\s+AS" native))
             (is (re-find #"(?i)GROUP\s+BY" native)))
-          (let [rows (mt/rows (qp/process-query aggregated))]
-            ;; test-data: user 1 has 31 checkins across 29 distinct venues
+          ;; test-data: user 1 has 31 checkins across 29 distinct venues. Coerce numeric columns so Oracle's
+          ;; BigDecimal results compare equal to the integer expectations.
+          (let [rows (mt/formatted-rows [int int] (qp/process-query aggregated))]
             (is (= 29 (count rows)))
             (is (= 31 (transduce (map second) + rows)))))))))
 
@@ -171,29 +171,29 @@
 (deftest ^:parallel remapped-column-in-cte-body-test
   (testing "a CTE body against a table with a remapped column still decorates results downstream"
     (mt/test-drivers (mt/normal-driver-select {:+features [:stage-ctes], :+parent :sql})
-      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
-                                           (lib.tu/remap-metadata-provider
-                                            (mt/id :venues :category_id)
-                                            (qp.test-util/field-values-from-def
-                                             defs/test-data "categories" "name")))
-        (let [mp     (qp.store/metadata-provider)
-              venues (lib.metadata/table mp (mt/id :venues))
-              base   (lib/query mp venues)
-              cte-q  (lib/wrap-as-cte base "venues_remapped")
-              cat-id (nb/find-col-with-spec cte-q (lib/breakoutable-columns cte-q)
-                                            "venues_remapped" "Category ID")
-              counts (-> cte-q
-                         (lib/breakout cat-id)
-                         (lib/aggregate (lib/count)))]
-          (mt/with-native-query-testing-context counts
-            (let [result (qp/process-query counts)]
-              (is (re-find #"(?i)WITH\s+[\"`]?venues_remapped[\"`]?\s+AS"
-                           (-> result :data :native_form :query)))
-              ;; remap decorates the result with a third column carrying the display values
-              (is (= 3 (count (:cols (:data result)))))
-              (is (= "Category ID [internal remap]" (:name (nth (:cols (:data result)) 2))))
-              ;; test-data's category_id = 2 is "American" and matches 8 venues
-              (is (some #{[2 8 "American"]} (mt/rows result))))))))))
+      (let [mp     (-> (mt/metadata-provider)
+                       (lib.tu/remap-metadata-provider
+                        (mt/id :venues :category_id)
+                        (qp.test-util/field-values-from-def defs/test-data "categories" "name")))
+            venues (lib.metadata/table mp (mt/id :venues))
+            base   (lib/query mp venues)
+            cte-q  (lib/wrap-as-cte base "venues_remapped")
+            cat-id (nb/find-col-with-spec cte-q (lib/breakoutable-columns cte-q)
+                                          "venues_remapped" "Category ID")
+            counts (-> cte-q
+                       (lib/breakout cat-id)
+                       (lib/aggregate (lib/count)))]
+        (mt/with-native-query-testing-context counts
+          (let [result (qp/process-query counts)]
+            (is (re-find #"(?i)WITH\s+[\"`]?venues_remapped[\"`]?\s+AS"
+                         (-> result :data :native_form :query)))
+            ;; remap decorates the result with a third column carrying the display values
+            (is (= 3 (count (:cols (:data result)))))
+            (is (= "Category ID [internal remap]" (:name (nth (:cols (:data result)) 2))))
+            ;; test-data's category_id = 2 is "American" and matches 8 venues. Normalize numeric types across
+            ;; drivers — Oracle, for instance, returns BigDecimal for Long columns.
+            (is (some #{[2 8 "American"]}
+                      (mt/formatted-rows [int int str] result)))))))))
 
 (deftest ^:parallel scope-actors-pattern-test
   (testing "two-CTE analytics shape: events_base + scope_actors derived from it, both referenced from main"
