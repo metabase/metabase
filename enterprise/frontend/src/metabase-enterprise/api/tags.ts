@@ -11,6 +11,7 @@ import {
 } from "metabase/api/tags";
 import {
   type ActionDependencyNode,
+  type ActionTest,
   type CardDependencyNode,
   type CardTest,
   DEPENDENCY_TYPES,
@@ -58,6 +59,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "session",
   "transform-test",
   "card-test",
+  "action-test",
   "data-test-run",
 ] as const;
 
@@ -326,6 +328,18 @@ export function provideCardTestListTags(
   tests: CardTest[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("card-test"), ...tests.flatMap(provideCardTestTags)];
+}
+
+export function provideActionTestTags(
+  test: ActionTest,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("action-test", test.id)];
+}
+
+export function provideActionTestListTags(
+  tests: ActionTest[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("action-test"), ...tests.flatMap(provideActionTestTags)];
 }
 
 export function provideDataTestRunTags(

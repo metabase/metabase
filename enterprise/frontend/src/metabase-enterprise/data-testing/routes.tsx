@@ -61,3 +61,34 @@ export function getMetricTestRoutes() {
     </>
   );
 }
+
+const actionTestListPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/ActionTestListPage"
+  ).then(({ ActionTestListPage }) => ({
+    Component: ActionTestListPage,
+  }));
+
+const actionTestOverviewPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/ActionTestOverviewPage"
+  ).then(({ ActionTestOverviewPage }) => ({
+    Component: ActionTestOverviewPage,
+  }));
+
+const actionTestRunsPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/ActionTestRunsPage"
+  ).then(({ ActionTestRunsPage }) => ({
+    Component: ActionTestRunsPage,
+  }));
+
+export function getActionTestRoutes() {
+  return (
+    <>
+      <Route path=":actionId/tests" lazy={actionTestListPage} />
+      <Route path=":actionId/tests/:testId" lazy={actionTestOverviewPage} />
+      <Route path=":actionId/tests/:testId/runs" lazy={actionTestRunsPage} />
+    </>
+  );
+}
