@@ -27,6 +27,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -50,15 +51,24 @@
       projections/dashboard-row))
 
 (defn- visible-connections
-  "The `dropped-connections` of the saved or dry-run `dash` that redaction would leave visible.
-   That means the user can read both the dashcard's card and the card that lost the connection."
-  [dash dropped-connections]
+  "The `dropped-connections` that redaction would show on both `stored`, the dashboard before the ops, nil on a create,
+   and `dash`, the saved or dry-run dashboard after them.
+   The user must be able to read the dashcard's card on each, unless it has none, and the card the entry names."
+  [stored dash dropped-connections]
   ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
-  ;; card, so a lost connection it would hide isn't reported either.
+  ;; card, so a lost connection it would hide isn't reported either. The stored dashboard is checked too, as a
+  ;; `replace_card` can put a readable card where a hidden one's mapping was lost. A text or heading card has no card,
+  ;; and redaction keeps its mappings.
   (when (seq dropped-connections)
-    (let [readable          (redaction/readable-card-ids dash)
-          visible-dashcard? (into #{} (comp (filter (comp readable :card_id)) (map :id)) (:dashcards dash))]
-      (filterv (every-pred (comp visible-dashcard? :dashcard_id) (comp readable :card_id)) dropped-connections))))
+    (let [readable        (into (redaction/readable-card-ids stored) (redaction/readable-card-ids dash))
+          shown?          #(or (nil? %) (contains? readable %))
+          stored-card-ids (u/index-by :id :card_id (:dashcards stored))
+          card-ids        (u/index-by :id :card_id (:dashcards dash))]
+      (filterv (fn [{:keys [dashcard_id card_id]}]
+                 (and (shown? (stored-card-ids dashcard_id))
+                      (shown? (card-ids dashcard_id))
+                      (shown? card_id)))
+               dropped-connections))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
@@ -167,13 +177,15 @@
                                                   :validate-only? (boolean (:validate_only body))}))
 
                        :update
-                       (let [[_ id body] dispatched]
-                         (dashboard-write/write! {:dashboard      (fetch-dashboard id)
-                                                  :attrs          (dashboard-attrs body)
-                                                  :ops            (:ops body)
-                                                  :validate-only? (boolean (:validate_only body))}))))
-        {dash :dashboard, {:keys [pushed-dashcard-ids dropped-connections]} :effects} written
-        dropped    (visible-connections dash dropped-connections)]
+                       (let [[_ id body] dispatched
+                             stored      (fetch-dashboard id)]
+                         (assoc (dashboard-write/write! {:dashboard      stored
+                                                         :attrs          (dashboard-attrs body)
+                                                         :ops            (:ops body)
+                                                         :validate-only? (boolean (:validate_only body))})
+                                :stored stored))))
+        {dash :dashboard, :keys [stored], {:keys [pushed-dashcard-ids dropped-connections]} :effects} written
+        dropped    (visible-connections stored dash dropped-connections)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))

@@ -340,11 +340,32 @@
        (let [dropped [{:parameter_id "cat", :dashcard_id dc-id, :card_id open-card, :series true}]
              visible (fn [user]
                        (mt/with-test-user user
-                         (#'tools.dashboard/visible-connections
-                          (t2/hydrate (t2/select-one :model/Dashboard :id dash-id) [:dashcards :series :card])
-                          dropped)))]
+                         (let [dash (-> (t2/select-one :model/Dashboard :id dash-id)
+                                        (t2/hydrate [:dashcards :series :card]))]
+                           (#'tools.dashboard/visible-connections dash dash dropped))))]
          (is (= dropped (visible :crowberto)) "a user who can read the card is told")
          (is (empty? (visible :rasta))))))))
+
+(deftest dropped-connections-leave-out-replaced-unreadable-cards-test
+  (testing "a hidden card's lost connection isn't reported when replace_card puts a readable card in its place"
+    (do-with-series-dashboard
+     true
+     (fn [{:keys [dash-id dc-id]}]
+       (mt/with-temp [:model/Card {readable-card :id} {:dataset_query (venues-query)}]
+         (let [args (fn [validate-only?]
+                      (wire {:method        "update"
+                             :id            dash-id
+                             :validate_only validate-only?
+                             :ops           [{:op "replace_card", :dashcard_id dc-id, :card_id readable-card}]}))
+               call (fn [user validate-only?]
+                      (tool-result (call-tool! user v2.tu/all-scopes "dashboard_write" (args validate-only?))))]
+           (is (=? [{:card_id readable-card, :series false}] (:dropped_connections (call :crowberto true)))
+               "a user who can read the hidden card is told")
+           (doseq [validate-only? [true false]]
+             (testing (if validate-only? "dry run" "save")
+               (let [result (call :rasta validate-only?)]
+                 (is (= dash-id (:id result)))
+                 (is (not (contains? result :dropped_connections))))))))))))
 
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
