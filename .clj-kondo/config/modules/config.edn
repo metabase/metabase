@@ -222,6 +222,7 @@
            appearance
            core.version
            driver
+           global-system
            lib.be
            lib.schema
            models
