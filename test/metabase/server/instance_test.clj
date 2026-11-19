@@ -66,6 +66,14 @@
              {:message    (ex-message thrown)
               :suppressed (mapv ex-message (.getSuppressed ^Throwable thrown))})))))
 
+(deftest stop-timeout-test
+  (testing "only a server given a stop timeout waits on stop; the app server gets one from its config"
+    (let [handler (fn [_request respond _raise] (respond {:status 200}))]
+      (is (= {:default 0, :given 1234, :app-config 5000}
+             {:default    (.getStopTimeout (server.instance/create-server handler {:port 0}))
+              :given      (.getStopTimeout (server.instance/create-server handler {:port 0, :stop-timeout 1234}))
+              :app-config (:stop-timeout (#'server.instance/jetty-config))})))))
+
 (deftest stop-waits-for-requests-in-flight-test
   (testing "stopping the server lets a request already running finish"
     (let [started  (CountDownLatch. 1)
