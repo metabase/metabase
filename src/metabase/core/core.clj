@@ -145,6 +145,18 @@
 ;; Two limits of the halt matter more as steps move in.
 ;; It does not wait for a stop already running on another thread.
 ;; It waits for a start in flight with no timeout, while the process has about 30 seconds to shut down.
+(defn- halt-global-system!
+  "Halt the global system with [[system-dependencies]], or with none if they form a cycle."
+  []
+  (try
+    (global-system/halt! system-dependencies {:start-timeout-ms 5000})
+    (catch clojure.lang.ExceptionInfo e
+      ;; a test fails on a cycle, but shutdown must not skip the halt if one ships anyway
+      (if (= :weavejester.dependency/circular-dependency (:reason (ex-data e)))
+        (do (log/error e "Shutdown dependencies form a cycle, so halting with none")
+            (global-system/halt! {} {:start-timeout-ms 5000}))
+        (throw e)))))
+
 (defn- shutdown-steps
   "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
   []
@@ -165,7 +177,7 @@
    ["release migration locks"      #(mdb/release-migration-locks! 20)]
    ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
    ;; after the migration locks are released, since a component this halts could be one that release needs
-   ["halt the global system"       #(global-system/halt! system-dependencies)]
+   ["halt the global system"       #(halt-global-system!)]
    ["stop performance monitoring"  #(perf/stop-monitoring!)]
    ["shut down agents"             shutdown-agents]])
 
