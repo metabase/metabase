@@ -54,7 +54,7 @@
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
-  (data-testing.db/delete-suite-members-of-test! :segment (:entity_id segment-test))
+  (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
   segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------

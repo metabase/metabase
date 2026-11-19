@@ -53,6 +53,15 @@
   {:inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
+(mu/defn remove-deleted-test-from-suites!
+  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. On an instance where remote sync
+  keeps synced content read-only, which could not push the changed suites, the suites keep the test, and a run reports
+  it as missing."
+  [test-type :- ::data-testing.schema/test-type
+   entity-id :- :string]
+  (when-not (remote-sync/read-only?)
+    (data-testing.db/delete-suite-members-of-test! test-type entity-id)))
+
 (defn with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
   [test-type tests]
@@ -77,7 +86,7 @@
 
 (t2/define-before-delete :model/TransformTest [transform-test]
   (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  (data-testing.db/delete-suite-members-of-test! :transform (:entity_id transform-test))
+  (remove-deleted-test-from-suites! :transform (:entity_id transform-test))
   transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------

@@ -159,7 +159,7 @@
                 (is (= #{["update" :model/TestSuite]}
                        (into #{} (map (juxt :status (comp first :key))) (remote-sync.tu/local-changes! url v2))))))))))))
 
-(deftest read-only-test-delete-removes-the-member-test
+(deftest read-only-test-delete-keeps-the-member-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Collection unsynced {:name "Unsynced" :location "/"}
                    :model/Card       card     {:name "Unsynced card" :collection_id (:id unsynced)}
@@ -170,7 +170,15 @@
         (mt/user-http-request :crowberto :put 403 (str "ee/test-suite/" (:id suite)) {:members []})
         (mt/user-http-request :crowberto :delete 204 (str "ee/card-test/" (:id t)))
         (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the delete happened")
-        (testing "on a read-only instance, deleting a test of an unsynced card still removes it from its suites"
+        (testing "on a read-only instance, deleting a test leaves it in its suites, which the instance could not push"
+          (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))
+    (testing "control: on a read-write instance, deleting a test removes it from its suites"
+      (mt/with-temp [:model/Card      card  {:name "Card"}
+                     :model/CardTest  t     {:card_id (:id card) :name "Test"}
+                     :model/TestSuite suite {:name "Nightly"}]
+        (data-testing.test-util/add-members! (:id suite) [[:card (:entity_id t)]])
+        (remote-sync.tu/with-remote-sync ["file:///nonexistent/remote-sync-test-suite" :read-write]
+          (mt/user-http-request :crowberto :delete 204 (str "ee/card-test/" (:id t)))
           (is (= [] (data-testing.test-util/member-refs (:id suite)))))))))
 
 (defn- pull-messages!
