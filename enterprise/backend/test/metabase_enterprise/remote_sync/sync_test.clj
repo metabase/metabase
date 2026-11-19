@@ -194,9 +194,7 @@
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection synced  {:name "Synced" :is_remote_synced true :location "/"}
-                     :model/Measure    measure {:name       "Unsynced measure"
-                                                :table_id   (mt/id :venues)
-                                                :definition {}}
+                     :model/Measure    measure {:name "Unsynced measure"}
                      :model/Card       _       {:name                   "Synced chart"
                                                 :collection_id          (:id synced)
                                                 :display                :progress

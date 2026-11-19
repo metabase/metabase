@@ -263,7 +263,10 @@
                          :model/Collection {coll-id :id}     {:name "Target Collection"}
                          :model/Collection {outside-id :id}  {:name "Somewhere Else"}
                          :model/Card       {goal-card :id}   {:name "Goal Source" :collection_id outside-id}
-                         :model/Measure    {measure-id :id}  {:table_id table-id :name "M" :definition {}}]
+                         :model/Measure    {measure-id :id}  {:name       "M"
+                                                              :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                            (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                                (lib/aggregate (lib/count))))}]
         (let [opts {:targets       [[:model/Collection coll-id]]
                     :no-settings   true
                     :no-data-model true
