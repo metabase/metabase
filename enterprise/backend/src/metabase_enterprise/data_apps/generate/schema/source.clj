@@ -4,8 +4,8 @@
   [[SchemaSource]] names every read that [[metabase-enterprise.data-apps.generate.schemas/fetch-items]] performs, so
   the data-access surface is one definition. [[app-db-source]] is the production implementation; tests reify the
   protocol with literal values. All methods return the shaped schema entities of the
-  `metabase-enterprise.data-apps.generate.schema.*` builders, except [[library-tables]], which returns raw table rows
-  (only `:id` is consumed)."
+  `metabase-enterprise.data-apps.generate.schema.*` builders, except [[library-tables]] and [[library-metrics]], which
+  return raw rows (only `:id` is consumed)."
   (:require
    [clojure.set :as set]
    [metabase-enterprise.data-apps.db :as data-apps.db]
@@ -39,12 +39,14 @@
   "The data-access patterns behind schema generation."
   (library-scope [source]
     "The [[LibraryScope]] of the root libraries.")
-  (metrics [source collection-ids]
-    "Schema entities for the metrics in `collection-ids`.")
+  (metrics [source metric-ids]
+    "Schema entities for the metrics with `metric-ids`.")
   (tables [source table-ids]
     "Schema entities for the tables with `table-ids`.")
   (library-tables [source collection-ids]
-    "Published table rows in `collection-ids`."))
+    "Published table rows in `collection-ids`.")
+  (library-metrics [source collection-ids]
+    "Metric card rows in `collection-ids`."))
 
 (defn- curated-library-ids
   [scope-key requested-ids]
@@ -55,11 +57,13 @@
   (reify SchemaSource
     (library-scope [_]
       (app-db-library-scope))
-    (metrics [_ collection-ids]
-      (vec (schemas.metric/metric-schemas
-            (curated-library-ids :metric-collection-ids collection-ids))))
+    (metrics [_ metric-ids]
+      (vec (schemas.metric/metric-schemas (schemas.metric/select-metrics metric-ids))))
     (tables [_ table-ids]
       (vec (schemas.table/table-schemas (schemas.table/select-tables table-ids))))
     (library-tables [_ collection-ids]
       (vec (schemas.table/select-library-tables
-            (curated-library-ids :data-collection-ids collection-ids))))))
+            (curated-library-ids :data-collection-ids collection-ids))))
+    (library-metrics [_ collection-ids]
+      (vec (schemas.metric/select-library-metrics
+            (curated-library-ids :metric-collection-ids collection-ids))))))

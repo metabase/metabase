@@ -251,11 +251,20 @@
   [metric]
   (boolean (seq (lib/all-source-card-ids (:dataset_query metric)))))
 
-(defn metric-schemas
-  "Returns the schemas of the metrics in the collections with `collection-ids`."
+(defn select-metrics
+  "Returns the metric cards with `card-ids`."
+  [card-ids]
+  (schemas.common/without-unavailable-cards (data-apps.db/metric-cards card-ids)))
+
+(defn select-library-metrics
+  "Returns the metric cards in the library collections with `collection-ids`."
   [collection-ids]
-  (for [metric (remove source-card-id
-                       (schemas.common/without-unavailable-cards (data-apps.db/metric-cards-in-collections collection-ids)))
+  (schemas.common/without-unavailable-cards (data-apps.db/metric-cards-in-collections collection-ids)))
+
+(defn metric-schemas
+  "Returns metric schemas for selected metric cards."
+  [cards]
+  (for [metric (remove source-card-id cards)
         ;; A data app's questions can use only metrics that resolve entirely from tables, as they
         ;; read no saved question. `source-card-id` sees only stage 0, so a table-sourced metric
         ;; joining a saved question would get through; check the whole query instead.
