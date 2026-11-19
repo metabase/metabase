@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    ;; Register the driver before testing its methods.
    [metabase.driver.motherduck]
@@ -27,6 +28,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -344,7 +346,14 @@
     (are [t] (= "timestamp with time zone '2020-06-07 12:00:00.000+05:30'"
                 (sql.qp/inline-value :motherduck t))
       (OffsetDateTime/parse "2020-06-07T12:00:00+05:30")
-      (ZonedDateTime/of 2020 6 7 12 0 0 0 (ZoneId/of "Asia/Kolkata")))))
+      (ZonedDateTime/of 2020 6 7 12 0 0 0 (ZoneId/of "Asia/Kolkata"))))
+  (testing "a pinned clock writes the pinned moment as such a literal"
+    (driver/with-driver :motherduck
+      (mt/with-results-timezone-id "Asia/Kolkata"
+        (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+          (is (str/includes? (first (sql.qp/format-honeysql :motherduck
+                                                            (sql.qp/current-datetime-honeysql-form :motherduck)))
+                             "timestamp with time zone '2020-06-17 17:30:00.000+05:30'")))))))
 
 (deftest ^:parallel duckdb-only-base-types-test
   (are [database-type base-type] (= base-type (sql-jdbc.sync/database-type->base-type :motherduck database-type))
