@@ -36,7 +36,7 @@ async function openPage(page: Page, scheme: Scheme) {
   return problems;
 }
 
-// Resolves `var(--x)` to a computed value by letting the browser paint a probe.
+// Resolves a CSS variable to a computed value by letting the browser paint a probe.
 const resolveColorVar = (page: Page, variable: string) =>
   page.evaluate((name) => {
     const probe = document.createElement("div");
