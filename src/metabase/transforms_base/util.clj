@@ -157,12 +157,16 @@
 
   The pending-changes check reads the app DB, so execution computes this once
   (see [[metabase.transforms.execute]]) and stashes it as `:full-incremental-run?` on the transform; when that
-  key is present it is returned as-is, keeping the answer stable for the whole run."
+  key is present it is returned as-is, keeping the answer stable for the whole run.
+
+  Always true in a workspace that the request names: the watermark is production's, not that of the workspace's copy.
+  Until a workspace has a Transform of its own, each of its runs rebuilds its copy."
   [{:keys [id] :as transform} :- ::transforms-base.schema/transform]
   (if (contains? transform :full-incremental-run?)
     (:full-incremental-run? transform)
     (and (incremental-target? transform)
          (or (nil? (:last_checkpoint_value transform))
+             (workspaces/workspace-bound?)
              (table-index/pending-changes-for-transform? id)))))
 
 (mu/defn full-create-run? :- :boolean
@@ -316,11 +320,14 @@
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
 (mu/defn save-watermark! :- :int
-  "Commits the incremental transforms :hi watermark value to the appdb."
+  "Commits the incremental transforms :hi watermark value to the appdb. Not in a workspace that the request names: the
+  Transform is shared, and its watermark is production's ([[full-incremental-run?]])."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
-  (let [hi-value (:value (:hi source-range-params))]
-    (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+  (if (workspaces/workspace-bound?)
+    0
+    (let [hi-value (:value (:hi source-range-params))]
+      (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)}))))
 
 (mu/defn save-run-checkpoint-range! :- [:maybe :int]
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -858,12 +865,15 @@
 (mu/defn apply-target-indexes! :- :nil
   "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
   recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
-  failure fails the run record."
+  failure fails the run record. In a workspace that the request names, the indexes go on the workspace's copy, and a
+  failure marks no index request: the requests are production's."
   [transform :- ::transforms-base.schema/transform]
   (when (and (seq (:indexes (:target transform)))
              (full-create-run? transform))
     (let [database (driver.u/lib-database (transforms-base.i/target-db-id transform))]
-      (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
+      (apply-standalone-indexes! database (assoc (:target transform)
+                                                 :transform-id (when-not (workspaces/workspace-bound?)
+                                                                 (:id transform)))))))
 
 (mu/defn- apply-index-outcomes! :- :nil
   "Write a [[reconcile/classify-index-outcomes]] result back: drop the removed rows, and move the rest to their new
@@ -895,9 +905,11 @@
 
 (mu/defn verify-managed-indexes! :- :nil
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
-  Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
+  Only runs on full-create runs (same guard as [[apply-target-indexes!]]), and not in a workspace that the request
+  names, whose copy is not the table the requests are for."
   [transform :- ::transforms-base.schema/transform]
-  (when (full-create-run? transform)
+  (when (and (full-create-run? transform)
+             (not (workspaces/workspace-bound?)))
     (let [target  (:target transform)
           managed (if (contains? target :index-request-ids)
                     (table-index/select-for-verification (:id transform) (:index-request-ids target))

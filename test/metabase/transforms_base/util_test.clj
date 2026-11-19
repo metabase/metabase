@@ -5,11 +5,15 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.indexes.models.table-index :as table-index]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
+   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.workspaces.core :as workspaces]))
 
 (set! *warn-on-reflection* true)
 
@@ -236,3 +240,36 @@
       (is (= 9 (:transform/checkpoint-field-id attrs)))
       (is (string? (:transform/checkpoint-hi attrs)))
       (is (re-find #"2024-01-16" (:transform/checkpoint-hi attrs))))))
+
+(deftest a-run-in-a-workspace-keeps-production-incremental-state-test
+  (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
+    (testing "in a workspace that the request names, an incremental run rebuilds the workspace's copy: the watermark
+              belongs to production's table, not the copy"
+      (is (true? (transforms-base.u/full-incremental-run?
+                  (assoc (transform-with-target {:type "table-incremental"}) :last_checkpoint_value "42")))))
+    (testing "and saves no watermark"
+      (let [updates (atom [])]
+        (mt/with-dynamic-fn-redefs [transforms-base.db/update-transform! (fn [& args] (swap! updates conj args) 1)]
+          (transforms-base.u/save-watermark! 1 {:column                     {:lib/type  :metadata/column
+                                                                             :name      "id"
+                                                                             :base-type :type/Integer}
+                                                :checkpoint-filter-field-id 1
+                                                :hi                         {:value 42}})
+          (is (empty? @updates)))))))
+
+(deftest a-run-in-a-workspace-writes-no-index-status-test
+  (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
+    (let [targets (atom [])]
+      (mt/with-dynamic-fn-redefs [transforms-base.u/apply-standalone-indexes! (fn [_database target] (swap! targets conj target) nil)]
+        (testing "in a workspace that the request names, the indexes go on the workspace's copy, and a failure does not
+                  mark production's index request"
+          (transforms-base.u/apply-target-indexes!
+           {:id     7
+            :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS id")}
+            :target {:type "table" :schema "public" :name "t"
+                     :indexes [{:kind :btree :name "t_id_idx" :columns [{:name "id"}]}]}})
+          (is (=? [{:name "t" :transform-id nil}] @targets)))))
+    (testing "and verifies no index request"
+      (mt/with-dynamic-fn-redefs [table-index/select-for-transform (fn [& _] (throw (ex-info "must not read requests" {})))]
+        (is (nil? (transforms-base.u/verify-managed-indexes!
+                   (assoc (transform-with-target {:type "table" :schema "public" :name "t"}) :id 7))))))))

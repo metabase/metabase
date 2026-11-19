@@ -2315,7 +2315,8 @@
            util
            util.config
            util.graph
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-exports #{:model/Card
                     :model/ParameterCard
                     :model/Query
@@ -3228,7 +3229,8 @@
            transforms.feature-gating
            transforms.indexes
            transforms.schema
-           util}
+           util
+           workspaces}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob

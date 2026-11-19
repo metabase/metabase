@@ -54,6 +54,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -1288,6 +1289,18 @@
   (when (and (:archived changes) (:archived_directly card))
     (delete-notifications-of-card (:id card))))
 
+(defn- keep-shared-result-metadata
+  "In a workspace that the request names, a Card is shared, and its queries read the workspace's copies: store none of
+  their columns. A new Card stores no column list. An update keeps the stored list, or clears it when the query
+  changes, since the list is of the old query. Until a workspace has Cards of its own, the next run outside a
+  workspace stores the list."
+  [card original changes]
+  (cond
+    (not (workspaces/workspace-bound?)) card
+    (nil? original)                     (assoc card :result_metadata nil)
+    (contains? changes :dataset_query)  (assoc card :result_metadata nil)
+    :else                               (assoc card :result_metadata (:result_metadata original))))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
@@ -1300,6 +1313,7 @@
                    (u/assoc-default :entity_id (u/generate-nano-id))
                    (u/assoc-default :type :question)
                    card.metadata/populate-result-metadata
+                   (keep-shared-result-metadata nil nil)
                    derive-model-display
                    pre-insert)
         parent (collection/content-parent (:collection_id card))]
@@ -1385,6 +1399,7 @@
         (cond-> (contains? changes :type) derive-model-display)
         (cond-> (contains? changes :dataset_query) (doto check-no-save-cycle))
         (populate-result-metadata changes verified-result-metadata?)
+        (keep-shared-result-metadata original changes)
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
