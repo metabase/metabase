@@ -515,13 +515,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     if (settings.componentName === "metabase-data-app") {
-      try {
-        validateDataAppPath(settings.path);
-      } catch {
-        raiseError(
-          `path must be a data app slug with an optional subpath, such as "my-store/orders". Received ${JSON.stringify(settings.path)}.`,
-        );
-      }
+      validateDataAppPath(settings.path);
 
       if (settings.isGuest || settings.guestEmbedProviderUri) {
         raiseError("Guest embeds are not supported for data apps.");

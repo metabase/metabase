@@ -95,7 +95,7 @@ describe("data app paths", () => {
 
   it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
     expect(() => validateDataAppPath(path)).toThrow(
-      "A valid data app path must be provided.",
+      `path must be a data app slug with an optional subpath, such as "my-store/orders". Received ${JSON.stringify(path)}.`,
     );
   });
 });
