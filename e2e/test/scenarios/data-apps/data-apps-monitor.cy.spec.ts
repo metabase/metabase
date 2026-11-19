@@ -53,6 +53,10 @@ describe(
       cy.wait("@execute");
 
       cy.visit("/monitor/ai-auditing/data-apps");
+      cy.findByTestId("monitor-nav")
+        .findByRole("link", { name: "Data app analytics" })
+        .should("be.visible");
+
       logRows()
         .should("contain", APP_NAME)
         .and("contain", APP_SLUG)
