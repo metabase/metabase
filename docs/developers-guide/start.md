@@ -7,8 +7,6 @@ redirect_from:
 
 # Developer Guide
 
-This guide contains detailed information on how to work on the Metabase codebase.
-
 ## Contributing
 
 - [How to contribute back to the Metabase project](../CONTRIBUTING.md)

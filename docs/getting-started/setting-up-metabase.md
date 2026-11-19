@@ -8,8 +8,6 @@ redirect_from:
 
 # Setting up Metabase
 
-This guide will help you set up Metabase once you’ve gotten it installed.
-
 ## Install Metabase
 
 If you don't have Metabase yet, you'll need to install it first. The easiest way to get going is [Metabase Cloud](https://www.metabase.com/cloud), where we run Metabase for you. If you'd rather host Metabase yourself, you can run it with Docker or as a JAR file. See [Installing Metabase](../installation-and-operation/installing-metabase.md) for all your options.
