@@ -1403,11 +1403,14 @@
    :ns-prefix "metabase.replacement"
    :api  #{metabase.replacement.core
            metabase.replacement.schema
-           metabase.replacement.util}
+           metabase.replacement.spec
+           metabase.replacement.util
+           metabase.replacement.walk}
    :uses #{driver
            lib
            lib.metadata
            lib.schema
+           parameters.schema
            sql-tools
            util}}
 
@@ -2306,6 +2309,7 @@
            lib.be
            lib.metadata
            lib.metric
+           lib.replacement
            lib.schema
            metrics
            models
@@ -4256,6 +4260,7 @@
            api
            app-db
            dashboards
+           dependencies
            events
            lib
            lib.be
@@ -4265,7 +4270,6 @@
            measures.schema
            model-persistence
            models
-           parameters.schema
            queries
            segments.schema
            task

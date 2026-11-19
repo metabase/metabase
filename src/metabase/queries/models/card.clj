@@ -42,6 +42,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
+   [metabase.queries.replacement :as queries.replacement]
    [metabase.queries.revisions :as queries.revisions]
    [metabase.queries.schema :as queries.schema]
    [metabase.queries.search :as queries.search]
@@ -49,6 +50,7 @@
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement.spec]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -1935,3 +1937,9 @@
    :dependency-columns #{:type :dataset_query :dimension_mappings :parameters}
    :analysis-columns   #{:type :dataset_query}
    :output-columns     #{:type :result_metadata}})
+
+(defmethod replacement.spec/spec :model/Card [_model]
+  {:hydrate            queries.replacement/hydrate
+   :upgrade-field-refs queries.replacement/upgrade-field-refs
+   :swap-source        queries.replacement/swap-source
+   :swap-dependency?   true})

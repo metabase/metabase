@@ -1,19 +1,14 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
-   [metabase-enterprise.replacement.util :as replacement.util]
-   [metabase-enterprise.replacement.walk :as replacement.walk]
+   [metabase-enterprise.replacement.entity :as replacement.entity]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.replacement.core :as replacement]))
+   [metabase.replacement.core :as replacement]
+   [metabase.replacement.util :as replacement.util]
+   [metabase.replacement.walk :as replacement.walk]))
 
 (set! *warn-on-reflection* true)
-
-(defn- ref->column-name
-  "Resolve a `ref` to a deduplicated column name used in `:visualization_settings`."
-  [ref columns]
-  (when-some [column (lib/find-matching-column ref columns)]
-    ((some-fn :lib/deduplicated-name :name) column)))
 
 (defn- upgrade-source-card-ref
   "Upgrade a ref used for a parameter source based on the card."
@@ -26,49 +21,6 @@
                   lib/append-stage
                   (replacement/upgrade-field-ref -1 ref))))))
       ref))
-
-(defn- card-upgrade-parameters
-  "Upgrade refs in `:value_field` and `:label_field` in the `:values_source_config` for `parameters`."
-  [parameters]
-  (let [card-ids      (replacement.walk/parameter-source-card-ids parameters)
-        card-id->card (when (seq card-ids)
-                        (replacement.db/cards-by-id card-ids))]
-    (if (seq card-ids)
-      (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
-      parameters)))
-
-(defn- card-upgrade-field-refs!
-  "Upgrade field refs in `:dataset_query` and `:visualization_settings` for a card."
-  [card]
-  (let [query         (:dataset_query card)
-        valid-query?  (replacement.util/valid-query? query)
-        query'        (if valid-query?
-                        (replacement/upgrade-field-refs-in-query query)
-                        query)
-        viz-settings  (:visualization_settings card)
-        viz-settings' (if valid-query?
-                        (let [columns (lib/returned-columns query')]
-                          (lib/with-aggregation-list (lib/aggregations query')
-                            (some-> viz-settings
-                                    (replacement.walk/walk-viz-settings-refs #(ref->column-name % columns)))))
-                        viz-settings)
-        parameters    (:parameters card)
-        parameters'   (if (seq parameters)
-                        (card-upgrade-parameters parameters)
-                        parameters)
-        changes       (cond-> {}
-                        (not= query query') (assoc :dataset_query query')
-                        (not= viz-settings viz-settings') (assoc :visualization_settings viz-settings')
-                        (not= parameters parameters') (assoc :parameters parameters'))
-        ;; `:result_metadata` is set to nil for native queries if not present in changes.
-        ;; `:verified-result-metadata?` prevents the Card model hooks from clearing it.
-        changes       (cond-> changes
-                        (and (seq changes)
-                             (lib/native-only-query? query'))
-                        (assoc :result_metadata (:result_metadata card)
-                               :verified-result-metadata? true))]
-    (when (seq changes)
-      (replacement.db/update-card! (:id card) changes))))
 
 (defn- transform-upgrade-field-refs!
   "Upgrade field refs in `:source` for a transform."
@@ -148,6 +100,13 @@
     (doseq [dashcard dashcards]
       (dashcard-upgrade-field-refs! dashcard card-id->card))))
 
+(defn- upgrade-field-refs-by-spec!
+  "Apply the writes of the `:upgrade-field-refs` of the replacement spec of `entity-type` to `row`, if any."
+  [entity-type row]
+  (let [spec (replacement.entity/entity-spec entity-type)]
+    (when-let [upgrade (and row (:upgrade-field-refs spec))]
+      (replacement.entity/apply-writes! (upgrade (replacement.entity/hydrated spec row))))))
+
 (defn upgrade-field-refs!
   "Upgrade field refs in an entity.
 
@@ -155,7 +114,7 @@
   `entity` is an optional pre-fetched entity from bulk-load-metadata-for-entities!."
   ([[entity-type entity-id :as entity-ref]]
    (upgrade-field-refs! entity-ref (case entity-type
-                                     :card      (replacement.db/card entity-id)
+                                     :card      (replacement.entity/row entity-ref)
                                      :transform (replacement.db/transform entity-id)
                                      :segment   (replacement.db/segment entity-id)
                                      :measure   (replacement.db/measure entity-id)
@@ -163,7 +122,7 @@
                                      nil)))
   ([[entity-type _entity-id] entity]
    (case entity-type
-     :card      (card-upgrade-field-refs! entity)
+     :card      (upgrade-field-refs-by-spec! entity-type entity)
      :transform (transform-upgrade-field-refs! entity)
      :segment   (segment-upgrade-field-refs! entity)
      :measure   (measure-upgrade-field-refs! entity)

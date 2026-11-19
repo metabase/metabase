@@ -13,12 +13,12 @@
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.db :as replacement.db]
-   [metabase-enterprise.replacement.util :as replacement.util]
-   [metabase-enterprise.replacement.walk :as replacement.walk]
+   [metabase-enterprise.replacement.entity :as replacement.entity]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.queries.models.query :as queries.query]
-   [metabase.replacement.core :as replacement]))
+   [metabase.replacement.core :as replacement]
+   [metabase.replacement.util :as replacement.util]
+   [metabase.replacement.walk :as replacement.walk]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,35 +46,6 @@
               new-source-id
               card-id))]
     (replacement.walk/walk-parameter-source-card-ids (or parameters []) swap-card-id)))
-
-(defn- card-swap-source!
-  [card old-source new-source]
-  (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query       (:dataset_query card)
-          query'      (replacement/swap-source-in-query query old-source new-source)
-          table-id    (:table_id card)
-          table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
-          parameters  (or (:parameters card) [])
-          parameters' (swap-parameter-source-card-id parameters old-source new-source)
-          changes     (cond-> {}
-                        (not= query query')
-                        (assoc :dataset_query query')
-
-                        (not= table-id table-id')
-                        (assoc :table_id table-id')
-
-                        (not= parameters parameters')
-                        (assoc :parameters parameters'))
-          ;; `:result_metadata` is set to nil for native queries if not present in changes.
-          ;; `verified-result-metadata?` prevents the Card model hooks from clearing it.
-          changes   (cond-> changes
-                      (and (seq changes)
-                           (lib/native-only-query? query'))
-                      (assoc :result_metadata (:result_metadata card)
-                             :verified-result-metadata? true))]
-      (models.dependency/swap-dependency! :card (:id card) old-source new-source)
-      (when (seq changes)
-        (replacement.db/update-card! (:id card) changes)))))
 
 (defn- segment-swap-source!
   [segment old-source new-source]
@@ -156,6 +127,17 @@
       (replacement.db/update-dashboard! (:id dashboard) {:parameters parameters'}))
     nil))
 
+(defn- swap-source-by-spec!
+  "Apply the writes of the `:swap-source` of the replacement spec of `entity-type` to `row`, if any, first moving the
+  row's dependency on `old-source` to `new-source` when the spec says so."
+  [entity-type row old-source new-source]
+  (let [spec (replacement.entity/entity-spec entity-type)]
+    (when-let [swap (and row (:swap-source spec))]
+      (when-some [writes (swap (replacement.entity/hydrated spec row) old-source new-source)]
+        (when (:swap-dependency? spec)
+          (models.dependency/swap-dependency! entity-type (:id row) old-source new-source))
+        (replacement.entity/apply-writes! writes)))))
+
 (defn swap-source!
   "Swap old-source to new-source in an entity.
 
@@ -164,7 +146,7 @@
   ([[entity-type entity-id :as entity-ref] old-source new-source]
    (swap-source! entity-ref
                  (case entity-type
-                   :card      (replacement.db/card entity-id)
+                   :card      (replacement.entity/row entity-ref)
                    :transform (replacement.db/transform entity-id)
                    :segment   (replacement.db/segment entity-id)
                    :measure   (replacement.db/measure entity-id)
@@ -174,7 +156,7 @@
   ([[entity-type _entity-id] entity old-source new-source]
    (events/with-batched-events
      (case entity-type
-       :card      (card-swap-source!      entity old-source new-source)
+       :card      (swap-source-by-spec!   entity-type entity old-source new-source)
        :transform (transform-swap-source! entity old-source new-source)
        :segment   (segment-swap-source!   entity old-source new-source)
        :measure   (measure-swap-source!   entity old-source new-source)

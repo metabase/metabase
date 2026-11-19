@@ -66,6 +66,25 @@
                :end_time  :%now
                :message   "Timed out by metabase"}))
 
+(mu/defn row
+  "The row of `model` with `id`, or nil."
+  [model :- :keyword
+   id    :- ms/PositiveInt]
+  (t2/select-one model :id id))
+
+(mu/defn rows
+  "The rows of `model` with `ids`."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (t2/select model :id [:in ids]))
+
+(mu/defn update-row!
+  "Apply `changes` to the row of `model` with `id`, returning the number updated."
+  [model   :- :keyword
+   id      :- ms/PositiveInt
+   changes :- :map]
+  (t2/update! model :id id changes))
+
 (mu/defn cards-with-ids
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

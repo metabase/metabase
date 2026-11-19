@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.walk
+(ns metabase.replacement.walk
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
