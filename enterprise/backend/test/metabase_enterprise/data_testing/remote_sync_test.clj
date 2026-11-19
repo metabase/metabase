@@ -3,11 +3,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.stats :as remote-sync.stats]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -71,7 +73,7 @@
     (collections.tu/with-library-synced
       (let [library (t2/select-one :model/Collection :type "library")]
         (mt/with-temp [:model/Collection child {:name "Library child" :location (format "/%d/" (:id library))
-                                                :is_remote_synced true}
+                                                :type "library-metrics" :is_remote_synced true}
                        :model/Card       card  {:name "Library metric" :collection_id (:id child) :type :metric}
                        :model/CardTest   t     {:card_id (:id card)}]
           (testing "a test of a card in the Library is synced while the Library syncs"
@@ -182,6 +184,29 @@
                         (testing "and leaves the test as a local delete"
                           (is (= #{["delete" :model/CardTest "Second test"]} (local-changes! url v4))))))))))))))))
 
+(deftest card-test-now-round-trips-through-remote-sync-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/Card :model/CardTest]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}
+                       :model/CardTest   t      {:card_id (:id card)
+                                                 :name    "Pinned"
+                                                 :now     (t/offset-date-time "2026-10-13T09:00:00+09:00")}]
+          (let [{v1 :version} (remote-sync.tu/push! url nil)
+                t-path        (remote-sync.tu/entity-path! url "main" t)
+                t-yaml        (some->> t-path (remote-sync.tu/read-file! url "main"))]
+            (testing "the pushed file holds `now` in UTC"
+              (is (str/includes? (str t-yaml) "2026-10-13T00:00:00Z")))
+            (testing "a pull that adds the test's file inserts the test with the same moment"
+              (remote-sync.tu/commit! url "main" {t-path nil})
+              (let [{v2 :version} (remote-sync.tu/pull! url v1)]
+                (is (not (t2/exists? :model/CardTest :entity_id (:entity_id t))))
+                (remote-sync.tu/commit! url "main" {t-path t-yaml})
+                (is (=? {:status :success} (remote-sync.tu/pull! url v2)))
+                (is (= (t/instant "2026-10-13T00:00:00Z")
+                       (some-> (t2/select-one-fn :now :model/CardTest :entity_id (:entity_id t)) t/instant)))))))))))
+
 (deftest pull-card-and-its-test-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
@@ -204,6 +229,42 @@
                 (let [card-id (t2/select-one-pk :model/Card :entity_id (:entity_id card))]
                   (is (some? card-id))
                   (is (= card-id (t2/select-one-fn :card_id :model/CardTest :entity_id (:entity_id t)))))))))))))
+
+(deftest pull-publishes-no-card-test-event-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/Card :model/CardTest]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}
+                       :model/CardTest   t      {:card_id (:id card) :name "Row count"}]
+          (let [{v1 :version} (remote-sync.tu/push! url nil)
+                t-path        (remote-sync.tu/entity-path! url "main" t)
+                t-yaml        (remote-sync.tu/read-file! url "main" t-path)
+                revisions     #(t2/count :model/Revision :model "CardTest")
+                before        (revisions)
+                published     (atom [])
+                publish       events/publish-event!]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! published conj [topic (:user-id event)])
+                                                  (publish topic event))]
+              (testing "a pull that changes a test's file updates the test"
+                (remote-sync.tu/commit! url "main" {t-path (str/replace t-yaml "name: Row count" "name: Remote name")})
+                (let [{v2 :version} (remote-sync.tu/pull! url v1)]
+                  (is (= "Remote name" (t2/select-one-fn :name :model/CardTest :entity_id (:entity_id t))))
+                  (testing "a pull that removes a test's file deletes the test"
+                    (remote-sync.tu/commit! url "main" {t-path nil})
+                    (let [{v3 :version} (remote-sync.tu/pull! url v2)]
+                      (is (not (t2/exists? :model/CardTest :entity_id (:entity_id t))))
+                      (testing "a pull that adds a test's file inserts the test"
+                        (remote-sync.tu/commit! url "main" {t-path t-yaml})
+                        (remote-sync.tu/pull! url v3)
+                        (is (=? {:name "Row count" :card_id (:id card)}
+                                (t2/select-one :model/CardTest :entity_id (:entity_id t))))))))))
+            (testing "no pull records a card test revision, and its card test events name no user"
+              (is (= #{nil} (into #{} (comp (filter (comp #{:event/card-test-create :event/card-test-update :event/card-test-delete} first))
+                                            (map second))
+                                  @published)))
+              (is (= before (revisions))))))))))
 
 (deftest pull-conflict-on-a-card-test-test
   (remote-sync.tu/with-repository [url]

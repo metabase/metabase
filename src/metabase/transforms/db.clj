@@ -8,10 +8,13 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -108,6 +111,21 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/Transform :id transform-id))
 
+(mu/defn transforms-in-collections
+  "The Transforms in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select :model/Transform :collection_id [:in [:auto/param collection-ids]]))
+
+(mu/defn collections-by-ids
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
+
+(mu/defn delete-collection!
+  "Delete the Collection with `collection-id`."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/delete! :model/Collection :id [:auto/param collection-id]))
+
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
 (mu/defn tag
@@ -120,16 +138,15 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
-(mu/defn tag-name-exists?
-  "Whether a TransformTag named `tag-name` exists."
+(mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
+  "The id of the TransformTag named `tag-name`, or nil."
   [tag-name :- :string]
-  (t2/exists? :model/TransformTag :name tag-name))
+  (t2/select-one-pk :model/TransformTag :name tag-name))
 
-(mu/defn tag-name-exists-excluding?
-  "Whether a TransformTag named `tag-name` other than `tag-id` exists."
-  [tag-name :- :string
-   tag-id   :- ms/PositiveInt]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+(mu/defn tag-entity-id-by-name :- [:maybe :string]
+  "The entity id of the TransformTag named `tag-name`, or nil."
+  [tag-name :- :string]
+  (t2/select-one-fn :entity_id :model/TransformTag :name [:auto/param tag-name]))
 
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
@@ -477,8 +494,8 @@
 (mu/defn latest-run-start-times-query
   "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
   `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
-  definition of the \"most recent run\" anchor - embedded as the staleness method's join subquery
-  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  definition of the \"most recent run\" anchor - embedded as the join subquery of the staleness candidates
+  ([[metabase.transforms.staleness/stale-transform-candidates]]) and realized by
   [[last-start-times]] for the schedule-freshness check, so the two can't drift apart."
   ([]
    (latest-run-start-times-query nil))
@@ -932,3 +949,43 @@
   "The TransformTags with `ids`, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (t2/select [:model/TransformTag :id :name] :id [:in ids]))
+
+(mu/defn dependency-transform-items :- [:maybe :map]
+  "The query of the Transforms the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: all of
+  them for a superuser, those of the source databases a data analyst queries, none for anyone else, located by their
+  collection."
+  [{:keys [user-id is-superuser? is-data-analyst?]} :- :metabase.dependencies.items/items-opts]
+  (when (or is-superuser? is-data-analyst?)
+    (let [location (collections.listing/collection-location :collection :transforms)]
+      {:select    [[:transform.id :entity_id] [:transform.name :name] [location :location]]
+       :from      [:transform]
+       :left-join [:collection [:= :transform.collection_id :collection.id]]
+       :where     (into [:and]
+                        (remove nil?)
+                        [(when-not is-superuser?
+                           (perms/visible-databases-filter-clause
+                            :transform.source_database_id
+                            {:user-id          user-id
+                             :is-superuser?    is-superuser?
+                             :is-data-analyst? is-data-analyst?}
+                            {:perms/create-queries :query-builder}))])})))
+
+(mu/defn collection-transform-items :- [:maybe :map]
+  "The query of the Transforms of the source types the user can use in `collection` that the collection items listing of
+  `opts` holds, nil when `opts` restrict the items to those
+  created by a user, which Transforms do not record, and none of them when `opts` restrict the items to the pinned
+  ones, which no Transform is."
+  [collection                              :- :map
+   {:keys [pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
+      {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+       :from   [[:transform :transform]]
+       :where  [:and
+                (collections.listing/poison-when-pinned-clause pinned-state)
+                [:= :collection_id (:id collection)]
+                (if (seq enabled-types)
+                  [:in :source_type enabled-types]
+                  [:=
+                   [:inline 0]
+                   [:inline 1]])]})))

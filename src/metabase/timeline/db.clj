@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -72,6 +73,11 @@
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
   (t2/update! :model/Timeline :id id changes))
+
+(mu/defn directly-archived-timeline-ids
+  "The ids among `ids` of the Timelines archived on their own rather than along with their Collection."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-set :model/Timeline :id [:in ids] :archived true :archived_directly true))
 
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
@@ -144,3 +150,17 @@
     (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn collection-timeline-items :- [:maybe :map]
+  "The query of the Timelines in `collection` that the collection items listing of `opts` holds, nil when
+  `opts` restrict the items to those created by a user, which Timelines do not record,
+  and none of them when `opts` restrict the items to the pinned ones, which no Timeline is."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+     :from   [[:timeline :timeline]]
+     :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              [:= :archived (boolean archived?)]]}))

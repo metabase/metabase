@@ -3,8 +3,11 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
+   [metabase.collections.listing :as collections.listing]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -107,6 +110,11 @@
   "The id of the Pulse with `pulse-id` if it exists, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one-pk :model/Pulse :id pulse-id))
+
+(mu/defn pulse-id-of-channel
+  "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
+  [pulse-channel-id :- ms/PositiveInt]
+  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
 
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
@@ -408,7 +416,10 @@
   running model hooks."
   [channel-id :- ms/PositiveInt
    user-ids   :- [:set ::lib.schema.id/user]]
-  (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids]))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`."
@@ -454,3 +465,25 @@
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
   [dashboard-id]
   (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))
+
+(mu/defn collection-pulse-items :- [:maybe :map]
+  "The query of the Pulses, but the alerts and the dashboard subscriptions, in `collection` that the collection items
+  listing of `opts` holds, nil when `opts` restrict the items to
+  those created by a user, which Pulses do not record."
+  [collection                                        :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select-distinct [:p.id
+                       :p.name
+                       :p.entity_id
+                       :p.collection_position
+                       :p.collection_id
+                       [(h2x/literal "pulse") :model]]
+     :from            [[:pulse :p]]
+     :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+     :where           [:and
+                       [:= :p.collection_id      (:id collection)]
+                       [:= :p.archived           (boolean archived?)]
+                       [:= :p.alert_condition    nil]
+                       [:= :p.dashboard_id nil]
+                       (collections.listing/pinned-state->clause pinned-state :p.collection_position)]}))

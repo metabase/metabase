@@ -1,6 +1,7 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -24,6 +25,18 @@
 (derive :model/BookmarkOrdering :metabase/model)
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-before-insert :model/CollectionBookmark [bookmark]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
+  bookmark)
+
+(t2/define-before-update :model/CollectionBookmark [model]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
+  model)
+
+;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
 
 (defn- unqualify-key
   [k]
@@ -91,10 +104,22 @@
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
-(t2/define-before-insert :model/CollectionBookmark [bookmark]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
-  bookmark)
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(t2/define-before-update :model/CollectionBookmark [model]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
-  model)
+(defmethod app-db-copy/spec :model/CardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DashboardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/CollectionBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/BookmarkOrdering [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DocumentBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ExplorationBookmark [_model]
+  {:skip? false})

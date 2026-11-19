@@ -3,10 +3,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
@@ -26,7 +23,8 @@
            "segment"   :model/Segment
            "transform" :model/Transform}
     config/ee-available? (assoc "transform-test" :model/TransformTest
-                                "card-test"      :model/CardTest)))
+                                "card-test"      :model/CardTest
+                                "segment-test"   :model/SegmentTest)))
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -129,8 +127,6 @@
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
   (let [model    (entity-model entity)
-        ;; Before any lookup, so that a refusal does not depend on whether `id` exists.
-        _        (revision/check-revert-available model)
         instance (revisions.db/entity model id)
         _        (api/write-check instance)
         revision (api/check-404 (revisions.db/revision (name model) id revision-id))]
@@ -141,19 +137,11 @@
       ;; restoring saved content, so a reverted query may keep referencing columns marked "Do not include"
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
-    (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
+    (when (contains? #{:model/TransformTest :model/CardTest :model/SegmentTest} model)
       (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
-    ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
-    ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
-    (when (contains? #{:model/Segment :model/Measure} model)
-      (let [table-id (some-> (get-in revision [:object :definition])
-                             not-empty
-                             lib-be/normalize-query
-                             lib/primary-source-table-id)]
-        (api/check-403 (mi/can-write? (t2/hydrate (cond-> (merge instance (:object revision))
-                                                    table-id (assoc :table_id table-id)) :can_write)))))
+    (when (contains? #{:model/Transform :model/Segment :model/Measure :model/Dashboard :model/Card} model)
+      (api/update-check instance (:object revision)))
     (when (contains? #{:model/Dashboard :model/Card} model)
-      (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
         (let [dashboard-ids (vec (keep identity [(:dashboard_id instance)
                                                  (:dashboard_id (:object revision))]))

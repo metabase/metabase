@@ -89,7 +89,6 @@
                 (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
                 ->prompt (fn [{:keys [questions]} {::keys [origin]}]
                            (let [base {:metabot_id metabot-id
-                                       :model      (:type origin)
                                        :card_id    (:id origin)}]
                              (map #(assoc base :prompt %) questions)))
                 ;; Realize into vectors so we don't redo `->prompt` work when counting and inserting.

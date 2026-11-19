@@ -1,6 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
 
 import type { NormalizedTest } from "./contract.ts";
+import * as retry from "./fetchWithRetry.ts";
 import {
   type FailedTest,
   type GateResult,
@@ -274,103 +283,152 @@ describe("quarantinedSuiteGlob", () => {
 });
 
 describe("fetchQuarantine", () => {
-  const originalFetch = globalThis.fetch;
   const originalLog = console.log;
   const originalError = console.error;
+  let logged: string[] = [];
 
   beforeEach(() => {
-    // The retry loop really sleeps between attempts. Freeze the clock so these
-    // tests exercise the production backoff (no shortened delays) while
-    // deciding for themselves when each sleep ends.
-    jest.useFakeTimers();
+    logged = [];
+    console.log = (...args: unknown[]) => {
+      logged.push(args.map(String).join(" "));
+    };
+    console.error = () => {};
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
-    globalThis.fetch = originalFetch;
+    mock.restore();
     console.log = originalLog;
     console.error = originalError;
   });
 
-  /**
-   * Serve one canned outcome per call — a `Response` to return or an `Error` to
-   * throw — and mute the gate's logging for the duration of the test.
-   */
-  function stubFetch(outcomes: (Response | Error)[]): () => number {
-    const calls: number[] = [];
-    console.log = () => {};
-    console.error = () => {};
-    globalThis.fetch = (async () => {
-      const outcome = outcomes[calls.length];
-      calls.push(1);
+  function respondWith(outcome: Response | Error) {
+    return spyOn(retry, "fetchWithRetry").mockImplementation(async () => {
       if (outcome instanceof Error) {
         throw outcome;
       }
       return outcome;
-    }) as unknown as typeof fetch;
-    return () => calls.length;
+    });
   }
 
-  /**
-   * Hand the event loop a real turn. `useFakeTimers` freezes `setTimeout` but
-   * leaves `setImmediate` alone, so this is what lets the awaits inside the
-   * retry loop actually run while the clock is stopped.
-   */
-  const macrotask = () => new Promise<void>((resolve) => setImmediate(resolve));
+  type FetchWithRetrySpy = ReturnType<typeof respondWith>;
 
-  /**
-   * Settle a `fetchQuarantine` call on the frozen clock: let its pending
-   * awaits run, fire whichever backoff timer that parked it, and repeat until
-   * it resolves. Bounded, so a call that never settles fails loudly instead of
-   * hanging the suite.
-   */
-  async function settle<T>(pending: Promise<T>): Promise<T> {
-    let done = false;
-    void pending.then(
-      () => (done = true),
-      () => (done = true),
-    );
-    for (let pass = 0; pass < 10 && !done; pass++) {
-      await macrotask();
-      if (!done) {
-        jest.runAllTimers();
-      }
+  function requestOf(spy: FetchWithRetrySpy) {
+    const call = spy.mock.calls[0];
+    if (!call) {
+      throw new Error("fetchWithRetry was not called");
     }
-    if (!done) {
-      throw new Error("fetchQuarantine never settled");
+    const [input, init = {}] = call;
+    return { input, init };
+  }
+
+  function shouldRetryOf(spy: FetchWithRetrySpy) {
+    const { shouldRetry } = requestOf(spy).init;
+    if (!shouldRetry) {
+      throw new Error("fetchQuarantine passed no shouldRetry");
     }
-    return pending;
+    return shouldRetry;
   }
 
   const okList = (entries: QuarantineEntry[], suites?: string[]) =>
     new Response(JSON.stringify({ tests: entries, suites }), { status: 200 });
-  const errorStatus = (status: number) => new Response("", { status });
-  const econnreset = () =>
-    new Error("The socket connection was closed unexpectedly");
+  const status = (code: number) => new Response("", { status: code });
 
   const list = (entries: QuarantineEntry[], suites: string[] = []) => ({
     tests: entries,
     suites,
   });
 
-  const fetchList = () =>
-    settle(
-      fetchQuarantine({
-        baseUrl: "https://ci-conductor.example",
-        suite: "e2e",
-      }),
-    );
+  const fetchList = (opts: { secret?: string } = {}) =>
+    fetchQuarantine({
+      baseUrl: "https://ci-conductor.example",
+      suite: "e2e",
+      ...opts,
+    });
 
-  it("returns the list without retrying when the first call succeeds", async () => {
-    const calls = stubFetch([okList([quarantined("a")])]);
+  it("requests the suite's list from /api/quarantine once", async () => {
+    const spy = respondWith(okList([]));
+
+    await fetchQuarantine({
+      baseUrl: "https://ci-conductor.example//",
+      suite: "be tests&more",
+    });
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(requestOf(spy).input).toBe(
+      "https://ci-conductor.example/api/quarantine?suite=be%20tests%26more",
+    );
+  });
+
+  it("sends the secret header when given a secret", async () => {
+    const spy = respondWith(okList([]));
+
+    await fetchList({ secret: "shh" });
+
+    expect(requestOf(spy).init.headers).toEqual({ "x-internal-secret": "shh" });
+  });
+
+  it("sends no secret header without a secret", async () => {
+    const spy = respondWith(okList([]));
+
+    await fetchList();
+
+    expect(requestOf(spy).init.headers).toEqual({});
+  });
+
+  it("asks for 3 attempts, a 500ms backoff base and a 15s timeout", async () => {
+    const spy = respondWith(okList([]));
+
+    await fetchList();
+
+    expect(requestOf(spy).init).toMatchObject({
+      retries: 2,
+      baseDelay: 500,
+      timeout: 15_000,
+    });
+  });
+
+  it("retries a 5xx and a 429", async () => {
+    const spy = respondWith(okList([]));
+    await fetchList();
+    const shouldRetry = shouldRetryOf(spy);
+
+    for (const code of [500, 502, 503, 504, 429]) {
+      expect(shouldRetry(status(code))).toBe(true);
+    }
+  });
+
+  it("does not retry a 4xx — the request itself is wrong — or a success", async () => {
+    const spy = respondWith(okList([]));
+    await fetchList();
+    const shouldRetry = shouldRetryOf(spy);
+
+    for (const code of [200, 400, 401, 403, 404]) {
+      expect(shouldRetry(status(code))).toBe(false);
+    }
+  });
+
+  it("logs each non-ok status it is asked about, and nothing for a success", async () => {
+    const spy = respondWith(okList([]));
+    await fetchList();
+    const shouldRetry = shouldRetryOf(spy);
+
+    shouldRetry(status(200));
+    expect(logged).toEqual([]);
+
+    shouldRetry(status(502));
+    expect(logged).toHaveLength(1);
+    expect(logged[0]).toContain("/api/quarantine?suite=e2e → 502");
+    expect(logged[0]).not.toContain("ci-conductor.example");
+  });
+
+  it("returns the list", async () => {
+    respondWith(okList([quarantined("a")]));
 
     expect(await fetchList()).toEqual(list([quarantined("a")]));
-    expect(calls()).toBe(1);
   });
 
   it("returns the suite-level rules alongside the tests", async () => {
-    stubFetch([okList([quarantined("a")], ["athena", "{be,fe}-*"])]);
+    respondWith(okList([quarantined("a")], ["athena", "{be,fe}-*"]));
 
     expect(await fetchList()).toEqual(
       list([quarantined("a")], ["athena", "{be,fe}-*"]),
@@ -378,72 +436,33 @@ describe("fetchQuarantine", () => {
   });
 
   it("defaults both keys to empty when the response omits them", async () => {
-    stubFetch([new Response(JSON.stringify({ count: 0 }), { status: 200 })]);
+    respondWith(new Response(JSON.stringify({ count: 0 }), { status: 200 }));
 
     expect(await fetchList()).toEqual(list([]));
   });
 
-  it("retries a dropped connection and returns the list from a later attempt", async () => {
-    const calls = stubFetch([
-      econnreset(),
-      econnreset(),
-      okList([quarantined("a")]),
-    ]);
-
-    expect(await fetchList()).toEqual(list([quarantined("a")]));
-    expect(calls()).toBe(3);
-  });
-
-  it("gives up with null once every attempt has failed", async () => {
-    const calls = stubFetch([econnreset(), econnreset(), econnreset()]);
+  it("returns null when the final response is not ok", async () => {
+    respondWith(status(503));
 
     expect(await fetchList()).toBeNull();
-    expect(calls()).toBe(3);
   });
 
-  it("retries a 5xx", async () => {
-    const calls = stubFetch([errorStatus(502), okList([])]);
-
-    expect(await fetchList()).toEqual(list([]));
-    expect(calls()).toBe(2);
-  });
-
-  it("retries a 429", async () => {
-    const calls = stubFetch([errorStatus(429), okList([])]);
-
-    expect(await fetchList()).toEqual(list([]));
-    expect(calls()).toBe(2);
-  });
-
-  it("does not retry a 4xx — the request itself is wrong", async () => {
-    const calls = stubFetch([errorStatus(401), okList([quarantined("a")])]);
+  it("returns null for a 4xx", async () => {
+    respondWith(status(401));
 
     expect(await fetchList()).toBeNull();
-    expect(calls()).toBe(1);
   });
 
-  it("waits out the backoff window before retrying, rather than hammering", async () => {
-    const calls = stubFetch([errorStatus(503), okList([])]);
-    const pending = fetchQuarantine({
-      baseUrl: "https://ci-conductor.example",
-      suite: "e2e",
-    });
+  it("returns null instead of throwing when every attempt failed", async () => {
+    respondWith(new Error("The socket connection was closed unexpectedly"));
 
-    await macrotask();
-    expect(calls()).toBe(1);
+    expect(await fetchList()).toBeNull();
+  });
 
-    // Half-jittered backoff off a 500ms base puts the first retry somewhere in
-    // [250ms, 500ms) — early enough to keep the gate snappy, late enough to let
-    // a blip pass. Asserting the bounds holds for any jitter draw.
-    jest.advanceTimersByTime(249);
-    await macrotask();
-    expect(calls()).toBe(1);
+  it("returns null instead of throwing when the body is not JSON", async () => {
+    respondWith(new Response("<html>", { status: 200 }));
 
-    jest.advanceTimersByTime(251);
-    await macrotask();
-    expect(calls()).toBe(2);
-
-    expect(await settle(pending)).toEqual(list([]));
+    expect(await fetchList()).toBeNull();
   });
 });
 

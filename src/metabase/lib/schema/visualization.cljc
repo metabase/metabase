@@ -33,7 +33,7 @@
   [props & entries]
   (let [schemas (into {} entries)
         enter   (:decode/normalize props)]
-    (into [:map (-> (merge {:closed false, ::mr/deliberately-open true} props)
+    (into [:map (-> (merge {:closed false} props)
                     (assoc :decode/normalize (cond-> {:leave (partial drop-invalid-settings schemas)}
                                                enter (assoc :enter enter))))]
           (map (fn [[k schema]]
@@ -62,7 +62,7 @@
 (mr/def ::column-name-or-ref
   "How a setting refers to a column: by name, as newer settings do, by legacy MBQL reference, as older ones do, or by
   something else the frontend wrote, which is kept as it is."
-  [:or :string ::legacy-reference :any])
+  [:or :string ::legacy-reference ::lib.schema.common/open-json])
 
 (mr/def ::click-behavior.dimension
   "The `:dimension` a click behavior parameter maps to, with the legacy MBQL reference of its column."
@@ -70,21 +70,25 @@
    [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference]]
    [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference]
     ::lib.schema.parameter/dimension.options]
-   :any])
+   ::lib.schema.common/open-json])
 
 (mr/def ::click-behavior.parameter-ref
   "The source or target of a click behavior parameter, with the dimension a target of type `dimension` maps to."
   (settings-map {:description "click behavior parameter reference"}
                 [:dimension ::click-behavior.dimension]))
 
+(mr/def ::click-behavior.parameter-mapping.entry
+  "What one parameter of a click behavior destination gets: the source of its value and the target it fills."
+  (settings-map {:description "click behavior parameter mapping"}
+                [:source ::click-behavior.parameter-ref]
+                [:target ::click-behavior.parameter-ref]))
+
 (mr/def ::click-behavior.parameter-mapping
   "The `:parameterMapping` of a click behavior: what each parameter of its destination gets, by the JSON-encoded id of
   that parameter or dimension."
   [:map-of {:decode/normalize #(cond-> % (map? %) (perf/update-keys lib.schema.common/normalize-string-key))}
    :string
-   [:maybe (settings-map {:description "click behavior parameter mapping"}
-                         [:source ::click-behavior.parameter-ref]
-                         [:target ::click-behavior.parameter-ref])]])
+   [:maybe ::click-behavior.parameter-mapping.entry]])
 
 (defn- normalize-link-type
   "The link type `x`, with the `page` that older settings give for a dashboard as `dashboard`."
@@ -120,13 +124,17 @@
                 [:date_abbreviate                :boolean]
                 [:time_enabled                   [:enum "minutes" "seconds" "milliseconds"]]
                 [:time_style                     [:string {:decode/normalize normalize-time-style}]]
-                [:number_style                   [:enum "decimal" "percent" "scientific" "currency"]]
+                [:number_style                   [:enum "decimal" "percent" "scientific" "currency" "duration"]]
                 [:currency                       :string]
                 [:currency_style                 [:enum "symbol" "narrowSymbol" "code" "name"]]
                 [:currency_position              [:enum "before" "after"]]
                 [:currency_in_header             :boolean]
                 [:number_separators              :string]
                 [:decimals                       [:int {:min 0}]]
+                [:duration_unit                  [:enum "nanosecond" "microsecond" "millisecond" "second" "minute"
+                                                  "hour" "day" "week"]]
+                [:duration_style                 [:enum "digital" "narrow"]]
+                [:duration_precision             [:enum "minute" "second" "millisecond"]]
                 [:scale                          number?]
                 [:prefix                         :string]
                 [:suffix                         :string]
@@ -222,7 +230,7 @@
                 [:columns       [:sequential [:maybe ::column-name-or-ref]]]
                 [:type          [:enum "single" "range"]]
                 [:operator      :string]
-                [:value         :any]
+                [:value         ::lib.schema.common/open-json]
                 [:color         :string]
                 [:highlight_row :boolean]
                 [:colors        [:sequential :string]]
@@ -250,7 +258,7 @@
   "The `:pivot_table.collapsed_rows` of a pivot table: the row columns and the values whose rows are collapsed."
   (settings-map {:description "pivot table collapsed rows"}
                 [:rows  ::column-names-or-refs]
-                [:value [:sequential :any]]))
+                [:value [:sequential [:maybe ::lib.schema.common/open-json]]]))
 
 (mr/def ::scalar.segment
   "A segment of a scalar visualization: the color of the values from its minimum to its maximum."
@@ -278,13 +286,17 @@
    ::lib.schema.id/document
    ::lib.schema.id/table])
 
+(mr/def ::link-card.entity
+  "The entity a link card links to, by model and id."
+  (settings-map {:description "link card entity"}
+                [:id    ::link-card.entity-id]
+                [:model :string]))
+
 (mr/def ::link-card
   "The `:link` of a link card: the URL it links to, or the model and id of the entity it links to."
   (settings-map {:description "link card"}
                 [:url    :string]
-                [:entity (settings-map {:description "link card entity"}
-                                       [:id    ::link-card.entity-id]
-                                       [:model :string])]))
+                [:entity ::link-card.entity]))
 
 (mr/def ::global-column-settings
   "The column settings the formatting settings of the instance give every column of a type, by that type."

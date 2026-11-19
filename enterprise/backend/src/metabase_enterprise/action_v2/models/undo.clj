@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase.actions.core :as actions]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.match :as match]
@@ -210,3 +211,8 @@
   "Rollback the given user's last change to the given table."
   [context user-id scope]
   (undo*! :redo context user-id scope))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Undo [_model]
+  {:skip? true})

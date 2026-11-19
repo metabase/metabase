@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.quartz :as app-db.quartz]
    [metabase.cloud-migration.db :as cloud-migration.db]
@@ -282,6 +283,11 @@
       json/decode+kw
       (select-keys [:id :upload_url])
       (set/rename-keys {:id :external_id})))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CloudMigration [_model]
+  {:skip? true})
 
 (comment
   ;; are we in read-only-mode ?

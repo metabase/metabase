@@ -13,6 +13,14 @@
   []
   [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
 
+(defn visible-group?
+  "Whether an AI usage controls page shows the group with `group-id` in the mode selected by `advanced?`:
+  Administrators in both modes, the simple-mode groups only in simple mode, every other group only in group-level
+  mode."
+  [group-id advanced?]
+  (or (= (u/the-id (perms/admin-group)) group-id)
+      (= (boolean advanced?) (not-any? #{group-id} (simple-mode-group-ids)))))
+
 (defn visible-groups-clause
   "A HoneySQL condition matching, on `column`, the groups an AI usage controls page shows in the mode selected by
   `advanced?`: Administrators and the simple-mode groups in simple mode, every group but the simple-mode groups in

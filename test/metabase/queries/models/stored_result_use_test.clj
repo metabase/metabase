@@ -105,8 +105,8 @@
   tests in favour of generating MBQL through Lib."
   []
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (defn- snapshot-with-token!
   "A StoredResult over venues carrying `token` as its `data_access_token`."
