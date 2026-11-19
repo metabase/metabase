@@ -8,6 +8,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
@@ -34,6 +36,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -2153,6 +2156,40 @@
              (client/client-full-response :get (format "public/card/%s/query" uuid)
                                           :parameters unparseable-date-param))))))))
 
+(defn- matches?
+  "Whether `body`, a response as the test client parsed its JSON, matches `schema` once decoded the way a JSON client
+  would read that schema."
+  [schema body]
+  ;; The test client reads a JSON array as a list, and `:tuple` only accepts a vector.
+  (let [transformer (mtx/transformer
+                     (mtx/json-transformer)
+                     {:name :tuples, :decoders {:tuple #(cond-> % (sequential? %) vec)}})]
+    (mr/validate schema (mc/decode schema body transformer))))
+
+(deftest public-query-result-schema-test
+  (testing "GET /api/public/card/:uuid/query returns the bodies its schemas document"
+    (mt/dataset test-data
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :table)]
+          (let [url (format "public/card/%s/query" uuid)]
+            (testing "a completed query"
+              (let [body (client/client :get 202 url)]
+                (is (= "completed" (:status body)))
+                (is (matches? ::api.public/query-result body))))
+            (testing "a failed query"
+              (let [{:keys [status body]} (client/client-full-response :get url :parameters unparseable-date-param)]
+                (is (contains? #{400 500} status))
+                (is (= "failed" (:status body)))
+                (is (matches? ::api.public/query-error body))))))
+        (testing "a completed query with a trend line"
+          (with-temp-public-card [{uuid :public_uuid} {:display       :line
+                                                       :dataset_query (mt/mbql-query orders
+                                                                        {:aggregation [[:count] [:sum $total]]
+                                                                         :breakout    [!month.created_at]})}]
+            (let [body (client/client :get 202 (format "public/card/%s/query" uuid))]
+              (is (seq (get-in body [:data :insights])))
+              (is (matches? ::api.public/query-result body)))))))))
+
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (testing "an error raised before the QP runs must not leak the query of a Card that is not itself public"
@@ -2567,7 +2604,7 @@
                      :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
                      :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
                      :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
-                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                     :model/TimelineEvent _on-archived {:timeline_id (:id archived) :archived true}
                      :model/Dashboard dashboard (public-dashboard-properties)
                      :model/Card first-card
                      {:display "line"

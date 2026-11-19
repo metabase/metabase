@@ -1,5 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  type AuditInfo,
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupCardsUsingModelEndpoint,
@@ -41,6 +42,7 @@ export interface SetupOpts {
   settings?: Settings;
   user?: Partial<User>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  auditInfo?: Partial<AuditInfo>;
 }
 
 export const setup = async ({
@@ -48,6 +50,7 @@ export const setup = async ({
   settings = createMockSettings(),
   user,
   enterprisePlugins = [],
+  auditInfo,
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -55,7 +58,7 @@ export const setup = async ({
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
-  setupAuditInfoEndpoint();
+  setupAuditInfoEndpoint({ auditInfo });
   setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
 
   const state = createMockState({

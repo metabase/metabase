@@ -15,10 +15,9 @@
   Card row is needed."
   [card-id]
   {:id            card-id
-   :dataset_query (lib/->legacy-MBQL
-                   (-> (lib/query (mt/metadata-provider)
-                                  (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
-                       (lib/aggregate (lib/count))))})
+   :dataset_query (-> (lib/query (mt/metadata-provider)
+                                 (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
+                      (lib/aggregate (lib/count)))})
 
 (defn- category-target []
   [:field (mt/id :products :category) nil])
@@ -55,10 +54,9 @@
   "Count metric on ORDERS, no breakout."
   [card-id]
   {:id            card-id
-   :dataset_query (lib/->legacy-MBQL
-                   (-> (lib/query (mt/metadata-provider)
-                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
-                       (lib/aggregate (lib/count))))})
+   :dataset_query (-> (lib/query (mt/metadata-provider)
+                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                      (lib/aggregate (lib/count)))})
 
 (defn- orders-count-with-default-time-dim-card
   "Count metric on ORDERS with a curated default CREATED_AT dimension — the
@@ -270,10 +268,9 @@
   [card]
   (let [mp (mt/metadata-provider)]
     (assoc card :dataset_query
-           (lib/->legacy-MBQL
-            (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                (lib/aggregate (lib/count))
-                (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Widget")))))))
+           (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+               (lib/aggregate (lib/count))
+               (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Widget"))))))
 
 (def ^:private widget-explore-filters
   "The `:explore_filters` chain that produced a Widget-scoped card — what the ctx carries and the
@@ -350,20 +347,17 @@
                [:strategy :bin-width :num-bins]))
 
 (defn- products-segment-definition
-  "Inner legacy-MBQL segment `:definition` filtering PRODUCTS, built through lib.
+  "Full-query segment `:definition` filtering PRODUCTS, built through lib.
   `build-filter` takes a metadata provider and returns the filter clause."
   [build-filter]
   (let [mp (mt/metadata-provider)]
     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-        (lib/filter (build-filter mp))
-        lib/->legacy-MBQL
-        :query)))
+        (lib/filter (build-filter mp)))))
 
 (deftest default-segment-uniform-binning-test
   (testing "a segment that range-filters the binned dim gets the same pinned bin width as its
             unsegmented sibling — segments must not re-derive bins over their narrowed domain"
     (mt/with-temp [:model/Segment {seg-id :id} {:name       "Highly rated products"
-                                                :table_id   (mt/id :products)
                                                 :definition (products-segment-definition
                                                              (fn [mp]
                                                                (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4)))}]
@@ -396,16 +390,14 @@
   [card-id]
   (let [mp (mt/metadata-provider)]
     {:id            card-id
-     :dataset_query (lib/->legacy-MBQL
-                     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                         (lib/aggregate (lib/count))
-                         (lib/filter (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4))))}))
+     :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                        (lib/aggregate (lib/count))
+                        (lib/filter (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4)))}))
 
 (deftest default-card-filter-still-narrows-binning-test
   (testing "a range filter in the metric card's own query still narrows the pinned width — only
             the per-segment filter is excluded from the bin computation"
     (mt/with-temp [:model/Segment {seg-id :id} {:name       "Cheap products"
-                                                :table_id   (mt/id :products)
                                                 :definition (products-segment-definition
                                                              (fn [mp]
                                                                (lib/< (lib.metadata/field mp (mt/id :products :price)) 30)))}]
@@ -489,11 +481,10 @@
   (testing "run-top-k-discovery returns [] when the query succeeds with no rows, so the caller can cache it"
     (let [mp   (mt/metadata-provider)
           card {:id            9000112
-                :dataset_query (lib/->legacy-MBQL
-                                (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                    (lib/aggregate (lib/count))
-                                    (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category))
-                                                       "No Such Category"))))}]
+                :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                   (lib/aggregate (lib/count))
+                                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category))
+                                                      "No Such Category")))}]
       (is (= [] (#'variants/run-top-k-discovery mp card (category-target) category-dim 2)))))
   (testing "and nil when the query throws, so the caller can skip caching it"
     (is (nil? (#'variants/run-top-k-discovery (mt/metadata-provider)

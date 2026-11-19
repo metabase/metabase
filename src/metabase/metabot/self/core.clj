@@ -4,7 +4,6 @@
    [clj-http.conn-mgr :as conn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
@@ -23,7 +22,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.o11y :refer [with-span]]
+   [metabase.util.performance :as perf])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
    (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
@@ -109,6 +109,7 @@
    [:output            :string]
    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
    [:data-parts        {:optional true} [:sequential DataPart]]
+   [:non-terminal?     {:optional true} :boolean]
    [:error             {:optional true} [:map {:closed true}
                                          [:class        [:enum :validation :recoverable :unrecoverable]]
                                          [:code         :keyword]
@@ -133,8 +134,7 @@
 
   `{:query {\"stages\" []}}` passes. `{\"query\" {\"stages\" []}}` and `{:query {:stages []}}` do not: the argument
   names are keywords, and the values are `::decoded-json`, with string keys."
-  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   :keyword ::decoded-json])
+  [:map-of :keyword ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -225,8 +225,7 @@
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
-   [:or :string :keyword] JSONSchemaLeaf])
+  [:map-of [:or :string :keyword] JSONSchemaLeaf])
 
 (def ^:private JSONSchemaNode
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
@@ -641,7 +640,7 @@
                                     (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (walk/keywordize-keys (coerce-stringified-json (:arguments part))))
+                           (title-fn (perf/keywordize-keys (coerce-stringified-json (:arguments part))))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
                              nil))]
@@ -1112,7 +1111,7 @@
                            ;; garble the message.
                            (or
                             (unparsed-arguments-outcome arguments)
-                            (let [arguments (walk/keywordize-keys
+                            (let [arguments (perf/keywordize-keys
                                              (or (coerce-stringified-json arguments) {}))]
                               (log/debug "Executing tool" {:tool-name safe-name})
                               (when (ait/capture-active?)

@@ -1173,7 +1173,7 @@
                    (qp/process-query
                     (assoc (lib/query mp (lib.metadata/table mp table-id))
                            :parameters [{:type   :string/=
-                                         :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
+                                         :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref type-field))]
                                          :value  ["toucan"]}]))))))
          (testing "a native field filter over a postgres enum column filters correctly (#63537)"
            (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
@@ -2881,7 +2881,7 @@
                     (testing "fails and names the unmemberable owner"
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
-                           #"login \"ws_pre_adp_role\" is not a member of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\";`"
+                           #"login \"ws_pre_adp_role\" lacks the privileges of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\"( WITH INHERIT TRUE)?;`"
                            (postgres/assert-can-alter-default-privileges! user-spec schema))))
                     (testing "passes once the current_user becomes a member of the owner role"
                       (jdbc/execute! admin-spec
@@ -2988,3 +2988,16 @@
                        :ok)))
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
+
+(deftest failed-parameterized-query-in-a-test-transaction-reports-its-own-error-test
+  (mt/test-driver :postgres
+    (testing "inside a transaction, a parameterized query that fails reports its own error, not \"current transaction is aborted\""
+      ;; The `:sql-jdbc` test connection, without the autosave the `:postgres` one adds: the transaction Redshift runs.
+      ((get-method driver/do-with-test-connection :sql-jdbc)
+       :postgres
+       (mt/id)
+       (fn [conn]
+         ;; The driver opens the transaction with the first statement it executes.
+         (driver/query-on-connection :postgres conn ["SELECT 1" []] {})
+         (is (thrown-with-msg? Exception #"column \"no_such_column\" does not exist"
+                               (driver/query-on-connection :postgres conn ["SELECT no_such_column WHERE 1 = ?" [1]] {}))))))))

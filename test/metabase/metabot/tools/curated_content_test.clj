@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.claude :as claude]
@@ -29,6 +30,7 @@
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.static-viz :as static-viz]
    [metabase.metabot.tools.subscriptions :as subscriptions]
    [metabase.permissions.core :as perms]
@@ -206,7 +208,12 @@
           (is (contains? models verified-model))
           (is (not (contains? models plain-model))))
         (is (= #{verified-model}
-               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items"))))))))))
+               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items")))))))
+      (testing "lists an uncurated metric once what it's defined on is curated, agreeing with metric/{id}"
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (is (= #{verified-model plain-metric}
+                 (item-ids (first (read-uris metabot :internal
+                                             (str "metabase://collection/" coll-id "/items")))))))))))
 
 (deftest read-resource-curated-only-dashboards-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -235,12 +242,30 @@
                      :model/DashboardCard _                 {:dashboard_id       dash-id
                                                              :card_id            plain-id
                                                              :parameter_mappings [(mapping plain-id)]}
+                     :model/Card          {metric-id :id}   {:type          :metric
+                                                             :dataset_query (count-metric-query (orders-query))}
+                     :model/DashboardCard {metric-dc :id}   {:dashboard_id       dash-id
+                                                             :card_id            metric-id
+                                                             :parameter_mappings [(mapping metric-id)]}
                      :model/Metabot       metabot           {:name "curated metabot", :use_verified_content true}]
-        (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
-          (is (=? [{:id "date", :connected_dashcards [curated-dc]}]
-                  (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
-                      first
-                      (get-in [:content :structured-output :parameters])))))))))
+        (let [connected (fn []
+                          (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
+                              first
+                              (get-in [:content :structured-output :parameters])
+                              first
+                              :connected_dashcards
+                              set))
+              items     (fn []
+                          (into #{}
+                                (keep :dashcard_id)
+                                (get-in (first (read-uris metabot :internal
+                                                          (str "metabase://dashboard/" dash-id "/items")))
+                                        [:content :structured-output :items])))]
+          (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
+            (is (= #{curated-dc} (connected) (items))))
+          (testing "and of an uncurated metric once what it's defined on is curated"
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+              (is (= #{curated-dc metric-dc} (connected) (items))))))))))
 
 (defn- first-request-text!
   "The text of the first LLM request a turn of the agent loop makes for `opts`, with the LLM mocked to answer at once."
@@ -553,6 +578,158 @@
                 (testing "model/{id} doesn't list the failing metric defined on it"
                   (is (not (contains? (listed (str "metabase://model/" model-id)) bad-model-metric))))))))))))
 
+(defn- sum-metric-query [field-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (orders-query) (lib/sum (lib.metadata/field mp (mt/id :orders field-kw))))))
+
+(deftest curated-table-details-judge-metrics-in-a-fixed-number-of-queries-test
+  (testing "BOT-2619: the queries curation adds to a curated table's details do not grow with the number of uncurated
+            metrics it lists"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Metabot metabot {:name "curated metabot" :use_verified_content true}
+                     :model/Card {m1 :id} {:type          :metric
+                                           :name          "orders count"
+                                           :dataset_query (count-metric-query (orders-query))}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [uri      (str "metabase://table/" (mt/id :orders))
+                listed   #(into #{} (map :id) (get-in (first (read-uris % :internal uri))
+                                                      [:content :structured-output :metrics]))
+                counted  (fn [metabot]
+                           ;; the first read warms the memoized lookups
+                           (listed metabot)
+                           (t2/with-call-count [call-count]
+                             (listed metabot)
+                             (call-count)))
+                ;; the details have per-metric costs of their own; compare only what curation adds to them
+                added    #(- (counted metabot) (counted (assoc metabot :use_verified_content false)))
+                with-one (added)]
+            (is (= #{m1} (listed metabot)))
+            (mt/with-temp [:model/Card {m2 :id} {:type :metric :name "orders total" :dataset_query (sum-metric-query :total)}
+                           :model/Card {m3 :id} {:type :metric :name "orders subtotal" :dataset_query (sum-metric-query :subtotal)}
+                           :model/Card {m4 :id} {:type :metric :name "orders tax" :dataset_query (sum-metric-query :tax)}]
+              (testing "every uncurated metric passes the rule, so each one is judged by its definition"
+                (is (= #{m1 m2 m3 m4} (listed metabot))))
+              (is (= with-one (added))))))))))
+
+(deftest usable-metric-ids-judge-a-batch-in-a-fixed-number-of-queries-test
+  (testing "BOT-2619: judging a batch of uncurated metrics reads the app DB a fixed number of times"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card {m1 :id} {:type :metric :name "orders count" :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {m2 :id} {:type :metric :name "orders total" :dataset_query (sum-metric-query :total)}
+                     :model/Card {m3 :id} {:type :metric :name "orders subtotal" :dataset_query (sum-metric-query :subtotal)}
+                     :model/Card {m4 :id} {:type          :metric
+                                           :name          "orders joined to raw reviews"
+                                           :dataset_query (count-metric-query
+                                                           (orders-joined-query :reviews :product_id :product_id))}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [counted (fn [ids]
+                          (curation/usable-metric-ids ids)
+                          (t2/with-call-count [call-count]
+                            (curation/usable-metric-ids ids)
+                            (call-count)))]
+            (testing "the batch keeps the verdicts each metric gets alone"
+              (is (= #{m1 m2 m3} (curation/usable-metric-ids [m1 m2 m3 m4])))
+              (is (= [true true true false] (mapv curation/curated-metric? [m1 m2 m3 m4]))))
+            (is (= (counted [m1]) (counted [m1 m2 m3])))))))))
+
+(deftest usable-metric-ids-judge-metrics-over-several-tables-in-a-fixed-number-of-queries-test
+  (testing "BOT-2619: the app-DB queries judging a batch takes don't grow with the number of metrics when the
+            metrics read more than one curated table"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [mp      (mt/metadata-provider)
+            table-q #(lib/query mp (lib.metadata/table mp (mt/id %)))
+            count-q #(lib/aggregate (table-q %) (lib/count))
+            sum-q   #(lib/aggregate (table-q %1) (lib/sum (lib.metadata/field mp (mt/id %1 %2))))]
+        (mt/with-temp [:model/Card {o1 :id} {:type :metric :name "orders count" :dataset_query (count-q :orders)}
+                       :model/Card {p1 :id} {:type :metric :name "products count" :dataset_query (count-q :products)}
+                       :model/Card {o2 :id} {:type :metric :name "orders total" :dataset_query (sum-q :orders :total)}
+                       :model/Card {p2 :id} {:type :metric :name "products price" :dataset_query (sum-q :products :price)}]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (mt/with-temp-vals-in-db :model/Table (mt/id :products) {:is_published true :data_layer :final}
+              (let [counted (fn [ids]
+                              ;; the first read warms the memoized lookups
+                              (curation/usable-metric-ids ids)
+                              (t2/with-call-count [call-count]
+                                (curation/usable-metric-ids ids)
+                                (call-count)))]
+                (testing "every metric is usable: each one reads a curated table only"
+                  (is (= #{o1 o2 p1 p2} (curation/usable-metric-ids [o1 o2 p1 p2]))))
+                (testing "a second metric over each table costs nothing"
+                  (is (= (counted [o1 p1]) (counted [o1 o2 p1 p2]))))
+                (testing "a second table costs only the metadata provider's fetches of the Table and of its Fields:
+                          the permissions on both tables are read together"
+                  (is (= (+ 2 (counted [o1])) (counted [o1 p1]))))))))))))
+
+(deftest usable-metric-ids-judge-each-metrics-sources-for-readability-test
+  (testing "BOT-2619: in a batch, an uncurated metric over a Card the user cannot read fails closed, and a metric over
+            what they can read keeps its verdict"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {hidden :id} {:name "hidden"}
+                     :model/Card {model :id} {:collection_id hidden :type :model :name "verified hidden model"
+                                              :dataset_query (orders-query)}
+                     :model/Card {over-model :id} {:type          :metric
+                                                   :name          "count over hidden model"
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type     :query
+                                                                   :query    {:source-table (str "card__" model)
+                                                                              :aggregation  [[:count]]}}}
+                     :model/Card {over-orders :id} {:type          :metric
+                                                    :name          "orders count"
+                                                    :dataset_query (count-metric-query (orders-query))}]
+        (verify-card! model)
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (testing "a user who cannot read the model"
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (= #{over-orders} (curation/usable-metric-ids [over-model over-orders])))
+              (is (= [false true] (mapv curation/curated-metric? [over-model over-orders])))))
+          (testing "a user who can read it may use both: the model is curated"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (= #{over-model over-orders} (curation/usable-metric-ids [over-model over-orders])))
+              (is (= [true true] (mapv curation/curated-metric? [over-model over-orders]))))))))))
+
+(defn- metric-on-metric-query
+  "A legacy query over the Table `table-id` whose only aggregation is the metric `metric-id`."
+  [table-id metric-id]
+  {:database (mt/id) :type :query :query {:source-table table-id :aggregation [["metric" metric-id]]}})
+
+(defn- insert-metric!
+  "Insert a metric Card named `nm` with `dataset-query` and return its id, for a chain longer than `with-temp`
+  spells out comfortably."
+  [nm dataset-query]
+  (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card)
+                                              :name          nm
+                                              :type          :metric
+                                              :dataset_query dataset-query)))
+
+(deftest usable-metric-ids-keep-each-metrics-nesting-limit-test
+  (testing "BOT-2619: a curated metric deeper than the nesting limit covers no metric of the batch, so a metric
+            whose own walk loads it doesn't change another metric's verdict"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/Card]
+        (let [products (mt/id :products)
+              ;; a verified metric on raw PRODUCTS: a metric that reaches it may read PRODUCTS through it
+              deepest  (insert-metric! "verified products count"
+                                       {:database (mt/id) :type :query
+                                        :query    {:source-table products :aggregation [[:count]]}})
+              _        (verify-card! deepest)
+              ;; nine uncurated metrics on PRODUCTS, each counting the one below it: [deepest link9 ... link1]
+              chain    (reduce (fn [ids n]
+                                 (conj ids (insert-metric! (str "link " n)
+                                                           (metric-on-metric-query products (peek ids)))))
+                               [deepest]
+                               (range 9 0 -1))
+              top      (peek chain)
+              ;; one level above `top`, so the walk from it stops one metric short of the verified one
+              root     (insert-metric! "root" (metric-on-metric-query products top))]
+          (testing "the metric at the limit is usable: its own walk reaches the verified metric"
+            (is (true? (curation/curated-metric? top)))
+            (is (= #{top} (curation/usable-metric-ids [top]))))
+          (testing "the metric one level above it is not"
+            (is (false? (curation/curated-metric? root)))
+            (is (= #{} (curation/usable-metric-ids [root]))))
+          (testing "and judging the two together keeps both verdicts"
+            (is (= #{top} (curation/usable-metric-ids [root top])))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -561,23 +738,32 @@
                                                          :dataset_query (orders-query)}
                        :model/Card {plain-question :id} {:type :question :name "plain recent question"
                                                          :dataset_query (orders-query)}
+                       :model/Card {plain-metric :id} {:type :metric :name "plain recent metric"
+                                                       :dataset_query (count-metric-query (orders-query))}
                        :model/Table {raw-table :id} {:db_id (mt/id) :name "raw_recent_table" :active true}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (verify-card! verified-model)
           (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
             (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
           (let [items (fn [metabot]
-                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]}
+                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]
+                                         ["metric" plain-metric]}
                                        (juxt :type :id))
                                  (get-in (first (read-uris metabot :internal "metabase://user/recent-items"))
-                                         [:content :structured-output :items])))]
+                                         [:content :structured-output :items])))
+                pairs (fn [metabot] (into #{} (map (juxt :type :id)) (items metabot)))]
             ;; key on type and id: a temp Card's id can coincide with a temp Table's
             (is (=? [{:type "model" :id verified-model}] (items metabot)))
             (testing "the unrestricted Metabot lists them all, with their public types and URIs"
               (is (=? [{:type "table" :uri (str "metabase://table/" raw-table)}
                        {:type "question" :uri (str "metabase://question/" plain-question)}
                        {:type "model" :uri (str "metabase://model/" verified-model)}]
-                      (items nil))))))))))
+                      (items nil))))
+            (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
+              (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
+              (is (= #{["model" verified-model]} (pairs metabot)))
+              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                (is (= #{["model" verified-model] ["metric" plain-metric]} (pairs metabot)))))))))))
 
 (deftest curation-subject-test
   (testing "transforms can never be curated"
@@ -740,13 +926,12 @@
       (let [mp            (mt/metadata-provider)
             reviews-count (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews))) (lib/count))
             orders-count  (count-metric-query (orders-query))]
-        (mt/with-temp [:model/Measure {raw-measure :id} {:name "reviews count" :table_id (mt/id :reviews)
+        (mt/with-temp [:model/Measure {raw-measure :id} {:name "reviews count"
                                                          :definition reviews-count}
-                       :model/Measure {orders-measure :id} {:name "orders count" :table_id (mt/id :orders)
+                       :model/Measure {orders-measure :id} {:name "orders count"
                                                             :definition orders-count}
                        :model/Segment {raw-segment :id}
                        {:name       "rated"
-                        :table_id   (mt/id :reviews)
                         :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                 (lib/> (lib.metadata/field mp (mt/id :reviews :rating)) 3))}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1212,9 +1397,9 @@
   (testing "a measure in the trash is never curated"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [orders-count (lib/aggregate (orders-query) (lib/count))]
-        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count"
                                                   :definition orders-count}
-                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                       :model/Measure {trashed :id} {:name "trashed orders count"
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1226,9 +1411,9 @@
   (testing "a query using a measure in the trash is refused, as a read of that measure is"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [orders-count (lib/aggregate (orders-query) (lib/count))]
-        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count"
                                                   :definition orders-count}
-                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                       :model/Measure {trashed :id} {:name "trashed orders count"
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}
                        :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
@@ -1558,11 +1743,9 @@
             orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))
             price  (first (filter #(= (:id %) (mt/id :products :price)) (lib/visible-columns orders)))]
         (mt/with-temp [:model/Measure {raw-measure :id} {:name       "reviews count"
-                                                         :table_id   (mt/id :reviews)
                                                          :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                                                     (lib/count))}
                        :model/Measure {hop-measure :id} {:name       "orders product price"
-                                                         :table_id   (mt/id :orders)
                                                          :definition (lib/aggregate orders (lib/sum price))}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1571,3 +1754,152 @@
                 "PRODUCTS is one FK hop from curated ORDERS")
             (is (false? (curation/measure-or-segment-curated? :measure raw-measure)))
             (is (true? (curation/measure-or-segment-curated? :measure hop-measure)))))))))
+
+(defn- adhoc-viewing-context
+  "The viewing context of an ad-hoc query on the card `card-id`, rendered for `metabot` under `profile-id`."
+  [metabot profile-id card-id]
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/card mp card-id))]
+    (as-metabot metabot profile-id
+                #(user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))))
+
+(deftest viewing-context-source-card-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "curation test collection"}
+                   :model/Card {plain-model :id} {:type :model :name "plain model" :collection_id coll-id
+                                                  :dataset_query (orders-query)}
+                   :model/Card {verified-model :id} {:type :model :name "verified model" :collection_id coll-id
+                                                     :dataset_query (orders-query)}
+                   :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+      (verify-card! verified-model)
+      (testing "a curated-only Metabot gets no URI for an uncurated source card"
+        (let [out (adhoc-viewing-context metabot :internal plain-model)]
+          (is (str/includes? out "source-card") "the query text renders")
+          (is (not (str/includes? out "Source model")))
+          (is (not (str/includes? out (str "metabase://model/" plain-model))))))
+      (testing "a curated-only Metabot gets the URI of a curated source card"
+        (is (str/includes? (adhoc-viewing-context metabot :internal verified-model)
+                           (str "Source model \"verified model\": metabase://model/" verified-model))))
+      (testing "an exempt profile gets the URI of an uncurated source card"
+        (is (str/includes? (adhoc-viewing-context metabot :sql plain-model)
+                           (str "Source model \"plain model\": metabase://model/" plain-model)))))))
+
+(deftest viewing-context-source-metric-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {orders-metric :id} {:type :metric :name "orders count"
+                                                      :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {reviews-metric :id} {:type :metric :name "reviews count"
+                                                       :dataset_query (count-metric-query
+                                                                       (lib/query mp (lib.metadata/table
+                                                                                      mp (mt/id :reviews))))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [out (fn [metric-id]
+                      ;; `lib/query` on a metric card does not make the metric the source card, so build the stage
+                      ;; by hand.
+                      (let [query {:database (mt/id) :type :query :query {:source-table (str "card__" metric-id)}}]
+                        (is (:mp (shared.content-store/query-for-export query true))
+                            "the permission check clears the query")
+                        (as-metabot metabot :internal
+                                    #(user-context/format-viewing-context
+                                      {:user_is_viewing [{:type "adhoc" :query query}]}))))]
+            (testing "a curated-only Metabot gets the URI of an uncurated metric on a curated table"
+              (is (str/includes? (out orders-metric)
+                                 (str "Source metric \"orders count\": metabase://metric/" orders-metric))))
+            (testing "a curated-only Metabot gets no URI for an uncurated metric on an uncurated table"
+              (let [text (out reviews-metric)]
+                (is (str/includes? text "source-card") "the query text renders")
+                (is (not (str/includes? text "Source metric")))))))))))
+
+(defn- source-card-uris
+  "The entity URI and the columns URI that the `Source …` line of a viewing context names, or nil when it has none."
+  [viewing-context]
+  (some->> (re-find #"Source \w+ \"[^\"]*\": (metabase://\S+) \(read its columns at (metabase://[^)\s]+)\)"
+                    viewing-context)
+           rest
+           vec))
+
+(deftest viewing-context-source-card-uris-read-test
+  ;; `resource-card` in `metabase.metabot.agent.user-context` repeats the gates of `read_resource` by hand.
+  ;; This test reads the URIs that the line names, so a change on one side only fails here.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {plain-model :id} {:type :model :name "plain model" :dataset_query (orders-query)}
+                     :model/Card {verified-model :id} {:type :model :name "verified model"
+                                                       :dataset_query (orders-query)}
+                     :model/Card {verified-question :id} {:type :question :name "verified question"
+                                                          :dataset_query (orders-query)}
+                     :model/Card {orders-metric :id} {:type :metric :name "orders count"
+                                                      :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {reviews-metric :id} {:type :metric :name "reviews count"
+                                                       :dataset_query (count-metric-query
+                                                                       (lib/query mp (lib.metadata/table
+                                                                                      mp (mt/id :reviews))))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (verify-card! verified-model)
+        (verify-card! verified-question)
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (doseq [[profile-id card-type card-id line?] [[:internal "model"    verified-model    true]
+                                                        [:internal "question" verified-question true]
+                                                        [:internal "metric"   orders-metric     true]
+                                                        [:sql      "model"    plain-model       true]
+                                                        [:internal "metric"   reviews-metric    false]]]
+            (testing (str profile-id " " card-type " " card-id)
+              ;; `lib/query` on a metric card does not make the metric the source card, so build the stage by hand.
+              (let [query {:database (mt/id) :type :query :query {:source-table (str "card__" card-id)}}
+                    uris  (source-card-uris
+                           (as-metabot metabot profile-id
+                                       #(user-context/format-viewing-context
+                                         {:user_is_viewing [{:type "adhoc" :query query}]})))]
+                (if line?
+                  (do
+                    (is (= 2 (count uris)) "the line names the card and its columns")
+                    (doseq [{:keys [uri error]} (apply read-uris metabot profile-id uris)]
+                      (is (nil? error) (str "read_resource reads " uri))))
+                  (do
+                    (is (nil? uris) "no line")
+                    (is (denied? (first (read-uris metabot profile-id
+                                                   (str "metabase://" card-type "/" card-id))))
+                        "read_resource refuses the card")))))))))))
+
+(defn- metric-line-uris
+  "The entity URI and the columns URI that the first `Metric …` line of a viewing context names, or nil when it has
+  none."
+  [viewing-context]
+  (some->> (re-find #"Metric \"[^\"]*\": (metabase://\S+) \(read its columns at (metabase://[^)\s]+)\)"
+                    viewing-context)
+           rest
+           vec))
+
+(deftest viewing-context-metric-aggregation-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {orders-metric :id} {:type :metric :name "orders count"
+                                                      :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {reviews-metric :id} {:type :metric :name "reviews count"
+                                                       :dataset_query (count-metric-query
+                                                                       (lib/query mp (lib.metadata/table
+                                                                                      mp (mt/id :reviews))))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          ;; `adhoc-viewing-context` builds the query as the frontend does: the metric's table is the source, and the
+          ;; stage aggregates the metric.
+          (doseq [[profile-id metric-id line?] [[:internal orders-metric  true]
+                                                [:sql      reviews-metric true]
+                                                [:internal reviews-metric false]]]
+            (testing (str profile-id " metric " metric-id)
+              (let [text (adhoc-viewing-context metabot profile-id metric-id)
+                    uris (metric-line-uris text)]
+                (is (str/includes? text "notebook editor"))
+                (if line?
+                  (do
+                    (is (= [(str "metabase://metric/" metric-id) (str "metabase://metric/" metric-id "/dimensions")]
+                           uris)
+                        "the line names the metric and its columns")
+                    (doseq [{:keys [uri error]} (apply read-uris metabot profile-id uris)]
+                      (is (nil? error) (str "read_resource reads " uri))))
+                  (do
+                    (is (nil? uris) "no line")
+                    (is (denied? (first (read-uris metabot profile-id (str "metabase://metric/" metric-id))))
+                        "read_resource refuses the metric")))))))))))

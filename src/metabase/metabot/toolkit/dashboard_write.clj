@@ -28,7 +28,7 @@
   [ids]
   (let [ids (into #{} (filter int?) ids)]
     (when (seq ids)
-      (into {} (for [card  (toolkit.db/cards ids)
+      (into {} (for [card  (t2/hydrate (toolkit.db/cards ids) :can_read)
                      :when (mi/can-read? card)]
                  [(:id card) card])))))
 
@@ -76,7 +76,7 @@
   [dashboard attrs]
   (if dashboard
     (api/write-check dashboard)
-    (api/create-check :model/Dashboard {:collection_id (:collection_id attrs)})))
+    (api/create-check :model/Dashboard attrs)))
 
 (defn- blank-dashboard
   "The empty dashboard with `attrs` that a create compiles its ops against, before anything is written."

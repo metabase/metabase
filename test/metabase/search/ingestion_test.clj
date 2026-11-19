@@ -3,7 +3,6 @@
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -147,15 +146,19 @@
             :type :metric
             :dataset_query (let [mp (mt/metadata-provider)]
                              (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/aggregate (lib/count))
-                                 lib.convert/->legacy-MBQL))}
+                                 (lib/aggregate (lib/count))))}
            :model/Card
            {b-id :id}
            {:name "Metric B"
             :type :metric
-            :dataset_query (metric-query a-id)}]
-          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
+            :dataset_query (metric-query a-id)}
+           :model/Card
+           {c-id :id}
+           {:name "Metric C"
+            :type :metric
+            :dataset_query (metric-query b-id)}]
+          ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
+          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
@@ -401,27 +404,59 @@
           (finally
             (queue/stop-listening! listener-name)))))))
 
-(deftest await-pending-updates-waits-for-after-commit-handoff-test
-  (testing "an after-commit handoff counts as pending until it finishes, though it queues nothing until then"
-    (let [running (promise)
-          release (promise)]
-      (with-redefs [search.ingestion/pending-updates (atom 0)]
-        (binding [search.ingestion/*force-sync* false]
-          (try
-            (t2/with-transaction [_conn]
-              (search/after-commit! "slow handoff"
-                                    (fn []
-                                      (deliver running true)
-                                      (deref release 5000 ::timeout)))
-              (is (true? (search.ingestion/await-pending-updates! 0))
-                  "nothing is pending before the commit"))
-            (is (true? (deref running 2000 ::timeout)))
-            (is (false? (search.ingestion/await-pending-updates! 10)))
-            (deliver release true)
-            (is (true? (search.ingestion/await-pending-updates! 2000)))
-            (finally
-              (deliver release true))))))))
+(deftest after-commit-runs-steps-on-the-committing-thread-test
+  (testing "after-commit! steps run on the thread that commits, before the transaction returns, and start no thread"
+    (let [ran-on (atom nil)]
+      (binding [search.ingestion/*force-sync* false]
+        (t2/with-transaction [_conn]
+          (search/after-commit! "probe" #(reset! ran-on (Thread/currentThread)))
+          (is (nil? @ran-on) "nothing runs before the commit")))
+      (is (identical? (Thread/currentThread) @ran-on)))))
 
+(deftest after-commit-stops-on-interrupt-test
+  (testing "an interrupted after-commit! step skips the steps after it and leaves the thread interrupted"
+    (let [ran (atom [])]
+      (t2/with-transaction [_conn]
+        (search/after-commit! "probe"
+                              #(throw (InterruptedException. "interrupted"))
+                              #(swap! ran conj :later-step)))
+      ;; Read, and clear, the status before asserting, since reporting an assertion clears it.
+      (let [interrupted? (Thread/interrupted)]
+        (is (= {:ran [], :interrupted? true}
+               {:ran @ran, :interrupted? interrupted?}))))))
+
+(def ^:private recorded-deletes (atom []))
+
+(defn- record-delete [engine search-model ids]
+  (swap! recorded-deletes conj [engine search-model (set ids)])
+  {search-model (count ids)})
+
+;; Engines that only record what they are asked to delete. A multimethod cannot be redefined in a test, so these are
+;; real methods under test-only dispatch values.
+(defmethod search.engine/delete! ::recording-engine-a [engine search-model ids]
+  (record-delete engine search-model ids))
+
+(defmethod search.engine/delete! ::recording-engine-b [engine search-model ids]
+  (record-delete engine search-model ids))
+
+(deftest ^:synchronized tombstones-reach-every-active-engine-test
+  (testing "a tombstone removes its documents from every active engine"
+    (reset! recorded-deletes [])
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [::recording-engine-a ::recording-engine-b])]
+      (search.ingestion/bulk-ingest! [(search.ingestion/tombstone "card" [1 2])]))
+    (is (= #{[::recording-engine-a "card" #{"1" "2"}]
+             [::recording-engine-b "card" #{"1" "2"}]}
+           (set @recorded-deletes)))))
+
+(deftest ^:parallel message-runs-test
+  (testing "re-index messages and tombstones coalesce with their neighbors, while each reconcile runs alone"
+    (let [reindex-1 ["card" [:= 1 :this.id]]
+          reindex-2 ["card" [:= 2 :this.id]]
+          tombstone (search.ingestion/tombstone "card" [3])
+          action    (search.ingestion/reconcile "action" #{4})
+          entity    (search.ingestion/reconcile "indexed-entity" #{"5:5"})]
+      (is (= [[reindex-1 reindex-2] [tombstone] [action] [entity] [reindex-1]]
+             (#'search.ingestion/message-runs [reindex-1 reindex-2 tombstone action entity reindex-1]))))))
 (deftest ingest-maybe-async!-queues-after-commit-test
   ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
   ;; commits, and the transaction takes longer than the queue delay, the worker finds no row and the entity is

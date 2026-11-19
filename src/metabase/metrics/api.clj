@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
@@ -21,7 +20,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -168,18 +166,28 @@
 (defn- check-expression-permissions
   "Verify permissions for each expression leaf and return metric card IDs keyed by UUID."
   [expression]
-  (into {}
-        (keep (fn [leaf]
-                (let [source-type (lib-metric/expression-leaf-type leaf)
-                      source-id   (lib-metric/expression-leaf-id leaf)]
-                  (case source-type
-                    :metric  (do
-                               (api/read-check (metrics.db/metric-card source-id))
-                               [(lib-metric/expression-leaf-uuid leaf) source-id])
-                    :measure (do
-                               (api/query-check (metrics.db/measure source-id))
-                               nil))))
-              (lib-metric/expression-leaves expression))))
+  (let [leaves         (lib-metric/expression-leaves expression)
+        leaf-ids       (fn [leaf-type]
+                         (into [] (comp (filter #(= leaf-type (lib-metric/expression-leaf-type %)))
+                                        (map lib-metric/expression-leaf-id)
+                                        (distinct))
+                               leaves))
+        id->metric     (into {} (map (juxt :id identity))
+                             (t2/hydrate (metrics.db/metric-cards-by-ids (leaf-ids :metric)) :can_read))
+        id->measure    (into {} (map (juxt :id identity))
+                             (t2/hydrate (metrics.db/measures-by-ids (leaf-ids :measure)) :can_query))]
+    (into {}
+          (keep (fn [leaf]
+                  (let [source-type (lib-metric/expression-leaf-type leaf)
+                        source-id   (lib-metric/expression-leaf-id leaf)]
+                    (case source-type
+                      :metric  (do
+                                 (api/read-check (get id->metric source-id))
+                                 [(lib-metric/expression-leaf-uuid leaf) source-id])
+                      :measure (do
+                                 (api/query-check (get id->measure source-id))
+                                 nil)))))
+          leaves)))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
@@ -350,22 +358,6 @@
 (defn- write-check-metric! [id]
   (api/write-check (metrics.db/metric-card id)))
 
-(defn- notify-dimensions-changed!
-  "Announce a write to metric `id`'s curated dimensions, given the `before` Card that
-   [[write-check-metric!]] already fetched.
-
-   These endpoints write `:dimensions`/`:dimension_mappings`, which are serialized columns, so the write has to
-   reach everything a Card update normally reaches — remote-sync dirty tracking above all, which listens only for
-   the standard per-model event families and so never saw the bespoke topic this replaces. Audit logging and the
-   dependency graph come along for the ride; a dimension edit is a card edit.
-
-   Revisions are unaffected: `metabase.revisions.impl.card` excludes both columns from the snapshot, and
-   `push-revision!` skips a revision whose serialization is unchanged."
-  [id before]
-  (events/publish-event! :event/card-update {:object          (metrics.db/metric-card id)
-                                             :previous-object before
-                                             :user-id         api/*current-user-id*}))
-
 (api.macros/defendpoint :get "/:id/dimension"
   :- [:map
       [:added   [:sequential :map]]
@@ -403,9 +395,8 @@
                                                                          [:= {:decode/normalize lib.schema.common/normalize-keyword} :field]
                                                                          [:ref ::lib.schema.ref/field.options]
                                                                          [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]]]]]]]
-  (let [before (write-check-metric! id)]
-    (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
-      (notify-dimensions-changed! id before))))
+  (write-check-metric! id)
+  (metrics/add-dimensions! :metadata/metric id dimensions))
 
 (api.macros/defendpoint :post "/:id/dimension/remove"
   :- [:sequential :map]
@@ -413,9 +404,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map {:closed true} [:dimension_ids [:sequential ms/NonBlankString]]]]
-  (let [before (write-check-metric! id)]
-    (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
-      (notify-dimensions-changed! id before))))
+  (write-check-metric! id)
+  (metrics/remove-dimensions! :metadata/metric id dimension_ids))
 
 (api.macros/defendpoint :post "/:id/dimension/set-default"
   :- [:sequential :map]
@@ -425,9 +415,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_id]} :- [:map {:closed true} [:dimension_id [:maybe ms/NonBlankString]]]]
-  (let [before (write-check-metric! id)]
-    (u/prog1 (metrics/set-default-dimension! :metadata/metric id dimension_id)
-      (notify-dimensions-changed! id before))))
+  (write-check-metric! id)
+  (metrics/set-default-dimension! :metadata/metric id dimension_id))
 
 (api.macros/defendpoint :post "/:id/dimension/reorder"
   :- [:sequential :map]
@@ -437,9 +426,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map {:closed true} [:dimension_ids [:sequential ms/NonBlankString]]]]
-  (let [before (write-check-metric! id)]
-    (u/prog1 (metrics/reorder-dimensions! :metadata/metric id dimension_ids)
-      (notify-dimensions-changed! id before))))
+  (write-check-metric! id)
+  (metrics/reorder-dimensions! :metadata/metric id dimension_ids))
 
 (api.macros/defendpoint :post "/:id/dimension/:dimension-key"
   :- :map
@@ -456,6 +444,5 @@
             [:description  {:optional true} [:maybe :string]]
             [:default_temporal_unit {:optional true} ms/NonBlankString]
             [:source       {:optional true} [:maybe [:map {:closed true} [:field-id ms/PositiveInt]]]]]]
-  (let [before (write-check-metric! id)]
-    (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
-      (notify-dimensions-changed! id before))))
+  (write-check-metric! id)
+  (metrics/update-dimension! :metadata/metric id dimension-key body))

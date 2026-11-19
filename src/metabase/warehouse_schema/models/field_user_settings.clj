@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -29,7 +30,13 @@
 (doto :model/FieldUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
+
+(defmethod events/spec :model/FieldUserSettings
+  [_model]
+  {:create :event/field-user-settings-create
+   :update :event/field-user-settings-update
+   :delete :event/field-user-settings-delete})
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
@@ -40,8 +47,6 @@
                  (assoc flag true)))
              settings
              user-settings/field-set-flags))
-
-(methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
@@ -67,14 +72,41 @@
   [settings]
   (delete-when-empty! settings))
 
+(defn- fk-semantic-type?
+  "Whether `semantic-type` marks a foreign key."
+  [semantic-type]
+  (isa? (some-> semantic-type keyword) :type/FK))
+
+(defn- internal-remapping-allowed?
+  "Whether a Field of `base-type` and `semantic-type` can hold an internal remapping."
+  [base-type semantic-type]
+  (let [semantic-type (some-> semantic-type keyword)]
+    (and (isa? (keyword base-type) :type/Integer)
+         (or (nil? semantic-type)
+             (isa? semantic-type :type/Category)
+             (isa? semantic-type :type/Enum)))))
+
+(defn- remove-remappings-ended-by!
+  "Removes what the user's new semantic type in `settings` ends for `field`: its foreign key target and external
+  remapping when it stops being a foreign key, and its internal remapping when it can no longer hold one."
+  [{:keys [id base_type semantic_type]} settings]
+  (when (contains? settings :semantic_type)
+    (when (and (fk-semantic-type? semantic_type)
+               (not (fk-semantic-type? (:semantic_type settings))))
+      (warehouse-schema.db/unset-user-settings-fk-target! id)
+      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :external))
+    (when-not (internal-remapping-allowed? base_type (:semantic_type settings))
+      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :internal))))
+
 (mu/defn upsert-field-user-settings!
   "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
   row; a nil for a column without a set flag unsets it."
-  [{:keys [id]} :- ::warehouse-schema.schema/field
-   settings     :- ::warehouse-schema.schema/field.update]
+  [{:keys [id] :as field} :- ::warehouse-schema.schema/field
+   settings               :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
+        (remove-remappings-ended-by! field settings)
         (warehouse-schema.db/update-or-insert-field-user-settings!
          id (fn [existing] (cond->> settings existing (with-set-flags settings))))
         (warehouse-schema.db/update-field! id settings)))))
@@ -121,7 +153,6 @@
 (defmethod serialization/spec :model/FieldUserSettings [_]
   {:schema    ::warehouse-schema.schema/external-field-user-settings
    :identity  [:field_id]
-   :primary-key :field_id
    :copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position

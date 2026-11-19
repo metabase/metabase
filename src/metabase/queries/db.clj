@@ -65,6 +65,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :document_id :model/Card :id card-id))
 
+(mu/defn card-document-ids
+  "The `:document_id` of each of the Cards with `card-ids`, by Card id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :document_id [:model/Card :id :document_id] :id [:in card-ids]))
+
 (mu/defn card-parameters
   "The `:parameters` of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -119,6 +124,16 @@
   "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
+(mu/defn documents-collection-and-exploration
+  "The Documents with `document-ids` narrowed to `:id`, `:collection_id` and `:exploration_id`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Document :id :collection_id :exploration_id] :id [:in document-ids]))
+
+(mu/defn explorations
+  "The Explorations with `exploration-ids`."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Exploration :id [:in exploration-ids]))
 
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
@@ -260,6 +275,16 @@
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))
 
+(mu/defn dashboard-archived?
+  "Whether the Dashboard with `dashboard-id` is archived."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
+
+(mu/defn document-archived?
+  "Whether the Document with `document-id` is archived."
+  [document-id :- ms/PositiveInt]
+  (t2/exists? :model/Document :id document-id :archived true))
+
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -353,10 +378,10 @@
   [model-id :- ms/PositiveInt]
   (t2/delete! :model/Action :model_id model-id))
 
-(mu/defn actions-for-model
-  "The Actions of the model Card with `model-id`."
-  [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id))
+(mu/defn delete-actions-of-models!
+  "Delete the Actions of the Cards with `model-ids`, returning the number deleted."
+  [model-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Action :model_id [:in model-ids]))
 
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
@@ -364,14 +389,18 @@
   (t2/delete! :model/Action :id [:in action-ids]))
 
 (mu/defn delete-card-moderation-reviews!
-  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
+  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted.
+  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id card-id))
+  ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
+  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
 
 (mu/defn delete-card-revisions!
-  "Delete the Revisions of the Card with `card-id`, returning the number deleted."
+  "Delete the Revisions of the Card with `card-id`, returning the number deleted.
+  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Revision :model "Card" :model_id card-id))
+  ;; By table name, so search's delete capture skips it: these revisions only feed the Card being deleted.
+  (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."
@@ -393,6 +422,11 @@
   "The ParameterCards drawing values from the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/ParameterCard :card_id card-id))
+
+(mu/defn parameter-cards-for-cards
+  "The ParameterCards drawing values from the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select :model/ParameterCard :card_id [:in card-ids]))
 
 (mu/defn parameter-card-card-ids
   "The set of Card IDs the parameters of the given parameterized object draw values from."

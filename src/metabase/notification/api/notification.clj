@@ -73,7 +73,7 @@
   "Validate that an inline `:channel` or `:channel_id` handler requires the same permission as creating one."
   [handlers]
   (when (some #(or (:channel %) (:channel_id %)) handlers)
-    (api/check-403 (mi/can-write? :model/Channel))))
+    (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/Channel {}) :can_write)))))
 
 (defn- handler-touches-template?
   [{:keys [template template_id]}]
@@ -90,7 +90,7 @@
    (check-no-resource-templates! handlers)
    (when (or (some handler-touches-template? handlers)
              (some handler-touches-template? existing-handlers))
-     (api/check-403 (mi/can-write? :model/ChannelTemplate)))))
+     (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/ChannelTemplate {}) :can_write))))))
 
 (defn get-notification
   "Get a notification by id."
@@ -116,9 +116,8 @@
          ;; legacy-active and legacy-user-id only used by alert api, will be removed soon
          :legacy-active            legacy-active
          :legacy-user-id           legacy-user-id})
-       (into [] (comp
-                 (map t2.realize/realize)
-                 (filter mi/can-read?)))
+       (into [] (map t2.realize/realize))
+       mi/readable
        models.notification/hydrate-notification))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -193,7 +192,6 @@
                        (:handlers notification-info)))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
-    (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
@@ -279,8 +277,8 @@
   Return the updated notification.
 
   `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
-  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
-  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403.
+  Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiUpdateInput]

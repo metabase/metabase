@@ -149,15 +149,16 @@
 (defn- visible-dashcards
   "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
   and charts whose question they can read.
-  When the session may only reach curated content, charts also need a curated question, as in the dashboard's items."
+  When the session may only reach curated content, charts also need a curated card, or a metric whose definition
+  passes [[curation/usable-metric-ids]], as in the dashboard's items."
   [dashboard-id]
   (let [dashcards (metabot.db/dashcards dashboard-id)
         card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
         readable  (if (seq card-ids)
-                    (into #{} (comp (filter mi/can-read?) (map :id)) (metabot.db/cards-for-read-check card-ids))
+                    (into #{} (map :id) (mi/readable (metabot.db/cards-for-read-check card-ids)))
                     #{})
         visible   (if (shared/curated-only?)
-                    (into #{} (map second) (curation/curated-ids (for [id readable] ["card" id])))
+                    (curation/usable-metric-ids readable)
                     readable)]
     (filter #(or (:action_id %) (nil? (:card_id %)) (contains? visible (:card_id %))) dashcards)))
 
@@ -201,8 +202,7 @@
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
-                      (filter params.field-values/current-user-can-fetch-field-values?
-                              (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
+                      (mi/readable (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
@@ -380,6 +380,27 @@
       (let [readable (metabot.tools.u/readable-source-cards source-card-ids)]
         (into {} (map (juxt identity #(contains? readable %))) source-card-ids)))))
 
+(defn- table-query-verdicts-for-metrics
+  "Return `{table-id -> boolean}` query permissions for the source tables required by `metric-cards`, false for
+  missing tables."
+  [metadata-provider metric-cards]
+  (let [table-ids (into #{}
+                        (keep #(let [r (metabot.tools.u/metric-required-source metadata-provider %)]
+                                 (when (= :table (:kind r)) (:table-id r))))
+                        metric-cards)
+        queryable (into #{}
+                        (comp (filter mi/can-query?) (map :id))
+                        (t2/hydrate (metabot.db/tables-with-ids (vec table-ids)) :can_query))]
+    (into {} (map (juxt identity #(contains? queryable %))) table-ids)))
+
+(defn- table-queryable?
+  "Return whether the current user may query the table with `table-id`, from the trusted `table-query-verdicts` map
+  when it holds the table and by row otherwise."
+  [table-query-verdicts table-id]
+  (if (contains? table-query-verdicts table-id)
+    (get table-query-verdicts table-id)
+    (boolean (some-> (metabot.db/table table-id) (t2/hydrate :can_query) mi/can-query?))))
+
 (defn- card-readable?
   "Return whether the current user may read the card with `card-id`.
 
@@ -398,15 +419,15 @@
    (when-let [card (metabot.tools.u/get-card id :metric)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider options]
-   (metric-details card metadata-provider options nil))
-  ;; `card-read-verdicts`: see [[card-readable?]].
+   (metric-details card metadata-provider options nil nil))
+  ;; `card-read-verdicts`: see [[card-readable?]]; `table-query-verdicts`: see [[table-queryable?]].
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
                                    with-segments?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}
-    card-read-verdicts]
+    card-read-verdicts table-query-verdicts]
    (metabot.tools.u/check-card-type card :metric)
    (let [id (:id card)
          ;; Database metadata so the LLM can build portable FKs — metrics are always
@@ -421,7 +442,7 @@
          source-table-id (when (= :table (:kind required)) (:table-id required))
          source-card-id (when (= :card (:kind required)) (:card-id required))
          source-table (when (and source-table-id
-                                 (mi/can-query? :model/Table source-table-id))
+                                 (table-queryable? table-query-verdicts source-table-id))
                         (lib.metadata/table metadata-provider source-table-id))
          source-card (when (and source-card-id
                                 ;; Reading the metric is collection-based and does not imply permission to read
@@ -509,9 +530,10 @@
   "Return metric metadata for the LLM, using trusted read permissions from `card-read-verdicts`.
 
   See [[card-readable?]] for the requirements on that argument."
-  [db-metric metadata-provider options card-read-verdicts]
+  [db-metric metadata-provider options card-read-verdicts table-query-verdicts]
   (-> db-metric
-      (metric-details metadata-provider (assoc options :with-queryable-dimensions? false) card-read-verdicts)
+      (metric-details metadata-provider (assoc options :with-queryable-dimensions? false)
+                      card-read-verdicts table-query-verdicts)
       (select-keys [:id :type :name :description
                     :default_time_dimension_field_id :default_time_dimension_field_name
                     :database_id :database_name :portable_entity_id
@@ -592,11 +614,12 @@
            (m/assoc-some :description (:description base)
                          ;; Table queries can list card metrics through their base table; batch the source-card read checks.
                          :metrics (when with-metrics?
-                                    (let [metrics  (lib/available-metrics table-query)
-                                          verdicts (card-read-verdicts-for-metrics mp metrics)]
+                                    (let [metrics        (lib/available-metrics table-query)
+                                          verdicts       (card-read-verdicts-for-metrics mp metrics)
+                                          table-verdicts (table-query-verdicts-for-metrics mp metrics)]
                                       (when-let [ids (seq (keep (fn [[id readable?]] (when readable? id)) verdicts))]
                                         (lib.metadata/bulk-metadata mp :metadata/card ids))
-                                      (not-empty (mapv #(convert-metric % mp options verdicts) metrics))))
+                                      (not-empty (mapv #(convert-metric % mp options verdicts table-verdicts) metrics))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                                       (lib/available-measures table-query))))
@@ -764,8 +787,9 @@
                          shared.content-store/default-store))
           ;; These metrics require the source card already returned by `card-details`, so its read check is sufficient.
           :metrics (when with-metrics?
-                     (not-empty (mapv #(convert-metric % metadata-provider options {id true})
-                                      (lib/available-metrics card-query))))
+                     (not-empty (let [metrics        (lib/available-metrics card-query)
+                                      table-verdicts (table-query-verdicts-for-metrics metadata-provider metrics)]
+                                  (mapv #(convert-metric % metadata-provider options {id true} table-verdicts) metrics))))
           :measures (when with-measures?
                       (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                        (lib/available-measures card-query))))
@@ -783,9 +807,11 @@
           ;; Only metrics need these source-card permissions. A question or model's own source is not used downstream.
           card-read-verdicts (when (= card-type :metric)
                                (card-read-verdicts-for-metrics mp cards))
+          table-query-verdicts (when (= card-type :metric)
+                                 (table-query-verdicts-for-metrics mp cards))
           readable-source-card-ids (into #{} (keep (fn [[id readable?]] (when readable? id))) card-read-verdicts)
           detail-fn (case card-type
-                      :metric #(metric-details %1 %2 %3 card-read-verdicts)
+                      :metric #(metric-details %1 %2 %3 card-read-verdicts table-query-verdicts)
                       :model card-details
                       :question card-details)]
       ;; Warm source-card metadata too, since `metric-details` reads each card's name and entity ID.

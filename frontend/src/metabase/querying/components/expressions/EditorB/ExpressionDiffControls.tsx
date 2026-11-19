@@ -49,7 +49,7 @@ export function ExpressionDiffControls({
       {name != null && (
         <TextInput
           id={NAME_INPUT_ID}
-          size="xs"
+          size="sm"
           w="14rem"
           aria-label={t`Column name`}
           value={name}

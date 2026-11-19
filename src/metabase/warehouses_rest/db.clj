@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -56,9 +56,9 @@
         where      (if filter-by-data-access?
                      [:and base-where
                       [:or
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                       (perms/visible-databases-filter-clause :id user-info {:perms/create-queries :query-builder})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-database :yes})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-table-metadata :yes})]]
                      base-where)]
     (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                 :where where})))
@@ -223,12 +223,11 @@
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (t2/query-one {:delete-from :metabase_fieldvalues
-                 :where      [:in :field_id
-                              ^:allow-subquery {:select     [:f.id]
-                                                :from       [[:metabase_field :f]]
-                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                :where      [:= :t.db_id database-id]}]}))
+  (t2/delete! :model/FieldValues
+              :field_id [:in ^:allow-subquery {:select     [:f.id]
+                                               :from       [[:metabase_field :f]]
+                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                               :where      [:= :t.db_id [:auto/param database-id]]}]))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."

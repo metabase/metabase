@@ -321,11 +321,9 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       <Box pb="lg">
         <TextInput
           aria-label={t`Search fields`}
-          classNames={{ input: S.searchInput }}
-          leftSection={<Icon name="search" size={14} />}
+          leftSection={<Icon name="search" />}
           onChange={(event) => setSearchText(event.currentTarget.value)}
           placeholder={t`Search fields`}
-          size="sm"
           value={searchText}
         />
       </Box>

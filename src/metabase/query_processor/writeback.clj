@@ -3,8 +3,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
@@ -15,8 +17,6 @@
    [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
-   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -42,20 +42,20 @@
    qp
    middleware-fns))
 
-(mu/defn- substitute-params :- ::lib.schema/native-only-query
-  [query :- ::lib.schema/native-only-query]
-  (->> query
-       (lib/query (qp.store/metadata-provider))
-       parameters/substitute-parameters))
-
 (defn- writeback-qp []
   ;; `rff` and `context` are not currently used by the writeback QP stuff, so these parameters can be ignored; we pass
   ;; in `nil` for these below.
   (letfn [(qp* [query _rff]
-            (let [query (substitute-params query)]
+            (let [query  (parameters/substitute-parameters query)
+                  driver driver/*driver*
+                  query  (cond-> query
+                           (not (driver.u/supports? driver :mbql-5-native-query-execution (lib.metadata/database query)))
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
+                           lib/->legacy-MBQL)]
               ;; ok, now execute the query.
               (log/debug "Executing write query")
-              (driver/execute-write-query! driver/*driver* (lib/->legacy-MBQL query))))]
+              (driver/execute-write-query! driver query)))]
     (apply-middleware qp* (concat execution-middleware qp/around-middleware))))
 
 (mu/defn execute-write-query!

@@ -2,13 +2,14 @@ import { type CSSProperties, useId, useMemo } from "react";
 
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { useSdkStore } from "embedding-sdk-bundle/store";
 import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,
   validateDataAppPath,
-} from "embedding-sdk-shared/lib/embedded-data-app-path";
+} from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { getErrorMessage } from "metabase/api/utils/errors";
 
 import { DataAppFrame } from "./DataAppFrame";
@@ -69,10 +70,13 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
   }, [instanceUrl, path, id]);
 
-  // TODO(DAT-18): support API keys on localhost
-  if (authConfig?.isGuest || authConfig?.apiKey) {
+  if (authConfig?.isGuest) {
+    return <SdkError message="Guest embeds are not supported for data apps." />;
+  }
+
+  if (authConfig?.apiKey && !getIsLocalhost()) {
     return (
-      <SdkError message="Guest embedding and API keys are not supported for data apps." />
+      <SdkError message="Using an API key in production is not allowed." />
     );
   }
 

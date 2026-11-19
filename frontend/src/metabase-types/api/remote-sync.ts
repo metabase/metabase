@@ -3,7 +3,7 @@ import type { Card } from "./card";
 import type { Collection, RegularCollectionId } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
-import type { CardTest, TransformTest } from "./data-test";
+import type { CardTest, SegmentTest, TransformTest } from "./data-test";
 import type { Document } from "./document";
 import type { FieldDimension, FieldUserSettings } from "./field";
 import type { GlossaryItem } from "./glossary";
@@ -59,7 +59,7 @@ export type RemoteSyncDocumentData = Pick<
 
 export type RemoteSyncFieldUserSettingsData = Pick<
   FieldUserSettings,
-  "field_id" | "display_name" | "field"
+  "id" | "field_id" | "display_name" | "field"
 >;
 
 export type RemoteSyncGlossaryData = Pick<GlossaryItem, "id" | "term">;
@@ -83,9 +83,14 @@ export type RemoteSyncSegmentData = Pick<
   "id" | "name" | "table_id" | "table"
 >;
 
+export type RemoteSyncSegmentTestData = Pick<
+  SegmentTest,
+  "id" | "name" | "segment_id" | "segment"
+>;
+
 export type RemoteSyncTableUserSettingsData = Pick<
   TableUserSettings,
-  "table_id" | "display_name" | "collection_id" | "table" | "collection"
+  "id" | "table_id" | "display_name" | "collection_id" | "table" | "collection"
 >;
 
 export type RemoteSyncTimelineData = Pick<
@@ -120,6 +125,7 @@ type RemoteSyncItemDataByModel = {
   nativequerysnippet: RemoteSyncNativeQuerySnippetData;
   pythonlibrary: RemoteSyncPythonLibraryData;
   segment: RemoteSyncSegmentData;
+  segmenttest: RemoteSyncSegmentTestData;
   tableusersettings: RemoteSyncTableUserSettingsData;
   timeline: RemoteSyncTimelineData;
   transform: RemoteSyncTransformData;

@@ -1,10 +1,11 @@
 (ns metabase.dashboards.models.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
@@ -15,6 +16,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [toucan2.core :as t2]))
 
@@ -140,14 +142,14 @@
    (fn [{:keys [coll-id dash-id pulse-id pc-id]}]
      (let [pc-ids-before (trigger-pc-ids pulse-id)]
        (mt/with-current-user (mt/user->id :crowberto)
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived true})
+         (t2/update! :model/Collection :id coll-id {:archived true})
          (testing "archiving the parent Collection leaves the subscription and its trigger as they were"
            ;; the trashed Dashboard is what stops the trigger from sending
            (is (=? {:archived true} (t2/select-one :model/Dashboard :id dash-id)))
            (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
            (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
            (is (= pc-ids-before (trigger-pc-ids pulse-id))))
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived false})
+         (t2/update! :model/Collection :id coll-id {:archived false})
          (testing "restoring the Collection leaves the subscription and its trigger as they were"
            (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
            (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
@@ -159,8 +161,8 @@
      (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
        (t2/update! :model/Pulse :id pulse-id {:archived true})
        (mt/with-current-user (mt/user->id :crowberto)
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived true})
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived false}))
+         (t2/update! :model/Collection :id coll-id {:archived true})
+         (t2/update! :model/Collection :id coll-id {:archived false}))
        (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
        (is (=? {:enabled false} (t2/select-one :model/PulseChannel :id pc-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
@@ -259,28 +261,23 @@
 
 (deftest perms-test
   (with-dash-in-collection! [_db collection dash]
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
-                  "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-        (is (true?
-             (mi/can-read? dash)))))
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
-                  "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
-                  "that Collection")
-      (mt/with-full-data-perms-for-all-users!
-        (binding [api/*current-user-permissions-set* (atom #{})]
-          (is (= false
-                 (mi/can-read? dash))))))
-    (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
-        (mi/can-write? dash)))))
+    (mt/with-test-user :rasta
+      (testing "Dashboard in Collection is not readable without permissions for that Collection"
+        (mt/with-full-data-perms-for-all-users!
+          (is (false? (mi/can-read? (t2/hydrate dash :can_read))))))
+      (testing "Dashboard in Collection is readable, not writable, with read permissions for that Collection"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-read? (t2/hydrate dash :can_read))))
+        (is (false? (mi/can-write? (t2/hydrate dash :can_write)))))
+      (testing "Dashboard in Collection is writable with write permissions for that Collection"
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-write? (t2/hydrate dash :can_write))))))))
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
-        (binding [api/*current-user-id*              (test.users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta test.users/user->id perms/user-permissions-set atom)]
+        (mt/with-current-user (test.users/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))
@@ -544,3 +541,85 @@
                                                            [:card [:map
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
+
+(deftest collection-namespace-test
+  (testing "A Dashboard goes in a Collection of an allowed namespace, when it is inserted and when it moves"
+    (mt/with-temp [:model/Collection snippets {:namespace :snippets}
+                   :model/Collection plain    {}
+                   :model/Dashboard  dash     {:collection_id (u/the-id plain)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (t2/insert! :model/Dashboard {:name "Dash" :creator_id (mt/user->id :rasta)
+                                                          :collection_id (u/the-id snippets)})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id snippets)})))
+      (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
+
+(deftest move-dashboard-moves-dashboard-questions-test
+  (testing "Any update of the collection of a Dashboard moves the questions saved in it"
+    (mt/with-temp [:model/Collection source {}
+                   :model/Collection target {}
+                   :model/Dashboard  dash   {:collection_id (u/the-id source)}
+                   :model/Card       card   {:dashboard_id (u/the-id dash) :collection_id (u/the-id source)}]
+      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id target)})
+      (is (= (u/the-id target) (t2/select-one-fn :collection_id :model/Card :id (u/the-id card))))
+      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id nil})
+      (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
+
+(deftest ^:parallel dashboard-columns-schema-test
+  (testing "Dashboard has non-blank name, known width and boolean auto apply filters"
+    (doseq [[column bad] [[:name "  "]
+                          [:width "wide"]
+                          [:auto_apply_filters "yes"]
+                          [:auto_apply_filters nil]]]
+      (testing (pr-str column bad)
+        (is (not (mr/validate ::dashboards.schema/dashboard.update {column bad})))))
+    (is (mr/validate ::dashboards.schema/dashboard.update {:name "Dash" :width "full" :auto_apply_filters false}))))
+
+(def ^:private change-permission-table
+  "The changes of a Dashboard the permission check refuses a user, by what the user may write."
+  [{:writes #{}                 :changes {:name "New"}                   :allowed? false}
+   {:writes #{:source}          :changes {:name "New"}                   :allowed? true}
+   {:writes #{:source}          :changes {:collection_id :target}        :allowed? false}
+   {:writes #{:source :target}  :changes {:collection_id :target}        :allowed? true}
+   {:writes #{:source :target}  :changes {:enable_embedding true}        :allowed? false}
+   {:writes #{:source :target}  :changes {:public_uuid "a-public-link"}  :allowed? false}])
+
+(deftest can-update-dashboard-test
+  (testing "Whether the current user may change a Dashboard depends on the collections and on the columns changed"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (doseq [{:keys [writes changes allowed?]} change-permission-table]
+        (mt/with-temp [:model/Collection source {}
+                       :model/Collection target {}
+                       :model/Dashboard  dash   {:collection_id (u/the-id source)}]
+          (let [collections {:source source :target target}
+                changes     (cond-> changes
+                              (= :target (:collection_id changes)) (assoc :collection_id (u/the-id target)))]
+            (doseq [collection-key writes]
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) (collections collection-key)))
+            (testing (pr-str {:writes writes :changes changes})
+              (mt/with-test-user :rasta
+                (is (= allowed? (mi/can-update? (t2/hydrate dash :can_write) changes))))
+              (mt/with-test-user :crowberto
+                (is (true? (mi/can-update? (t2/hydrate dash :can_write) changes)))))))))))
+
+(deftest can-create-dashboard-test
+  (testing "Creating a Dashboard needs write access to its collection, and a superuser to start it shared"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection writable {}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable)
+        (mt/with-test-user :rasta
+          (is (true? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable)})))
+          (is (false? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable) :enable_embedding true}))))
+        (mt/with-test-user :crowberto
+          (is (true? (mi/can-create? :model/Dashboard {:collection_id (u/the-id writable) :enable_embedding true}))))))))
+
+(deftest archiving-dashboard-keeps-alerts-of-its-questions-test
+  (testing "archiving a Dashboard leaves the alerts of the questions that belong to it, which restoring the Dashboard brings back"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (notification.tu/with-card-notification
+        [notification {:card {:dashboard_id dashboard-id}
+                       :notification-card {:send_condition :has_result}}]
+        (t2/update! :model/Dashboard :id dashboard-id {:archived true})
+        (is (t2/exists? :model/Notification :id (:id notification)))
+        (t2/update! :model/Dashboard :id dashboard-id {:archived false})
+        (is (t2/exists? :model/Notification :id (:id notification)))))))

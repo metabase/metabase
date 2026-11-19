@@ -734,7 +734,7 @@
 
 (mr/def ::diagnosable-expression
   "An expression, aggregation, or filter that may be invalid; [[diagnose-expression]] reports what is wrong with it."
-  [:schema {::mr/deliberately-open true, :description "a possibly invalid MBQL expression"} :any])
+  :metabase.util.malli/value)
 
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and

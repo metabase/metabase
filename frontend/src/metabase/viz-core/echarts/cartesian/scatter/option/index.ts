@@ -18,9 +18,9 @@ import {
   getSharedEChartsOptions,
 } from "../../option";
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
-import { applyResponsiveYAxisTicks } from "../../option/responsive-axis";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
+import { applyYAxisTicks } from "../../option/y-axis";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 
 import { buildEChartsScatterSeries } from "./series";
@@ -138,7 +138,7 @@ export function getScatterPlotOption(
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis: applyResponsiveYAxisTicks(yAxis, chartModel, chartLayout, settings),
+    yAxis: applyYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: echartsDataset,
     series: seriesOption,
   };

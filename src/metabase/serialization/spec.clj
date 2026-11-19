@@ -9,13 +9,14 @@
   - `:transform`, a map from a column to its transform, `{:export f :import g}`, where `f` and `g` are fns of the
     store, the batch (rows on export, entities on import), the column's values in that batch, and the import options
     (empty on export), returning the transformed values in the same order. An `:as` key exports the column under
-    another key. A transform with no `:export` is never exported.
+    another key. A transform with no `:export` is never exported. A transform with `:validates-query?` imports a query
+    that it validates against the query schema itself, so an import leaves its column out of the check of the entity
+    against `:schema`.
   - `:defaults`, the default `true` or `false` of boolean columns. An export leaves out the columns that are nil or at
     their default, and an import sets each column the spec copies or exports that an entity lacks to its default, or
     to nil.
   - `:identity`, the columns whose values make the ref of a row, which finds the row an imported row updates,
     `[:entity_id]` by default (see [[metabase.serialization.protocol/select-by-refs]]).
-  - `:primary-key`, the primary key column of the model, `:id` by default.
   - `:children`, the map from a key to a child model whose rows the rows of this model own, which they export nested
     under that key and load with, deleting the children a loaded entity no longer holds.
   - `:parent`, for a child model, `{:model parent-model :key column :order key-fn :import-only? bool}`: `column` holds
@@ -51,9 +52,13 @@
   (or (:identity (spec model)) [:entity_id]))
 
 (defn primary-key
-  "The primary key column of `model`."
+  "The primary key column of `model`, which must have exactly one."
   [model]
-  (or (:primary-key (spec model)) :id))
+  (let [pks (t2.model/primary-keys model)]
+    (when-not (= 1 (count pks))
+      (throw (ex-info (format "Serialization needs a single primary key column, and %s has %s" model (pr-str pks))
+                      {:model model :primary-keys pks})))
+    (first pks)))
 
 (defn parent
   "The `:parent` of the spec of `model`, `{:model parent-model :key column :order key-fn}`, or nil."

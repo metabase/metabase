@@ -46,7 +46,13 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
+
+(defmethod events/spec :model/DataApp
+  [_model]
+  {:create :event/data-app-create
+   :update :event/data-app-update
+   :delete :event/data-app-delete})
 
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)
@@ -120,29 +126,38 @@
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
-(defmethod mi/can-read? :model/DataApp
-  ([app] (mi/can-read? :model/DataApp (:id app)))
-  ([_model pk]
-   (and (premium-features/has-feature? :data-apps)
-        (or api/*is-superuser?*
-            (and api/*current-user-id*
-                 (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
+(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_read]
+  [_model k app]
+  (vary-meta app assoc k
+             (boolean
+              (and (premium-features/has-feature? :data-apps)
+                   (or api/*is-superuser?*
+                       (and api/*current-user-id*
+                            (data-apps.db/data-app-readable? api/*current-user-id* (:id app))))))))
 
-(defmethod mi/can-write? :model/DataApp
-  ([app]       (mi/can-write? :model/DataApp (:id app)))
-  ([_model pk] (and api/*is-superuser?*
-                    (remote-sync/can-write? :model/DataApp pk))))
+(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_write]
+  [_model k app]
+  (assoc app k
+         (boolean
+          (and api/*is-superuser?*
+               (not (remote-sync/read-only?))))))
 
 (defmethod mi/can-create? :model/DataApp
   [_model _instance]
   (and api/*is-superuser?*
        (not (remote-sync/read-only?))))
 
+(defn- unsynced-change-writable?
+  "Whether the current user can apply `changes` that touch no synced column of `app`, which a read-only instance still
+  accepts."
+  [app changes]
+  (boolean (and api/*is-superuser?*
+                (not (remote-sync/synced-changes? :model/DataApp app changes)))))
+
 (defmethod mi/can-update? :model/DataApp
   [app changes]
-  (and api/*is-superuser?*
-       (or (not (remote-sync/synced-changes? :model/DataApp app changes))
-           (remote-sync/can-write? :model/DataApp (:id app)))))
+  (or (mi/can-write? app)
+      (unsynced-change-writable? app changes)))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
@@ -230,11 +245,14 @@
   (data-apps.db/resource-collection-ids))
 
 (defenterprise data-app-collection?
-  "Whether the Collection with `collection-id` is in the data-apps namespace, which holds only data apps' collections;
-  asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
+  "Whether `collection`, a Collection id or a row with its `:namespace`, is in the data-apps namespace, which holds only
+  data apps' collections; asked of the namespace, not of the apps, since a load may write a collection's content before
+  the app that owns it."
   :feature :none
-  [collection-id]
-  (data-apps.db/data-apps-namespace-collection? collection-id))
+  [collection]
+  (if (map? collection)
+    (= "data-apps" (some-> (:namespace collection) name))
+    (data-apps.db/data-apps-namespace-collection? collection)))
 
 (defmethod serialization/import-dependencies :model/DataApp [_ entities]
   (mapv (fn [{:keys [collection resource_collection_id]}]

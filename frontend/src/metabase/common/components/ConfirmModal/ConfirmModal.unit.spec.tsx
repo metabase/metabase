@@ -1,14 +1,21 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { ConfirmModal } from "./ConfirmModal";
 
+const SECONDARY_TEXT_COLOR = "var(--mantine-color-text-secondary-text)";
+
 interface SetupOpts {
   confirmButtonText?: string;
+  message?: ReactNode;
 }
 
-const setup = ({ confirmButtonText }: SetupOpts = {}) => {
+const setup = ({
+  confirmButtonText,
+  message = "This cannot be undone.",
+}: SetupOpts = {}) => {
   const onConfirm = jest.fn();
   const onClose = jest.fn();
 
@@ -16,7 +23,7 @@ const setup = ({ confirmButtonText }: SetupOpts = {}) => {
     <ConfirmModal
       opened
       title="Remove this provider?"
-      message="This cannot be undone."
+      message={message}
       confirmButtonText={confirmButtonText}
       onConfirm={onConfirm}
       onClose={onClose}
@@ -51,5 +58,21 @@ describe("ConfirmModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Remove" }));
 
     expect(onConfirm).toHaveBeenCalled();
+  });
+
+  it("shows a plain-string message in secondary text", () => {
+    setup({ message: "This cannot be undone." });
+
+    expect(screen.getByText("This cannot be undone.")).toHaveStyle({
+      color: SECONDARY_TEXT_COLOR,
+    });
+  });
+
+  it("keeps the default text colour for a JSX message", () => {
+    setup({ message: <>This cannot be undone.</> });
+
+    expect(screen.getByText("This cannot be undone.")).not.toHaveStyle({
+      color: SECONDARY_TEXT_COLOR,
+    });
   });
 });

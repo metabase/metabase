@@ -271,6 +271,8 @@
         (-> (lib.tu/venues-query)
             (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
             (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+            ;; existing usage -- do not use going forward
+            #_{:clj-kondo/ignore [:deprecated-var]}
             lib.convert/->legacy-MBQL)
 
         metadata-provider

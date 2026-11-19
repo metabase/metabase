@@ -524,7 +524,7 @@
             (try
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "transform pool does not exist before transform execution"
-                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))
+                (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) transform-cache-key))))
               (with-transform-cleanup! [target-table {:type   "table"
                                                       :schema schema
                                                       :name   "pool_test"}]
@@ -540,7 +540,7 @@
                     (transforms.execute/execute! transform {:run-method :manual})
                     (transforms.tu/wait-for-table (:name target-table) 10000)
                     (testing "transform pool is created during transform execution"
-                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
+                      (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) transform-cache-key))))))
               (finally
                 (t2/update! :model/Database :id db-id {:write_data_details old-write-details})
                 (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))))))

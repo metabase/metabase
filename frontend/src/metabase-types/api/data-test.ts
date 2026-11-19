@@ -1,5 +1,6 @@
 import type { Card, CardId } from "./card";
 import type { DataTestRun } from "./data-test-run";
+import type { Segment, SegmentId } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId } from "./user";
 
@@ -98,4 +99,20 @@ export type CardTest = {
   created_at: string;
   updated_at: string;
   card?: Card;
+};
+
+export type SegmentTestId = number;
+
+export type SegmentTest = {
+  id: SegmentTestId;
+  entity_id: string;
+  segment_id: SegmentId;
+  creator_id: UserId;
+  name: string;
+  description: string | null;
+  inputs: DataTestInput[];
+  expectations: DataTestExpectation[];
+  created_at: string;
+  updated_at: string;
+  segment?: Segment;
 };
