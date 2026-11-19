@@ -90,8 +90,6 @@ export function DataAppFrame({
       return;
     }
 
-    const slug = getEmbeddedAppSlugFromPath(path);
-
     const isCurrentAuthRequest = () =>
       iframeRef.current === iframe &&
       currentAuthRef.current.store === store &&
@@ -199,7 +197,7 @@ export function DataAppFrame({
     }
 
     return removeMessageListener;
-  }, [origin, path, authConfig, store, locale, error, onPathChangeRef]);
+  }, [origin, path, slug, authConfig, store, locale, error, onPathChangeRef]);
 
   if (error) {
     return <SdkError message={error} />;
