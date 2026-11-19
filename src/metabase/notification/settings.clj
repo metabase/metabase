@@ -1,6 +1,7 @@
 (ns metabase.notification.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]))
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.log :as log]))
 
 (defsetting notification-thread-pool-size
   "The size of the thread pool used to send notifications."
@@ -19,10 +20,17 @@
   :type       :integer
   :setter     :none
   :visibility :internal
+  ;; read during shutdown, where a value that does not parse must not stop the drain
+  :getter     (fn []
+                (try
+                  (setting/get-value-of-type :integer :notification-shutdown-timeout-seconds)
+                  (catch Exception _
+                    (log/warn "MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS is not a whole number; waiting 20 seconds")
+                    20)))
   :doc "Metabase stops sending notifications when it shuts down. It sends what is already queued for up to this many
-  seconds, then abandons the rest and logs how many were left. The default fits inside the 30-second grace period
-  Kubernetes gives a pod by default. Raise it if your deployment allows a longer shutdown and you'd rather wait for
-  slow subscriptions to finish.")
+  seconds, then abandons the rest and logs how many were left. The default leaves room for the other shutdown steps
+  within the 30-second grace period Kubernetes gives a pod by default. Raise it if your deployment allows a longer
+  shutdown and you'd rather wait for slow subscriptions to finish.")
 
 (defsetting notification-system-event-thread-pool-size
   "The size of the thread pool used to send system event notifications."
