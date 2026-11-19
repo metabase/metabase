@@ -887,6 +887,8 @@ interface StatefulCardOpts {
   card: Card;
   questionDataset?: Dataset;
   modelDataset?: Dataset;
+  /** Returned for a query that summarizes the model. */
+  summarizedDataset?: Dataset;
 }
 
 /**
@@ -897,6 +899,7 @@ function setupStatefulCard({
   card: initialCard,
   questionDataset = ORDERS_BY_YEAR_DATASET,
   modelDataset = ORDERS_BY_YEAR_MODEL_DATASET,
+  summarizedDataset = modelDataset,
 }: StatefulCardOpts) {
   let currentCard = initialCard;
   let acked = false;
@@ -912,17 +915,33 @@ function setupStatefulCard({
   });
   fetchMock.post(`path:/api/card/${initialCard.id}/query`, questionDataset);
   // A model opens as an ad-hoc query on top of the saved card.
-  fetchMock.post("path:/api/dataset", (call) =>
-    getSourceCardId(call.options.body) === initialCard.id
-      ? modelDataset
-      : createMockDataset(),
-  );
+  fetchMock.post("path:/api/dataset", (call) => {
+    const stage = getFirstStage(JSON.parse(String(call.options.body)));
+    if (getSourceCardId(call.options.body) !== initialCard.id) {
+      return createMockDataset();
+    }
+    return typeof stage === "object" && stage !== null && "aggregation" in stage
+      ? summarizedDataset
+      : modelDataset;
+  });
   fetchMock.get(ACK_KEY_URL, () => jsonResponse(acked));
   fetchMock.put(ACK_KEY_URL, () => {
     acked = true;
     return jsonResponse(true);
   });
   setupListNotificationEndpoints({ card_id: initialCard.id }, []);
+}
+
+function getFirstStage(query: unknown): unknown {
+  if (
+    typeof query === "object" &&
+    query !== null &&
+    "stages" in query &&
+    Array.isArray(query.stages)
+  ) {
+    const [stage]: unknown[] = query.stages;
+    return stage;
+  }
 }
 
 function getSourceCardId(body: unknown) {
@@ -957,6 +976,17 @@ async function openActionsMenu() {
   return screen.findByRole("menu");
 }
 
+/** Waits for every mocked response to be read, so the QB has applied it. */
+async function settleRequests() {
+  await act(() => fetchMock.callHistory.flush(true));
+}
+
+function getDatasetQueries(): unknown[] {
+  return fetchMock.callHistory
+    .calls("path:/api/dataset")
+    .map((call): unknown => JSON.parse(String(call.options.body)));
+}
+
 async function closeActionsMenu() {
   await userEvent.keyboard("{Escape}");
   await waitFor(() =>
@@ -967,7 +997,7 @@ async function closeActionsMenu() {
 async function expectToBeQuestion() {
   const menu = await openActionsMenu();
   expect(
-    within(menu).getByRole("menuitem", { name: /Turn into a model/ }),
+    await within(menu).findByRole("menuitem", { name: /Turn into a model/ }),
   ).toBeInTheDocument();
   expect(
     within(menu).queryByRole("menuitem", {
@@ -985,7 +1015,9 @@ async function expectToBeQuestion() {
 async function expectToBeModel() {
   const menu = await openActionsMenu();
   expect(
-    within(menu).getByRole("menuitem", { name: /Turn back to saved question/ }),
+    await within(menu).findByRole("menuitem", {
+      name: /Turn back to saved question/,
+    }),
   ).toBeInTheDocument();
   expect(
     within(menu).queryByRole("menuitem", { name: /Turn into a model/ }),
@@ -1194,6 +1226,9 @@ describe("QueryBuilder > models", () => {
       expect(
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();
+      expect(
+        await screen.findByText("This question is written in SQL."),
+      ).toBeVisible();
 
       const menu = await openActionsMenu();
       await userEvent.click(
@@ -1206,9 +1241,13 @@ describe("QueryBuilder > models", () => {
 
       await waitFor(() => expect(getCardUpdates(card.id)).toHaveLength(1));
       expect(getCardUpdates(card.id)[0]).toMatchObject({ type: "model" });
+      await settleRequests();
       await expectToBeModel();
       expect(
         screen.queryByTestId("mock-native-query-editor"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("This question is written in SQL."),
       ).not.toBeInTheDocument();
     });
 
@@ -1312,7 +1351,35 @@ describe("QueryBuilder > questions based on a model", () => {
       rows: [MODEL_COLUMNS.map(() => 1)],
     }),
   });
+  const COUNT_BY_MONTH_DATASET = createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createOrdersCreatedAtDatasetColumn({
+          source: "breakout",
+          unit: "month",
+          display_name: "Created At: Month",
+          field_ref: [
+            "field",
+            "CREATED_AT",
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        }),
+        createMockNumericColumn({
+          name: "count",
+          display_name: "Count",
+          source: "aggregation",
+          field_ref: ["aggregation", 0],
+        }),
+      ],
+      rows: [
+        ["2025-01-01T00:00:00Z", 10],
+        ["2025-02-01T00:00:00Z", 20],
+      ],
+    }),
+  });
   const SAVED_QUESTION_ID = 3;
+  // Runs each change of a question at once, like a database with auto-run on.
+  const AUTO_RUN_DB = { ...TEST_DB, auto_run_queries: true };
 
   /**
    * Saves a new card as the backend would: the created card gets an id and is
@@ -1345,10 +1412,12 @@ describe("QueryBuilder > questions based on a model", () => {
     setupStatefulCard({
       card: ORDERS_MODEL,
       modelDataset: ORDERS_MODEL_DATASET,
+      summarizedDataset: COUNT_BY_MONTH_DATASET,
     });
     setupCardCreation();
     return setup({
       card: ORDERS_MODEL,
+      database: AUTO_RUN_DB,
       initialRoute: `/model/${ORDERS_MODEL.id}`,
     });
   }
@@ -1373,6 +1442,25 @@ describe("QueryBuilder > questions based on a model", () => {
     expect(within(header).queryByText("Orders")).not.toBeInTheDocument();
   }
 
+  /** The last run is a filtered query on top of the model. */
+  function expectLastRunToBeFilteredModel({
+    modelId = ORDERS_MODEL.id,
+    hasAggregation,
+  }: {
+    modelId?: number;
+    hasAggregation: boolean;
+  }) {
+    const stage = getFirstStage(getDatasetQueries().at(-1));
+    expect(stage).toMatchObject({ "source-card": modelId });
+    expect(stage).toHaveProperty("filters");
+    if (hasAggregation) {
+      expect(stage).toHaveProperty("aggregation");
+      expect(stage).toHaveProperty("breakout");
+    } else {
+      expect(stage).not.toHaveProperty("aggregation");
+    }
+  }
+
   async function saveAsNewQuestion(name: string) {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     const modal = await screen.findByTestId("save-question-modal");
@@ -1388,6 +1476,7 @@ describe("QueryBuilder > questions based on a model", () => {
 
   it("filters and summarizes a model, and saves the result as a question based on it", async () => {
     const { router } = await setupModel();
+    const initialRuns = getDatasetQueries().length;
 
     await userEvent.click(screen.getByRole("button", { name: /Filter/ }));
     const popover = await screen.findByRole("dialog");
@@ -1396,8 +1485,13 @@ describe("QueryBuilder > questions based on a model", () => {
     await userEvent.click(
       within(popover).getByRole("button", { name: "Apply filter" }),
     );
+    await waitFor(() =>
+      expect(getDatasetQueries()).toHaveLength(initialRuns + 1),
+    );
+    expectLastRunToBeFilteredModel({ hasAggregation: false });
     await waitFor(() => expectHeaderToShowModelSource());
 
+    const filteredRuns = getDatasetQueries().length;
     await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
     const sidebar = await screen.findByTestId("sidebar-right");
     const [createdAtItem] = within(sidebar)
@@ -1413,6 +1507,11 @@ describe("QueryBuilder > questions based on a model", () => {
         "Count by Created At: Month",
       ),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(getDatasetQueries().length).toBeGreaterThan(filteredRuns),
+    );
+    expectLastRunToBeFilteredModel({ hasAggregation: true });
+    expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
     expectHeaderToShowModelSource();
 
     await saveAsNewQuestion("Q1");
@@ -1443,6 +1542,8 @@ describe("QueryBuilder > questions based on a model", () => {
       expect(getCardUpdates(ORDERS_MODEL.id)).toHaveLength(1),
     );
     expect(getCardUpdates(ORDERS_MODEL.id)[0]).toMatchObject({ name: "M1" });
+    await settleRequests();
+    expect(screen.getByDisplayValue("M1")).toBeInTheDocument();
 
     await userEvent.click(screen.getByTestId("qb-header-info-button"));
     const description = await screen.findByPlaceholderText("Add description");
@@ -1455,6 +1556,7 @@ describe("QueryBuilder > questions based on a model", () => {
       name: "M1",
       description: "foo",
     });
+    await settleRequests();
 
     expect(screen.getByDisplayValue("M1")).toBeInTheDocument();
     expect(screen.getByText("foo")).toBeInTheDocument();
@@ -1614,8 +1716,10 @@ describe("QueryBuilder > questions based on a model", () => {
     setupCardCreation();
     const { router } = await setup({
       card: nativeModel,
+      database: AUTO_RUN_DB,
       initialRoute: `/model/${nativeModel.id}`,
     });
+    const initialRuns = getDatasetQueries().length;
 
     await userEvent.click(screen.getByRole("button", { name: /Filter/ }));
     const popover = await screen.findByRole("dialog");
@@ -1624,6 +1728,13 @@ describe("QueryBuilder > questions based on a model", () => {
     await userEvent.click(
       within(popover).getByRole("button", { name: "Apply filter" }),
     );
+    await waitFor(() =>
+      expect(getDatasetQueries()).toHaveLength(initialRuns + 1),
+    );
+    expectLastRunToBeFilteredModel({
+      modelId: nativeModel.id,
+      hasAggregation: false,
+    });
     await waitFor(() =>
       expectHeaderToShowModelSource({ modelName: "Product Model" }),
     );
