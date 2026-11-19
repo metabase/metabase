@@ -5,14 +5,19 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.upload.based-on-upload :as based-on-upload]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- fully-parameterized?
-  [{query :dataset_query}]
-  (or (empty? query)
-      (lib/fully-parameterized-query? query)))
+(mu/defn fully-parameterized?
+  "Given a Card, returns `true` if its query is fully parameterized."
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
+  (if (empty? query)
+    true
+    (lib/fully-parameterized-query? query)))
 
 (defn- card-row
   "The Card instance of `row`, stamped with the nil `:document_id` that the listing query guarantees, so that
@@ -32,12 +37,10 @@
       (assoc :fully_parameterized (fully-parameterized? (select-keys row [:dataset_query])))))
 
 (defn- assoc-based-on-upload
-  "Assoc `:based_on_upload` onto each of the model `rows` that is based on an upload. The `upload` module requires this
-  one, so its namespace is resolved when a model is first listed."
+  "Assoc `:based_on_upload` onto each of the model `rows` that is based on an upload."
   [rows]
-  (let [models-based-on-upload @(requiring-resolve 'metabase.upload.core/models-based-on-upload)
-        input-keys             @(requiring-resolve 'metabase.upload.core/based-on-upload-input-keys)
-        id->table-id           (models-based-on-upload (map #(select-keys % input-keys) rows))]
+  (let [id->table-id (based-on-upload/models-based-on-upload
+                      (map #(select-keys % based-on-upload/based-on-upload-input-keys) rows))]
     (map #(m/assoc-some % :based_on_upload (id->table-id (:id %))) rows)))
 
 (defn- hydrate-cards
