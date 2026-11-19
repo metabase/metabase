@@ -46,9 +46,9 @@
     (refused-with-status-400 #(actions/check-actions-enabled action)
                              ::data-testing.errors/actions-disabled
                              (tru "Actions cannot run on the action''s database:"))
-    {:database database
-     :compiled (data-testing.subject/compile-query
-                (filled-query action parameters)
-                #(tru "The action''s query could not be compiled to SQL with the test''s parameter values: {0}"
-                      (ex-message %)))
-     :writes?  true}))
+    (assoc (data-testing.subject/compile-query
+            (filled-query action parameters)
+            #(tru "The action''s query could not be compiled to SQL with the test''s parameter values: {0}"
+                  (ex-message %)))
+           :database database
+           :writes?  true)))

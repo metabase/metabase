@@ -92,7 +92,7 @@
     :boolean]])
 
 (defmulti saved-test-spec
-  "The `::saved-test-spec` of the saved-test `model`. The methods that every saved-test model shares (hydration, hooks,
+  "The `::saved-test-spec` of the saved-test `model`. The methods that every saved-test model shares (hydration and
   permissions) read it."
   {:arglists '([model])}
   keyword)
@@ -130,14 +130,9 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(t2/define-before-delete ::saved-test [saved-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips this hook leaves the runs' test id
-  ;; naming no test: a test that goes by database cascade, with a Dashboard or Document and its cards, or a Table and
-  ;; its segments, or a Database delete, which deletes cards by raw SQL. Such runs are never listed or shown as
-  ;; `last_run`.
-  (data-testing.db/clear-test-id-of-runs! (:test-type (saved-test-spec (t2/model saved-test))) (:id saved-test))
-  saved-test)
+(t2/define-before-delete :model/TransformTest [transform-test]
+  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
+  transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

@@ -36,6 +36,12 @@
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(t2/define-before-delete :model/SegmentTest [segment-test]
+  (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
+  segment-test)
+
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- segment-allows?

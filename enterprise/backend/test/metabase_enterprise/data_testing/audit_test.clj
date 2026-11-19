@@ -223,7 +223,9 @@
                  (mt/latest-audit-log-entry :action-test-create action-test-id))))
         (testing "update"
           (t2/update! :model/ActionTest :id action-test-id {:name "Renamed"})
-          (is (=? {:details {:name "Renamed"} :topic :action-test-update :model "ActionTest"}
+          (is (=? {:details {:previous {:name "Original"} :new {:name "Renamed"}}
+                   :topic   :action-test-update
+                   :model   "ActionTest"}
                   (mt/latest-audit-log-entry :action-test-update action-test-id))))
         (testing "delete"
           (t2/delete! :model/ActionTest :id action-test-id)

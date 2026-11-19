@@ -68,7 +68,7 @@
   "Whether `user` may make `changes` to `saved-test`."
   [user saved-test changes]
   (mt/with-test-user user
-    (boolean (mi/can-update? saved-test changes))))
+    (boolean (mi/can-update? (t2/hydrate saved-test :can_write) changes))))
 
 (deftest every-saved-test-spec-matches-its-schema-test
   (testing "premise: each saved-test model, and no other, has a saved-test spec"

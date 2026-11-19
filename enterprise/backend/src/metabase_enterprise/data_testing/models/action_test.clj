@@ -45,6 +45,14 @@
    :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
+
+(t2/define-before-delete :model/ActionTest [action-test]
+  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
+  ;; delete's transaction. Toucan 2 has no after-delete hook.
+  (data-testing.db/clear-test-id-of-runs! :action (:id action-test))
+  action-test)
+
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- action-allows?
