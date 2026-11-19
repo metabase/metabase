@@ -297,6 +297,8 @@ Supported models:
 | GPT-5.5              | `openai.gpt-5.5`              | 272,000                 |
 | GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`   | 272,000                 |
 | GPT-6 Astra          | `openai.gpt-6-astra`          | 922,000                 |
+| GPT-6.2 Astra        | `openai.gpt-6.2-astra`        | 922,000                 |
+| GPT-6.2 Sol          | `openai.gpt-6.2-sol`          | 922,000                 |
 
 Credentials:
 
