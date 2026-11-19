@@ -267,8 +267,8 @@
             (finally
               (t2/delete! :model/AiUsageLog :conversation_id conversation-id))))))))
 
-(deftest summary-formula-call-logs-its-own-source-test
-  (testing "summary formula LLM calls are logged under the summary_formula source"
+(deftest generate-call-logs-its-own-source-test
+  (testing "generate logs its LLM calls under the custom_expression_generate source"
     (ee.usage/clear-limit-cache!)
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
@@ -283,11 +283,11 @@
           (mt/with-temp [:model/User {user-id :id} {}]
             (is (= {:expression "Average([Total])" :name "Average total"}
                    (mt/with-current-user user-id
-                     (#'custom-expression/summary-formula {:mode        "aggregation"
-                                                           :prompt      "average total"
-                                                           :columns     [{:name "[Total]" :type "number"}]
-                                                           :database_id (mt/id)}))))
-            (is (= ["summary_formula"]
+                     (#'custom-expression/generate {:mode        "aggregation"
+                                                    :prompt      "average total"
+                                                    :columns     [{:name "[Total]" :type "number"}]
+                                                    :database_id (mt/id)}))))
+            (is (= ["custom_expression_generate"]
                    (t2/select-fn-vec :source :model/AiUsageLog :user_id user-id)))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
@@ -517,8 +517,8 @@
         (testing "a document generation counts as a message"
           (insert-llm-call! user-id "document_generate_content" "document-1")
           (is (= "test limit reached" (check-message-limit! 3 nil))))
-        (testing "a summary formula counts as a message"
-          (insert-llm-call! user-id "summary_formula" "formula-1")
+        (testing "a custom expression generation counts as a message"
+          (insert-llm-call! user-id "custom_expression_generate" "formula-1")
           (is (= "test limit reached" (check-message-limit! 4 nil))))
         (finally
           (cleanup-llm-calls! user-id))))))
@@ -619,9 +619,9 @@
           profiles @#'ee.usage/known-profile-ids]
       (doseq [[view expected] {"ai_usage_log"          sources
                                ;; v_metabot_conversations maps both the source and the profile id, never takes a
-                               ;; conversation's source from its title call, and never sees summary formula calls,
+                               ;; conversation's source from its title call, and never sees custom expression generation calls,
                                ;; which belong to no conversation
-                               "metabot_conversations" (into (disj sources "conversation_title" "summary_formula")
+                               "metabot_conversations" (into (disj sources "conversation_title" "custom_expression_generate")
                                                              profiles)}
               :let [dir       (latest-view-version-dir view)
                     sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")

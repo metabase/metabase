@@ -25,6 +25,7 @@
   #{"metabot_agent"
     "contextual_interestingness"
     "conversation_title"
+    "custom_expression_generate"
     "document_generate_content"
     "example_question_generation_batch"
     "exploration"
@@ -32,15 +33,14 @@
     "slackbot"
     "oss-sql-gen"
     "sql-gen"
-    "summary_formula"
     "unknown"
     "user-intent-classification"})
 
 (def ^:private message-sources
   "The sources whose agent loops count as messages under a message limit: a chat turn, a Slack turn, a document
-  generation and a summary formula, each a prompt the user sent. Every other source runs through the limit check but
-  never adds to the count."
-  #{"metabot_agent" "slackbot" "document_generate_content" "summary_formula"})
+  generation and a custom expression generation, each a prompt the user sent. Every other source runs through the
+  limit check but never adds to the count."
+  #{"metabot_agent" "slackbot" "document_generate_content" "custom_expression_generate"})
 
 (def ^:private known-profile-ids
   #{"internal"
