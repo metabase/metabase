@@ -356,8 +356,6 @@
                                                       :authority_level "official"
                                                       ;; :archived = true
                                                       :archived true
-                                                      ;; :type = "collection"
-                                                      :type "collection"
                                                       ;; :model_created_at = yesterday
                                                       :created_at yesterday}]
         (is (=? (index-entity
@@ -445,18 +443,14 @@
   (search.tu/with-temp-index-table
     (let [segment-name (mt/random-name)
           yesterday    (t/- (now) (t/days 1))]
-      (mt/with-temp [:model/Database   {db-id :id}      {}
-                     :model/Table      {table-id :id}   {:db_id db-id}
-                     :model/Segment    {segment-id :id} {:name       segment-name
-                                                         ;; :table_id = table-id
-                                                         :table_id   table-id
-                                                         ;; :model_updated_at = yesterday
-                                                         :updated_at yesterday}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:name       segment-name
+                                                      ;; :model_updated_at = yesterday
+                                                      :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "segment"
                   :model_id         (str segment-id)
                   :name             segment-name
-                  :database_id      db-id
+                  :database_id      (mt/id)
                   :model_updated_at yesterday})
                 (ingest-then-fetch! "segment" segment-name)))))))
 

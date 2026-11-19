@@ -14,9 +14,9 @@
 
 (deftest ^:parallel transform-testing-tables-are-ee-only-test
   (let [entities (set copy/entities)]
-    (doseq [model [:model/TransformTest :model/CardTest :model/DataTestRun]]
+    (doseq [model [:model/TransformTest :model/CardTest :model/SegmentTest :model/DataTestRun]]
       (is (= config/ee-available? (contains? entities model))))
-    (is (not-any? entities [:transform_test :card_test :data_test_run]))))
+    (is (not-any? entities [:transform_test :card_test :segment_test :data_test_run]))))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -179,6 +179,7 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SqlParsingShadowDifference
     :model/SsoRelayState
     :model/StoredResult
     :model/StoredResultUse

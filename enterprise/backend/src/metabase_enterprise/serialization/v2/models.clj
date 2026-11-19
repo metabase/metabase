@@ -9,6 +9,7 @@
    :model/FieldUserSettings
    :model/Measure
    :model/Segment
+   :model/SegmentTest
    :model/Table
    :model/TableUserSettings
    :model/Channel])
@@ -21,7 +22,8 @@
    :model/Field
    :model/FieldUserSettings
    :model/Dimension
-   :model/Segment])
+   :model/Segment
+   :model/SegmentTest])
 
 (def content
   "Content model types"
@@ -172,6 +174,7 @@
    :model/SourceMetricDaily
    :model/SourceSegmentCompositeDaily
    :model/SourceSegmentDaily
+   :model/SqlParsingShadowDifference
    :model/SsoRelayState
    :model/StoredResult
    :model/StoredResultUse

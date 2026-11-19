@@ -8,6 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mr/def ::status
@@ -18,7 +19,7 @@
    [:workspace_id     ms/PositiveInt]
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential :string]]
-   [:database_details ms/DatabaseDetails]
+   [:database_details ::warehouses.schema/database.connection-details]
    [:output_namespace :string]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
@@ -26,7 +27,7 @@
 (mr/def ::workspace-database.update
   [:map {:closed true}
    [:output_namespace {:optional true} :string]
-   [:database_details {:optional true} ms/DatabaseDetails]
+   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
@@ -117,11 +118,21 @@
   []
   (t2/select :model/Workspace {:order-by [[:id :asc]]}))
 
+(mu/defn workspace-id-by-idempotency-key :- [:maybe ms/PositiveInt]
+  "The id of the Workspace that `creator-id` created with `idempotency-key`, or nil."
+  [creator-id      :- ::lib.schema.id/user
+   idempotency-key :- :string]
+  (t2/select-one-pk :model/Workspace :creator_id creator-id :idempotency_key idempotency-key))
+
 (mu/defn insert-workspace!
-  "Insert a Workspace and return its id."
-  [workspace-name :- :string
-   creator-id     :- [:maybe ::lib.schema.id/user]]
-  (t2/insert-returning-pk! :model/Workspace {:name workspace-name :creator_id creator-id}))
+  "Insert a Workspace and return its id. Throws a duplicate-key error when `creator-id` already has a Workspace with
+  `idempotency-key`."
+  [workspace-name  :- :string
+   creator-id      :- [:maybe ::lib.schema.id/user]
+   idempotency-key :- [:maybe :string]]
+  (t2/insert-returning-pk! :model/Workspace {:name            workspace-name
+                                             :creator_id      creator-id
+                                             :idempotency_key idempotency-key}))
 
 (mu/defn update-workspace-name!
   "Rename the Workspace with `workspace-id`."
@@ -226,6 +237,20 @@
   (t2/exists? :model/WorkspaceDatabase
               :workspace_id workspace-id
               :status       [:in [:provisioning :deprovisioning]]
+              {:where [:exists ^:allow-subquery {:select [1]
+                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :where  [:and
+                                                          [:= :any_wsd.workspace_id workspace-id]
+                                                          [:> :any_wsd.updated_at since]]}]}))
+
+(mu/defn workspace-has-unfinished-databases-since?
+  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:unprovisioned`, `:provisioning` or
+  `:deprovisioning`, and any of its WorkspaceDatabases, whatever its status, was last updated after `since`."
+  [workspace-id :- ms/PositiveInt
+   since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/exists? :model/WorkspaceDatabase
+              :workspace_id workspace-id
+              :status       [:in [:unprovisioned :provisioning :deprovisioning]]
               {:where [:exists ^:allow-subquery {:select [1]
                                                  :from   [[:workspace_database :any_wsd]]
                                                  :where  [:and

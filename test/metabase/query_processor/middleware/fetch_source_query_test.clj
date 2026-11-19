@@ -26,7 +26,8 @@
   (letfn [(thunk [] (let [mbql5-query (lib.query/query (qp.store/metadata-provider) query)
                           resolved    (fetch-source-query/resolve-source-cards mbql5-query)]
                       (cond-> resolved
-                        (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
+                        ;; existing usage -- do not use going forward
+                        (not (:lib/type query)) #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL)))]
     (if (qp.store/initialized?)
       (thunk)
       (qp.store/with-metadata-provider meta/metadata-provider

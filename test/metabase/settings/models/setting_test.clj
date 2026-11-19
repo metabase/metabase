@@ -701,6 +701,17 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
                             (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
 
+(deftest settings-last-updated-row-written-only-by-cache-test
+  (testing "settings-last-updated row cannot be written through the model"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                          (t2/insert! :model/Setting :key setting.cache/settings-last-updated-key :value "2020-01-01")))
+    (setting.cache/update-settings-last-updated!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                          (t2/update! :model/Setting :key setting.cache/settings-last-updated-key {:value "2020-01-01"})))
+    (testing "nor through the setting framework"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                            (setting/set-value-of-type! :string :settings-last-updated "2020-01-01"))))))
+
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
     (mt/with-temp-empty-app-db [_conn :h2]
@@ -950,12 +961,16 @@
               database-local-value    [2 nil]
               do-with-site-wide-value [(fn [thunk]
                                          (testing "\nsite-wide value set in application DB"
-                                           ;; Set the setting directly instead of using
-                                           ;; [[mt/with-temporary-setting-values]] because that blows up when the
-                                           ;; Setting is Database-local-only
+                                           ;; Write the row to the table directly, because the model refuses a
+                                           ;; site-wide row for a Database-local-only Setting
                                            (t2/delete! :model/Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (t2/insert! :model/Setting :key (name setting-name), :value (str site-wide-value)))
+                                             (t2/insert! :setting
+                                                         :key            (name setting-name)
+                                                         :value          (str site-wide-value)
+                                                         :value_with_aad (encryption/maybe-encrypt
+                                                                          (str site-wide-value)
+                                                                          {:aad (mdb.setting/setting-aad (name setting-name))})))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
@@ -1026,7 +1041,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
-         (test-database-local-only-setting! 2))))
+         (test-database-local-only-setting! 2)))
+    (testing "through the model"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
+           (t2/insert! :model/Setting :key "test-database-local-only-setting" :value "2")))))
   (testing "Default values should be allowed for Database-local-only Settings"
     (binding [setting/*database-local-values* {}]
       (is (= "DEFAULT"
@@ -1157,21 +1177,21 @@
     (is (some? test-driver-feature-only-setting))))
 
 (deftest validate-settable-for-db-test
-  (testing "validate-settable-for-db! validates database feature requirements"
+  (testing "validate-settable-for-db validates database feature requirements"
     (let [database                       {:id 1, :engine :h2}
           setting-with-driver-feature    :test-driver-feature-only-setting
           setting-without-driver-feature :test-database-local-allowed-setting
           driver-supports-everything?    (constantly true)
           driver-supports-nothing?       (constantly false)]
       (testing "should succeed when driver supports required feature"
-        (is (nil? (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-everything?))))
+        (is (nil? (setting/validate-settable-for-db setting-with-driver-feature database driver-supports-everything?))))
       (testing "should throw when driver does not support required feature"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-driver-feature-only-setting requires driver feature :actions, but the database does not support it"
-             (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-nothing?))))
+             (setting/validate-settable-for-db setting-with-driver-feature database driver-supports-nothing?))))
       (testing "should succeed for settings without driver-feature requirement"
-        (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
+        (is (nil? (setting/validate-settable-for-db setting-without-driver-feature database driver-supports-nothing?)))))))
 
 ;;; ------------------------------------------------ Database-enabled Settings ----------------------------------------
 
@@ -1203,24 +1223,24 @@
     (is (some? test-enabled-for-db-setting))))
 
 (deftest validate-settable-for-db-enabled-test
-  (testing "validate-settable-for-db! validates database-specific enablement"
+  (testing "validate-settable-for-db validates database-specific enablement"
     (let [regular-database {:id 1 :engine :h2}
           routed-database  {:id 2 :engine :h2 :router_database_id 3}]
       (testing "should succeed when database passes enabled-for-db? predicate"
-        (is (nil? (setting/validate-settable-for-db! :test-enabled-for-db-setting
-                                                     regular-database
-                                                     (constantly true)))))
+        (is (nil? (setting/validate-settable-for-db :test-enabled-for-db-setting
+                                                    regular-database
+                                                    (constantly true)))))
       (testing "should throw when database fails enabled-for-db? predicate"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-enabled-for-db-setting is not enabled for this database"
-             (setting/validate-settable-for-db! :test-enabled-for-db-setting
-                                                routed-database
-                                                (constantly true)))))
+             (setting/validate-settable-for-db :test-enabled-for-db-setting
+                                               routed-database
+                                               (constantly true)))))
       (testing "should succeed for settings without enabled-for-db? requirement"
-        (is (nil? (setting/validate-settable-for-db! :test-database-local-allowed-setting
-                                                     routed-database
-                                                     (constantly true))))))))
+        (is (nil? (setting/validate-settable-for-db :test-database-local-allowed-setting
+                                                    routed-database
+                                                    (constantly true))))))))
 
 (defsetting ^:private test-warn-vs-error-setting
   (deferred-tru "test Setting for warnings vs errors")
@@ -1255,14 +1275,14 @@
       (with-database db-with-both
         (testing "configured value is not returned"
           (is (= "default-value" (test-warn-vs-error-setting))))))
-    (testing "validate-settable-for-db! should only throw for error reasons"
+    (testing "validate-settable-for-db should only throw for error reasons"
       (testing "should not throw for warnings"
-        (is (nil? (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-warning every-feature))))
+        (is (nil? (setting/validate-settable-for-db :test-warn-vs-error-setting db-with-warning every-feature))))
       (testing "should throw for errors"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-warn-vs-error-setting is not enabled for this database"
-             (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
+             (setting/validate-settable-for-db :test-warn-vs-error-setting db-with-error every-feature)))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"
@@ -1311,7 +1331,7 @@
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
 
-(deftest validate-settable!-ex-data-test
+(deftest validate-settable-ex-data-test
   (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
     (testing "premium feature not available"
       (mt/with-premium-features #{}
@@ -2049,3 +2069,16 @@
     (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
       (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
         (is (= :env (setting/get-raw-value-source :test-setting-1)))))))
+
+(deftest set-value-stored-outside-cache-test
+  (testing "Setting a value that is already stored, but missing from the cache, keeps it"
+    (test-setting-1! nil)
+    (try
+      (t2/insert! (t2/table-name :model/Setting) :key "test-setting-1" :value "ABC")
+      (test-setting-1! "ABC")
+      (is (= "ABC" (t2/select-one-fn :value :model/Setting :key "test-setting-1")))
+      (test-setting-1! "DEF")
+      (is (= "DEF" (t2/select-one-fn :value :model/Setting :key "test-setting-1")))
+      (finally
+        (t2/delete! (t2/table-name :model/Setting) :key "test-setting-1")
+        (setting.cache/restore-cache!)))))

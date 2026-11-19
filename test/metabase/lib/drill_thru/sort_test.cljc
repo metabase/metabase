@@ -56,6 +56,8 @@
                                          [:field
                                           (meta/id :orders :id)
                                           {:base-type :type/BigInteger}]]]}}
+                ;; existing usage -- do not use going forward
+                #_{:clj-kondo/ignore [:deprecated-var]}
                 (lib.convert/->legacy-MBQL (lib/drill-thru query -1 nil drill "asc"))))))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :order-by [[:desc {} [:field {} (meta/id :orders :id)]]]}]}

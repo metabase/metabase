@@ -1,5 +1,5 @@
 (ns metabase.sql-parsing.graal
-  "The `:graalvm` [[metabase.sql-parsing.protocol/SqlParser]]: runs sqlglot on GraalPy in-process on a
+  "The `:sqlglot` [[metabase.sql-parsing.protocol/SqlParser]]: runs sqlglot on GraalPy in-process on a
   pool of sandboxed GraalVM contexts (up to three by default).
 
   The pooled contexts share one `Engine` and one parsed bootstrap `Source`: the engine (and its code
@@ -375,11 +375,6 @@
       (vec (json/decode (call "referenced_tables" sql dialect))))
     (referenced-fields [_ dialect sql]
       (vec (json/decode (call "referenced_fields" sql dialect))))
-    (validate-query [_ dialect sql default-table-schema sqlglot-schema]
-      ;; nil → "{}" (an empty JSON object), which sql_tools reads as permissive mode; encoding the
-      ;; *string* "{}" here would double-encode and make Python treat a string as the schema
-      (json/decode+kw (call "validate_query"
-                            dialect sql default-table-schema (json/encode (or sqlglot-schema {})))))
     (simple-query [_ dialect sql]
       (json/decode+kw (call "simple_query" sql dialect)))
     (add-into-clause [_ dialect sql table-name]
@@ -396,7 +391,7 @@
       (json/decode+kw (call "transpile_sql" sql from-dialect to-dialect)))))
 
 (defn parser
-  "The `:graalvm` [[metabase.sql-parsing.protocol/SqlParser]] — runs sqlglot on GraalPy on the pooled
+  "The `:sqlglot` [[metabase.sql-parsing.protocol/SqlParser]] — runs sqlglot on GraalPy on the pooled
   contexts."
   []
   (make-parser call-python))

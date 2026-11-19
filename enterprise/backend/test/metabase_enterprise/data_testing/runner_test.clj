@@ -5,8 +5,11 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -357,7 +360,7 @@
 
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
-    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform transform
@@ -445,6 +448,75 @@
     (testing "MySQL and SQL Server compare column names without regard to case"
       (is (= ::data-testing.errors/duplicate-output-columns (check :mysql)))
       (is (= ::data-testing.errors/duplicate-output-columns (check :sqlserver))))
+    (testing "Redshift and DuckDB (MotherDuck) do too"
+      (is (= ::data-testing.errors/duplicate-output-columns (check :redshift)))
+      (is (= ::data-testing.errors/duplicate-output-columns (check :motherduck))))
     (testing "Postgres and H2 keep both names"
       (is (nil? (check :postgres)))
       (is (nil? (check :h2))))))
+
+;;; --------------------------------------------- columns-read ---------------------------------------------
+
+(def ^:private columns-read #'data-testing.runner/columns-read)
+
+(deftest columns-read-test
+  (mt/test-driver :h2
+    (let [read (fn [sql] (columns-read :h2 (lib-be/application-database-metadata-provider (mt/id)) sql))]
+      (testing "every column a one-table query names, in the select list, the filter and the order"
+        (is (= #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}
+                 {:schema "PUBLIC" :name "PEOPLE" :column "NAME"}
+                 {:schema "PUBLIC" :name "PEOPLE" :column "SOURCE"}}
+               (read "SELECT ID, NAME FROM PUBLIC.PEOPLE WHERE SOURCE = 'Google' ORDER BY NAME"))))
+      (testing "names as the metadata spells them, however the SQL spells them"
+        (is (= #{{:schema "PUBLIC" :name "PEOPLE" :column "ID"}}
+               (read "SELECT id FROM people"))))
+      (testing "a select-list alias used in ORDER BY is the column it names, not a column of its own"
+        (is (= #{{:schema "PUBLIC" :name "ORDERS" :column "TOTAL"}}
+               (read "SELECT TOTAL AS T FROM ORDERS ORDER BY T"))))
+      (testing "a column of a joined subquery is a column of the table the subquery reads"
+        (is (= #{{:schema "PUBLIC" :name "ORDERS" :column "ID"}
+                 {:schema "PUBLIC" :name "ORDERS" :column "PRODUCT_ID"}
+                 {:schema "PUBLIC" :name "PRODUCTS" :column "ID"}
+                 {:schema "PUBLIC" :name "PRODUCTS" :column "CATEGORY"}}
+               (read (str "SELECT O.ID FROM ORDERS O LEFT JOIN (SELECT ID, CATEGORY FROM PRODUCTS) P"
+                          " ON O.PRODUCT_ID = P.ID WHERE P.CATEGORY = 'Gizmo'")))))
+      (testing "an unqualified column of a join is the column of the one table that has it"
+        (is (contains? (read "SELECT NAME FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID")
+                       {:schema "PUBLIC" :name "PEOPLE" :column "NAME"})))
+      (testing "an unqualified column that both tables of a join have is left out"
+        (is (= #{{:schema "PUBLIC" :name "ORDERS" :column "USER_ID"} {:schema "PUBLIC" :name "PEOPLE" :column "ID"}}
+               (read "SELECT CREATED_AT FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID"))))
+      (testing "a select-list alias of a computed value is not a column; the column it computes from is"
+        (is (= #{{:schema "PUBLIC" :name "ORDERS" :column "TOTAL"}}
+               (read "SELECT TOTAL * 2 AS DBL FROM ORDERS ORDER BY DBL"))))
+      (testing "a column that only a wildcard reads is left out"
+        (is (= #{} (read "SELECT * FROM ORDERS"))))
+      (testing "SQL in which the parser reports an error, such as a qualifier that names no table, gives nil"
+        (is (nil? (read "SELECT X.ID FROM ORDERS")))))))
+
+(deftest columns-read-with-mixed-case-names-test
+  (let [mp   (providers.mock/mock-metadata-provider
+              {:database {:id 1 :engine :postgres :name "pg" :features #{}}
+               :tables   [{:id 10 :db-id 1 :schema "public" :name "events" :active true}]
+               :fields   (for [[id field-name] [[100 "id"] [101 "CreatedAt"] [102 "Name"] [103 "name"]]]
+                           {:id id :table-id 10 :name field-name :base-type :type/Text :active true})})
+        read (fn [sql] (columns-read :postgres mp sql))]
+    (testing "a quoted mixed-case column, which the Postgres parser reports lower-cased, is spelled as the table spells it"
+      (is (= #{{:schema "public" :name "events" :column "id"} {:schema "public" :name "events" :column "CreatedAt"}}
+             (read "SELECT \"t\".\"id\", \"t\".\"CreatedAt\" FROM \"public\".\"events\" \"t\""))))
+    (testing "a column that could be either of two whose names differ only in case is left out"
+      (is (= #{} (read "SELECT \"Name\" FROM \"public\".\"events\""))))))
+
+(deftest columns-read-leaves-out-columns-a-table-function-could-give-test
+  (let [mp   (providers.mock/mock-metadata-provider
+              {:database {:id 1 :engine :postgres :name "pg" :features #{}}
+               :tables   [{:id 10 :db-id 1 :schema "public" :name "events" :active true}]
+               :fields   [{:id 100 :table-id 10 :name "id" :base-type :type/Integer :active true}]})
+        read (fn [sql] (columns-read :postgres mp sql))]
+    (testing "control: a column of a table alone is read"
+      (is (= #{{:schema "public" :name "events" :column "id"}}
+             (read "SELECT id FROM \"public\".\"events\""))))
+    (testing "a column that a table function in the same FROM could also give is left out"
+      (is (= #{} (read "SELECT id FROM \"public\".\"events\", generate_series(1, 2) AS g"))))
+    (testing "a column that only a table function gives is left out"
+      (is (= #{} (read "SELECT id FROM generate_series(1, 2) AS g"))))))

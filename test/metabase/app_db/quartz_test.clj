@@ -159,6 +159,7 @@
     "metabase.search.task.search_index.SearchIndexInit"
     "metabase.search.task.search_index.SearchIndexReindex"
     "metabase.session.task.session_cleanup.SessionCleanup"
+    "metabase.sync.task.sync_database.SyncDatabase"
     "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"
     "metabase.sync.task.sync_databases.UpdateFieldValues"
     "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"

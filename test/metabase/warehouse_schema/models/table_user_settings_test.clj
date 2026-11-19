@@ -86,11 +86,21 @@
         (is (=? {:visibility_type :hidden :data_layer :hidden
                  :visibility_type_set true :data_layer_set true}
                 (t2/select-one :model/TableUserSettings :table_id table-id))))
-      (testing "a change a user may not make is refused whoever writes it"
+      (testing "a change the Table refuses rolls back its settings too"
         (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative})
         (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
-                              (t2/update! :model/TableUserSettings :table_id table-id
-                                          {:data_authority :unconfigured})))))))
+                              (table-user-settings/upsert-table-user-settings! table {:data_authority :unconfigured})))
+        (is (= :authoritative (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)))
+        (is (= :authoritative (:data_authority (user-table table-id))))))))
+
+(deftest bulk-upsert-rolls-back-settings-test
+  (testing "a bulk change one Table refuses leaves the settings of every Table as they were"
+    (mt/with-temp [:model/Table {t1 :id} {:data_source :metabase-transform}
+                   :model/Table {t2 :id} {}]
+      (is (thrown-with-msg? Exception #"Cannot change data_source from metabase-transform"
+                            (table-user-settings/upsert-table-user-settings-for-tables! #{t1 t2} {:data_source :ingested})))
+      (is (empty? (warehouse-schema.db/table-ids-with-user-settings #{t1 t2})))
+      (is (= [:metabase-transform nil] (map (comp :data_source user-table) [t1 t2]))))))
 
 (deftest custom-order-fields-test
   (testing "a custom order is recorded as the Fields' user custom_position and applied to their position"

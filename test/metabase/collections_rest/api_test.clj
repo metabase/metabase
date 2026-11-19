@@ -11,7 +11,6 @@
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
    [metabase.config.core :as config]
-   [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -22,6 +21,7 @@
    [metabase.queries.models.card :as card]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -1938,26 +1938,25 @@
 
 (deftest data-app-collection-items-test
   (testing "GET /api/collection/:id/items lists the actions and questions of a data app collection"
-    (binding [mi/*deserializing?* true]
-      (mt/with-temp [:model/Collection     {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
-                     :model/Collection     {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
-                     :model/Action         {in-app :id}          {:type :implicit, :name "In app", :collection_id app-coll-id}
-                     :model/ImplicitAction _                     {:action_id in-app, :kind "row/update", :table_id (mt/id :venues)}
-                     :model/Action         {in-folder :id}       {:type :implicit, :name "In folder", :collection_id actions-coll-id}
-                     :model/ImplicitAction _                     {:action_id in-folder, :kind "row/update", :table_id (mt/id :venues)}
-                     :model/Card           _                     {:name          "App question"
-                                                                  :collection_id app-coll-id
-                                                                  :dataset_query (mt/mbql-query venues)}]
-        (let [items (fn [coll-id model]
-                      (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
-                           :data
-                           (map #(select-keys % [:name :model :collection_namespace]))))]
-          (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
-                 (items app-coll-id "action")))
-          (is (= [{:name "App question", :model "card"}]
-                 (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
-          (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
-                 (items actions-coll-id "action"))))))))
+    (mt/with-temp [:model/Collection     {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
+                   :model/Collection     {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Action         {in-app :id}          {:type :implicit, :name "In app", :collection_id app-coll-id}
+                   :model/ImplicitAction _                     {:action_id in-app, :kind "row/update", :table_id (mt/id :venues)}
+                   :model/Action         {in-folder :id}       {:type :implicit, :name "In folder", :collection_id actions-coll-id}
+                   :model/ImplicitAction _                     {:action_id in-folder, :kind "row/update", :table_id (mt/id :venues)}
+                   :model/Card           _                     {:name          "App question"
+                                                                :collection_id app-coll-id
+                                                                :dataset_query (mt/mbql-query venues)}]
+      (let [items (fn [coll-id model]
+                    (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
+                         :data
+                         (map #(select-keys % [:name :model :collection_namespace]))))]
+        (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
+               (items app-coll-id "action")))
+        (is (= [{:name "App question", :model "card"}]
+               (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
+        (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
+               (items actions-coll-id "action")))))))
 
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
@@ -3211,6 +3210,15 @@
                  (mt/user-http-request :rasta :post 403 "collection"
                                        {:name "Bar" :parent_id (u/the-id lucky-collection)}))))))))
 
+(deftest blank-collection-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "collection" {:name "   "})))
+    (mt/with-temp [:model/Collection {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "collection/" id) {:name "   "})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "collection/" id) {:name "Renamed"}))))))
+
 (deftest create-collection-different-namespace-test
   (testing "POST /api/collection"
     (testing "\nShould be able to create a Collection in a different namespace"
@@ -3379,7 +3387,24 @@
                          :subject "One of your alerts has stopped working"
                          :body    [{"the question was archived by Crowberto Corv" true}]}
                         (mt/summarize-multipart-single-email email #"the question was archived by Crowberto Corv"))))
-              (= nil (t2/select-one :model/Notification :id (:id notification))))))))))
+              (is (nil? (t2/select-one :model/Notification :id (:id notification)))))))))))
+
+(deftest archive-collection-alerts-of-cards-in-sub-collections-test
+  (testing "PUT /api/collection/:id"
+    (testing "Archiving a collection deletes the alerts of the cards directly in it, not those of cards in its sub-collections"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {sub-id :id}  {:location (str "/" coll-id "/")}]
+        (notification.tu/with-card-notification
+          [direct {:card {:collection_id coll-id}}]
+          (notification.tu/with-card-notification
+            [nested {:card {:collection_id sub-id}}]
+            (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+            (is (not (t2/exists? :model/Notification :id (:id direct))))
+            (is (t2/exists? :model/Notification :id (:id nested)))
+            (testing "restoring the collection brings back no alert"
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
+              (is (not (t2/exists? :model/Notification :id (:id direct))))
+              (is (t2/exists? :model/Notification :id (:id nested))))))))))
 
 (deftest archive-collection-perms-test
   (testing "PUT /api/collection/:id"
@@ -3488,6 +3513,29 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
+
+(deftest move-collection-permission-matrix-test
+  (testing "PUT /api/collection/:id moves a collection only for who writes it, its descendants and the new parent"
+    (letfn [(move-as [user status granted]
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/with-temp [:model/Collection source     {}
+                               :model/Collection descendant {:location (collection/children-location source)}
+                               :model/Collection target     {}]
+                  (doseq [coll (map {:source source :descendant descendant :target target} granted)]
+                    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll))
+                  (mt/user-http-request user :put status (str "collection/" (u/the-id source))
+                                        {:parent_id (u/the-id target)})
+                  (t2/select-one-fn :location :model/Collection :id (u/the-id source)))))]
+      (testing "an admin moves it"
+        (is (not= "/" (move-as :crowberto 200 []))))
+      (testing "write access to the collection and its descendants only is refused"
+        (is (= "/" (move-as :rasta 403 [:source :descendant]))))
+      (testing "write access to the new parent only is refused"
+        (is (= "/" (move-as :rasta 403 [:target]))))
+      (testing "write access to the collection and the new parent but not to a descendant is refused"
+        (is (= "/" (move-as :rasta 403 [:source :target]))))
+      (testing "write access to the collection, its descendants and the new parent moves it"
+        (is (not= "/" (move-as :rasta 200 [:source :descendant :target])))))))
 
 (deftest move-collection-with-archived-descendants-test
   (testing "PUT /api/collection/:id"
@@ -4063,16 +4111,20 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
-                     :model/Table {table-id :id} {:collection_id coll-id
+                     :model/Collection {data-coll-id :id} {:name "Data Collection"
+                                                           :type collection/library-data-collection-type}
+                     :model/Table {table-id :id} {:collection_id data-coll-id
                                                   :is_published  true
                                                   :name          "Published Table"}]
         (let [items (:data (mt/user-http-request :crowberto :get 200
-                                                 (str "collection/" coll-id "/items")))]
+                                                 (str "collection/" coll-id "/items")))
+              data-items (:data (mt/user-http-request :crowberto :get 200
+                                                      (str "collection/" data-coll-id "/items")))]
           (testing "Card should appear"
             (is (some #(= card-id (:id %)) items)
                 "Card should be in collection items"))
           (testing "Published table should NOT appear"
-            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
+            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) data-items))
                 "Published table should NOT be in collection items in OSS"))))))
   (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
@@ -4216,11 +4268,11 @@
                      :model/Exploration e    {:name          "Created"
                                               :creator_id    (mt/user->id :crowberto)
                                               :collection_id (:id coll)}]
-        (revision/push-revision! {:entity       :model/Exploration
-                                  :id           (:id e)
-                                  :object       (t2/select-one :model/Exploration :id (:id e))
-                                  :user-id      (mt/user->id :crowberto)
-                                  :is-creation? true})
+        (revisions.tu/push-revision! {:entity       :model/Exploration
+                                      :id           (:id e)
+                                      :object       (t2/select-one :model/Exploration :id (:id e))
+                                      :user-id      (mt/user->id :crowberto)
+                                      :is-creation? true})
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]
@@ -4249,7 +4301,7 @@
                                               :document       {:type "doc" :content []}}]
         ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
         ;; Insert directly so we control timestamps — within a `with-temp` transaction
-        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
+        ;; the DB-side NOW() is frozen, so a revision recorded by a write would carry
         ;; identical timestamps and tiebreak non-deterministically.
         (let [t (java.time.OffsetDateTime/now)]
           (t2/insert! :model/Revision

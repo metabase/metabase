@@ -7,8 +7,6 @@ summary: Create and retire segments, saved filters for the query builder, from t
 
 > Prefer [Data Studio](./segments.md) for managing segments.
 
-Metabase allows admins to create segments so people can quickly and easily reference them in the query builder.
-
 To manage segments:
 
 1. Click the **grid** icon in the upper right.

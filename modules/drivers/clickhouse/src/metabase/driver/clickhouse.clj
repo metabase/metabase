@@ -46,6 +46,22 @@
   ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
    "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
 
+(defmethod driver/disallowed-connection-parameters :clickhouse
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Loads arbitrary classes
+         "typeMappings"
+         ;; Loads arbitrary classes
+         "type_hint_mapping"
+         ;; Instantiates an arbitrary class
+         "jdbc_json_parser_factory"
+         ;; Instantiates an arbitrary class
+         "jdbc_metrics_recorder"
+         ;; Instantiates an arbitrary class (legacy v1 driver)
+         "dialect"
+         ;; Loads arbitrary classes (legacy v1 driver)
+         "load_balancing_policy"]))
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 

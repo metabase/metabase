@@ -28,19 +28,26 @@
   [db-id schema-name]
   (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema-name) :yes))
 
-(defenterprise current-user-can-write-db?
-  "Enterprise version. Returns a boolean whether the current user can write the given db"
+(defenterprise current-user-managed-database-ids
+  "The ids among `db-ids` of the Databases the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [db-id]
-  (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [db-id]))
+  [db-ids]
+  (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                    :perms/manage-database
+                                                    (vec db-ids))]
+    (into #{} (filter #(= :yes (get values %))) db-ids)))
 
-(defenterprise current-user-can-write-table?
-  "Enterprise version: whether the current user can manage the metadata of `table`, which nobody can when a read-only
-  instance syncs it."
+(defenterprise table-ids-with-writable-metadata
+  "Enterprise version: the ids of those of `tables` whose metadata the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [table]
-  (and (collection/remote-sync-writable-table? table)
-       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:id table) (:db_id table)})))
+  [tables]
+  (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                 :perms/manage-table-metadata
+                                                 (into {} (map (juxt :id :db_id)) tables))]
+    (into #{}
+          (comp (map :id)
+                (filter #(perms/at-least-as-permissive? :perms/manage-table-metadata (get values %) :yes)))
+          tables)))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.

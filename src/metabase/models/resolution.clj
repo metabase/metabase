@@ -135,9 +135,11 @@
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
+    :model/SegmentTest                       metabase-enterprise.data-testing.models.segment-test
     :model/SemanticSearchTokenTracking       metabase-enterprise.search.semantic.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
+    :model/SqlParsingShadowDifference       metabase.sql-tools.models.sql-parsing-shadow-difference
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
     :model/StoredResult                      metabase.queries.models.stored-result
     :model/StoredResultUse                   metabase.queries.models.stored-result-use

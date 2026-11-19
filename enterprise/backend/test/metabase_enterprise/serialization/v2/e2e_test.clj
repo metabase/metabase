@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.dump :as dump]
@@ -12,6 +13,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.select :as select]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.collections.core :as collections]
@@ -19,12 +21,15 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.queries.card-schema :as card-schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.sync.core :as sync]
+   [metabase.sync.sync :as sync.sync]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.malli.registry :as mr]
@@ -191,10 +196,14 @@
                                              ;; 20 with just :field_id
                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                               {:field_id [:field 1000]})))
-              :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
-                                                                                    :source-table 4}}}
-                                                        {:table_id   [:t 100]
-                                                         :creator_id [:u 10]})
+              :segment                 (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
+                                                                                    :database 1
+                                                                                    :stages   [{:lib/type     :mbql.stage/mbql
+                                                                                                :source-table 4
+                                                                                                :filters      [[:!= {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                                                                                                [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 60]
+                                                                                                                50]]}]}}}
+                                                        {:creator_id [:u 10]})
               :measure                  (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
                                                                                      :database 1
                                                                                      :stages   [{:lib/type     :mbql.stage/mbql
@@ -1626,9 +1635,10 @@
               (is (t2/exists? :model/CardTest :name "Revenue ignores refunds")))
             (is (zero? (t2/count :model/Revision :model "CardTest")))
             (is (zero? (t2/count :model/AuditLog :model "CardTest")))
-            (testing "control: an edit outside an import writes both"
+            (testing "control: an edit through the write function writes both"
               (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
-                (t2/update! :model/CardTest :name "Revenue ignores refunds" {:description "Edited"}))
+                (data-testing.models.card-test/update-card-test!
+                 (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") {:description "Edited"}))
               (is (= 1 (t2/count :model/Revision :model "CardTest")))
               (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))
 
@@ -1708,7 +1718,7 @@
                   published  (atom [])
                   publish    events/publish-event!]
               (with-redefs [events/publish-event! (fn [topic event]
-                                                    (swap! published conj topic)
+                                                    (swap! published conj [topic (:user-id event)])
                                                     (publish topic event))]
                 (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
               (testing "premise: the re-import updated the test"
@@ -1719,3 +1729,272 @@
                                   @published))))
               (testing "no CardTest audit row is written"
                 (is (= audit-rows (t2/count :model/AuditLog :model "CardTest")))))))))))
+
+(defn- export-cards-dashboard-and-model!
+  "Create, in the current app DB, two questions, a model and a Dashboard on a new Database, and a second Database, and
+  dump them to `dump-dir`."
+  [dump-dir]
+  (let [db      (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
+        _       (ts/create! :model/Database :name "other-db")
+        coll    (ts/create! :model/Collection :name "Finance")
+        creator (ts/create! :model/User :email "creator@example.com")
+        card    (fn [card-name card-type]
+                  (ts/create! :model/Card
+                              :name          card-name
+                              :type          card-type
+                              :database_id   (:id db)
+                              :creator_id    (:id creator)
+                              :collection_id (:id coll)
+                              :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db))
+                                                               "SELECT 1 AS ID")))
+        orders  (card "Orders" :question)
+        _       (card "Refunds" :question)
+        _       (card "Revenue model" :model)
+        dash    (ts/create! :model/Dashboard :name "Finance" :creator_id (:id creator) :collection_id (:id coll))]
+    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id orders))
+    (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+
+(defn- records-of-import!
+  "What the import of `dump-dir`, run as `user-id`, records in the current app DB: the Revisions and audit rows of its
+  Cards and Dashboards by model and the PersistedInfos of its Cards, and how many database syncs it started."
+  [dump-dir user-id]
+  (let [syncs (atom 0)
+        count-sync (fn [& _] (swap! syncs inc) nil)]
+    (mt/with-dynamic-fn-redefs [sync/start-initial-sync!      count-sync
+                                sync.sync/start-initial-sync! count-sync]
+      (let [load! #(is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))]
+        (if user-id
+          (mt/with-current-user user-id (load!))
+          (load!))))
+    {:revisions     (frequencies (map (juxt :model :is_creation :user_id)
+                                      (t2/query {:select [:model :is_creation :user_id]
+                                                 :from   [:revision]
+                                                 :where  [:in :model ["Card" "Dashboard"]]})))
+     :audit         (frequencies (map (juxt :topic :user_id)
+                                      (t2/query {:select [:topic :user_id]
+                                                 :from   [:audit_log]
+                                                 :where  [:in :model ["Card" "Dashboard"]]})))
+     :persisted     (set (t2/select-fn-vec :card_id :model/PersistedInfo))
+     :syncs         @syncs}))
+
+(deftest import-by-user-records-as-user-edits-test
+  (testing "An import started by a user records its Cards and Dashboards as that user's creations, and starts no sync"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (export-cards-dashboard-and-model! dump-dir))
+          (ts/with-db dest-db
+            (mt/with-dynamic-fn-redefs [model-persistence.settings/persisted-models-enabled (constantly true)]
+              (let [importer (:id (ts/create! :model/User :email "importer@example.com"))
+                    _        (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
+                    records  (records-of-import! dump-dir importer)
+                    model-id (t2/select-one-pk :model/Card :name "Revenue model")]
+                (is (= {["Card" true importer]      3
+                        ["Dashboard" true importer] 1}
+                       (:revisions records)))
+                (is (= {["card-create" importer]      3
+                        ["dashboard-create" importer] 1}
+                       (:audit records)))
+                (is (= 0 (:syncs records)))
+                (is (= #{model-id} (:persisted records)))))))))))
+
+(deftest import-without-user-records-nothing-test
+  (testing "An import that no user started records no Revision, audit row or PersistedInfo, and starts no sync"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (export-cards-dashboard-and-model! dump-dir))
+          (ts/with-db dest-db
+            (mt/with-dynamic-fn-redefs [model-persistence.settings/persisted-models-enabled (constantly true)]
+              (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
+              (is (= {:revisions {} :audit {} :persisted #{} :syncs 0}
+                     (records-of-import! dump-dir nil))))))))))
+
+(deftest first-import-publishes-no-saved-test-event-test
+  (testing "An import that inserts a card test and a transform test publishes no event and writes no audit or revision row for them"
+    (mt/with-premium-features #{:audit-app :transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  coll      (ts/create! :model/Collection :name "Finance")
+                  etl       (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                  creator   (ts/create! :model/User :email "creator@example.com")
+                  transform (ts/create! :model/Transform
+                                        :name          "Orders Summary"
+                                        :collection_id (:id etl)
+                                        :creator_id    (:id creator)
+                                        :source        {:type  :query
+                                                        :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
+                                        :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
+              (create-card-with-test! db creator "Revenue ignores refunds" :name "Revenue" :collection_id (:id coll))
+              (ts/create! :model/TransformTest
+                          :transform_id (:id transform)
+                          :creator_id   (:id creator)
+                          :name         "My test"
+                          :inputs       card-test-inputs
+                          :expectations [{:type :empty :name "no nulls" :sql "SELECT 1 WHERE 1 = 0"}])
+              (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+          (ts/with-db dest-db
+            (let [published (atom [])
+                  publish   events/publish-event!]
+              (with-redefs [events/publish-event! (fn [topic event]
+                                                    (swap! published conj [topic (:user-id event)])
+                                                    (publish topic event))]
+                (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (testing "premise: the import inserted both tests"
+                (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com")
+                (is (=? {:transform_id (t2/select-one-pk :model/Transform :name "Orders Summary")
+                         :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")}
+                        (t2/select-one :model/TransformTest :name "My test"))))
+              (testing "the saved-test events name no user"
+                (is (= #{nil} (into #{} (comp (filter (comp #{:event/card-test-create :event/card-test-update :event/card-test-delete
+                                                              :event/transform-test-create :event/transform-test-update
+                                                              :event/transform-test-delete}
+                                                            first))
+                                              (map second))
+                                    @published))))
+              (testing "no audit or revision row is written for the tests"
+                (is (zero? (t2/count :model/AuditLog :model [:in ["CardTest" "TransformTest"]])))
+                (is (zero? (t2/count :model/Revision :model [:in ["CardTest" "TransformTest"]])))))))))))
+
+;;; ------------------------------------------------ Segment tests ------------------------------------------------
+
+(def ^:private segment-test-expectations
+  [{:type :empty :name "no adults" :sql "SELECT * FROM {{output}} WHERE AGE >= 18"}])
+
+(defn- create-segment-with-test!
+  "Create, in the current app DB, the Database `my-db` with the table `customers`, a segment \"Minors\" on it with
+  `segment-props`, and a test named `test-name` of the segment, created by the User `creator`. Returns the Segment."
+  [creator test-name & {:as segment-props}]
+  (let [db      (ts/create! :model/Database :name "my-db")
+        table   (ts/create! :model/Table :name "customers" :db_id (:id db))
+        field   (ts/create! :model/Field :name "AGE" :table_id (:id table))
+        mp      (lib-be/application-database-metadata-provider (:id db))
+        segment (ts/create! :model/Segment
+                            (merge {:table_id   (:id table)
+                                    :name       "Minors"
+                                    :creator_id (:id creator)
+                                    :definition (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                                    (lib/filter (lib/< (lib.metadata/field mp (:id field)) 18)))}
+                                   segment-props))]
+    (ts/create! :model/SegmentTest
+                :segment_id   (:id segment)
+                :creator_id   (:id creator)
+                :name         test-name
+                :description  "Checks the segment"
+                :inputs       [{:table   {:name "customers"}
+                                :format  :rows
+                                :columns [{:name "AGE" :cast_type "INTEGER"}]
+                                :rows    [{"AGE" 12}]}]
+                :expectations segment-test-expectations)
+    segment))
+
+(deftest segment-test-round-trip-test
+  (testing "A segment test is exported next to its segment, and imported with it"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (let [[segment-eid test-eid]
+              (ts/with-db source-db
+                (let [creator (ts/create! :model/User :email "creator@example.com")
+                      segment (create-segment-with-test! creator "Minors are under 18")]
+                  (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))
+                  [(:entity_id segment) (t2/select-one-fn :entity_id :model/SegmentTest :segment_id (:id segment))]))
+              segment-dir (io/file dump-dir "databases" "my_db" "tables" "customers" "segments")]
+          (testing "the segment's file, and the test's file in the directory named like it"
+            (is (.isFile (io/file segment-dir "minors.yaml")))
+            (is (=? {:entity_id    test-eid
+                     :segment_id   segment-eid
+                     :creator_id   "creator@example.com"
+                     :expectations [{:type "empty"}]
+                     :serdes/meta  [{:model "SegmentTest"}]}
+                    (yaml/parse-string (slurp (io/file segment-dir "minors" "minors_are_under_18.yaml"))))))
+          (ts/with-db dest-db
+            (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+            (testing "an import with no user records no audit or revision row for the test"
+              (is (zero? (t2/count :model/AuditLog :model "SegmentTest")))
+              (is (zero? (t2/count :model/Revision :model "SegmentTest"))))
+            (is (=? {:name         "Minors are under 18"
+                     :description  "Checks the segment"
+                     :entity_id    test-eid
+                     :segment_id   (t2/select-one-pk :model/Segment :entity_id segment-eid)
+                     :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")
+                     :expectations segment-test-expectations}
+                    (t2/select-one :model/SegmentTest :entity_id test-eid)))))))))
+
+(deftest export-takes-the-tests-of-the-segments-it-takes-test
+  (testing "An export takes a segment's test with the data model, none without it, and none of an archived segment when it skips archived content"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (let [creator (ts/create! :model/User :email "creator@example.com")
+              segment (create-segment-with-test! creator "Minors are under 18" :archived true)
+              tested  (fn [opts]
+                        (into #{}
+                              (comp (filter #(= "SegmentTest" (-> % :serdes/meta last :model)))
+                                    (map :segment_id))
+                              (extract/extract (assoc opts :include-h2? true))))]
+          (testing "control: an export of the data model takes the segment's test"
+            (is (= #{(:entity_id segment)} (tested {}))))
+          (testing "an export without the data model takes no segment test"
+            (is (= #{} (tested {:no-data-model true}))))
+          (testing "an export that skips archived content takes no test of an archived segment"
+            (is (= #{} (tested {:skip-archived true})))))))))
+
+(deftest export-of-a-collection-takes-the-tests-of-the-segments-of-its-published-tables-test
+  (testing "An export of a collection takes the tests of the segments on its published tables, and no others"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (let [creator  (ts/create! :model/User :email "creator@example.com")
+              library  (ts/create! :model/Collection :name "Library")
+              segment  (create-segment-with-test! creator "Minors are under 18")
+              db-id    (t2/select-one-fn :db_id :model/Table :id (:table_id segment))
+              table    (ts/create! :model/Table :name "accounts" :db_id db-id)
+              field    (ts/create! :model/Field :name "AGE" :table_id (:id table))
+              mp       (lib-be/application-database-metadata-provider db-id)
+              other    (ts/create! :model/Segment
+                                   :table_id   (:id table)
+                                   :name       "Elsewhere"
+                                   :creator_id (:id creator)
+                                   :definition (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                                   (lib/filter (lib/< (lib.metadata/field mp (:id field)) 18))))
+              _        (ts/create! :model/SegmentTest
+                                   :segment_id   (:id other)
+                                   :creator_id   (:id creator)
+                                   :name         "Elsewhere is tested"
+                                   :expectations segment-test-expectations)
+              _        (t2/update! :model/Table :id (:table_id segment) {:is_published true :collection_id (:id library)})
+              exported (fn [opts model k]
+                         (into #{}
+                               (comp (filter #(= model (-> % :serdes/meta last :model)))
+                                     (map k))
+                               (extract/extract (assoc opts :include-h2? true))))
+              targeted {:targets [[:model/Collection (:id library)]] :no-data-model true}]
+          (testing "control: an export of the data model takes the tests of both segments"
+            (is (= #{(:entity_id segment) (:entity_id other)}
+                   (exported {} "SegmentTest" :segment_id))))
+          (testing "premise: the export of the collection takes the segment on its published table, and not the other"
+            (is (= #{(:entity_id segment)}
+                   (exported targeted "Segment" :entity_id))))
+          (testing "the export of the collection takes the test of that segment, and not the other test"
+            (is (= #{(:entity_id segment)}
+                   (exported targeted "SegmentTest" :segment_id)))))))))
+
+(deftest selection-by-ids-takes-the-segment-tests-it-names-test
+  (testing "A selection of segment tests by their ids takes those tests"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (dotimes [_ 2] (ts/create! :model/Segment))
+        (let [creator (ts/create! :model/User :email "creator@example.com")
+              segment (create-segment-with-test! creator "Minors are under 18")
+              test-id (t2/select-one-pk :model/SegmentTest :segment_id (:id segment))
+              row-ids (fn [opts] (into #{} (map :id) (select/select-rows :model/SegmentTest opts)))]
+          (testing "premise: the test's id is not its segment's id"
+            (is (not= (:id segment) test-id)))
+          (testing "control: a selection without ids takes the test"
+            (is (contains? (row-ids {}) test-id)))
+          (testing "select-rows takes the test it names"
+            (is (= #{test-id} (row-ids {:ids [test-id]}))))
+          (testing "select-ids takes the test it names"
+            (is (= #{test-id} (set (select/select-ids :model/SegmentTest {:ids [test-id]}))))))))))

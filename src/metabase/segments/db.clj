@@ -26,13 +26,11 @@
 
 (mu/defn insert-segment!
   "Insert a Segment and return the inserted instance."
-  [table-id :- ::lib.schema.id/table
-   creator-id :- ::lib.schema.id/user
+  [creator-id :- ::lib.schema.id/user
    segment-name :- :string
    description :- [:maybe :string]
    definition :- ::segments.schema/segment.definition]
   (t2/insert-returning-instance! :model/Segment
-                                 :table_id    table-id
                                  :creator_id  creator-id
                                  :name        segment-name
                                  :description description
@@ -58,11 +56,6 @@
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
