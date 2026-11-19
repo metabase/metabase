@@ -28,6 +28,8 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
+import { getIsRunning } from "../store/selectors";
+
 import { TEST_COLLECTION, TEST_DB, setup } from "./test-utils";
 
 registerVisualizations();
@@ -212,7 +214,7 @@ describe("QueryBuilder - models", () => {
         stages: [{ source: { type: "table", id: ORDERS_ID } }],
       }),
     });
-    await setup({
+    const { store } = await setup({
       card: model,
       dataset: createMockDataset({
         data: {
@@ -284,6 +286,8 @@ describe("QueryBuilder - models", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("dataset-edit-bar")).not.toBeInTheDocument(),
     );
+    await act(() => fetchMock.callHistory.flush(true));
+    await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
   });
 
   it("renders the correct query and editor tabs after using the back and forward buttons in a model (metabase#56775, metabase#55486)", async () => {
@@ -376,7 +380,7 @@ describe("QueryBuilder - models", () => {
         ],
       }),
     });
-    await setup({
+    const { store } = await setup({
       card: null,
       initialRoute: Urls.newQuestion(newModel, {
         mode: "query",
@@ -384,8 +388,22 @@ describe("QueryBuilder - models", () => {
       }),
     });
     const sortedByOrdersTotal = expect.objectContaining({
+      database: SAMPLE_DB_ID,
       stages: [
         expect.objectContaining({
+          "source-table": ORDERS_ID,
+          joins: [
+            expect.objectContaining({
+              alias: "Products",
+              stages: [
+                expect.objectContaining({ "source-table": PRODUCTS_ID }),
+              ],
+            }),
+            expect.objectContaining({
+              alias: "People",
+              stages: [expect.objectContaining({ "source-table": PEOPLE_ID })],
+            }),
+          ],
           "order-by": [
             [
               "asc",
@@ -407,8 +425,9 @@ describe("QueryBuilder - models", () => {
       const query: unknown = JSON.parse(String(call.options.body));
       return sortedByOrdersTotal.asymmetricMatch(query)
         ? ORDERS_TOTAL_DATASET
-        : createMockDataset({ database_id: SAMPLE_DB_ID });
+        : createMockDataset({ data: { rows: [], cols: [] } });
     });
+    await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
 
     await userEvent.click(
       within(await screen.findByTestId("action-buttons")).getByText("Sort"),
@@ -419,12 +438,13 @@ describe("QueryBuilder - models", () => {
     const sortStep = await screen.findByTestId("step-sort-0-0");
     expect(within(sortStep).getByText("Total")).toBeInTheDocument();
 
+    const getRunCalls = () =>
+      fetchMock.callHistory.calls("path:/api/dataset", { method: "POST" });
+    const runCallCountBeforeClick = getRunCalls().length;
     await userEvent.click(screen.getByTestId("run-button"));
 
     const runCall = await waitFor(() =>
-      checkNotNull(
-        fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
-      ),
+      checkNotNull(getRunCalls()[runCallCountBeforeClick]),
     );
     const runBody: unknown = JSON.parse(String(runCall.options.body));
     expect(runBody).toEqual(sortedByOrdersTotal);
