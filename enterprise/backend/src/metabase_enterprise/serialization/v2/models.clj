@@ -9,6 +9,7 @@
    :model/FieldUserSettings
    :model/Measure
    :model/Segment
+   :model/SegmentTest
    :model/Table
    :model/TableUserSettings
    :model/Channel])
@@ -22,6 +23,7 @@
    :model/FieldUserSettings
    :model/Dimension
    :model/Segment
+   :model/SegmentTest
    ;; a dynamic goal in viz settings can name a Measure
    :model/Measure])
 
@@ -174,6 +176,7 @@
    :model/SourceMetricDaily
    :model/SourceSegmentCompositeDaily
    :model/SourceSegmentDaily
+   :model/SqlParsingShadowDifference
    :model/SsoRelayState
    :model/StoredResult
    :model/StoredResultUse

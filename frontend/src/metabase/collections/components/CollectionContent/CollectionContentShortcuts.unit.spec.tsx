@@ -82,7 +82,9 @@ async function setup({
   setupDashboardQuestionCandidatesEndpoint([]);
   setupUserMetabotPermissionsEndpoint();
 
-  fetchMock.put(`path:/api/card/${tableQuestion.id}`, tableQuestion);
+  fetchMock.put(`path:/api/card/${tableQuestion.id}`, tableQuestion, {
+    name: `archive-card-${tableQuestion.id}`,
+  });
   fetchMock.put(`path:/api/dashboard/${pinnedDashboard.id}`, pinnedDashboard);
 
   renderWithProviders(
@@ -226,6 +228,15 @@ describe("CollectionContent selection shortcuts", () => {
 
   it("archives the selection after confirmation", async () => {
     await setup();
+    fetchMock.modifyRoute(`archive-card-${tableQuestion.id}`, {
+      response: () => {
+        setupCollectionItemsEndpoint({
+          collection: defaultCollection,
+          collectionItems: [pinnedDashboard],
+        });
+        return { ...tableQuestion, archived: true };
+      },
+    });
     await selectTableQuestion();
     await userEvent.keyboard("{Delete}");
 
@@ -236,11 +247,20 @@ describe("CollectionContent selection shortcuts", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/card/${tableQuestion.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+        screen.queryByRole("row", { name: new RegExp(tableQuestion.name) }),
+      ).not.toBeInTheDocument();
     });
+    const archiveCalls = fetchMock.callHistory.calls(
+      `path:/api/card/${tableQuestion.id}`,
+      { method: "PUT" },
+    );
+    expect(archiveCalls).toHaveLength(1);
+    expect(JSON.parse(String(archiveCalls[0].options.body))).toMatchObject({
+      archived: true,
+    });
+    expect(
+      screen.getByRole("row", { name: new RegExp(pinnedDashboard.name) }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByTestId("move-to-trash-confirmation"),
     ).not.toBeInTheDocument();

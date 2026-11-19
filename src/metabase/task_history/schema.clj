@@ -174,6 +174,12 @@
    [:exception    {:optional true} [:sequential :string]]
    [:trunc        {:optional true} ::task-history.log.trunc]])
 
+(mr/def ::task-history.status
+  [:enum {:decode/normalize keyword} :started :unknown :success :failed])
+
+(mr/def ::task-run.status
+  [:enum {:decode/normalize keyword} :started :success :failed :abandoned])
+
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."
   [:merge
@@ -190,7 +196,7 @@
    [:ended_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:duration     {:optional true} [:maybe :int]]
    [:task_details {:optional true} [:maybe ::task-history.task-details]]
-   [:status       {:optional true} [:maybe [:or :keyword :string]]]
+   [:status       {:optional true} ::task-history.status]
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
    [:logs         {:optional true} [:maybe [:sequential ::task-history.log]]]])
 
@@ -209,7 +215,7 @@
    [:entity_id       {:optional true} [:maybe ms/PositiveInt]]
    [:started_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:ended_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:status          {:optional true} [:maybe [:or :keyword :string]]]
+   [:status          {:optional true} ::task-run.status]
    [:process_uuid    {:optional true} [:maybe :string]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]])

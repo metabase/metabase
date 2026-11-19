@@ -21,8 +21,9 @@
   [database-id sql-content]
   (let [mp (lib-be/application-database-metadata-provider database-id)]
     (-> (lib/native-query mp sql-content)
-        ;; Going forward we should ensure consumers are fine processing MBQL 5.
-        ^{:clj-kondo/ignore [:discouraged-var]}
+        ;; ⚠⚠⚠ Going forward we NEED TO ensure consumers are fine processing MBQL 5, since `->legacy-MBQL` is getting
+        ;; removed very soon. ⚠⚠⚠
+        ^{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
         lib/->legacy-MBQL)))
 
 (defn- validate-database-access
@@ -50,15 +51,18 @@
   - name: Name for the query (optional)
   - description: Description for the query (optional)
   - collection-id: Collection to save the query in (optional, defaults to user's personal collection)
+  - check-tables?: Whether to check the table references (optional, default true). The card and snippet
+    references are always checked.
 
   Returns a map with:
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql]} :- [:map {:closed true}
-                                 [:database-id :int]
-                                 [:sql :string]
-                                 [:name {:optional true} [:maybe :string]]]]
+  [{:keys [database-id sql check-tables?] :or {check-tables? true}} :- [:map {:closed true}
+                                                                        [:database-id :int]
+                                                                        [:sql :string]
+                                                                        [:name {:optional true} [:maybe :string]]
+                                                                        [:check-tables? {:optional true} :boolean]]]
   (log/info "Creating SQL query"
             {:database-id database-id
              :sql-length (count sql)})
@@ -67,10 +71,8 @@
   (validate-database-access database-id)
   (metabot.tools.sql.common/check-nonblank-sql! sql)
 
-  (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
-
-        {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-sql dialect sql)]
+  (let [{:keys [valid? transpiled-sql] :as validation-result}
+        (metabot.tools.sql.validation/validate-database-sql database-id sql nil check-tables?)]
     (merge {:validation-result validation-result}
            (when valid?
              (let [;; Create the in-memory query structure

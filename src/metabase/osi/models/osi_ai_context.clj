@@ -30,22 +30,11 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defn ->ai-context
-  "Coerce the OSI `ai_context` oneOf into the object form we store.
-
-    \"count new signups\"  =>  {:instructions \"count new signups\"}   ; string shorthand
-    {:synonyms [...]}     =>  {:synonyms [...]}                    ; already an object
-    nil                   =>  nil
-
-  Runs ahead of [[mi/json-in]], which would otherwise store the string verbatim as pre-serialized JSON."
-  [ai-context]
-  (if (string? ai-context) {:instructions ai-context} ai-context))
-
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write
   ;; the string shorthand is migrated to {:instructions s}, so storage is always the object form and every
   ;; write path (CRUD API, serdes import, direct appdb write) is normalized at this one boundary.
-  {:ai_context {:in  (comp mi/json-in ->ai-context)
+  {:ai_context {:in  (comp mi/json-in osi.schema/normalize-ai-context)
                 :out mi/json-out-with-keywordization}})
 
 ;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
@@ -53,8 +42,12 @@
 ;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
 (t2/define-before-insert :model/OsiAiContext
   [row]
+  (update row :entity_type entity-retrieval/normalize-entity-type))
+
+(t2/define-before-update :model/OsiAiContext
+  [row]
   (cond-> row
-    (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
+    (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type)))
 
 ;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
 ;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The nudge

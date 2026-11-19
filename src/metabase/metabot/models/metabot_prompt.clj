@@ -1,12 +1,12 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/MetabotPrompt [_model] :metabot_prompt)
 
@@ -19,7 +19,27 @@
 (t2/deftransforms :model/MetabotPrompt
   {:model mi/transform-keyword})
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- card-model
+  "The `:model` of `prompt`: the type of its Card."
+  [{:keys [card_id]}]
+  (or (some-> card_id metabot.db/card-type-row :type)
+      (throw (ex-info (tru "A suggested prompt needs an existing Card.") {:status-code 400}))))
+
+(t2/define-before-insert :model/MetabotPrompt
+  [prompt]
+  (assoc prompt :model (card-model prompt)))
+
+(t2/define-before-update :model/MetabotPrompt
+  [prompt]
+  (let [changes (t2/changes prompt)]
+    (when (and (contains? changes :model) (not (contains? changes :card_id)))
+      (throw (ex-info (tru "The model of a suggested prompt follows the type of its Card; change the Card instead.") {:status-code 400})))
+    (cond-> prompt
+      (contains? changes :card_id) (assoc :model (card-model prompt)))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serialization/spec :model/MetabotPrompt [_]
   {:schema    ::metabot.schema/external-metabot-prompt

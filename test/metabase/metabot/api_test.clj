@@ -1609,7 +1609,8 @@
   (testing "Native queries are properly adjusted"
     (let [mp (mt/metadata-provider)
           native (lib/native-query mp "select * from orders")
-          legacy (lib.convert/->legacy-MBQL native)
+          ;; existing usage -- do not use going forward
+          legacy #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL native)
           items  [{:type "adhoc" :query legacy}
                   {:type "dashboard"}
                   {:type "model" :query legacy :chart_configs [{:query legacy}]}]

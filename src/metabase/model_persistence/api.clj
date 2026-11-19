@@ -51,8 +51,7 @@
   (let [db-ids (model-persistence.db/persisted-database-ids)
         writable-db-ids (when (seq db-ids)
                           (->> (model-persistence.db/databases db-ids)
-                               (#(t2/hydrate % :can_write))
-                               (filter mi/can-write?)
+                               mi/writable
                                (map :id)
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]

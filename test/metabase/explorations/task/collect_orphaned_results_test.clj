@@ -17,8 +17,8 @@
   schema — an invalid `dataset_query` here would drag that score down for the whole run."
   []
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (defn- blob!
   "A `stored_result`, back-dated past the sweep's grace period unless `:fresh?`."

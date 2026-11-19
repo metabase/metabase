@@ -178,11 +178,12 @@
                                                 (cond-> x
                                                   (string? x) json/decode))}
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
-       [:visualization_settings {:default {}} (mu/with ::lib.schema.visualization/visualization-settings
-                                                       {:decode/api (fn [x]
-                                                                      (lib.schema.common/remove-internal-keys
-                                                                       (cond-> x
-                                                                         (string? x) (json/decode viz-setting-key-fn))))})]
+       [:visualization_settings {:default {}} [:schema
+                                               {:decode/api (fn [x]
+                                                              (lib.schema.common/remove-internal-keys
+                                                               (cond-> x
+                                                                 (string? x) (json/decode viz-setting-key-fn))))}
+                                               ::lib.schema.visualization/visualization-settings]]
        ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
        [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
                                                                   {:decode/api (fn [x]

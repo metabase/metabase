@@ -83,17 +83,17 @@
                    :model/Document document {:name         "doc"
                                              :content_type "application/json+vnd.prose-mirror"
                                              :document     {:type    "doc"
-                                                            :content [{:type "cardEmbed" :attrs {"id" card-id}}
+                                                            :content [{:type "cardEmbed" :attrs {:id card-id}}
                                                                       {:type  "smartLink"
-                                                                       :attrs {"entityId" (mt/id :venues)
-                                                                               "model"    "table"}}]}}]
+                                                                       :attrs {:entityId (mt/id :venues)
+                                                                               :model    "table"}}]}}]
       (let [exported (extract-one :model/Document (t2/select-one :model/Document :id (:id document)))
             [row]    (serialization/import :model/Document [exported])]
-        (is (=? {:document {:content [{:attrs {"id" [{:model "Card" :id card-eid}]}}
-                                      {:attrs {"entityId" [{:model "Database"} {:model "Schema"} {:model "Table" :id "VENUES"}]}}]}}
+        (is (=? {:document {:content [{:attrs {:id [{:model "Card" :id card-eid}]}}
+                                      {:attrs {:entityId [{:model "Database"} {:model "Schema"} {:model "Table" :id "VENUES"}]}}]}}
                 exported))
-        (is (=? {:content [{:attrs {"id" card-id}}
-                           {:attrs {"entityId" (mt/id :venues)}}]}
+        (is (=? {:content [{:attrs {:id card-id}}
+                           {:attrs {:entityId (mt/id :venues)}}]}
                 (:document row)))))))
 
 (deftest model-reimport-keeps-inferred-metadata-test

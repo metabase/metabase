@@ -258,7 +258,7 @@
                                                              :card_id            card-id
                                                              :parameter_mappings [{:parameter_id "_PRICE_"
                                                                                    :card_id      card-id
-                                                                                   :target       [:dimension (lib/->legacy-MBQL (lib/ref price))]}]}]
+                                                                                   :target       [:dimension (lib/->legacy-MBQL-ref (lib/ref price))]}]}]
             (let [part (first (card-parts (notification.payload.execute/execute-dashboard
                                            dash-id (mt/user->id :rasta) [parameter])))]
               (is (= (mt/rows (qp/process-query (lib/filter query (lib/= price 4))))

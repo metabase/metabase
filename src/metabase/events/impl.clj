@@ -11,7 +11,6 @@
    [clojure.spec.alpha :as s]
    [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.schema :as events.schema]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -19,7 +18,8 @@
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher :as u.methodical.unsorted-dispatcher]
    [methodical.core :as methodical]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (p/import-vars
  [events.schema
@@ -93,7 +93,7 @@
   (let [{:keys [object]} event]
     (log/debugf "Publishing %s event (model and id): %s"
                 (u/colorize :yellow (pr-str topic))
-                (pr-str (let [model (mi/model object)]
+                (pr-str (let [model (t2/model object)]
                           (cond-> (select-keys object [:id])
                             model
                             (assoc :model model))))))

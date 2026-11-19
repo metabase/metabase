@@ -71,8 +71,9 @@
       (dashboard-card/with-copy-source-dashcards current-cards
         (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create))))
     (when (seq to-update)
-      (doseq [update-card to-update]
-        (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
+      (dashboard-card/update-dashboard-cards!
+       (for [update-card to-update]
+         [update-card (id->current-card (:id update-card))])))))
 
 (defn- remove-invalid-dashcards
   "Given a list of dashcards, remove any dashcard that references cards that are archived, do not exist, or now belong
