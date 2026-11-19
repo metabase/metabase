@@ -215,7 +215,7 @@
    :expected   {:verdict :allowed    :single-stmt? true
                 :sql     "UPDATE orders SET note = e'\\\\' || ''' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --' WHERE id = 1"}}
 
-  {:name       "a confined write whose E'' string ends in a doubled backslash passes the re-check of its rebuild"
+  {:name       "a control: a confined write whose E'' string ends in a doubled backslash is allowed and rebuilt as written"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = E'a\\\\' WHERE id = 1"
    :stmt-type  "confined-write"

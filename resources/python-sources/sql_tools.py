@@ -2304,7 +2304,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 problem = ("backslash-quote", None)
             # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
             # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
-            # the rebuild must pass the same checks and rebuild to itself.
+            # the rebuild must pass the same checks and rebuild to itself. No input known at sqlglot 30.20.0 reaches
+            # this refusal, so no test does either.
             if (
                 problem is None
                 and stmt_type == "confined-write"
