@@ -27,9 +27,11 @@ function useListTransformTestsBySubjectQuery(
   );
 }
 
-function useTransformReadOnly(
-  transformId: TransformId | typeof skipToken,
-): DataTestReadOnlyResult {
+function useTransformReadOnly({
+  subjectId: transformId,
+}: {
+  subjectId: TransformId | typeof skipToken;
+}): DataTestReadOnlyResult {
   const {
     data: transform,
     isLoading: isLoadingTransform,

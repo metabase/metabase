@@ -24,14 +24,12 @@ function useListCardTestsBySubjectQuery(cardId: CardId | typeof skipToken) {
   );
 }
 
-function useCardReadOnly(
-  _cardId: CardId | typeof skipToken,
-  tests: readonly CardTest[],
-): DataTestReadOnlyResult {
-  return {
-    readOnly: !tests.some((test) => test.can_run),
-    isLoading: false,
-  };
+function useCardReadOnly({
+  tests,
+}: {
+  tests: readonly CardTest[];
+}): DataTestReadOnlyResult {
+  return { readOnly: !tests.some((test) => test.can_run) };
 }
 
 const CARD_TEST_URLS: DataTestUrls<CardTest> = {
