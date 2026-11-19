@@ -75,7 +75,7 @@ export function WhyContent({ target }: { target: WhyTarget }) {
             {getGroupsApplyingFirst(cell).map((group) => (
               <Flex
                 key={group.group_id}
-                align="center"
+                align="flex-start"
                 justify="space-between"
                 columnGap="md"
                 rowGap="xxs"

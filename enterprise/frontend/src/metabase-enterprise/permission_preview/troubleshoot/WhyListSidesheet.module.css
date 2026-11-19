@@ -16,7 +16,7 @@
 /* a row whose status is its only button */
 .line {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--mantine-spacing-sm);
   width: calc(100% + 2 * var(--mantine-spacing-sm));
   margin: 0 calc(-1 * var(--mantine-spacing-sm));

@@ -164,6 +164,20 @@ describe("WhyContent", () => {
     expect(nameAndApplies?.parentElement).toHaveStyle({ flexWrap: "wrap" });
   });
 
+  it("aligns a group's status with the first line of its name, which can wrap", () => {
+    renderWithProviders(
+      <WhyContent target={{ ...SANDBOXED_ORDERS, security: null }} />,
+    );
+
+    // the row has no role or label to find it by
+    const nameAndApplies = screen
+      .getByText("Sales")
+      .closest('[class*="Flex-root"]');
+    expect(nameAndApplies?.parentElement).toHaveStyle({
+      alignItems: "flex-start",
+    });
+  });
+
   it("puts each label of the rule card above its value, at every width", () => {
     renderWithProviders(<WhyContent target={SANDBOXED_ORDERS} />);
 
