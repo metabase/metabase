@@ -38,14 +38,15 @@
 (defn- spec-edit?
   "Whether the lifecycle `event` of a model with an audit spec is a write whose row should say a user made it: not one
   that the archive or restore of another entity carried to its row, nor an update that changes nothing but the columns
-  that its spec skips."
+  that its spec skips, unless the write says through its context that details changed beside them."
   [{:keys [model context object previous-object] :as event}]
   (and (nil? (:archived-with context))
        (or (not (and object previous-object))
            (let [skipped (audit.spec/skipped-columns model)]
              (boolean (or (some #(and (not (skipped %)) (not (audit.spec/same? model % previous-object object)))
                                 (into (set (keys object)) (keys previous-object)))
-                          (and (:details (audit.spec/spec model))
+                          (and (:details context)
+                               (:details (audit.spec/spec model))
                                (not= (details-of model object event) (details-of model previous-object event)))))))))
 
 (defn- default-topic
