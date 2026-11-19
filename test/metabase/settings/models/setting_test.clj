@@ -582,7 +582,10 @@
            (fetch-csv-setting-value! "A,B,C"))))
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd"))))
+  (testing "ignores spaces around entries, and blank entries, as an env var or a stored string can have them"
+    (is (= ["A" "B" "C"]
+           (fetch-csv-setting-value! " A , B,, C ,")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
@@ -596,12 +599,35 @@
   (testing "should be a able to set a CSV setting with a value that includes commas"
     (is (= {:db-value "A,B,C,\"D1,D2\"", :parsed-value ["A" "B" "C" "D1,D2"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "C" "D1,D2"]))))
-  (testing "should be able to set a CSV setting with a value that includes spaces"
-    (is (= {:db-value "A,B,C, D ", :parsed-value ["A" "B" "C" " D "]}
-           (set-and-fetch-csv-setting-value! ["A" "B" "C" " D "]))))
+  (testing "stores entries without surrounding spaces, and drops blank ones"
+    (is (= {:db-value "A,B,C,D", :parsed-value ["A" "B" "C" "D"]}
+           (set-and-fetch-csv-setting-value! ["A" "B" "" "C" " D "]))))
+  (testing "keeps spaces and newlines inside an entry"
+    (is (= {:db-value "A,\"B\nC\",D E", :parsed-value ["A" "B\nC" "D E"]}
+           (set-and-fetch-csv-setting-value! ["A" "B\nC" "D E"]))))
   (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
     (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
            (set-and-fetch-csv-setting-value! "A,B,C"))))
+  (testing "stores a CSV string in the same form as a list"
+    (is (= {:db-value "A,B,\"C1,C2\"", :parsed-value ["A" "B" "C1,C2"]}
+           (set-and-fetch-csv-setting-value! " A , B,,\"C1,C2\""))))
+  (testing "stores nothing for a value with no entries"
+    (doseq [blank ["" " , " [] [" "]]]
+      (testing (pr-str blank)
+        (is (= {:db-value nil, :parsed-value nil}
+               (set-and-fetch-csv-setting-value! blank))))))
+  (testing "rejects a CSV string that does not parse, or spans several lines, and keeps the stored value"
+    (test-csv-setting! "A,B")
+    (doseq [[bad message] [["A,\"B"  "Invalid comma-separated value."]
+                           ["A\nB"   "Put comma-separated values on one line."]]]
+      (testing (pr-str bad)
+        (is (= [message {:status-code 400}]
+               (try
+                 (test-csv-setting! bad)
+                 nil
+                 (catch clojure.lang.ExceptionInfo e
+                   [(ex-message e) (ex-data e)]))))
+        (is (= ["A" "B"] (test-csv-setting))))))
   (testing "should be able to set nil CSV setting"
     (is (= {:db-value nil, :parsed-value nil}
            (set-and-fetch-csv-setting-value! nil))))
@@ -1723,6 +1749,23 @@
 (deftest valid-csv-setting-test
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
+
+(deftest csv-setting-ignored-lines-warning-test
+  (letfn [(warnings [raw-value]
+            (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+              (get-parse-exception :csv raw-value)
+              (into []
+                    (comp (map :message) (filter #(str/includes? % "MB_TEST_CSV_VALIDATION_SETTING")))
+                    (messages))))]
+    (testing "warns that only the first line of a multi-line env var is read"
+      (doseq [raw-value ["1,2\n3" "1,2\n\"3"]]
+        (testing (pr-str raw-value)
+          (is (= ["Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. Put comma-separated values on one line."]
+                 (warnings raw-value))))))
+    (testing "says nothing about one line, or about a first line that does not parse, which fails validation instead"
+      (doseq [raw-value ["1,2" "1,\"2"]]
+        (testing (pr-str raw-value)
+          (is (= [] (warnings raw-value))))))))
 
 (deftest invalid-csv-setting-eof-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
