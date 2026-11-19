@@ -90,6 +90,18 @@
   (boolean (some #(not (revisions.spec/same? model % before after))
                  (revisions.spec/snapshot-keys model))))
 
+(defn- recorded
+  "What the `snapshot` of `model` holds of what a Revision records now, without the keys that older snapshots carry."
+  [model snapshot]
+  (reduce-kv (fn [m k {child :model}]
+               (cond-> m
+                 (sequential? (get m k))
+                 (update k (fn [rows]
+                             (mapv #(apply dissoc % :created_at :updated_at (:skip (revisions.spec/spec child)))
+                                   rows)))))
+             (select-keys snapshot (revisions.spec/snapshot-keys model))
+             (revisions.spec/children model)))
+
 (defn revert-columns!
   "Write the tracked columns of `snapshot` that the table of `model` still has to the row with `id`."
   [model id snapshot]
@@ -352,8 +364,9 @@
         model-name (name entity)
         serialized-instance (revisions.db/revision-object model-name id revision-id)]
     (t2/with-transaction [_conn]
-      (let [already-in-target-state? (= serialized-instance
-                                        (revisions.db/latest-revision-object model-name id))
+      (let [already-in-target-state? (not (changed? entity
+                                                    (recorded entity (revisions.db/latest-revision-object model-name id))
+                                                    (recorded entity serialized-instance)))
             record-reversion!        #(when-not already-in-target-state?
                                         (revisions.db/insert-revision-returning! {:model        model-name
                                                                                   :model_id     id

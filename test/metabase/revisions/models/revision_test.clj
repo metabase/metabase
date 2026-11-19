@@ -423,6 +423,25 @@
           (is (= "Tips Created by Day"
                  (:name (t2/select-one :model/Card :id card-id)))))))))
 
+(deftest revert-to-older-shaped-snapshot-of-current-state-adds-no-revision-test
+  (testing "a revert to a snapshot that an older version recorded, equal to the current state in what a Revision records"
+    (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "Tracked"}]
+      (let [snapshot (revision/snapshot :model/Segment segment)
+            older    (assoc snapshot :id segment-id :entity_id (:entity_id segment) :creator_id (:creator_id segment))
+            revision (fn [object]
+                       (t2/insert-returning-instance! :model/Revision {:model       "Segment"
+                                                                       :model_id    segment-id
+                                                                       :user_id     (mt/user->id :rasta)
+                                                                       :object      object
+                                                                       :is_creation false}))
+            target   (revision older)]
+        (revision snapshot)
+        (revision/revert! {:entity      :model/Segment
+                           :id          segment-id
+                           :user-id     (mt/user->id :rasta)
+                           :revision-id (:id target)})
+        (is (= 2 (t2/count :model/Revision :model "Segment" :model_id segment-id)))))))
+
 (deftest reverting-should-add-revision-test
   (mt/with-model-cleanup [:model/Revision]
     (testing "Check that reverting to a previous revision adds an appropriate revision"
