@@ -8,6 +8,8 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
    [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
    [metabase.task.job-factory :as job-factory]
@@ -166,21 +168,24 @@
                      (Thread/sleep 100)
                      (swap! attaches conj (some? (task/scheduler))))
           go       (promise)]
-      (mc/binding (task.impl/scheduler-handle) nil
-                  (fn []
-                    (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
-                                                task.impl/set-jdbc-backend-properties! (constantly nil)
-                                                task.impl/delete-jobs-with-no-class!   (constantly nil)
-                                                task.impl/reset-errored-triggers!      (constantly nil)
-                                                task.impl/init-tasks!                  (constantly nil)
-                                                job-factory/add-to-scheduler           attach]
-                      (let [racers (mapv (fn [_] (future @go (task/init-scheduler!))) (range 4))]
-                        (deliver go true)
-                        (run! deref racers))
-                      (is (= {:attaches-before-publishing [false]
-                              :published?                 true}
-                             {:attaches-before-publishing @attaches
-                              :published?                 (identical? quartz (task/scheduler))}))))))))
+      (global-system.tu/with-root (task.impl/scheduler-handle) nil
+        (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                    task.impl/set-jdbc-backend-properties! (constantly nil)
+                                    task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                    task.impl/reset-errored-triggers!      (constantly nil)
+                                    task.impl/init-tasks!                  (constantly nil)
+                                    task.impl/shut-down-scheduler!         (constantly nil)
+                                    job-factory/add-to-scheduler           attach]
+          (try
+            (let [racers (mapv (fn [_] (future @go (task/init-scheduler!))) (range 4))]
+              (deliver go true)
+              (run! deref racers))
+            (is (= {:attaches-before-publishing [false]
+                    :published?                 true}
+                   {:attaches-before-publishing @attaches
+                    :published?                 (identical? quartz (task/scheduler))}))
+            (finally
+              (task/stop-scheduler!))))))))
 
 (defn- init-with-failing-setup!
   "Run [[task/init-scheduler!]] with a job factory that throws and a scheduler whose shutdown throws
@@ -193,20 +198,19 @@
                       (swap! shutdowns inc)
                       (some-> shutdown-error throw)))
         failure   (ex-info "attach failed" {})]
-    (mc/binding (task.impl/scheduler-handle) nil
-                (fn []
-                  (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
-                                              task.impl/set-jdbc-backend-properties! (constantly nil)
-                                              job-factory/add-to-scheduler           (fn [_] (throw failure))]
-                    (let [thrown (try
-                                   (task/init-scheduler!)
-                                   nil
-                                   (catch Throwable e
-                                     e))]
-                      {:setup-error-thrown? (identical? failure thrown)
-                       :suppressed          (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
-                       :shutdowns           @shutdowns
-                       :published?          (some? (task/scheduler))}))))))
+    (global-system.tu/with-root (task.impl/scheduler-handle) nil
+      (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                  task.impl/set-jdbc-backend-properties! (constantly nil)
+                                  job-factory/add-to-scheduler           (fn [_] (throw failure))]
+        (let [thrown (try
+                       (task/init-scheduler!)
+                       nil
+                       (catch Throwable e
+                         e))]
+          {:setup-error-thrown? (identical? failure thrown)
+           :suppressed          (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
+           :shutdowns           @shutdowns
+           :published?          (some? (task/scheduler))})))))
 
 (deftest init-scheduler-shuts-down-a-scheduler-it-cannot-ready-test
   (testing "a scheduler whose setup fails is shut down and not published, and the setup's own exception is thrown"
@@ -559,3 +563,26 @@
       (is (= {:standby? true, :shutdown? false}
              {:standby?  (.isInStandbyMode (task/scheduler))
               :shutdown? (.isShutdown (task/scheduler))})))))
+
+(deftest init-scheduler-registers-with-the-global-system-test
+  (testing "the scheduler starts through the global system, so a halt stops it, and stopping it unregisters it"
+    (let [quartz (reify Scheduler
+                   (standby [_]))
+          halts? #(boolean (some #{(task.impl/scheduler-handle)}
+                                 (#'system/halt-order (#'system/dependency-graph {}))))]
+      (global-system.tu/with-root (task.impl/scheduler-handle) nil
+        (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                    task.impl/set-jdbc-backend-properties! (constantly nil)
+                                    task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                    task.impl/reset-errored-triggers!      (constantly nil)
+                                    task.impl/init-tasks!                  (constantly nil)
+                                    task.impl/shut-down-scheduler!         (constantly nil)
+                                    job-factory/add-to-scheduler           (constantly nil)]
+          (try
+            (task/init-scheduler!)
+            (let [after-init (halts?)]
+              (task/stop-scheduler!)
+              (is (= {:after-init true, :after-stop false}
+                     {:after-init after-init, :after-stop (halts?)})))
+            (finally
+              (task/stop-scheduler!))))))))

@@ -24,7 +24,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.quartz]
    [metabase.classloader.core :as classloader]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.task.job-factory :as job-factory]
    [metabase.tracing.core :as tracing]
@@ -123,40 +122,54 @@
     ;; in that state then the result is a no-op."
     (.resetTriggerFromErrorState scheduler tk)))
 
-(defonce ^:private init-lock (Object.))
+(defn- shut-down-scheduler!
+  "Shut `scheduler` down without waiting for the jobs still running, which are logged."
+  [^Scheduler scheduler]
+  (try
+    (when-let [running (seq (.getCurrentlyExecutingJobs scheduler))]
+      (log/warnf "Stopping the scheduler while %d jobs are still running: %s"
+                 (count running)
+                 (str/join ", " (map #(str (.getKey (.getJobDetail ^JobExecutionContext %))) running))))
+    (finally
+      (qs/shutdown scheduler))))
+
+(defn- new-scheduler
+  "A Quartz scheduler in standby, with our job factory attached. Shuts it down and throws if it cannot be readied."
+  ^Scheduler []
+  (set-jdbc-backend-properties!)
+  (let [new-scheduler (qs/initialize)]
+    ;; Readied before [[system/start!]] publishes it, so nothing that finds it, such as [[start-scheduler!]], can run it
+    ;; without our job factory. Until then nothing can reach it, [[stop-scheduler!]] included, so a failure here shuts
+    ;; it down.
+    (try
+      (qs/standby new-scheduler)
+      (job-factory/add-to-scheduler new-scheduler)
+      new-scheduler
+      (catch Throwable e
+        (try
+          (qs/shutdown new-scheduler)
+          (catch Throwable shutdown-error
+            (when-not (identical? e shutdown-error)
+              (.addSuppressed e shutdown-error))))
+        (throw e)))))
 
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
-  standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
+  standby mode. Call [[start-scheduler!]] to begin running scheduled tasks.
+  The scheduler is a global-system component, so halting the system stops it too."
   []
   (classloader/the-classloader)
-  ;; One init at a time: Quartz hands every caller the same default scheduler, so two racing inits would attach our
-  ;; job factory and trigger listener to it twice.
-  (locking init-lock
-    (when-not (scheduler)
-      (set-jdbc-backend-properties!)
-      (let [new-scheduler (qs/initialize)]
-        ;; Readied before it is published, so nothing that finds it, such as [[start-scheduler!]], can run it without
-        ;; our job factory.
-        ;; Until then nothing can reach it, [[stop-scheduler!]] included, so a failure here shuts it down.
-        (try
-          (qs/standby new-scheduler)
-          (job-factory/add-to-scheduler new-scheduler)
-          (catch Throwable e
-            (try
-              (qs/shutdown new-scheduler)
-              (catch Throwable shutdown-error
-                (when-not (identical? e shutdown-error)
-                  (.addSuppressed e shutdown-error))))
-            (throw e)))
-        (mc/reset! scheduler-component new-scheduler)
-        (log/info "Task scheduler initialized into standby mode.")
-        ;; TODO (Chris 2026-11-13) -- If a step below throws, the scheduler stays published and a later call skips
-        ;; them all, so jobs with no class and errored triggers are left as they are.
-        ;; At startup the throw ends the process, so only a caller that survives it, such as a test, makes that call.
-        (delete-jobs-with-no-class!)
-        (reset-errored-triggers! new-scheduler)
-        (init-tasks!)))))
+  ;; one start at a time, which [[system/start!]] ensures: Quartz hands every caller the same default scheduler, so two
+  ;; racing inits would attach our job factory and trigger listener to it twice
+  (let [[started-scheduler started?] (system/start! scheduler-component new-scheduler #(shut-down-scheduler! %))]
+    (when started?
+      (log/info "Task scheduler initialized into standby mode.")
+      ;; TODO (Chris 2026-11-13) -- If a step below throws, the scheduler stays published and a later call skips
+      ;; them all, so jobs with no class and errored triggers are left as they are.
+      ;; At startup the throw ends the process, so only a caller that survives it, such as a test, makes that call.
+      (delete-jobs-with-no-class!)
+      (reset-errored-triggers! started-scheduler)
+      (init-tasks!))))
 
 (defn scheduler-disabled?
   "Whether the task scheduler is explicitly disabled via the `MB_DISABLE_SCHEDULER` env var. When true the
@@ -181,17 +194,11 @@
   (some-> (scheduler) .standby))
 
 (defn stop-scheduler!
-  "Stop our Quartzite scheduler without waiting for the jobs still running, which are logged."
+  "Stop our Quartzite scheduler without waiting for the jobs still running, which are logged.
+   Halting the global system stops it too."
   []
-  (let [[old-scheduler] (mc/reset-vals! scheduler-component nil)]
-    (when old-scheduler
-      (try
-        (when-let [running (seq (.getCurrentlyExecutingJobs ^Scheduler old-scheduler))]
-          (log/warnf "Stopping the scheduler while %d jobs are still running: %s"
-                     (count running)
-                     (str/join ", " (map #(str (.getKey (.getJobDetail ^JobExecutionContext %))) running))))
-        (finally
-          (qs/shutdown old-scheduler))))))
+  (system/stop! scheduler-component)
+  nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
