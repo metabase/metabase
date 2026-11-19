@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
@@ -1779,7 +1780,7 @@
               [:type :asc-nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:official-collections-first? true} app-db))))))
+             (collection-items/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
@@ -1789,9 +1790,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
@@ -1801,9 +1802,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
@@ -1815,9 +1816,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-by
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
@@ -1829,9 +1830,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-by
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
@@ -1840,9 +1841,9 @@
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :model
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :model
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
@@ -1851,9 +1852,9 @@
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :model
-                                                       :sort-direction :desc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :model
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
@@ -1863,18 +1864,18 @@
               [:%lower.description :asc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:sort-column :description
-                                                         :sort-direction :asc
-                                                         :official-collections-first? true} :postgres))))
+             (collection-items/children-sort-clause {:sort-column :description
+                                                     :sort-direction :asc
+                                                     :official-collections-first? true} :postgres))))
     (testing "descending"
       (is (= [[:authority_level :asc-nulls-last]
               [:type :asc-nulls-first]
               [:%lower.description :desc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:sort-column :description
-                                                         :sort-direction :desc
-                                                         :official-collections-first? true} :postgres))))))
+             (collection-items/children-sort-clause {:sort-column :description
+                                                     :sort-direction :desc
+                                                     :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1965,7 +1966,7 @@
                                                   (swap! queries conj query)
                                                   (apply real-query query args))]
             (request/with-limit-and-offset 0 0
-              (is (pos? (:total (collections.children/collection-children
+              (is (pos? (:total (collection-items/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
                                  {:archived?                   false
                                   :show-dashboard-questions?   false

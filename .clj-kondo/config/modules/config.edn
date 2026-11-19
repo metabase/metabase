@@ -649,16 +649,48 @@
                     :model/UserParameterValue
                     :model/ViewLog}}
 
+  collection-items
+  {:team "UX West"
+   :api  #{metabase.collection-items.core}
+   :uses #{api
+           app-db
+           collections
+           lib.be
+           models
+           permissions
+           premium-features
+           queries
+           request
+           revisions
+           revisions.schema
+           tracing
+           transforms.feature-gating
+           upload
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Exploration
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline
+                    :model/Transform}}
+
   collections
   {:team "UX West"
    :api  #{metabase.collections.children
            metabase.collections.core
            metabase.collections.curation
+           metabase.collections.db
            metabase.collections.init
            metabase.collections.listing
            metabase.collections.models.collection
            metabase.collections.models.collection.root
-           metabase.collections.schema}
+           metabase.collections.schema
+           metabase.collections.util}
    :uses #{api
            api-keys
            api.eid-translation
@@ -666,22 +698,14 @@
            audit-app
            events
            lib
-           lib.be
            lib.schema
            models
            notification
            permissions
            premium-features
-           queries
            remote-sync
-           request
-           revisions
-           revisions.schema
            search
            serialization
-           tracing
-           transforms.feature-gating
-           upload
            util
            util.config}
    :model-exports #{:model/Collection}
@@ -700,7 +724,6 @@
                     :model/Table
                     :model/TableUserSettings
                     :model/Timeline
-                    :model/Transform
                     :model/User}}
 
   collections.rest
@@ -710,6 +733,7 @@
    :uses #{api
            api-scope
            api.eid-translation
+           collection-items
            collections
            documents
            events
@@ -880,6 +904,7 @@
            api.eid-translation
            app-db
            channel
+           collection-items
            collections
            dashboards
            events
@@ -1487,6 +1512,7 @@
            app-db
            bookmarks
            channel
+           collection-items
            collections
            comments
            dashboards
