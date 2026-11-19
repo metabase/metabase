@@ -111,6 +111,9 @@
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
   {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
+                                      :metabase.tracing.core/otel-sdk}
+   ;; scheduled jobs run queries and record traces
+   :metabase.task.impl/scheduler    #{:metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
