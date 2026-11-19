@@ -135,7 +135,10 @@
                           (.insertHandler (statistics-handler/new-handler))
                           (.setServletHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
-      (.setHandler servlet-handler))))
+      (.setHandler servlet-handler)
+      ;; on stop, Jetty stops accepting connections and waits up to this long for responses still being written,
+      ;; including those sent later from another thread; without it, stopping cuts them off
+      (.setStopTimeout (config/config-int :mb-jetty-stop-timeout)))))
 
 (mu/defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a

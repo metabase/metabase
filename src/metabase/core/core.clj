@@ -122,22 +122,26 @@
 (defn- shutdown-steps
   "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
   []
-  [["stop queue listeners"        #(queue/stop-listeners!)]
-   ["stop the token refresher"    #(premium-features/stop-refresher!)]
-   ["run shutdown logic"          #(startup/run-shutdown-logic!)]
-   ["stop the scheduler"          #(task/stop-scheduler!)]
-   ["stop the web server"         #(server/stop-web-server!)]
-   ["shut down tracing"           #(tracing/shutdown!)]
-   ["shut down notifications"     #(notification/shutdown!)]
-   ;; after notifications, whose sends record metrics while they drain
-   ["shut down analytics"         #(analytics.core/shutdown!)]
+  [;; no job starts from here on, so none starts against what the steps below stop
+   ["put the scheduler in standby" #(task/standby-scheduler!)]
+   ;; before the steps that flush what requests produce, such as queued messages and API key usage, so nothing
+   ;; arrives after its flush; the requests in flight get up to MB_JETTY_STOP_TIMEOUT to finish
+   ["stop the web server"          #(server/stop-web-server!)]
+   ["stop queue listeners"         #(queue/stop-listeners!)]
+   ["stop the token refresher"     #(premium-features/stop-refresher!)]
+   ["run shutdown logic"           #(startup/run-shutdown-logic!)]
+   ["stop the scheduler"           #(task/stop-scheduler!)]
+   ["shut down notifications"      #(notification/shutdown!)]
+   ;; after notifications, whose sends record traces and metrics while they drain
+   ["shut down tracing"            #(tracing/shutdown!)]
+   ["shut down analytics"          #(analytics.core/shutdown!)]
    ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
-   ["release migration locks"     #(mdb/release-migration-locks! 20)]
+   ["release migration locks"      #(mdb/release-migration-locks! 20)]
    ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
    ;; after the migration locks are released, since a component this halts could be one that release needs
-   ["halt the global system"      #(global-system/halt! system-dependencies)]
-   ["stop performance monitoring" #(perf/stop-monitoring!)]
-   ["shut down agents"            shutdown-agents]])
+   ["halt the global system"       #(global-system/halt! system-dependencies)]
+   ["stop performance monitoring"  #(perf/stop-monitoring!)]
+   ["shut down agents"             shutdown-agents]])
 
 ;; Every step runs even when an earlier one throws, so one failed stop skips neither the web server nor the locks.
 ;; Each failure is logged as it happens, so a later step that outlasts the shutdown time cannot lose it.

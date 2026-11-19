@@ -1,10 +1,15 @@
 (ns metabase.server.instance-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.server.instance :as server.instance]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,3 +64,34 @@
       (is (= {:message "start failed", :suppressed ["stop failed"]}
              {:message    (ex-message thrown)
               :suppressed (mapv ex-message (.getSuppressed ^Throwable thrown))})))))
+
+(deftest stop-waits-for-requests-in-flight-test
+  (testing "stopping the server lets a request already running finish"
+    (let [started  (CountDownLatch. 1)
+          finish   (CountDownLatch. 1)
+          ;; responds from another thread after the handler returns, as streaming responses do
+          handler  (fn [_request respond _raise]
+                     (future
+                       (.countDown started)
+                       (.await finish 10 TimeUnit/SECONDS)
+                       (respond {:status 200, :headers {}, :body "finished"})))
+          server   (doto ^Server (server.instance/create-server handler {:port 0, :join? false})
+                     (.start))
+          port     (.. server getURI getPort)
+          response (future (http/get (format "http://localhost:%d/" port) {:throw-exceptions false}))]
+      (try
+        (is (.await started 10 TimeUnit/SECONDS))
+        (let [stopped (future (.stop server))]
+          ;; let the stop begin before the request finishes, so the request is in flight when it does
+          (is (u/poll {:thunk       #(.isStopping server)
+                       :done?       true?
+                       :timeout-ms  5000
+                       :interval-ms 10}))
+          (.countDown finish)
+          (is (= {:status 200, :body "finished"}
+                 (select-keys (deref response 10000 nil) [:status :body])))
+          (deref stopped 10000 nil)
+          (is (.isStopped server)))
+        (finally
+          (.countDown finish)
+          (.stop server))))))
