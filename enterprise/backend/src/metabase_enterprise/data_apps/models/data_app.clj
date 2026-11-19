@@ -2,12 +2,16 @@
   (:require
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.dependencies :as data-apps.dependencies]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
@@ -45,7 +49,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)
@@ -91,11 +95,11 @@
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
+  (let [row (prepare ::data-apps.schema/data-app.create data-app)]
     (if-let [collection-id (:resource_collection_id row)]
       (do (check-resource-collection collection-id nil)
           row)
-      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:name row))))))
+      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:slug row))))))
 
 (t2/define-before-update :model/DataApp
   [data-app]
@@ -119,40 +123,45 @@
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
-(defmethod mi/can-read? :model/DataApp
-  ([app] (mi/can-read? :model/DataApp (:id app)))
-  ([_model pk]
-   (and (premium-features/has-feature? :data-apps)
-        (or api/*is-superuser?*
-            (let [{:keys [enabled resource_collection_id]} (data-apps.db/data-app pk)]
-              (and (true? enabled)
-                   (some? resource_collection_id)
-                   (mi/can-read? :model/Collection resource_collection_id)))))))
+(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_read]
+  [_model k app]
+  (vary-meta app assoc k
+             (boolean
+              (and (premium-features/has-feature? :data-apps)
+                   (or api/*is-superuser?*
+                       (and api/*current-user-id*
+                            (data-apps.db/data-app-readable? api/*current-user-id* (:id app))))))))
 
-(defmethod mi/can-write? :model/DataApp
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_write]
+  [_model k app]
+  (assoc app k
+         (boolean
+          (and api/*is-superuser?*
+               (not (remote-sync/read-only?))))))
 
 (defmethod mi/can-create? :model/DataApp
   [_model _instance]
-  api/*is-superuser?*)
+  (and api/*is-superuser?*
+       (not (remote-sync/read-only?))))
+
+(defn- unsynced-change-writable?
+  "Whether the current user can apply `changes` that touch no synced column of `app`, which a read-only instance still
+  accepts."
+  [app changes]
+  (boolean (and api/*is-superuser?*
+                (not (remote-sync/synced-changes? :model/DataApp app changes)))))
+
+(defmethod mi/can-update? :model/DataApp
+  [app changes]
+  (or (mi/can-write? app)
+      (unsynced-change-writable? app changes)))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
+;; The search index drops the app after the delete commits, through delete capture.
 (t2/define-before-delete :model/DataApp
   [app]
-  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!)
-  (search/delete! :model/DataApp [(str (:id app))]))
-
-(search/define-spec "data-app"
-  {:model        :model/DataApp
-   :attrs        {:archived      false
-                  :collection-id false
-                  :created-at    true
-                  :updated-at    true}
-   :search-terms [:name :display_name :description]
-   ;; A result's `name` can be its display name, and the app's URL needs its slug.
-   :render-terms {:data-app-slug :name}})
+  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!))
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
@@ -174,46 +183,57 @@
   [entity]
   (lib/normalize ::data-apps.schema/bundle-path (:path entity)))
 
-(defmethod serialization/spec :model/DataApp [_]
-  {:schema    ::data-apps.schema/external-data-app
-   :copy      [:entity_id :description :version :allowed_hosts]
-   :skip      [:enabled :bundle_hash]
-   :transform {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
-               :name                   {:as     :slug
-                                        :export serialization/export-unchanged
-                                        :import serialization/import-unchanged}
-               :display_name           {:as     :name
-                                        :export serialization/export-unchanged
-                                        :import serialization/import-unchanged}
-               :bundle_path            {:as     :path
-                                        :export serialization/export-unchanged
-                                        :import serialization/import-unchanged}
-               :bundle                 {:as     :serdes/resources
-                                        :export (fn [_store apps bundles _opts]
-                                                  (mapv (fn [app bundle]
-                                                          (when bundle
-                                                            {(:bundle_path app) (bundle->file bundle)}))
-                                                        apps
-                                                        bundles))
-                                        :import (fn [_store entities files _opts]
-                                                  (mapv (fn [app files]
-                                                          (let [path (entity-bundle-path app)]
-                                                            (file->bundle
-                                                             (or (get files path)
-                                                                 (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
-                                                                                 {:status-code 400}))))))
-                                                        entities
-                                                        files))}}})
+(defn- export-bundles
+  "Exports the `bundles` of data `apps` as the files at their bundle paths."
+  [_store apps bundles _opts]
+  (mapv (fn [app bundle]
+          (when bundle
+            {(:bundle_path app) (bundle->file bundle)}))
+        apps
+        bundles))
 
-(defmethod serialization/storage-paths :model/DataApp [_ entities _ctx]
+(defn- import-bundles
+  "Imports the bundles of data app `entities` from the `files` at their bundle paths."
+  [_store entities files _opts]
+  (mapv (fn [app files]
+          (let [path (entity-bundle-path app)]
+            (file->bundle
+             (or (get files path)
+                 (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
+                                 {:status-code 400}))))))
+        entities
+        files))
+
+(defn- before-load
+  "The DataApp load `items` without the bundles their local rows already hold."
+  [items]
+  (mapv (fn [{:keys [row local] :as item}]
+          (cond-> item
+            (and local (some-> ^bytes (:bundle row) bytes-hash (= (:bundle_hash local))))
+            (update :row dissoc :bundle)))
+        items))
+
+(defn- storage-paths
+  "The storage path of each of the DataApp `entities`, in the apps directory by slug."
+  [entities _ctx]
   (mapv (fn [app]
           [{:label data-app.config/apps-dir}
            {:label (:slug app) :key (:entity_id app) :style :slug}
            {:label "data_app"}])
         entities))
 
-(defmethod serialization/resource-paths :model/DataApp [entity]
+(defn- resource-paths
+  "The bundle file stored next to the file of the DataApp `entity`."
+  [entity]
   [(entity-bundle-path entity)])
+
+(defn- import-dependencies
+  "The resource Collection each of the DataApp `entities` depends on, if any."
+  [entities]
+  (mapv (fn [{:keys [collection resource_collection_id]}]
+          (when-let [collection-entity-id (or collection resource_collection_id)]
+            [[:model/Collection collection-entity-id]]))
+        entities))
 
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."
@@ -222,14 +242,63 @@
   (data-apps.db/resource-collection-ids))
 
 (defenterprise data-app-collection?
-  "Whether the Collection with `collection-id` is in the data-apps namespace, which holds only data apps' collections;
-  asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
+  "Whether `collection`, a Collection id or a row with its `:namespace`, is in the data-apps namespace, which holds only
+  data apps' collections; asked of the namespace, not of the apps, since a load may write a collection's content before
+  the app that owns it."
   :feature :none
-  [collection-id]
-  (data-apps.db/data-apps-namespace-collection? collection-id))
+  [collection]
+  (if (map? collection)
+    (= "data-apps" (some-> (:namespace collection) name))
+    (data-apps.db/data-apps-namespace-collection? collection)))
 
-(defmethod serialization/import-dependencies :model/DataApp [_ entities]
-  (mapv (fn [{:keys [collection resource_collection_id]}]
-          (when-let [collection-entity-id (or collection resource_collection_id)]
-            [[:model/Collection collection-entity-id]]))
-        entities))
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/DataApp
+  [_model]
+  {:create :event/data-app-create
+   :update :event/data-app-update
+   :delete :event/data-app-delete})
+
+(defmethod app-db-copy/spec :model/DataApp [_model]
+  {:skip? true})
+
+(defmethod serialization/spec :model/DataApp [_]
+  {:schema              ::data-apps.schema/external-data-app
+   :copy                [:entity_id :slug :name :description :version :allowed_hosts]
+   :skip                [:enabled :bundle_hash]
+   :transform           {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
+                         :bundle_path            {:as     :path
+                                                  :export serialization/export-unchanged
+                                                  :import serialization/import-unchanged}
+                         :bundle                 {:as     :serdes/resources
+                                                  :export export-bundles
+                                                  :import import-bundles}}
+   :before-load         before-load
+   :storage-paths       storage-paths
+   :resource-paths      resource-paths
+   :import-dependencies import-dependencies})
+
+(defmethod remote-sync/spec :model/DataApp
+  [_model]
+  {:name         :slug
+   :synced-items data-apps.db/synced-data-app-items})
+
+(defmethod search/spec :model/DataApp
+  [_model]
+  {"data-app"
+   {:attrs        {:archived      false
+                   :collection-id false
+                   :created-at    true
+                   :updated-at    true}
+    :search-terms [:slug :name :description]
+    ;; A result's `name` can be its display name, and the app's URL needs its slug.
+    :render-terms {:data-app-slug :slug}}})
+
+(defmethod dependencies/spec :model/DataApp [_model]
+  {:type  :data-app
+   :items data-apps.db/dependency-data-app-items
+
+   :hydrate      data-apps.dependencies/hydrate
+   :dependencies data-apps.dependencies/dependencies
+
+   :dependency-columns #{:resource_collection_id}})

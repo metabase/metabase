@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 

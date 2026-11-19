@@ -1,12 +1,13 @@
 ---
 title: Migrating from legacy permissions
+summary: How Metabase 50 split the old Data access setting into View data and Create queries, how your permissions migrated, and what to do about No self-service.
 ---
 
 # Migrating from legacy permissions
 
 > In Metabase 56, we renamed Data sandboxing to Row and column security. The functionality is the same. Some people found the term "data sandboxing" confusing, so we changed the name of the feature to the more industry-standard Row and column security.
 
-In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
+In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about.
 
 **The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
 

@@ -4,13 +4,16 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
-   [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.serialization :as transforms.serialization]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -18,70 +21,81 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/TransformJob [_model] :transform_job)
 
 (doto :model/TransformJob
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})
 
-(defmethod mi/can-read? :model/TransformJob
-  ([_instance]
-   (api/entitled-data-analyst?))
-  ([_model _pk]
-   (api/entitled-data-analyst?)))
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(defmethod mi/can-write? :model/TransformJob
-  ([instance]
-   (or api/*is-superuser?*
-       (and (api/entitled-data-analyst?)
-            (let [transforms (or (:transforms instance)
-                                 (when-let [tag-ids (seq (:tag_ids instance))]
-                                   (transform/transforms-with-tags tag-ids)))]
-              (if (seq transforms)
-                (every? mi/can-write? transforms)
-                true)))))
-  ([_model pk]
-   (when-let [job (transforms.db/job pk)]
-     (mi/can-write? job))))
+(mu/defn- translated-name-and-description :- [:map {:closed true}
+                                              [:name        [:maybe mu/localized-string-schema]]
+                                              [:description [:maybe mu/localized-string-schema]]]
+  [job :- [:or ::transforms.schema/transform-job ::transforms.schema/transform-job.update]]
+  (let [values {"hourly"
+                [(i18n/deferred-trs "Hourly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
 
-(defmethod mi/can-create? :model/TransformJob
-  [_model instance]
-  (or api/*is-superuser?*
-      (and (api/entitled-data-analyst?)
-           ;; Support batch hydration: check pre-hydrated :transforms first,
-           ;; then fall back to looking up transforms from :tag_ids
-           (let [transforms (or (:transforms instance)
-                                (when-let [tag-ids (seq (:tag_ids instance))]
-                                  (transform/transforms-with-tags tag-ids)))]
-             (if (seq transforms)
-               (every? mi/can-write? transforms)
-               true)))))
+                "daily"
+                [(i18n/deferred-trs "Daily job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
 
-(mi/define-batched-hydration-method tag-ids
-  :tag_ids
-  "Hydrate tag IDs for jobs, preserving order defined by position"
-  [jobs]
-  (when (seq jobs)
-    (let [job-ids         (map :id jobs)
-          tag-mappings    (group-by :job_id
-                                    (transforms.db/job-tag-links job-ids))
-          ;; Sort each job's tags by position
-          sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
-      (for [job jobs]
-        (assoc job :tag_ids
-               (mapv :tag_id (get sorted-mappings (:id job) [])))))))
+                "weekly"
+                [(i18n/deferred-trs "Weekly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
-  [_model _k jobs]
-  (when (seq jobs)
-    (let [job-ids         (into #{} (map :id) jobs)
-          last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
-      (for [job jobs]
-        (assoc job :last_run (get last-executions (:id job)))))))
+                "monthly"
+                [(i18n/deferred-trs "Monthly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
+        [name description] (get values (:built_in_type job))]
+    {:name name :description description}))
+
+(mu/defn- sync-trigger! :- :nil
+  "Make the Quartz trigger of the job with `job-id` match its row: scheduled while the job is active, removed otherwise."
+  [job-id :- ms/PositiveInt]
+  (let [{:keys [active schedule] :as job} (transforms.db/job job-id)]
+    (if active
+      (when-not (= schedule (:schedule (transforms.schedule/existing-trigger job-id)))
+        (transforms.schedule/initialize-job! job))
+      (transforms.schedule/delete-trigger! job-id))
+    nil))
+
+(t2/define-after-insert :model/TransformJob [job]
+  (sync-trigger! (:id job))
+  job)
+
+(t2/define-after-select :model/TransformJob [job]
+  (if (nil? (:built_in_type job))
+    job
+    (merge job (translated-name-and-description job))))
+
+(t2/define-before-update :model/TransformJob [job]
+  (if (nil? (:built_in_type job))
+    job
+    (-> (merge job
+               (translated-name-and-description job)
+               {:built_in_type nil}
+               (t2/changes job))
+        (update :name        str)
+        (update :description str))))
+
+(t2/define-after-update :model/TransformJob [job]
+  (sync-trigger! (:id job))
+  job)
+
+(t2/define-before-delete :model/TransformJob [job]
+  (transforms.schedule/delete-job! (:id job))
+  job)
+
+;;; -------------------------------------------------- Operations --------------------------------------------------
 
 (mu/defn- active-flip-lock-name :- :keyword
   "Per-job cluster-lock keyword used to serialize `:active` flips of the same job across the
@@ -90,7 +104,7 @@
   (keyword "metabase.transforms.transform-job-active" (str job-id)))
 
 (mu/defn activate-job! :- :nil
-  "Activate a transform job: set `:active` to true and (re)create its Quartz trigger from the
+  "Activate a transform job: set `:active` to true, which creates its Quartz trigger from the
   job's stored schedule so cron firings begin again. Idempotent — calling on an already-active
   job is a no-op.
 
@@ -99,12 +113,11 @@
   write."
   [job-id :- ms/PositiveInt]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (transforms.db/activate-job! job-id))
-      (transforms.schedule/initialize-job! (transforms.db/job job-id)))
+    (transforms.db/activate-job! job-id)
     nil))
 
 (mu/defn deactivate-job! :- :nil
-  "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
+  "Deactivate a transform job: set `:active` to false, which removes its Quartz trigger so cron
   firings stop. Manual runs via the API still work. Idempotent — calling on an already-inactive
   job is a no-op.
 
@@ -112,8 +125,7 @@
   [[activate-job!]]."
   [job-id :- ms/PositiveInt]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (transforms.db/deactivate-job! job-id))
-      (transforms.schedule/delete-trigger! job-id))
+    (transforms.db/deactivate-job! job-id)
     nil))
 
 (mu/defn update-job-tags! :- :nil
@@ -158,43 +170,69 @@
                                                   :position (get new-positions tag-id)})))))
     nil))
 
-(mu/defn- translated-name-and-description :- [:map {:closed true}
-                                              [:name        [:maybe mu/localized-string-schema]]
-                                              [:description [:maybe mu/localized-string-schema]]]
-  [job :- [:or ::transforms.schema/transform-job ::transforms.schema/transform-job.update]]
-  (let [values {"hourly"
-                [(i18n/deferred-trs "Hourly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
+;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-                "daily"
-                [(i18n/deferred-trs "Daily job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
+(mu/defn- tags-writable? :- :boolean
+  "Whether the current user writes every Transform tagged with one of `tag-ids`."
+  [tag-ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (every? true? (vals (transform-tag/tag-id->writable (set tag-ids)))))
 
-                "weekly"
-                [(i18n/deferred-trs "Weekly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
+(mu/defn- job-writable? :- :boolean
+  "Whether the current user writes a job carrying `tag-ids`."
+  [tag-ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (boolean
+   (or api/*is-superuser?*
+       (and (api/entitled-data-analyst?)
+            (tags-writable? tag-ids)))))
 
-                "monthly"
-                [(i18n/deferred-trs "Monthly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
-        [name description] (get values (:built_in_type job))]
-    {:name name :description description}))
+(defmethod mi/can-create? :model/TransformJob
+  [_model instance]
+  (job-writable? (:tag_ids instance)))
 
-(t2/define-after-select :model/TransformJob [job]
-  (if (nil? (:built_in_type job))
-    job
-    (merge job (translated-name-and-description job))))
+(defmethod mi/can-update? :model/TransformJob
+  [job changes]
+  (and (mi/can-write? job)
+       (or (not (contains? changes :tag_ids))
+           (job-writable? (:tag_ids changes)))))
 
-(t2/define-before-update :model/TransformJob [job]
-  (if (or mi/*deserializing?* (nil? (:built_in_type job)))
-    job
-    (-> (merge (translated-name-and-description job) ;; default translations
-               {:built_in_type nil}                  ;; never translate again
-               (t2/changes job))                     ;; user edits
-        (update :name        str) ;; convert deferred to strings
-        (update :description str))))
+;;; -------------------------------------------------- Hydration ---------------------------------------------------
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_read]
+  [_model k jobs]
+  (let [answer (boolean (api/entitled-data-analyst?))]
+    (mapv #(vary-meta % assoc k answer) jobs)))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_write]
+  [_model k jobs]
+  (let [lookup? (and (not api/*is-superuser?*) (api/entitled-data-analyst?) (seq jobs))
+        by-tag  (when lookup?
+                  (transform-tag/tag-id->writable (into #{} (mapcat :tag_ids) jobs)))]
+    (mapv (fn [job]
+            (assoc job k (boolean (or api/*is-superuser?*
+                                      (and lookup? (every? #(get by-tag % true) (:tag_ids job)))))))
+          jobs)))
+
+(mi/define-batched-hydration-method tag-ids
+  :tag_ids
+  "Hydrate tag IDs for jobs, preserving order defined by position"
+  [jobs]
+  (when (seq jobs)
+    (let [job-ids         (map :id jobs)
+          tag-mappings    (group-by :job_id
+                                    (transforms.db/job-tag-links job-ids))
+          ;; Sort each job's tags by position
+          sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
+      (for [job jobs]
+        (assoc job :tag_ids
+               (mapv :tag_id (get sorted-mappings (:id job) [])))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
+  [_model _k jobs]
+  (when (seq jobs)
+    (let [job-ids         (into #{} (map :id) jobs)
+          last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
+      (for [job jobs]
+        (assoc job :last_run (get last-executions (:id job)))))))
 
 (mi/define-batched-hydration-method job-tags
   :job_tags
@@ -207,21 +245,24 @@
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/TransformJob
+  [_model]
+  {:create :event/transform-job-create
+   :update :event/transform-job-update
+   :delete :event/transform-job-delete})
+
+(defmethod app-db-copy/spec :model/TransformJob [_model]
+  {:skip? false})
+
 (defmethod serialization/spec :model/TransformJob [_]
-  {:schema    ::transforms.schema/external-transform-job
-   :copy      [:entity_id :built_in_type :schedule :ui_display_type]
-   :skip      [:active]
-   :transform {:name        {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}
-               :description {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}
-   :children  {:job_tags :model/TransformJobTransformTag}})
-
-(defmethod serialization/storage-paths :model/TransformJob [_ entities _ctx]
-  (mapv (fn [job]
-          [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])
-        entities))
-
-(defmethod serialization/import-dependencies :model/TransformJob [_ entities]
-  (mapv (fn [{:keys [job_tags]}]
-          (set (for [{tag-id :tag_id} job_tags]
-                 [:model/TransformTag tag-id])))
-        entities))
+  {:schema              ::transforms.schema/external-transform-job
+   :copy                [:entity_id :built_in_type :schedule :ui_display_type]
+   :skip                [:active]
+   :transform           {:name        transforms.serialization/string-transform
+                         :description transforms.serialization/string-transform}
+   :children            {:job_tags :model/TransformJobTransformTag}
+   :before-load         transforms.serialization/transform-job-before-load
+   :storage-paths       transforms.serialization/transform-job-storage-paths
+   :import-dependencies transforms.serialization/transform-job-import-dependencies})

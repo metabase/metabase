@@ -1,7 +1,8 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv empty? some])
+  (:refer-clojure :exclude [mapv empty? not-empty some])
   (:require
+   [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -27,14 +28,15 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? some]]
+   [metabase.util.performance :refer [mapv empty? not-empty some]]
    [metabase.warehouses.schema :as warehouses.schema]
    [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream)
-   (java.security KeyFactory KeyStore PrivateKey)
+   (java.security KeyFactory KeyStore PrivateKey SecureRandom)
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
+   (java.util ArrayList Collections)
    (javax.net SocketFactory)
    (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
@@ -55,6 +57,40 @@
   (let [exp (:exp (jwt-claims jwt))]
     (when (number? exp)
       (long (* exp 1000)))))
+
+(defn- http-get-with-one-retry [url opts]
+  (try (http/get url opts)
+       (catch Exception _ (http/get url opts))))
+
+(defn- fetch-gcp-identity-token [audience]
+  (let [url (format "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s"
+                    (codec/url-encode audience))
+        {:keys [status body]} (http-get-with-one-retry url {:headers          {"Metadata-Flavor" "Google"}
+                                                            :socket-timeout   3000
+                                                            :conn-timeout     3000
+                                                            :throw-exceptions false})]
+    (if (= 200 status)
+      (or (not-empty body)
+          (throw (ex-info "GCP metadata server returned 200 with no body"
+                          {:provider "GCP" :status status})))
+      (throw (ex-info (format "GCP metadata server returned status %d" status)
+                      {:provider "GCP" :status status})))))
+
+(defn wif-ambient-token-http
+  "Trimmed token minted by the local cloud metadata server for WIF `provider` with the given
+  `audience`.
+
+  Throws for an unsupported provider, a blank audience, or a non-200 metadata-server response.
+  Retries once on exception (metadata endpoints occasionally blip); does not retry non-200 status codes."
+  [provider audience]
+  (case provider
+    "GCP" (do
+            (when (str/blank? audience)
+              (throw (ex-info "WIF GCP requires an audience" {:provider provider})))
+            (-> (fetch-gcp-identity-token audience) str/trim))
+    (throw (ex-info (format "Unsupported WIF provider for HTTP-based acquisition: %s"
+                            (pr-str provider))
+                    {:provider provider}))))
 
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation
@@ -266,7 +302,7 @@
                 ^[StringBuffer] StringBuilder/.append)
       (str)))
 
-(defn- normalize-connection-parameter
+(defn normalize-connection-parameter
   "Normalize `s` for matching against [[driver/disallowed-connection-parameters]]: percent escapes decoded once, case
   folded the way `equalsIgnoreCase` does, and `_ . - +` and whitespace removed."
   [s]
@@ -450,7 +486,7 @@
   instance that is incorrect. I don't have the time to fix every single incorrect usage, so we'll just log an error
   and move on for now."
   [driver   :- :keyword
-   feature  :- :keyword
+   feature  :- ::driver/feature
    database :- [:maybe ::warehouses.schema/database-or-metadata]]
   (let [database (some-> database ensure-lib-database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]
@@ -813,6 +849,7 @@
     "druid-jdbc"
     "h2"
     "mongo"
+    "motherduck"
     "mysql"
     "oracle"
     "postgres"
@@ -1075,13 +1112,15 @@
 (defn random-workspace-password
   "Generate a random password suitable for most database engines.
    Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
-   by cycling through the character sets. Result is shuffled for randomness."
+   by cycling through the character sets. Result is shuffled for randomness.
+   Every random draw comes from `SecureRandom`, since the password guards a database login."
   []
-  (->> (cycle workspace-password-char-sets)
-       (take (+ 32 (rand-int 32)))
-       (map rand-nth)
-       shuffle
-       (apply str)))
+  (let [rng   (SecureRandom.)
+        chars (ArrayList. ^java.util.Collection
+               (map (fn [^String char-set] (.charAt char-set (.nextInt rng (count char-set))))
+                    (take (+ 32 (.nextInt rng 32)) (cycle workspace-password-char-sets))))]
+    (Collections/shuffle chars rng)
+    (apply str chars)))
 
 (defn- redact-msg
   "Replace all `secrets` in `msg` with `****`."

@@ -38,12 +38,14 @@ import type {
   CollectionId,
   CollectionItem,
   DashboardId,
+  RecentItem,
 } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardTab,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -99,10 +101,12 @@ const setup = async (
     collectionEndpoints,
     createError,
     personalCollectionItems = [],
+    recentSelections = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
     createError?: unknown;
     personalCollectionItems?: CollectionItem[];
+    recentSelections?: RecentItem[];
   } = {},
 ) => {
   const onCreateMock = jest.fn<
@@ -139,7 +143,7 @@ const setup = async (
   setupDatabasesEndpoints([]);
   setupCustomVizPluginListEndpoint();
 
-  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupRecentViewsAndSelectionsEndpoints(recentSelections, ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
     [],
     ["selections", "views"],
@@ -321,6 +325,32 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.collectionId()).toBe(1);
     });
 
+    it("should save into the personal collection, not a recently selected dashboard the user cannot write to", async () => {
+      const { onCreateMock } = await setup(getQuestion(), null, {
+        recentSelections: [
+          createMockRecentCollectionItem({
+            model: "dashboard",
+            id: FOO_DASH_ID,
+            name: FOO_DASH.name,
+            can_write: false,
+            parent_collection: { id: null, name: "Our analytics" },
+          }),
+        ],
+      });
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(BOBBY_TEST_COLLECTION.name),
+      );
+      expect(screen.queryByText(FOO_DASH.name)).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(onCreateMock).toHaveBeenCalledTimes(1));
+      const [newQuestion] = onCreateMock.mock.calls[0];
+      expect(newQuestion.collectionId()).toBe(BOBBY_TEST_COLLECTION.id);
+      expect(newQuestion.dashboardId()).toBeUndefined();
+    });
+
     it("should call onCreate correctly with edited form", async () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);
@@ -408,6 +438,27 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.displayName()).toBe("foo");
       expect(newQuestion.description()).toBe("bar");
       expect(newQuestion.collectionId()).toBe(1);
+    });
+
+    it("should offer to save to 'Our analytics' if the user has curate access to it", async () => {
+      const rootCollection = { ...ROOT_TEST_COLLECTION, can_write: true };
+      const { onCreateMock } = await setup(getQuestion(), null, {
+        collectionEndpoints: {
+          collections: [rootCollection, BOBBY_TEST_COLLECTION],
+          rootCollection,
+        },
+      });
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent("Our analytics"),
+      );
+      expect(saveLocDropdown()).not.toHaveTextContent(
+        BOBBY_TEST_COLLECTION.name,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(onCreateMock).toHaveBeenCalledTimes(1));
+      expect(onCreateMock.mock.calls[0][0].collectionId()).toBeNull();
     });
 
     it("shouldn't call onSave when form is submitted", async () => {
@@ -629,9 +680,9 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      await waitFor(async () => {
+      await waitFor(() => {
         expect(
-          await screen.findByLabelText(/Which tab should this go on/),
+          screen.getByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
     });
@@ -677,6 +728,80 @@ describe("SaveQuestionModal", () => {
           },
         }),
       ]);
+    });
+
+    it("should show a dashboard in a personal collection without sub-collections, next to the suggested dashboard", async () => {
+      mockGetBoundingClientRect();
+      const ROOT_DASH_ID = 3;
+      const ROOT_DASH = createMockDashboard({
+        id: ROOT_DASH_ID,
+        collection_id: null,
+        name: "Orders in a dashboard",
+        tabs: [],
+      });
+      setupDashboardEndpoints(ROOT_DASH);
+      const rootCollection = createMockCollection({
+        ...ROOT_COLLECTION,
+        can_write: true,
+      });
+      setupCollectionItemsEndpoint({
+        collection: rootCollection,
+        collectionItems: [
+          createMockCollectionItem({
+            id: ROOT_DASH_ID,
+            model: "dashboard",
+            name: ROOT_DASH.name,
+            collection_id: null,
+            can_write: true,
+          }),
+        ],
+      });
+      await setup(getQuestion(), null, {
+        collectionEndpoints: {
+          collections: [rootCollection, BOBBY_TEST_COLLECTION],
+          rootCollection,
+        },
+        recentSelections: [
+          createMockRecentCollectionItem({
+            id: ROOT_DASH_ID,
+            model: "dashboard",
+            name: ROOT_DASH.name,
+            can_write: true,
+          }),
+        ],
+        personalCollectionItems: [
+          createMockCollectionItem({
+            id: FOO_DASH_ID,
+            model: "dashboard",
+            name: FOO_DASH.name,
+            collection_id: BOBBY_TEST_COLLECTION.id,
+            can_write: true,
+          }),
+        ],
+      });
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(ROOT_DASH.name),
+      );
+      await userEvent.click(saveLocDropdown());
+      const personalCollectionLink = await screen.findByRole("link", {
+        name: new RegExp(BOBBY_TEST_COLLECTION.name),
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("link", { name: new RegExp(ROOT_DASH.name) }),
+        ).toHaveAttribute("data-active", "true"),
+      );
+
+      await userEvent.click(personalCollectionLink);
+      await userEvent.click(await screen.findByText(FOO_DASH.name));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select this dashboard" }),
+      );
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(FOO_DASH.name),
+      );
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {
@@ -1034,6 +1159,40 @@ describe("SaveQuestionModal", () => {
         await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
       });
 
+      it("should close the open dialogs one by one with the Escape key", async () => {
+        const { onCloseMock } = await setup(getQuestion());
+        await userEvent.click(saveLocDropdown());
+        await waitFor(() => expect(newCollBtn()).toBeEnabled());
+        await userEvent.click(newCollBtn());
+        expect(
+          await screen.findByRole("dialog", {
+            name: "Create a new collection",
+          }),
+        ).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("dialog", { name: "Create a new collection" }),
+          ).not.toBeInTheDocument(),
+        );
+        expect(
+          screen.getByRole("dialog", { name: /Select a collection/ }),
+        ).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("dialog", { name: /Select a collection/ }),
+          ).not.toBeInTheDocument(),
+        );
+        expect(questionModalTitle()).toBeInTheDocument();
+        expect(onCloseMock).not.toHaveBeenCalled();
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() => expect(onCloseMock).toHaveBeenCalledTimes(1));
+      });
+
       describe("new collection location", () => {
         beforeEach(async () => {
           await setup(getQuestion(), null, {
@@ -1060,9 +1219,9 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
           await userEvent.click(newCollBtn());
-          await waitFor(async () => {
+          await waitFor(() => {
             expect(
-              await screen.findByRole("heading", {
+              screen.getByRole("heading", {
                 name: "Create a new collection",
               }),
             ).toBeInTheDocument();

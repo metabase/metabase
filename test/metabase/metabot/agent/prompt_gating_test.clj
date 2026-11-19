@@ -330,7 +330,7 @@
     (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
       (is (re-find #"# You can see results only by running a query" rendered))
       (is (re-find #"To read a saved question or model, run it with `run_query`" rendered))
-      (is (re-find #"pass `show_chart: false` to `construct_notebook_query`" rendered))
+      (is (re-find #"pass `show_chart: false` to `construct_notebook_query`, so the user" rendered))
       (is (not (re-find #"you cannot see query results" rendered))))))
 
 (deftest ^:parallel prompt-answers-questions-about-the-screen-from-it-test
@@ -361,12 +361,16 @@
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
         (let [rendered (render-internal-template all-yes-perms tools)]
           (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"pass `show_chart: false` to [^.]*`create_sql_query`" rendered)))
           (is (not (re-find #"write SQL with `create_sql_query` and run it" rendered))))))
     (testing "with SQL execution on the model is told to prefer the notebook and run SQL for shapes it can't express"
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
         (let [rendered (render-internal-template all-yes-perms tools)]
           (is (re-find #"Prefer a notebook query" rendered))
           (is (re-find #"write SQL with `create_sql_query` and run it with `run_query`" rendered))
+          (is (re-find (re-pattern (str "pass `show_chart: false` to `construct_notebook_query`, `create_sql_query`,"
+                                        " `edit_sql_query` or `replace_sql_query`, so the user"))
+                       rendered))
           (is (not (re-find #"notebook queries only" rendered)))
           (is (re-find #"A count or total of 0 is a real answer" rendered)))))
     (testing "without the SQL tools the setting does not tell the model to write SQL"
@@ -406,6 +410,23 @@
              (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
                              (render-template template all-yes-perms tools))))))))
 
+(deftest ^:parallel every-query-template-gates-one-query-per-database-test
+  (doseq [template query-templates
+          [tools readable?] [[(conj active-sql-tool-names "run_query") true]
+                             [active-sql-tool-names false]]]
+    (testing (str template (if readable? " with run_query" " without run_query"))
+      (let [rendered (render-template template all-yes-perms tools)]
+        (testing "every profile is told that one query reads one database"
+          (is (re-find #"don't combine data from two databases in Metabase" rendered)))
+        (testing "a profile that can read rows runs one query per database, and refuses only when a result is truncated"
+          (is (= readable?
+                 (some? (re-find #"build one query for each database and run each one with `run_query`" rendered))))
+          (is (= readable?
+                 (some? (re-find #"If a result is truncated, the rows you can't see can change the answer" rendered)))))
+        (testing "a profile that can't read rows tells the user that it can't combine the data"
+          (is (= (not readable?)
+                 (some? (re-find #"tell the user that you can't combine it in one query" rendered)))))))))
+
 (deftest prompt-without-notebook-builder-test
   (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"
     (let [tools ["create_sql_query" "run_query"]]
@@ -422,10 +443,12 @@
             (is (not (re-find #"Prefer a notebook query" rendered)))
             (is (not (re-find #"notebook queries only" rendered)))
             (is (not (re-find #"MBQL shape rules" rendered)))
-            (is (not (re-find #"Natural-language querying is your default" rendered))))))
+            (is (not (re-find #"Natural-language querying is your default" rendered)))
+            (is (re-find #"build one query for each database and run each one with `run_query`" rendered)))))
       (testing "and with SQL execution off, run_query can read nothing, so the model is told it can't see results"
         (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
           (let [rendered (render-internal-template all-yes-perms tools)]
             (is (re-find #"# Hard constraint: you cannot see query results" rendered))
+            (is (re-find #"tell the user that you can't combine it in one query" rendered))
             (is (not (re-find #"construct_notebook_query" rendered)))
             (is (not (re-find #"run_query" rendered)))))))))

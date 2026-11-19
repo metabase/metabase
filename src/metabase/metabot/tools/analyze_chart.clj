@@ -10,11 +10,13 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.util.quoting :as quoting]
-   [tech.v3.resource :as resource]))
+   [tech.v3.resource :as resource]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,7 +83,7 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
                                id))
                            (:user_is_viewing (shared/current-context)))]
     (let [card (metabot.db/card card-id)]
-      (when (and (#{:question :model} (:type card)) (mi/can-read? card))
+      (when (and (#{:question :model} (:type card)) (mi/can-read? (t2/hydrate card :can_read)))
         {:id card-id :type (name (:type card))}))))
 
 (defn- read-values-steps
@@ -95,8 +97,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
       :text (str "To read the chart's values instead, call `run_query` with the ID of the unsaved SQL query that the"
                  " user is viewing.")}
      {:uses #{"create_sql_query" "run_query"}
-      :text (str "For a saved question, write SQL that reads it with `create_sql_query`, then run that query with"
-                 " `run_query`.")}]
+      :text (str "For a saved question, write SQL that reads it with " (tools.run-query/create-sql-query-to-read)
+                 ", then run that query with `run_query`.")}]
     (cond-> [{:uses #{"run_query"}
               :text (str "To read the chart's values instead, call `run_query` with "
                          (if query-id

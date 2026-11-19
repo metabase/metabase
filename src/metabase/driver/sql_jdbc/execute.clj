@@ -20,6 +20,8 @@
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.tracing.core :as tracing]
@@ -33,8 +35,7 @@
   (:import
    (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException
-             Statement Types)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
@@ -169,14 +170,16 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti db-type-name
-  "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this information from rsmeta."
+  "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this
+  information from rsmeta."
   {:added "0.59.0" :arglists '([driver ^java.sql.ResultSetMetaData rsmeta column-index])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti column-metadata
-  "Return a sequence of maps containing information about the corresponding columns in query results. The default
-  implementation fetches this information via the result set metadata. It is unlikely you will need to override this."
+  "Return a sequence of maps containing information about the corresponding columns in query results. These should match
+  the shape `:metabase.driver/execute-reducible-query.respond-fn.results-metadata.cols`. The default implementation
+  fetches this information via the result set metadata. It is unlikely you will need to override this."
   {:added "0.35.0", :arglists '([driver ^java.sql.ResultSetMetaData rsmeta])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -537,7 +540,12 @@
   [driver stmt params]
   ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
   ;; ask when there are parameters that could outnumber the placeholders.
+  ;; Nor inside an explicit transaction: on Postgres and Redshift the describe runs on the server, and a failed describe
+  ;; aborts the transaction, so the statement's own execution would report "current transaction is aborted" instead of
+  ;; its error.
   (when (and (seq params)
+             (try (.getAutoCommit (.getConnection ^PreparedStatement stmt))
+                  (catch Throwable _ true))
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
                      (catch Throwable _ (count params)))
                 (count params)))
@@ -780,8 +788,9 @@
   [_driver ^ResultSetMetaData rsmeta column-index]
   (.getColumnTypeName rsmeta column-index))
 
-(defmethod column-metadata :sql-jdbc
-  [driver ^ResultSetMetaData rsmeta]
+(mu/defmethod column-metadata :sql-jdbc :- ::driver/execute-reducible-query.respond-fn.results-metadata.cols
+  [driver                    :- :keyword
+   ^ResultSetMetaData rsmeta :- (lib.schema.common/instance-of-class ResultSetMetaData)]
   (->> (mapv
         (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
@@ -825,7 +834,7 @@
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
 ;  be overridden.
 (defmethod inject-remark :default
-  [_ sql remark]
+  [_driver sql remark]
   (str "-- " remark "\n" sql))
 
 (mu/defn- download? :- :boolean
@@ -901,25 +910,28 @@
                 (driver/query-canceled? driver e)))
        (impl-error-in-query? driver e)))
 
-(defn execute-reducible-query
+(mu/defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
-  [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
+  [driver                                               :- :keyword
+   {[{sql :native, params :params}] :stages, :as query} :- ::lib.schema/native-only-query
+   _context                                             :- ::driver/execute-reducible-query.context
+   respond                                              :- ::driver/execute-reducible-query.respond-fn]
   {:pre [(string? sql) (seq sql)]}
   (tracing/with-span :db-user "db-user.execute-query" {:db/engine (name driver)}
     (let [database (driver-api/database (driver-api/metadata-provider))
           sql      (if (get-in (driver.conn/effective-details database) [:include-user-id-and-hash] true)
-                     (->> (driver-api/query->remark driver outer-query)
+                     (->> (driver-api/query->remark driver query)
                           (inject-remark driver sql))
                      sql)
-          max-rows (driver-api/determine-query-max-rows outer-query)]
+          max-rows (driver-api/determine-query-max-rows query)]
       (do-with-connection-with-options
        driver
        (driver-api/database (driver-api/metadata-provider))
        {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
-        :download? (download? (-> outer-query :info :context))
-        :stream?   (or (download? (-> outer-query :info :context))
-                       (= :table-rows-sample (-> outer-query :info :context)))}
+        :download? (download? (-> query :info :context))
+        :stream?   (or (download? (-> query :info :context))
+                       (= :table-rows-sample (-> query :info :context)))}
        (fn [^Connection conn]
          ;; whether a cancelation was issued is only knowable inside the Statement's scope, but the Connection can
          ;; only be dealt with once the Statement and ResultSet are closed, so it is carried out past both
@@ -1002,11 +1014,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defmethod driver/execute-write-query! :sql-jdbc
-  [driver                                 :- :keyword
-   {{sql :query, :keys [params]} :native} :- [:map
-                                              [:type   [:= :native]]
-                                              [:native [:map
-                                                        [:query :string]]]]]
+  [driver                                    :- :keyword
+   {[{sql :native, :keys [params]}] :stages} :- ::lib.schema/native-only-query]
   {:pre [(string? sql)]}
   (try
     (do-with-connection-with-options
@@ -1040,7 +1049,11 @@
   (do-with-connection-with-options
    driver
    database
-   {:write? true}
+   ;; The session reads dates in the report timezone, as a query run does; without the option it keeps whatever
+   ;; timezone the pooled connection last had.
+   {:write?           true
+    :session-timezone (driver-api/report-timezone-id-if-supported
+                       driver (cond-> database (integer? database) driver.u/lib-database))}
    (fn [^Connection conn]
      (.setAutoCommit conn false)
      (try
@@ -1065,10 +1078,10 @@
 (defmethod driver/query-on-connection :sql-jdbc
   [driver conn [sql params] {:keys [max-rows]}]
   (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
-    (when (and max-rows (pos? max-rows))
-      ;; The cap is the statement's only bound. Every statement otherwise carries the streaming fetch size, and
-      ;; Redshift aborts the transaction when a row cap is asked of a cursor; `setMaxRows` bounds the memory a
-      ;; cursor would have bounded anyway.
+    (when (and max-rows (pos? max-rows) (driver/database-supports? driver :jdbc/set-max-rows nil))
+      ;; With the fetch size cleared, `setMaxRows` is the statement's only bound, and it bounds the memory a cursor's
+      ;; fetch size would have bounded. A driver without `:jdbc/set-max-rows` keeps its cursor, and the loop below stops
+      ;; reading at the cap.
       (try
         (.setFetchSize stmt 0)
         (catch Throwable e

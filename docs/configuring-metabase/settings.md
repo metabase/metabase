@@ -1,5 +1,6 @@
 ---
 title: General settings
+summary: Instance-wide settings like your site name, site URL, homepage, and usage tracking.
 redirect_from:
   - /docs/latest/administration-guide/08-configuration-settings
 ---
@@ -18,6 +19,8 @@ How you’d like to refer to this instance of Metabase.
 ## Site URL
 
 The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases. For customers on Metabase Cloud, check out [Custom domains](https://www.metabase.com/docs/latest/cloud/custom-domain).
+
+Metabase doesn't officially support running on a subpath, like `https://example.com/metabase`. Many features work on a subpath, but some can break. Serve Metabase at the root of a domain or subdomain instead, like `https://metabase.example.com`, to make sure your Metabase runs smoothly.
 
 ### Redirect to HTTPS
 

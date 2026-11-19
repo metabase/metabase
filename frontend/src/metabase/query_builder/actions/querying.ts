@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
@@ -6,6 +7,7 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
+import { addMetabotCardBaseline } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { getSensibleDisplays, visualizations } from "metabase/viz-core";
@@ -29,11 +31,13 @@ import {
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
+  getMetabotCardBaseline,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
   getQueryResults,
   getQuestion,
   getTimeoutId,
+  getUntouchedMetabotCardBaseline,
 } from "../store/selectors";
 
 import { updateUrl } from "./url";
@@ -265,6 +269,7 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     }
 
     const card = question.card();
+    const metabotCardBaseline = getUntouchedMetabotCardBaseline(getState());
 
     dispatch({
       type: QUERY_COMPLETED_TYPE,
@@ -273,6 +278,15 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
         queryResults,
       },
     });
+    // The display and settings the query builder picks for the results are
+    // not the user's edits. The loaded version stays too: Back restores it
+    // from history without running the query again.
+    const completedQuestion = getQuestion(getState());
+    if (metabotCardBaseline && completedQuestion) {
+      dispatch(
+        addMetabotCardBaseline(getMetabotCardBaseline(completedQuestion)),
+      );
+    }
     dispatch(loadCompleteUIControls());
   };
 };

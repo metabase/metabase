@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
@@ -8,6 +9,7 @@ import { DatasetMetadataStrengthIndicator } from "./DatasetMetadataStrengthIndic
 function setup({ resultMetadata }: { resultMetadata?: DatasetColumn[] }) {
   const dataset = new Question(
     createMockCard({ result_metadata: resultMetadata ?? null }),
+    createMockMetadata(),
   );
   render(
     <DatasetMetadataStrengthIndicator

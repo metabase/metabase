@@ -6,6 +6,7 @@
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
    [environ.core :as env]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.db :as session.db]
@@ -90,9 +91,9 @@
 
 (t2/define-before-insert :model/Session
   [{session-key :session_key :as session}]
-  (when (or (uuid? (:id session)) (string/valid-uuid? (:id session)))
+  (when (or (uuid? (:id session)) (u/uuid-string? (:id session)))
     (throw (ex-info "Session id should not be stored plaintext in the session table." {})))
-  (when (or (uuid? (:key_hashed session)) (string/valid-uuid? (:key_hashed session)))
+  (when (or (uuid? (:key_hashed session)) (u/uuid-string? (:key_hashed session)))
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]
@@ -118,3 +119,8 @@
       (when (nil? (:last_login user))
         (events/publish-event! :event/user-joined event))))
   session)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Session [_model]
+  {:skip? true})

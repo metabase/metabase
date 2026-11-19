@@ -17,7 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../constants";
-import type { EngineFieldOverride, FieldType } from "../types";
+import type { EngineFieldOverride } from "../types";
 
 import { DatabaseHostnameWithProviderField } from "./DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
 import DatabaseInfoField from "./DatabaseInfoField";
@@ -41,7 +41,7 @@ export const DatabaseDetailField = ({
   const type = getFieldType(field, override);
   const props = {
     ...(autoFocus ? { autoFocus, "data-autofocus": autoFocus } : {}),
-    ...getFieldProps(field, override, type),
+    ...getFieldProps(field, override),
   };
 
   if (field.name === "host" && engineKey === "postgres") {
@@ -103,7 +103,6 @@ const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
 const getFieldProps = (
   field: EngineField,
   override: EngineFieldOverride | undefined,
-  type: FieldType | undefined,
 ) => {
   const placeholder =
     override?.placeholder ?? field.placeholder ?? field.default;
@@ -115,7 +114,7 @@ const getFieldProps = (
     description: override?.description ?? field.description,
     placeholder: placeholder != null ? String(placeholder) : undefined,
     encoding: field["treat-before-posting"],
-    ...getSharedFieldStyleProps(type),
+    ...getSharedFieldStyleProps(),
   };
 };
 

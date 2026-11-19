@@ -1,5 +1,6 @@
 ---
 title: "Migrate from Metabase Cloud to a self-hosted Metabase"
+summary: Move your Metabase Cloud instance onto your own infrastructure without losing your questions, dashboards, people, or settings.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -13,7 +14,7 @@ section: Migrate
 
 > This guide outlines migrating _from_ Metabase Cloud to a self-hosted Metabase. If you want to migrate _to_ Metabase Cloud, check out [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide) instead.
 
-Migration from Metabase Cloud to self-hosted will keep all of your questions, dashboards, people, settings --- everything in your existing Metabase.
+Migration from Metabase Cloud to self-hosted will keep all of your questions, dashboards, people, settings---everything in your existing Metabase.
 
 To migrate, you'll need to [contact our success team](https://www.metabase.com/help-premium) to get a snapshot of your Metabase's [application database](../../installation-and-operation/migrating-from-h2.md#metabases-application-database). This application database contains information about all the settings, questions, dashboards, models, users, etc from your Metabase Cloud instance. The application database is distinct from any of the databases you have connected to your Metabase. You'll need to host your own PostgreSQL database and import your data by restoring from this snapshot of your application database.
 
@@ -65,7 +66,7 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
    ```
    export MB_DB_TYPE=postgres
    export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db
+   java -jar metabase.jar load-from-h2 /path/to/metabase.db
    ```
 
    Use the path to your snapshot file _without_ the `.mv.db` extension. For example, if your snapshot file is `/path/to/metabase.db.mv.db`, use `/path/to/metabase.db`.
@@ -83,7 +84,7 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
    ```
    export MB_DB_TYPE=postgres
    export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+   java -jar metabase.jar
    ```
 
    If you run Metabase in Docker, start a new container with the same application database settings. See [Start a new Docker container that uses the new app db](../../installation-and-operation/migrating-from-h2.md#6-start-a-new-docker-container-that-uses-the-new-app-db).

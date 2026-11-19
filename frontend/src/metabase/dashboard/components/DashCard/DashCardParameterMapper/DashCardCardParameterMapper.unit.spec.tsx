@@ -59,6 +59,13 @@ const DEFAULT_MAPPING_OPTIONS: ParameterMappingOption[] = [
   },
 ];
 
+const TEXT_TAG_MAPPING_OPTION: ParameterMappingOption = {
+  name: "foo",
+  icon: "string",
+  isForeign: false,
+  target: ["text-tag", "foo"],
+};
+
 const getQuestion = (card: Card | VirtualCard) => {
   return card.name !== null ? new Question(card, metadata) : undefined;
 };
@@ -148,6 +155,45 @@ describe("DashCardCardParameterMapper", () => {
         ),
       ).toBeInTheDocument();
     });
+
+    it.each(["text", "heading"] as const)(
+      "should offer the variables of %s cards as mapping targets",
+      async (display) => {
+        const card = createMockVirtualCard({ display });
+        setup({
+          card,
+          dashcard: createMockVirtualDashCard({
+            card,
+            size_x: 4,
+            size_y: 4,
+          }),
+          mappingOptions: [TEXT_TAG_MAPPING_OPTION],
+        });
+
+        await userEvent.click(screen.getByText("Select…"));
+        expect(await screen.findByText("foo")).toBeInTheDocument();
+      },
+    );
+
+    it.each(["text", "heading"] as const)(
+      "should show the variable a %s card is mapped to",
+      (display) => {
+        const card = createMockVirtualCard({ display });
+        setup({
+          card,
+          dashcard: createMockVirtualDashCard({
+            card,
+            size_x: 4,
+            size_y: 4,
+          }),
+          mappingOptions: [TEXT_TAG_MAPPING_OPTION],
+          target: TEXT_TAG_MAPPING_OPTION.target,
+        });
+
+        expect(screen.getByText("foo")).toBeInTheDocument();
+        expect(screen.queryByText("Select…")).not.toBeInTheDocument();
+      },
+    );
 
     it("should render an informative parameter mapping state for iframe cards without variables", () => {
       const textCard = createMockIFrameDashboardCard({ size_x: 4, size_y: 4 });
@@ -293,6 +339,44 @@ describe("DashCardCardParameterMapper", () => {
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("Product category");
     expect(options[1]).toHaveTextContent("Product title");
+    // Curated dimensions drop the table sections and the fields left out of the curation
+    expect(screen.queryByText("Product")).not.toBeInTheDocument();
+    expect(screen.queryByText("User")).not.toBeInTheDocument();
+    expect(screen.queryByText("Email")).not.toBeInTheDocument();
+  });
+
+  it("shows every mapping option under its table section for a question", async () => {
+    setup({
+      card: createMockCard({
+        type: "question",
+        dataset_query: Lib.createTestJsQuery(
+          SAMPLE_PROVIDER,
+          DEFAULT_TEST_QUERY,
+        ),
+      }),
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 2, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Category",
+        },
+        {
+          target: ["dimension", ["field", 3, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "User",
+          name: "Email",
+        },
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Select…"));
+
+    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("User")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Email/ })).toBeInTheDocument();
   });
 
   describe("Auto-connected hint", () => {
@@ -384,6 +468,7 @@ describe("DashCardCardParameterMapper", () => {
   it("should render an error state when mapping to a native model", () => {
     const card = createMockCard({
       type: "model",
+      query_type: "native",
       dataset_query: Lib.toJsQuery(
         Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
           query: "SELECT * FROM ORDERS",

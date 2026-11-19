@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.transform-job-transform-tag
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.schema :as transforms.schema]
    [methodical.core :as methodical]
@@ -7,11 +8,18 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/TransformJobTransformTag [_model] :transform_job_transform_tag)
 
 (doto :model/TransformJobTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformJobTransformTag [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformJobTransformTag [_]
   {:schema    ::transforms.schema/external-transform-job-transform-tag

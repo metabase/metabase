@@ -415,6 +415,10 @@
                        {:description (str "Number of tokens consumed by the given embedding model and provider. "
                                           "Not all providers track token use.")
                         :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-token-tracking-failures
+                       {:description (str "Number of embedding calls whose token-tracking row failed to save, "
+                                          "so semantic_search_token_tracking undercounts their tokens.")
+                        :labels [:model]})
    (prometheus/counter :metabase-search/semantic-permission-filter-ms
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
@@ -731,12 +735,24 @@
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
                        {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
+   (prometheus/counter :metabase-sql-parsing/sqlglot-java-timeouts
+                       {:description "Number of SQL parsing calls to the Java port of sqlglot that timed out."})
    (prometheus/counter :metabase-sql-parsing/context-acquisitions
                        {:description "Number of Python contexts acquired from the pool."})
    (prometheus/counter :metabase-sql-parsing/context-creations
                        {:description "Number of new Python contexts created."})
    (prometheus/counter :metabase-sql-parsing/context-disposals-expired
                        {:description "Number of Python contexts disposed due to TTL expiry."})
+   (prometheus/counter :metabase-sql-parsing/shadow-comparisons
+                       {:description "Comparisons of the primary and shadow SQL parsers, by outcome."
+                        :labels [:method :dialect :outcome]})
+   (prometheus/histogram :metabase-sql-parsing/shadow-duration-ms
+                         {:description "Duration in milliseconds of each parser's call in a shadow comparison."
+                          :labels [:parser :method]
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   (prometheus/gauge :metabase-sql-parsing/shadow-in-flight
+                     {:description "Shadow SQL parser comparisons running or waiting to run, by shadow parser."
+                      :labels [:parser]})
    ;; SQL tools operation metrics
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."
@@ -846,6 +862,27 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   ;; Tool executor: one fixed pool of 20 virtual threads, shared by every metabot conversation on the instance.
+   ;; The gauges are refreshed at scrape time by the `pull-collector` in `metabase.metabot.self.core`. They sample
+   ;; the pool, so they miss a burst between two scrapes. The wait histogram records every call.
+   (prometheus/gauge :metabase-metabot/tool-executor-pool-size
+                     {:description "Size of the metabot tool executor pool: the most tool calls that run at once."})
+   (prometheus/gauge :metabase-metabot/tool-executor-active
+                     {:description "Metabot tool calls running now."})
+   (prometheus/gauge :metabase-metabot/tool-executor-queued
+                     {:description "Metabot tool calls waiting for a free tool executor thread."})
+   (prometheus/histogram :metabase-metabot/tool-executor-wait-ms
+                         {:description (str "Time in milliseconds a metabot tool call waits for a free tool executor "
+                                            "thread, from reaching the pool to start. Excludes the wait on earlier "
+                                            "calls.")
+                          ;; 10ms -> 1 minute. Every edge is one time series per instance, so the list is short.
+                          :buckets [10 100 1000 10000 60000]})
+   (prometheus/counter :metabase-metabot/sql-reference-checks
+                       {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
+                                          "ran: the caller turned it off, the dialect has none, a table tag, or SQL "
+                                          "that does not compile; the card and snippet check can still have run), "
+                                          "or `failed` (the check threw).")
+                        :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."

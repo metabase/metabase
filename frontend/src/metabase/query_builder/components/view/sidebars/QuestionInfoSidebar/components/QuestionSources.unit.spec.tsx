@@ -64,7 +64,7 @@ describe("QuestionSources", () => {
       name: "Question",
       dataset_query: PRODUCTS_QUERY,
     });
-    setup({ card });
+    await setup({ card });
     const databaseLink = await screen.findByRole("link", {
       name: /Sample Database/i,
     });

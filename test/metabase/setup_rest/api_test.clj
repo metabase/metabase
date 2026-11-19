@@ -18,7 +18,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -60,7 +59,7 @@
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                      driver.settings/*allow-testing-h2-connections*          true]
          (testing "API response should return a Session UUID"
-           (is (=? {:id string/valid-uuid?}
+           (is (=? {:id u/uuid-string?}
                    (client/client :post 200 "setup" request-body))))
          ;; reset our setup token
          (setup/create-token!)
@@ -101,7 +100,7 @@
        body
        (fn []
          (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
-           (is (=? {:id string/valid-uuid?}
+           (is (=? {:id u/uuid-string?}
                    (client/client :post 200 "setup" body)))
            (testing "the now-unusable token is cleared out of Settings"
              (is (nil? (setup/setup-token))))))))))

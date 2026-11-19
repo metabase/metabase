@@ -1279,8 +1279,8 @@
                                                                (t2/hydrate :transform_tag_ids))]
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))
-                                             (let [revision (t2/select-one :model/Revision :model "Transform"
-                                                                           :model_id transform-id :most_recent true)
+                                             (let [revision (t2/select-one :model/Revision :model "Transform" :model_id transform-id
+                                                                           {:order-by [[:id :desc]]})
                                                    rev-transform (:object revision)
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))
@@ -2119,7 +2119,7 @@
                                      (lib/native-query mp (format "SELECT * FROM %s WHERE {{ cat }}" qualified-source-table))
                                      {"cat" {:id "cat" :name "cat" :display-name "Cat"
                                              :type :dimension :widget-type :string/=
-                                             :dimension (lib/ref category-col)
+                                             :field-id  (:id category-col)
                                              :required true :default ["Gadget"]}})
                       {id :id}     (mt/user-http-request user :post 200 "transform"
                                                          {:name   "Field Filter Transform"
@@ -2184,6 +2184,24 @@
                                                       :schema schema
                                                       :name   other-existing-name}}))))))))))))
 
+(deftest reject-target-that-is-source-table-as-cycle-test
+  (testing "PUT /api/transform/:id moving the target onto the source table is a cycle, not a name collision"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (with-transforms-api-users! [user]
+              (with-transform-cleanup! [table-name "cycle_source"]
+                (let [schema (get-test-schema)
+                      source (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
+                      {id :id} (mt/user-http-request user :post 200 "transform"
+                                                     {:name   "Cycle Transform"
+                                                      :source {:type :query :query (make-query "Gadget")}
+                                                      :target {:type "table" :schema schema :name table-name}})]
+                  (is (=? #"Cyclic transform definitions detected.*"
+                          (mt/user-http-request user :put 400 (format "transform/%d" id)
+                                                {:target {:type "table" :schema schema :name source}}))))))))))))
+
 (deftest delete-target-then-recreate-same-name-test
   (testing "re-running after DELETE /api/transform/:id/table recreates the same target name"
     (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
@@ -2238,3 +2256,172 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+;;; ------------------------------------------------------------
+;;; DELETE /api/transform/collection/:id
+;;; ------------------------------------------------------------
+
+(deftest delete-transforms-folder-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                   :model/Collection {subfolder-id :id} {:name      "Subfolder"
+                                                         :namespace :transforms
+                                                         :location  (format "/%d/" folder-id)}
+                   :model/Transform  {transform-id :id} {:collection_id folder-id}
+                   :model/Transform  {nested-id :id}    {:collection_id subfolder-id}]
+      (mt/user-http-request :crowberto :delete 204 (format "transform/collection/%d" folder-id))
+      (testing "the folder, its subfolder and the transforms in them are gone"
+        (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]])))
+        (is (false? (t2/exists? :model/Transform :id [:in [transform-id nested-id]])))))))
+
+(deftest delete-empty-transforms-folder-test
+  (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}]
+    (mt/user-http-request :crowberto :delete 204 (format "transform/collection/%d" folder-id))
+    (is (false? (t2/exists? :model/Collection :id folder-id)))))
+
+(deftest delete-transforms-folder-rejects-other-collections-test
+  (mt/with-temp [:model/Collection {collection-id :id} {:name "Not a transforms folder"}]
+    (is (= "Only a transforms folder can be deleted this way."
+           (mt/user-http-request :crowberto :delete 400 (format "transform/collection/%d" collection-id))))
+    (is (t2/exists? :model/Collection :id collection-id))))
+
+(mt/when-ee-evailable
+ (deftest delete-transforms-folder-needs-write-permission-on-its-transforms-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting :audit-app}
+     (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                    :model/Collection {subfolder-id :id} {:name      "Subfolder"
+                                                          :namespace :transforms
+                                                          :location  (format "/%d/" folder-id)}
+                    :model/Transform  {transform-id :id} {:collection_id subfolder-id}]
+       (let [url (format "transform/collection/%d" folder-id)]
+         (testing "a user who is not a data analyst cannot delete the folder"
+           (mt/user-http-request :rasta :delete 403 url)
+           (is (t2/exists? :model/Transform :id transform-id)))
+         (mt/with-data-analyst-role! (mt/user->id :lucky)
+           (testing "an analyst without transforms permission on the database cannot delete the folder"
+             (mt/user-http-request :lucky :delete 403 url)
+             (is (t2/exists? :model/Collection :id subfolder-id))
+             (is (t2/exists? :model/Transform :id transform-id))
+             (testing "the audit log records the refused transform, as for the single delete"
+               (is (=? {:topic    :write-permission-failure
+                        :user_id  (mt/user->id :lucky)
+                        :model    "Transform"
+                        :model_id transform-id}
+                       (mt/latest-audit-log-entry :write-permission-failure transform-id)))))
+           (with-transform-db-perms!
+             (testing "with transforms permission the analyst can delete the folder"
+               (mt/user-http-request :lucky :delete 204 url)
+               (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]])))
+               (is (false? (t2/exists? :model/Transform :id transform-id)))))))))))
+
+(deftest delete-transforms-folder-needs-write-permission-on-its-subfolders-test
+  ;; A data analyst can write every transforms folder, so the case is a user without that role whose group got write
+  ;; on the folder and only view on a subfolder.
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting :audit-app}
+    (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                   :model/Collection {subfolder-id :id} {:name      "View-only subfolder"
+                                                         :namespace :transforms
+                                                         :location  (format "/%d/" folder-id)}]
+      (let [url       (format "transform/collection/%d" folder-id)
+            group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (mt/user->id :rasta))]
+        (doseq [group-id group-ids]
+          (perms/grant-collection-readwrite-permissions! group-id folder-id)
+          (perms/revoke-collection-permissions! group-id subfolder-id)
+          (perms/grant-collection-read-permissions! group-id subfolder-id))
+        (testing "a user who can only view a subfolder cannot delete its parent folder"
+          (mt/user-http-request :rasta :delete 403 url)
+          (is (= 2 (t2/count :model/Collection :id [:in [folder-id subfolder-id]]))))
+        (testing "with write permission on the subfolder the user can delete the folder"
+          (doseq [group-id group-ids]
+            (perms/grant-collection-readwrite-permissions! group-id subfolder-id))
+          (mt/user-http-request :rasta :delete 204 url)
+          (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]]))))))))
+
+(deftest delete-transforms-folder-blocked-by-transform-without-premium-feature-test
+  (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                 :model/Transform  {transform-id :id} {:collection_id folder-id}]
+    (mt/with-premium-features #{}
+      (testing "a transform whose premium feature is off blocks the delete of its folder, also for a superuser"
+        (mt/user-http-request :crowberto :delete 403 (format "transform/collection/%d" folder-id))
+        (is (t2/exists? :model/Collection :id folder-id))
+        (is (t2/exists? :model/Transform :id transform-id))))))
+
+(defn- create-and-run-transform!
+  "Create a transform in the folder `folder-id` that writes the table `table-name`, run it as `user`, and return its
+  definition with the `:id` the API gave it."
+  [user folder-id table-name]
+  (let [definition {:name          table-name
+                    :collection_id folder-id
+                    :source        {:type :query :query (make-query "Gadget")}
+                    :target        {:type "table" :schema (get-test-schema) :name table-name}}
+        {id :id}   (mt/user-http-request user :post 200 "transform" definition)]
+    (test-run! user id)
+    (assoc definition :id id)))
+
+(deftest delete-transforms-folder-with-tables-test
+  (testing "DELETE /api/transform/collection/:id keeps the output tables, unless delete-tables=true"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transforms-api-users! [user]
+            (with-transform-db-perms!
+              (with-transform-cleanup! [kept-table    "folder_kept_table"
+                                        dropped-table "folder_dropped_table"]
+                (mt/with-temp [:model/Collection {kept-folder-id :id}    {:name "Kept tables" :namespace :transforms}
+                               :model/Collection {dropped-folder-id :id} {:name "Dropped tables" :namespace :transforms}]
+                  (let [kept    (create-and-run-transform! user kept-folder-id kept-table)
+                        dropped (create-and-run-transform! user dropped-folder-id dropped-table)]
+                    (testing "without delete-tables, the transform is gone and its table stays"
+                      (mt/user-http-request user :delete 204 (format "transform/collection/%d" kept-folder-id))
+                      (is (false? (t2/exists? :model/Transform :id (:id kept))))
+                      (is (true? (transforms-base.u/target-table-exists? kept))))
+                    (testing "with delete-tables=true, the transform and its table are gone"
+                      (mt/user-http-request user :delete 204
+                                            (format "transform/collection/%d?delete-tables=true" dropped-folder-id))
+                      (is (false? (t2/exists? :model/Transform :id (:id dropped))))
+                      (is (false? (transforms-base.u/target-table-exists? dropped))))))))))))))
+
+(deftest transform-run-bookkeeping-records-no-audit-row-or-revision-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (mt/with-temp [:model/Table {table-id :id} {}
+                     :model/Transform {id :id} {:name "Bookkept"}]
+        (let [audit-rows (fn [] (t2/count :model/AuditLog :model "Transform" :model_id id))
+              revisions  (fn [] (t2/count :model/Revision :model "Transform" :model_id id))
+              before     [(audit-rows) (revisions)]]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "a run saving its checkpoint and its target table"
+              (t2/update! :model/Transform :id id {:last_checkpoint_value "5"})
+              (t2/update! :model/Transform :id id {:target_table_id table-id})
+              (is (= before [(audit-rows) (revisions)]))))
+          (testing "resetting the checkpoint"
+            (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" id))
+            (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id id)))
+            (is (= before [(audit-rows) (revisions)])))
+          (testing "an edit by a user still records"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (t2/update! :model/Transform :id id {:name "Renamed"}))
+            (is (= [(inc (first before)) (inc (second before))] [(audit-rows) (revisions)]))))))))
+
+(deftest reverting-transform-keeps-computed-columns-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Table {table-id :id} {}
+                     :model/Transform {id :id} {:name "Original"}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (t2/update! :model/Transform :id id {:name "Edited"}))
+        (let [revision (t2/select-one :model/Revision :model "Transform" :model_id id {:order-by [[:id :desc]]})]
+          (testing "a revision holds no computed column"
+            (is (not-any? #(contains? (:object revision) %) [:last_checkpoint_value :target_table_id :table_dependencies])))
+          (t2/update! :model/Transform :id id {:last_checkpoint_value "9" :target_table_id table-id})
+          (mt/with-current-user (mt/user->id :crowberto)
+            (t2/update! :model/Transform :id id {:name "Edited again"}))
+          (testing "reverting an old revision that holds computed columns does not write them back"
+            (let [legacy-id (t2/insert-returning-pk! :model/Revision
+                                                     {:model "Transform" :model_id id :user_id (mt/user->id :crowberto)
+                                                      :object (assoc (:object revision) :last_checkpoint_value "old" :target_table_id nil)
+                                                      :is_creation false :is_reversion false})]
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "transform" :id id :revision_id legacy-id})
+              (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
+                      (t2/select-one :model/Transform :id id))))))))))

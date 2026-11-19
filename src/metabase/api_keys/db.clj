@@ -12,17 +12,23 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn unscoped-api-key-count
-  "The number of ApiKeys without a scope."
-  []
-  (t2/count :model/ApiKey :scope nil))
+(def ^:private admin-listed
+  "The ApiKeys an admin lists and manages through the API keys endpoints: unscoped keys and `:workspace-manager` keys.
+  SCIM keys are managed by the SCIM endpoints."
+  [:or [:= :scope nil] [:= :scope "workspace-manager"]])
 
-(mu/defn unscoped-api-keys
-  "The ApiKeys without a scope, most recently used first (nulls last — a key never used sorts after
-  every key that has been)."
+(mu/defn admin-listed-api-key-count
+  "The number of ApiKeys without a scope or with the `:workspace-manager` scope."
   []
-  (t2/select :model/ApiKey :scope nil
-             {:order-by [[:last_used_at (case (mdb/db-type)
+  (t2/count :model/ApiKey {:where admin-listed}))
+
+(mu/defn admin-listed-api-keys
+  "The ApiKeys without a scope or with the `:workspace-manager` scope, most recently used first (nulls last — a key
+  never used sorts after every key that has been)."
+  []
+  (t2/select :model/ApiKey
+             {:where    admin-listed
+              :order-by [[:last_used_at (case (mdb/db-type)
                                           ;; NULLS LAST isn't valid MySQL syntax, but MySQL already sorts
                                           ;; NULLs last on DESC by default (it treats NULL as the lowest value).
                                           (:postgres :h2) :desc-nulls-last
@@ -129,8 +135,8 @@
   UPDATE — and, by extension, every unrelated key batched alongside it — until that writer's
   transaction commits.
 
-  A plain UPDATE rather than [[update-api-key!]] on purpose: the model's `before-update` hook hydrates
-  the key and publishes an `:event/api-key-update` audit event, which a usage stamp must not do.
+  A plain UPDATE rather than [[update-api-key!]] on purpose: a write through the model
+  publishes `:event/api-key-update`, which the audit log records, and a usage stamp must not do that.
   Mirrors [[metabase.query-processor.db/update-cards-last-used-at!]]'s bulk `CASE`/`GREATEST` pattern
   for the same reason: many keys land in one batch, and this is one UPDATE for all of them rather than
   one per key."

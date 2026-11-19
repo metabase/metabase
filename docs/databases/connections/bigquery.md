@@ -1,5 +1,6 @@
 ---
 title: Google BigQuery
+summary: Connect Metabase to Google BigQuery, from creating a service account to every connection and sync setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/bigquery
 ---

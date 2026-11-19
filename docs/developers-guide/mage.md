@@ -1,3 +1,7 @@
+---
+summary: Run Metabase's development automation tasks with `./bin/mage`, and set up shell autocomplete for them.
+---
+
 # MAGE - Development Automation
 
 Run `./bin/mage` to list your tasks. All of them support `-h` to learn more and show examples.

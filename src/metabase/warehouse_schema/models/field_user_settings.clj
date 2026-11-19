@@ -1,13 +1,20 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.change-log.core :as change-log]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -28,7 +35,7 @@
 (doto :model/FieldUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
@@ -39,8 +46,6 @@
                  (assoc flag true)))
              settings
              user-settings/field-set-flags))
-
-(methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
@@ -66,14 +71,41 @@
   [settings]
   (delete-when-empty! settings))
 
+(defn- fk-semantic-type?
+  "Whether `semantic-type` marks a foreign key."
+  [semantic-type]
+  (isa? (some-> semantic-type keyword) :type/FK))
+
+(defn- internal-remapping-allowed?
+  "Whether a Field of `base-type` and `semantic-type` can hold an internal remapping."
+  [base-type semantic-type]
+  (let [semantic-type (some-> semantic-type keyword)]
+    (and (isa? (keyword base-type) :type/Integer)
+         (or (nil? semantic-type)
+             (isa? semantic-type :type/Category)
+             (isa? semantic-type :type/Enum)))))
+
+(defn- remove-remappings-ended-by!
+  "Removes what the user's new semantic type in `settings` ends for `field`: its foreign key target and external
+  remapping when it stops being a foreign key, and its internal remapping when it can no longer hold one."
+  [{:keys [id base_type semantic_type]} settings]
+  (when (contains? settings :semantic_type)
+    (when (and (fk-semantic-type? semantic_type)
+               (not (fk-semantic-type? (:semantic_type settings))))
+      (warehouse-schema.db/unset-user-settings-fk-target! id)
+      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :external))
+    (when-not (internal-remapping-allowed? base_type (:semantic_type settings))
+      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :internal))))
+
 (mu/defn upsert-field-user-settings!
   "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
   row; a nil for a column without a set flag unsets it."
-  [{:keys [id]} :- ::warehouse-schema.schema/field
-   settings     :- ::warehouse-schema.schema/field.update]
+  [{:keys [id] :as field} :- ::warehouse-schema.schema/field
+   settings               :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
+        (remove-remappings-ended-by! field settings)
         (warehouse-schema.db/update-or-insert-field-user-settings!
          id (fn [existing] (cond->> settings existing (with-set-flags settings))))
         (warehouse-schema.db/update-field! id settings)))))
@@ -115,38 +147,46 @@
   [table-id :- ::lib.schema.id/table]
   (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
 
-(def ^:private field-user-settings-slug "___fieldusersettings")
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/FieldUserSettings
+  [_model]
+  {:create :event/field-user-settings-create
+   :update :event/field-user-settings-update
+   :delete :event/field-user-settings-delete})
+
+(defmethod app-db-copy/spec :model/FieldUserSettings [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/FieldUserSettings [_model]
+  {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
+           :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
+           :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
+   :skip  []})
 
 (defmethod serialization/spec :model/FieldUserSettings [_]
-  {:schema    ::warehouse-schema.schema/external-field-user-settings
-   :identity  [:field_id]
-   :primary-key :field_id
-   :copy      [:semantic_type :description :display_name :visibility_type
-               :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
-               :description_set :semantic_type_set :fk_target_field_id_set]
-   :skip      [:nfc_path]
-   :defaults  {:description_set        false
-               :semantic_type_set      false
-               :fk_target_field_id_set false}
-   :transform {:fk_target_field_id serialization/field-transform
-               :field_id           serialization/field-transform}})
+  {:schema        ::warehouse-schema.schema/external-field-user-settings
+   :identity      [:field_id]
+   :copy          [:semantic_type :description :display_name :visibility_type
+                   :has_field_values :effective_type :coercion_strategy :caveats
+                   :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
+                   :description_set :semantic_type_set :fk_target_field_id_set]
+   :skip          [:nfc_path]
+   :defaults      {:description_set        false
+                   :semantic_type_set      false
+                   :fk_target_field_id_set false}
+   :transform     {:fk_target_field_id serialization/field-transform
+                   :field_id           serialization/field-transform}
+   :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
+   :before-load   warehouse-schema.serialization/field-user-settings-before-load
+   :after-load    warehouse-schema.serialization/field-user-settings-after-load
+   :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 
-(defmethod serialization/storage-paths :model/FieldUserSettings [_ entities _ctx]
-  (mapv (fn [field-user-settings]
-          (let [field-path (serialization/storage-path-prefixes (:field_id field-user-settings))]
-            (update field-path (dec (count field-path))
-                    (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
-        entities))
+(defmethod remote-sync/spec :model/FieldUserSettings
+  [_model]
+  {:synced-items         warehouse-schema.db/synced-field-user-settings-items
+   :synced-filter-clause warehouse-schema.db/synced-field-clause})
 
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defmethod serialization/before-load :model/FieldUserSettings [_ items]
-  (mapv (fn [{:keys [local] :as item}]
-          (cond-> item
-            local (update :row #(merge (zipmap user-settings/user-settable-field-columns (repeat nil)) %))))
-        items))
-
-(defmethod serialization/after-load :model/FieldUserSettings [_ items]
-  (doseq [{{:keys [field_id] :as settings} :instance} items]
-    (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
+(defmethod dependencies/spec :model/FieldUserSettings [_model]
+  {:part-of      {:type :table :key :field_id :via [:model/Field :table_id]}
+   :part-columns (conj warehouse-schema.dependencies/field-columns :custom_position :json_unfolding)})

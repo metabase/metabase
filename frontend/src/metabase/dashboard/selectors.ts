@@ -703,9 +703,9 @@ export const getTabs = createSelector([getDashboard], (dashboard) => {
 export const getSelectedTabId = createSelector(
   [
     getIsWebApp,
-    (state) => getSetting(state, "site-url"),
+    (state: State) => getSetting(state, "site-url"),
     getDashboard,
-    (state) => state.dashboard.selectedTabId,
+    (state: State) => state.dashboard.selectedTabId,
     (state: State & Partial<SdkSharedStoreState>) =>
       state.sdk?.initialDashboardTabId,
   ],

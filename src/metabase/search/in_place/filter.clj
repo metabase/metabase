@@ -17,6 +17,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.search-model :as search-model]
@@ -307,8 +308,10 @@
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model/search-model->revision-model model)]))
+          (sql.helpers/where [:= :revision.model (search-model/search-model->revision-model model)]
+                             (revisions.sql/newest-revision-clause :revision
+                                                                   (search-model/search-model->revision-model model)
+                                                                   (search.config/column-with-model-alias model :id))))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -322,8 +325,10 @@
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model/search-model->revision-model model)]))
+          (sql.helpers/where [:= :revision.model (search-model/search-model->revision-model model)]
+                             (revisions.sql/newest-revision-clause :revision
+                                                                   (search-model/search-model->revision-model model)
+                                                                   (search.config/column-with-model-alias model :id))))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -428,7 +433,7 @@
         enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)
         hidden-by-visibility (into #{}
-                                   (remove #(search.filter/visible-to? search-context (search.spec/spec %)))
+                                   (remove #(search.filter/visible-to? search-context (search.spec/search-model-spec %)))
                                    models)]
     (cond-> models
       (seq hidden-by-visibility)   (set/difference hidden-by-visibility)

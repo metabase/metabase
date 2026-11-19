@@ -4,9 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -31,46 +30,6 @@
              :db_id           [:in database-ids]
              :active          true
              :visibility_type nil))
-
-(mu/defn database-engines
-  "The id and engine of every Database."
-  []
-  (t2/select [:model/Database :id :engine]))
-
-(mu/defn source-query-cards-reducible
-  "A reducible of the Cards of `card-type` (also including \"metric\" Cards) in the Databases with `database-ids`
-  visible to the current user that can be used as source queries, with their moderation status, in case-insensitive
-  name order. `collection-scope` further restricts by collection: `nil` applies no collection restriction, `:root`
-  restricts to Cards with no collection, and a collection of ids restricts to Cards in those collections."
-  [card-type        :- [:or :keyword :string]
-   database-ids     :- [:set ::lib.schema.id/database]
-   collection-scope :- [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
-  ;; Rows are pushed through `mi/do-after-select :model/Card` by the caller, so `:dataset_query` and
-  ;; `:result_metadata` drag in the rest of [[metabase.queries.card-schema/schema-upgrade-triggers]].
-  (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                  :result_metadata :type :source_card_id :card_schema :entity_id
-                                  :dimensions :dimension_mappings
-                                  [^:allow-subquery {:select   [:status]
-                                                     :from     [:moderation_review]
-                                                     :where    [:and
-                                                                [:= :moderated_item_type "card"]
-                                                                [:= :moderated_item_id :report_card.id]
-                                                                [:= :most_recent true]]
-                                                     :order-by [[:id :desc]]
-                                                     :limit    1}
-                                   :moderated_status]]
-                       :from     [:report_card]
-                       :where    [:and
-                                  [:not= :result_metadata nil]
-                                  [:= :archived false]
-                                  [:in :type [(u/qualified-name card-type) "metric"]]
-                                  [:in :database_id database-ids]
-                                  (cond
-                                    (nil? collection-scope)          nil
-                                    (= collection-scope :root)       [:= :collection_id nil]
-                                    :else                            [:in :collection_id collection-scope])
-                                  (collection/visible-collection-filter-clause)]
-                       :order-by [[:%lower.name :asc]]}))
 
 (mu/defn databases-where
   "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
@@ -97,9 +56,9 @@
         where      (if filter-by-data-access?
                      [:and base-where
                       [:or
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                       (perms/visible-databases-filter-clause :id user-info {:perms/create-queries :query-builder})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-database :yes})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-table-metadata :yes})]]
                      base-where)]
     (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                 :where where})))
@@ -264,12 +223,11 @@
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (t2/query-one {:delete-from :metabase_fieldvalues
-                 :where      [:in :field_id
-                              ^:allow-subquery {:select     [:f.id]
-                                                :from       [[:metabase_field :f]]
-                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                :where      [:= :t.db_id database-id]}]}))
+  (t2/delete! :model/FieldValues
+              :field_id [:in ^:allow-subquery {:select     [:f.id]
+                                               :from       [[:metabase_field :f]]
+                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                               :where      [:= :t.db_id [:auto/param database-id]]}]))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
@@ -309,11 +267,6 @@
              :active true
              :visibility_type nil
              {:order-by [[:display_name :asc]]}))
-
-(mu/defn collection-ids-named
-  "The ids of the Collections named `collection-name`, or nil."
-  [collection-name :- :string]
-  (t2/select-pks-set :model/Collection :name collection-name))
 
 (defn- card-usage-count-subquery
   [database-id model type-str]

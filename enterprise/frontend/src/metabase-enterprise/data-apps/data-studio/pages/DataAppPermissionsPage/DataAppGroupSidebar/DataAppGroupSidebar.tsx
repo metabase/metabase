@@ -40,10 +40,13 @@ export function DataAppGroupSidebar({
   onClose,
 }: DataAppGroupSidebarProps) {
   const { data: warnings } = useGetDataAppGroupPermissionWarningsQuery(
-    app.name,
+    app.slug,
   );
   const warning = warnings?.find(({ group_id }) => group_id === group.id);
-  const groupUrl = Urls.adminGroup(group.id);
+
+  const groupUrl = group.is_tenant_group
+    ? Urls.adminTenantGroup(group.id)
+    : Urls.adminGroup(group.id);
 
   return (
     <SidebarResizableBox

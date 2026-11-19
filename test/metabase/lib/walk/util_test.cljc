@@ -332,7 +332,7 @@
                                       "category" {:name         "category"
                                                   :display-name "Category"
                                                   :type         :dimension
-                                                  :dimension    [:field (meta/id :products :category) nil]
+                                                  :field-id     (meta/id :products :category)
                                                   :widget-type  :string/=}
                                       "snippet"  {:name         "snippet"
                                                   :display-name "Snippet"

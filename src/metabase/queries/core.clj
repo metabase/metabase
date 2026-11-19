@@ -35,6 +35,8 @@
   card-query-info
   cards-queries-info]
  [metabase.queries.models.card
+  can-delete?
+  card-read-check-columns
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
@@ -47,8 +49,7 @@
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
-  check-card-can-be-saved!
-  check-no-save-cycle!]
+  check-card-can-be-saved!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
@@ -56,7 +57,6 @@
   batch-fetch-query-metadata]
  [metabase.queries.models.card
   current-card-schema-version
-  fully-parameterized?
   maybe-unverify!
   model?
   sole-dashboard-id

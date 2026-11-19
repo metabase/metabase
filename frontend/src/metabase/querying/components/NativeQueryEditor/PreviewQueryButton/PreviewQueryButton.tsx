@@ -1,11 +1,14 @@
 import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
+import {
+  getVariableTemplateTags,
+  hasSnippetTemplateTags,
+} from "metabase/querying/native";
 import type { QueryModalType } from "metabase/redux/store";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import { MODAL_TYPES } from "../../../constants";
 
@@ -38,17 +41,15 @@ interface PreviewQueryButtonOpts {
 }
 
 PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
 
   if (!isNative) {
     return false;
   }
 
-  // Unjustified type cast. FIXME
-  const nativeQuestion = question.legacyNativeQuery() as NativeQuery;
-
-  const hasVariableTemplateTags = nativeQuestion.hasVariableTemplateTags();
-  const hasSnippets = nativeQuestion.hasSnippets();
+  const hasVariableTemplateTags = getVariableTemplateTags(query).length > 0;
+  const hasSnippets = hasSnippetTemplateTags(query);
 
   return question.canRun() && (hasVariableTemplateTags || hasSnippets);
 };

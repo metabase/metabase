@@ -1,5 +1,6 @@
 ---
 title: Filter and parameter widgets for native code
+summary: Give people filter widgets for your SQL queries, with the right input type, default values, and operators.
 ---
 
 # Filter and parameter widgets for native code

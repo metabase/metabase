@@ -9,6 +9,7 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema :as timeline.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -17,6 +18,10 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! :event/timeline-create :metabase/event)
+(events/derive! :event/timeline-update :metabase/event)
+(events/derive! :event/timeline-delete :metabase/event)
 
 (mr/def ::include
   [:enum :events])
@@ -29,21 +34,17 @@
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {:keys [icon], collection-id :collection_id, :as body} :- [:map {:closed true}
-                                                              [:name          ms/NonBlankString]
-                                                              [:default       {:optional true} [:maybe :boolean]]
-                                                              [:description   {:optional true} [:maybe :string]]
-                                                              [:icon          {:optional true} [:maybe timeline-event/Icon]]
-                                                              [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                              [:archived      {:optional true} [:maybe :boolean]]]]
+   {collection-id :collection_id, :as body} :- [:map {:closed true}
+                                                [:name          ::timeline.schema/name]
+                                                [:default       {:optional true} [:maybe :boolean]]
+                                                [:description   {:optional true} [:maybe :string]]
+                                                [:icon          {:optional true} [:maybe ::timeline.schema/icon]]
+                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (api/create-check :model/Timeline {:collection_id collection-id})
-  (let [tl (merge
-            body
-            {:creator_id api/*current-user-id*}
-            (when-not icon
-              {:icon timeline-event/default-icon}))]
-    (u/prog1 (timeline.db/insert-timeline! tl)
-      (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
+  (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
+             (nil? (:icon body)) (dissoc :icon))]
+    (u/prog1 (timeline.db/insert-timeline! tl))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "List timelines visible to the current user with no hydration."
@@ -102,36 +103,27 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [archived] :as timeline-updates} :- [:map {:closed true}
-                                               [:name          {:optional true} [:maybe ms/NonBlankString]]
-                                               [:default       {:optional true} [:maybe :boolean]]
-                                               [:description   {:optional true} [:maybe :string]]
-                                               [:icon          {:optional true} [:maybe timeline-event/Icon]]
-                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                               [:archived      {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (timeline.db/timeline id))]
-    (collection/check-allowed-to-change-collection existing timeline-updates)
-    (timeline.db/update-timeline! id
-                                  (u/select-keys-when timeline-updates
-                                                      :present #{:description :icon :collection_id :default :archived}
-                                                      :non-nil #{:name}))
-    (when (and (some? archived) (not= current-archived archived))
-      (timeline.db/set-timeline-events-archived! id archived))
-    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
-      (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
+   timeline-updates :- [:map {:closed true}
+                        [:name          {:optional true} [:maybe ::timeline.schema/name]]
+                        [:default       {:optional true} [:maybe :boolean]]
+                        [:description   {:optional true} [:maybe :string]]
+                        [:icon          {:optional true} ::timeline.schema/icon]
+                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                        [:archived      {:optional true} [:maybe :boolean]]]]
+  (let [existing (api/check-404 (timeline.db/timeline id))
+        changes  (u/select-keys-when timeline-updates
+                                     :present #{:description :icon :collection_id :default :archived}
+                                     :non-nil #{:name})]
+    (api/update-check existing changes)
+    (timeline.db/update-timeline! id changes)
+    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [timeline (api/write-check :model/Timeline id)]
-    (timeline.db/delete-timeline! id)
-    (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
+  (api/write-check :model/Timeline id)
+  (timeline.db/delete-timeline! id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

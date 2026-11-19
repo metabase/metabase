@@ -1,12 +1,11 @@
 ---
 title: Troubleshooting SAML authentication setup
+summary: Fix common SAML setup problems, from certificate and Entity ID mismatches to the wrong SSO URL.
 ---
 
 # Troubleshooting SAML authentication setup
 
 {% include plans-blockquote.html feature="SAML authentication" %}
-
-Some common problems when setting up SAML.
 
 ## Does your app support SAML?
 

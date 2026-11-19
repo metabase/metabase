@@ -1,10 +1,11 @@
 (ns metabase-enterprise.action-v2.models.undo
   (:require
-   [clojure.walk :as walk]
    [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase.actions.core :as actions]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,7 +28,7 @@
 (defn- nested-sort
   "Sort every map within the data structure."
   [x]
-  (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %))) x))
+  (match/replace-all x #'map? (into (sorted-map) &match)))
 
 (defn- serialize-scope
   "Convert the scope map or string into a stable string we can do example matches on in the database. Idempotent."
@@ -210,3 +211,8 @@
   "Rollback the given user's last change to the given table."
   [context user-id scope]
   (undo*! :redo context user-id scope))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Undo [_model]
+  {:skip? true})

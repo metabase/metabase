@@ -22,7 +22,8 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -208,7 +209,7 @@
                         (into {}
                               (comp (filter mi/can-query?)
                                     (map (juxt :id #(select-keys % [:id :schema :name]))))
-                              (metabot.db/table-schema-rows table-ids)))]
+                              (t2/hydrate (metabot.db/table-schema-rows table-ids) :can_query)))]
     (cond->> results
       (seq metric-ids)
       (mapv (fn [{:keys [id type database_name] :as result}]
@@ -256,10 +257,9 @@
   [archived? results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
-                       (->> (metabot.db/documents-in-archived-state document-ids archived?)
-                            (filter mi/can-read?)
-                            (map (juxt :id identity))
-                            (into {})))]
+                       (->> (mi/readable (metabot.db/documents-in-archived-state document-ids archived?))
+                            (#(t2/hydrate % :can_write))
+                            (u/index-by :id)))]
     (if (seq document-ids)
       (into []
             (keep (fn [result]
@@ -393,7 +393,6 @@
                                                           :last-edited-at                      last-edited-at
                                                           :current-user-id                     api/*current-user-id*
                                                           :is-superuser?                       api/*is-superuser?*
-                                                          :current-user-perms                  @api/*current-user-permissions-set*
                                                           :filter-items-in-personal-collection "exclude-others"
                                                           :context                             :metabot
                                                           :archived                            (boolean archived)})
@@ -462,7 +461,6 @@
                                                             {:search-string      nil
                                                              :models             search-models
                                                              :current-user-id    api/*current-user-id*
-                                                             :current-user-perms @api/*current-user-permissions-set*
                                                              :is-superuser?      api/*is-superuser?*
                                                              :offset             (or offset 0)
                                                              :limit              limit}))
@@ -487,8 +485,7 @@
   [ids]
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
-    (for [t (filter mi/can-read?
-                    (metabot.db/table-summaries ids))]
+    (for [t (mi/readable (metabot.db/table-summaries ids))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -505,13 +502,10 @@
   (let [ids       (distinct (map :id refs))
         ;; only surface cards the current user can read (collection perms) — see table-refs->results
         id->card  (when (seq ids)
-                    (into {} (map (juxt :id identity))
-                          (filter mi/can-read?
-                                  (metabot.db/card-search-rows ids))))
+                    (u/index-by :id (mi/readable (metabot.db/card-search-rows ids))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
-                    (into {} (map (juxt :id identity))
-                          (metabot.db/collection-summaries coll-ids)))
+                    (u/index-by :id (metabot.db/collection-summaries coll-ids)))
         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
                     (metabot.db/verified-item-ids ids "card"))]
@@ -539,13 +533,12 @@
     (let [by-type (group-by :type refs)
           fetch   (fn [db-fn ids]
                     (when-let [ids (not-empty (distinct ids))]
-                      (filter mi/can-read? (db-fn ids))))
+                      (mi/readable (db-fn ids))))
           rows    (concat (map #(assoc % :type "measure") (fetch metabot.db/measures (map :id (get by-type "measure"))))
                           (map #(assoc % :type "segment") (fetch metabot.db/segments (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
-                    (into {} (map (juxt :id identity))
-                          (metabot.db/table-schema-rows tbl-ids)))]
+                    (u/index-by :id (metabot.db/table-schema-rows tbl-ids)))]
       (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}
@@ -825,7 +818,7 @@
   [database-id]
   (when-not (and (pos-int? database-id)
                  (when-let [database (metabot.db/database-summary database-id)]
-                   (mi/can-read? database)))
+                   (mi/can-read? (t2/hydrate database :can_read))))
     (unavailable-database! {:database-id database-id})))
 
 (defrecord SearchTool [description args default-types search-opts]

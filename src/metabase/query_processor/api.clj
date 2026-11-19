@@ -14,12 +14,12 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.interface :as mi]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
@@ -35,7 +35,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -103,7 +102,7 @@
           (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   {:scope api-scope/data-app}
   [_route-params
@@ -138,7 +137,7 @@
     (keyword json-key)))
 
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/export-response
   "Execute a query and download the result data as a file in the specified format."
   {:scope api-scope/data-app}
   [{:keys [export-format]} :- [:map {:closed true}
@@ -158,10 +157,12 @@
                                                 (cond-> x
                                                   (string? x) json/decode))}
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
-       [:visualization_settings {:default {}} (mu/with ms/VisualizationSettings
-                                                       {:decode/api (fn [x]
-                                                                      (cond-> x
-                                                                        (string? x) (json/decode viz-setting-key-fn)))})]
+       [:visualization_settings {:default {}} [:schema
+                                               {:decode/api (fn [x]
+                                                              (lib.schema.common/remove-internal-keys
+                                                               (cond-> x
+                                                                 (string? x) (json/decode viz-setting-key-fn))))}
+                                               ::lib.schema.visualization/visualization-settings]]
        ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
        [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
                                                                   {:decode/api (fn [x]
@@ -173,9 +174,8 @@
        [:csv_include_bom         {:default false} ms/BooleanValue]]
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
-  (let [viz-settings                  (-> visualization-settings
-                                          mi/normalize-visualization-settings
-                                          mb.viz/norm->db)
+  (let [viz-settings                  (lib/normalize ::lib.schema.visualization/visualization-settings
+                                                     visualization-settings)
         query                         (-> query
                                           (dissoc :constraints :cache-strategy)
                                           (assoc :viz-settings viz-settings)
@@ -210,9 +210,7 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
+   query :- ::lib-be.schema/maybe-legacy-query]
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -235,9 +233,7 @@
    _query-params
    {:keys [database pretty] :as query} :- [:map {:closed true}
                                            [:pretty {:default true} [:maybe :boolean]]
-                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query (dissoc query :pretty)))
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]]
   (ws.table-remapping/with-display-context
     (model-persistence/with-persisted-substituion-disabled
       (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
@@ -266,7 +262,7 @@
                     (cond-> pretty (update :query #(driver/prettify-native-form driver %))))))))))))
 
 (api.macros/defendpoint :post "/pivot"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Generate a pivoted dataset for an ad-hoc query"
   {:scope api-scope/data-app}
   [_route-params

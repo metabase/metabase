@@ -43,6 +43,7 @@ const setup = async ({ item, card }: SetupOpts) => {
       databases: [database],
       tables: [],
       fields: [],
+      cards: [],
     });
   }
 

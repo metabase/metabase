@@ -1,6 +1,5 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
-import { merge } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
@@ -16,9 +15,11 @@ import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
+import type { MetabotCardBaseline } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import { getIsPKFromSourcePredicate } from "metabase/visualizations/components/ObjectDetail/utils";
@@ -49,10 +50,11 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
-  NormalizedFieldId,
+  FieldId,
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
@@ -152,6 +154,12 @@ export const getIsBookmarked = (
 export const getQueryStartTime = (state: QueryBuilderStoreState) =>
   state.qb.queryStartTime;
 
+export const getPendingMetabotCard = (state: QueryBuilderStoreState) =>
+  state.qb.pendingMetabotCard;
+
+export const getMetabotCardBaselines = (state: QueryBuilderStoreState) =>
+  state.qb.metabotCardBaselines;
+
 export const getDatabaseId = createSelector(
   [getCard],
   (card) => card && card.dataset_query && card.dataset_query.database,
@@ -249,7 +257,12 @@ export const getQueryResults = createSelector(
 
     function applyMetadataDiff<T extends DatasetColumn | Field>(column: T): T {
       const columnDiff = metadataDiff[column.name];
-      return columnDiff ? merge(column, columnDiff) : column;
+      if (!columnDiff) {
+        return column;
+      }
+      // The diff only holds writable column properties that exist on both
+      // `DatasetColumn` and `Field`, so it is a partial of `T`.
+      return deepMerge(column, columnDiff as DeepPartial<T>);
     }
 
     return [
@@ -315,7 +328,7 @@ export const getTableMetadata = createSelector(
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: NormalizedFieldId[] = [];
+const NO_FIELD_IDS: FieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
   const tableId = getSourceTableId(state);
@@ -398,7 +411,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: NormalizedFieldId[],
+  tableFieldIds: FieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -423,7 +436,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: NormalizedFieldId[];
+  tableFieldIds: FieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -471,7 +484,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: NormalizedFieldId[];
+  tableFieldIds: FieldId[];
 }) {
   return (
     areLegacyQueriesEqual(
@@ -628,6 +641,35 @@ export const isResultsMetadataDirty = createSelector(
   },
 );
 
+/**
+ * The parts of a question that saving it keeps, for comparing a question
+ * Metabot opened with what the user has made of it since.
+ */
+export const getMetabotCardBaseline = (
+  question: Question,
+): MetabotCardBaseline => {
+  const card = question.card();
+  return {
+    dataset_query: card.dataset_query,
+    display: card.display,
+    visualization_settings: card.visualization_settings,
+    // as `updateQuestion` writes them, since a loaded card may have none
+    parameters: question.applyTemplateTagParameters().card().parameters,
+  };
+};
+
+/** The baseline the current question still matches, if Metabot opened it. */
+export const getUntouchedMetabotCardBaseline = createSelector(
+  [getQuestion, getMetabotCardBaselines],
+  (question, baselines) => {
+    if (!question || baselines.length === 0) {
+      return undefined;
+    }
+    const current = getMetabotCardBaseline(question);
+    return baselines.find((baseline) => _.isEqual(baseline, current));
+  },
+);
+
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [
     getQueryBuilderMode,
@@ -636,6 +678,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getOriginalQuestion,
     getUiControls,
+    getUntouchedMetabotCardBaseline,
   ],
   (
     queryBuilderMode,
@@ -644,6 +687,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     originalQuestion,
     uiControls,
+    untouchedMetabotCardBaseline,
   ) => {
     const isEditingModelOrMetric = queryBuilderMode === "dataset";
 
@@ -659,7 +703,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return rawQuery.length > 0;
+        return rawQuery.length > 0 && untouchedMetabotCardBaseline == null;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
@@ -944,7 +988,9 @@ export const getIsVisualized = createSelector(
       question.display() !== "list") ||
       (settings != null &&
         (settings["table.pivot"] ||
-          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
+          (question.display() === "table" &&
+            // "table.pivot_column" is typed `any` via the settings index signature; it is a column name string
+            (settings["table.pivot_column"] as string | undefined))))), // last case - pivot_column is set but display is set to table viz (#56094)
 );
 
 export const getIsLiveResizable = createSelector(

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 const STRUCTURED_OUTPUT_KEYS = ["structured_output", "structured-output"];
 
 export type ParsedToolCallResult = {

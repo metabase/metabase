@@ -57,6 +57,8 @@ Use this to scan through changes efficiently:
 - [ ] Functions that mutate shared global state (not thread-safe) end with `!`, and no others: a function that only
       validates and throws has no `!`
 - [ ] No namespace-alias repetition in function names
+- [ ] No `inner-query`, `outer-query` or `pmbql` in names in code that works with MBQL 5: use `stage`, `query` and
+      `mbql5`
 
 ### Documentation
 
@@ -84,6 +86,10 @@ liability it usually is.
 - [ ] Pure tests marked `^:parallel`
 - [ ] Test names end in `-test` or `-test-<number>`
 - [ ] Test queries, fixtures included, built with `lib/` (`lib/query`, `lib/native-query`), never hand-written maps
+      (except a deliberately non-MBQL-5 query in a test that checks it is refused or converted)
+- [ ] New tests do not use `mt/mbql-query`, `mt/query`, `mt/native-query` or `mt/run-mbql-query`
+- [ ] New tests that need no real app DB objects use `meta/metadata-provider` and `lib.tu/mock-metadata-provider`, not
+      `(mt/metadata-provider)` and `mt/with-temp`
 
 ### Modules
 
@@ -91,6 +97,16 @@ liability it usually is.
 - [ ] API endpoints in `<module>.api` namespaces
 - [ ] Public API in `<module>.core` with Potemkin
 - [ ] No cheating module linters with `:clj-kondo/ignore [:metabase/modules]`
+
+### Models
+
+See the `backend-model-rules` skill.
+
+- [ ] A rule every writer must obey is in a hook, so a writer that calls no endpoint still obeys it
+- [ ] Hooks read no current user and do not depend on who the writer is
+- [ ] Derived columns are computed in hooks and absent from request schemas
+- [ ] Per-user rules are in `:can_read` / `:can_write` hydrations, `mi/can-create?` or `mi/can-update?`
+- [ ] Uniqueness rules have a unique index
 
 ### REST API
 
@@ -105,6 +121,7 @@ liability it usually is.
 
 - [ ] No raw MBQL manipulation outside `lib`, `lib-be`, or `query-processor` modules
 - [ ] Uses Lib and MBQL 5, not legacy MBQL
+- [ ] No new call to `lib/->legacy-MBQL`, in source or tests: it is about to be removed
 
 ### Database
 
@@ -133,6 +150,7 @@ Quick scan for common issues:
 | `update-db`, `save-model`                    | Missing `!` for a mutation of shared state: `update-db!`, `save-model!` |
 | `check-input!`, `throw-unsupported!`         | Throwing is not a side effect; drop the `!`: `check-input`, `throw-unsupported` |
 | `snake_case_var`                             | Should use kebab-case                                       |
+| `(into {} (map f xs))`                       | Lazy seq where a transducer would do: `(into {} (map f) xs)`; same for `filter`, `keep`, `map-indexed`, `remove`, `distinct` |
 | Public var without docstring                 | Add docstring explaining purpose                            |
 | `;; TODO fix this`                           | Missing author/date: `;; TODO (Name 2025-01-01) -- description` |
 | `(defn foo ...)` in namespace used elsewhere | Should be `(defn ^:private foo ...)`                        |
@@ -140,6 +158,9 @@ Quick scan for common issues:
 | `/api/dashboards/:id`                        | Use singular: `/api/dashboard/:id`                          |
 | Query params with `snake_case`               | Use kebab-case for query params                             |
 | New API endpoint without tests               | Add tests for the endpoint                                  |
+| `(mt/mbql-query ...)` in a new test          | Build the query with `lib/query` and a metadata provider    |
+| `lib/->legacy-MBQL`                          | About to be removed; keep the query in MBQL 5               |
+| `inner-query`, `outer-query`, `pmbql` names  | Legacy or outdated terms in MBQL 5 code: `stage`, `query`, `mbql5` |
 
 ## Feedback format examples
 

@@ -19,11 +19,8 @@
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection
-  archive-or-unarchive-collection!
   has-remote-synced-collection?
-  check-for-remote-sync-update
-  check-non-remote-synced-dependencies
-  check-remote-synced-dependents
+  clear-remote-synced-collection!
   create-library-collection!
   descendant-ids
   instance-analytics-collection-type
@@ -34,11 +31,8 @@
   library-metrics-collection-type
   location-path
   location-path->ids
-  moving-from-remote-synced?
-  moving-into-remote-synced?
-  remote-synced-collection
-  remote-synced-collection?
   root-collection-type-by-id
+  set-remote-synced!
   shared-tenant-collection?
   slugify
   transforms-ns
@@ -47,4 +41,6 @@
   data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
-  annotate-dashboards])
+  annotate-dashboards
+  present-collection
+  with-effective-ancestors])

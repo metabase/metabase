@@ -8,9 +8,11 @@
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -145,6 +147,11 @@
 ;; column names (no references), so it copies verbatim. `:created_by` is skipped: the user may
 ;; not resolve on import.
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableIndex [_model]
+  {:skip? true})
+
 (defmethod serialization/spec :model/TableIndex [_]
   {:schema    ::schema/external-table-index
    :identity  [:transform_id :index_name]
@@ -152,3 +159,7 @@
    :skip      [:status :error_message :last_executed_at :created_by]
    :parent    {:model :model/Transform :key :transform_id :order :index_name}
    :transform {:transform_id serialization/import-only-transform}})
+
+(defmethod remote-sync/spec :model/TableIndex
+  [_model]
+  {:synced-filter-clause indexes.db/synced-table-indexes-clause})

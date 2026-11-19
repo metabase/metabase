@@ -41,6 +41,14 @@
   ["failonmultinodeplans" "hostnameverifier" "kerberoshostname" "maxpooledconnectionspernode" "nodedownwaittime"
    "preferredaddressfamily"])
 
+(defmethod driver/disallowed-connection-parameters :vertica
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Names OAuth token and discovery URLs inside a JSON value, where they cannot be checked as hosts
+         "OAuthJsonConfig"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
+
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
                               :datetime-diff                    true

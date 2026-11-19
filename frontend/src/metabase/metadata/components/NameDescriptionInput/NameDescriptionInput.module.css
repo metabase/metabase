@@ -5,3 +5,35 @@
     z-index: 1; /* prevent focus state from being cut off after imitating collapsed borders */
   }
 }
+
+.name .nameWrapper {
+  --input-height-lg: rem(50px);
+}
+
+/* The shared input forces section icons to 12px; this heading-size box shows its icon at 20px. */
+.name .nameSection[data-position="left"] {
+  --input-section-icon-size: rem(20px);
+}
+
+.name .nameInput,
+.description .descriptionInput {
+  --input-border-color: var(--mb-color-border-neutral);
+  --input-ring: 0 0 0 0 transparent;
+
+  border-width: 1px;
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.name .nameInput {
+  font-size: var(--mantine-font-size-lg);
+}
+
+.name .nameInput:hover,
+.name .nameInput:focus-within,
+.description .descriptionInput:hover,
+.description .descriptionInput:focus-within {
+  --input-border-color: var(--mb-color-core-brand);
+  --input-ring: 0 0 0 0 transparent;
+
+  background-color: var(--mb-color-background_page-primary);
+}

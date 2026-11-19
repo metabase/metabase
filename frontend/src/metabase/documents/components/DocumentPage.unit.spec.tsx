@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { Editor } from "@tiptap/core";
 import fetchMock from "fetch-mock";
 
 import {
@@ -10,6 +11,7 @@ import {
   setupDocumentEndpoints,
   setupDocumentErrorEndpoint,
   setupTimelinesEndpoints,
+  setupUpdateDocumentErrorEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -151,6 +153,44 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("shows an error toast and keeps the save button when saving fails", async () => {
+    const { store } = setup();
+    setupUpdateDocumentErrorEndpoint(1, { status: 500 });
+
+    await getDocumentTitle();
+    await screen.findByText("Original content");
+    // A body edit sets the unsaved-changes flag. A title edit does not, so it
+    // keeps the Save button visible whatever the save handler does.
+    // Tiptap attaches its editor instance to the contenteditable element.
+    const editorElement = screen
+      .getAllByRole("textbox")
+      .find((element) => "editor" in element) as HTMLElement & {
+      editor: Editor;
+    };
+    act(() => {
+      editorElement.editor.commands.insertContentAt(
+        editorElement.editor.state.doc.content.size - 1,
+        " edited",
+      );
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(store.getState().undo).toEqual([
+        expect.objectContaining({
+          message: "Error saving document",
+          variant: "negative",
+        }),
+      ]),
+    );
+    expect(
+      fetchMock.callHistory.calls("path:/api/document/1", { method: "PUT" }),
+    ).toHaveLength(1);
+    // The Save button fades out over 200ms and stays mounted during the fade.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
   it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {

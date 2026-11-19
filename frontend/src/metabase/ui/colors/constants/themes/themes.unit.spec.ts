@@ -28,3 +28,13 @@ describe.each([
     expect(offenders).toEqual([]);
   });
 });
+
+describe("light theme", () => {
+  // Trashed items in collection tables use this color for their icons.
+  it("should resolve text-disabled to the translucent dark shade", () => {
+    // Same color as rgba(7, 23, 34, 0.44).
+    expect(getLightTheme().colors["text-disabled"]).toBe(
+      "hsla(204, 66%, 8%, 0.44)",
+    );
+  });
+});

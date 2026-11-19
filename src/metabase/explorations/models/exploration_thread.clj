@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -21,19 +23,14 @@
    :data_access_token     perms/data-access-token-transform
    :resolved_source_ids   query-perms/resolved-source-ids-transform})
 
-(defmethod mi/can-read? :model/ExplorationThread
-  ([instance]
-   (mi/can-read? :model/Exploration (:exploration_id instance)))
-  ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
-     (mi/can-read? :model/Exploration (:exploration_id thread)))))
+(methodical/defmethod t2/simple-hydrate [:model/ExplorationThread :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (explorations.db/exploration (:exploration_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
-(defmethod mi/can-write? :model/ExplorationThread
-  ([instance]
-   (mi/can-write? :model/Exploration (:exploration_id instance)))
-  ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
-     (mi/can-write? :model/Exploration (:exploration_id thread)))))
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :can_write]
+  "Add whether the current user can write each ExplorationThread, which is whether they can write its parent."
+  [_model k instances]
+  (exploration/hydrate-can-write-from-parents k instances :exploration_id :model/Exploration))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]
   [_model k threads]
@@ -52,3 +49,8 @@
               (t2/hydrate (explorations.db/queries-for-threads (map :id threads)) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
    :id
    {:default []}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationThread [_model]
+  {:skip? false})

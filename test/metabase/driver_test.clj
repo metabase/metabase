@@ -26,16 +26,16 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature db] (= db "dummy"))
+(defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature db] (= (:name db) "dummy"))
 
 (deftest ^:parallel database-supports?-test
-  (is (driver/database-supports? ::test-driver :metadata/key-constraints "dummy"))
-  (is (not (driver/database-supports? ::test-driver :metadata/key-constraints "not-dummy")))
-  (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
+  (is (driver/database-supports? ::test-driver :metadata/key-constraints {:name "dummy"}))
+  (is (not (driver/database-supports? ::test-driver :metadata/key-constraints {:name "not-dummy"})))
+  (is (not (driver/database-supports? ::test-driver :expressions {:name "dummy"})))
   (is (thrown-with-msg?
        java.lang.Exception
        #"Invalid driver feature: .*"
-       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+       (driver/database-supports? ::test-driver :some-made-up-thing {:name "dummy"}))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader if the driver is not registered yet,"

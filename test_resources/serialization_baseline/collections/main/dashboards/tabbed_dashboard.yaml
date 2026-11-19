@@ -5,7 +5,6 @@ collection_id: cOlDaShBoArDs0ExAmPlx
 parameters:
 - id: b0000001-0000-0000-0000-000000000001
   name: Category
-  position: 0
   sectionId: string
   slug: category
   type: string/=

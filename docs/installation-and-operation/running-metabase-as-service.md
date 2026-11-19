@@ -1,5 +1,6 @@
 ---
 title: Running Metabase as a systemd service
+summary: Register Metabase as a systemd service on Linux that you can start, stop, and uninstall.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-debian
   - /docs/installation-and-operation/running-metabase-on-debian
@@ -7,7 +8,7 @@ redirect_from:
 
 # Running Metabase as a systemd service
 
-For those people who don't (or can't) use Docker in their infrastructure, you can register Metabase as a [systemd](https://wiki.debian.org/systemd) service that can be started/stopped/uninstalled.
+If you don't (or can't) use Docker in your infrastructure, you can register Metabase as a [systemd](https://wiki.debian.org/systemd) service.
 
 We'll use Debian as an example in this guide, but the steps should apply to most Linux distributions that use systemd. This is a _bare-bones recipe_ to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
 
@@ -91,7 +92,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=~
-ExecStart=/usr/bin/java --add-opens java.base/java.nio=ALL-UNNAMED -jar /home/metabase/metabase.jar
+ExecStart=/usr/bin/java -jar /home/metabase/metabase.jar
 EnvironmentFile=/home/metabase/.env
 User=metabase
 Type=simple

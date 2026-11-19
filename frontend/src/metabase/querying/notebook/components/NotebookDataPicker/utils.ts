@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import * as Urls from "metabase/urls";
@@ -18,23 +19,21 @@ export const getUrl = ({
     return;
   }
 
-  const pickerInfo = Lib.pickerInfo(query, table);
   const tableInfo = Lib.displayInfo(query, stageIndex, table);
 
-  if (!pickerInfo || !tableInfo) {
-    return;
-  }
-
-  if (pickerInfo.cardId != null) {
+  if (Lib.isCardMetadata(table)) {
     const payload = {
-      id: pickerInfo.cardId,
+      id: Lib.pickerInfo(query, table).id,
       name: tableInfo.displayName,
     };
 
-    return pickerInfo.isModel ? Urls.model(payload) : Urls.card(payload);
+    return tableInfo.isModel ? Urls.model(payload) : Urls.card(payload);
   }
 
-  return Urls.table({ id: pickerInfo.tableId, name: tableInfo.displayName });
+  return Urls.table({
+    id: Lib.pickerInfo(query, table).id,
+    name: tableInfo.displayName,
+  });
 };
 
 export const isObjectWithModel = (

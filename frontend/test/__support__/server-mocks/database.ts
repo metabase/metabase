@@ -11,7 +11,6 @@ import type {
   Engine,
   SchemaName,
 } from "metabase-types/api";
-import { createMockSavedQuestionsDatabase } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
@@ -138,23 +137,15 @@ export function setupDatabaseListEndpointError({
   );
 }
 
-export function setupDatabasesEndpoints(
-  databases: Database[],
-  { hasSavedQuestions = true } = {},
-  query: object = { saved: true },
-) {
-  const databasesWithSavedQuestions = hasSavedQuestions
-    ? [...databases, createMockSavedQuestionsDatabase()]
-    : databases;
-  fetchMock.get({
-    url: "path:/api/database",
-    query,
-    response: {
-      data: databasesWithSavedQuestions,
-      total: databasesWithSavedQuestions.length,
-    },
-    name: "database-list-with-query",
-  });
+export function setupDatabasesEndpoints(databases: Database[], query?: object) {
+  if (query) {
+    fetchMock.get({
+      url: "path:/api/database",
+      query,
+      response: { data: databases, total: databases.length },
+      name: "database-list-with-query",
+    });
+  }
   setupDatabaseListEndpoint(databases);
   fetchMock.post(
     "path:/api/database",
