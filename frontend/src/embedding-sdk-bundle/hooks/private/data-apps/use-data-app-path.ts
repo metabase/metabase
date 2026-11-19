@@ -24,8 +24,12 @@ export const useDataAppPath = ({ initialPath, path }: Options): string => {
 
   const [shownPath, setShownPath] = useState(path ?? initialPath);
 
+  // `initialPath` is only the first page, so a new route or query in it must not move the user away from where
+  // they navigated. A new app slug is different: the host is asking for another app, which needs a new iframe
+  // anyway. An invalid slug is ignored so a bad later value does not replace a working app with an error.
   const nextPath =
-    path ?? (isOtherApp(initialPath, shownPath) ? initialPath : shownPath);
+    path ??
+    (hasAppSlugChanged(initialPath, shownPath) ? initialPath : shownPath);
 
   if (nextPath !== shownPath) {
     setShownPath(nextPath);
@@ -34,7 +38,7 @@ export const useDataAppPath = ({ initialPath, path }: Options): string => {
   return nextPath ?? "";
 };
 
-const isOtherApp = (
+const hasAppSlugChanged = (
   initialPath: string | undefined,
   shownPath: string | undefined,
 ) => {
