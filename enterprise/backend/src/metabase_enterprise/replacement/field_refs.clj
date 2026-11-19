@@ -5,7 +5,7 @@
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.source-swap.core :as source-swap]))
+   [metabase.replacement.core :as replacement]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +24,7 @@
             (when (replacement.util/valid-query? query)
               (-> query
                   lib/append-stage
-                  (source-swap/upgrade-field-ref -1 ref))))))
+                  (replacement/upgrade-field-ref -1 ref))))))
       ref))
 
 (defn- card-upgrade-parameters
@@ -43,7 +43,7 @@
   (let [query         (:dataset_query card)
         valid-query?  (replacement.util/valid-query? query)
         query'        (if valid-query?
-                        (source-swap/upgrade-field-refs-in-query query)
+                        (replacement/upgrade-field-refs-in-query query)
                         query)
         viz-settings  (:visualization_settings card)
         viz-settings' (if valid-query?
@@ -77,7 +77,7 @@
     (when (and (= :query (:type source))
                (replacement.util/valid-query? (:query source)))
       (let [query (:query source)
-            query' (source-swap/upgrade-field-refs-in-query query)]
+            query' (replacement/upgrade-field-refs-in-query query)]
         (when (not= query query')
           (replacement.db/update-transform! (:id transform) {:source (assoc source :query query')}))))))
 
@@ -86,7 +86,7 @@
   [segment]
   (when (replacement.util/valid-query? (:definition segment))
     (let [query  (:definition segment)
-          query' (source-swap/upgrade-field-refs-in-query query)]
+          query' (replacement/upgrade-field-refs-in-query query)]
       (when (not= query query')
         (replacement.db/update-segment! (:id segment) {:definition query'})))))
 
@@ -95,7 +95,7 @@
   [measure]
   (when (replacement.util/valid-query? (:definition measure))
     (let [query  (:definition measure)
-          query' (source-swap/upgrade-field-refs-in-query query)]
+          query' (replacement/upgrade-field-refs-in-query query)]
       (when (not= query query')
         (replacement.db/update-measure! (:id measure) {:definition query'})))))
 
@@ -105,7 +105,7 @@
   (or (when-some [card (get card-id->card card-id)]
         (let [query (:dataset_query card)]
           (when (replacement.util/valid-query? query)
-            (source-swap/upgrade-field-ref-in-parameter-target query target))))
+            (replacement/upgrade-field-ref-in-parameter-target query target))))
       target))
 
 (defn- dashcard-upgrade-field-refs!

@@ -7,12 +7,12 @@
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase-enterprise.replacement.usages :as replacement.usages]
-   [metabase-enterprise.replacement.util :as replacement.util]
+   [metabase-enterprise.replacement.util :as ee.replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.source-swap.util :as source-swap.util]
+   [metabase.replacement.util :as replacement.util]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -64,7 +64,7 @@
                            (concat
                             ;; Card dataset queries
                             (eduction (comp (keep :dataset_query)
-                                            (filter replacement.util/valid-query?)
+                                            (filter ee.replacement.util/valid-query?)
                                             (map #(lib/query metadata-provider %)))
                                       (vals cards))
                             ;; Transform query sources
@@ -177,7 +177,7 @@
         fields          (replacement.db/active-fields-of-table table-id)
         field-by-name   (m/index-by :name fields)]
     (doseq [col-meta result-metadata
-            :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
+            :let [field     (field-by-name (replacement.util/column-match-key col-meta))
                   overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
             :when (and field (seq overrides))]
       (field-user-settings/upsert-field-user-settings! field overrides))))

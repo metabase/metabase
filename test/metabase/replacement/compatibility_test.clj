@@ -1,9 +1,9 @@
-(ns metabase.source-swap.compatibility-test
+(ns metabase.replacement.compatibility-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.source-swap.compatibility :as source-swap.compatibility]))
+   [metabase.replacement.compatibility :as replacement.compatibility]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,7 +21,7 @@
                        :base-type :type/Integer :effective-type :type/Integer}]})]
     (testing "should return empty errors for matching columns"
       (is (= []
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
 
 (deftest ^:parallel column-errors-type-mismatch-test
   (let [mp (lib.tu/mock-metadata-provider
@@ -34,7 +34,7 @@
                        :base-type :type/Text :effective-type :type/Text}]})]
     (testing "should detect column type mismatch"
       (is (= [:column-type-mismatch]
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
 
 (deftest ^:parallel column-errors-missing-primary-key-test
   (let [mp (lib.tu/mock-metadata-provider
@@ -48,10 +48,10 @@
                        :base-type :type/Text :effective-type :type/Text}]})]
     (testing "should detect missing primary key for table->table"
       (is (= [:column-type-mismatch :missing-primary-key]
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))
     (testing "should not flag missing primary key for table->card"
       (is (= [:column-type-mismatch]
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :card))))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 2) :table :card))))))
 
 (deftest ^:parallel column-errors-foreign-key-test
   (let [mp (lib.tu/mock-metadata-provider
@@ -69,10 +69,10 @@
                        :base-type :type/Integer :effective-type :type/Integer}]})]
     (testing "should detect missing foreign key"
       (is (= [:missing-foreign-key]
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 3) :table :table))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 3) :table :table))))
     (testing "should detect foreign key target mismatch"
       (is (= [:foreign-key-mismatch]
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
 
 (deftest ^:parallel column-errors-nil-effective-type-test
   (let [mp (lib.tu/mock-metadata-provider
@@ -88,10 +88,10 @@
                        :base-type :type/Text}]})]
     (testing "same base_type, nil effective_type should be compatible"
       (is (= []
-             (source-swap.compatibility/column-errors (field mp 2) (field mp 1) :table :table))))
+             (replacement.compatibility/column-errors (field mp 2) (field mp 1) :table :table))))
     (testing "different base_type, nil effective_type should be incompatible"
       (is (= [:column-type-mismatch]
-             (source-swap.compatibility/column-errors (field mp 2) (field mp 3) :table :table))))))
+             (replacement.compatibility/column-errors (field mp 2) (field mp 3) :table :table))))))
 
 (deftest ^:parallel column-errors-coerced-effective-type-test
   (let [mp (lib.tu/mock-metadata-provider
@@ -105,4 +105,4 @@
                        :coercion-strategy :Coercion/ISO8601->DateTime}]})]
     (testing "text column coerced to DateTime should be compatible with native DateTime"
       (is (= []
-             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
+             (replacement.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))

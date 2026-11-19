@@ -18,7 +18,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as queries.query]
-   [metabase.source-swap.core :as source-swap]))
+   [metabase.replacement.core :as replacement]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +26,7 @@
   [transform old-source new-source]
   (when-let [query (get-in transform [:source :query])]
     (when (replacement.util/valid-query? query)
-      (let [query'  (source-swap/swap-source-in-query query old-source new-source)
+      (let [query'  (replacement/swap-source-in-query query old-source new-source)
             changes (cond-> {}
                       (not= query query')
                       (assoc :source (assoc (:source transform) :query query')))]
@@ -51,7 +51,7 @@
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
     (let [query       (:dataset_query card)
-          query'      (source-swap/swap-source-in-query query old-source new-source)
+          query'      (replacement/swap-source-in-query query old-source new-source)
           table-id    (:table_id card)
           table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
           parameters  (or (:parameters card) [])
@@ -80,7 +80,7 @@
   [segment old-source new-source]
   (when (replacement.util/valid-query? (:definition segment))
     (let [query     (:definition segment)
-          query'    (source-swap/swap-source-in-query query old-source new-source)
+          query'    (replacement/swap-source-in-query query old-source new-source)
           table-id  (:table_id segment)
           table-id' (:table-id (queries.query/query->database-and-table-ids query'))
           changes   (cond-> {}
@@ -96,7 +96,7 @@
   [measure old-source new-source]
   (when (replacement.util/valid-query? (:definition measure))
     (let [query     (:definition measure)
-          query'    (source-swap/swap-source-in-query query old-source new-source)
+          query'    (replacement/swap-source-in-query query old-source new-source)
           table-id  (:table_id measure)
           table-id' (:table-id (queries.query/query->database-and-table-ids query'))
           changes   (cond-> {}
@@ -114,7 +114,7 @@
   (or (when-some [card (get card-id->card card-id)]
         (let [query (:dataset_query card)]
           (when (replacement.util/valid-query? query)
-            (source-swap/swap-source-in-parameter-target
+            (replacement/swap-source-in-parameter-target
              query target old-source new-source))))
       target))
 

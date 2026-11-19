@@ -15,7 +15,7 @@ Do not drive multi-step plans.
 ## Map
 
 All OSS under `src/metabase/` unless marked EE (`enterprise/backend/src/metabase_enterprise/`). Every module
-listed has a `db.clj` except `events` and `source_swap`.
+listed has a `db.clj` except `events` and `replacement`.
 
 | Area | Namespaces |
 |---|---|
@@ -29,7 +29,7 @@ listed has a `db.clj` except `events` and `source_swap`.
 | Segments / measures | `metabase.segments.models.segment`, `metabase.segments.rest.api`; `metabase.measures.models.measure`, `metabase.measures.api` |
 | Other content | `metabase.bookmarks.*`, `metabase.timeline.*`, `metabase.native-query-snippets.*`, `metabase.glossary.*`, `metabase.content-verification.*` (moderation reviews) |
 | Events / views | `metabase.events.core` (bus), `metabase.events.impl`, `metabase.view-log.events.view-log` |
-| EE | `metabase-enterprise.snippet-collections`, `metabase-enterprise.content-verification.api`, `metabase-enterprise.library`, `metabase-enterprise.stale`, `metabase-enterprise.replacement` (swap a card's data source; OSS half in `metabase.source-swap`) |
+| EE | `metabase-enterprise.snippet-collections`, `metabase-enterprise.content-verification.api`, `metabase-enterprise.library`, `metabase-enterprise.stale`, `metabase-enterprise.replacement` (swap a card's data source; OSS half in `metabase.replacement`) |
 | Shared | `metabase.models.interface`, `metabase.models.serialization` |
 
 `metabase.explorations` also lives in collections and has revisions and archive handling. Treat it as adjacent:

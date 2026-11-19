@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.schema
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.source-swap.schema :as source-swap.schema]
+   [metabase.replacement.schema :as replacement.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -53,7 +53,7 @@
   [:map
    [:source {:optional true} [:maybe ::column]]
    [:target {:optional true} [:maybe ::column]]
-   [:errors {:optional true} [:sequential ::source-swap.schema/column-error]]])
+   [:errors {:optional true} [:sequential ::replacement.schema/column-error]]])
 
 (mr/def ::check-replace-source-response
   [:map

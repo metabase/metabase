@@ -1,4 +1,4 @@
-(ns metabase.source-swap.schema
+(ns metabase.replacement.schema
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]

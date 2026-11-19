@@ -4942,7 +4942,7 @@
         "properties" : {
           "errors" : {
             "items" : {
-              "$ref" : "#/components/schemas/metabase.source-swap.schema.column-error"
+              "$ref" : "#/components/schemas/metabase.replacement.schema.column-error"
             },
             "type" : "array"
           },
@@ -31749,6 +31749,10 @@
         },
         "type" : "array"
       },
+      "metabase.replacement.schema.column-error" : {
+        "enum" : [ "column-type-mismatch", "missing-primary-key", "missing-foreign-key", "foreign-key-mismatch" ],
+        "type" : "string"
+      },
       "metabase.security-center.schema.advisory-id" : {
         "minLength" : 1,
         "type" : "string"
@@ -31905,10 +31909,6 @@
       },
       "metabase.session.schema.end-reason" : {
         "enum" : [ "admin", "logout", "password-change", "user-deactivated", "tenant-deactivated", "sso-logout", "support-grant-revoked", "expired", "timed-out" ],
-        "type" : "string"
-      },
-      "metabase.source-swap.schema.column-error" : {
-        "enum" : [ "column-type-mismatch", "missing-primary-key", "missing-foreign-key", "foreign-key-mismatch" ],
         "type" : "string"
       },
       "metabase.sso.schema.group-mappings" : {

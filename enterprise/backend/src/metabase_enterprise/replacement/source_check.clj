@@ -1,13 +1,13 @@
 (ns metabase-enterprise.replacement.source-check
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
-   [metabase-enterprise.replacement.schema :as replacement.schema]
+   [metabase-enterprise.replacement.schema :as ee.replacement.schema]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.source-swap.core :as source-swap]
-   [metabase.source-swap.schema :as source-swap.schema]
+   [metabase.replacement.core :as replacement]
+   [metabase.replacement.schema :as replacement.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -30,7 +30,7 @@
     (replacement.db/active-fk-to-fields-exists? field-ids)
     false))
 
-(mu/defn- format-column :- ::replacement.schema/column
+(mu/defn- format-column :- ::ee.replacement.schema/column
   [col :- ::lib.schema.metadata/column]
   {:id             (:id col)
    :name           ((some-fn :lib/desired-column-alias :name) col)
@@ -41,26 +41,26 @@
 
 (mu/defn- fetch-source-database-id :- ::lib.schema.id/database
   "Fetch a database ID for a source."
-  [entity-type :- ::replacement.schema/source-entity-type
-   entity-id   :- ::replacement.schema/source-entity-id]
+  [entity-type :- ::ee.replacement.schema/source-entity-type
+   entity-id   :- ::ee.replacement.schema/source-entity-id]
   (case entity-type
     :card  (replacement.db/card-database-id entity-id)
     :table (replacement.db/table-database-id entity-id)))
 
-(mu/defn- format-column-mappings :- [:sequential ::replacement.schema/column-mapping]
+(mu/defn- format-column-mappings :- [:sequential ::ee.replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."
-  [mappings :- [:sequential ::source-swap.schema/column-mapping]]
+  [mappings :- [:sequential ::replacement.schema/column-mapping]]
   (mapv #(-> %
              (u/update-some :source format-column)
              (u/update-some :target format-column))
         mappings))
 
-(mu/defn check-replace-source :- ::replacement.schema/check-replace-source-response
+(mu/defn check-replace-source :- ::ee.replacement.schema/check-replace-source-response
   "Check whether `old-source` can be replaced by `new-source`. Returns a map with
   `:success`, `:errors` (unique top-level error types), and `:column_mappings`.
   Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
-  [[old-type old-id :as old-ref] :- ::replacement.schema/source-ref
-   [new-type new-id :as new-ref] :- ::replacement.schema/source-ref]
+  [[old-type old-id :as old-ref] :- ::ee.replacement.schema/source-ref
+   [new-type new-id :as new-ref] :- ::ee.replacement.schema/source-ref]
   (if (= old-ref new-ref)
     {:success false}
     (let [source-db-id    (fetch-source-database-id old-type old-id)
@@ -69,7 +69,7 @@
           cycle?          (some #(= new-ref %) (replacement.usages/transitive-usages old-ref))
           mappings        (when-not db-mismatch?
                             (-> (lib-be/application-database-metadata-provider source-db-id)
-                                (source-swap/check-column-mappings old-ref new-ref)
+                                (replacement/check-column-mappings old-ref new-ref)
                                 format-column-mappings))
           has-missing?    (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))

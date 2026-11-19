@@ -1,4 +1,4 @@
-(ns metabase.source-swap.native
+(ns metabase.replacement.native
   (:require
    [clojure.string :as str]
    [metabase.driver.sql.util :as sql.u]
