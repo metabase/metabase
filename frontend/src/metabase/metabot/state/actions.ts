@@ -737,6 +737,12 @@ export const sendAgentRequest = createAsyncThunk<
                     url,
                   };
                   destination = savedDashboard;
+                } else if (savedDashboard?.dashboardId === dashboard_id) {
+                  // a later save that doesn't open it, such as trashing it, withdraws it
+                  if (destination === savedDashboard) {
+                    destination = undefined;
+                  }
+                  savedDashboard = undefined;
                 }
               })
               .with({ type: "data-tool_title" }, (part) => {
