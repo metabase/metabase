@@ -7,6 +7,7 @@ import {
 import type { ReactNode } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
@@ -17,13 +18,12 @@ import {
   setErrorComponent,
   setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
-import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { defer } from "metabase/utils/promise";
 
 import { DataApp, type DataAppProps } from "./DataApp";
 
-jest.mock("embedding-sdk-shared/lib/get-is-localhost");
+jest.mock("embedding-sdk-bundle/lib/get-is-localhost");
 
 const CONFIG = {
   metabaseInstanceUrl: "https://metabase.example.com/mb",

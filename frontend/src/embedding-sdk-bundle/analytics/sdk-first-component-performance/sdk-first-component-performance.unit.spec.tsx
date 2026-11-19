@@ -65,7 +65,7 @@ const PRODUCTION_REACT_SDK_PAGE = {
 };
 const mockPage = { ...PRODUCTION_REACT_SDK_PAGE };
 
-jest.mock("embedding-sdk-shared/lib/get-is-localhost", () => ({
+jest.mock("embedding-sdk-bundle/lib/get-is-localhost", () => ({
   getIsLocalhost: () => mockPage.isLocalhost,
 }));
 

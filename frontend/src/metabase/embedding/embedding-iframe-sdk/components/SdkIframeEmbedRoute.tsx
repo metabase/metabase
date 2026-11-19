@@ -17,7 +17,6 @@ import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/d
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { getIsLocalhostOrigin } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
 import { type OnBeforeRequestHandler, PLUGIN_API } from "metabase/api/client";
@@ -28,6 +27,7 @@ import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
+import { isLoopbackOrigin } from "metabase/utils/dom";
 import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -118,7 +118,7 @@ export const SdkIframeEmbedRoute = () => {
   }
 
   // Using API keys in production is not allowed. SSO is required.
-  if (embedSettings.apiKey && !getIsLocalhostOrigin(parentOrigin)) {
+  if (embedSettings.apiKey && !isLoopbackOrigin(parentOrigin)) {
     return <SdkIframeApiKeyInProductionError />;
   }
 

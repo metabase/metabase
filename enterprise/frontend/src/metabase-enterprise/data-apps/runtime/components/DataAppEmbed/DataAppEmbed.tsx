@@ -6,7 +6,6 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
-import { getIsLocalhostOrigin } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { PLUGIN_API } from "metabase/api/client";
@@ -17,6 +16,7 @@ import {
 import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-sdk/hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import { isLoopbackOrigin } from "metabase/utils/dom";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
 import { readSlugFromUrl } from "../../lib/read-slug-from-url";
@@ -70,7 +70,7 @@ export function DataAppEmbed() {
   // These errors cannot be localized as they are outside of the locale provider.
   // These are configuration errors, mainly intended for embedding developers.
 
-  const isParentLocalhost = getIsLocalhostOrigin(parentOrigin);
+  const isParentLocalhost = isLoopbackOrigin(parentOrigin);
 
   if (embedSettings.apiKey && !isParentLocalhost) {
     return <SdkIframeApiKeyInProductionError />;

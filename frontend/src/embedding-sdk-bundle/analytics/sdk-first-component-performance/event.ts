@@ -4,10 +4,10 @@ import {
   getSdkClient,
   trackSdkMetaplowEvent,
 } from "embedding-sdk-bundle/analytics/event";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { SDK_SCRIPT_ADDED_AT_DATASET_KEY } from "embedding-sdk-shared/constants/analytics";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_DASH_CASED } from "embedding-sdk-shared/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { isHostAppInDevMode } from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
 import { isLoopbackHostname } from "metabase/utils/dom";
 import { getCollectorHostUrl } from "metabase/utils/metaplow";
