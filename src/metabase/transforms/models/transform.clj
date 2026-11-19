@@ -593,5 +593,4 @@
 
 (defmethod replacement.spec/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
-   :swap-source        transforms.replacement/swap-source
-   :swap-dependency?   true})
+   :swap-source        transforms.replacement/swap-source})

@@ -1942,5 +1942,4 @@
   {:source-database-id :database_id
    :hydrate            queries.replacement/hydrate
    :upgrade-field-refs queries.replacement/upgrade-field-refs
-   :swap-source        queries.replacement/swap-source
-   :swap-dependency?   true})
+   :swap-source        queries.replacement/swap-source})

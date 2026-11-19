@@ -234,5 +234,4 @@
 
 (defmethod replacement.spec/spec :model/Measure [_model]
   {:upgrade-field-refs measures.replacement/upgrade-field-refs
-   :swap-source        measures.replacement/swap-source
-   :swap-dependency?   true})
+   :swap-source        measures.replacement/swap-source})

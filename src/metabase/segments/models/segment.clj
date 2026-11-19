@@ -245,5 +245,4 @@
 
 (defmethod replacement.spec/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
-   :swap-source        segments.replacement/swap-source
-   :swap-dependency?   true})
+   :swap-source        segments.replacement/swap-source})
