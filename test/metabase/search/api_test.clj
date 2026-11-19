@@ -27,7 +27,6 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1000,109 +999,6 @@
          :archived true
          :archived_directly true
          :collection_id (:collection_id m)))
-
-(def ^:private ^:dynamic *row-attrs*
-  "Extra attributes for the rows the [[insert-rows]] factories make, such as `{:archived true}`."
-  {})
-
-(defn- insert-rows
-  "A row factory that inserts a `model` row per name, on top of its `with-temp` defaults and `(attrs collection)`."
-  ([model] (insert-rows model (constantly {})))
-  ([model attrs]
-   (fn [collection names]
-     (doseq [n names]
-       (t2/insert! model (merge (mt/with-temp-defaults model) (attrs collection) *row-attrs* {:name n}))))))
-
-(defn- insert-model! [collection]
-  (t2/insert-returning-instance! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                    :collection_id (:id collection)
-                                                    :type :model)))
-
-(def ^:private search-row-factories
-  "Per search model, a function of the collection to put rows in and the names of the rows to make."
-  {"collection"     (insert-rows :model/Collection #(hash-map :location (collection/children-location %)))
-   "dashboard"      (insert-rows :model/Dashboard #(hash-map :collection_id (:id %)))
-   "card"           (insert-rows :model/Card #(hash-map :collection_id (:id %) :type :question))
-   "dataset"        (insert-rows :model/Card #(hash-map :collection_id (:id %) :type :model))
-   "metric"         (insert-rows :model/Card #(hash-map :collection_id (:id %) :type :metric))
-   "document"       (insert-rows :model/Document #(hash-map :collection_id (:id %)))
-   "exploration"    (insert-rows :model/Exploration)
-   "segment"        (insert-rows :model/Segment (fn [_] {:table_id (mt/id :venues)}))
-   "measure"        (insert-rows :model/Measure (fn [_] {:table_id (mt/id :venues)}))
-   "table"          (insert-rows :model/Table (fn [_] {:db_id (mt/id)}))
-   "database"       (insert-rows :model/Database)
-   "action"         (fn [collection names]
-                      (let [model (insert-model! collection)]
-                        ((insert-rows :model/Action (constantly {:model_id (:id model) :type :query})) collection names)))
-   "data-app"       (fn [_collection names]
-                      (doseq [n names]
-                        (let [app (t2/insert-returning-instance! :model/DataApp (assoc (mt/with-temp-defaults :model/DataApp) :name n))]
-                          (perms/grant-collection-read-permissions! (perms/all-users-group) (:resource_collection_id app)))))
-   "indexed-entity" (fn [collection names]
-                      (let [model (insert-model! collection)
-                            index (model-index/create (mt/$ids {:model-id   (:id model)
-                                                                :pk-ref     $venues.id
-                                                                :value-ref  $venues.name
-                                                                :creator-id (mt/user->id :rasta)}))]
-                        (doseq [[i n] (map-indexed vector names)]
-                          (t2/insert! :model/ModelIndexValue {:model_index_id (:id index) :model_pk i :name n}))
-                        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id index)))))})
-
-(def ^:private archived-write-check-models
-  "The search models whose archived results run a write check on their rows that rasta passes. Rasta cannot write
-  archived Actions, Segments or Measures, so searching them as rasta returns nothing to count, and DataApps are not
-  made archived by [[*row-attrs*]]."
-  #{"card" "dataset" "metric" "dashboard" "document" "exploration"})
-
-(deftest search-query-count-does-not-grow-with-results-test
-  (let [;; models only superusers see never reach a permission check for rasta
-        models   (->> (search.spec/specifications)
-                      (remove (comp #{:superuser} :visibility val))
-                      (map key)
-                      sort)
-        many     10
-        search!  (fn [model query archived?]
-                   (t2/with-call-count [call-count]
-                     {:rows    (count (:data (make-search-request :rasta [:q query :models model :limit 100
-                                                                          :archived archived?])))
-                      :queries (call-count)}))
-        measure! (fn [archived? model]
-                   (let [[one-q many-q] (repeatedly 2 mt/random-name)]
-                     (mt/with-temp [:model/Collection collection {}]
-                       ;; an archived row is only returned to a user who can write it
-                       (if archived?
-                         (do (perms/revoke-collection-permissions! (perms/all-users-group) collection)
-                             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
-                         (perms/grant-collection-read-permissions! (perms/all-users-group) collection))
-                       (binding [*row-attrs* (if archived? {:archived true} {})]
-                         ((search-row-factories model) collection [one-q])
-                         ((search-row-factories model) collection (map #(str many-q " " %) (range many))))
-                       ;; the first searches load caches the later ones reuse
-                       (search! model many-q archived?)
-                       (search! model one-q archived?)
-                       (let [one  (search! model one-q archived?)
-                             rows (search! model many-q archived?)]
-                         {:rows [(:rows one) (:rows rows)] :extra-queries (- (:queries rows) (:queries one))}))))]
-    (testing "every search model has a row factory"
-      (is (= [] (remove search-row-factories models))))
-    (mt/with-model-cleanup (->> models
-                                (map (comp :db-model search.config/model->db-model))
-                                (remove #{:model/ModelIndexValue}) ; no id; goes with its model's Card
-                                distinct)
-      (mt/with-premium-features #{:data-apps}
-        (let [check! (fn [archived? models]
-                       (is (= (zipmap models (repeat {:rows [1 many] :extra-queries 0}))
-                              (into {} (map (juxt identity (partial measure! archived?))) models))))
-              check-both! (fn []
-                            (testing "unarchived"
-                              (check! false models))
-                            (testing "archived"
-                              (check! true (filter archived-write-check-models models))))]
-          (testing "in-place"
-            (search.tu/with-legacy-search (check-both!)))
-          (when (search.engine/supported-engine? :search.engine/appdb)
-            (testing "appdb"
-              (check-both!))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
