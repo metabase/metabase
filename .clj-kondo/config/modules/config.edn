@@ -274,7 +274,7 @@
                     :model/User}}
 
   api
-  {:team "DevEx"
+  {:team "Gadget"
    :module-exports #{api.eid-translation}
    :api #{metabase.api.common
           metabase.api.common.internal
@@ -321,7 +321,7 @@
                     :model/User}}
 
   api-keys
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
            metabase.api-keys.schema
@@ -347,7 +347,7 @@
    :uses :any}
 
   api-scope
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase.api-scope.core
            metabase.api-scope.data-app
            metabase.api-scope.init
@@ -540,7 +540,7 @@
                     :model/Database}}
 
   change-log
-  {:team "Cloud"
+  {:team "Billing"
    :api  #{metabase.change-log.core
            metabase.change-log.init}
    :uses #{app-db
@@ -931,7 +931,7 @@
            util}}
 
   data-studio
-  {:team "Gadget"
+  {:team "Data Apps"
    :api  #{metabase.data-studio.api}
    :uses #{api
            database-routing
@@ -1129,7 +1129,7 @@
                     :model/EmbeddingTheme}}
 
   events
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.events.batch
            metabase.events.core
            metabase.events.hierarchy
@@ -1450,7 +1450,7 @@
    :uses #{lib lib.types util}}
 
   lib.source-swap
-  {:team "Graphy"
+  {:team "Data Apps"
    :ns-prefix "metabase.source-swap"
    :api  #{metabase.source-swap.core
            metabase.source-swap.schema
@@ -1469,12 +1469,12 @@
    :uses #{util}}
 
   logger
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.logger.core metabase.logger.init}
    :uses #{util.classloader util.config}}
 
   logger.rest
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.logger.rest.api}
    :uses #{analytics
            api
@@ -1555,7 +1555,7 @@
                     :model/User}}
 
   mcp.oauth-server
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase.oauth-server"
    :api #{metabase.oauth-server.api
           metabase.oauth-server.api.admin
@@ -1586,7 +1586,7 @@
                     :model/OAuthRefreshToken}}
 
   measures
-  {:team "Graphy"
+  {:team "UX West"
    :module-exports #{measures.schema}
    :api  #{metabase.measures.api metabase.measures.init}
    :uses #{api
@@ -1614,7 +1614,7 @@
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
   measures.schema
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase.measures.schema}
    :uses #{lib
            lib.be
@@ -1867,14 +1867,14 @@
                     :model/Table}}
 
   mfa
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase.mfa.init metabase.mfa.settings}
    :uses #{premium-features
            settings
            util}}
 
   model-persistence
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase.model-persistence.api metabase.model-persistence.core metabase.model-persistence.init}
    :uses #{api
            app-db
@@ -1899,7 +1899,7 @@
    :model-imports #{:model/Card :model/Database}}
 
   models
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.models.db
            metabase.models.init
            metabase.models.interface
@@ -1971,7 +1971,7 @@
            util.classloader}}
 
   native-query-snippets
-  {:team "Graphy"
+  {:team "Querying"
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
            api.eid-translation
@@ -2068,7 +2068,7 @@
 
   ;; TODO -- too many API namespaces
   parameters
-  {:team "Graphy"
+  {:team "Querying"
    :module-exports #{parameters.schema}
    :api  #{metabase.parameters.chain-filter
            metabase.parameters.core
@@ -2100,7 +2100,7 @@
                     :model/Table}}
 
   parameters.schema
-  {:team "Graphy"
+  {:team "Querying"
    :api  #{metabase.parameters.schema}
    :uses #{lib
            lib.schema
@@ -2108,7 +2108,7 @@
            util}}
 
   permissions
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
@@ -2145,7 +2145,7 @@
                     :model/User}}
 
   permissions.rest
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase.permissions-rest"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
@@ -2166,12 +2166,12 @@
                     :model/Table}}
 
   plugins
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.plugins.core}
    :uses #{driver util util.classloader}}
 
   premium-features
-  {:team "UX West"
+  {:team "Billing"
    :api  #{metabase.premium-features.core metabase.premium-features.defenterprise metabase.premium-features.init}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -2187,7 +2187,7 @@
    :model-imports #{:model/User}}
 
   premium-features.rest
-  {:team "UX West"
+  {:team "Billing"
    :api  #{metabase.premium-features.rest.api}
    :uses #{api
            metabot.llm
@@ -2299,7 +2299,7 @@
                     :model/User}}
 
   queries
-  {:team "Graphy"
+  {:team "Querying"
    :api  #{metabase.queries.card-schema
            metabase.queries.core
            metabase.queries.init
@@ -2415,7 +2415,7 @@
                     :model/Table}}
 
   query-permissions
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase.query-permissions.core metabase.query-permissions.schema}
    :uses #{api
            lib
@@ -2742,7 +2742,7 @@
    :uses #{util}}
 
   segments
-  {:team "Graphy"
+  {:team "UX West"
    :module-exports #{segments.rest
                      segments.schema}
    :api  #{metabase.segments.init}
@@ -2770,7 +2770,7 @@
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
   segments.rest
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase.segments.rest.api}
    :uses #{api
            events
@@ -2783,7 +2783,7 @@
    :model-imports #{:model/Segment}}
 
   segments.schema
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase.segments.schema}
    :uses #{lib
            lib.be
@@ -2864,7 +2864,7 @@
    :model-imports #{:model/Session}}
 
   session
-  {:team "Security Engineering"
+  {:team "Security"
    :module-exports #{session.login-history}
    :api  #{metabase.session.api
            metabase.session.core
@@ -2892,7 +2892,7 @@
    :model-imports #{:model/AuthIdentity :model/User}}
 
   session.login-history
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase.login-history"
    :api #{metabase.login-history.api metabase.login-history.core metabase.login-history.init}
    :uses #{analytics
@@ -2907,7 +2907,7 @@
    :model-exports #{:model/LoginHistory}}
 
   settings
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
@@ -2922,7 +2922,7 @@
    :model-imports #{:model/User}}
 
   settings.rest
-  {:team "DevEx"
+  {:team "Gadget"
    :ns-prefix "metabase.settings-rest"
    :api  #{metabase.settings-rest.api}
    :uses #{api
@@ -2959,7 +2959,7 @@
    :model-imports #{:model/User}}
 
   sql-tools
-  {:team "DevEx"
+  {:team "Querying"
    :module-exports #{sql-tools.parsing}
    :api #{metabase.sql-tools.core
           metabase.sql-tools.init}
@@ -2976,13 +2976,13 @@
    :model-imports #{:model/Table}}
 
   sql-tools.parsing
-  {:team "DevEx"
+  {:team "Querying"
    :ns-prefix "metabase.sql-parsing"
    :api #{metabase.sql-parsing.core metabase.sql-parsing.init}
    :uses #{analytics.interface settings util}}
 
   sso
-  {:team "Security Engineering"
+  {:team "Security"
    :module-exports #{sso.auth-identity
                      sso.auth-wrapper}
    :api     #{metabase.sso.api
@@ -3004,7 +3004,7 @@
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase.auth-identity"
    :api #{metabase.auth-identity.core
           metabase.auth-identity.db
@@ -3027,7 +3027,7 @@
    :model-imports #{:model/Session :model/User}}
 
   sso.auth-wrapper
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase.sso.auth-wrapper}
    :uses #{api
            sso
@@ -3040,18 +3040,18 @@
    :uses #{util}}
 
   startup
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.startup.core}
    :uses #{util}}
 
   store-api
-  {:team "Cloud"
+  {:team "Billing"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
    :uses #{settings util.config}}
 
   sync
-  {:team "Graphy"
+  {:team "Querying"
    :module-exports #{sync.analyze}
    :api  #{metabase.sync.api
            metabase.sync.core
@@ -3093,7 +3093,7 @@
                     :model/TableUserSettings}}
 
   sync.analyze
-  {:team "Graphy"
+  {:team "Querying"
    :ns-prefix "metabase.analyze"
    :api #{metabase.analyze.core}
    :uses #{lib.schema
@@ -3148,7 +3148,7 @@
    :uses #{util util.classloader util.config}}
 
   testing-api
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.testing-api.api
            metabase.testing-api.core
            metabase.testing-api.init}
@@ -3222,7 +3222,7 @@
    :model-imports #{:model/Collection}}
 
   tracing
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
    :uses #{app-db
@@ -3234,7 +3234,7 @@
            util.config}}
 
   transforms
-  {:team "Graphy"
+  {:team "Gadget"
    :module-exports #{transforms.base
                      transforms.feature-gating
                      transforms.indexes
@@ -3298,7 +3298,7 @@
                     :model/User}}
 
   transforms.base
-  {:team "Graphy"
+  {:team "Gadget"
    :ns-prefix "metabase.transforms-base"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
@@ -3331,7 +3331,7 @@
            workspaces}}
 
   transforms.feature-gating
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase.transforms.feature-gating}
    :uses #{api premium-features util}}
 
@@ -3393,7 +3393,7 @@
                     :model/TransformTag}}
 
   transforms.schema
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase.transforms.schema}
    :uses #{lib.be
            lib.schema
@@ -3404,7 +3404,7 @@
    :model-imports #{:model/TransformDagRun :model/TransformJobRun}}
 
   upload
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase.upload.api
            metabase.upload.based-on-upload
            metabase.upload.core
@@ -3500,7 +3500,7 @@
                     :model/Tenant}}
 
   users.rest
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase.users-rest"
    :api  #{metabase.users-rest.api}
    :uses #{api
@@ -3535,13 +3535,13 @@
    :uses #{lib.schema util}}
 
   users.tenants
-  {:team "Admin Webapp"
+  {:team "Embedding"
    :ns-prefix "metabase.tenants"
    :api #{metabase.tenants.core}
    :uses #{premium-features util}}
 
   util
-  {:team "DevEx"
+  {:team "Gadget"
    :module-exports #{util.classloader
                      util.config
                      util.graph}
@@ -3549,19 +3549,19 @@
    :uses #{util.classloader util.config}}
 
   util.classloader
-  {:team "DevEx"
+  {:team "Gadget"
    :ns-prefix "metabase.classloader"
    :api #{metabase.classloader.core metabase.classloader.init}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   util.config
-  {:team "DevEx"
+  {:team "Gadget"
    :ns-prefix "metabase.config"
    :api #{metabase.config.core}}
 
   util.graph
-  {:team "Graphy"
+  {:team "Data Apps"
    :ns-prefix "metabase.graph"
    :api #{metabase.graph.core}
    :uses #{util}}
@@ -3735,7 +3735,7 @@
                     :model/Table}}
 
   warehouses.secrets
-  {:team "Graphy"
+  {:team "UX West"
    :ns-prefix "metabase.secrets"
    :api #{metabase.secrets.core}
    :uses #{api
@@ -3748,12 +3748,12 @@
            util}}
 
   workspaces
-  {:team "Graphy"
+  {:team "Verification"
    :api #{metabase.workspaces.core metabase.workspaces.table-remapping}
    :uses #{premium-features}}
 
   xrays
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init
@@ -3865,7 +3865,7 @@
            util}}
 
   enterprise/api-keys
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase-enterprise.api-keys.init}
    :uses #{analytics
            api-keys
@@ -3935,7 +3935,7 @@
            util}}
 
   enterprise/billing
-  {:team "UX West"
+  {:team "Billing"
    :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
            lib.schema
@@ -3968,7 +3968,7 @@
                     :model/QueryExecution}}
 
   enterprise/cloud
-  {:team "Cloud"
+  {:team "Billing"
    :ns-prefix "metabase-enterprise.harbormaster"
    :module-exports #{enterprise/cloud.add-ons
                      enterprise/cloud.database-replication
@@ -3977,7 +3977,7 @@
    :uses #{api store-api util}}
 
   enterprise/cloud.add-ons
-  {:team "Cloud"
+  {:team "Billing"
    :ns-prefix "metabase-enterprise.cloud-add-ons"
    :api #{metabase-enterprise.cloud-add-ons.api metabase-enterprise.cloud-add-ons.core}
    :uses #{api
@@ -3988,7 +3988,7 @@
            enterprise/cloud}}
 
   enterprise/cloud.database-replication
-  {:team "Cloud"
+  {:team "Billing"
    :ns-prefix "metabase-enterprise.database-replication"
    :api #{metabase-enterprise.database-replication.api metabase-enterprise.database-replication.init}
    :uses #{api
@@ -4001,7 +4001,7 @@
    :model-imports #{:model/Database}}
 
   enterprise/cloud.gsheets
-  {:team "Cloud"
+  {:team "Billing"
    :ns-prefix "metabase-enterprise.gsheets"
    :api #{metabase-enterprise.gsheets.api metabase-enterprise.gsheets.init}
    :uses #{analytics
@@ -4016,7 +4016,7 @@
    :model-imports #{:model/Database :model/Setting}}
 
   enterprise/cloud.proxy
-  {:team "Cloud"
+  {:team "Billing"
    :ns-prefix "metabase-enterprise.cloud-proxy"
    :api #{metabase-enterprise.cloud-proxy.api}
    :uses #{api
@@ -4026,7 +4026,7 @@
            enterprise/cloud}}
 
   enterprise/connection-overlays
-  {:team "Graphy"
+  {:team "Querying"
    :api  #{}
    :uses #{premium-features}}
 
@@ -4082,7 +4082,7 @@
    :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/core
-  {:team "DevEx"
+  {:team "Gadget"
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
@@ -4152,7 +4152,7 @@
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
-  {:team "UX West"
+  {:team "Data Apps"
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections
@@ -4170,7 +4170,7 @@
                     :model/User}}
 
   enterprise/data-testing
-  {:team "Graphy"
+  {:team "Verification"
    :api #{metabase-enterprise.data-testing.api
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
@@ -4291,7 +4291,7 @@
                     :model/FieldValues}}
 
   enterprise/dependencies.replacement
-  {:team "Graphy"
+  {:team "Data Apps"
    :ns-prefix "metabase-enterprise.replacement"
    :api #{metabase-enterprise.replacement.api}
    :uses #{analytics
@@ -4372,7 +4372,7 @@
                     :model/PermissionsGroupMembership}}
 
   enterprise/memoize-monitor
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase-enterprise.memoize-monitor.init}
    :uses #{analytics
            analytics.interface
@@ -4465,7 +4465,7 @@
                     :model/Table}}
 
   enterprise/mfa
-  {:team "Security Engineering"
+  {:team "Security"
    :api #{metabase-enterprise.mfa.core metabase-enterprise.mfa.init metabase-enterprise.mfa.routes}
    :uses #{api
            appearance
@@ -4483,7 +4483,7 @@
    :model-imports #{:model/AuthIdentity :model/User}}
 
   enterprise/native-query-snippets
-  {:team "Graphy"
+  {:team "Querying"
    :ns-prefix "metabase-enterprise.snippet-collections"
    :uses #{api
            lib.schema
@@ -4494,7 +4494,7 @@
    :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/permissions
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase-enterprise.advanced-permissions"
    :module-exports #{enterprise/permissions.debug
                      enterprise/permissions.impersonation
@@ -4521,7 +4521,7 @@
                     :model/Table}}
 
   enterprise/permissions.debug
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
@@ -4535,7 +4535,7 @@
    :model-imports #{:model/Card :model/Table :model/User}}
 
   enterprise/permissions.impersonation
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase-enterprise.impersonation"
    :api #{metabase-enterprise.impersonation.api metabase-enterprise.impersonation.init}
    :uses #{api
@@ -4558,7 +4558,7 @@
    :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/permissions.sandbox
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase-enterprise.sandbox"
    :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
    :uses #{analytics
@@ -4597,13 +4597,13 @@
                     :model/User}}
 
   enterprise/premium-features
-  {:team "UX West"
+  {:team "Billing"
    :api  #{}
    :uses #{premium-features
            util}}
 
   enterprise/pulse
-  {:team "Graphy"
+  {:team "Gadget"
    :ns-prefix "metabase-enterprise.dashboard-subscription-filters"
    :uses #{premium-features}}
 
@@ -4788,7 +4788,7 @@
    :model-imports :bypass}
 
   enterprise/session-management
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase-enterprise.session-management.api}
    :uses #{api
            events
@@ -4800,7 +4800,7 @@
    :model-imports #{:model/User}}
 
   enterprise/sso
-  {:team "Security Engineering"
+  {:team "Security"
    :module-exports #{enterprise/sso.auth-identity
                      enterprise/sso.scim}
    :api  #{metabase-enterprise.sso.api.routes
@@ -4824,7 +4824,7 @@
    :model-imports #{:model/PermissionsGroup}}
 
   enterprise/sso.auth-identity
-  {:team "Security Engineering"
+  {:team "Security"
    :ns-prefix "metabase-enterprise.auth-identity"
    :uses #{premium-features}}
 
@@ -4863,7 +4863,7 @@
    :model-imports #{:model/Collection}}
 
   enterprise/support-access-grants
-  {:team "Security Engineering"
+  {:team "Security"
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
@@ -4882,7 +4882,7 @@
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
   enterprise/tenants
-  {:team "Admin Webapp"
+  {:team "Embedding"
    :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            app-db
@@ -4902,7 +4902,7 @@
    :model-imports #{:model/Collection :model/User}}
 
   enterprise/transforms
-  {:team "Graphy"
+  {:team "Gadget"
    :module-exports #{enterprise/transforms.inspector
                      enterprise/transforms.python}
    :api  #{metabase-enterprise.transforms.api}
@@ -4937,7 +4937,7 @@
                     :model/Transform}}
 
   enterprise/transforms.python
-  {:team "Graphy"
+  {:team "Gadget"
    :ns-prefix "metabase-enterprise.transforms-python"
    :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init metabase-enterprise.transforms-python.schema}
    :uses #{analytics.interface
@@ -4990,7 +4990,7 @@
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   enterprise/workspaces
-  {:team "Graphy"
+  {:team "Verification"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
