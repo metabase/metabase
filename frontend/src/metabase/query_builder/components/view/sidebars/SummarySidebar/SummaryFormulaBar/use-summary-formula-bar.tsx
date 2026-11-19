@@ -1,7 +1,6 @@
 import type { EditorView } from "@codemirror/view";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -80,41 +79,40 @@ export function useSummaryFormulaBar({
   const openDraft =
     activeDraft?.kind === "new" || editedFormula ? activeDraft : null;
 
-  const dropPendingSource = () => {
+  const dropPendingSource = useCallback(() => {
     const pending = pendingSource.current;
     pendingSource.current = null;
     if (pending?.kind === "new") {
       pending.onReady();
     }
-  };
-  const dropPendingSourceRef = useLatest(dropPendingSource);
+  }, []);
 
   useEffect(() => {
     if (!ownership.isActive) {
       setDraft(null);
       viewRef.current = null;
-      dropPendingSourceRef.current();
+      dropPendingSource();
     }
-  }, [ownership.isActive, dropPendingSourceRef]);
+  }, [ownership.isActive, dropPendingSource]);
 
-  const close = () => {
+  const releaseOwnership = ownership.close;
+  const close = useCallback(() => {
     viewRef.current = null;
     dropPendingSource();
     setDraft(null);
-    ownership.close();
+    releaseOwnership();
     if (inputRef.current?.isConnected) {
       inputRef.current.focus();
     }
-  };
+  }, [dropPendingSource, releaseOwnership]);
 
   // The edited chip can go away under the bar, from its remove button or Clear all.
   const isEditedFormulaGone = activeDraft?.kind === "edit" && !editedFormula;
-  const closeRef = useLatest(close);
   useEffect(() => {
     if (isEditedFormulaGone) {
-      closeRef.current();
+      close();
     }
-  }, [isEditedFormulaGone, closeRef]);
+  }, [isEditedFormulaGone, close]);
 
   const handleSubmit = (expression: NamedExpression) => {
     if (activeDraft?.kind === "new") {
