@@ -230,6 +230,29 @@
       (finally
         (events.tu/unregister! ::owned)))))
 
+(deftest update-carries-changed-columns-test
+  (let [changed (atom [])]
+    (events/register-owned-consumer! ::changed
+                                     (fn [{:keys [operation]}] (when (= :update operation) :update))
+                                     (fn [_owner events _all] (swap! changed into (map :changed) events)))
+    (try
+      (with-timeline-cleanup
+        (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-changed"))]
+          (reset! received [])
+          (testing "an update carries the columns it set, which include the updated_at its timestamp hook set"
+            (t2/update! ::events-test-timeline/Timeline :id id {:icon "star"})
+            (is (= [#{:icon :updated_at}] @changed)))
+          (testing "the updates of a row in one batch carry the union of their columns"
+            (reset! changed [])
+            (events/with-batched-events
+              (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-changed-1"})
+              (t2/update! ::events-test-timeline/Timeline :id id {:description "d"}))
+            (is (= [#{:name :description :updated_at}] @changed)))
+          (testing "the published event does not carry them"
+            (is (every? #(not (contains? (:event %) :changed)) @received)))))
+      (finally
+        (events.tu/unregister! ::changed)))))
+
 (deftest throwing-consumer-fails-write-test
   (let [recorded (atom [])
         owner    (fn [{:keys [model]}] (when (= ::events-test-timeline/Timeline model) :timeline))]
