@@ -50,8 +50,7 @@
 
 (def ^:private client-key-aliases
   "Other names accepted for a client key in [[mcp-apps-cors-enabled-clients]].
-   Cursor and VS Code share one key: both render MCP Apps in a vscode-webview, so neither can be allowed without the
-   other."
+   Cursor and VS Code share one key: both render MCP Apps in a vscode-webview, so CORS can't tell them apart."
   {"cursor" "cursor-vscode"
    "vscode" "cursor-vscode"})
 
@@ -74,12 +73,6 @@
   (let [entries (remove (comp str/blank? str) entries)]
     {:keys    (into [] (comp (keep canonical-client-key) (distinct)) entries)
      :unknown (into [] (remove canonical-client-key) entries)}))
-
-(defn- raw-enabled-client-entries
-  "The entries stored for [[mcp-apps-cors-enabled-clients]], or set by its env var, before normalization.
-   Throws when the value cannot be parsed."
-  []
-  (setting/get-value-of-type :csv :mcp-apps-cors-enabled-clients))
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
 
@@ -121,8 +114,11 @@
                       (catch Exception _ nil))
                     default-query-handle-ttl-hours)))
 
-(defn- bad-request [message]
-  (ex-info message {:status-code 400}))
+(defn- bad-request
+  ([message]
+   (bad-request message nil))
+  ([message cause]
+   (ex-info message {:status-code 400} cause)))
 
 (defn- setter-entries
   "The entries in `new-value`, a list of names or a CSV string of one line.
@@ -137,7 +133,7 @@
     (let [rows (try
                  (doall (csv/read-csv new-value))
                  (catch Exception e
-                   (throw (ex-info (tru "Malformed list of MCP clients: {0}" (ex-message e)) {:status-code 400} e))))]
+                   (throw (bad-request (tru "Malformed list of MCP clients: {0}" (ex-message e)) e))))]
       ;; An env var keeps only the first line, so saving one would silently drop the rest.
       (when (next rows)
         (throw (bad-request (tru "List MCP clients on one line, separated by commas."))))
@@ -173,24 +169,27 @@
   ;; rather than a throw.
   :getter     (fn []
                 (try
-                  (:keys (parse-enabled-clients (raw-enabled-client-entries)))
+                  (:keys (parse-enabled-clients (setting/get-value-of-type :csv :mcp-apps-cors-enabled-clients)))
                   (catch Exception _ []))))
 
 (defmethod startup/def-startup-logic! ::warn-about-unknown-mcp-apps-cors-enabled-clients [_]
   (let [source (or (first (setting/env-var-source :mcp-apps-cors-enabled-clients))
                    "mcp-apps-cors-enabled-clients")]
     (try
-      ;; The :csv type reads only the first line, so the getter never sees the others.
-      (when (next (doall (csv/read-csv (or (setting/get-value-of-type :string :mcp-apps-cors-enabled-clients) ""))))
-        (log/warnf "Only the first line of %s is used. List MCP clients on one line, separated by commas." source))
-      (when-let [unknown (not-empty (:unknown (parse-enabled-clients (raw-enabled-client-entries))))]
-        (log/warnf "Ignoring unknown MCP clients in %s: %s. Accepted values: %s."
-                   source
-                   (str/join ", " unknown)
-                   (accepted-client-names-text)))
+      ;; Lazy, like the :csv type: the getter parses the first line only, and so does `first` here.
+      (let [rows (csv/read-csv (or (setting/get-value-of-type :string :mcp-apps-cors-enabled-clients) ""))]
+        (when-let [unknown (not-empty (:unknown (parse-enabled-clients (first rows))))]
+          (log/warnf "Ignoring unknown MCP clients in %s: %s. Accepted values: %s."
+                     source
+                     (str/join ", " unknown)
+                     (accepted-client-names-text)))
+        ;; Later lines are ignored whether or not they parse.
+        (when (try (next rows) (catch Exception _ true))
+          (log/warnf "Only the first line of %s is used. List MCP clients on one line, separated by commas." source)))
       (catch Exception _
         ;; The getter already treats this value as no clients; say so once, without a stack trace.
-        (log/warnf "Could not parse %s as comma-separated MCP clients, so all MCP clients are disabled." source)))))
+        (log/warnf "Could not parse %s as comma-separated MCP clients, so all MCP clients are disabled."
+                   source)))))
 
 (defn- strip-scheme
   [s]
@@ -249,10 +248,10 @@
          (str/join " "))))
 
 (defn inline-ui-enabled-for-client?
-  "Whether `client-key`, from [[metabase.mcp.usage/detect-client]], may render MCP Apps UI. An iframe from a client
-   the admin switched off fails its CORS preflight, so it would show a broken card. Clients without a toggle are not
-   gated."
+  "Whether `client-key`, from [[metabase.mcp.usage/detect-client]], may render MCP Apps UI.
+   Clients without a toggle are not gated."
   [client-key]
+  ;; An iframe from a client the admin switched off fails its CORS preflight, so it would show a broken card.
   (if-let [setting-key (some-> client-key canonical-client-key)]
     (boolean (some #{setting-key} (mcp-apps-cors-enabled-clients)))
     true))

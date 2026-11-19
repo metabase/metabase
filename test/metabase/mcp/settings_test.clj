@@ -154,6 +154,12 @@
         (is (= [(str "Only the first line of MB_MCP_APPS_CORS_ENABLED_CLIENTS is used. "
                      "List MCP clients on one line, separated by commas.")]
                (warnings)))))
+    (testing "does not call a malformed later line a reason to disable every client"
+      (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude\n\"chatgpt"]
+        (is (= ["claude"] (mcp.settings/mcp-apps-cors-enabled-clients)))
+        (is (= [(str "Only the first line of MB_MCP_APPS_CORS_ENABLED_CLIENTS is used. "
+                     "List MCP clients on one line, separated by commas.")]
+               (warnings)))))
     (testing "says nothing when every entry names a client"
       (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude,vscode"]
         (is (= [] (warnings)))))))
