@@ -5,8 +5,6 @@ summary: Billing, the developer guide, paid features, and Metabase's policies on
 
 # Other resources
 
-More docs to help you manage billing, contribute to, and evaluate Metabase.
-
 ## [Billing](https://www.metabase.com/how-billing-works)
 
 How billing works for Metabase plans, and how to manage your [account and billing](../cloud/accounts-and-billing.md).

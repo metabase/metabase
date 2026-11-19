@@ -53,6 +53,7 @@
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?
+  enable-change-log?
   enable-collection-cleanup?
   enable-config-text-file?
   enable-content-translation?

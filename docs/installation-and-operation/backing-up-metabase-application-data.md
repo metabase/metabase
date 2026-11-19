@@ -7,8 +7,6 @@ redirect_from:
 
 # Backing up Metabase
 
-Avoid losing your application data (all of your questions, dashboards, collections and so on) by backing up your data.
-
 Metabase uses a single SQL database for all of its runtime application data, so all you need to do is back up that database and you're good to go. You can use that backup to restore your Metabase installation if anything goes wrong (like during an upgrade).
 
 ## Backing up the default H2 database
