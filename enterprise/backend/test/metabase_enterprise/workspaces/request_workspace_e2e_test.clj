@@ -70,7 +70,7 @@
   holding `(99, pre-existing)`, and two provisioned workspaces of the Database."
   [f]
   ;; a request can name a workspace only where row-level security keeps the rows of workspaces apart
-  (row-security-test/with-request-workspaces-enabled
+  (row-security-test/with-request-workspaces-enabled!
     (mt/test-driver :postgres
       (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
         (let [admin-details (:details (mt/db))

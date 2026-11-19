@@ -72,12 +72,12 @@
    (fn [{:keys [workspace-id db-id]}]
      (testing "a request can work in a workspace whose every database is provisioned, on an app DB whose row-level
                security keeps the rows of workspaces apart"
-       (row-security-test/with-request-workspaces-enabled
+       (row-security-test/with-request-workspaces-enabled!
          (is (nil? (workspaces/request-workspace-problem workspace-id)))))
      (testing "not when the app DB does not keep the rows of workspaces apart"
        (is (re-find #"request-workspaces-enabled|PostgreSQL|row-level security"
                     (workspaces/request-workspace-problem workspace-id)))
-       (row-security-test/with-request-workspaces-enabled
+       (row-security-test/with-request-workspaces-enabled!
          (mt/with-dynamic-fn-redefs [ws.db/row-security-forced? (constantly false)]
            (is (re-find #"row-level security is off" (workspaces/request-workspace-problem workspace-id))))
          (mt/with-dynamic-fn-redefs [ws.db/row-security-bypassed? (constantly true)]

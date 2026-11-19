@@ -869,7 +869,7 @@
               (lib.metadata/table rmp 1))))))
 
 (deftest copy-metadata-middleware-test
-  (copy-test/do-with-orders
+  (copy-test/do-with-orders!
    (fn [{:keys [workspace-id db-id table-id]}]
      ;; `created` changes type, so the workspace has a type row; `name` goes, which row-level security hides
      (copy-test/record! workspace-id db-id table-id [(copy-test/column "id" :type/Integer "int4" 0)

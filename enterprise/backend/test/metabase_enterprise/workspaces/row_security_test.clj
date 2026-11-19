@@ -22,7 +22,7 @@
   (and (= :postgres (mdb/db-type))
        (not (ws.db/row-security-bypassed?))))
 
-(defn do-with-request-workspaces-enabled
+(defn do-with-request-workspaces-enabled!
   "Calls `thunk` with [[ws.settings/request-workspaces-enabled]] on, and turns it off after, when the app DB can keep the
   rows of workspaces apart ([[row-security-applies?]]). Otherwise does not call `thunk`: a request can't name a
   workspace there."
@@ -34,10 +34,10 @@
       (finally
         (ws.settings/request-workspaces-enabled! false)))))
 
-(defmacro with-request-workspaces-enabled
-  "Runs `body` with requests able to name a workspace; see [[do-with-request-workspaces-enabled]]."
+(defmacro with-request-workspaces-enabled!
+  "Runs `body` with requests able to name a workspace; see [[do-with-request-workspaces-enabled!]]."
   [& body]
-  `(do-with-request-workspaces-enabled (fn [] ~@body)))
+  `(do-with-request-workspaces-enabled! (fn [] ~@body)))
 
 (deftest request-workspaces-enabled-test
   (if-not (row-security-applies?)
@@ -68,7 +68,7 @@
   (t2/select-fn-set :name :model/Table :db_id db-id))
 
 (deftest each-workspace-sees-the-shared-rows-and-its-own-test
-  (with-request-workspaces-enabled
+  (with-request-workspaces-enabled!
     (mt/with-temp [:model/Database  {db-id :id} {}
                    :model/Workspace {ws-a :id}  {:name "a"}
                    :model/Workspace {ws-b :id}  {:name "b"}
@@ -107,3 +107,53 @@
           (t2/delete! :model/Workspace :id ws-a)
           (is (= #{"shared"} (mdb/with-workspace-id :all (table-names db-id))))
           (is (empty? (mdb/with-workspace-id :all (t2/select :model/Field :table_id shared)))))))))
+
+(deftest every-listing-shows-a-workspace-its-own-tables-test
+  ;; no listing code knows about workspaces: row-level security gives each the right rows
+  (with-request-workspaces-enabled!
+    ((requiring-resolve 'metabase-enterprise.workspaces.request-workspace-test/do-with-request-workspace)
+     (fn [{:keys [workspace-id db-id]}]
+       (mt/with-temp [:model/Table {shared :id} {:db_id db-id :schema "public" :name "shared_orders" :active true}]
+         (let [owned   (mdb/with-workspace-id workspace-id
+                         (t2/insert-returning-pk! :model/Table {:db_id db-id :schema "public" :name "ws_only_orders"
+                                                                :active true}))
+               _       (mdb/with-workspace-id workspace-id
+                         (t2/insert! :model/Field {:table_id owned :name "ws_only_total" :base_type :type/Integer
+                                                   :database_type "int4"}))
+               headers (fn [ws-id] {:request-options {:headers (cond-> {}
+                                                                 ws-id (assoc "x-metabase-workspace-id"
+                                                                              (str ws-id)))}})
+               names   (fn [ws-id]
+                         {:schema       (set (map :name (mt/user-http-request :crowberto :get 200
+                                                                              (format "database/%d/schema/public" db-id)
+                                                                              (headers ws-id))))
+                          :metadata     (set (map :name (:tables (mt/user-http-request
+                                                                  :crowberto :get 200
+                                                                  (format "database/%d/metadata" db-id)
+                                                                  (headers ws-id)))))
+                          :tables       (set (keep #(when (= db-id (:db_id %)) (:name %))
+                                                   (mt/user-http-request :crowberto :get 200 "table" (headers ws-id))))
+                          :autocomplete (set (map first (mt/user-http-request
+                                                         :crowberto :get 200
+                                                         (format "database/%d/autocomplete_suggestions" db-id)
+                                                         (headers ws-id) :prefix "ws_only")))})]
+           (testing "a request in the workspace lists its own Table and Field everywhere"
+             (is (= {:schema       #{"shared_orders" "ws_only_orders"}
+                     :metadata     #{"shared_orders" "ws_only_orders"}
+                     :tables       #{"shared_orders" "ws_only_orders"}
+                     :autocomplete #{"ws_only_orders" "ws_only_total"}}
+                    (names workspace-id))))
+           (testing "a request in no workspace lists only the shared ones"
+             (is (= {:schema       #{"shared_orders"}
+                     :metadata     #{"shared_orders"}
+                     :tables       #{"shared_orders"}
+                     :autocomplete #{}}
+                    (names nil))))
+           (testing "so do lookups outside the REST API, such as the MCP and Metabot tools'"
+             (let [mcp-tables     (requiring-resolve 'metabase.mcp.db/active-tables-by-ids)
+                   metabot-tables (requiring-resolve 'metabase.metabot.db/active-tables-for-database)]
+               (mdb/with-workspace-id workspace-id
+                 (is (= #{"shared_orders" "ws_only_orders"} (set (map :name (mcp-tables [shared owned])))))
+                 (is (= #{"shared_orders" "ws_only_orders"} (set (map :name (metabot-tables db-id))))))
+               (is (= #{"shared_orders"} (set (map :name (mcp-tables [shared owned])))))
+               (is (= #{"shared_orders"} (set (map :name (metabot-tables db-id)))))))))))))

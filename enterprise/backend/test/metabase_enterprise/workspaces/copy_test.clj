@@ -38,12 +38,12 @@
    (column "created" :type/DateTime "timestamp" 1)
    (column "total" :type/Float "float8" 2)])
 
-(defn do-with-orders
+(defn do-with-orders!
   "Calls `f` with `{:workspace-id :db-id :table-id :field-ids}`: a workspace's Database with a Table `orders` whose
   shared Fields are `canonical-columns`, `created` coerced to a datetime, and `name` holding a nested Field `first`.
-  Only where requests can name a workspace ([[row-security-test/with-request-workspaces-enabled]])."
+  Only where requests can name a workspace ([[row-security-test/with-request-workspaces-enabled!]])."
   [f]
-  (row-security-test/with-request-workspaces-enabled
+  (row-security-test/with-request-workspaces-enabled!
     (request-workspace-test/do-with-request-workspace
      (fn [{:keys [db-id] :as context}]
        (mt/with-temp [:model/Table {table-id :id} {:db_id db-id :schema "public" :name "orders" :active true
@@ -83,7 +83,7 @@
   (t2/select-fn-set :name :model/Field :table_id table-id :parent_id nil))
 
 (deftest record-copy-test
-  (do-with-orders
+  (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id field-ids]}]
      (testing "a copy with the shape of its canonical table has no rows"
        (record! workspace-id db-id table-id canonical-columns)
@@ -116,7 +116,7 @@
        (is (= {} (owned-fields workspace-id table-id)))))))
 
 (deftest recording-a-copy-drops-old-field-values-test
-  (do-with-orders
+  (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id field-ids]}]
      (t2/insert! :model/FieldValues {:field_id (field-ids "id") :type :advanced :hash_key "workspace-values"
                                      :values [1 2]})
@@ -125,7 +125,7 @@
        (is (not (t2/exists? :model/FieldValues :field_id (field-ids "id") :type :advanced)))))))
 
 (deftest a-shared-twin-of-a-workspace-field-is-hidden-test
-  (do-with-orders
+  (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id]}]
      (record! workspace-id db-id table-id (conj canonical-columns (column "total" :type/Float "float8" 3)))
      (testing "a sync in production adds the column the workspace already owns"
@@ -143,7 +143,7 @@
   (ws.copy-metadata/copy-metadata-provider (lib-be/application-database-metadata-provider db-id) workspace-id db-id))
 
 (deftest copy-metadata-provider-test
-  (do-with-orders
+  (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id field-ids]}]
      (workspaces/with-workspace-id workspace-id
        (testing "a workspace with no type rows has no provider of its own"
@@ -165,7 +165,7 @@
                                                          table-id))))))))
 
 (deftest query-metadata-test
-  (do-with-orders
+  (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id field-ids]}]
      (record! workspace-id db-id table-id changed-columns)
      (let [path    (format "table/%d/query_metadata" table-id)
@@ -185,7 +185,7 @@
                 (map :name (:fields (mt/user-http-request :crowberto :get 200 path headers))))))))))
 
 (deftest deprovisioned-database-loses-its-copy-rows-test
-  (do-with-orders
+  (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id]}]
      (record! workspace-id db-id table-id changed-columns)
      (let [owned-table (workspaces/with-workspace-id workspace-id
