@@ -1881,15 +1881,21 @@ def _function_name(node: exp.Expression):
     return None
 
 
-def _session_effect_function(stmt: exp.Expression, dialect: str):
-    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
-    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
-    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
+def _first_function_in(stmt: exp.Expression, names):
+    """The name of the first function in `stmt` that is one of `names`, or None."""
     for node in stmt.walk():
         name = _function_name(node)
         if name in names:
             return name
     return None
+
+
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    return _first_function_in(
+        stmt, _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
+    )
 
 
 def _external_table(stmt: exp.Expression, dialect: str) -> bool:
@@ -1970,14 +1976,20 @@ def _write_function_name(node: exp.Expression):
     return name if name in _WRITE_FUNCTIONS else None
 
 
+def _user_variable_assignment(node: exp.Expression) -> bool:
+    """Whether `node` assigns a MySQL user variable, `@x := ...`, whose value outlives the query on its connection."""
+    # A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing. The variable
+    # is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    return isinstance(node, exp.PropertyEQ) and node.this.find(exp.Parameter) is not None
+
+
 def _writes_or_locks(node: exp.Expression) -> bool:
-    if isinstance(node, _NOT_READ_ONLY_NODES) or _write_function_name(node) is not None:
+    if (
+        isinstance(node, _NOT_READ_ONLY_NODES)
+        or _write_function_name(node) is not None
+        or _user_variable_assignment(node)
+    ):
         return True
-    # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
-    # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
-    # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
-    if isinstance(node, exp.PropertyEQ):
-        return node.this.find(exp.Parameter) is not None
     if isinstance(node, exp.WithTableHint):
         return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
     # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
@@ -2037,20 +2049,6 @@ _UNCONFINED_FUNCTIONS = frozenset(
         "pg_replication_origin_progress",
     }
 )
-
-
-def _unconfined_function(stmt: exp.Expression):
-    """The name of the first function in `stmt` that is one of `_UNCONFINED_FUNCTIONS`, or None."""
-    for node in stmt.walk():
-        name = _function_name(node)
-        if name in _UNCONFINED_FUNCTIONS:
-            return name
-    return None
-
-
-def _assigns_user_variable(stmt: exp.Expression) -> bool:
-    """Whether `stmt` assigns a MySQL user variable, `@x := ...`, whose value outlives the run on its connection."""
-    return any(node.this.find(exp.Parameter) is not None for node in stmt.find_all(exp.PropertyEQ))
 
 
 def _write_function(stmt: exp.Expression):
@@ -2283,12 +2281,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _statement_reason(stmts[0], sql, dialect)
             if problem is None and stmt_type == "confined-write":
                 function = _write_function(stmts[0])
-                unconfined = _unconfined_function(stmts[0])
+                unconfined = _first_function_in(stmts[0], _UNCONFINED_FUNCTIONS)
                 if function is not None:
                     problem = ("write-function", function)
                 elif unconfined is not None:
                     problem = ("unconfined-function", unconfined)
-                elif _assigns_user_variable(stmts[0]):
+                elif any(map(_user_variable_assignment, stmts[0].walk())):
                     problem = ("user-variable", None)
                 elif stmts[0].args.get("returning") is not None:
                     problem = ("returning", None)
