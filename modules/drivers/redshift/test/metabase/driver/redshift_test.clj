@@ -1146,7 +1146,7 @@
             (is (str/includes? (ex-message error)
                                (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2)))))
         (finally
-          (try (jdbc/execute! admin-spec [(format "DROP DATABASE IF EXISTS \"%s\"" db2)] {:transaction? false})
+          (try (jdbc/execute! admin-spec [(format "DROP DATABASE \"%s\"" db2)] {:transaction? false})
                (catch Throwable t
                  (log/warnf t "Test cleanup failed: DROP DATABASE %s" db2))))))))
 
