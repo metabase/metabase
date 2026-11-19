@@ -2,19 +2,14 @@ import {
   type NamedExpression,
   isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
-import { stableStringify } from "metabase/utils/objects";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import {
-  getLegacyStage,
-  makeSummaryFormula,
-} from "../../../../../utils/summary-formulas";
 import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
 import { getDimensionItems, getValueItems, isFormulaValue } from "../utils";
 
-import type { SummaryFormula, SummaryFormulaEdit } from "./types";
+import type { SummaryFormula } from "./types";
 
 function findFormulaColumn(
   query: Lib.Query,
@@ -50,29 +45,12 @@ export function addSummaryFormula(
   );
 }
 
-/** The aggregation without its name, so a renamed formula keeps its signature. */
-function getAggregationSignature(
-  query: Lib.Query,
-  stageIndex: number,
-  index: number,
-): string | undefined {
-  const aggregations: unknown = getLegacyStage(query, stageIndex)?.aggregation;
-  if (!Array.isArray(aggregations)) {
-    return undefined;
-  }
-  const aggregation: unknown = aggregations[index];
-  const isNamedAggregation =
-    Array.isArray(aggregation) && aggregation[0] === "aggregation-options";
-  return stableStringify(isNamedAggregation ? aggregation[1] : aggregation);
-}
-
 function getValueFormulas(
   query: Lib.Query,
   stageIndex: number,
 ): SummaryFormula[] {
   return getValueItems(query, stageIndex).flatMap((item, index) => {
-    const signature = getAggregationSignature(query, stageIndex, index);
-    if (!isFormulaValue(item) || signature == null) {
+    if (!isFormulaValue(item)) {
       return [];
     }
     const { displayName, isNamed } = Lib.displayInfo(
@@ -83,11 +61,9 @@ function getValueFormulas(
     return [
       {
         wellId: "values",
-        key: item.key,
-        signature,
         clause: item.clause,
+        uuid: Lib.clauseUuid(item.clause),
         index,
-        position: index,
         name: isNamed ? displayName : undefined,
       },
     ];
@@ -98,82 +74,38 @@ function getDimensionFormulas(
   query: Lib.Query,
   stageIndex: number,
 ): SummaryFormula[] {
-  const expressionNames = Lib.expressions(query, stageIndex).map(
-    (expression) => Lib.displayInfo(query, stageIndex, expression).displayName,
+  const expressionUuids = Lib.expressions(query, stageIndex).map(
+    Lib.clauseUuid,
   );
-  return getDimensionItems(query, stageIndex).flatMap((item, position) => {
-    if (!item.expression) {
+  return getDimensionItems(query, stageIndex).flatMap(({ expression }) => {
+    if (!expression) {
       return [];
     }
-    const name = Lib.displayInfo(
-      query,
-      stageIndex,
-      item.expression,
-    ).displayName;
-    const signature = makeSummaryFormula(query, stageIndex, name)?.expression;
-    if (signature == null) {
-      return [];
-    }
+    const uuid = Lib.clauseUuid(expression);
     return [
       {
         wellId: "columns",
-        key: item.key,
-        signature,
-        clause: item.expression,
-        index: expressionNames.indexOf(name),
-        position,
-        name,
+        clause: expression,
+        uuid,
+        index: expressionUuids.indexOf(uuid),
+        name: Lib.displayInfo(query, stageIndex, expression).displayName,
       },
     ];
   });
 }
 
-function getWellFormulas(
-  query: Lib.Query,
-  stageIndex: number,
-  wellId: SummaryWellId,
-): SummaryFormula[] {
-  return wellId === "values"
-    ? getValueFormulas(query, stageIndex)
-    : getDimensionFormulas(query, stageIndex);
-}
-
+/** The formula of a chip in the well, or null when no chip has it. */
 export function findSummaryFormula(
   query: Lib.Query,
   stageIndex: number,
   wellId: SummaryWellId,
-  key: string,
+  uuid: string,
 ): SummaryFormula | null {
-  return (
-    getWellFormulas(query, stageIndex, wellId).find(
-      (formula) => formula.key === key,
-    ) ?? null
-  );
-}
-
-/**
- * The formula open in the bar, after the query changed under it. A rename changes the
- * chip's key, so a formula with the same signature stands in for it when it can only be
- * that one, or when it sits where the edited chip was.
- */
-export function findEditedFormula(
-  query: Lib.Query,
-  stageIndex: number,
-  edit: SummaryFormulaEdit,
-): SummaryFormula | null {
-  const candidates = getWellFormulas(query, stageIndex, edit.wellId).filter(
-    (formula) => formula.signature === edit.signature,
-  );
-  const sameChip = candidates.find((formula) => formula.key === edit.key);
-  if (sameChip) {
-    return sameChip;
-  }
-  if (candidates.length === 1) {
-    return candidates[0];
-  }
-  return (
-    candidates.find((formula) => formula.position === edit.position) ?? null
-  );
+  const formulas =
+    wellId === "values"
+      ? getValueFormulas(query, stageIndex)
+      : getDimensionFormulas(query, stageIndex);
+  return formulas.find((formula) => formula.uuid === uuid) ?? null;
 }
 
 function getFormulaBreakouts(

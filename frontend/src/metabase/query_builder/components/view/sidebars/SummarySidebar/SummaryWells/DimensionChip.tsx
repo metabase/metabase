@@ -84,28 +84,25 @@ export function DimensionChip({
       {name}
     </Ellipsified>
   );
-  const handleEdit =
-    item.expression && formulaInput
-      ? () => formulaInput.edit(item.key, wellFieldRef?.current ?? null)
-      : undefined;
+  const { expression } = item;
 
   return (
     <WellChip
       drag={{ kind: "dimension", item }}
       rename={
-        item.expression && !isEditing
-          ? getFormulaRename(item.expression)
-          : undefined
+        expression && !isEditing ? getFormulaRename(expression) : undefined
       }
       isSelected={isEditing}
       onRemove={onRemove}
     >
-      {handleEdit ? (
+      {expression && formulaInput ? (
         <FormulaEditButton
           label={item.label}
           isEditing={isEditing}
-          onEdit={handleEdit}
-          onCancelEdit={() => formulaInput?.cancelEdit(item.key)}
+          onEdit={() =>
+            formulaInput.edit(expression, wellFieldRef?.current ?? null)
+          }
+          onCancelEdit={() => formulaInput.cancelEdit(expression)}
         >
           {label}
         </FormulaEditButton>

@@ -90,6 +90,18 @@ const FORMULA_QUERY_SPEC: TestQuerySpec = {
 
 const FORMULA_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, FORMULA_QUERY_SPEC);
 
+const TWICE_GROUPED_FORMULA_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      ...FORMULA_QUERY_SPEC.stages[0],
+      breakouts: [
+        { type: "column", name: "Order date", unit: "year" },
+        { type: "column", name: "Order date", unit: "month" },
+      ],
+    },
+  ],
+});
+
 function sumOf(name: string): TestOperatorSpec {
   return {
     type: "operator",
@@ -708,17 +720,7 @@ describe("editing a formula chip", () => {
   });
 
   it("keeps both groupings when the edited formula is grouped twice", async () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          ...FORMULA_QUERY_SPEC.stages[0],
-          breakouts: [
-            { type: "column", name: "Order date", unit: "year" },
-            { type: "column", name: "Order date", unit: "month" },
-          ],
-        },
-      ],
-    });
+    const query = TWICE_GROUPED_FORMULA_QUERY;
     const { onQueryChange } = await setup({
       query,
       generatedExpressions: [
@@ -775,6 +777,38 @@ describe("editing a formula chip", () => {
     expect(
       await format(aggregation, { query: nextQuery, stageIndex: -1 }),
     ).toBe("Count()");
+  });
+
+  it("closes the bar when the edited chip is removed, even if another chip has the same formula", async () => {
+    const { onQueryChange } = await setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              { name: "Formula", value: sumOf("TOTAL") },
+              { name: "Formula", value: sumOf("TOTAL") },
+            ],
+          },
+        ],
+      }),
+    });
+    const [firstChip, secondChip] = screen.getAllByRole("button", {
+      name: "Edit the formula of Formula",
+    });
+    await userEvent.click(firstChip);
+    await expectFormula("Sum([Total])");
+    expect(secondChip).toHaveAttribute("aria-expanded", "false");
+
+    const [removeFirst] = screen.getAllByRole("button", {
+      name: "Remove Formula",
+    });
+    await userEvent.click(removeFirst);
+    await expectClosed();
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Edit the formula of Formula" }),
+    ).toHaveAttribute("aria-expanded", "false");
   });
 
   it("applies the default bucket when the edited formula drops the old one", async () => {
@@ -932,6 +966,26 @@ describe("editing a formula chip", () => {
     expect(
       screen.getByRole("textbox", { name: "Rename Order date" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows every grouping of the open custom column as open, and offers none of them a rename", async () => {
+    await setup({ query: TWICE_GROUPED_FORMULA_QUERY });
+    await openFormula("Order date: Year");
+    expect(getFormulaChip("Order date: Year")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(getFormulaChip("Order date: Month")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    fireEvent.keyDown(getFormulaChip("Order date: Month"), { key: "F2" });
+    fireEvent.dblClick(getFormulaChip("Order date: Month"));
+    expect(
+      screen.queryByRole("textbox", { name: /^Rename/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("formula-editor")).toBeInTheDocument();
   });
 
   it.each([

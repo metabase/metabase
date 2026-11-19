@@ -23,13 +23,13 @@ import type { SummaryWellId } from "../types";
 
 import type {
   SummaryFormulaBarOptions,
+  SummaryFormulaClause,
   SummaryFormulaDraft,
   SummaryFormulaInput,
 } from "./types";
 import {
   addSummaryFormula,
   editSummaryFormula,
-  findEditedFormula,
   findSummaryFormula,
 } from "./utils";
 
@@ -72,7 +72,12 @@ export function useSummaryFormulaBar({
   const editedFormula = useMemo(
     () =>
       activeDraft?.kind === "edit"
-        ? findEditedFormula(query, stageIndex, activeDraft.formula)
+        ? findSummaryFormula(
+            query,
+            stageIndex,
+            activeDraft.wellId,
+            activeDraft.uuid,
+          )
         : null,
     [query, stageIndex, activeDraft],
   );
@@ -162,14 +167,15 @@ export function useSummaryFormulaBar({
 
   const editFormula = (
     wellId: SummaryWellId,
-    itemKey: string,
+    clause: SummaryFormulaClause,
     input: HTMLInputElement | null,
   ) => {
-    if (editedFormula?.wellId === wellId && editedFormula.key === itemKey) {
+    const uuid = Lib.clauseUuid(clause);
+    if (editedFormula?.uuid === uuid) {
       viewRef.current?.focus();
       return;
     }
-    const formula = findSummaryFormula(query, stageIndex, wellId, itemKey);
+    const formula = findSummaryFormula(query, stageIndex, wellId, uuid);
     if (!formula) {
       return;
     }
@@ -182,7 +188,7 @@ export function useSummaryFormulaBar({
       kind: "edit",
       key,
       wellId,
-      formula,
+      uuid,
       source: "",
       hasCustomName: formula.name != null,
     });
@@ -223,9 +229,9 @@ export function useSummaryFormulaBar({
           pending.source = source;
         }
       },
-      edit: (itemKey, input) => editFormula(wellId, itemKey, input),
-      cancelEdit: (itemKey) => {
-        if (editedFormula?.wellId === wellId && editedFormula.key === itemKey) {
+      edit: (clause, input) => editFormula(wellId, clause, input),
+      cancelEdit: (clause) => {
+        if (editedFormula?.uuid === Lib.clauseUuid(clause)) {
           close();
         }
       },
@@ -273,7 +279,7 @@ export function useSummaryFormulaBar({
             onCancel: close,
           }
         : null,
-    editedFormula,
+    editingFormulaUuid: editedFormula?.uuid,
     formulaInputs: {
       values: getFormulaInput("values"),
       columns: getFormulaInput("columns"),

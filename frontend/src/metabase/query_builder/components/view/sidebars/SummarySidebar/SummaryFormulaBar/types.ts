@@ -2,26 +2,20 @@ import type * as Lib from "metabase-lib";
 
 import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
 
-/** A formula chip in a `Summarize by` or `Group by` well. */
+export type SummaryFormulaClause = Lib.AggregationClause | Lib.ExpressionClause;
+
+/** The formula of a chip in a `Summarize by` or `Group by` well. */
 export type SummaryFormula = {
   wellId: SummaryWellId;
-  /** The chip's result column name. A rename changes it. */
-  key: string;
-  /** The formula without its name. It finds the chip again when its key changes. */
-  signature: string;
-  clause: Lib.AggregationClause | Lib.ExpressionClause;
+  /** An aggregation, or the custom column of one or more groupings. */
+  clause: SummaryFormulaClause;
+  /** The clause's UUID. It finds the formula again after the query changes. */
+  uuid: string;
   /** Position among the stage's aggregations, or its custom columns. */
   index: number;
-  /** Position of the chip in its well. */
-  position: number;
   /** Absent for an unnamed aggregation, which takes its name from the formula. */
   name?: string;
 };
-
-export type SummaryFormulaEdit = Pick<
-  SummaryFormula,
-  "wellId" | "key" | "signature" | "position"
->;
 
 export type SummaryFormulaBarOptions = {
   query: Lib.Query;
@@ -38,7 +32,7 @@ export type SummaryFormulaDraft = {
   | { kind: "new" }
   | {
       kind: "edit";
-      formula: SummaryFormulaEdit;
+      uuid: string;
       hasCustomName: boolean;
     }
 );
@@ -47,7 +41,7 @@ export type SummaryFormulaInput = {
   start: (source: string, input: HTMLInputElement, onReady: () => void) => void;
   isPending: () => boolean;
   update: (source: string) => void;
-  edit: (itemKey: string, input: HTMLInputElement | null) => void;
-  /** Closes the bar when it holds this chip's formula. */
-  cancelEdit: (itemKey: string) => void;
+  edit: (clause: SummaryFormulaClause, input: HTMLInputElement | null) => void;
+  /** Closes the bar when it holds this formula. */
+  cancelEdit: (clause: SummaryFormulaClause) => void;
 };

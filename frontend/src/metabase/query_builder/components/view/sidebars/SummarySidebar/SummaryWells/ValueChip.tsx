@@ -55,7 +55,7 @@ export function ValueChip({
     );
   const handleEdit =
     isFormula && formulaInput
-      ? () => formulaInput.edit(item.key, wellFieldRef?.current ?? null)
+      ? () => formulaInput.edit(item.clause, wellFieldRef?.current ?? null)
       : undefined;
   const icon =
     item.kind === "column" ? null : (
@@ -89,7 +89,7 @@ export function ValueChip({
           label={item.label}
           isEditing={isEditing}
           onEdit={handleEdit}
-          onCancelEdit={() => formulaInput?.cancelEdit(item.key)}
+          onCancelEdit={() => formulaInput?.cancelEdit(item.clause)}
         >
           {icon}
           {label}

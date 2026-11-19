@@ -117,7 +117,7 @@ export function SummarySidebar({
     }
   };
 
-  const { bar, formulaInputs, draftFormula, editedFormula } =
+  const { bar, formulaInputs, draftFormula, editingFormulaUuid } =
     useSummaryFormulaBar({
       query,
       stageIndex,
@@ -189,7 +189,7 @@ export function SummarySidebar({
             draggedItem={draggedItem}
             formulaInputs={formulaInputs}
             draftFormula={draftFormula}
-            editedFormula={editedFormula}
+            editingFormulaUuid={editingFormulaUuid}
             onPick={handleAdd}
             onChange={handleQueryChange}
           />

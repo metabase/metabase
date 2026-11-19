@@ -2,9 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
+import { isEmpty } from "metabase/utils/validate";
 import * as Lib from "metabase-lib";
 
-import type { SummaryFormula, SummaryFormulaInput } from "../SummaryFormulaBar";
+import type {
+  SummaryFormulaClause,
+  SummaryFormulaInput,
+} from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
@@ -37,8 +41,7 @@ type SummaryWellsProps = {
   draftFormula?:
     | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
     | null;
-  /** The chip whose formula is open in the formula bar. */
-  editedFormula?: SummaryFormula | null;
+  editingFormulaUuid?: string;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
@@ -50,13 +53,13 @@ export function SummaryWells({
   sections,
   formulaInputs,
   draftFormula,
-  editedFormula,
+  editingFormulaUuid,
   draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
-  const isEditing = (wellId: SummaryWellId, key: string) =>
-    editedFormula?.wellId === wellId && editedFormula.key === key;
+  const isEditing = (clause?: SummaryFormulaClause) =>
+    !isEmpty(clause) && Lib.clauseUuid(clause) === editingFormulaUuid;
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -115,7 +118,7 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
-              isEditing={isEditing("values", item.key)}
+              isEditing={isEditing(item.clause)}
               formulaInput={formulaInputs?.values}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
@@ -150,7 +153,7 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
-              isEditing={isEditing("columns", item.key)}
+              isEditing={isEditing(item.expression)}
               formulaInput={formulaInputs?.columns}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
