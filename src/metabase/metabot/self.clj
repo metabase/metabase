@@ -418,8 +418,12 @@
   (or (:error body) body))
 
 (def ^:private more-provider-failures
-  "The kind of provider failure for each HTTP status, and each error type or code that Anthropic and OpenAI send,
-  that [[provider-failure]] does not classify because it has no user-facing message for it."
+  "The kind of provider failure for each HTTP status, and each error type or code that Anthropic, OpenAI and Bedrock
+  send, that [[provider-failure]] does not classify.
+
+  [[provider-failure]] has only the rules whose failure gets a user-facing message from [[provider-error]]. A rule
+  here gives a kind and no message: a 403 is `:auth`, but its cause can be a blocked region, which the `:auth` message
+  does not describe."
   {403                    :auth
    404                    :not-found
    408                    :unavailable
