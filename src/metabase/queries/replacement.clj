@@ -6,8 +6,8 @@
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.query :as queries.query]
    [metabase.replacement.core :as replacement]
-   [metabase.replacement.util :as replacement.util]
-   [metabase.replacement.walk :as replacement.walk]))
+   [metabase.replacement.walk :as replacement.walk]
+   [metabase.source-swap.core :as source-swap]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,9 +45,9 @@
   "The writes that upgrade the field refs of the hydrated `card` in its query, visualization settings and parameters."
   [card]
   (let [query         (:dataset_query card)
-        valid-query?  (replacement.util/valid-query? query)
+        valid-query?  (replacement/valid-query? query)
         query'        (if valid-query?
-                        (replacement/upgrade-field-refs-in-query query)
+                        (source-swap/upgrade-field-refs-in-query query)
                         query)
         viz-settings  (:visualization_settings card)
         viz-settings' (if valid-query?
@@ -70,8 +70,8 @@
   not valid."
   [card old-source new-source]
   (let [query (:dataset_query card)]
-    (when (replacement.util/valid-query? query)
-      (let [query'      (replacement/swap-source-in-query query old-source new-source)
+    (when (replacement/valid-query? query)
+      (let [query'      (source-swap/swap-source-in-query query old-source new-source)
             table-id    (:table_id card)
             table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
             parameters  (or (:parameters card) [])

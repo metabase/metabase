@@ -27,7 +27,7 @@ All OSS under `src/metabase/` unless noted. Module names come from `.clj-kondo/c
 | `lib.legacy-mbql` | `metabase.legacy-mbql.schema`, `.normalize`, `.util` | MBQL 4 schemas and normalization. |
 | `lib.metric` | `metabase.lib-metric.core`, `metabase.lib-metric.db` | Metric definitions. |
 | `lib.types` | `metabase.types.core` | Base/semantic type hierarchy and coercions. |
-| `lib.replacement`, `lib.agent-lib` | `metabase.replacement.core`, `metabase.agent-lib.representations` | Edge modules; check callers before changing. |
+| `lib.source-swap`, `lib.agent-lib` | `metabase.source-swap.core`, `metabase.agent-lib.representations` | Edge modules; check callers before changing. |
 | `driver` (SQL compile only) | `metabase.driver.sql.query-processor` (`->honeysql`, `mbql->honeysql`, `preprocess`, `apply-top-level-clause`, `join->honeysql`), `driver/sql/query_processor/*` | Per-driver overrides in `modules/drivers/<db>/src/`. HoneySQL helpers: `metabase.util.honey-sql-2`. |
 
 EE hooks: `metabase.query-processor.middleware.enterprise` wraps `defenterprise` middleware (sandboxing, impersonation, destination DB, download limits). Implementations are in `enterprise/backend/src/metabase_enterprise/` (`sandbox`, `impersonation`, `database_routing`).

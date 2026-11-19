@@ -2,7 +2,7 @@
   "The functions of the replacement spec of a Transform."
   (:require
    [metabase.replacement.core :as replacement]
-   [metabase.replacement.util :as replacement.util]))
+   [metabase.source-swap.core :as source-swap]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,8 +12,8 @@
   (let [source (:source transform)
         query  (:query source)]
     (if (and (= :query (:type source))
-             (replacement.util/valid-query? query))
-      (let [query' (replacement/upgrade-field-refs-in-query query)]
+             (replacement/valid-query? query))
+      (let [query' (source-swap/upgrade-field-refs-in-query query)]
         (if (not= query query')
           [[:model/Transform (:id transform) {:source (assoc source :query query')}]]
           []))
@@ -23,8 +23,8 @@
   "The writes that swap `old-source` for `new-source` in the query of `transform`, or nil when it has no valid query."
   [transform old-source new-source]
   (when-let [query (get-in transform [:source :query])]
-    (when (replacement.util/valid-query? query)
-      (let [query' (replacement/swap-source-in-query query old-source new-source)]
+    (when (replacement/valid-query? query)
+      (let [query' (source-swap/swap-source-in-query query old-source new-source)]
         (if (not= query query')
           [[:model/Transform (:id transform) {:source (assoc (:source transform) :query query')}]]
           [])))))

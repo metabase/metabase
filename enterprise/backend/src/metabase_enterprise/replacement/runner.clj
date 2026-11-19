@@ -12,7 +12,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.replacement.util :as replacement.util]
+   [metabase.replacement.core :as replacement]
+   [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -51,7 +52,7 @@
                       (concat
                        ;; Card dataset queries
                        (eduction (comp (keep :dataset_query)
-                                       (filter replacement.util/valid-query?)
+                                       (filter replacement/valid-query?)
                                        (map #(lib/query metadata-provider %)))
                                  (rows-of-type rows :card))
                        ;; Transform query sources
@@ -162,7 +163,7 @@
         fields          (replacement.db/active-fields-of-table table-id)
         field-by-name   (m/index-by :name fields)]
     (doseq [col-meta result-metadata
-            :let [field     (field-by-name (replacement.util/column-match-key col-meta))
+            :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
                   overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
             :when (and field (seq overrides))]
       (field-user-settings/upsert-field-user-settings! field overrides))))

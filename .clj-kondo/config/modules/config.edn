@@ -834,7 +834,6 @@
            events
            lib
            lib.be
-           lib.replacement
            lib.schema
            models
            parameters
@@ -846,6 +845,7 @@
            query-permissions
            query-processor
            remote-sync
+           replacement
            revisions
            search
            serialization
@@ -1300,8 +1300,8 @@
                      lib.legacy-mbql
                      lib.metadata
                      lib.metric
-                     lib.replacement
                      lib.schema
+                     lib.source-swap
                      lib.types}
    :api  #{metabase.lib.core
            metabase.lib.equality
@@ -1399,22 +1399,6 @@
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
-  lib.replacement
-  {:team "Graphy"
-   :ns-prefix "metabase.replacement"
-   :api  #{metabase.replacement.core
-           metabase.replacement.schema
-           metabase.replacement.spec
-           metabase.replacement.util
-           metabase.replacement.walk}
-   :uses #{driver
-           lib
-           lib.metadata
-           lib.schema
-           parameters.schema
-           sql-tools
-           util}}
-
   lib.schema
   {:team "Querying"
    :api #{metabase.lib.schema
@@ -1450,6 +1434,19 @@
           metabase.lib.schema.validate
           metabase.lib.schema.visualization}
    :uses #{lib lib.types util}}
+
+  lib.source-swap
+  {:team "Graphy"
+   :ns-prefix "metabase.source-swap"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema
+           metabase.source-swap.util}
+   :uses #{driver
+           lib
+           lib.metadata
+           lib.schema
+           sql-tools
+           util}}
 
   lib.types
   {:team "Querying"
@@ -1586,7 +1583,6 @@
            events
            lib
            lib.be
-           lib.replacement
            lib.schema
            measures.schema
            metrics
@@ -1594,6 +1590,7 @@
            premium-features
            queries
            remote-sync
+           replacement
            revisions
            search
            serialization
@@ -2312,8 +2309,8 @@
            lib.be
            lib.metadata
            lib.metric
-           lib.replacement
            lib.schema
+           lib.source-swap
            metrics
            models
            parameters
@@ -2325,6 +2322,7 @@
            query-permissions
            query-processor
            remote-sync
+           replacement
            request
            revisions
            search
@@ -2548,6 +2546,11 @@
    :api  #{metabase.remote-sync.core metabase.remote-sync.schema}
    :uses #{premium-features serialization util}}
 
+  replacement
+  {:team "Graphy"
+   :api  #{metabase.replacement.core metabase.replacement.spec metabase.replacement.walk}
+   :uses #{lib lib.schema lib.source-swap parameters.schema util}}
+
   request
   {:team "UX West"
    :module-exports #{request.schema}
@@ -2731,12 +2734,12 @@
            events
            lib
            lib.be
-           lib.replacement
            lib.schema
            models
            premium-features
            queries
            remote-sync
+           replacement
            revisions
            search
            segments.schema
@@ -3233,13 +3236,14 @@
            events
            lib
            lib.be
-           lib.replacement
            lib.schema
+           lib.source-swap
            models
            permissions
            premium-features
            query-processor
            remote-sync
+           replacement
            request
            revisions
            run-tracking
@@ -3637,7 +3641,6 @@
            lib
            lib.be
            lib.metadata
-           lib.replacement
            lib.schema
            lib.types
            models
@@ -3647,6 +3650,7 @@
            queries
            query-processor
            remote-sync
+           replacement
            search
            serialization
            settings
@@ -4271,11 +4275,12 @@
            lib
            lib.be
            lib.metadata
-           lib.replacement
            lib.schema
+           lib.source-swap
            model-persistence
            models
            queries
+           replacement
            task
            transforms
            transforms.schema
