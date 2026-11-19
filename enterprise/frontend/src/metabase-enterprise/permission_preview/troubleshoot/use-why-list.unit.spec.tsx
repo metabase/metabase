@@ -666,6 +666,31 @@ describe("useWhyList", () => {
       tables: [{ title: "Orders" }],
     });
   });
+
+  it("doesn't count a table with two groups' row security as one the person can view", async () => {
+    const { result } = setup({
+      path: "/",
+      productsPolicies: [SALES_PRODUCTS_POLICY, FINANCE_PRODUCTS_POLICY],
+    });
+
+    await waitFor(() => expect(result.current?.page).toBeNull());
+    expect(result.current?.summary.verdict.text).toBe(
+      "Sandy Sales can open 1 collection and view 1 table.",
+    );
+  });
+
+  // guard: one group's row security on a table still counts as viewable
+  it("counts a table with one group's row security as one the person can view", async () => {
+    const { result } = setup({
+      path: "/",
+      productsPolicies: [SALES_PRODUCTS_POLICY],
+    });
+
+    await waitFor(() => expect(result.current?.page).toBeNull());
+    expect(result.current?.summary.verdict.text).toBe(
+      "Sandy Sales can open 1 collection and view 2 tables.",
+    );
+  });
 });
 
 type SetupOpts = {

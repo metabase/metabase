@@ -340,7 +340,9 @@ function getSummaryPage(
   const openCollections = collectionTargets.filter(
     (target) => !isBlocking(target),
   );
-  const viewableTables = tableTargets.filter((target) => !isBlocking(target));
+  const viewableTables = tableTargets.filter(
+    (target) => !isBlocking(target) && !isConflicting(target),
+  );
   const collectionCount = ngettext(
     msgid`${openCollections.length} collection`,
     `${openCollections.length} collections`,
