@@ -319,6 +319,45 @@
           (is (not (contains? (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write" args))
                               :dropped_connections))))))))
 
+(deftest dropped-connections-leave-out-dashcards-with-unreadable-cards-test
+  (testing "a lost connection to a readable series card isn't reported when the dashcard's own card is hidden, as
+            redaction empties that dashcard's mappings"
+    (mt/with-temp [:model/Collection          {open-id :id}     {}
+                   :model/Collection          {locked-id :id}   {}
+                   :model/Dashboard           {dash-id :id}     {:name          "Sales"
+                                                                 :collection_id open-id
+                                                                 :parameters    [{:id   "cat"
+                                                                                  :name "Category"
+                                                                                  :slug "category"
+                                                                                  :type "category"}]}
+                   :model/Card                {hidden-card :id} {:collection_id locked-id
+                                                                 :dataset_query (venues-query)}
+                   :model/Card                {open-card :id}   {:collection_id open-id
+                                                                 :dataset_query (venues-query)}
+                   :model/DashboardCard       {dc-id :id}       {:dashboard_id       dash-id
+                                                                 :card_id            hidden-card
+                                                                 :parameter_mappings
+                                                                 (for [card-id [hidden-card open-card]]
+                                                                   {:parameter_id "cat"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension
+                                                                                   [:field (mt/id :venues :price)
+                                                                                    nil]]})}
+                   :model/DashboardCardSeries _                 {:dashboardcard_id dc-id
+                                                                 :card_id          open-card
+                                                                 :position         0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        ;; No op can drop this connection for a user who can't read the dashcard's card, since every op that
+        ;; reaches it names that card, so this calls the filter directly.
+        (let [dropped [{:parameter_id "cat", :dashcard_id dc-id, :card_id open-card, :series true}]
+              visible (fn [user]
+                        (mt/with-test-user user
+                          (#'tools.dashboard/visible-connections
+                           (t2/hydrate (t2/select-one :model/Dashboard :id dash-id) [:dashcards :series :card])
+                           dropped)))]
+          (is (= dropped (visible :crowberto)) "a user who can read the card is told")
+          (is (empty? (visible :rasta))))))))
+
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
             `:card_id`, so a stale one would report the replace as a no-op and an agent validating before

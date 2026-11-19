@@ -50,12 +50,15 @@
       projections/dashboard-row))
 
 (defn- visible-connections
-  "The `dropped-connections` of the saved or dry-run `dash` whose card the current user can read."
+  "The `dropped-connections` of the saved or dry-run `dash` that redaction would leave visible.
+   That means the user can read both the dashcard's card and the card that lost the connection."
   [dash dropped-connections]
-  ;; Redaction hides the mappings to a card the user can't read, so a lost one isn't reported either.
+  ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
+  ;; card, so a lost connection it would hide isn't reported either.
   (when (seq dropped-connections)
-    (let [readable (redaction/readable-card-ids dash)]
-      (filterv (comp readable :card_id) dropped-connections))))
+    (let [readable          (redaction/readable-card-ids dash)
+          visible-dashcard? (into #{} (comp (filter (comp readable :card_id)) (map :id)) (:dashcards dash))]
+      (filterv (every-pred (comp visible-dashcard? :dashcard_id) (comp readable :card_id)) dropped-connections))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
