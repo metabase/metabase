@@ -39,6 +39,11 @@
     (when (contains? changes :dashboard_id)
       (throw (ex-info (tru "You cannot move a tab to another dashboard.") {:status-code 400})))
     tab))
+
+(t2/define-before-delete :model/DashboardTab
+  [tab]
+  (dashboards.db/delete-dashcards-of-tab! (u/the-id tab)))
+
 ;;; --------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- dashboard-collection-ids

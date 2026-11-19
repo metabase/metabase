@@ -500,3 +500,13 @@
   (testing "parameter mappings of DashboardCard are sequence of mappings"
     (is (not (mr/validate ::dashboards.schema/dashboard-card.update
                           {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
+
+(deftest delete-dashcard-removes-inline-parameters-test
+  (testing "a plain delete of a DashboardCard removes its inline parameters from the Dashboard"
+    (mt/with-temp [:model/Card          card     {}
+                   :model/Dashboard     dash     {:parameters [{:id "p1" :name "P1" :slug "p1" :type "string/="}
+                                                               {:id "p2" :name "P2" :slug "p2" :type "string/="}]}
+                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash) :card_id (u/the-id card)
+                                                  :inline_parameters ["p1"]}]
+      (t2/delete! :model/DashboardCard :id (u/the-id dashcard))
+      (is (= ["p2"] (map :id (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dash))))))))

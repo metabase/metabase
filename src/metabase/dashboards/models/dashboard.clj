@@ -92,7 +92,8 @@
     (dashboards.db/delete-dashboard-revisions! dashboard-id)
     (cache/delete-target-configs! "dashboard" [dashboard-id])
     ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
-    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
+    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)
+    (dashboards.db/delete-dashboard-questions! dashboard-id)))
 
 (defmethod mi/after-archived-change :model/Dashboard
   [_model rows changes]

@@ -106,6 +106,16 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/delete! :model/Pulse :dashboard_id dashboard-id))
 
+(mu/defn delete-dashboard-questions!
+  "Delete the dashboard questions of the Dashboard with `dashboard-id`, returning the number deleted."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/delete! :model/Card :dashboard_id dashboard-id))
+
+(mu/defn delete-dashcards-of-tab!
+  "Delete the DashboardCards on the DashboardTab with `tab-id`, returning the number deleted."
+  [tab-id :- ::lib.schema.id/dashboard-tab]
+  (t2/delete! :model/DashboardCard :dashboard_tab_id tab-id))
+
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]

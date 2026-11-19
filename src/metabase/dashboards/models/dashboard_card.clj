@@ -342,35 +342,26 @@
             (t2/hydrate :series))))))
 
 (defn- cleanup-orphaned-inline-parameters!
-  "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
-   Since inline parameters can only be referenced by a single card, all inline parameters
-   from deleted cards become orphaned."
-  [dashboard-card-ids]
-  (when (seq dashboard-card-ids)
-    (let [cards-being-deleted (dashboards.db/dashcards-by-ids dashboard-card-ids)
-          orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
-          ;; Get dashboard IDs (should all be the same, but let's be safe)
-          dashboard-ids (set (map :dashboard_id cards-being-deleted))]
-      (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
-        (let [dashboard-id (first dashboard-ids)
-              dashboard (dashboards.db/dashboard dashboard-id)
-              current-params (:parameters dashboard)
-              cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
-                                      current-params)]
-          (when (not= (count current-params) (count cleaned-params))
-            (dashboards.db/update-dashboard! dashboard-id {:parameters cleaned-params})
-            (count orphaned-param-ids)))))))
+  "Remove the `inline-parameters` of a deleted DashboardCard, which no other card can reference, from the parameters of
+  its Dashboard."
+  [dashboard-id inline-parameters]
+  (when-let [orphaned-param-ids (not-empty (set inline-parameters))]
+    (when-let [dashboard (dashboards.db/dashboard dashboard-id)]
+      (let [current-params (:parameters dashboard)
+            cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %))) current-params)]
+        (when (not= (count current-params) (count cleaned-params))
+          (dashboards.db/update-dashboard! dashboard-id {:parameters cleaned-params}))))))
+
+(t2/define-before-delete :model/DashboardCard
+  [{:keys [id dashboard_id inline_parameters]}]
+  (cleanup-orphaned-inline-parameters! dashboard_id inline_parameters)
+  (dashboards.db/delete-pulse-cards-for-dashcards! [id]))
 
 (defn delete-dashboard-cards!
-  "Delete DashboardCards of a Dashboard. Automatically cleans up orphaned inline parameters."
+  "Delete the DashboardCards with `dashboard-card-ids`."
   [dashboard-card-ids]
   {:pre [(coll? dashboard-card-ids)]}
-  (t2/with-transaction [_conn]
-    ;; Clean up inline parameters before deletion (since we need to read the cards first)
-    (cleanup-orphaned-inline-parameters! dashboard-card-ids)
-    ;; Delete the cards
-    (dashboards.db/delete-pulse-cards-for-dashcards! dashboard-card-ids)
-    (dashboards.db/delete-dashcards! dashboard-card-ids)))
+  (dashboards.db/delete-dashcards! dashboard-card-ids))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 

@@ -118,3 +118,14 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move"
                             (t2/update! :model/DashboardTab :id (u/the-id tab) {:dashboard_id (u/the-id other)})))
       (is (= (u/the-id dash) (t2/select-one-fn :dashboard_id :model/DashboardTab :id (u/the-id tab)))))))
+
+(deftest delete-tab-deletes-dashcards-through-model-test
+  (testing "deleting a DashboardTab runs the delete hook of its DashboardCards"
+    (mt/with-temp [:model/Card          card    {}
+                   :model/Dashboard     dash    {:parameters [{:id "p1" :name "P" :slug "p" :type "string/="}]}
+                   :model/DashboardTab  tab     {:dashboard_id (u/the-id dash)}
+                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash) :card_id (u/the-id card)
+                                                  :dashboard_tab_id (u/the-id tab) :inline_parameters ["p1"]}]
+      (t2/delete! :model/DashboardTab :id (u/the-id tab))
+      (is (not (t2/exists? :model/DashboardCard :id (u/the-id dashcard))))
+      (is (= [] (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dash)))))))

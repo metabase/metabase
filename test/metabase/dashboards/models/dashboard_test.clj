@@ -622,3 +622,12 @@
         (is (t2/exists? :model/Notification :id (:id notification)))
         (t2/update! :model/Dashboard :id dashboard-id {:archived false})
         (is (t2/exists? :model/Notification :id (:id notification)))))))
+
+(deftest delete-dashboard-deletes-dashboard-questions-through-card-test
+  (testing "hard deleting a Dashboard runs the Card delete hook of its dashboard questions"
+    (mt/with-temp [:model/Dashboard dash {}
+                   :model/Card      card {:dashboard_id (u/the-id dash)}
+                   :model/Revision  _    {:model "Card" :model_id (u/the-id card) :object {}}]
+      (t2/delete! :model/Dashboard :id (u/the-id dash))
+      (is (not (t2/exists? :model/Card :id (u/the-id card))))
+      (is (not (t2/exists? :model/Revision :model "Card" :model_id (u/the-id card)))))))
