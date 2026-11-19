@@ -246,13 +246,18 @@ export function DataAppFrame({
 
               iframePathRef.current = data.path;
 
-              if (onPathChangeRef.current) {
-                if (isPathControlledRef.current) {
-                  reportedPathsRef.current.push(data.path);
-                }
-
-                onPathChangeRef.current(data.path);
+              if (data.path === pathRef.current) {
+                // The host's `path` already names this page, so it will not change, and the earlier reports
+                // will not come back. Keeping them would treat a later host navigation to one as an echo.
+                reportedPathsRef.current = [];
+              } else if (
+                onPathChangeRef.current &&
+                isPathControlledRef.current
+              ) {
+                reportedPathsRef.current.push(data.path);
               }
+
+              onPathChangeRef.current?.(data.path);
             },
           )
           .with({ type: "metabase.embed.handleLink" }, ({ data }) => {
@@ -281,7 +286,12 @@ export function DataAppFrame({
     isPathControlledRef,
   ]);
 
+  // With `initialPath` only, the host does not navigate the app. When the host starts passing `path`, the app goes to it.
   useLayoutEffect(() => {
+    if (!isPathControlled) {
+      return;
+    }
+
     const reportedIndex = reportedPathsRef.current.indexOf(path);
 
     if (path === iframePathRef.current) {
@@ -291,7 +301,7 @@ export function DataAppFrame({
     } else {
       navigateIframeRef.current(path);
     }
-  }, [path]);
+  }, [path, isPathControlled]);
 
   if (error) {
     return <SdkError message={error} />;

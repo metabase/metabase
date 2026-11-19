@@ -47,8 +47,8 @@ export interface DataAppProps {
    *
    * It is not called when the host changes the `path` prop.
    *
-   * With `path`, pass each reported path back to it, directly or through your router. A reported path that
-   * comes back later is treated as that report, not as a request to navigate.
+   * With `path`, pass each reported path back to it unchanged, directly or through your router. A reported path
+   * that comes back later is treated as that report, not as a request to navigate.
    *
    * @example
    * ```tsx

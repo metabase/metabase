@@ -126,6 +126,7 @@ function HostWithPathState() {
     <>
       <p data-testid="host-path">{path}</p>
       <button onClick={() => setPath("boba-hq")}>Home</button>
+      <button onClick={() => setPath("boba-hq/orders/42")}>Orders</button>
       <DataApp path={path} onPathChange={setPath} />
     </>
   );
@@ -572,6 +573,50 @@ describe("DataApp", () => {
 
     expect(postMessage.mock.calls).toEqual([
       [navigateMessage("boba-hq/orders"), ORIGIN],
+    ]);
+  });
+
+  it("navigates to a page the app left before the host rendered its reports", async () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+
+    // e.g. a page that redirects straight back, with both reports rendered together
+    act(() => {
+      for (const path of ["boba-hq/orders/42", "boba-hq"]) {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            source: iframe.contentWindow,
+            origin: ORIGIN,
+            data: { type: "metabase.embed.dataAppPathChange", data: { path } },
+          }),
+        );
+      }
+    });
+
+    postMessage.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Orders" }));
+
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq/orders/42"), ORIGIN],
+    ]);
+  });
+
+  it("navigates to path when the host starts passing it after the user navigated", () => {
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders");
+    postMessage.mockClear();
+
+    rerender(<DataApp path="boba-hq" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq"), ORIGIN],
     ]);
   });
 
