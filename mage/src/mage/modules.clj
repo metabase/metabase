@@ -142,6 +142,7 @@
      auth-provider
      batch-processing
      bookmarks
+     change-log
      channel
      util.classloader
      collections

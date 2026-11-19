@@ -11,7 +11,7 @@ redirect_from:
 
 ![Data Studio](./images/data-studio.png)
 
-Data Studio provides tools to shape and track your data so everyone can trust the numbers.
+Use Data Studio to:
 
 - **Create an easy-to-understand semantic layer** to match how people think about your business.
 - **Speed up queries** by transforming tables to anticipate usage patterns.

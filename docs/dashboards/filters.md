@@ -1,6 +1,6 @@
 ---
 title: Dashboard filters
-summary: Make your dashboards do more with filters and parameters. Instead of creating a bunch of similar dashboards, just add widgets to change variables.
+summary: Add filter and parameter widgets so people can change what data a dashboard shows, and how the dashboard shows it.
 redirect_from:
   - /docs/latest/users-guide/08-dashboard-filters
 ---
