@@ -48,7 +48,7 @@ export function DimensionBucketMenu({
           <Icon name="chevrondown" size={10} />
         </ActionIcon>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown style={{ overflowY: "auto" }}>
         {visibleOptions.map((option) => (
           <Menu.Item
             key={option.displayName}
