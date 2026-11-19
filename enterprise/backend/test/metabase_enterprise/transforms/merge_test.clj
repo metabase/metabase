@@ -18,62 +18,82 @@
 
 (set! *warn-on-reflection* true)
 
+;; The tests below insert rows into their source tables, and one deletes a row, so the datasets here are not static.
+;; `defdataset` always makes a static dataset, which drivers like Snowflake, BigQuery and MotherDuck share between test
+;; runs; then one run's rows turn up in the next run's first build. A dataset with `:static false` gets its own copy in
+;; each run.
+
 ;; An append-only status log: `order_id` repeats across rows, `change_seq` is the checkpoint column.
-(mt/defdataset merge-test
+(def merge-test
   "A tiny event-log dataset for testing the merge strategy. `order_id` is the merge key and repeats
    across rows; `change_seq` is the incremental checkpoint column."
-  [["order_status"
-    [{:field-name "order_id" :base-type :type/Integer}
-     {:field-name "status" :base-type :type/Text}
-     {:field-name "change_seq" :base-type :type/Integer}]
-    [[1 "created" 1]
-     [2 "created" 2]
-     [3 "created" 3]]]])
+  (mt/dataset-definition
+   "merge-test"
+   [["order_status"
+     [{:field-name "order_id" :base-type :type/Integer}
+      {:field-name "status" :base-type :type/Text}
+      {:field-name "change_seq" :base-type :type/Integer}]
+     [[1 "created" 1]
+      [2 "created" 2]
+      [3 "created" 3]]]]
+   {:static false}))
 
 ;; Like merge-test but with a temporal checkpoint column (regression coverage for GDGT-2847).
-(mt/defdataset merge-temporal-test
+(def merge-temporal-test
   "An event-log dataset whose incremental checkpoint column is a timestamp instead of an integer."
-  [["order_status_ts"
-    [{:field-name "order_id" :base-type :type/Integer}
-     {:field-name "status" :base-type :type/Text}
-     {:field-name "changed_at" :base-type :type/DateTime}]
-    [[1 "created" #t "2026-01-30T10:00:00"]
-     [2 "created" #t "2026-01-31T21:00:04"]
-     [3 "created" #t "2026-01-31T21:00:04"]]]])
+  (mt/dataset-definition
+   "merge-temporal-test"
+   [["order_status_ts"
+     [{:field-name "order_id" :base-type :type/Integer}
+      {:field-name "status" :base-type :type/Text}
+      {:field-name "changed_at" :base-type :type/DateTime}]
+     [[1 "created" #t "2026-01-30T10:00:00"]
+      [2 "created" #t "2026-01-31T21:00:04"]
+      [3 "created" #t "2026-01-31T21:00:04"]]]]
+   {:static false}))
 
-(mt/defdataset merge-lookback-data
+(def merge-lookback-data
   "An event-log dataset with a timestamp checkpoint column, for the lookback-window test."
-  [["order_status_lb"
-    [{:field-name "order_id" :base-type :type/Integer}
-     {:field-name "status" :base-type :type/Text}
-     {:field-name "changed_at" :base-type :type/DateTime}]
-    [[1 "created" #t "2026-01-30T10:00:00"]
-     [2 "created" #t "2026-01-31T21:00:04"]
-     [3 "created" #t "2026-01-31T21:00:04"]]]])
+  (mt/dataset-definition
+   "merge-lookback-data"
+   [["order_status_lb"
+     [{:field-name "order_id" :base-type :type/Integer}
+      {:field-name "status" :base-type :type/Text}
+      {:field-name "changed_at" :base-type :type/DateTime}]
+     [[1 "created" #t "2026-01-30T10:00:00"]
+      [2 "created" #t "2026-01-31T21:00:04"]
+      [3 "created" #t "2026-01-31T21:00:04"]]]]
+   {:static false}))
 
 ;; A unix-timestamp (epoch seconds) checkpoint column: numeric in storage, temporal via its
 ;; coercion strategy / effective type (set by the test after sync).
-(mt/defdataset merge-unix-ts-data
+(def merge-unix-ts-data
   "An event-log dataset whose checkpoint column is a unix-timestamp integer."
-  [["order_status_unix"
-    [{:field-name "order_id" :base-type :type/Integer}
-     {:field-name "status" :base-type :type/Text}
-     {:field-name "changed_at" :base-type :type/BigInteger}]
-    [[1 "created" 1000000]
-     [2 "created" 2000000]
-     [3 "created" 2000000]]]])
+  (mt/dataset-definition
+   "merge-unix-ts-data"
+   [["order_status_unix"
+     [{:field-name "order_id" :base-type :type/Integer}
+      {:field-name "status" :base-type :type/Text}
+      {:field-name "changed_at" :base-type :type/BigInteger}]
+     [[1 "created" 1000000]
+      [2 "created" 2000000]
+      [3 "created" 2000000]]]]
+   {:static false}))
 
 ;; Two key columns (order_id, region) for testing a composite merge key.
-(mt/defdataset merge-composite-test
+(def merge-composite-test
   "An event log keyed on (order_id, region), for testing a two-column merge key."
-  [["order_region_status"
-    [{:field-name "order_id" :base-type :type/Integer}
-     {:field-name "region" :base-type :type/Text}
-     {:field-name "status" :base-type :type/Text}
-     {:field-name "change_seq" :base-type :type/Integer}]
-    [[1 "us" "created" 1]
-     [1 "eu" "created" 2]
-     [2 "us" "created" 3]]]])
+  (mt/dataset-definition
+   "merge-composite-test"
+   [["order_region_status"
+     [{:field-name "order_id" :base-type :type/Integer}
+      {:field-name "region" :base-type :type/Text}
+      {:field-name "status" :base-type :type/Text}
+      {:field-name "change_seq" :base-type :type/Integer}]
+     [[1 "us" "created" 1]
+      [1 "eu" "created" 2]
+      [2 "us" "created" 3]]]]
+   {:static false}))
 
 (defn- test-drivers []
   (mt/normal-drivers-with-feature :transforms/table))
