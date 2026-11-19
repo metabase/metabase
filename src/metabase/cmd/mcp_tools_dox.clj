@@ -31,7 +31,8 @@
 ;;;; Reading a property's JSON Schema
 ;;;;
 ;;;; A nullable argument publishes as a type array (`{:type ["integer" "null"] :description ...}`) where it can, but
-;;;; as `{:anyOf [X {:type "null"}]}` otherwise, and an `[:or ...]` keeps its descriptions and enums on the branches.
+;;;; as `{:anyOf [X {:type "null"}]}` otherwise. A nullable union of disjoint types also becomes one type array, with
+;;;; its branch descriptions joined; any other `[:or ...]` keeps its descriptions and enums on the branches.
 ;;;; Everything below reads through those alternatives.
 
 (defn- union-branches
