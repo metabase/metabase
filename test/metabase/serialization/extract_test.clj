@@ -9,12 +9,13 @@
 
 (defmethod serialization/spec :model/SerdesTestEntity [_]
   {:schema    [:map {:closed true}
-               [:serdes/meta :any]
+               [:serdes/meta {:optional true} :any]
                [:entity_id :string]
                [:name {:optional true} :string]
                [:archived {:optional true} :boolean]
                [:card {:optional true} [:maybe :string]]
-               [:secret {:optional true} :string]]
+               [:secret {:optional true} :string]
+               [:size {:optional true} :int]]
    :copy      [:entity_id :name :archived]
    :skip      []
    :transform {:card_id {:as     :card
@@ -67,8 +68,8 @@
 (deftest ^:parallel extract-batch-validates-test
   (testing "an export that does not match the schema of the spec fails"
     (let [[failed] (serialization.extract/extract-batch :model/SerdesTestEntity (counting-store (atom []))
-                                                        [(entity 1 7 :size 3)])]
-      (is (re-find #"Invalid export of :model/SerdesTestEntity" (ex-message (ex-cause failed)))))))
+                                                        [(entity 1 7 :secret 5 :public true)])]
+      (is (re-find #"Invalid SerdesTestEntity" (ex-message (ex-cause failed)))))))
 
 (deftest ^:parallel deserialize-entities-test
   (testing "deserializes a batch, restoring defaults and renamed keys, and setting missing exported columns to nil"
@@ -78,3 +79,20 @@
             (protocol.stub/stub-store {:fk (fn [eid _] (parse-long (subs eid 5)))})
             [{:entity_id (format "%021d" 1) :name "Entity 1" :card "card-7" :size 3}]
             {})))))
+
+(deftest ^:parallel deserialize-entities-checks-schema-test
+  (let [store  (protocol.stub/stub-store {:fk (fn [eid _] (parse-long (subs eid 5)))})
+        entity {:entity_id (format "%021d" 1) :name "Entity 1" :card "card-7"}]
+    (testing "drops keys its spec does not read before checking the entity"
+      (is (=? [{:name "Entity 1" :card_id 7}]
+              (serialization.entity/deserialize-entities :model/SerdesTestEntity store
+                                                         [(assoc entity :unknown-key 1)] {}))))
+    (testing "refuses value its schema rejects after normalizing it"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid SerdesTestEntity \"0+1\": \{:name"
+                            (serialization.entity/deserialize-entities :model/SerdesTestEntity store
+                                                                       [(assoc entity :name 5)] {}))))
+    (testing "loads value its schema rejects when the import skips schema validation"
+      (is (=? [{:name 5}]
+              (serialization.entity/deserialize-entities :model/SerdesTestEntity store
+                                                         [(assoc entity :name 5)]
+                                                         {:skip-schema-validation? true}))))))

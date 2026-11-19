@@ -17,7 +17,7 @@ First, create and save a question or model that returns the result set you'd lik
 
 To reference that question or model in a SQL query, use typeahead search in a variable prefixed with `#`.
 
-Type `{% raw %}{{#your search term }}{% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
+Type `{% raw %}{{#{% endraw %}` followed by part of the name or ID of a model or question, like `{% raw %}{{#orders{% endraw %}`, and Metabase will display a list of matching models and questions. Metabase won't display the list until you type at least one character after the `#`. When you select an item from the list, Metabase adds the closing `{% raw %}}}{% endraw %}` if it's missing.
 
 ![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 

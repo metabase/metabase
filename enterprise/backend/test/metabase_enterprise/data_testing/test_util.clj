@@ -54,6 +54,14 @@
      :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
                              (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
 
+(defn segment-on
+  "Segment attributes for a segment named `segment-name` on the table `table-id`, selecting every row."
+  [table-id segment-name]
+  (let [mp (mt/metadata-provider)]
+    {:name       segment-name
+     :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                             (lib/= 1 1))}))
+
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."
   [features & body]
@@ -72,3 +80,13 @@
               :schema   "PUBLIC"
               :name     (str (u/upper-case-en (name table)) "_SUMMARY")
               :database (mt/id)}}))
+
+(defn refusal-type
+  "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw. Rethrows any other exception."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (or (:error-type (ex-data e))
+          (throw e)))))

@@ -3,24 +3,33 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.warehouses.models.database :as database]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -124,15 +133,11 @@
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies)
-  (derive :hook/change-log)
+  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
-
-(methodical/defmethod change-log/ignored-columns :model/Field [_model]
-  #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
 
 (t2/define-after-select :model/Field
   [field]
@@ -164,18 +169,68 @@
           (assoc field :effective_type base-raw))
       field)))
 
+(defn- coercion-strategy
+  "The `:coercion_strategy` of `field` as a keyword, or nil when it has none or one the column does not take."
+  [field]
+  (let [coercion (some-> (:coercion_strategy field) keyword)]
+    (when (isa? coercion :Coercion/*)
+      coercion)))
+
+(defn- coercion-changes
+  "The `:coercion_strategy` and `:effective_type` to write for `field` given the columns `changes` writes: the effective
+  type of a newly set strategy that comes without one, and neither once the `:base_type` moves away from the strategy."
+  [{:keys [base_type] :as field} changes]
+  (when-let [coercion (coercion-strategy field)]
+    (cond
+      (and (contains? changes :coercion_strategy) (not (contains? changes :effective_type)))
+      {:effective_type (types/effective-type-for-coercion coercion)}
+
+      (and (contains? changes :base_type)
+           (not (contains? changes :coercion_strategy))
+           (not (types/is-coercible-from? coercion (keyword base_type))))
+      {:coercion_strategy nil, :effective_type base_type})))
+
+(defn- check-fk-target
+  "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the Database of its Table."
+  [{:keys [table_id fk_target_field_id]}]
+  (let [target-database-id (get (warehouse-schema.db/field-database-ids #{fk_target_field_id}) fk_target_field_id)]
+    (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
+    (api/checkp (= target-database-id (warehouse-schema.db/table-database-id table_id))
+                :fk_target_field_id (tru "Target field must belong to the same database"))))
+
+(defn nested-fields-pattern
+  "The SQL LIKE pattern matching the NFC paths of the Fields nested in the JSON Field named `field-name`."
+  [field-name]
+  (str "[\"" field-name "\",%]"))
+
 (t2/define-before-insert :model/Field
   [field]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (-> (merge defaults field)
-        enforce-effective-type-invariant)))
+  (let [field (merge field
+                     {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
+                     (coercion-changes field field))]
+    (when (:fk_target_field_id field)
+      (check-fk-target field))
+    (enforce-effective-type-invariant field)))
 
 (t2/define-before-update :model/Field
-  [field]
-  (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
-  (enforce-effective-type-invariant field))
+  [{:keys [id table_id] :as field}]
+  (let [changes (t2/changes field)
+        field   (merge field (coercion-changes field changes))]
+    (when (contains? changes :table_id)
+      (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
+    (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))
+      (check-fk-target field))
+    (when (false? (:active changes))
+      (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
+      (warehouse-schema.db/clear-fk-targets-to-field! id)
+      (warehouse-schema.db/delete-dimensions-reading-field! id))
+    (when (:display_name changes)
+      (warehouse-schema.db/rename-dimension-for-field! id (:display_name field)))
+    (when (contains? changes :json_unfolding)
+      (warehouse-schema.db/set-nested-fields-active! table_id
+                                                     (nested-fields-pattern (:name field))
+                                                     (boolean (:json_unfolding field))))
+    (enforce-effective-type-invariant field)))
 
 (t2/define-before-delete :model/Field
   [field]
@@ -404,46 +459,56 @@
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
-;; a trio of strings with schema maybe nil.
+(defmethod events/spec :model/Field
+  [_model]
+  {:create :event/field-create
+   :update :event/field-update
+   :delete :event/field-delete})
 
-(def ^:private table-transform
-  serialization/table-transform)
+(defmethod app-db-copy/spec :model/Field [_model]
+  {:skip?     false
+   :select    warehouse-schema.db/copy-fields-select
+   :transform warehouse-schema.app-db-copy/transform-field})
 
-(def ^:private field-transform
-  serialization/field-transform)
+(defmethod change-log/spec :model/Field [_model]
+  {:track [:name :base_type :semantic_type :active :description :preview_display :position :table_id :parent_id
+           :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
+           :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
+           :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
+           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
+   :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+           :is_defective_duplicate :unique_field_helper]})
 
 (defmethod serialization/spec :model/Field [_]
-  {:schema    ::warehouse-schema.schema/external-field
-   :identity  [:table_id :parent_id :name]
-   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
-               :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
-               :database_partitioned :database_position :database_required :database_type
-               :description :display_name :effective_type :has_field_values
-               :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
-               :visibility_type]
-   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-               :is_defective_duplicate :unique_field_helper]
-   :children  {:dimensions :model/Dimension}
-   :transform {:table_id           table-transform
-               :fk_target_field_id field-transform
-               :parent_id          field-transform}
-   :defaults  {:active                     true
-               :database_is_auto_increment false
-               :database_required          false
-               :json_unfolding             false
-               :preview_display            true}})
+  {:schema        ::warehouse-schema.schema/external-field
+   :identity      [:table_id :parent_id :name]
+   :copy          [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default
+                   :database_indexed :database_is_auto_increment :database_is_generated :database_is_nullable
+                   :database_is_pk :database_partitioned :database_position :database_required :database_type
+                   :description :display_name :effective_type :has_field_values
+                   :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type
+                   :settings :visibility_type]
+   :skip          [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+                   :is_defective_duplicate :unique_field_helper]
+   :children      {:dimensions :model/Dimension}
+   :transform     {:table_id           serialization/table-transform
+                   :fk_target_field_id serialization/field-transform
+                   :parent_id          serialization/field-transform}
+   :defaults      {:active                     true
+                   :database_is_auto_increment false
+                   :database_required          false
+                   :json_unfolding             false
+                   :preview_display            true}
+   :entity-ref    warehouse-schema.serialization/field-entity-ref
+   :storage-paths warehouse-schema.serialization/field-storage-paths
+   :rows-by-refs  serialization/field-rows-by-refs})
 
-(defmethod serialization/entity-ref :model/Field [_ {:keys [table_id parent_id name]}]
-  (conj (or parent_id table_id) name))
+(defmethod dependencies/spec :model/Field [_model]
+  {:part-of      {:type :table :key :table_id}
+   :part-columns warehouse-schema.dependencies/field-columns})
 
-(defmethod serialization/storage-paths :model/Field [_ entities _]
-  (mapv (fn [field]
-          (let [[db-name schema table-name & field-names] (serialization/entity-ref :model/Field field)
-                field-name                                (str/join "." field-names)]
-            (conj (serialization/storage-path-prefixes [db-name schema table-name])
-                  {:label "fields"}
-                  {:label field-name :key field-name})))
-        entities))
+(defmethod xrays/spec :model/Field [_model]
+  {:related    warehouse-schema.xrays/field-related
+   :definition warehouse-schema.xrays/field-definition})

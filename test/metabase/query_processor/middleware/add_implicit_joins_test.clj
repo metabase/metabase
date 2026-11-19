@@ -76,6 +76,8 @@
                 :query)
             (-> (lib/update-query-stage query 0 (fn [stage]
                                                   (#'qp.add-implicit-joins/resolve-implicit-joins query [:stages 0] stage)))
+                ;; existing usage -- do not use going forward
+                #_{:clj-kondo/ignore [:deprecated-var]}
                 lib/->legacy-MBQL
                 :query)))))
 
@@ -89,6 +91,8 @@
      (qp.add-implicit-joins/add-implicit-joins query)
      (-> (lib/query metadata-provider query)
          qp.add-implicit-joins/add-implicit-joins
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          lib/->legacy-MBQL))))
 
 (deftest ^:parallel basic-test
@@ -274,6 +278,8 @@
     (qp.add-implicit-clauses/add-implicit-clauses query)
     (-> (lib/query meta/metadata-provider query)
         qp.add-implicit-clauses/add-implicit-clauses
+        ;; existing usage -- do not use going forward
+        #_{:clj-kondo/ignore [:deprecated-var]}
         lib/->legacy-MBQL)))
 
 (deftest ^:parallel source-field-name-join-alias-test
@@ -462,8 +468,12 @@
                                       :order-by     [[:asc $id]]
                                       :limit        2}))]
                 (is (=? (-> (nth (iterate lib/append-stage base-expected) level)
+                            ;; existing usage -- do not use going forward
+                            #_{:clj-kondo/ignore [:deprecated-var]}
                             lib/->legacy-MBQL)
                         (-> (add-implicit-joins query)
+                            ;; existing usage -- do not use going forward
+                            #_{:clj-kondo/ignore [:deprecated-var]}
                             lib/->legacy-MBQL
                             (m/dissoc-in [:query :source-metadata]))))))))))))
 
@@ -969,10 +979,13 @@
                                 [:field (meta/id :orders :discount)   {}]
                                 [:field (meta/id :orders :created-at) {}]
                                 [:field (meta/id :orders :quantity)   {}]]}
-                (-> query' lib/->legacy-MBQL :query :source-query))))
+                ;; existing usage -- do not use going forward
+                (-> query' #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL :query :source-query))))
       (testing "after add-implicit-joins"
         (let [query'' (-> query'
                           qp.add-implicit-joins/add-implicit-joins
+                          ;; existing usage -- do not use going forward
+                          #_{:clj-kondo/ignore [:deprecated-var]}
                           lib/->legacy-MBQL)]
           (is (=? {:source-table (meta/id :orders)
                    :fields       [[:field (meta/id :orders :id)         {}]

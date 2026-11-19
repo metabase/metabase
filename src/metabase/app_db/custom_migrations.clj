@@ -2336,3 +2336,61 @@
                       (t2/exists? :collection :location [:like (str location "%")]))
           (t2/query {:delete-from :permissions :where [:= :collection_id resource_collection_id]})
           (t2/query {:delete-from :collection :where [:= :id resource_collection_id]}))))))
+
+(defn- segment-definition-fragment
+  "The decoded `definition` of a segment when it is a bare MBQL 4 fragment, such as `{\"filter\" [...]}`, and nil when
+  it is empty or a full query already."
+  [definition]
+  (let [parsed (try (json/decode definition) (catch Exception _ nil))]
+    (when (and (map? parsed)
+               (seq parsed)
+               (not-any? #(contains? parsed %) ["lib/type" "type" "database"]))
+      parsed)))
+
+(define-migration UpgradeSegmentDefinitionFragments
+  (run! (fn [{:keys [id definition table_id db_id]}]
+          (when-let [fragment (segment-definition-fragment definition)]
+            (t2/query {:update :segment
+                       :set    {:definition (json/encode {"database" db_id
+                                                          "type"     "query"
+                                                          "query"    (merge {"source-table" table_id}
+                                                                            (dissoc fragment "aggregation"))})}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:segment.id :segment.definition :segment.table_id :metabase_table.db_id]
+                             :from   [:segment]
+                             :join   [:metabase_table [:= :metabase_table.id :segment.table_id]]})))
+
+(defn- unused-tag-name
+  "The first of `name` followed by \" (2)\", \" (3)\", ... that no transform tag has, cut to fit the column."
+  [name]
+  (let [max-length 254]
+    (->> (iterate inc 2)
+         (map (fn [n]
+                (let [suffix (str " (" n ")")]
+                  (str (subs name 0 (min (count name) (- max-length (count suffix)))) suffix))))
+         (remove #(t2/exists? :transform_tag :name %))
+         first)))
+
+(define-migration RenameDuplicateTransformTags
+  (doseq [{tag-name :name} (t2/query {:select   [:name]
+                                      :from     [:transform_tag]
+                                      :group-by [:name]
+                                      :having   [:> :%count.* 1]})
+          id               (rest (t2/select-pks-vec :transform_tag :name tag-name {:order-by [[:id :asc]]}))]
+    (t2/query {:update :transform_tag
+               :set    {:name (unused-tag-name tag-name)}
+               :where  [:= :id id]})))
+
+(define-migration RenumberDuplicateDashboardCardSeriesPositions
+  (doseq [dashcard-id (into #{}
+                            (map :dashboardcard_id)
+                            (t2/query {:select   [:dashboardcard_id]
+                                       :from     [:dashboardcard_series]
+                                       :group-by [:dashboardcard_id :position]
+                                       :having   [:> :%count.* 1]}))
+          [position id] (map-indexed vector (t2/select-pks-vec :dashboardcard_series
+                                                               :dashboardcard_id dashcard-id
+                                                               {:order-by [[:position :asc] [:id :asc]]}))]
+    (t2/query {:update :dashboardcard_series
+               :set    {:position position}
+               :where  [:= :id id]})))

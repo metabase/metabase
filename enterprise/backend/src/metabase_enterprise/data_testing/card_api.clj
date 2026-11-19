@@ -22,11 +22,10 @@
   (data-testing.errors/refusing "card-test" thunk))
 
 (mu/defn- validate-test! :- :nil
-  "Refuse a test of the Card `card-id` with `inputs` and `expectations` unless it could run."
-  [card-id      :- ms/PositiveInt
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) inputs expectations)))
+  "Refuse a test of the Card `card-id` with the inputs, expectations and `now` of `definition` unless it could run."
+  [card-id    :- ms/PositiveInt
+   definition :- ::data-testing.runner/definition]
+  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
@@ -37,7 +36,7 @@
    {:keys [card-id]} :- [:map {:closed true}
                          [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/card-tests {:card-id card-id}) :can_read))
+  (-> (mi/readable (data-testing.db/card-tests {:card-id card-id}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
@@ -65,10 +64,10 @@
   declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
-   {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
+   {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
-  (validate-test! card_id inputs expectations)
-  (data-testing.db/insert-card-test! (assoc body :creator_id api/*current-user-id*)))
+  (validate-test! card_id (data-testing.runner/test-definition body))
+  (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
   "Update a card test.
@@ -82,11 +81,11 @@
    body :- ::data-testing.schema/card-test.update]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
-    (when (some #(contains? body %) [:card_id :inputs :expectations])
-      (let [{:keys [card_id inputs expectations]} (merge card-test body)]
-        (validate-test! card_id inputs expectations)))
+    (when (some #(contains? body %) (cons :card_id data-testing.runner/definition-keys))
+      (let [{:keys [card_id] :as merged} (merge card-test body)]
+        (validate-test! card_id (data-testing.runner/test-definition merged))))
     (when (seq body)
-      (data-testing.db/update-card-test! id body)))
+      (data-testing.models.card-test/update-card-test! id body)))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -94,7 +93,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.db/delete-card-test! id)
+  (data-testing.models.card-test/delete-card-test! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

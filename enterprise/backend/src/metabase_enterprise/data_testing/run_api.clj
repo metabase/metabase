@@ -20,9 +20,8 @@
   "The ids of the `test-type` tests the current user can read."
   [test-type :- ::data-testing.schema/test-type]
   (into #{}
-        (comp (filter mi/can-read?)
-              (map :id))
-        (t2/hydrate (data-testing.db/saved-tests test-type) :can_read)))
+        (map :id)
+        (mi/readable (data-testing.db/saved-tests test-type))))
 
 (mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]
   "The `[start end]` instants of the date filter `date-string`, or nil when it is nil."

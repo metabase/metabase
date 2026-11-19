@@ -26,7 +26,7 @@
    {:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/transform-tests {:transform-id transform-id}) :can_read))
+  (-> (mi/readable (data-testing.db/transform-tests {:transform-id transform-id}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/transform-test.response
@@ -46,13 +46,12 @@
   declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
-   {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]
+   {:keys [transform_id] :as body} :- ::data-testing.schema/transform-test.create]
   (api/create-check :model/TransformTest body)
   (refusing #(data-testing.runner/validate-test :transform
                                                 (data-testing.db/transform transform_id)
-                                                inputs
-                                                expectations))
-  (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
+                                                (data-testing.runner/test-definition body)))
+  (data-testing.models/create-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/transform-test
   "Update a transform test."
@@ -62,14 +61,13 @@
    body :- ::data-testing.schema/transform-test.update]
   (let [transform-test (api/read-check :model/TransformTest id)]
     (api/update-check transform-test body)
-    (when (some #(contains? body %) [:transform_id :inputs :expectations])
-      (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
+    (when (some #(contains? body %) (cons :transform_id data-testing.runner/definition-keys))
+      (let [{:keys [transform_id] :as merged} (merge transform-test body)]
         (refusing #(data-testing.runner/validate-test :transform
                                                       (data-testing.db/transform transform_id)
-                                                      inputs
-                                                      expectations))))
+                                                      (data-testing.runner/test-definition merged)))))
     (when (seq body)
-      (data-testing.db/update-transform-test! id body)))
+      (data-testing.models/update-transform-test! id body)))
   (data-testing.db/transform-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -77,7 +75,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TransformTest id)
-  (data-testing.db/delete-transform-test! id)
+  (data-testing.models/delete-transform-test! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

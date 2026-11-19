@@ -19,27 +19,35 @@
 
       {:id 830, :table_name \"report_card\", :row_id 5, :action \"update\", :created_at ...}
 
-  While the feature is on, an insert runs one more query, an update two, and a delete two plus the reads of what it
-  cascades to. While it is off, the hooks run no query.
+  While the feature is on, each write of a tracked model adds one query to its batch of events, and a delete reads
+  what it cascades to. While it is off, the consumer runs no query.
 
-  To track a model, derive the hook next to its other hooks:
+  To track a model, give it a spec and derive `:hook/events` next to its other hooks:
 
       (doto :model/PermissionsGroup
         (derive :metabase/model)
         (derive :hook/entity-id)
-        (derive :hook/change-log))
+        (derive :hook/events))
 
-  This logs each insert, update and delete through the model. A delete of any model also logs the rows of tracked
-  tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`) with it, at any depth. The
-  model needs a primary key of one integer column, a before-update, and a namespace that loads at startup:
-  `metabase.change-log.hooks-test` checks all three. With a before-update, Toucan sends no UPDATE when no row would
-  change, and the update logs nothing. A model that has none derives `:hook/change-log-before-update-noop`. The insert
-  hook reads the key from the rows the insert returns, so an insert that picks its returned columns must include the
-  key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert throws in dev and test. In
-  production it goes ahead, and Metabase logs a warning instead of an entry.
+      (defmethod change-log/spec :model/PermissionsGroup [_model]
+        {:track [:name :entity_id :magic_group_type :is_tenant_group]
+         :skip  []})
+
+  The [[spec]] lists every column of the table but `:id`, `:created_at` and `:updated_at`: under `:track` the columns
+  whose change is logged, and under `:skip` the ones whose change alone logs nothing. A new column fails
+  `spec-columns-test` until it is in one of them.
+
+  `metabase.change-log.events` consumes the lifecycle events of the model: it logs each insert, update and delete, once
+  per row at the end of the batch of the write. A model whose delete cascades to a tracked table (`ON DELETE CASCADE`,
+  or `ON DELETE SET NULL`) also derives `:hook/events`, because the cascade is captured at the delete, before the
+  database runs it, and logged with it at any depth. A tracked model needs a primary key of one integer column and a
+  namespace that loads at startup: `metabase.change-log.events-test` checks both. The consumer reads the key from the
+  row the insert returns, so an insert that picks its returned columns must include the key: `[:model/User :id :email]`,
+  not `[:model/User :email]`. Without the key, the insert throws in dev and test. In production it goes ahead, and
+  Metabase logs a warning instead of an entry.
 
   Each model is tracked or not on purpose. A new model fails `tracked-models-test` until it is in `tracked-models` or
-  `untracked-models`, the two lists in `metabase.change-log.hooks-test`.
+  `untracked-models`, the two lists in `metabase.change-log.events-test`, the first being the models with a spec.
 
   A direct table write skips the model: raw SQL, `t2/query`, `t2/update!` on the table name. It logs its rows with
   [[log-rows!]]. The `:metabase/change-log-raw-write` lint reports such a write when the call names the table. A write
@@ -47,11 +55,11 @@
 
   Not captured:
 
-  - a model that does not derive the hook
-  - an update that sets only a model's [[ignored-columns]]: usage stats that reads update (view
+  - a model that is not tracked
+  - an update that sets only columns that the model's [[spec]] skips: usage stats that reads update (view
     counts, last viewed and last used times), and what sync works out for Metabase's own use, such as a field's
     fingerprint
-  - an update that changes no row: the model's before-update makes Toucan send no UPDATE
+  - an update that changes no row
   - migrations, and SQL run outside Metabase
   - a direct table write that opted out, or that does not call [[log-rows!]] and that the lint cannot see: a query
     map built outside the call, or a SQL string
@@ -73,12 +81,15 @@
   Do not follow `id`. An entry takes its id when it is written and shows up when its transaction commits, so a lower
   id can show up after a higher one (`ids-out-of-order-test`)."
   (:require
-   [metabase.change-log.hooks]
+   [metabase.change-log.events]
+   [metabase.change-log.log]
+   [metabase.change-log.spec]
    [potemkin :as p]))
 
-(comment metabase.change-log.hooks/keep-me)
+(comment metabase.change-log.events/keep-me)
 
 (p/import-vars
- [metabase.change-log.hooks
-  ignored-columns
-  log-rows!])
+ [metabase.change-log.log
+  log-rows!]
+ [metabase.change-log.spec
+  spec])

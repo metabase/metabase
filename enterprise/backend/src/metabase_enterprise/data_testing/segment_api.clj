@@ -26,7 +26,8 @@
   [segment-id   :- ms/PositiveInt
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :segment (data-testing.db/segment segment-id) inputs expectations)))
+  (refusing #(data-testing.runner/validate-test :segment (data-testing.db/segment segment-id)
+                                                {:inputs inputs :expectations expectations})))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/segment-test.response]
   "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. Needs Data
@@ -37,7 +38,7 @@
    {:keys [segment-id]} :- [:map {:closed true}
                             [:segment-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (-> (filter mi/can-read? (t2/hydrate (data-testing.db/segment-tests {:segment-id segment-id}) :can_read))
+  (-> (mi/readable (data-testing.db/segment-tests {:segment-id segment-id}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/segment-test.response
@@ -69,7 +70,7 @@
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
   (api/create-check :model/SegmentTest body)
   (validate-test! segment_id inputs expectations)
-  (data-testing.db/insert-segment-test! (assoc body :creator_id api/*current-user-id*)))
+  (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
   "Update a segment test."
@@ -83,7 +84,7 @@
       (let [{:keys [segment_id inputs expectations]} (merge segment-test body)]
         (validate-test! segment_id inputs expectations)))
     (when (seq body)
-      (data-testing.db/update-segment-test! id body)))
+      (data-testing.models.segment-test/update-segment-test! id body)))
   (data-testing.db/segment-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -91,7 +92,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/SegmentTest id)
-  (data-testing.db/delete-segment-test! id)
+  (data-testing.models.segment-test/delete-segment-test! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

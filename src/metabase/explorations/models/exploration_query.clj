@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-query
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -63,3 +64,8 @@
       (when (seq seg-ids)
         (explorations.db/segment-names seg-ids)))
    :segment_id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationQuery [_model]
+  {:skip? false})

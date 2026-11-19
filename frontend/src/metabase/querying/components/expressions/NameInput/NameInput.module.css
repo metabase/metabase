@@ -1,8 +1,11 @@
 .root {
   flex-grow: 1;
 
-  .input {
+  .input,
+  .input:focus-within {
     border: none;
+    box-shadow: none;
+    background-color: transparent;
     font-weight: bold;
     padding-left: var(--mantine-spacing-lg);
   }

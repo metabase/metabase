@@ -9,14 +9,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
-   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
+   [metabase.staleness.core :as staleness]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- effective-children-ids
   "The ids of the unarchived descendants of `collection` the current user writes, answered together."
@@ -25,60 +23,11 @@
                   (collection/descendants-flat collection false))]
     (filterv (collection/visible-collection-ids ids :write) ids)))
 
-(defmulti present-model-items
-  "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
-  matter! The calling function, `present-items`, is responsible for ensuring the order is maintained."
-  {:arglists '([model items])}
-  (fn [model _items] model))
-
-(defn- present-collections [rows]
-  (let [coll-id->coll (into {} (for [{coll :collection} rows
-                                     :when (some? coll)] [(:id coll) coll]))
-        to-fetch (into #{} (comp (keep :effective_location)
-                                 (mapcat collection/location-path->ids)
-                                 (remove coll-id->coll))
-                       (vals coll-id->coll))
-        coll-id->coll (merge (if (seq to-fetch)
-                               (stale.db/collections-by-id to-fetch)
-                               {})
-                             coll-id->coll)
-        annotate (fn [x]
-                   (assoc x :collection {:id (get-in x [:collection :id])
-                                         :name (get-in x [:collection :name])
-                                         :authority_level (get-in x [:collection :authority_level])
-                                         :type (get-in x [:collection :type])
-                                         :effective_ancestors (if-let [loc (:effective_location (:collection x))]
-                                                                (->> (collection/location-path->ids loc)
-                                                                     (map coll-id->coll)
-                                                                     (map #(select-keys % [:id :name :authority_level :type])))
-                                                                [])}))]
-    (map annotate rows)))
-
-(defmethod present-model-items :model/Card [_ cards]
-  (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
-       (map #(assoc % :fully_parameterized (queries/fully-parameterized? %)))
-       present-collections
-       (map (fn [card]
-              (-> card
-                  (assoc :model (if (queries/model? card) "dataset" "card"))
-                  ;; Selected so `queries/model?` above can read :type and so the Card schema upgrade
-                  ;; can run; none of them are part of the listing payload.
-                  (dissoc :dataset_query :type :result_metadata :dimensions :dimension_mappings))))))
-
-(defn- annotate-dashboard-with-collection-info
-  "For dashboards, we want `here` and `location` since they can contain cards as children."
-  [dashboards]
-  (for [{parent-coll :collection
-         :as dashboard} (collections/annotate-dashboards dashboards)]
-    (assoc dashboard
-           :location (or (some-> parent-coll collection/children-location)
-                         "/")
-           :is_tenant_dashboard (some-> parent-coll collection/shared-tenant-collection?))))
-
-(defmethod present-model-items :model/Dashboard [_ dashboards]
-  (->> (t2/hydrate (stale.db/stale-dashboards (set (map :id dashboards))) :can_write :can_delete :can_restore [:collection :effective_location])
-       annotate-dashboard-with-collection-info
-       present-collections))
+(defn- present-model-items
+  "The API items of the stale rows of `model`, in no particular order: `present-items` keeps their order."
+  [model rows]
+  (let [{:keys [load render]} (staleness/spec model)]
+    (map render (load (into #{} (map :id) rows)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

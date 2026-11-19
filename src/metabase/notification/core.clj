@@ -17,7 +17,8 @@
 
 (p/import-vars
  [metabase.notification.card
-  delete-card-notifications-and-notify!]
+  card-notifications
+  notify-card-notifications-deleted!]
  [metabase.notification.payload.core
   notification-payload]
  [metabase.notification.seed

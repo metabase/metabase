@@ -8,7 +8,6 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.oauth-server.core :as oauth-server]
-   [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]

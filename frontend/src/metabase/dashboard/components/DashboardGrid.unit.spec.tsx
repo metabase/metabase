@@ -1,8 +1,24 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { createMockDashboardState, createMockState } from "__support__/state";
 import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupLastDownloadFormatEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import {
+  setupDashcardQueryEndpoints,
+  setupDashcardQueryErrorEndpoint,
+} from "__support__/server-mocks/dashcard";
+import { createMockDashboardState, createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import {
+  act,
   getIcon,
   mockGetBoundingClientRect,
   queryIcon,
@@ -11,8 +27,21 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import {
+  FIRST_COLLECTION,
+  ROOT,
+  createCardFixtures,
+  createCardSearchResults,
+  findSearchResult,
+  getCollectionItems,
+  typeSearchText,
+} from "metabase/common/components/Pickers/tests/search";
+import { fetchDashboardCardData } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import type {
   Card,
   DashCardDataMap,
@@ -21,15 +50,20 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
   createMockDatasetData,
+  createMockNumericColumn,
+  createMockPlaceholderDashboardCard,
 } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { DashboardGridConnected } from "./DashboardGrid";
 
 registerVisualizations();
+registerDashboardVisualizations();
 
 const DASHBOARD_ID = 1;
 
@@ -203,5 +237,235 @@ describe("DashboardGrid", () => {
       expect(within(panel).getByLabelText("close icon")).toBeInTheDocument();
       expect(queryIcon("trash")).not.toBeInTheDocument();
     });
+  });
+});
+
+const FAILING_DASHCARD = createMockDashboardCard({
+  id: 1,
+  card_id: 1,
+  dashboard_id: DASHBOARD_ID,
+  card: createMockCard({ id: 1, name: "Failing card", display: "scalar" }),
+  col: 0,
+});
+
+const SUCCESSFUL_DASHCARD = createMockDashboardCard({
+  id: 2,
+  card_id: 2,
+  dashboard_id: DASHBOARD_ID,
+  card: createMockCard({ id: 2, name: "Successful card", display: "scalar" }),
+  col: 12,
+});
+
+const DASHCARDS = [FAILING_DASHCARD, SUCCESSFUL_DASHCARD];
+
+function setupWithFailingCard() {
+  const dashboard = createMockDashboard({
+    id: DASHBOARD_ID,
+    dashcards: DASHCARDS,
+  });
+
+  setupDashcardQueryErrorEndpoint(DASHBOARD_ID, FAILING_DASHCARD);
+  setupDashcardQueryEndpoints(
+    DASHBOARD_ID,
+    SUCCESSFUL_DASHCARD,
+    createMockDataset({
+      data: createMockDatasetData({
+        rows: [[18760]],
+        cols: [createMockNumericColumn({ name: "count" })],
+      }),
+    }),
+  );
+
+  const { store } = renderWithProviders(
+    <MockDashboardContext
+      dashboardId={DASHBOARD_ID}
+      navigateToNewCardFromDashboard={null}
+      slowCards={{}}
+    >
+      <DashboardGridConnected width={1200} />
+    </MockDashboardContext>,
+    {
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: [createSampleDatabase()],
+        }),
+        dashboard: createMockDashboardState({
+          dashboardId: DASHBOARD_ID,
+          dashboards: {
+            [DASHBOARD_ID]: {
+              ...dashboard,
+              dashcards: DASHCARDS.map((dashcard) => dashcard.id),
+            },
+          },
+          dashcards: Object.fromEntries(
+            DASHCARDS.map((dashcard) => [dashcard.id, dashcard]),
+          ),
+        }),
+      },
+    },
+  );
+
+  return { store };
+}
+
+const getDashcard = (dashcardId: number) => {
+  const index = DASHCARDS.findIndex((dashcard) => dashcard.id === dashcardId);
+  return screen.getAllByTestId("dashcard-container")[index];
+};
+
+describe("DashboardGrid dashcard errors", () => {
+  // The Number chart loads on demand; load it up front so the render does not suspend mid-test.
+  beforeAll(() => loadVisualizationComponents(["scalar"]));
+
+  beforeEach(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("should show an error on a broken card and still show the other cards (metabase#13736)", async () => {
+    const { store } = setupWithFailingCard();
+
+    await act(() => store.dispatch(fetchDashboardCardData()));
+
+    expect(
+      await within(getDashcard(FAILING_DASHCARD.id)).findByText(
+        "There was a problem displaying this chart.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      await within(getDashcard(SUCCESSFUL_DASHCARD.id)).findByText("18,760"),
+    ).toBeInTheDocument();
+    expect(
+      within(getDashcard(SUCCESSFUL_DASHCARD.id)).queryByText(
+        "There was a problem displaying this chart.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("DashboardGrid placeholder question picker", () => {
+  const EXISTING_CARD = createMockCard({
+    id: 2,
+    name: "Existing card",
+    display: "scalar",
+  });
+  const EXISTING_DASHCARD = createDashcard(1, EXISTING_CARD);
+  const PLACEHOLDER_DASHCARD = createMockPlaceholderDashboardCard({
+    id: 2,
+    dashboard_id: DASHBOARD_ID,
+    row: 4,
+    col: 0,
+    size_x: 6,
+    size_y: 4,
+  });
+  const PICKER_CARDS = createCardFixtures([
+    { collection: ROOT, namePrefix: "Root" },
+    { collection: FIRST_COLLECTION, namePrefix: "Regular" },
+  ]);
+
+  beforeAll(() => loadVisualizationComponents(["scalar"]));
+
+  beforeEach(() => {
+    mockGetBoundingClientRect({ width: 1200, height: 800 });
+    process.env.OVERSCAN = "20";
+  });
+
+  const setupPlaceholder = () => {
+    const dashcards = [EXISTING_DASHCARD, PLACEHOLDER_DASHCARD];
+    const dashboard = createMockDashboard({
+      id: DASHBOARD_ID,
+      collection_id: null,
+      dashcards,
+    });
+    const collections = [ROOT, FIRST_COLLECTION];
+
+    setupLastDownloadFormatEndpoints();
+    setupDatabasesEndpoints([]);
+    setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
+    setupCollectionByIdEndpoint({ collections });
+    setupCollectionsEndpoints({ collections, rootCollection: ROOT });
+    collections.forEach((collection) =>
+      setupCollectionItemsEndpoint({
+        collection,
+        collectionItems: getCollectionItems(PICKER_CARDS, collection),
+      }),
+    );
+    setupSearchEndpoints(createCardSearchResults(PICKER_CARDS), undefined, {
+      filterByScope: true,
+    });
+    PICKER_CARDS.forEach(({ id, name }) => {
+      const card = createMockCard({ id, name, display: "scalar" });
+      setupCardEndpoints(card);
+      setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
+      setupDashcardQueryEndpoints(
+        DASHBOARD_ID,
+        createDashcard(PLACEHOLDER_DASHCARD.id, card),
+        createMockDataset({
+          data: createMockDatasetData({
+            rows: [[7]],
+            cols: [createMockNumericColumn({ name: "count" })],
+          }),
+        }),
+      );
+    });
+
+    renderWithProviders(renderGrid(dashboard), {
+      storeInitialState: createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: dashboard.id,
+          dashboards: {
+            [dashboard.id]: {
+              ...dashboard,
+              dashcards: dashcards.map((dashcard) => dashcard.id),
+            },
+          },
+          dashcards: Object.fromEntries(
+            dashcards.map((dashcard) => [dashcard.id, dashcard]),
+          ),
+          dashcardData: createDashcardData([EXISTING_DASHCARD]),
+        }),
+      }),
+    });
+  };
+
+  const getDashcardByKey = (dashcardId: number) =>
+    checkNotNull(
+      screen
+        .getAllByTestId("dashcard")
+        .find(
+          (dashcard) => dashcard.dataset.dashcardKey === String(dashcardId),
+        ),
+    );
+
+  it("should show the card picked from the search in place of the placeholder", async () => {
+    setupPlaceholder();
+
+    await userEvent.click(
+      within(getDashcardByKey(PLACEHOLDER_DASHCARD.id)).getByRole("button", {
+        name: "Select question",
+      }),
+    );
+    await typeSearchText("Regular");
+    await userEvent.click(await findSearchResult("Regular model 2"));
+
+    await waitFor(() =>
+      expect(
+        within(getDashcardByKey(PLACEHOLDER_DASHCARD.id)).getByText(
+          "Regular model 2",
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Select question" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(getDashcardByKey(EXISTING_DASHCARD.id)).getByText(
+        EXISTING_CARD.name,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(getDashcardByKey(EXISTING_DASHCARD.id)).queryByText(
+        "Regular model 2",
+      ),
+    ).not.toBeInTheDocument();
   });
 });

@@ -27,6 +27,7 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -1788,3 +1789,23 @@
                  (->> (driver/prettify-native-form :h2))
                  (str/replace #"\"" "")
                  str/split-lines))))))
+
+(deftest pinned-current-datetime-honeysql-form-test
+  (testing "while the clock is pinned, the current time is a literal of the pinned moment, typed as the driver's own form"
+    (mt/with-results-timezone-id "Asia/Tokyo"
+      (driver/with-driver :h2
+        (let [sql  ["timestamp '2020-06-17 21:00:00.000'"]
+              form (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+                     (sql.qp/current-datetime-honeysql-form :h2))]
+          (is (= sql (sql.qp/format-honeysql :h2 form)))
+          (is (= "timestamp" (h2x/database-type form)))
+          (testing "control: unpinned, the driver's own form"
+            (is (not= sql (sql.qp/format-honeysql :h2 (sql.qp/current-datetime-honeysql-form :h2))))))))))
+
+(deftest pinned-now-is-zoned-only-for-zoned-current-time-types-test
+  (testing "a pinned current time is a wall-clock time for an untyped form and for `timestamp` or `datetime`, any case"
+    (doseq [database-type [nil "timestamp" "TIMESTAMP" "datetime" "DATETIME"]]
+      (is (false? (#'sql.qp/zoned-type? database-type)) (pr-str database-type))))
+  (testing "and an instant for any other type"
+    (doseq [database-type ["timestamptz" "timestamp with time zone" "DateTime64(3, 'UTC')"]]
+      (is (true? (#'sql.qp/zoned-type? database-type)) database-type))))
