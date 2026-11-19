@@ -92,3 +92,15 @@
                                        :when       (and (position step) (position u)
                                                         (> (position step) (position u)))]
                                    [step u]))})))))
+
+(deftest halt-falls-back-to-no-dependencies-on-a-cycle-test
+  (testing "a cycle in the halt's dependencies is logged, and the halt runs with none"
+    (let [halts (atom [])]
+      (mt/with-dynamic-fn-redefs [global-system/halt! (fn [dependencies _opts]
+                                                        (swap! halts conj dependencies)
+                                                        (#'global-system/dependency-graph dependencies)
+                                                        nil)]
+        (with-redefs [core/system-dependencies {::a #{::b}, ::b #{::a}}]
+          (#'core/halt-global-system!)
+          (is (= [{::a #{::b}, ::b #{::a}} {}]
+                 @halts)))))))

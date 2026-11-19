@@ -14,6 +14,7 @@
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [weavejester.dependency :as dep])
   (:import
    (clojure.lang IDeref)
@@ -296,7 +297,15 @@
    Once all have run, throws an ex-info whose `:failures` holds each component key with its exception, and whose
    cause is the first failure, with the others attached to it as suppressed exceptions."
   [handles]
-  (let [failures (u/run-each! (map (fn [handle] [(handle-key handle) #(stop! handle)]) handles))]
+  (let [failures (u/run-each! (map (fn [handle]
+                                     (let [k (handle-key handle)]
+                                       ;; logged as it happens, so a later stop that outlasts shutdown cannot lose it
+                                       [k #(try
+                                             (stop! handle)
+                                             (catch Throwable e
+                                               (log/errorf e "Failed to stop component %s" k)
+                                               (throw e)))]))
+                                   handles))]
     (when (seq failures)
       (let [cause (second (first failures))]
         ;; so a log of the one exception shows every failure's stack trace; the cause itself is skipped, since two stops
@@ -351,20 +360,32 @@
   nil)
 
 (defn- await-starts!
-  "Wait for every start in flight to register or fail, by taking its slot lock, which the start holds throughout.
+  "Wait up to `timeout-ms` for every start in flight to register or fail, and return the keys of those still in flight.
    Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
-  []
-  (doseq [{:keys [handle]} (vals (:starting @admissions))]
-    (mc/without-binding handle #(mc/with-slot-lock handle nil))))
+  [timeout-ms]
+  ;; polled rather than waited on through each start's slot lock, which has no timed wait
+  (let [start      (System/nanoTime)
+        timeout-ns (* 1000000 timeout-ms)]
+    (loop []
+      (let [starting (keys (:starting @admissions))]
+        (if (or (empty? starting) (>= (- (System/nanoTime) start) timeout-ns))
+          (set starting)
+          (do (Thread/sleep 10)
+              (recur)))))))
 
 (defn- begin-halt!
-  "Refuse every later start, then wait for the starts already in flight to register or fail.
+  "Refuse every later start, then wait up to `start-timeout-ms` for the starts already in flight to register or fail.
    Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
-  []
-  (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
-    (throw (ex-info "A component's start cannot halt the system" {})))
-  (close-admission!)
-  (await-starts!))
+  ([]
+   (begin-halt! (quot Long/MAX_VALUE 1000000)))
+  ([start-timeout-ms]
+   (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
+     (throw (ex-info "A component's start cannot halt the system" {})))
+   (close-admission!)
+   (when-let [still-starting (not-empty (await-starts! start-timeout-ms))]
+     (log/warnf "Halting while %d components are still starting, which this halt will not stop: %s"
+                (count still-starting)
+                (pr-str (sort-by str still-starting))))))
 
 (defn halt!
   "Stop every running component [[start!]] started.
@@ -373,7 +394,8 @@
    Otherwise components stop in the reverse of the order they first started in, as far as the dependencies allow.
 
    From the moment it begins, every start throws until [[reopen!]], so a stop cannot restart what the halt stopped.
-   It first waits for the starts already running, holding no lock and with no timeout, so it stops those too.
+   It first waits up to `:start-timeout-ms` of `opts`, unbounded by default, for the starts already running, holding no
+   lock, so it stops those too; one still running after that is logged and left running.
    It does not wait for a stop already running elsewhere, so it can stop what that component uses while that stop runs.
 
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
@@ -381,8 +403,10 @@
   ([]
    (halt! {}))
   ([dependencies]
+   (halt! dependencies {}))
+  ([dependencies {:keys [start-timeout-ms], :or {start-timeout-ms Long/MAX_VALUE}}]
    (let [graph (dependency-graph dependencies)]
-     (begin-halt!)
+     (begin-halt! (min start-timeout-ms (quot Long/MAX_VALUE 1000000)))
      (stop-all! (halt-order graph)))))
 
 (defn reopen!
