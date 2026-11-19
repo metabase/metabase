@@ -17,6 +17,7 @@ import {
 } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { act, fireEvent } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -114,6 +115,14 @@ export async function setup({
     />,
   );
 
+  // The database features decide which functions the editor offers, so wait
+  // for the database as the app does before anyone types.
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory.called(`path:/api/database/${database.id}`),
+    ).toBe(true),
+  );
+  await act(() => fetchMock.callHistory.flush(true));
   await waitFor(() =>
     expect(getEditorContent()).toHaveAttribute("contenteditable", "true"),
   );
@@ -165,10 +174,16 @@ export async function typeText(text: string) {
  * Presses a key, e.g. `Enter`, `Tab` or `ArrowLeft`, in the editor. Resolves
  * with the result of the last keydown: `false` when the editor handled the key
  * and prevented its default action (for Tab, moving focus out of the editor).
+ *
+ * `modKey` holds CodeMirror's `Mod`, which is Ctrl outside macOS (jsdom).
  */
 export async function pressKey(
   key: string,
-  { shiftKey = false, times = 1 }: { shiftKey?: boolean; times?: number } = {},
+  {
+    shiftKey = false,
+    modKey = false,
+    times = 1,
+  }: { shiftKey?: boolean; modKey?: boolean; times?: number } = {},
 ): Promise<boolean> {
   let isNotPrevented = true;
   for (let index = 0; index < times; index++) {
@@ -176,6 +191,7 @@ export async function pressKey(
       isNotPrevented = fireEvent.keyDown(getEditorContent(), {
         key,
         shiftKey,
+        ctrlKey: modKey,
       });
     });
   }
@@ -203,6 +219,16 @@ export async function selectRange(from: number, to: number) {
   const view = getEditorView();
   await interact(() => {
     view.dispatch({ selection: { anchor: from, head: to } });
+  });
+}
+
+/**
+ * Focuses the editor. CodeMirror reports focus changes on a timer, so this
+ * waits for that update too.
+ */
+export async function focusEditor() {
+  await interact(() => {
+    getEditorView().focus();
   });
 }
 

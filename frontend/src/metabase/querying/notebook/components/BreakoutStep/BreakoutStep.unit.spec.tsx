@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -9,6 +10,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_PROVIDER,
@@ -24,6 +26,7 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
   createOrdersIdField,
@@ -171,6 +174,50 @@ function createNativeCardField({ name, baseType }: NativeCardFieldOpts) {
   });
 }
 
+function createQueryWithCustomColumns() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        expressions: [
+          {
+            name: "Half Price",
+            value: {
+              type: "operator",
+              operator: "/",
+              args: [
+                {
+                  type: "column",
+                  name: "PRICE",
+                  sourceFieldId: ORDERS.PRODUCT_ID,
+                },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "Product Date",
+            value: {
+              type: "column",
+              name: "CREATED_AT",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+          },
+          {
+            name: "UserLAT",
+            value: {
+              type: "column",
+              name: "LATITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
+          },
+        ],
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
+  });
+}
+
 interface SetupOpts {
   step?: NotebookStep;
   readOnly?: boolean;
@@ -208,6 +255,48 @@ function setup({ step = createMockNotebookStep(), readOnly }: SetupOpts = {}) {
     getNextBreakouts,
     updateQuery,
   };
+}
+
+interface SetupWithQueryUpdatesOpts {
+  query: Lib.Query;
+}
+
+function setupWithQueryUpdates({ query }: SetupWithQueryUpdatesOpts) {
+  const onQueryChange = jest.fn<void, [Lib.Query]>();
+
+  function BreakoutStepWithQueryUpdates() {
+    const [currentQuery, setCurrentQuery] = useState(query);
+    const step = createMockNotebookStep({ query: currentQuery });
+
+    const handleUpdateQuery = async (nextQuery: Lib.Query) => {
+      setCurrentQuery(nextQuery);
+      onQueryChange(nextQuery);
+    };
+
+    return (
+      <BreakoutStep
+        step={step}
+        stageIndex={step.stageIndex}
+        query={step.query}
+        color="core-summarize"
+        isLastOpened={false}
+        reportTimezone="UTC"
+        updateQuery={handleUpdateQuery}
+      />
+    );
+  }
+
+  renderWithProviders(<BreakoutStepWithQueryUpdates />);
+
+  function getRecentBreakoutNames(): string[] {
+    expect(onQueryChange).toHaveBeenCalled();
+    const [recentQuery] = checkNotNull(onQueryChange.mock.lastCall);
+    return Lib.breakouts(recentQuery, 0).map(
+      (breakout) => Lib.displayInfo(recentQuery, 0, breakout).displayName,
+    );
+  }
+
+  return { getRecentBreakoutNames };
 }
 
 describe("BreakoutStep", () => {
@@ -563,6 +652,86 @@ describe("BreakoutStep", () => {
       const breakouts = getNextBreakouts();
       expect(breakouts).toHaveLength(1);
       expect(breakouts[0].displayName).toBe("Created At: Year");
+    });
+  });
+
+  describe("custom columns", () => {
+    it("should only show bucketing options that fit the type of a custom column", async () => {
+      setup({
+        step: createMockNotebookStep({ query: createQueryWithCustomColumns() }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+
+      const totalOption = await screen.findByRole("option", { name: "Total" });
+      expect(
+        within(totalOption).getByLabelText("Binning strategy"),
+      ).toBeInTheDocument();
+
+      const halfPriceOption = screen.getByRole("option", {
+        name: "Half Price",
+      });
+      expect(
+        within(halfPriceOption).queryByLabelText("Binning strategy"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(halfPriceOption).queryByLabelText("Temporal bucket"),
+      ).not.toBeInTheDocument();
+
+      const userLatOption = screen.getByRole("option", { name: "UserLAT" });
+      expect(
+        within(userLatOption).queryByLabelText("Binning strategy"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(userLatOption).queryByLabelText("Temporal bucket"),
+      ).not.toBeInTheDocument();
+
+      const productDateOption = screen.getByRole("option", {
+        name: "Product Date",
+      });
+      expect(
+        within(productDateOption).queryByLabelText("Binning strategy"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(productDateOption).getByLabelText("Temporal bucket"),
+      ).toBeInTheDocument();
+    });
+
+    it("should allow to pick each custom column as the breakout", async () => {
+      const { getRecentBreakoutNames } = setupWithQueryUpdates({
+        query: createQueryWithCustomColumns(),
+      });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      await userEvent.click(
+        within(
+          await screen.findByRole("option", { name: "Product Date" }),
+        ).getByText("Product Date"),
+      );
+      expect(
+        await screen.findByText("Product Date: Month"),
+      ).toBeInTheDocument();
+      expect(getRecentBreakoutNames()).toEqual(["Product Date: Month"]);
+
+      await userEvent.click(screen.getByText("Product Date: Month"));
+      await userEvent.click(
+        within(
+          await screen.findByRole("option", { name: "Half Price" }),
+        ).getByText("Half Price"),
+      );
+      expect(await screen.findByText("Half Price")).toBeInTheDocument();
+      expect(screen.queryByText("Product Date: Month")).not.toBeInTheDocument();
+      expect(getRecentBreakoutNames()).toEqual(["Half Price"]);
+
+      await userEvent.click(screen.getByText("Half Price"));
+      await userEvent.click(
+        within(
+          await screen.findByRole("option", { name: "UserLAT" }),
+        ).getByText("UserLAT"),
+      );
+      expect(await screen.findByText("UserLAT")).toBeInTheDocument();
+      expect(screen.queryByText("Half Price")).not.toBeInTheDocument();
+      expect(getRecentBreakoutNames()).toEqual(["UserLAT"]);
     });
   });
 
