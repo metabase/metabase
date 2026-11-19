@@ -38,6 +38,7 @@
     :metabase.metabot.schema/row-value.object
     :metabase.search.schema/weights.overrides
     :metabase.settings.schema/setting-value.object
+    :metabase.sync.api.metadata-sync/answer
     :metabase.testing-api.api/echo.body
     :metabase.testing-api.api/query-spec
     :metabase.user-key-value.schema/value.object

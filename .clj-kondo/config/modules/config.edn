@@ -3030,6 +3030,7 @@
            models
            premium-features
            query-processor
+           search
            settings
            sync.analyze
            task

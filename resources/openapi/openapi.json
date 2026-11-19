@@ -31923,6 +31923,456 @@
         "description" : "An identity provider's groups mapped to the Metabase group IDs that membership in them grants. The keys are the\n  provider's -- LDAP group DNs, SAML and JWT group names -- so the map is string-keyed on its way in; it is stored as a\n  JSON setting and read back through that setting's own decoder.",
         "type" : "object"
       },
+      "metabase.sync.metadata-sync.links.field-path" : {
+        "description" : "A Field's name, after the names of its parents. Always one name today.",
+        "items" : {
+          "description" : "value must be a non-blank string.",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "minItems" : 1,
+        "type" : "array"
+      },
+      "metabase.sync.metadata-sync.links.link" : {
+        "additionalProperties" : false,
+        "description" : "A link. `kind` is always `fk` in this version; it is there so that a later version can send other kinds.",
+        "properties" : {
+          "field" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
+          },
+          "kind" : {
+            "const" : "fk"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.target"
+          }
+        },
+        "required" : [ "kind", "field", "target" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.links.target" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "field" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "schema", "table", "field" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.pages.cursor" : {
+        "additionalProperties" : false,
+        "description" : "Where an answer starts: the kind of part, and the key of the last Table that an earlier answer covered of that\n  kind. No key is the start of the kind.",
+        "properties" : {
+          "key" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.key"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "kind" : {
+            "enum" : [ "tables", "links", "stats" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.pages.key" : {
+        "description" : "A Table's place in the order of a Database's Tables: its schema, nil first, then its name.",
+        "maxItems" : 2,
+        "minItems" : 2,
+        "prefixItems" : [ {
+          "anyOf" : [ {
+            "type" : "string"
+          }, {
+            "type" : "null"
+          } ]
+        }, {
+          "type" : "string"
+        } ],
+        "type" : "array"
+      },
+      "metabase.sync.metadata-sync.receive.counts" : {
+        "additionalProperties" : false,
+        "description" : "What an apply did. The keys are snake_case: the counts are part of an API response.",
+        "properties" : {
+          "database_updated" : {
+            "type" : "integer"
+          },
+          "field_values_inserted" : {
+            "type" : "integer"
+          },
+          "fields_inserted" : {
+            "type" : "integer"
+          },
+          "fks_set" : {
+            "type" : "integer"
+          },
+          "row_counts_set" : {
+            "type" : "integer"
+          },
+          "tables_existing" : {
+            "type" : "integer"
+          },
+          "tables_inserted" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "database_updated", "tables_inserted", "tables_existing", "fields_inserted", "fks_set", "row_counts_set", "field_values_inserted" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.receive.result" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "counts" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.receive.counts"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "counts" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.stats.field-values" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "field" : {
+            "items" : {
+              "type" : "string"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "has_more_values" : {
+            "type" : "boolean"
+          },
+          "values" : {
+            "items" : {
+              "anyOf" : [ {
+                "anyOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "number"
+                }, {
+                  "type" : "boolean"
+                }, {
+                  "format" : "uuid",
+                  "type" : "string"
+                }, {
+                  "type" : "string"
+                }, {
+                  "format" : "date-time",
+                  "type" : "string"
+                } ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "field", "values", "has_more_values" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.field" : {
+        "description" : "a Field's entry: its name path, and each of `field-columns` that has a value",
+        "properties" : {
+          "base_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "database_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "last_analyzed" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "path" : {
+            "items" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            },
+            "maxItems" : 50,
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "user_set" : {
+            "items" : {
+              "enum" : [ "description", "fk_target_field_id", "semantic_type" ],
+              "type" : "string"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          }
+        },
+        "required" : [ "path", "base_type", "database_type" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.schema-filter" : {
+        "additionalProperties" : false,
+        "description" : "Which schemas of a Database to send, in the form of a Database's own schema filters.",
+        "properties" : {
+          "patterns" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "inclusion", "exclusion" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "patterns" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.table" : {
+        "description" : "a Table's entry: each of `table-columns` that has a value, and its Fields",
+        "properties" : {
+          "data_source" : {
+            "enum" : [ "ingested", "source-data", "transform", "unknown" ],
+            "type" : "string"
+          },
+          "fields" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.field"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          },
+          "user_set" : {
+            "items" : {
+              "enum" : [ "data_layer", "data_source", "description", "visibility_type" ],
+              "type" : "string"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          }
+        },
+        "required" : [ "name", "fields" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.batch" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.database-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.tables-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-batch"
+        } ]
+      },
+      "metabase.sync.metadata-sync.wire.database-batch" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "dbms_version" : {
+            "description" : "the version a driver reports, in its shape",
+            "properties" : { },
+            "type" : "object"
+          },
+          "timezone" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "database"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.links-batch" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "links"
+          }
+        },
+        "required" : [ "type", "tables" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.links-table" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "links" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.link"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "schema", "name", "links" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.request" : {
+        "description" : "a request for the metadata of one Database; a key that this version does not know is ignored, so that a newer receiver is not refused",
+        "properties" : {
+          "after" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema_filters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.schema-filter"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "database", "engine" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.response" : {
+        "additionalProperties" : false,
+        "description" : "An answer. It names the Database of its request, by `database` and `engine`, so that a receiver can refuse an\n  answer that is for another Database.",
+        "properties" : {
+          "batches" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.batch"
+            },
+            "type" : "array"
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "format_version" : {
+            "type" : "integer"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "format_version", "database", "engine", "batches" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.stats-batch" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "stats"
+          }
+        },
+        "required" : [ "type", "tables" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.stats-table" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "estimated_row_count" : {
+            "type" : "integer"
+          },
+          "field_values" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.stats.field-values"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "schema", "name", "field_values" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.tables-batch" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "tables"
+          }
+        },
+        "required" : [ "type", "tables" ],
+        "type" : "object"
+      },
       "metabase.sync.schedules.ExpandedSchedulesMap" : {
         "additionalProperties" : false,
         "description" : "value must be a valid map of schedule maps for a DB.",
@@ -83857,6 +84307,140 @@
         },
         "summary" : "GET /api/util/random_token",
         "tags" : [ "/api/util" ]
+      }
+    },
+    "/api/warehouse/metadata/apply" : {
+      "post" : {
+        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last\n  answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. A Table the\n  Database already had is not changed, except that an empty FK target, row count or list of field values is filled.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any\n  write:\n\n  - `metadata-sync-format-version-differs`: the answer has another format version.\n  - `metadata-sync-unknown-batch-type`: the answer has a batch of a type this version does not know.\n  - `metadata-sync-malformed-response`: the answer does not have the right shape, or has a value that this version\n    does not accept, such as a type that only a newer Metabase knows.\n  - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.\n\n  And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer.",
+        "operationId" : "post-api-warehouse-metadata-apply",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  },
+                  "response" : {
+                    "description" : "the other Metabase's answer, which the receiver checks",
+                    "properties" : { },
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "database_id", "response" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.receive.result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/warehouse/metadata/apply",
+        "tags" : [ "/api/warehouse" ]
+      }
+    },
+    "/api/warehouse/metadata/changes" : {
+      "post" : {
+        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a\n  page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`\n  while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 400 `metadata-sync-bad-schema-filter`: the `schema_filters` patterns cannot be read.\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit\n    Database and the destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
+        "operationId" : "post-api-warehouse-metadata-changes",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.request"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/warehouse/metadata/changes",
+        "tags" : [ "/api/warehouse" ]
+      }
+    },
+    "/api/warehouse/metadata/request" : {
+      "post" : {
+        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser.\n\n  A request also starts a seed, or keeps it going: for 10 minutes after each request and each applied answer, no sync\n  of the Database runs in this Metabase process, until the last answer is applied.\n\n  Errors, each with an `error-code` in the body:\n\n  - 404 `metadata-sync-no-database`: there is no Database with this id.\n  - 400 `metadata-sync-database-not-loadable`: a stub Database, the audit Database, or a destination Database of\n    database routing.\n  - 409 `metadata-sync-sync-running`: a sync of the Database runs. Ask again when it ends.",
+        "operationId" : "post-api-warehouse-metadata-request",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "after" : {
+                    "anyOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  }
+                },
+                "required" : [ "database_id" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.request"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/warehouse/metadata/request",
+        "tags" : [ "/api/warehouse" ]
       }
     }
   },

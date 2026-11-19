@@ -90,17 +90,22 @@
 (defonce ^:private operation->db-ids (atom {}))
 
 ;; In-JVM only, same scope as `operation->db-ids`.
-(defonce ^:private external-busy-predicates (atom []))
+(defonce ^:private external-busy-predicates (atom #{}))
 
 (defn register-busy-predicate!
-  "Register a 0-arity `pred` to be checked before each `do-sync-operation`.
-  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it
-  (logged at WARN by the caller)."
+  "Register `pred`, a function of a Database, to be checked before each sync operation of that Database, also an
+  explicit one. `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it (logged at WARN by the
+  caller). Registering the same `pred` again does nothing, so pass a var to register at load."
   [pred]
   (swap! external-busy-predicates conj pred))
 
-(defn- external-busy []
-  (some (fn [p] (p)) @external-busy-predicates))
+(defn- external-busy [database]
+  (some (fn [p] (p database)) @external-busy-predicates))
+
+(defn sync-running?
+  "Whether a sync operation of the Database with `database-id` runs in this JVM."
+  [database-id]
+  (boolean (some #(contains? % database-id) (vals @operation->db-ids))))
 
 (defn with-duplicate-ops-prevented
   "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
@@ -312,12 +317,16 @@
 (mu/defn- do-sync-operation*
   "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
   wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
-  Performs no eligibility gating itself — the public wrappers decide whether to call it."
+  Performs no eligibility gating itself — the public wrappers decide whether to call it.
+
+  The busy predicates are asked twice: before anything is written, and again once the operation counts as running
+  for [[sync-running?]]. A predicate's owner that sets its own mark first and then asks [[sync-running?]] can then be
+  sure that it or the sync yields, whichever started last."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- i/DatabaseInstance
    message   :- ms/NonBlankString
    f         :- fn?]
-  (if-let [busy (external-busy)]
+  (if-let [busy (external-busy database)]
     (log/warnf "Skipping %s for database %d: %s"
                (name operation) (u/the-id database) (:reason busy))
     (let [run-type (operation->run-type operation)]
@@ -325,15 +334,20 @@
                                     {:run_type    run-type
                                      :entity_type :database
                                      :entity_id   (u/the-id database)})
-        (let [sync-fn (with-duplicate-ops-prevented
+        (let [step    (partial do-with-error-handling (format "Error in sync step %s" message) f)
+              run     (with-sync-events
                        operation database
-                       (with-sync-events
-                        operation database
-                        (with-start-and-finish-logging
-                         message
-                         (with-db-logging-disabled
-                          (sync-in-context database
-                                           (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
+                       (with-start-and-finish-logging
+                        message
+                        (with-db-logging-disabled
+                         (sync-in-context database step))))
+              sync-fn (with-duplicate-ops-prevented
+                       operation database
+                       (fn []
+                         (if-let [busy (external-busy database)]
+                           (log/warnf "Skipping %s for database %d: %s"
+                                      (name operation) (u/the-id database) (:reason busy))
+                           (run))))
               result (database-routing/with-anonymous-router-access (sync-fn))]
           (when (instance? Throwable result)
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
