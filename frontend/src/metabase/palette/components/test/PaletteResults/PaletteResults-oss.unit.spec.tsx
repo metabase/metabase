@@ -160,6 +160,31 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should link a metric search result to its metric page", async () => {
+    setup({
+      query: "Count of orders",
+      searchItems: [
+        createMockSearchResult({
+          id: 1,
+          model: "card",
+          name: "Count of orders by month",
+        }),
+        createMockSearchResult({
+          id: 2,
+          model: "metric",
+          name: "Count of orders",
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", {
+      name: "Count of orders",
+    });
+    expect(
+      within(option).getByRole("link", { name: "Count of orders" }),
+    ).toHaveAttribute("href", "/metric/2");
+  });
+
   it("should link a data app search result to its app", async () => {
     setup({
       query: "Link",
