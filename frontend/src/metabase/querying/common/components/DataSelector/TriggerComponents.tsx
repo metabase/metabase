@@ -78,7 +78,7 @@ export function FieldTrigger({
   hasMultipleSchemas,
 }: TriggerComponentProps) {
   if (!field || !table) {
-    return <Text>{t`Select...`}</Text>;
+    return <span>{t`Select...`}</span>;
   }
 
   return (
