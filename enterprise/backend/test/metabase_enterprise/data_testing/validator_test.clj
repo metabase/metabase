@@ -201,7 +201,7 @@
   (testing "an E'' string with an escaped quote is rebuilt as written"
     (is (= "UPDATE t SET name = e'it\\'s' WHERE id = 1"
            (write-refusal "UPDATE t SET name = E'it\\'s' WHERE id = 1"))))
-  (testing "an E'' string ending in a doubled backslash passes the re-check of its rebuild, and keeps both backslashes"
+  (testing "control: an E'' string ending in a doubled backslash is rebuilt as written, keeping both backslashes"
     (is (= "UPDATE t SET name = e'a\\\\' WHERE id = 1"
            (write-refusal "UPDATE t SET name = E'a\\\\' WHERE id = 1"))))
   (testing "the text after such a string stays a string though it holds `setval`, so the write passes and calls nothing"
