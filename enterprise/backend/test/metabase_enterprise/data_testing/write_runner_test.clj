@@ -13,9 +13,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,12 +132,13 @@
 (deftest write-to-an-undeclared-table-is-refused-test
   (mt/test-drivers (drivers-that-write)
     (testing "an INSERT whose target has no input is refused, naming the target"
-      (let [sql (str "INSERT INTO " (data-testing.test-util/qualified :orders) " (id) SELECT id FROM " (data-testing.test-util/qualified :people) " WHERE id = ?")
-            e   (try (run-write! sql [1] [(people-rows)] [(reading refunded-only-1)])
-                     nil
-                     (catch ExceptionInfo e e))]
-        (is (= ::data-testing.errors/missing-inputs (:error-type (ex-data e))))
-        (is (re-find (re-pattern (str "(?i)" (:name (data-testing.test-util/table-ref :orders)))) (ex-message e)))))))
+      (let [sql                          (str "INSERT INTO " (data-testing.test-util/qualified :orders)
+                                              " (id) SELECT id FROM " (data-testing.test-util/qualified :people)
+                                              " WHERE id = ?")
+            {:keys [error-type message]} (data-testing.test-util/refusal
+                                          #(run-write! sql [1] [(people-rows)] [(reading refunded-only-1)]))]
+        (is (= ::data-testing.errors/missing-inputs error-type))
+        (is (re-find (re-pattern (str "(?i)" (:name (data-testing.test-util/table-ref :orders)))) message))))))
 
 (deftest write-to-a-table-named-like-a-cte-is-refused-test
   (mt/test-drivers (drivers-that-write)
@@ -211,15 +210,15 @@
 (deftest equals-on-a-write-is-refused-test
   (mt/test-drivers (drivers-that-write)
     (testing "`equals` compares an output, and a write has none"
-      (let [e (try (run-write! (refund-1) ["refunded" 1] [(people-rows)]
-                               [{:type :equals :name "person 1 only" :format :rows
-                                 :columns [{:name "id" :cast_type (first (data-testing.test-util/cast-types))}]
-                                 :rows    [{"id" 1}]}])
-                   nil
-                   (catch ExceptionInfo e e))]
-        (is (= ::data-testing.errors/no-output (:error-type (ex-data e))))
-        (is (re-find #"\"person 1 only\"" (ex-message e)))
-        (is (re-find #"has no output" (ex-message e)))))))
+      (let [{:keys [error-type message]}
+            (data-testing.test-util/refusal
+             #(run-write! (refund-1) ["refunded" 1] [(people-rows)]
+                          [{:type :equals :name "person 1 only" :format :rows
+                            :columns [{:name "id" :cast_type (first (data-testing.test-util/cast-types))}]
+                            :rows    [{"id" 1}]}]))]
+        (is (= ::data-testing.errors/no-output error-type))
+        (is (re-find #"\"person 1 only\"" message))
+        (is (re-find #"has no output" message))))))
 
 (defn- validation-refusal!
   "The `:error-type` and message of the refusal [[data-testing.runner/validate-test]] throws for a test of the write
