@@ -1,6 +1,6 @@
 ---
 name: backend-model-rules
-description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold invariants that do not depend on the user, `mi/can-*?` methods hold per-user rules, write paths call `api/*-check` and open a batch of writes, and each feature that needs to know something about a model reads it from that model's `<feature>/spec`. Use when adding or changing a model, a column, a hook, a permission check, an endpoint or tool that writes a model, a cascade, archiving, or a per-model spec. Preloaded by every `*-backend-expert` agent.
+description: Where a rule about a Toucan 2 model lives and how to write it. Entity schemas normalize and default values at the entry points, hooks hold invariants that do not depend on the user and never normalize or call the warehouse, `mi/can-*?` methods hold per-user rules, write paths call `api/*-check` and open a batch of writes, and each feature that needs to know something about a model reads it from that model's `<feature>/spec`. Use when adding or changing a model, a column, a hook, a permission check, an endpoint or tool that writes a model, a cascade, archiving, or a per-model spec. Preloaded by every `*-backend-expert` agent.
 ---
 
 # Model rules
@@ -47,6 +47,13 @@ that needs the row as stored.
   so a writer whose rows depend on each other writes them in separate statements, dependency first. A check that
   needs the row's id (cycle detection) runs in `before-update` only.
 - Publish no event and record nothing in a model's own hook: consumers react to its lifecycle events (see Events).
+- Never normalize, coerce or default a value of the row: no `lib/normalize`, trimming, lower-casing or `merge` of
+  defaults. The entry points do that with the schema (see Schemas and normalization). A hook derives columns the caller
+  does not supply; it does not repair the ones the caller does.
+- Never call the warehouse or preprocess a query against it (a driver call, a sync, `qp.preprocess`, result metadata).
+  A rule that needs the warehouse (a transform's target table is free, its references resolve) is no invariant: it is
+  a best-effort check of the entry point that has a user waiting, so the API runs it and a SerDes import may store a
+  row that fails it.
 - **Derived column.** Never trusted from the caller: compute and overwrite on insert; recompute when its source
   changes; a change to it alone is a 400; leave it out of the request schema. A column derived only in some states
   (a model's `display` is `:table`) is overwritten in those states and keeps the caller's value in the others.
@@ -63,6 +70,29 @@ that needs the row as stored.
   transaction, so a model whose update writes other rows declares `(mi/define-update-in-transaction :model/X)`.
 - **Rule on another entity's mutable data.** In this order: freeze the column; cascade from the other entity (archived,
   deleted, moved, deactivated); check where the entity is used. Do not check the same rule in the hooks of both.
+
+## Schemas and normalization
+
+A value is normalized once, where it enters, and never after: hooks and `after-select` do not normalize.
+
+- **The entity schema** in `<module>/schema.clj` describes a row a caller may write: closed, one entry per column, each
+  with its type, bounds and, where the input has more than one spelling, a `:decode/normalize` (trim a name, lower-case
+  a host, a string to a keyword, a legacy key to the current one) and a `:default`. Derived columns are not in it.
+- **The API** builds its request schema from the entity schema (`:select-keys`, `:merge` with what is no column), so the
+  defendpoint decoder, which runs `:decode/api` and `:decode/normalize` and fills defaults, hands the endpoint a
+  normalized value. MCP and Metabot tools and the Agent API decode their input with the same schemas.
+- **SerDes** builds the external schema of its spec `:schema` from the same entity schema:
+  `[:schema {:registry lib.schema.id/external-registry} [:merge [:select-keys ::entity [...]] [:map {:closed true} ...]]]`.
+  The registry swaps every id schema for its portable reference, and the extra map holds what only a file has
+  (`:serdes/meta`, a path). The import decodes each entity with it and then validates, so a file is normalized exactly
+  as a request is.
+- **A stored format** that differs from the value in memory is a column transform in `t2/deftransforms`, which may
+  normalize on the way in and out: `lib-be/transform-query` for Card's `dataset_query`, `mi/transform-keyword`, a JSON
+  column with a schema. It is the only normalization below the entry points, and it belongs to the column, so every
+  writer and reader gets it.
+- A writer the product runs itself (sync, a loader, a scheduled task, another model's cascade) writes values that are
+  already in the schema's form. When such a writer needs the hook to tidy its input, fix the writer.
+- A legacy stored shape is rewritten by a data migration, never on read.
 
 ## Permissions
 
@@ -100,7 +130,8 @@ What a writer used to do in such a function has one of these homes:
 | It | Home |
 |---|---|
 | fills a default (`parameters []`, `type :question`) | the entity schema in `<module>/schema.clj` that every entry point decodes with |
-| normalizes a value (a query, keywords, a legacy shape) | the same schema; the API, SerDes, MCP and the tools decode their input with it, and nothing normalizes after that |
+| normalizes a value (a query, keywords, a legacy shape) | the same schema; the API, SerDes, MCP and the tools decode their input with it, and nothing normalizes after that: no hook does (see Schemas and normalization) |
+| checks against the warehouse (a target table is free, a query's references resolve) | the entry point with a user waiting, as a best-effort check; never a hook, so SerDes may import what the API refuses |
 | checks what the row alone answers | the same schema |
 | checks against the database, derives a column, keeps other rows in step (a dashboard question gets its dashcard, positions in a collection are reconciled) | the model's hooks |
 | reacts to the write (revision, audit row, search index, dependencies) | a consumer of the model's events, through its spec |
