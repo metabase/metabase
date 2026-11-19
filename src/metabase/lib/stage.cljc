@@ -6,6 +6,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
@@ -202,7 +203,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- ::lib.metadata.calculation/visible-columns.options]
-  (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)
+  (let [{:keys [source-table source-card source-cte], :as this-stage} (lib.util/query-stage query stage-number)
         card          (some->> source-card (lib.metadata/card query))
         metric-based? (= (:type card) :metric)]
     (vec
@@ -214,6 +215,13 @@
         (assert (integer? source-table))
         (when-some [table (lib.metadata/table query source-table)]
           (lib.metadata.calculation/returned-columns query stage-number table options)))
+      ;; 1b2: Fields the source CTE returns
+      (when source-cte
+        (when-some [cte (lib.cte/find-cte query source-cte)]
+          (into []
+                (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
+                      (map #(assoc % :lib/source :source/previous-stage)))
+                (lib.metadata.calculation/returned-columns (lib.cte/query-for-cte-body query cte)))))
       ;; 1e. Metadata associated with a Metric
       (when metric-based?
         (metric-visible-columns query stage-number card options))

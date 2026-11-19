@@ -34,7 +34,7 @@
               lib/order-bys])))
 
 (def ^:private first-stage-keys
-  #{:expressions :joins :source-table :source-card :filters})
+  #{:expressions :joins :source-table :source-card :source-cte :filters})
 
 ;; TODO (Cam 10/22/25) -- somewhat duplicated with/copied
 ;; from [[metabase.query-processor.util.transformations.nest-breakouts/fields-used-in-breakouts-aggregations-or-expressions]]

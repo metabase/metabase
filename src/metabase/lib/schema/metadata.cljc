@@ -58,6 +58,9 @@
    ;; these are for things from some sort of source other than the current stage;
    ;; they must be referenced with string names rather than Field IDs
    :source/card
+   ;; A column fetched via `(lib/returned-columns query cte-metadata)` — attached to the CTE named in `:lib/cte-name`
+   ;; and not yet pulled into the current stage.
+   :source/cte
    :source/native
    :source/previous-stage
    ;; these are for things that were introduced by the current stage of the query; `:field` references should be
@@ -283,12 +286,14 @@
 (mr/def ::column.validate-for-source-expressions         (column-validate-for-source-schema :source/expressions))
 (mr/def ::column.validate-for-source-implicitly-joinable (column-validate-for-source-schema :source/implicitly-joinable))
 (mr/def ::column.validate-for-source-pivot-grouping      (column-validate-for-source-schema :source/pivot-grouping))
+(mr/def ::column.validate-for-source-cte                 (column-validate-for-source-schema :source/cte))
 
 (mr/def ::column.validate-for-source
   "Do additional validation for column metadata based on `:lib/source`."
   [:multi
    {:dispatch :lib/source}
    [:source/card                [:ref ::column.validate-for-source-card]]
+   [:source/cte                 [:ref ::column.validate-for-source-cte]]
    [:source/native              [:ref ::column.validate-for-source-native]]
    [:source/previous-stage      [:ref ::column.validate-for-source-previous-stage]]
    [:source/table-defaults      [:ref ::column.validate-for-source-table-defaults]]
@@ -487,6 +492,9 @@
    ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
    ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
    [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+   ;; Name of the CTE this column came from, when it was fetched via `(lib/returned-columns query cte-metadata)`
+   ;; before the CTE was joined. Drives column grouping (`:group-type/cte`) in the picker.
+   [:lib/cte-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;;
    ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
    ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for

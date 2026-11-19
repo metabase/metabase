@@ -405,6 +405,16 @@
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
 
+(mu/defn query-for-join :- ::lib.schema/query
+  "A workable query whose shape is the stages of `join` executed in the scope of `outer-query`. Any CTEs declared on
+  the join replace the ones declared on `outer-query`, since the join introduces its own CTE scope."
+  [outer-query :- ::lib.schema/query
+   join        :- ::lib.schema.join/join]
+  (-> outer-query
+      (assoc :stages (:stages join))
+      (dissoc :ctes)
+      (m/assoc-some :ctes (:ctes join))))
+
 (mu/defn drop-later-stages :- ::lib.schema/query
   "Drop any stages in the `query` that come after `stage-number`."
   [query        :- ::legacy-or-mbql5-query

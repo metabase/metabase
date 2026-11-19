@@ -15,7 +15,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (-> (lib.util/query-stage query stage-number)
-      (dissoc :source-table :source-card)
+      (dissoc :source-table :source-card :source-cte)
       (->> (m/filter-keys simple-keyword?))
       not-empty
       boolean))
