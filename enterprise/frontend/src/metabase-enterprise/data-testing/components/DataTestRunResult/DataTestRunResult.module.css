@@ -1,0 +1,16 @@
+.rows [data-row-kind="unexpected"] {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--mb-color-feedback-negative) 12%, transparent) 0 8px,
+    transparent 8px 16px
+  );
+}
+
+.rows [data-row-kind="missing"] {
+  color: var(--mb-color-text-secondary);
+  border-block: 1px dashed var(--mb-color-border-neutral);
+}
+
+.rows [data-row-kind="missing"] [data-row-value] {
+  text-decoration: line-through;
+}

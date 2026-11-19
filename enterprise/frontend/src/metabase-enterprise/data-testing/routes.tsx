@@ -21,12 +21,20 @@ const testRunsPage = () =>
     Component: TransformTestRunsPage,
   }));
 
+const testRunPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/TransformTestRunPage"
+  ).then(({ TransformTestRunPage }) => ({
+    Component: TransformTestRunPage,
+  }));
+
 export function getTransformTestRoutes() {
   return (
     <>
       <Route path=":transformId/tests" lazy={testListPage} />
       <Route path=":transformId/tests/:testId" lazy={testOverviewPage} />
       <Route path=":transformId/tests/:testId/runs" lazy={testRunsPage} />
+      <Route path=":transformId/tests/:testId/runs/:runId" lazy={testRunPage} />
     </>
   );
 }
@@ -52,12 +60,20 @@ const cardTestRunsPage = () =>
     Component: CardTestRunsPage,
   }));
 
+const cardTestRunPage = () =>
+  import(/* webpackChunkName: "data-testing" */ "./pages/CardTestRunPage").then(
+    ({ CardTestRunPage }) => ({
+      Component: CardTestRunPage,
+    }),
+  );
+
 export function getMetricTestRoutes() {
   return (
     <>
       <Route path=":cardId/tests" lazy={cardTestListPage} />
       <Route path=":cardId/tests/:testId" lazy={cardTestOverviewPage} />
       <Route path=":cardId/tests/:testId/runs" lazy={cardTestRunsPage} />
+      <Route path=":cardId/tests/:testId/runs/:runId" lazy={cardTestRunPage} />
     </>
   );
 }
@@ -90,6 +106,13 @@ const segmentTestRunsPage = () =>
     Component: SegmentTestRunsPage,
   }));
 
+const segmentTestRunPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/SegmentTestRunPage"
+  ).then(({ SegmentTestRunPage }) => ({
+    Component: SegmentTestRunPage,
+  }));
+
 const PUBLISHED_TABLE_SEGMENT_TESTS_PATH = ":tableId/segments/:segmentId/tests";
 
 export function getPublishedTableSegmentTestRoutes() {
@@ -106,6 +129,10 @@ export function getPublishedTableSegmentTestRoutes() {
       <Route
         path={`${PUBLISHED_TABLE_SEGMENT_TESTS_PATH}/:testId/runs`}
         lazy={segmentTestRunsPage}
+      />
+      <Route
+        path={`${PUBLISHED_TABLE_SEGMENT_TESTS_PATH}/:testId/runs/:runId`}
+        lazy={segmentTestRunPage}
       />
     </>
   );
@@ -128,6 +155,10 @@ export function getDataModelSegmentTestRoutes() {
       <Route
         path={`${DATA_MODEL_SEGMENT_TESTS_PATH}/:testId/runs`}
         lazy={segmentTestRunsPage}
+      />
+      <Route
+        path={`${DATA_MODEL_SEGMENT_TESTS_PATH}/:testId/runs/:runId`}
+        lazy={segmentTestRunPage}
       />
     </>
   );
