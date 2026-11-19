@@ -1760,7 +1760,8 @@
     (testing "warns that only the first line of a multi-line env var is read"
       (doseq [raw-value ["1,2\n3" "1,2\n\"3"]]
         (testing (pr-str raw-value)
-          (is (= ["Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. Put comma-separated values on one line."]
+          (is (= [(str "Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. "
+                       "Put comma-separated values on one line.")]
                  (warnings raw-value))))))
     (testing "says nothing about one line, or about a first line that does not parse, which fails validation instead"
       (doseq [raw-value ["1,2" "1,\"2"]]

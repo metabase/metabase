@@ -1827,11 +1827,12 @@
   "Logs a warning when the env var for `setting`, a `:csv` setting, has lines after the first, which are not read."
   [setting]
   (when-let [[env-var value] (env-var-source setting)]
-    (let [rows (csv/read-csv value)]
-      ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or
-      ;; not they parse, so a parse error after the first line counts as one.
-      (when (and (try (seq rows) (catch Exception _ nil))
-                 (try (next rows) (catch Exception _ true)))
+    ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
+    ;; they parse, so a parse error after the first line counts as one.
+    (let [rows               (csv/read-csv value)
+          first-line-parses? (try (some? (seq rows)) (catch Exception _ false))
+          more-lines?        (try (some? (next rows)) (catch Exception _ true))]
+      (when (and first-line-parses? more-lines?)
         (log/warnf "Only the first line of %s is used. Put comma-separated values on one line." env-var)))))
 
 (defn validate-settings-formatting!
