@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -134,7 +135,11 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
+
+(methodical/defmethod change-log/ignored-columns :model/Card [_model]
+  #{:last_used_at :view_count})
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column

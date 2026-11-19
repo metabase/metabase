@@ -5,6 +5,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
@@ -431,9 +432,15 @@
 (mu/defn insert-group-memberships-from-mapping!
   "Insert a PermissionsGroupMembership (with `is_group_manager`) for each `[user-id group-id]` pair in
   `user-id-group-id->is-group-manager?`, matching Users to Groups on tenant status; returns the number of rows
-  inserted."
+  inserted. The insert bypasses the model, so it logs the new rows to the change log by hand."
   [user-id-group-id->is-group-manager? :- [:map-of [:tuple ms/PositiveInt ms/PositiveInt] :boolean]]
-  (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?)))
+  (t2/with-transaction [_conn]
+    (u/prog1 (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?))
+      ;; without a pair the condition is empty, and matches every membership
+      (when (seq user-id-group-id->is-group-manager?)
+        (change-log/log-rows! :model/PermissionsGroupMembership :insert
+                              {:where (into [:or] (for [[user-id group-id] (keys user-id-group-id->is-group-manager?)]
+                                                    [:and [:= :user_id user-id] [:= :group_id group-id]]))})))))
 
 (mu/defn group-membership-count
   "The number of memberships of the PermissionsGroup with `group-id`."
@@ -731,8 +738,11 @@
 (mu/defn deactivate-all-tenants!
   "Mark every tenant row inactive."
   []
-  (t2/query {:update :tenant
-             :set    {:is_active false}}))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/Tenant :update)
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/query {:update :tenant
+               :set    {:is_active false}})))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 
