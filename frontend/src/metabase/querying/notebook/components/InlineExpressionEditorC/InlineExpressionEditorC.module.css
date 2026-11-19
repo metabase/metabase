@@ -1,0 +1,135 @@
+/* The box around the editor, the context and the preview. */
+.panel {
+  background-color: var(--mb-color-background_page-primary);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: 8px;
+  box-shadow: var(--mantine-shadow-xs);
+  overflow: hidden;
+}
+
+/* Done (or Cancel), at the end of the row. */
+.toolbar {
+  display: flex;
+  align-items: center;
+}
+
+/* Done and Cancel: text buttons in the brand color. */
+.textButton {
+  color: var(--mb-color-text-brand);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 16px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* The round button at the start of the input: "+" for the AI, "=" for code.
+   32px, fully rounded, like a default button. */
+.modeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 var(--mantine-spacing-sm);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: 24px;
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs);
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background-color: var(--mb-color-button-default-neutral-hover);
+  }
+}
+
+/* The menu of the mode button, 256px wide. */
+.menu {
+  padding: var(--mantine-spacing-sm);
+}
+
+/* The current mode in the menu. */
+.menuItem.isSelected {
+  background-color: var(--mb-color-background_surface-selected);
+}
+
+/* The dots that replace the mode button while the AI works. */
+.loadingDots {
+  width: 18px;
+  color: var(--mb-color-text-secondary);
+}
+
+/* The AI mode: the prompt and an error. Padding like the code's, so that
+   the text doesn't move when the mode changes. */
+.ai {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  padding: 22px 0;
+}
+
+.promptRoot,
+.promptWrapper {
+  width: 100%;
+}
+
+.promptInput {
+  min-height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-font-family);
+  font-size: 14px;
+  line-height: 20px;
+  resize: none;
+
+  &::placeholder {
+    color: var(--mb-color-text-disabled);
+  }
+
+  /* Code to convert, like SQL: the font of the code editor. */
+  &.isCode {
+    font-family: var(--mb-default-monospace-font-family);
+    font-size: 13px;
+  }
+
+  /* While the AI works, the prompt is greyed out. */
+  &.isGenerating {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* "AI can't do this", below the prompt. */
+.error {
+  color: var(--mb-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* The code that the prompt changes, across the bottom of the editor, with
+   × on the right. 40px tall. */
+.contextStrip {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  height: 40px;
+  padding: 0 var(--mantine-spacing-md) 0 21px;
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.contextStripCode {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

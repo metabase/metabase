@@ -10,6 +10,8 @@ Try it: `bun run dev-prototype`, then a new question in the notebook on Prototyp
 | Version | Axis | Folders | Based on | Status |
 |---|---|---|---|---|
 | A | One code editor for everything; templates and functions in the side panel | see below | — | active |
+| B | Separate AI mode and code mode, switched by `=` and the `f` button | `notebook/components/InlineExpressionEditorB/`, `components/expressions/EditorB/` | A | active |
+| C | B with a `+` menu at the start of the input: the modes and code conversions | `notebook/components/InlineExpressionEditorC/`, `components/expressions/EditorC/` | B | active |
 
 Version A is the code as it was when the switcher was added (2026-11-19). It was not moved: Oleh also commits to this branch, and moving files would conflict with his work. Later versions copy the folders they change.
 
@@ -21,18 +23,40 @@ Version A is made of (paths under `frontend/src/metabase/querying/`):
 - `notebook/components/InlineExpressionEditor/` — the editor on the notebook page, toolbar and preview
 - `notebook/components/ClauseStep/use-inline-clause-editor.ts`, `notebook/components/NotebookStepList/CustomColumnRequest.tsx`
 
+Version B copies the notebook editor (host only; it imports A's `ExpressionPreview`) and the `Editor` folder, plus `suggest.ts` into `EditorB/`. The switch is in `InlineExpressionEditor/lazy.tsx`, so B covers custom columns, filters and summaries in the notebook; the popover editors stay A. Figma: Custom expressions file, frames 333:18302 to 333:18964.
+
+Version C copies B's two folders. Figma: frames 337:19006 to 337:19623.
+
 ## Constraints
 - Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves and keeps the editor open.
-- Cmd+Enter shows or hides the preview, or sends a request in words to the AI.
+- A: Cmd+Enter behaves like Enter (since Oleh's d1054a7e59f).
 - Tab and Enter move through a function's placeholders and a template's blanks; the last stop is after `)`.
 - A template never uses made-up column names. Its blanks are named after their type: `[Text]`, `[Number]`, `[Date]`, `[Column]`; `[Number 1]`/`[Number 2]` when two different columns of a type are needed. A blank lists only columns of its type.
-- No suggestion list shows while the text reads like a request in words.
+- A: no suggestion list shows while the text reads like a request in words.
+- B: a new clause starts in AI mode; an existing one (or a draft with text) in code mode.
+- B: `=` typed into an empty prompt switches to code; a pasted `=…` stays a prompt for the AI to convert.
+- B: the `=` before the code is not part of the text; Backspace on empty code goes back to AI mode.
+- B: `f` from code with text goes to AI mode with the code as a context pill, sent to the AI as the expression to change; `f` again returns to the same code.
+- B: removing the context pill starts over: the code and the preview go.
+- C: everything in B, except: the round button left of the input (`+` for AI, `=` for code) opens a menu (Ask AI, Custom expression, Convert: SQL, Python, Excel); the `=` is on that button, not before the code; the context is a full-width strip below the input, not a pill.
+- C: Convert modes take code in a code font, with the placeholder "Convert SQL to custom expression"; there, a typed `=` is part of the code (Excel formulas), and the context strip doesn't show.
+- C: while the AI works, the dots replace the round button and Done becomes Cancel.
+- B: the "Open the docs" row is always the last row of the suggestions and never shows on its own.
 
 ## Decisions
 - 2026-11-17 — The empty editor's list is headed "Suggested", not "Popular".
 - 2026-11-17 — No "Generate with AI" suggestion; Enter or the AI button sends a request.
 - 2026-11-19 — No argument labels (`condition:`, `output:`) inside functions; the setting for them is removed.
 - 2026-11-19 — Template blanks are named after their type (see Constraints).
+- 2026-11-19 — B: the AI's code goes in directly, with no Accept/Reject diff, and the preview runs. Why: matches the flow in Figma (H).
+- 2026-11-19 — B: editing an existing clause opens in code mode.
+- 2026-11-19 — B: no × button. Done saves and closes (an empty new clause is dropped); Escape closes once it doesn't close suggestions or leave placeholders.
+- 2026-11-19 — B: Backspace after `=` on empty code returns to AI mode.
+- 2026-11-19 — B: no Preview, AI or Docs buttons; the preview shows on Enter and after the AI answers, the docs open from the suggestions.
+- 2026-11-19 — B: removing the context pill clears the code and the preview, to start over.
+- 2026-11-19 — C: a conversion starts fresh: the current code isn't sent to the AI, and the context strip hides in the Convert modes.
+- 2026-11-19 — C: Backspace on empty code goes back to Ask AI, like in B.
+- 2026-11-19 — C: Python converts like SQL and Excel, but isn't tuned; it needn't work well in this prototype.
 
 ## Settings
 - `expression-editor-version` — which version shows.
@@ -40,6 +64,9 @@ Version A is made of (paths under `frontend/src/metabase/querying/`):
 - `expression-sql-fixes` — suggest the custom expression for SQL syntax.
 - `expression-hide-ai` — behave as without an AI provider.
 - `expression-preview-context` — context columns in the preview.
+
+## Known bugs
+- A: the spec "shows the preview with Cmd+Enter, and hides it with Cmd+Enter again" fails since Cmd+Enter became Enter (d1054a7e59f).
 
 ## Open questions
 - Should Enter in the popover editors (filters, summaries) also save?
