@@ -32,6 +32,16 @@ describe("StrategyEditorForDatabases (OSS)", () => {
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
+    // The form loads only the root policy: the OSS backend rejects any other model
+    await screen.findByTestId("cache-strategy-select");
+    const cacheRequests = (await findRequests("GET")).filter(
+      ({ url }) => new URL(url).pathname === "/api/cache",
+    );
+    expect(cacheRequests).toHaveLength(1);
+    expect(new URL(cacheRequests[0].url).searchParams.getAll("model")).toEqual([
+      "root",
+    ]);
+
     await selectCacheStrategy(/Adaptive/i);
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
