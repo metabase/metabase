@@ -266,6 +266,21 @@
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
+(deftest metrics-after-shutdown-test
+  (testing "metric calls after shutdown do nothing, so work still draining during shutdown does not throw"
+    (mt/with-prometheus-system! [_ _system]
+      (prometheus/shutdown!)
+      (is (= {:inc     nil
+              :dec     nil
+              :observe nil
+              :set     nil}
+             {:inc     (prometheus/inc! :metabase-email/messages)
+              :dec     (prometheus/dec! :metabase-search/queue-size)
+              :observe (prometheus/observe! :metabase-notification/wait-duration-ms
+                                            {:payload-type :notification/card}
+                                            5)
+              :set     (prometheus/set! :metabase-search/queue-size 1)})))))
+
 (deftest pull-collector-test
   (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
     (mt/with-prometheus-system! [_ system]
