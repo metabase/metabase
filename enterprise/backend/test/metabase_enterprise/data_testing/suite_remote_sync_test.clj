@@ -153,7 +153,7 @@
             (let [{v2 :version :as pulled} (remote-sync.tu/pull! url v1)]
               (is (=? {:status :success} pulled))
               (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the pull deleted the card test")
-              (testing "a pull that deletes a test removes it from its suites, like any delete of a test"
+              (testing "a pull that deletes a test removes it from its suites, like a delete on a read-write instance"
                 (is (= [] (data-testing.test-util/member-refs (:id suite)))))
               (testing "so the suite is a local change, which the next push writes"
                 (is (= #{["update" :model/TestSuite]}
@@ -170,7 +170,7 @@
         (mt/user-http-request :crowberto :put 403 (str "ee/test-suite/" (:id suite)) {:members []})
         (mt/user-http-request :crowberto :delete 204 (str "ee/card-test/" (:id t)))
         (is (not (t2/exists? :model/CardTest :id (:id t))) "premise: the delete happened")
-        (testing "on a read-only instance, deleting a test leaves it in its suites, which the instance could not push"
+        (testing "on a read-only instance, which cannot push, deleting a test leaves it in its suites"
           (is (= [[:card (:entity_id t)]] (data-testing.test-util/member-refs (:id suite)))))))
     (testing "control: on a read-write instance, deleting a test removes it from its suites"
       (mt/with-temp [:model/Card      card  {:name "Card"}

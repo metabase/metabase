@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-testing.serialization
-  "The SerDes of saved tests, stored in the directory of the file of the subject they test, and of test suites."
+  "The SerDes of test suites and of saved tests. A saved test is stored in the directory of the file of the subject it
+  tests."
   (:require
    [metabase.serialization.core :as serialization]))
 

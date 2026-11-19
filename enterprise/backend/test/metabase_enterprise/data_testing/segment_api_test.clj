@@ -9,18 +9,12 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def ^:private inputs
-  [{:table   {:schema "PUBLIC" :name "PEOPLE"}
-    :format  "rows"
-    :columns [{:name "ID" :cast_type "INTEGER"} {:name "SOURCE" :cast_type "VARCHAR"}]
-    :rows    [{"ID" 1 "SOURCE" "Google"} {"ID" 2 "SOURCE" "Twitter"}]}])
-
-(def ^:private expectations
-  [{:type "empty" :name "only people from Google" :sql "SELECT * FROM {{output}} WHERE SOURCE <> 'Google'"}])
-
 (defn- body
   [segment-id]
-  {:segment_id segment-id :name "My test" :inputs inputs :expectations expectations})
+  {:segment_id   segment-id
+   :name         "My test"
+   :inputs       data-testing.test-util/google-segment-inputs
+   :expectations data-testing.test-util/google-segment-expectations})
 
 (deftest premium-feature-test
   (testing "every endpoint refuses an instance without the feature"
@@ -53,7 +47,7 @@
                      :name         "My test"
                      :description  "abc"
                      :inputs       [{:format "rows" :rows [{:ID 1 :SOURCE "Google"} {:ID 2 :SOURCE "Twitter"}]}]
-                     :expectations expectations}
+                     :expectations data-testing.test-util/google-segment-expectations}
                     created)))
           (testing "GET returns the test with its newest run"
             (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
@@ -81,7 +75,7 @@
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/Segment     {other-id :id}   (data-testing.test-util/from-google-segment)
-                   :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+                   :model/SegmentTest {test-id :id}    (body segment-id)]
       (let [missing-id (inc (t2/select-one-fn :max-id [:model/Segment [:%max.id :max-id]]))
             before     (segment-tests-state)]
         (testing "even for an admin, the permission check refuses a segment that does not exist"
@@ -96,7 +90,7 @@
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                   :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+                   :model/SegmentTest {test-id :id}    (body segment-id)]
       (testing "POST refuses a test missing an input, under the segment-test error prefix"
         (let [response (mt/user-http-request :crowberto :post 400 "ee/segment-test" (assoc (body segment-id) :inputs []))]
           (is (= "segment-test.missing-inputs" (:error-code response)))
@@ -115,10 +109,7 @@
     ;; A run counts as the test's run only if it started after the test was created. The with-temp default for
     ;; `created_at` is the JVM's clock and the run's start time is the app DB's, so the test is dated in the past.
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                   :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                        :inputs       inputs
-                                                        :expectations expectations
-                                                        :created_at   #t "2025-01-01T00:00:00Z"}]
+                   :model/SegmentTest {test-id :id}    (assoc (body segment-id) :created_at #t "2025-01-01T00:00:00Z")]
       (let [path (str "ee/segment-test/" test-id)]
         (try
           (testing "a run reports each expectation"
@@ -181,9 +172,7 @@
   (mt/with-premium-features data-testing.test-util/data-analyst-features
     (perms.tu/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                     :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                          :inputs       inputs
-                                                          :expectations expectations}]
+                     :model/SegmentTest {test-id :id}    (body segment-id)]
         (let [path (str "ee/segment-test/" test-id)]
           (try
             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :blocked

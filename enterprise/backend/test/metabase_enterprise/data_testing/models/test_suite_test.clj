@@ -88,7 +88,7 @@
             (is (= (inc before) (count (updates))))
             (is (= {:model_id suite-id
                     :user_id  (mt/user->id :rasta)
-                    :details  {:name "Renamed" :description "abc"}
+                    :details  {:previous {} :new {}}
                     :topic    :test-suite-update
                     :model    "TestSuite"}
                    (first (updates))))))
@@ -100,6 +100,29 @@
                   :topic    :test-suite-delete
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-delete suite-id))))))))
+
+(deftest test-suite-writes-record-one-audit-row-each-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card     {card-id :id}     {}
+                     :model/CardTest {eid-1 :entity_id} {:card_id card-id}
+                     :model/CardTest {eid-2 :entity_id} {:card_id card-id}]
+        (let [suite-id (data-testing.db/insert-test-suite! {:name "Nightly" :creator_id (mt/user->id :rasta)}
+                                                           [{:test_type :card :test_entity_id eid-1}
+                                                            {:test_type :card :test_entity_id eid-2}])
+              topics   #(t2/select-fn-vec :topic :model/AuditLog :model "TestSuite" :model_id suite-id
+                                          {:order-by [[:id :asc]]})]
+          (try
+            (testing "a create with members records one create"
+              (is (= [:test-suite-create] (topics))))
+            (testing "a replacement of the members records one update"
+              (data-testing.db/update-test-suite! suite-id {} [{:test_type :card :test_entity_id eid-2}])
+              (is (= [:test-suite-create :test-suite-update] (topics))))
+            (testing "a change of the name and the members records one update"
+              (data-testing.db/update-test-suite! suite-id {:name "Renamed"} [{:test_type :card :test_entity_id eid-1}])
+              (is (= [:test-suite-create :test-suite-update :test-suite-update] (topics))))
+            (finally
+              (t2/delete! :model/TestSuite :id suite-id))))))))
 
 (deftest suite-run-lifecycle-test
   (mt/with-temp [:model/TestSuite {suite-id :id} {}]

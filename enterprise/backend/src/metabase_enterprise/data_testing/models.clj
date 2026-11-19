@@ -50,9 +50,9 @@
    :expectations (json-column ::data-testing.schema/expectations)})
 
 (mu/defn remove-deleted-test-from-suites!
-  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. On an instance where remote sync
-  keeps synced content read-only, which could not push the changed suites, the suites keep the test, and a run reports
-  it as missing."
+  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. Does nothing on an instance where
+  remote sync keeps synced content read-only, since that instance cannot push the changed suites; a run then reports
+  the test as missing."
   [test-type :- ::data-testing.schema/test-type
    entity-id :- :string]
   (when-not (remote-sync/read-only?)

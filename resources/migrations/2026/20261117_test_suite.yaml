@@ -1,7 +1,7 @@
 ## Adds test_suite, a named list of saved data tests, and test_suite_member, its members. A member names its test by
 ## test type and entity id, with no foreign key: the types live in different tables, and a suite pulled from git can name
-## a test this instance lacks. Deleting a test through its model deletes its member rows. Adds test_suite_run,
-## the run history of suites, which outlives the suite.
+## a test this instance lacks. Deleting a test through its model deletes its member rows, except on an instance where
+## remote sync keeps synced content read-only. Adds test_suite_run, the run history of suites, which outlives the suite.
 
 databaseChangeLog:
   - changeSet:

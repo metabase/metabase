@@ -513,8 +513,8 @@
    [:serdes/meta    {:optional true} ::models.schema/external-meta]])
 
 (defn repeated-tests
-  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". Each of `members` is a
-  map with a `:test_type`, a keyword or a string, and a `:test_entity_id`; a member that lacks either is not counted."
+  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". A member counts only
+  when it has both a `:test_type`, a keyword or a string, and a `:test_entity_id`."
   [members]
   (into []
         (keep (fn [[[test-type eid] n]]

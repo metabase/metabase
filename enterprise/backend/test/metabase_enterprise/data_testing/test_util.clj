@@ -55,6 +55,19 @@
      :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
                              (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
 
+(def google-segment-inputs
+  "Test inputs for a segment test of [[from-google-segment]]: a people table of one person from Google and one from
+  Twitter."
+  [{:table   {:schema "PUBLIC" :name "PEOPLE"}
+    :format  "rows"
+    :columns [{:name "ID" :cast_type "INTEGER"} {:name "SOURCE" :cast_type "VARCHAR"}]
+    :rows    [{"ID" 1 "SOURCE" "Google"} {"ID" 2 "SOURCE" "Twitter"}]}])
+
+(def google-segment-expectations
+  "Expectations for a segment test of [[from-google-segment]], which pass when the segment keeps only the person from
+  Google."
+  [{:type "empty" :name "only people from Google" :sql "SELECT * FROM {{output}} WHERE SOURCE <> 'Google'"}])
+
 (defn segment-on
   "Segment attributes for a segment named `segment-name` on the table `table-id`, selecting every row."
   [table-id segment-name]

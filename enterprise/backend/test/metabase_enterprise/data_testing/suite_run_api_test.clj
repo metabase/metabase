@@ -131,19 +131,17 @@
 
 (deftest run-suite-of-segment-tests-test
   (mt/with-premium-features #{:transforms-testing}
-    (let [inputs       [{:table   {:schema "PUBLIC" :name "PEOPLE"}
-                         :format  "rows"
-                         :columns [{:name "ID" :cast_type "INTEGER"} {:name "SOURCE" :cast_type "VARCHAR"}]
-                         :rows    [{"ID" 1 "SOURCE" "Google"} {"ID" 2 "SOURCE" "Twitter"}]}]
-          expectations [{:type "empty" :name "only people from Google"
-                         :sql  "SELECT * FROM {{output}} WHERE SOURCE <> 'Google'"}]]
+    (let [segment-inputs       data-testing.test-util/google-segment-inputs
+          segment-expectations data-testing.test-util/google-segment-expectations]
       (mt/with-temp [:model/Segment     {segment-id :id}  (data-testing.test-util/from-google-segment)
                      :model/SegmentTest {pass-id :id
-                                         pass-eid :entity_id} {:segment_id segment-id :name "Pass"
-                                                               :inputs inputs :expectations expectations}
+                                         pass-eid :entity_id} {:segment_id   segment-id
+                                                               :name         "Pass"
+                                                               :inputs       segment-inputs
+                                                               :expectations segment-expectations}
                      :model/SegmentTest {refused-id :id
                                          refused-eid :entity_id} {:segment_id segment-id :name "Refused"
-                                                                  :inputs [] :expectations expectations}
+                                                                  :inputs [] :expectations segment-expectations}
                      :model/TestSuite   {suite-id :id}    {}]
         (data-testing.test-util/add-members! suite-id [[:segment pass-eid] [:segment refused-eid]])
         (try
