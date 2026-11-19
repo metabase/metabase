@@ -5,7 +5,6 @@
    [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.permissions.core :as perms]
@@ -73,7 +72,7 @@
   "The query of the NativeQuerySnippets the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`:
   none for a sandboxed user or one who creates no query anywhere, else those in the snippet collections the user
   reads, without those in personal collections unless `:include-personal-collections?`, located by their collection."
-  [{:keys [user-id include-archived include-personal-collections? search-text] :as opts}
+  [{:keys [user-id include-archived include-personal-collections?] :as opts}
    :- :metabase.dependencies.items/items-opts]
   (when-not (or (perms/sandboxed-user?)
                 (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries)))
@@ -86,5 +85,4 @@
                         [(collections.listing/visible-in-collections-clause :snippet opts include-archived :snippets)
                          (collections.listing/archived-clause :snippet include-archived)
                          (when-not include-personal-collections?
-                           (collections.listing/outside-personal-collections-clause :snippet :collection))
-                         (dependencies/search-clause :snippet.name location search-text)])})))
+                           (collections.listing/outside-personal-collections-clause :snippet :collection))])})))

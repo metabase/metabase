@@ -5,7 +5,6 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
@@ -304,7 +303,7 @@
   model in the collections the user reads, and those without one in the data actions collections the user reads,
   without those in personal collections unless `:include-personal-collections?`, located by their collection or the
   root they sit in."
-  [{:keys [include-archived include-personal-collections? search-text] :as opts}
+  [{:keys [include-archived include-personal-collections?] :as opts}
    :- :metabase.dependencies.items/items-opts]
   (let [location [:coalesce
                   :collection.name
@@ -327,5 +326,4 @@
                          (collections.listing/visible-in-collections-clause :action opts include-archived :data-actions)]]
                        (collections.listing/archived-clause :action include-archived)
                        (when-not include-personal-collections?
-                         (collections.listing/outside-personal-collections-clause :action :collection))
-                       (dependencies/search-clause :action.name location search-text)])}))
+                         (collections.listing/outside-personal-collections-clause :action :collection))])}))

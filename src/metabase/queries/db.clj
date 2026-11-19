@@ -7,7 +7,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.core :as dependencies]
    [metabase.embedding.settings :as embed.settings]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -677,7 +676,7 @@
   "The query of the Cards the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
   collections the user reads, of the `:card-types`, without the internal ones unless `:include-internal?` and those in
   personal collections unless `:include-personal-collections?`, located by their dashboard, document or collection."
-  [{:keys [include-archived include-personal-collections? include-internal? card-types search-text] :as opts}
+  [{:keys [include-archived include-personal-collections? include-internal? card-types] :as opts}
    :- :metabase.dependencies.items/items-opts]
   (let [location [:case
                   [:not= :card.dashboard_id nil] :dashboard.name
@@ -697,5 +696,4 @@
                        (when-not include-internal?
                          (mi/non-internal-filter-clause :model/Card :card))
                        (when-not include-personal-collections?
-                         (collections.listing/outside-personal-collections-clause :card :collection))
-                       (dependencies/search-clause :card.name location search-text)])}))
+                         (collections.listing/outside-personal-collections-clause :card :collection))])}))

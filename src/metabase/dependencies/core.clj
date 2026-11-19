@@ -31,8 +31,6 @@
   query-dependencies
   visualization-settings-dependencies
   with-native-dependencies]
- [metabase.dependencies.items
-  search-clause]
  [metabase.dependencies.registry
   entity-model
   entity-spec

@@ -281,9 +281,9 @@
 (mu/defn- dependency-item-select :- [:maybe ::h2x/honeysql-clause-opts]
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together: the
   `:items` of the spec of `entity-type` for the user described by `user-id`, `is-superuser?`, and
-  `is-data-analyst?`, restricted to `card-types`, `search-text` and `include-personal-collections?`, matching
-  `query-type` (`:unreferenced` or `:breaking`), with `sort-column`'s expression selected as `:sort_key`, or nil when
-  the user reads no entity of the type. Throws when `user-id` is missing, since the visibility restriction must always
+  `is-data-analyst?`, restricted to `card-types` and `include-personal-collections?`, whose `name` or `location`
+  contains `search-text`, matching `query-type` (`:unreferenced` or `:breaking`), with `sort-column`'s expression
+  selected as `:sort_key`, or nil when the user reads no entity of the type. Throws when `user-id` is missing, since the visibility restriction must always
   be applied."
   [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst? card-types search-text
            include-personal-collections?]}
@@ -299,8 +299,7 @@
                                  :include-personal-collections? include-personal-collections?
                                  :include-internal?             (not= query-type :unreferenced)
                                  :include-sample-databases?     false
-                                 :card-types                    card-types
-                                 :search-text                   search-text})]
+                                 :card-types                    card-types})]
     (let [default-visible-restriction {:visible {:user-id          user-id
                                                  :is-superuser?    is-superuser?
                                                  :is-data-analyst? is-data-analyst?}}
@@ -312,7 +311,11 @@
         [(sort-key-expr sort-column entity-type default-visible-restriction) :sort_key]]
        :from      [[items :items]]
        :left-join join
-       :where     join-filter})))
+       :where     (cond-> [:and join-filter]
+                    search-text (conj (let [pattern (h2x/like-substring search-text)]
+                                        [:or
+                                         [:like [:lower :items.name] pattern]
+                                         [:like [:lower :items.location] pattern]])))})))
 
 (mu/defn- dependency-item-union :- [:maybe ::h2x/honeysql-clause-opts]
   "The union of the [[dependency-item-select]]s of the `entity-types` for `params`, or nil when there is none."

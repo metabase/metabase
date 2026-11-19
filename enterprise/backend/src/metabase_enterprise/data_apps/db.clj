@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
-   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
@@ -298,11 +297,10 @@
 (mu/defn dependency-data-app-items :- [:maybe :map]
   "The query of the DataApps the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, which is
   none: those the user reads, none without the data apps feature."
-  [{:keys [user-id is-superuser? search-text]} :- :metabase.dependencies.items/items-opts]
+  [{:keys [user-id is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id user-id :is-superuser? is-superuser?})]
     {:select [[:data_app.id :entity_id] [:data_app.name :name] [nil :location]]
      :from   [:data_app]
      :where  (into [:and]
                    (remove nil?)
-                   [[:in :data_app.id visible-ids]
-                    (dependencies/search-clause :data_app.name nil search-text)])}))
+                   [[:in :data_app.id visible-ids]])}))

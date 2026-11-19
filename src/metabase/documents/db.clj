@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dependencies.core :as dependencies]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -227,7 +226,7 @@
   "The query of the Documents the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
   collections the user reads, without those in personal collections unless `:include-personal-collections?`, located
   by their collection."
-  [{:keys [include-archived include-personal-collections? search-text] :as opts}
+  [{:keys [include-archived include-personal-collections?] :as opts}
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
     {:select    [[:document.id :entity_id] [:document.name :name] [location :location]]
@@ -238,5 +237,4 @@
                       [(collections.listing/visible-in-collections-clause :document opts include-archived nil)
                        (collections.listing/archived-clause :document include-archived)
                        (when-not include-personal-collections?
-                         (collections.listing/outside-personal-collections-clause :document :collection))
-                       (dependencies/search-clause :document.name location search-text)])}))
+                         (collections.listing/outside-personal-collections-clause :document :collection))])}))

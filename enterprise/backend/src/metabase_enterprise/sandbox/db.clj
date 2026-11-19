@@ -215,7 +215,7 @@
 
 (mu/defn dependency-sandbox-items :- [:maybe :map]
   "The query of the Sandboxes the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, both the
-  id as text: all of them for a superuser, none for anyone else, the search text keeping them all."
+  id as text: all of them for a superuser, none for anyone else."
   [{:keys [is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when is-superuser?
     (let [id-text [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]

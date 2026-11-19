@@ -10,7 +10,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -954,7 +953,7 @@
   "The query of the Transforms the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: all of
   them for a superuser, those of the source databases a data analyst queries, none for anyone else, located by their
   collection."
-  [{:keys [user-id is-superuser? is-data-analyst? search-text]} :- :metabase.dependencies.items/items-opts]
+  [{:keys [user-id is-superuser? is-data-analyst?]} :- :metabase.dependencies.items/items-opts]
   (when (or is-superuser? is-data-analyst?)
     (let [location (collections.listing/collection-location :collection :transforms)]
       {:select    [[:transform.id :entity_id] [:transform.name :name] [location :location]]
@@ -968,5 +967,4 @@
                             {:user-id          user-id
                              :is-superuser?    is-superuser?
                              :is-data-analyst? is-data-analyst?}
-                            {:perms/create-queries :query-builder}))
-                         (dependencies/search-clause :transform.name location search-text)])})))
+                            {:perms/create-queries :query-builder}))])})))

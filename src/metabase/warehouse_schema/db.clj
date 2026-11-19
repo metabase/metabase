@@ -7,7 +7,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -654,7 +653,7 @@
   "The query of the Tables the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those the
   user queries, active or not, so that dependencies broken by a dropped or hidden table stay visible, without those of
   the sample and audit databases unless `:include-sample-databases?`, located by their database."
-  [{:keys [include-sample-databases? search-text] :as opts} :- :metabase.dependencies.items/items-opts]
+  [{:keys [include-sample-databases?] :as opts} :- :metabase.dependencies.items/items-opts]
   {:select    [[:metabase_table.id :entity_id] [:metabase_table.display_name :name] [:database.name :location]]
    :from      [:metabase_table]
    :left-join [[:metabase_database :database] [:= :metabase_table.db_id :database.id]]
@@ -662,5 +661,4 @@
                     (remove nil?)
                     [(collections.listing/visible-tables-clause :metabase_table.id opts)
                      (when-not include-sample-databases?
-                       [:and [:not :database.is_sample] [:not :database.is_audit]])
-                     (dependencies/search-clause :metabase_table.display_name :database.name search-text)])})
+                       [:and [:not :database.is_sample] [:not :database.is_audit]])])})
