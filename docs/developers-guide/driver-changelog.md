@@ -22,6 +22,13 @@ summary: Changes to the Metabase driver interface, listed by release.
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
   Return false for a driver where a capped query breaks the transaction it runs in.
 
+- New test-only features `:test/python-transforms-without-atomic-renames` and `:test/python-transforms-without-renames`.
+  A driver with `:transforms/python` but not `:atomic-renames` replaces a Python transform's target non-atomically,
+  and `metabase.transforms.execute-test/python-transform-replace-strategy-test` now fails unless the driver's test
+  extensions acknowledge that. Support `:test/python-transforms-without-atomic-renames` if the driver supports
+  `:rename`, and `:test/python-transforms-without-renames` if it doesn't. Better, implement
+  `metabase.driver/rename-tables!*` and support `:atomic-renames`.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
