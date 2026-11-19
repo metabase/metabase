@@ -52,19 +52,13 @@ const DATA_MODEL_PARAMS = {
 
 type SetupOpts = {
   tests?: SegmentTest[];
-  canRunNativeQueries?: boolean;
   location?: "published-table" | "data-model";
 };
 
-function setup({
-  tests = [],
-  canRunNativeQueries = true,
-  location = "published-table",
-}: SetupOpts = {}) {
+function setup({ tests = [], location = "published-table" }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   const database = createMockDatabase({
     id: DATABASE_ID,
-    native_permissions: canRunNativeQueries ? "write" : "none",
   });
   const table = createMockTable({
     id: TABLE_ID,
@@ -292,16 +286,16 @@ describe("SegmentTestListPage", () => {
     );
   });
 
-  it("hides the row menu from users who can't run native queries on the database", async () => {
+  it("hides the row menu from users who can't run the tests", async () => {
     setup({
       tests: [
         createMockSegmentTest({
           id: 1,
           segment_id: SEGMENT_ID,
           name: "Refunds",
+          can_run: false,
         }),
       ],
-      canRunNativeQueries: false,
     });
 
     const row = await findRow("Refunds");
