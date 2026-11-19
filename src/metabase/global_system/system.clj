@@ -320,30 +320,29 @@
 (defn- halt-order
   "The handles of the running components, in the order [[halt!]] stops them.
    Each comes before every component it uses in `graph`, directly or through components that are not running.
-   Otherwise components come in the reverse of their first-start order, as far as those paths allow.
-   Where those paths leave the order open, components on the path to the latest-started component stop first."
+   Otherwise components come in the reverse of their first-start order, as far as those paths allow."
   [graph]
-  (let [running              @started-components
+  (let [running     @started-components
         ;; where each running component stands in the start order
-        position             (zipmap (filter running @start-order) (range))
+        position    (zipmap (filter running @start-order) (range))
         ;; the running components and what they use, directly or not; a user that is not running holds nothing back
-        relevant             (into (set (keys running)) (dep/transitive-dependencies-set graph (keys running)))
+        relevant    (into (set (keys running)) (dep/transitive-dependencies-set graph (keys running)))
         ;; an object no component key can equal, used by every relevant component, so each is a node even when it
         ;; has no edges
-        placeholder          (Object.)
-        sortable             (reduce (fn [g k]
-                                       (reduce #(dep/depend %1 k %2)
-                                               (dep/depend g k placeholder)
-                                               (dep/immediate-dependencies graph k)))
-                                     (dep/graph)
-                                     relevant)
-        latest-start-reached (fn [k]
-                               (apply max -1 (keep position (dep/transitive-dependencies graph k))))
+        placeholder (Object.)
+        sortable    (reduce (fn [g k]
+                              (reduce #(dep/depend %1 k %2)
+                                      (dep/depend g k placeholder)
+                                      (dep/immediate-dependencies graph k)))
+                            (dep/graph)
+                            relevant)
         ;; a running component ranks by its own start position, which stands in for the dependencies nobody declared;
-        ;; the key breaks ties, so the order never depends on how the graph library treats equal nodes
-        rank                 (u/for-map [k relevant]
-                               [k [(or (position k) (latest-start-reached k))
-                                   (str k)]])]
+        ;; one that is not running has nothing to stop, so it ranks above them all and clears as soon as its users
+        ;; have, leaving what it uses to their own positions; the key breaks ties, so the order never depends on how
+        ;; the graph library treats equal nodes
+        rank        (u/for-map [k relevant]
+                      [k [(or (position k) Long/MAX_VALUE)
+                          (str k)]])]
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
     ;; greatest rank last; the placeholder has no rank, and nil compares below every rank
     (keep #(get-in running [% :handle])
