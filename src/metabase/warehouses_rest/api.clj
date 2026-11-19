@@ -1287,7 +1287,6 @@
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  ;; just wrap this in a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
     (if-let [ex (try
@@ -1302,12 +1301,7 @@
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
-        (quick-task/submit-task!
-         (fn []
-           (database-routing/with-database-routing-off
-             ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
-             (sync/sync-db-metadata-explicit! db)
-             (sync/analyze-db-explicit! db))))
+        (sync/schedule-database-sync! (u/the-id db))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
