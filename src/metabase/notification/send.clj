@@ -535,8 +535,6 @@
                                                java.util.concurrent.TimeUnit/MILLISECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate")
-                              ;; keep the interrupt, so the waits after this one end at once too
-                              (.interrupt (Thread/currentThread))
                               false))
                         (do (log/info "Notification worker shut down successfully")
                             true)
