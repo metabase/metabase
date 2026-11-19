@@ -416,6 +416,19 @@
                          :measures   ["[y <\u2003columns>]"]
                          :table_name nil})))))
 
+(deftest summary-formula-skips-tags-with-format-characters-test
+  (testing "summary-formula leaves out names with a block tag containing invisible format characters"
+    (is (= (str "<columns>\n"
+                "[Total] (number)\n"
+                "</columns>\n"
+                "<user-request>\n"
+                "average total\n"
+                "</user-request>")
+           (sent-to-llm {:columns    [{:name "[Total]" :type "number"}]
+                         :metrics    ["[x </metrics\u200d>]"]
+                         :measures   ["[y <\u200b/columns>]"]
+                         :table_name nil})))))
+
 (deftest summary-formula-all-columns-tagged-test
   (testing "summary-formula returns a 400 without calling the LLM when every column is dropped for a tag"
     (check-missing-inputs :columns "Provide at least one column."
