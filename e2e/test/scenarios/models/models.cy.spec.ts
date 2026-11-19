@@ -1,7 +1,10 @@
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import {
   assertIsModel,
@@ -10,7 +13,7 @@ import {
   turnIntoModel,
 } from "./helpers/e2e-models-helpers";
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
@@ -42,6 +45,7 @@ describe("scenarios > models", () => {
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
+      questionName: undefined,
       model: "Products Model",
       collection: "Our analytics",
       table: "Products",
@@ -61,6 +65,72 @@ describe("scenarios > models", () => {
     cy.location("pathname").should("eq", "/collection/root");
     getCollectionItemRow("Products Model").icon("model");
     getCollectionItemRow("Q1").icon("table2");
+
+    cy.log(
+      "Question Lineage should show link to archived models (metabase#52071)",
+    );
+    H.createQuestion({
+      name: "Accounts Model",
+      query: { "source-table": ACCOUNTS_ID },
+      type: "model",
+    }).then(({ body: { id: modelId } }) => {
+      H.createQuestion(
+        {
+          name: "Accounts Model Quest",
+          query: { "source-table": `card__${modelId}` },
+        },
+        { wrapId: true, idAlias: "accountsQuestionId" },
+      );
+      H.archiveQuestion(modelId);
+
+      cy.get<number>("@accountsQuestionId").then((questionId) => {
+        H.visitQuestion(questionId);
+        cy.findByTestId("qb-header-left-side").within(() => {
+          cy.icon("warning").should("exist");
+          cy.findByRole("link", { name: /accounts model/i }).should(
+            "have.attr",
+            "href",
+            `/model/${modelId}-accounts-model`,
+          );
+        });
+      });
+    });
+  });
+
+  it("ranks models first in data picker search results", () => {
+    cy.intercept("GET", "/api/search*").as("search");
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModal().within(() => {
+      cy.findByPlaceholderText("Search…").type("Ord");
+      cy.wait("@search");
+      cy.findByText("Everywhere").click();
+      cy.wait("@search");
+
+      getResults().should("have.length", 5);
+      getResults()
+        .eq(0)
+        .should("have.attr", "data-model-type", "dataset")
+        .and("contain.text", "Orders Model");
+      getResults()
+        .eq(1)
+        .should("have.attr", "data-model-type", "dataset")
+        .and("contain.text", "Orders");
+      getResults()
+        .eq(2)
+        .should("have.attr", "data-model-type", "card")
+        .and("contain.text", "Orders, Count, Grouped by Created At (year)");
+      getResults()
+        .eq(3)
+        .should("have.attr", "data-model-type", "card")
+        .and("contain.text", "Orders, Count");
+      getResults()
+        .eq(4)
+        .should("have.attr", "data-model-type", "table")
+        .and("contain.text", "Orders");
+    });
   });
 
   it("should allow adding models to dashboards", () => {
@@ -190,6 +260,10 @@ describe("scenarios > models", () => {
 
 function getCollectionItemRow(itemName: string) {
   return cy.findByText(itemName).closest("tr");
+}
+
+function getResults() {
+  return cy.findAllByTestId("result-item");
 }
 
 function openRevisionHistory() {
