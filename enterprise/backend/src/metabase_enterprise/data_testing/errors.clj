@@ -28,6 +28,7 @@
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
+   ::archived-subject           400  ; The subject is archived; restoring it makes the test runnable again.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).

@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -41,15 +42,16 @@
   (refusing #(data-testing.runner/validate-test :segment (testable-segment segment-id) inputs expectations)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/segment-test.response]
-  "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. Needs Data
-  Studio access.
+  "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. The tests
+  of archived segments are left out unless `include-archived` is true. Needs Data Studio access.
 
   A segment test, with its inputs and expectations, is readable by every user who can read its segment."
   [_route-params
-   {:keys [segment-id]} :- [:map {:closed true}
-                            [:segment-id {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [segment-id include-archived]} :- [:map {:closed true}
+                                             [:segment-id       {:optional true} [:maybe ms/PositiveInt]]
+                                             [:include-archived {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-data-studio-access)
-  (-> (mi/readable (data-testing.db/segment-tests {:segment-id segment-id}))
+  (-> (mi/readable (data-testing.db/segment-tests {:segment-id segment-id :include-archived? include-archived}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/segment-test.response
@@ -75,7 +77,9 @@
   whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that
   the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or
   retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
-  declared name that differs from the table's only in case does not match it."
+  declared name that differs from the table's only in case does not match it.
+
+  A test of an archived segment is refused, as is a run or an edit of one."
   [_route-params
    _query-params
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
@@ -84,13 +88,15 @@
   (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
-  "Update a segment test."
+  "Update a segment test. The update is refused when the test's segment, after it, is archived."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    body :- ::data-testing.schema/segment-test.update]
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/update-check segment-test body)
+    (refusing #(data-testing.subject/check-not-archived
+                :segment (data-testing.db/segment (:segment_id (merge segment-test body)))))
     (when (some #(contains? body %) [:segment_id :inputs :expectations])
       (let [{:keys [segment_id inputs expectations]} (merge segment-test body)]
         (validate-test! segment_id inputs expectations)))
@@ -113,9 +119,9 @@
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
-  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
-  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
-  carries none."
+  Any other status means the run was refused and nothing meaningful ran, as when the segment is archived. A refusal of
+  the test itself carries the `:error-code` naming which refusal it was; a missing test (404), missing permission (403)
+  or missing feature (402) carries none."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [segment-test (api/read-check :model/SegmentTest id)]

@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -29,15 +30,16 @@
   (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) inputs expectations)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
-  "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
-  access.
+  "List the card tests the caller can read, with their newest runs, optionally only those of one card. The tests of
+  archived cards are left out unless `include-archived` is true. Needs Data Studio access.
 
   A card test, with its inputs and expectations, is readable by every user who can read its card."
   [_route-params
-   {:keys [card-id]} :- [:map {:closed true}
-                         [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [card-id include-archived]} :- [:map {:closed true}
+                                          [:card-id       {:optional true} [:maybe ms/PositiveInt]]
+                                          [:include-archived {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-data-studio-access)
-  (-> (mi/readable (data-testing.db/card-tests {:card-id card-id}))
+  (-> (mi/readable (data-testing.db/card-tests {:card-id card-id :include-archived? include-archived}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
@@ -62,7 +64,9 @@
   whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that
   the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or
   retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
-  declared name that differs from the table's only in case does not match it."
+  declared name that differs from the table's only in case does not match it.
+
+  A test of an archived card is refused, as is a run or an edit of one."
   [_route-params
    _query-params
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
@@ -71,7 +75,7 @@
   (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
-  "Update a card test.
+  "Update a card test. The update is refused when the test's card, after it, is archived.
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
@@ -82,6 +86,7 @@
    body :- ::data-testing.schema/card-test.update]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
+    (refusing #(data-testing.subject/check-not-archived :card (data-testing.db/card (:card_id (merge card-test body)))))
     (when (some #(contains? body %) [:card_id :inputs :expectations])
       (let [{:keys [card_id inputs expectations]} (merge card-test body)]
         (validate-test! card_id inputs expectations)))
@@ -108,9 +113,9 @@
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
-  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
-  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
-  carries none."
+  Any other status means the run was refused and nothing meaningful ran, as when the card is archived. A refusal of
+  the test itself carries the `:error-code` naming which refusal it was; a missing test (404), missing permission (403)
+  or missing feature (402) carries none."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]

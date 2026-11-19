@@ -309,3 +309,51 @@
           ;; Stands in for the databases that ignore case in column names, which no test of this namespace runs on.
           (with-redefs [data-testing.u/column-names-ignore-case? (constantly true)]
             (t2/delete! :model/CardTest :id (:id (create 200)))))))))
+
+(deftest tests-of-an-archived-card-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card     {card-id :id}   (card)
+                   :model/Card     {active-id :id} (card)
+                   :model/CardTest {test-id :id}   {:card_id      card-id
+                                                    :inputs       inputs
+                                                    :expectations expectations
+                                                    :created_at   #t "2025-01-01T00:00:00Z"}]
+      (let [path      (str "ee/card-test/" test-id)
+            test-name (t2/select-one-fn :name :model/CardTest :id test-id)
+            listed    (fn [& params]
+                        (into #{} (map :id) (apply mt/user-http-request :crowberto :get 200 "ee/card-test" params)))]
+        (try
+          (t2/update! :model/Card :id card-id {:archived true})
+          (testing "the list leaves the test out, unless asked to include archived subjects"
+            (is (not (contains? (listed) test-id)))
+            (is (not (contains? (listed :card-id card-id) test-id)))
+            (is (contains? (listed :include-archived true) test-id)))
+          (testing "the test is still readable by id"
+            (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 path))))
+          (testing "a run is refused, and records no run"
+            (is (=? {:error-code "card-test.archived-subject"}
+                    (mt/user-http-request :crowberto :post 400 (str path "/run"))))
+            (is (not (t2/exists? :model/DataTestRun :test_type "card" :test_id test-id))))
+          (testing "a new test of the card is refused"
+            (is (=? {:error-code "card-test.archived-subject"}
+                    (mt/user-http-request :crowberto :post 400 "ee/card-test" (body card-id)))))
+          (testing "an edit that keeps the test on the card is refused, and changes nothing"
+            (is (=? {:error-code "card-test.archived-subject"}
+                    (mt/user-http-request :crowberto :put 400 path {:name "Renamed"})))
+            (is (= test-name (t2/select-one-fn :name :model/CardTest :id test-id))))
+          (testing "after the card is restored, the test is listed and runs"
+            (t2/update! :model/Card :id card-id {:archived false})
+            (is (contains? (listed) test-id))
+            (is (=? {:status "passed"} (mt/user-http-request :crowberto :post 200 (str path "/run")))))
+          (testing "moving the test off an archived card, onto an active one, is allowed"
+            (t2/update! :model/Card :id card-id {:archived true})
+            (is (=? {:card_id active-id} (mt/user-http-request :crowberto :put 200 path {:card_id active-id}))))
+          (testing "moving the test back onto the archived card is refused"
+            (is (=? {:error-code "card-test.archived-subject"}
+                    (mt/user-http-request :crowberto :put 400 path {:card_id card-id}))))
+          (testing "a test of an archived card can be deleted"
+            (t2/update! :model/CardTest :id test-id {:card_id card-id})
+            (mt/user-http-request :crowberto :delete 204 path)
+            (is (not (t2/exists? :model/CardTest :id test-id))))
+          (finally
+            (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)))))))

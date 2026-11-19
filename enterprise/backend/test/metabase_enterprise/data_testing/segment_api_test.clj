@@ -238,3 +238,51 @@
                   (is (= test-id (:id (mt/user-http-request :lucky :get 200 path)))))))
             (finally
               (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id))))))))
+
+(deftest tests-of-an-archived-segment-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
+                   :model/Segment     {active-id :id}  (data-testing.test-util/from-google-segment)
+                   :model/SegmentTest {test-id :id}    {:segment_id   segment-id
+                                                        :inputs       inputs
+                                                        :expectations expectations
+                                                        :created_at   #t "2025-01-01T00:00:00Z"}]
+      (let [path      (str "ee/segment-test/" test-id)
+            test-name (t2/select-one-fn :name :model/SegmentTest :id test-id)
+            listed    (fn [& params]
+                        (into #{} (map :id) (apply mt/user-http-request :crowberto :get 200 "ee/segment-test" params)))]
+        (try
+          (t2/update! :model/Segment :id segment-id {:archived true})
+          (testing "the list leaves the test out, unless asked to include archived subjects"
+            (is (not (contains? (listed) test-id)))
+            (is (not (contains? (listed :segment-id segment-id) test-id)))
+            (is (contains? (listed :include-archived true) test-id)))
+          (testing "the test is still readable by id"
+            (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 path))))
+          (testing "a run is refused, and records no run"
+            (is (=? {:error-code "segment-test.archived-subject"}
+                    (mt/user-http-request :crowberto :post 400 (str path "/run"))))
+            (is (not (t2/exists? :model/DataTestRun :test_type "segment" :test_id test-id))))
+          (testing "a new test of the segment is refused"
+            (is (=? {:error-code "segment-test.archived-subject"}
+                    (mt/user-http-request :crowberto :post 400 "ee/segment-test" (body segment-id)))))
+          (testing "an edit that keeps the test on the segment is refused, and changes nothing"
+            (is (=? {:error-code "segment-test.archived-subject"}
+                    (mt/user-http-request :crowberto :put 400 path {:name "Renamed"})))
+            (is (= test-name (t2/select-one-fn :name :model/SegmentTest :id test-id))))
+          (testing "after the segment is restored, the test is listed and runs"
+            (t2/update! :model/Segment :id segment-id {:archived false})
+            (is (contains? (listed) test-id))
+            (is (=? {:status "passed"} (mt/user-http-request :crowberto :post 200 (str path "/run")))))
+          (testing "moving the test off an archived segment, onto an active one, is allowed"
+            (t2/update! :model/Segment :id segment-id {:archived true})
+            (is (=? {:segment_id active-id} (mt/user-http-request :crowberto :put 200 path {:segment_id active-id}))))
+          (testing "moving the test back onto the archived segment is refused"
+            (is (=? {:error-code "segment-test.archived-subject"}
+                    (mt/user-http-request :crowberto :put 400 path {:segment_id segment-id}))))
+          (testing "a test of an archived segment can be deleted"
+            (t2/update! :model/SegmentTest :id test-id {:segment_id segment-id})
+            (mt/user-http-request :crowberto :delete 204 path)
+            (is (not (t2/exists? :model/SegmentTest :id test-id))))
+          (finally
+            (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id)))))))

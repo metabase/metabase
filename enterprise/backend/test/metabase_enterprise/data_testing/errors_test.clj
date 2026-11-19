@@ -42,6 +42,7 @@
    ::errors/unknown-placeholder        400
    ::errors/missing-input-columns      400
    ::errors/colliding-columns          400
+   ::errors/archived-subject           400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
@@ -64,7 +65,7 @@
       (is (= expected (errors/status-code error-type))))))
 
 (deftest status-code-classes-test
-  (testing "authoring errors — the caller can fix the test — are 400"
+  (testing "authoring errors — the caller can fix the test — and an archived subject, which the caller can restore, are 400"
     (is (= #{::errors/unknown-column
              ::errors/ambiguous-column
              ::errors/missing-inputs
@@ -75,7 +76,8 @@
              ::errors/no-expectations
              ::errors/unknown-placeholder
              ::errors/missing-input-columns
-             ::errors/colliding-columns}
+             ::errors/colliding-columns
+             ::errors/archived-subject}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
@@ -117,6 +119,7 @@
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/missing-input-columns      "transform-test.missing-input-columns"
    ::errors/colliding-columns          "transform-test.colliding-columns"
+   ::errors/archived-subject           "transform-test.archived-subject"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"
