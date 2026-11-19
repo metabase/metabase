@@ -83,7 +83,7 @@
                          (collection/parent-or-root (:namespace collection-before-update) new-parent-id))]
       (when (not= (:location collection-before-update) new-location)
         (api/update-check collection-before-update {:parent_id new-parent-id})
-        (collection/move-collection! collection-before-update new-location)))))
+        (collections.db/update-collection! (u/the-id collection-before-update) {:location new-location})))))
 
 (defn- archive-or-restore!
   "Archives or restores the Collection, with what follows it, as `collection-updates` ask, checks permissions first, then

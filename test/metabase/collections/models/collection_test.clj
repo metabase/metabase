@@ -1051,7 +1051,7 @@
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
     (with-collection-hierarchy! [{:keys [b e], :as collections}]
-      (collection/move-collection! e (collection/children-location b))
+      (t2/update! :model/Collection :id (:id e) {:location (collection/children-location b)})
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
                         "F" {"G" {}}}}}
@@ -1066,7 +1066,7 @@
     ;;           |                           |
     ;;           +-> F -> G                  +-> F -> G
     (with-collection-hierarchy! [{:keys [b d], :as collections}]
-      (collection/move-collection! d (collection/children-location b))
+      (t2/update! :model/Collection :id (:id d) {:location (collection/children-location b)})
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
              (collection-locations (vals collections)))))))
@@ -1080,7 +1080,7 @@
     ;;           |
     ;;           +-> F -> G         F -> G
     (with-collection-hierarchy! [{:keys [f], :as collections}]
-      (collection/move-collection! f (collection/children-location collection/root-collection))
+      (t2/update! :model/Collection :id (:id f) {:location (collection/children-location collection/root-collection)})
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
               "F" {"G" {}}}
@@ -1095,8 +1095,8 @@
     ;;           |                     |
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy! [{:keys [a f], :as collections}]
-      (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (t2/select-one :model/Collection :id (u/the-id f))))
+      (t2/update! :model/Collection :id (:id f) {:location (collection/children-location collection/root-collection)})
+      (t2/update! :model/Collection :id (:id a) {:location (collection/children-location (t2/select-one :model/Collection :id (u/the-id f)))})
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1583,7 +1583,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Collection must be in the same namespace as its parent"
-               (collection/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
+               (t2/update! :model/Collection :id (:id collection-2) {:location (format "/%d/" (:id parent-collection))})))))
       (testing (format "You should not be able to change the namespace of a Collection from %s to %s"
                        (pr-str parent-namespace) (pr-str child-namespace))
         (is (thrown-with-msg?
@@ -2059,15 +2059,12 @@
   (testing "a collection of the data apps namespace can't be moved, typed or made a sample, but can be described, synced
             and cleared of an archive marker"
     (when config/ee-available?
-      (mt/with-temp [:model/Collection {collection-id :id :as collection} {:namespace "data-apps"}
-                     :model/Collection {other-id :id :as other}            {:namespace "data-apps"}]
+      (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                     :model/Collection {other-id :id}      {:namespace "data-apps"}]
         (doseq [changes [{:type "library-metrics"} {:is_sample true} {:location (str "/" other-id "/")}]]
           (testing (pr-str changes)
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
                                   (t2/update! :model/Collection :id collection-id changes)))))
-        (testing "move-collection!"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
-                                (collection/move-collection! collection (collection/children-location other)))))
         (t2/update! :model/Collection :id collection-id {:archive_operation_id nil :is_remote_synced true :description "Birds"})
         (is (=? {:location "/" :is_remote_synced true :description "Birds"}
                 (t2/select-one :model/Collection :id collection-id)))))))

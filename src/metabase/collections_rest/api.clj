@@ -631,7 +631,7 @@
     (events/with-batched-events
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
       (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
-        (collection/move-collection! child new-children-location))
+        (collections-rest.db/move-collection! (:id child) new-children-location))
       ;; Now we can safely delete this collection and anything left under it.
       (collections-rest.db/delete-collection! id))))
 

@@ -28,7 +28,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -1643,25 +1642,6 @@
   [_seed-table-ids]
   nil)
 
-(mu/defn move-collection!
-  "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   new-location :- LocationPath]
-  (let [orig-children-location (children-location collection)
-        new-children-location  (children-location (assoc collection :location new-location))]
-    (when (= (:type collection) tenant-specific-root-collection-type)
-      (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
-    ;; first move this Collection
-    (log/infof "Moving Collection %s and its descendants from %s to %s"
-               (u/the-id collection) (:location collection) new-location)
-    (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
-    (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection) {:location new-location})
-      ;; we need to update all the descendant collections as well...
-      (collections.db/move-descendant-collections! orig-children-location
-                                                   new-children-location
-                                                   (boolean (collections.db/collection-remote-synced? (u/the-id collection)))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2151,7 +2131,11 @@
       (check-ancestors-exist row ancestors))
     (when (and (contains? changes :type) (= library-collection-type (:type row)))
       (check-single-library row))
-    (before-update-row row ancestors)))
+    (u/prog1 (before-update-row row ancestors)
+      (when moved?
+        (collections.db/move-descendant-collections! (children-location (t2/original row))
+                                                     (children-location <>)
+                                                     (boolean (:is_remote_synced <>)))))))
 
 (mi/define-update-in-transaction :model/Collection)
 

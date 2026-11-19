@@ -11,6 +11,13 @@
   [id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id id))
 
+(mu/defn move-collection!
+  "Move the Collection with `collection-id`, and with it the Collections under it, to `location`, returning the number
+  updated."
+  [collection-id :- ::lib.schema.id/collection
+   location      :- :string]
+  (t2/update! :model/Collection :id collection-id {:location location}))
+
 (mu/defn directly-archived-descendant-collections
   "The directly archived Collections whose location starts with `location-prefix`."
   [location-prefix :- :string]
