@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.saved-test-models-test
   "What the four saved-test models share and where they differ: reading and writing a test through its subject, the
-  remote-sync rule only transform tests follow, which revisions a user may read, and the events and run cleanup of
-  their hooks."
+  remote-sync rule only transform tests follow, which revisions a user may read, a test's newest run, and the events
+  and run cleanup of their hooks."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models :as data-testing.models]
@@ -61,8 +61,14 @@
 (defn- hydrated?
   "Whether the saved test `test-id` of `model`, hydrated with `k`, passes `check`, for `user`."
   [user model test-id k check]
-  (mt/with-current-user (mt/user->id user)
+  (mt/with-test-user user
     (boolean (check (t2/hydrate (t2/select-one model :id test-id) k)))))
+
+(defn- can-update?
+  "Whether `user` may make `changes` to `saved-test`."
+  [user saved-test changes]
+  (mt/with-test-user user
+    (boolean (mi/can-update? saved-test changes))))
 
 (deftest every-saved-test-spec-matches-its-schema-test
   (testing "premise: each saved-test model, and no other, has a saved-test spec"
@@ -88,16 +94,12 @@
        (is (false? (hydrated? :rasta model test-id :can_write mi/can-write?))))
      (testing "an admin may rename the test; a user who may not read the subject may not"
        (let [saved-test (t2/select-one model :id test-id)]
-         (is (true? (mt/with-current-user (mt/user->id :crowberto)
-                      (boolean (mi/can-update? saved-test {:name "Renamed"})))))
-         (is (false? (mt/with-current-user (mt/user->id :rasta)
-                       (boolean (mi/can-update? saved-test {:name "Renamed"})))))))
+         (is (true? (can-update? :crowberto saved-test {:name "Renamed"})))
+         (is (false? (can-update? :rasta saved-test {:name "Renamed"})))))
      (testing "an admin may create a test of the subject; a user who may not read it may not"
-       (let [saved-test (t2/select-one model :id test-id)]
-         (is (true? (mt/with-current-user (mt/user->id :crowberto)
-                      (boolean (mi/can-create? model (dissoc saved-test :id)))))))
-       (is (false? (mt/with-current-user (mt/user->id :rasta)
-                     (boolean (mi/can-create? model (dissoc (t2/select-one model :id test-id) :id))))))))))
+       (let [new-test (dissoc (t2/select-one model :id test-id) :id)]
+         (is (true? (mt/with-test-user :crowberto (boolean (mi/can-create? model new-test)))))
+         (is (false? (mt/with-test-user :rasta (boolean (mi/can-create? model new-test))))))))))
 
 (deftest can-write-of-a-batch-follows-each-tests-own-subject-test
   ;; Card tests only: a non-admin's write on a transform or a segment needs the data analyst role, not a collection,
@@ -115,7 +117,7 @@
         (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable)
         (perms/grant-collection-read-permissions! (perms/all-users-group) read-only)
         (let [batch (fn [user test-ids]
-                      (mt/with-current-user (mt/user->id user)
+                      (mt/with-test-user user
                         (mapv (comp boolean mi/can-write?)
                               (t2/hydrate (mapv #(t2/select-one :model/CardTest :id %) test-ids) :can_write))))]
           (testing "premise: hydrated alone, Rasta may write the test of the writable card and not the other"
@@ -131,20 +133,17 @@
   (do-with-each-test-type!
    (fn [{:keys [model test-type test-id]}]
      (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-only]
-       (let [saved-test  (t2/select-one model :id test-id)
-             can-update? (fn [changes]
-                           (mt/with-current-user (mt/user->id :crowberto)
-                             (boolean (mi/can-update? saved-test changes))))]
+       (let [saved-test (t2/select-one model :id test-id)]
          (if (= :transform test-type)
            (testing "the transform itself may not be written, so an admin may neither write nor change its test"
              (is (false? (hydrated? :crowberto model test-id :can_write mi/can-write?)))
-             (is (false? (can-update? {:name "Renamed"})))
-             (is (false? (can-update? {:name (:name saved-test)}))))
+             (is (false? (can-update? :crowberto saved-test {:name "Renamed"})))
+             (is (false? (can-update? :crowberto saved-test {:name (:name saved-test)}))))
            (do
              (testing "the subject is not synced, so an admin may write the test"
                (is (true? (hydrated? :crowberto model test-id :can_write mi/can-write?))))
              (testing "the subject is not synced, so an admin may rename the test"
-               (is (true? (can-update? {:name "Renamed"})))))))))))
+               (is (true? (can-update? :crowberto saved-test {:name "Renamed"})))))))))))
 
 (deftest transform-tests-follow-the-read-only-rule-on-their-own-test
   (testing "with the transform's own write check allowing everything, a read-only instance still refuses an admin"
@@ -153,25 +152,22 @@
         (mt/with-temp [:model/Transform     {transform-id :id} {}
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "A test"}]
           (mt/with-dynamic-fn-redefs [transform/transform-deletable? (constantly true)]
-            (let [saved-test  (t2/select-one :model/TransformTest :id test-id)
-                  can-update? (fn [changes]
-                                (mt/with-current-user (mt/user->id :crowberto)
-                                  (boolean (mi/can-update? saved-test changes))))]
+            (let [saved-test (t2/select-one :model/TransformTest :id test-id)]
               (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-only]
                 (testing "premise: the transform may be written"
-                  (is (true? (mt/with-current-user (mt/user->id :crowberto)
+                  (is (true? (mt/with-test-user :crowberto
                                (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/Transform :id transform-id)
                                                                    :can_write)))))))
                 (testing "an admin may not write the test"
                   (is (false? (hydrated? :crowberto :model/TransformTest test-id :can_write mi/can-write?))))
                 (testing "an admin may not change a column that remote sync exports"
-                  (is (false? (can-update? {:name "Renamed"}))))
+                  (is (false? (can-update? :crowberto saved-test {:name "Renamed"}))))
                 (testing "control: an update that changes no exported column is allowed"
-                  (is (true? (can-update? {:name (:name saved-test)})))))
+                  (is (true? (can-update? :crowberto saved-test {:name (:name saved-test)})))))
               (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-write]
                 (testing "control: on a read-write instance an admin may write and rename the test"
                   (is (true? (hydrated? :crowberto :model/TransformTest test-id :can_write mi/can-write?)))
-                  (is (true? (can-update? {:name "Renamed"}))))))))))))
+                  (is (true? (can-update? :crowberto saved-test {:name "Renamed"}))))))))))))
 
 (deftest a-test-is-writable-on-a-read-write-instance-test
   (do-with-each-test-type!
@@ -179,8 +175,7 @@
      (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-write]
        (testing "control: on a read-write instance an admin may write and rename every kind of test"
          (is (true? (hydrated? :crowberto model test-id :can_write mi/can-write?)))
-         (is (true? (mt/with-current-user (mt/user->id :crowberto)
-                      (boolean (mi/can-update? (t2/select-one model :id test-id) {:name "Renamed"}))))))))))
+         (is (true? (can-update? :crowberto (t2/select-one model :id test-id) {:name "Renamed"}))))))))
 
 (deftest revisions-are-readable-through-their-subject-test
   (do-with-each-test-type!
@@ -188,12 +183,36 @@
      (let [objects [{subject-key subject-id :name "On the subject"}
                     {subject-key Integer/MAX_VALUE :name "On a deleted subject"}]
            readable (fn [user]
-                      (mt/with-current-user (mt/user->id user)
+                      (mt/with-test-user user
                         (mapv boolean (revision/revisions-readable? model objects))))]
        (testing "an admin may read a revision about the subject, and not one about a subject that no longer exists"
          (is (= [true false] (readable :crowberto))))
        (testing "a user who may not read the subject may read neither"
          (is (= [false false] (readable :rasta))))))))
+
+(deftest last-run-is-the-newest-run-of-the-test-itself-test
+  (mt/with-premium-features #{:transforms-basic :transforms-testing}
+    (doseq [{:keys [model test-type subject-key]} test-types
+            :let [other-type (if (= :card test-type) :transform :card)]]
+      (testing model
+        (do-with-subject!
+         test-type
+         (fn [subject-id]
+           ;; The run of another test type is the newest row, so a lookup that ignored the test type would find it.
+           (mt/with-temp [model              {test-id :id}  {subject-key subject-id :name "With runs"}
+                          model              {never-id :id} {subject-key subject-id :name "Never run"}
+                          :model/DataTestRun _              {:test_type test-type :test_id test-id}
+                          :model/DataTestRun {newest :id}   {:test_type test-type :test_id test-id}
+                          :model/DataTestRun _              {:test_type other-type :test_id test-id}]
+             (let [last-run-ids (fn [test-ids]
+                                  (mapv (comp :id :last_run)
+                                        (t2/hydrate (mapv #(t2/select-one model :id %) test-ids) :last_run)))]
+               (testing "the newest run of the test, not an older one or a run of another test type with the same id"
+                 (is (= [newest] (last-run-ids [test-id]))))
+               (testing "a test with no runs has none"
+                 (is (= [nil] (last-run-ids [never-id]))))
+               (testing "in one batch, each test gets its own newest run, or none"
+                 (is (= [nil newest] (last-run-ids [never-id test-id]))))))))))))
 
 (defn- published-topics!
   "The topics `thunk` publishes, in order, with the `:user-id` of each event that has one."
