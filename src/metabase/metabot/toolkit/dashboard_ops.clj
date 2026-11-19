@@ -1034,18 +1034,24 @@
   "The connections among `stored`, as [[slot-connections]] gives them, that `op` asks to drop.
    Those are a filter's for `remove_parameter` and `unwire_parameter`, on its one dashcard when the unwire names one,
    and a dashcard's for a `patch_dashcard` that sets its `parameter_mappings`."
-  [stored {:keys [op parameter_id dashcard_id patch] :as o}]
+  [stored {op-name :op :keys [parameter_id dashcard_id patch] :as op}]
   ;; Judged by what the op names rather than what it removed, so asking to drop a connection an earlier op already
   ;; cleared still counts.
-  (case op
+  (case op-name
     "remove_parameter" (filter (fn [[p]] (= parameter_id p)) stored)
     "unwire_parameter" (filter (fn [[p dc]]
                                  (and (= parameter_id p)
-                                      (or (not (contains? o :dashcard_id)) (= dashcard_id dc))))
+                                      (or (not (contains? op :dashcard_id)) (= dashcard_id dc))))
                                stored)
     "patch_dashcard"   (when (contains? patch :parameter_mappings)
                          (filter (fn [[_ dc]] (= dashcard_id dc)) stored))
     nil))
+
+(defn- slot-origins
+  "The stored slots the slot `s` stands for in `dashcard-origins`, one dashcard's origins from [[track-promotions]].
+   A slot missing from them stands for itself."
+  [dashcard-origins s]
+  (get dashcard-origins s #{s}))
 
 (defn- track-promotions
   "The origins after `op`: for each dashcard id, the stored slots each of its current slots stands for.
@@ -1058,14 +1064,14 @@
     (cond-> origins
       (int? promoted) (update dashcard_id
                               (fn [m]
-                                (assoc m :card (set/union (get m :card #{:card}) (get m promoted #{promoted}))))))))
+                                (assoc m :card (set/union (slot-origins m :card) (slot-origins m promoted))))))))
 
 (defn- stored-connections
   "The [[slot-connections]] of `dashcards`, with each slot replaced by the stored slots it stands for in `origins`."
   [origins dashcards]
   (into #{}
         (for [[parameter-id dashcard-id s] (slot-connections dashcards)
-              stored-slot                  (get-in origins [dashcard-id s] #{s})]
+              stored-slot                  (slot-origins (get origins dashcard-id) s)]
           [parameter-id dashcard-id stored-slot])))
 
 (defn- apply-op-tracking-drops
@@ -1075,7 +1081,7 @@
   [state idx op]
   (let [origins (track-promotions (::slot-origins state) state op)
         state'  (assoc (apply-op-at state idx op) ::slot-origins origins)
-        asked   (into (or (::asked-drops state) #{}) (asked-drops (::stored-connections state) op))]
+        asked   (into (::asked-drops state) (asked-drops (::stored-connections state) op))]
     (assoc state' ::asked-drops (set/difference asked (stored-connections origins (:dashcards state'))))))
 
 (defn- current-slot
@@ -1084,7 +1090,7 @@
    while it is still one, and nil once it is gone."
   [dashcard origins stored-slot]
   (cond
-    (contains? (get origins :card #{:card}) stored-slot) :card
+    (contains? (slot-origins origins :card) stored-slot) :card
     (= stored-slot (slot dashcard stored-slot))          stored-slot))
 
 (defn- dropped-connections
@@ -1100,14 +1106,14 @@
         saved-dashcards      (u/index-by :id (:dashcards payload))
         kept                 (stored-connections slot-origins (:dashcards payload))]
     (->> (for [[parameter-id dashcard-id card-id] (connections (:dashcards current))
+               :when (surviving-parameter? parameter-id)
                :let  [dashcard    (saved-dashcards dashcard-id)
                       ;; A stored mapping onto a card the dashcard doesn't show filtered nothing, so it has no slot.
                       stored-slot (slot (stored-dashcards dashcard-id) card-id)
                       connection  [parameter-id dashcard-id stored-slot]
                       new-slot    (when (and dashcard stored-slot)
                                     (current-slot dashcard (get slot-origins dashcard-id) stored-slot))]
-               :when (and (surviving-parameter? parameter-id)
-                          new-slot
+               :when (and new-slot
                           (not (contains? kept connection))
                           (not (contains? asked-drops connection)))]
            ;; A stored card and the series card promoted over it share a slot, so they can report the same row.
@@ -1139,7 +1145,8 @@
         state   (-> (reduce-kv apply-op-tracking-drops
                                (assoc (init-state current cards)
                                       ::stored-card-ids    (dashboard-card-ids current)
-                                      ::stored-connections (slot-connections (:dashcards current)))
+                                      ::stored-connections (slot-connections (:dashcards current))
+                                      ::asked-drops        #{})
                                ops)
                     check-tab-coverage!
                     settle-layout)
