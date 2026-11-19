@@ -12,7 +12,6 @@
   ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
   themselves."
   (:require
-   [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
