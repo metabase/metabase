@@ -433,7 +433,8 @@
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
       (with-redefs [http/request (fn [_]
                                    {:status 200
-                                    :body   {:data [{:id "gpt-6.2-sol"            :created 42}
+                                    :body   {:data [{:id "gpt-6.2-astra"          :created 43}
+                                                    {:id "gpt-6.2-sol"            :created 42}
                                                     {:id "gpt-6-astra"            :created 41}
                                                     {:id "gpt-5.6-sol"            :created 40}
                                                     {:id "gpt-5.6-luna"           :created 39}
@@ -450,6 +451,7 @@
                 {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
                 {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}
                 {:id "gpt-6-astra" :display_name "GPT-6 Astra"}
+                {:id "gpt-6.2-astra" :display_name "GPT-6.2 Astra"}
                 {:id "gpt-6.2-sol" :display_name "GPT-6.2 Sol"}]
                (:models (openai/list-models {:credentials byok-credentials}))))))))
 
