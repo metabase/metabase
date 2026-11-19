@@ -90,9 +90,10 @@ that needs the row as stored.
 
 ## Write paths
 
-**A plain `t2/insert!`, `t2/update!` or `t2/delete!` on `:model/X` does the right thing, whoever calls it.** People write
-`(t2/insert! :model/Card ...)` in a `<module>/db.clj` function and expect a correct Card. So nothing a row needs may
-live in a function that wraps the write: there is no `create-card!` that differs from the insert in `db.clj`.
+**A plain `t2/insert!`, `t2/update!` or `t2/delete!` on `:model/X` does the right thing, whoever calls it.** People
+write `(t2/insert! :model/Card ...)` in a `<module>/db.clj` function and expect a correct Card. So nothing a row needs
+may live in a function that wraps the write: there is no `create-card!` that differs from the insert in `db.clj`.
+Existing wrappers that still do more are known gaps being removed over time; do not copy them.
 
 What a writer used to do in such a function has one of these homes:
 
@@ -117,11 +118,11 @@ What a writer used to do in such a function has one of these homes:
   happen once per owner (nothing on a throw; nested batches join), and `events/with-event-context` for what the
   write's records need. Replacing the parts of an entity with a new list (dashcards, tabs, channels) is one shared
   helper that compares the lists and calls the plain statements; it holds no rule of its own.
-- Nobody publishes a lifecycle event by hand. A model that publishes derives `:hook/events` and implements `events/spec`,
-  `{operation topic}` with full keywords, which may omit an operation; every write then publishes in its transaction.
-  The topic is named after the model (`:event/pulse-update`); the audit consumer chooses the topic it stores. A moment
-  that is a column change (public link, publish) is derived by its consumer with `u.events/changed?`; only a moment that
-  is no row write (login, read, sync begin, transform run, user invited) is published by hand.
+- Nobody publishes a lifecycle event by hand. A model that publishes derives `:hook/events` and implements
+  `events/spec`, `{operation topic}` with full keywords, which may omit an operation; every write then publishes in its
+  transaction. The topic is named after the model (`:event/pulse-update`); the audit consumer chooses the topic it
+  stores. A moment that is a column change (public link, publish) is derived by its consumer with `u.events/changed?`;
+  only a moment that is no row write (login, read, sync begin, transform run, user invited) is published by hand.
 - To check a rule, write the row with a plain `t2/` call in a test and look at what is stored and what reacted. If
   that differs from what the endpoint leaves, the model is wrong.
 
@@ -131,13 +132,15 @@ What a writer used to do in such a function has one of these homes:
   (`::events.schema/lifecycle`): a create has `:object` only, a delete `:previous-object` only. Compare columns with
   `u.events/changed?`, `changed-any?` and `changed-keys` (`metabase.util.events`): a merged batch has no "changes".
 - `events/with-event-context` keys: `:revision-message` (message of the revisions), `:reverting?` (a revert's writes),
-  `:details` (a map the audit row of some models takes), `:archived-with` (`[model id]` of the archive that carried the row).
+  `:details` (a map the audit row of some models takes), `:archived-with` (`[model id]` of the archive that carried the
+  row).
 - A consumer lives in `<module>/events.clj` or `<module>/events/<topic>.clj`, required from `init.clj`, as a
   `methodical/defmethod events/publish-event!` on a topic it derives; `events/register-owned-consumer!` gives it one
   call per owner per batch (`{:last? true}` runs it after the others). A sink (`events/register-sink!`,
   `events/add-to-sink!`) collects items such as audit rows and flushes them once at the end of the batch.
 - `events/register-capture!` (a DELETE's events, after its before-delete hooks) and `register-statement-capture!` (its
-  rows, before them) run once per DELETE statement to read rows `ON DELETE CASCADE` removes, for the handler's `:captures`.
+  rows, before them) run once per DELETE statement to read rows `ON DELETE CASCADE` removes, for the handler's
+  `:captures`.
 - Delivery runs in the write's transaction, so a consumer that throws fails the write. Work that needs committed rows
   goes in `mdb/do-after-commit`; effects that leave the transaction run after it (the explicit initial sync of the
   database API, `quick-task`s).
@@ -157,76 +160,77 @@ What a writer used to do in such a function has one of these homes:
 
 A feature that needs to know something about a model reads it from the model, never from a list of models of its
 own. Each such feature has one multimethod, `<feature>/spec`, that a model implements once, in its model file, with a
-literal map:
+literal map such as `{:track [...] :skip [...] :before-revert queries.revisions/before-revert}`.
 
-    (defmethod revisions/spec :model/Card [_model]
-      {:track         [:name :description :dataset_query ...]
-       :skip          [:view_count :last_used_at ...]
-       :same?         {:result_metadata queries.revisions/same-result-metadata?}
-       :before-revert queries.revisions/before-revert})
-
-- The multimethod lives in a tiny `<feature>/spec.clj` that requires nothing but Toucan, dispatches on the model
-  keyword, and returns nil for a model without a spec. Its docstring is the reference for the keys. The feature's code
-  (`events.clj`, jobs, API) names no `:model/X`.
+- The multimethod lives in a small `<feature>/spec.clj`, dispatches on the model keyword and returns nil for a model
+  without a spec. Its docstring, and its closed schema where it has one, is the reference for the keys. The feature's
+  code (`events.clj`, jobs, API) names no `:model/X`.
 - The model file only wires: the map's functions are imported, never written inline. Code of one model for one feature
   lives in `<the model's module>/<feature>.clj` (`queries/revisions.clj`, `dashboards/search.clj`), app-DB queries in
   `<module>/db.clj`. A spec that is plain data stays whole in the model file; do not create a near-empty file.
 - A value that decides something is a function, not a format of its own: a keyword or a column set where that says it
   all, else a function. Keywords are written in full so that they can be searched.
-- A spec found by a name (a search model, an API name, an item type) is keyed by the model and returns a map from
-  each name to its spec, since Card answers to `"card"`, `"dataset"` and `"metric"`. The feature finds a name by loading
-  every model and indexing the specs, on first use; it keeps no table from names to models.
+- A spec found by a name (search model, item type, recent view, API name) maps each of the model's names to its entry,
+  since Card answers to `"card"`, `"dataset"` and `"metric"`. The feature indexes them with
+  `models.resolution/spec-entries-by-name`, which loads every model once and throws on a name two models declare.
 
 | Spec | A model has one when | Keys |
 |---|---|---|
 | `events/spec` | it derives `:hook/events` | `{:create :event/x-create :update :event/x-update :delete :event/x-delete}`, any of them left out |
-| `app-db-copy/spec` | always: every model | `:skip?` (explicit `true` or `false`), `:select`, `:transform` |
+| `app-db-copy/spec` | always: every model | `:skip?` (always given, `true` or `false`), `:select`, `:transform`, `:sequence` |
 | `change-log/spec` | the change log tracks it | `:track`, `:skip` |
-| `serialization/spec` | it is exported | `:schema`, `:copy`, `:skip`, `:transform`, `:defaults`, `:identity`, `:parent`, `:children`, and the functions `:storage-paths`, `:import-dependencies`, `:export-dependencies`, `:before-load`, `:loaded-entities`, `:after-load` |
-| `remote-sync/spec` | remote sync syncs it | `:synced-items`, `:synced-filter-clause`, `:built-in-filter-clause`, `:name` |
-| `revisions/spec` | it has revisions, or its rows are parts of an entity that has | `:track`, `:skip`, `:parent`, `:children`, `:same?`, `:before-revert`, `:revert!`, `:describe`, `:authorize` |
-| `audit/spec` | a user's write of it records an audit row | `:track`, `:track-redacted`, `:skip`, `:details`, `:topics`, `:moments`, `:parent` |
-| `search/spec` | it is searchable | per search model name: `:attrs`, `:search-terms`, `:render-terms`, `:visibility`, `:where`, `:joins`, `:bookmark` |
-| `dependencies/spec` | it has dependencies, or its writes change those of another entity | `:type`, `:inlined?`, `:items`; `:hydrate`, `:dependencies`, `:analysis`; `:invalidates` |
-| `replacement/spec` | it is a source that can be replaced, or it uses one | `:source-database-id`, `:hydrate`, `:upgrade-field-refs`, `:swap-source` |
-| `collection-items/spec` | it shows in a collection | per item name: `:namespaces`, `:rank`, `:items`, `:hydrate` |
-| `recent-views/spec` | it shows in recent views | per name: `:load`, `:render` |
+| `serialization/spec` | it is exported | `:schema`, `:copy`, `:skip`, `:transform`, `:defaults`, `:identity`, `:children`, `:parent`, and the fns `:storage-paths`, `:resource-paths`, `:export-dependencies`, `:import-dependencies`, `:loaded-entities`, `:before-load`, `:after-load`, `:entity-ref`, `:rows-by-refs`, `:rows-by-parent-pks` |
+| `remote-sync/spec` | remote sync syncs it | `:synced-items` (unless it is a SerDes child), `:name`, `:synced-filter-clause`, `:built-in-filter-clause` |
+| `revisions/spec` | it has revisions, or its rows are parts of an entity that has | `:track`, `:skip`, `:parent`, `:children`, `:same?`, `:snapshot`, `:defaults`, `:before-revert`, `:revert!`, `:describe`, `:diff-columns`, `:authorize` |
+| `audit/spec` | a user's write of it records an audit row | `:track`, `:track-redacted`, `:skip`, `:details`, `:state`, `:same?`, `:topics`, `:parent`, `:moments`, `:subject`, `:context-details?` |
+| `search/spec` | it is searchable | per search model name: `:attrs`, `:search-terms`, `:embedding-exclude`, `:render-terms`, `:visibility`, `:where`, `:bookmark`, `:joins` |
+| `dependencies/spec` | it is an entity of the graph (`:type`) or a part of one (`:part-of`); Dimension, FieldValues and Database have none, and the consumer handles their writes itself | `:type`, `:inlined?`, `:items`; `:hydrate`, `:dependencies`, `:analysis`, `:after-dependencies`; plain data `:dependency-columns`, `:analysis-columns`, `:output-columns`, `:part-of`, `:part-columns` |
+| `replacement/spec` | it is a source a replacement can replace (`:source-database-id`), or its rows use one | `:source-database-id`, `:hydrate`, `:upgrade-field-refs`, `:swap-source` |
+| `collection-items/spec` | it shows in a collection | per item name: `:items`, `:hydrate`, `:rank` |
+| `recent-views/spec` | it shows in recent views | per name: `:load`, `:render`, `:type` |
 | `staleness/spec` | it can be stale | `:candidates`, `:load`, `:render` |
 | `eid-translation/spec` | it derives `:hook/entity-id` and the API translates its entity ids | `:names` |
+| `xrays/spec` | the related-entities API finds entities related to it | `:related`, `:definition` |
 
 What the shared keys mean, wherever they appear:
 
-- `:track` and `:skip` list every column of the table but `:id`, `:created_at` and `:updated_at`: the columns the
-  feature follows, and the ones whose change alone it ignores. The audit spec splits the first in two: `:track` columns
-  are stored in the row's details, `:track-redacted` columns record a row without their value (a query).
-- `:parent {:model :model/Y :key :y_id}` says a row is a part of another entity, and `:children {key :model/Z}` nests
-  the parts in it, as in SerDes.
-- `:hydrate` loads what a pure function needs, for a list of rows at once; the function that follows it
-  (`:dependencies`, `:swap-source`) takes one hydrated row and queries nothing.
-- `:items` or `:candidates` returns the whole query of the model's rows for a list of mixed models, with the same
-  columns from every model and the permission filter inside it; `:load` takes the ids of a page and returns the rows
-  to show, and `:render` turns one of them into the API item, or nil to leave it out.
-- `:invalidates` of the dependencies spec has one function per status table (`:dependency-status`,
-  `:analysis-finding-status`, `:result-metadata-status`), each returning `{:entities {type ids} :dependents-of {type
-  ids}}`; `:inlined?` says the dependents expand the entity inline (a snippet, a measure), so every transitive
-  dependent is meant.
-- `:topics` of the audit spec is left out when the stored topic is the name of the event the model publishes;
-  otherwise it holds, per operation, a keyword or a function of the event that returns the topic, nil to record nothing.
+- `:track` and `:skip` (change log, revisions, audit) list every column but `:id`, `:created_at` and `:updated_at`:
+  the columns the feature follows, and those whose change alone it ignores. Audit splits the first: `:track` columns
+  are stored in the row's details, `:track-redacted` ones record a row without their value. SerDes lists every column
+  in `:copy`, `:skip` or `:transform`.
+- `:parent {:model :model/Y :key :y_id}` makes a row a part of another entity (revisions, audit, SerDes, each adding
+  keys of its own); `:children` nests the parts: `{key :model/Z}` in SerDes, `{key {:model :model/Z :as k}}` in
+  revisions.
+- `:hydrate` loads in bulk what the pure functions after it need, which take one hydrated row and query nothing:
+  `:dependencies` (dependencies), `:upgrade-field-refs` and `:swap-source` (replacement). A collection-items `:hydrate`
+  instead shapes the listed rows for the API.
+- `:items` (collection items, dependencies) and `:candidates` (staleness) return the whole HoneySQL query of the
+  model's rows, which the feature combines with the other models'. `:load` (recent views, staleness) takes ids and
+  returns the rows to show, in bulk; `:render` turns one into the API item (nil leaves a recent view out).
 
 ### Adding or changing a model
 
-- **A new model.** Give it `app-db-copy/spec` and add it to the copy order when it is copied; `events/spec` when
-  anything reacts to its writes; then each spec of the table whose feature it takes part in. The enumeration tests
-  say which are missing: a model with no copy spec, with an entity id and no translation names, neither tracked nor
-  untracked by the change log, neither exported nor excluded from SerDes.
+- **A new model.** Give it `app-db-copy/spec`, `events/spec` when anything reacts to its writes, then each spec whose
+  feature it takes part in. Failing until then: `all-models-accounted-for-test` in `metabase.cmd.copy-test`,
+  `every-trait-model-has-spec-test` in `metabase.events.batch-test`, `tracked-models-test` in
+  `metabase.change-log.events-test`, `spec-models-test` in `metabase.eid-translation.util-test` (entity ids need
+  `:names` or a place in its not-translated list), `metabase-enterprise.serialization.models.entity-id-test`.
+- **A new name.** `search-models-match-declared-spec-names-test` (`metabase.search.spec-test`),
+  `model-param-values-match-item-names-test` (`metabase.collection-items.core-test`), `names-of-recent-views-test`
+  (`metabase.activity-feed.recent-views.spec-test`) and `spec-names-test` (`metabase.eid-translation.util-test`)
+  compare the declared names with the feature's own list.
 - **A new column.** Put it in every spec of its model that lists columns: `:track` or `:skip` of the change log and of
-  revisions, `:track`, `:track-redacted` or `:skip` of the audit log, `:copy`, `:skip` or `:transform` of SerDes. The
-  `spec-columns-test` of each fails until you do. A counter, a timestamp the product sets, or a value the product
-  computes goes in `:skip`; keep such columns in one private var of the model file and refer to it from each spec.
-- **A new part of an entity** (a row that belongs to a dashboard, a pulse, a table). Declare `:parent` in the specs that
-  have one and name the owner in the functions of the dependencies spec; no feature needs a line of its own.
-- **A feature that needs a fact about models.** Add a key to its spec, or a new `<feature>/spec`, and a test that
-  checks every spec against a closed schema; never a `case` on the model or a map from models in the feature's code.
+  revisions, `:track`, `:track-redacted` or `:skip` of the audit log, `:copy`, `:skip` or `:transform` of SerDes;
+  `spec-columns-test` in `metabase.change-log.events-test`, `metabase.revisions.spec-test` and
+  `metabase.audit-app.spec-test`, and `specs-declare-exactly-table-columns-test` in `metabase.serialization.spec-test`
+  fail until you do. A counter, a timestamp or a value the product sets goes in `:skip`, in one private var of the
+  model file that each spec refers to.
+- **A new part of an entity** (a row of a dashboard, a pulse, a table). Declare `:parent` in the specs that have one
+  and `:part-of` in the dependencies spec; no feature needs a line of its own.
+- **A spec's keys.** Every spec is checked against its feature's closed schema: `specs-match-spec-schema-test`
+  (SerDes), `spec-schema-test` (audit, staleness, x-rays), `every-spec-is-valid-test` (dependencies, replacement,
+  collection items, recent views), `every-search-model-has-valid-spec-test` (search). A new fact about models is a key
+  of a spec with such a test, never a `case` on the model or a map from models in the feature's code.
 
 ## Archiving
 
@@ -252,12 +256,12 @@ What the shared keys mean, wherever they appear:
 ## Lay out a model file
 
 Banners `;;; ---- Hooks ----`, centred in a line of about 120 columns, in this order: `Definition` (the table name, the
-derives, the transforms), `Hydration`, `Hooks`, `Permissions`, `Specs`. `Specs` holds every `defmethod <feature>/spec` of
-the model, in the order of the table above; the code they refer to is in `<module>/<feature>.clj`.
-
-The `Serialization` section holds only `(defmethod serialization/spec :model/X ...)`, a literal map whose fns are
-references (keys in the `metabase.serialization.spec` docstring). The model's own SerDes fns live in
-`<module>.serialization`, which the model file requires and never the reverse; its app-DB queries stay in `<module>.db`.
+derives, the transforms), `Hydration`, `Hooks`, `Permissions`, `Specs`. `Specs` comes last, as its maps refer to
+functions above it, and holds every `defmethod <feature>/spec` of the file in the order of the table above, grouped by
+model in the order the models are defined. A spec method uses the plain alias `<feature>/spec`: the core when it
+re-exports `spec` and the file needs the core anyway (`[metabase.search.core :as search]`), else the spec namespace
+(`[metabase.replacement.spec :as replacement]`), since some cores load too much for a model file. The model's own SerDes
+functions live in `<module>.serialization`, which the model file requires and never the reverse.
 
 ## Tests
 
@@ -265,6 +269,6 @@ references (keys in the `metabase.serialization.spec` docstring). The model's ow
   when the test depends on it. Build queries with `metabase.lib`.
 - Test a hook through `t2/insert!` / `t2/update!`; a permission rule through `api/create-check` / `api/update-check` as
   each kind of user; an event consumer by writing the row, not by publishing the event; a list endpoint with
-  `t2/with-call-count` at two sizes. Run the enumeration tests (entity ids, specs, stats) for a new model, and the
-  `spec-columns-test` of each feature for a new column.
-Before handing off: `./bin/mage kondo <file>`, `./bin/mage fix-modules-config`, and the tests of each writer you touched.
+  `t2/with-call-count` at two sizes. Run the tests named under Adding or changing a model.
+Before handing off: `./bin/mage kondo <file>`, `./bin/mage fix-modules-config`, and the tests of each writer you
+touched.
