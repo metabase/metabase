@@ -576,13 +576,15 @@
    generically-regenerated `:sql`, which is not the string that was checked."
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
-   :require-dialect?     true})
+   :require-dialect?     true
+   :check-rebuild-of     #{"read-only"}})
 
 (def ^:private gate-limits
   "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]]."
   {:max-sql-chars        max-gate-sql-chars
    :literal-list-ceiling literal-list-strip-threshold
-   :require-dialect?     false})
+   :require-dialect?     false
+   :check-rebuild-of     #{}})
 
 (defn- unknown
   "A verdict that `sql` could not be checked, for `reason`."
@@ -607,7 +609,7 @@
 (defn- classify-single-stmt
   "Classify `sql` as a single statement of `stmt-type` for `dialect`, spending no more than `limits` allow.
    Applies `limits` as given; it does not infer them from `stmt-type`."
-  [dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
+  [dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect? check-rebuild-of]}]
   (cond
     ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
     ;; grows with it.
@@ -625,7 +627,7 @@
     (unknown sql "large-literal-list")
 
     :else
-    (verdict sql (protocol/single-stmt-of-type (parser) dialect sql stmt-type))))
+    (verdict sql (protocol/single-stmt-of-type (parser) dialect sql stmt-type (contains? check-rebuild-of stmt-type)))))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
@@ -635,7 +637,10 @@
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
   parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched
   for in its original one. See [[executable-limits]] for what that costs, and [[classify-stmt]] for the
-  same question asked by a caller that only needs a verdict."
+  same question asked by a caller that only needs a verdict.
+
+  For `\"read-only\"`, the `:sql` must itself pass the same checks and reconstruct to itself; otherwise the
+  verdict is `:disallowed` with `:reason \"rebuild-differs\"` and the reconstruction's own reason as `:detail`."
   [dialect sql stmt-type]
   (classify-single-stmt dialect sql stmt-type executable-limits))
 

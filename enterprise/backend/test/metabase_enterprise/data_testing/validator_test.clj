@@ -233,13 +233,13 @@
 ;;; ------------------------------------------------ Single SELECT ------------------------------------------------
 
 (defn- single-select
-  "What [[validator/ensure-single-select]] returns for `sql` on `driver`, or its refusal with `:reason`."
+  "What [[validator/ensure-single-select]] returns for `sql` on `driver`, or its refusal with `:reason` and `:detail`."
   [driver sql source]
   (driver/the-initialized-driver driver)
   (try
     (validator/ensure-single-select driver sql source)
     (catch ExceptionInfo e
-      (data-testing.test-util/refusal #(throw e) :reason))))
+      (data-testing.test-util/refusal #(throw e) :reason :detail))))
 
 (deftest ensure-single-select-test
   (testing "a single SELECT comes back as SQLGlot rebuilt it, the string a run executes"
@@ -262,6 +262,16 @@
            (select-keys (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
                                        [:expectation "check"])
                         [:error-type :reason]))))
+  (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
+    (is (= "SELECT e'it''s' AS id"
+           (single-select :postgres "SELECT E'it\\'s' AS id" nil))))
+  (testing "a SELECT whose rebuilt E'' string ends one quote later, running `setval` that the parser read as text, is refused"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :reason     "rebuild-differs"
+             :detail     "writes-or-locks"}
+            (single-select :postgres
+                           "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id"
+                           [:input {:schema "public" :name "orders"}]))))
   (testing "a SELECT whose CTE writes is refused"
     (is (=? {:error-type ::errors/not-a-single-select
              :reason     "writes-or-locks"}

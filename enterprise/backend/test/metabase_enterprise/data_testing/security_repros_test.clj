@@ -210,6 +210,18 @@
                      (with-recorder! #(mt/user-http-request :crowberto :post 200 (str "ee/card-test/" test-id "/run")))]
                  (is (= "passed" (:status result)) (pr-str result)))))))))))
 
+(def ^:private hidden-setval-sql
+  "One SELECT that the parser reads as a string concatenation. SQLGlot rebuilds `E'\\\\'` as `e'\\'`, which Postgres
+  reads as ending one quote later, so in the rebuild `setval` runs and `--` comments out the rest."
+  "SELECT E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ AS id")
+
+(def ^:private hidden-set-config-sql
+  "An `empty` expectation of the same form as [[hidden-setval-sql]], whose rebuild calls `set_config`. The rewrite of
+  `{{output}}` is itself a rebuild, so the string holds two backslashes: the rewrite leaves one, and the rebuild that
+  the run executes leaves none before the quote."
+  (str "SELECT E'\\\\\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
+       " FROM {{output}} WHERE 1 = 0"))
+
 (deftest data-test-sends-the-checked-statement-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
     (do-with-unreachable-postgres
@@ -226,6 +238,15 @@
        (testing "input SQL whose CTE writes is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
+           (is (= [] sent))))
+       (testing "input SQL whose rebuilt E'' string ends one quote later, running `setval`, is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id hidden-setval-sql
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
+           (is (= [] sent))))
+       (testing "`empty` expectation SQL whose rebuilt E'' string ends one quote later, running `set_config`, is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id" hidden-set-config-sql))]
            (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
            (is (= [] sent))))
        (testing "the card's own SQL of more than one statement is refused or never sent"

@@ -114,4 +114,35 @@
    :dialect    "redshift"
    :sql        "UPDATE orders SET note = 'it\\'s'"
    :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true}}]}
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt
+  ;; literal as ending one quote later than SQLGlot did. A caller that executes the rebuild of a "read-only" statement
+  ;; is refused a rebuild that fails the checks or does not rebuild to itself. A caller that only reads the verdict
+  ;; runs the original, which Postgres reads as SQLGlot did.
+  {:name              "control: a read-only E'' string with an escaped quote rebuilds to text that reads the same"
+   :dialect           "postgres"
+   :sql               "SELECT E'it\\'s' AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true :sql "SELECT e'it''s' AS id"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string moves a quote, so `setval` runs, is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "writes-or-locks"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string moves a quote, so `set_config` runs, is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "session-function"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string never ends is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'a\\\\' AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "unparseable"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}]}

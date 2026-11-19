@@ -107,13 +107,16 @@
 
 (deftest ^:parallel single-stmt-classification-test
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
-    (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
+    (doseq [{:keys [name sql dialect stmt-type expected classify-expected]} (cases "single_stmt")]
       (testing name
         (is (=? expected (sql-parsing/validate-executable-stmt dialect sql stmt-type))
             (pr-str sql))
-        (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
-               (sql-parsing/classify-stmt dialect sql stmt-type))
-            (pr-str sql))))))
+        (if classify-expected
+          (is (=? classify-expected (sql-parsing/classify-stmt dialect sql stmt-type))
+              (pr-str sql))
+          (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
+                 (sql-parsing/classify-stmt dialect sql stmt-type))
+              (pr-str sql)))))))
 
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 
