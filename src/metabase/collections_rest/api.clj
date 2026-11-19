@@ -218,7 +218,7 @@
    restrict-models :- [:maybe [:set :keyword]]
    options         :- collection-items/CollectionChildrenOptions]
   (let [options (dissoc options :models :search-text)
-        models  (set (collection-items/filterable-models collection restrict-models options))]
+        models  (set (collection-items/filterable-models collection restrict-models))]
     (assoc (collection-items/collection-filter-metadata collection restrict-models options)
            ;; An empty model set means "nothing to count"; `collection-children` would read it as "no restriction".
            :total_items (if (empty? models)

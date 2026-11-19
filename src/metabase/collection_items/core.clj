@@ -353,17 +353,29 @@
       res
       limit-res)))
 
+(defn- applicable-item-names
+  "The keyword of the name of each type of item of `models`, every type when `models` is empty, whose model a Collection
+  of the namespace of `collection` can hold, in name order."
+  [collection models]
+  (let [collection-namespace (keyword (:namespace collection))]
+    (into (sorted-set)
+          (keep (fn [[item-name [model]]]
+                  (let [item (keyword item-name)]
+                    (when (and (or (empty? models) (contains? models item))
+                               (collection/namespace-allowed? model collection-namespace))
+                      item))))
+          (item-specs))))
+
 (defn- item-queries
   "The query of each type of item of `models`, every type when `models` is empty, that lists some items in `collection`
   under `options`, by the keyword of the name of the type, in name order. A Collection of a namespace that does not hold
   the model of a type lists no item of the type."
   [collection models options]
-  (let [collection-namespace (keyword (:namespace collection))]
+  (let [applicable (applicable-item-names collection models)]
     (into (sorted-map)
-          (keep (fn [[item-name [model {:keys [items]}]]]
+          (keep (fn [[item-name [_model {:keys [items]}]]]
                   (let [item (keyword item-name)]
-                    (when (and (or (empty? models) (contains? models item))
-                               (collection/namespace-allowed? model collection-namespace))
+                    (when (contains? applicable item)
                       (when-let [query (items collection options)]
                         [item (vary-meta query assoc :allow-subquery true)])))))
           (item-specs))))
@@ -391,10 +403,10 @@
         (item-queries collection restrict-models options)))
 
 (defn filterable-models
-  "The models that can appear as a filterable item of `collection` under `options`. Snippets are never included: they
-  are not a filterable type. When present, `restrict-models` limits the set."
-  [collection restrict-models options]
-  (vec (keys (filterable-queries collection restrict-models options))))
+  "The models that can appear as a filterable item of `collection`, found without building their queries. Snippets are
+  never included: they are not a filterable type. When present, `restrict-models` limits the set."
+  [collection restrict-models]
+  (vec (disj (applicable-item-names collection restrict-models) :snippet)))
 
 (mu/defn collection-filter-metadata :- [:map
                                         [:available_models [:sequential :string]]]
