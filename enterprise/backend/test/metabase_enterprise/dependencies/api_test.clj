@@ -22,6 +22,7 @@
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (defn- card-with-query
@@ -3289,3 +3290,10 @@
           (testing endpoint
             (is (= [] (deps.test/data-app-bundle-reads
                        #(mt/user-http-request :crowberto :get 200 endpoint :id app-id :type "data-app"))))))))))
+
+(deftest entities-read-user-settings-test
+  (testing "the Tables of the dependency lists carry the values users set"
+    (mt/with-temp [:model/Table {table-id :id :as table} {:description "sync description"}]
+      (table-user-settings/upsert-table-user-settings! table {:description "user description"})
+      (is (=? [{:id table-id :description "user description"}]
+              (dependencies.db/entities :table #{table-id}))))))

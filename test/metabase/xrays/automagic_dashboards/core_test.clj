@@ -73,7 +73,7 @@
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Field"
     (mt/dataset test-data
       (testing "The source of a field is the originating table of the field"
-        (let [table (t2/select-one :model/Table :id (mt/id :orders))
+        (let [table (t2/select-one :model/TableOverlay :id (mt/id :orders))
               field (t2/select-one :model/Field :id (mt/id :orders :discount))
               {:keys [entity source]} (#'magic/->root field)]
           (is (= source table))
@@ -159,7 +159,7 @@
               (is (false? (#'magic/native-query? card)))
               (is (=? (dissoc entity :dataset_query)
                       card))
-              (is (= source (t2/select-one :model/Table :id table-id))))))))))
+              (is (= source (t2/select-one :model/TableOverlay :id table-id))))))))))
 
 (deftest ^:parallel source-root-query-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Query"
@@ -177,7 +177,7 @@
                                                   :aggregation  [[:count]]}})})
               {:keys [entity source]} (#'magic/->root query)]
           (is (= entity query))
-          (is (= source (t2/select-one :model/Table :id (mt/id :orders)))))))))
+          (is (= source (t2/select-one :model/TableOverlay :id (mt/id :orders)))))))))
 
 (defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
@@ -194,7 +194,7 @@
       (mt/with-temp [:model/Segment segment {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
-          (is (= source (t2/select-one :model/Table :id (mt/id :venues)))))))))
+          (is (= source (t2/select-one :model/TableOverlay :id (mt/id :venues)))))))))
 
 ;;; ------------------- `automagic-analysis` -------------------
 

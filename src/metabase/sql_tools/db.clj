@@ -12,8 +12,8 @@
   `table-names`, or nil."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
-  (t2/select-pks-set :model/Table
-                     {:from  [(t2/table-name :model/Table)]
+  (t2/select-pks-set :model/TableOverlay
+                     {:from  [(t2/table-name :model/TableOverlay)]
                       :where [:and
                               [:= :db_id database-id]
                               ;; `lower()` cannot use an index on the name column, but it still beats fetching every

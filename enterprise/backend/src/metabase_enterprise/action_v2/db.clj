@@ -12,12 +12,12 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn active-table
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id :active true))
+  (t2/select-one :model/TableOverlay :id table-id :active true))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -27,23 +27,23 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
+  (t2/select :model/FieldOverlay :table_id table-id :semantic_type :type/PK :active true))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select :model/Field :table_id table-id :name [:in field-names]))
+  (t2/select :model/FieldOverlay :table_id table-id :name [:in field-names]))
 
 (mu/defn active-fields-in-position-order
   "The active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
+  (t2/select :model/FieldOverlay :table_id table-id :active true {:order-by [[:position]]}))
 
 (mu/defn field-requirements-by-name
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
@@ -56,7 +56,7 @@
   [table-id :- ::lib.schema.id/table
    names    :- [:sequential :string]]
   (t2/query {:select [:id [[:lower :name] :lower_name]]
-             :from   [(t2/table-name :model/Field)]
+             :from   [(t2/table-name :model/FieldOverlay)]
              :where  [:and
                       [:= :table_id table-id]
                       [:in [:lower :name] (map u/lower-case-en names)]

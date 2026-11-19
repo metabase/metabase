@@ -105,7 +105,7 @@
   "The Fields with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (if (seq ids)
-    (t2/select :model/Field :id [:in ids])
+    (t2/select :model/FieldOverlay :id [:in ids])
     []))
 
 (mu/defn card-query

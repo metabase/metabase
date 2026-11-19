@@ -395,12 +395,23 @@
   can be megabytes."
   {:data-app [:id :resource_collection_id]})
 
+(def ^:private overlays
+  "The model read in place of each model whose rows users overlay with their settings."
+  {:model/Table :model/TableOverlay
+   :model/Field :model/FieldOverlay})
+
+(defn- read-model
+  "The model to read the entities of the entity type `entity-type` from, as users see them."
+  [entity-type]
+  (let [model (dependencies/entity-model entity-type)]
+    (overlays model model)))
+
 (mu/defn entities
   "The entities of the entity type `entity-type` with `ids`: whole rows, except for the types in [[narrow-columns]],
   whose rows hold only those columns."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
-  (let [model (dependencies/entity-model entity-type)]
+  (let [model (read-model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
 (mu/defn entity
@@ -414,7 +425,7 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(dependencies/entity-model entity-type)] columns)
+  (t2/select (into [(read-model entity-type)] columns)
              :id [:in ids]))
 
 (mu/defn entity-with-columns
@@ -422,7 +433,7 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(dependencies/entity-model entity-type)] columns)
+  (t2/select-one (into [(read-model entity-type)] columns)
                  :id id))
 
 (mu/defn card
@@ -445,7 +456,7 @@
 (mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
   "The `:table_id` of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+  (t2/select-one-fn :table_id :model/FieldOverlay :id field-id))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 

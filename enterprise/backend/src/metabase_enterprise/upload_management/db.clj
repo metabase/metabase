@@ -14,14 +14,14 @@
 (mu/defn non-upload-tables-for-database
   "The active Tables of the Database with `database-id` that were not uploaded."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true :is_upload false))
+  (t2/select :model/TableOverlay :db_id database-id :active true :is_upload false))
 
 (mu/defn upload-tables
   "The active uploaded Tables, ordered by name."
   []
-  (t2/select :model/Table :active true :is_upload true {:order-by [[:name :asc]]}))
+  (t2/select :model/TableOverlay :active true :is_upload true {:order-by [[:name :asc]]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))

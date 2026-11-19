@@ -30,7 +30,7 @@
    tables      :- [:sequential [:map {:closed true}
                                 [:table  :string]
                                 [:schema {:optional true} [:maybe :string]]]]]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              {:where [:and
                       [:= :db_id database-id]
                       [:= :active true]
@@ -44,7 +44,7 @@
    database-id :- ::lib.schema.id/database
    user-id     :- [:maybe ::lib.schema.id/user]
    superuser?  :- :boolean]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :id [:in table-ids]
              :db_id database-id
              :active true
@@ -64,4 +64,4 @@
 (mu/defn field-names-and-tables
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))
+  (t2/select [:model/FieldOverlay :id :name :table_id] :id [:in field-ids]))

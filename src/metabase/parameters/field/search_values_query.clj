@@ -17,10 +17,10 @@
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
   [field        :- [:or
-                    (ms/InstanceOf :model/Field)
+                    :metabase.warehouse-schema.schema/field
                     ::lib.schema.metadata/column]
    search-field :- [:or
-                    (ms/InstanceOf :model/Field)
+                    :metabase.warehouse-schema.schema/field
                     ::lib.schema.metadata/column]
    value       :- [:maybe ms/NonBlankString]
    limit       :- pos-int?]

@@ -37,9 +37,9 @@
    exclude-table-ids  :- [:set ::lib.schema.id/table]]
   (t2/reducible-query {:select [[output-table-id :table_id]]
                        :from   [[(t2/table-name :model/Dimension) :dim]]
-                       :join   [[(t2/table-name :model/Field) :source_field]
+                       :join   [[(t2/table-name :model/FieldOverlay) :source_field]
                                 [:= :dim.field_id :source_field.id]
-                                [(t2/table-name :model/Field) :target_field]
+                                [(t2/table-name :model/FieldOverlay) :target_field]
                                 [:= :dim.human_readable_field_id :target_field.id]]
                        :where  [:and
                                 [:= :dim.type "external"]
@@ -56,17 +56,17 @@
   (let [where (table-selectors-where selectors)]
     (t2/reducible-query {:select [[output-table-id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
+                         :join   [[(t2/table-name :model/FieldOverlay) :source_field]
                                   [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
+                                  [(t2/table-name :model/FieldOverlay) :target_field]
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
                                   [:= :dim.type "external"]
                                   [:in input-table-id ^:allow-subquery
-                                   {:select [:id] :from [(t2/table-name :model/Table)] :where where}]
+                                   {:select [:id] :from [(t2/table-name :model/TableOverlay)] :where where}]
                                   [:not [:exists ^:allow-subquery
                                          {:select [1]
-                                          :from   [(t2/table-name :model/Table)]
+                                          :from   [(t2/table-name :model/TableOverlay)]
                                           :where  [:and where [:= :id output-table-id]]}]]]})))
 
 (mu/defn databases
@@ -77,34 +77,34 @@
 (mu/defn tables-matching-selectors
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
   [selectors :- TableSelectors]
-  (t2/select :model/Table {:where (table-selectors-where selectors)}))
+  (t2/select :model/TableOverlay {:where (table-selectors-where selectors)}))
 
 (mu/defn tables-matching-selectors-in-id-order
   "The Tables picked out by `selectors`, in id order."
   [selectors :- TableSelectors]
-  (t2/select :model/Table {:where (table-selectors-where selectors), :order-by [[:id]]}))
+  (t2/select :model/TableOverlay {:where (table-selectors-where selectors), :order-by [[:id]]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published]
+  (t2/select [:model/TableOverlay :id :db_id :name :display_name :schema :is_published]
              {:where (table-selectors-where selectors), :limit limit}))
 
 (mu/defn selection-columns-for-tables
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids]))
+  (t2/select [:model/TableOverlay :id :db_id :name :display_name :schema :is_published] :id [:in table-ids]))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/delete! :model/FieldValues
               :field_id [:in ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/Field)]
+                                               :from   [(t2/table-name :model/FieldOverlay)]
                                                :where  [:in :table_id table-ids]}]))

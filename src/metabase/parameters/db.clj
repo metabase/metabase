@@ -29,9 +29,9 @@
   [field-id mapping-type]
   ^:allow-subquery
   {:select    [[:dest.id :id] [(mapping-type-name->code mapping-type) :mapping_type]]
-   :from      [[(t2/table-name :model/Field) :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
+   :from      [[(t2/table-name :model/FieldOverlay) :source]]
+   :left-join [[(t2/table-name :model/TableOverlay) :table] [:= :source.table_id :table.id]
+               [(t2/table-name :model/FieldOverlay) :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
                (mdb/isa :source.semantic_type :type/PK)
@@ -62,7 +62,7 @@
                                         (implicit-pk->name-mapping-query
                                          ^:allow-subquery
                                          {:select [:fk_target_field_id]
-                                          :from   [(t2/table-name :model/Field)]
+                                          :from   [(t2/table-name :model/FieldOverlay)]
                                           :where  [:and
                                                    [:= :id field-id]
                                                    (mdb/isa :semantic_type :type/FK)]
@@ -77,32 +77,32 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
+  (t2/select [:model/FieldOverlay :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
 
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fk_target_field_id :model/Field :id field-id))
+  (t2/select-one-fn :fk_target_field_id :model/FieldOverlay :id field-id))
 
 (mu/defn field-base-type
   "The base type of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :base_type :model/Field :id field-id))
+  (t2/select-one-fn :base_type :model/FieldOverlay :id field-id))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id))
+  (t2/select-one-fn :name :model/FieldOverlay :id field-id))
 
 (mu/defn full-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
@@ -147,7 +147,7 @@
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select (into [:model/Field] columns)
+  (t2/select (into [:model/FieldOverlay] columns)
              :table_id      [:in table-ids]
              :semantic_type (mdb/isa :type/Name)
              :active        true))
@@ -156,7 +156,7 @@
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+  (t2/select (into [:model/FieldOverlay] columns) :id [:in field-ids]))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
@@ -166,12 +166,12 @@
                           [:fk-table.id :t1]
                           [:pk-field.id :f2]
                           [:pk-field.table_id :t2]]
-              :from      [[(t2/table-name :model/Field) :fk-field]]
-              :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                          :fk-table.active]
+              :from      [[(t2/table-name :model/FieldOverlay) :fk-field]]
+              :left-join [[(t2/table-name :model/TableOverlay) :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                              :fk-table.active]
                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                          [(t2/table-name :model/Field) :pk-field] [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                    :pk-field.active]]
+                          [(t2/table-name :model/FieldOverlay) :pk-field] [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                                           :pk-field.active]]
               :where     [:and
                           [:= :database.id database-id]
                           [:not= :fk-field.fk_target_field_id nil]

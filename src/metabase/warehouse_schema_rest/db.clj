@@ -6,6 +6,7 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,13 +16,13 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))
 
 (mu/defn nested-fields-exist? :- :boolean
   "Whether the Table with `table-id` has Fields whose NFC path matches the SQL LIKE `nfc-path-pattern`."
   [table-id         :- ::lib.schema.id/table
    nfc-path-pattern :- :string]
-  (t2/exists? :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern]))
+  (t2/exists? :model/FieldOverlay :table_id table-id :nfc_path [:like nfc-path-pattern]))
 
 (mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
@@ -95,19 +96,19 @@
                      (conj [:not-exists ^:allow-subquery {:select [:*]
                                                           :from   [[:dependency :d]]
                                                           :where  [:and
-                                                                   [:= :d.to_entity_id :metabase_table.id]
+                                                                   [:= :d.to_entity_id (u/qualified-key (t2/table-name :model/TableOverlay) :id)]
                                                                    [:= :d.to_entity_type "table"]]}]))]
-    (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
+    (t2/select :model/TableOverlay {:where where, :order-by [[:name :asc]]})))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
@@ -122,17 +123,17 @@
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :visibility_type [:not= "retired"] :active true))
+  (t2/select-pks-set :model/FieldOverlay :table_id table-id :visibility_type [:not= "retired"] :active true))
 
 (mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id))
+  (t2/select-pks-set :model/FieldOverlay :table_id table-id))
 
 (mu/defn active-fields-targeting
   "The active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (t2/select :model/FieldOverlay :fk_target_field_id [:in field-ids] :active true))
 
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."

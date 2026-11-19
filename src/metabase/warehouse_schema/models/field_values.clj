@@ -42,7 +42,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -409,7 +408,7 @@
   (e.g. parameter widgets) should apply `take-by-length` + their own `:has_more_values`
   derivation, as `parameters/field-values` does."
   [field :- [:or
-             (ms/InstanceOf :model/Field)
+             :metabase.warehouse-schema.schema/field
              ::lib.schema.metadata/column]]
   (try
     (let [field  (cond-> field

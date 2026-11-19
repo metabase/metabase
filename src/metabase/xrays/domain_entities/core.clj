@@ -9,9 +9,9 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.schema]
+   [metabase.xrays.automagic-dashboards.schema]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
@@ -19,7 +19,8 @@
 (mr/def ::field-or-column
   "A Field row, or the column metadata of a Card's `:result_metadata` or a query's expected columns."
   [:multi {:dispatch t2/model}
-   [:model/Field :metabase.warehouse-schema.schema/field]
+   [:model/Field [:or :metabase.warehouse-schema.schema/field :metabase.legacy-mbql.schema/legacy-column-metadata]]
+   [:model/FieldOverlay :metabase.warehouse-schema.schema/field]
    [::mc/default :metabase.lib.schema.metadata/lib-or-legacy-column]])
 
 (mu/defn field-type :- [:or
@@ -41,7 +42,7 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  (ms/InstanceOf #{:model/Table :model/Card}))
+  :metabase.xrays.automagic-dashboards.schema/source)
 
 (def Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also
@@ -122,7 +123,7 @@
           (resolve-dimension-clauses bindings source entity))))
 
 (mu/defn- instantiate-domain-entity :- ::domain-entities.specs/instantiated-domain-entity
-  [table                                                                :- (ms/InstanceOf :model/Table)
+  [table                                                                :- :metabase.warehouse-schema.schema/table
    {:keys [name description metrics segments breakout_dimensions type]} :- domain-entities.specs/DomainEntitySpec]
   (let [dimensions (into {} (for [field (:fields table)]
                               [(-> field field-type clojure.core/name) field]))
@@ -139,7 +140,7 @@
 
 (mu/defn domain-entity-for-table :- [:maybe ::domain-entities.specs/instantiated-domain-entity]
   "Find the best fitting domain entity for given table."
-  [table :- (ms/InstanceOf :model/Table)]
+  [table :- :metabase.warehouse-schema.schema/table]
   (let [table (t2/hydrate table :fields)]
     (some->> @*domain-entity-specs*
              vals

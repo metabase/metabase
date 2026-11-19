@@ -1235,7 +1235,7 @@
         (let [orig (comp :can_read meta)]
           (mt/with-dynamic-fn-redefs [mi/can-read? (fn
                                                      ([instance]
-                                                      (if (and (= :model/Table (t2/model instance))
+                                                      (if (and (#{:model/Table :model/TableOverlay} (t2/model instance))
                                                                (= hidden-tbl (:id instance)))
                                                         false
                                                         (orig instance)))

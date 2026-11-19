@@ -106,23 +106,22 @@
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true))
+  (t2/select :model/FieldOverlay :table_id table-id :active true))
 
 (mu/defn active-field-ids-of-table
   "The IDs of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true))
+  (t2/select-pks-set :model/FieldOverlay :table_id table-id :active true))
 
 (mu/defn active-fk-to-fields-exists?
   "Whether an active Field on an active Table points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/exists? :model/Field {:from  [(t2/table-name :model/Field)]
-                            :join  [(t2/table-name :model/Table)
-                                    [:= :metabase_field.table_id :metabase_table.id]]
-                            :where [:and
-                                    [:in :metabase_field.fk_target_field_id field-ids]
-                                    [:= :metabase_field.active true]
-                                    [:= :metabase_table.active true]]}))
+  (t2/exists? :model/FieldOverlay {:from  [[(t2/table-name :model/FieldOverlay) :f]]
+                                   :join  [[(t2/table-name :model/TableOverlay) :t] [:= :f.table_id :t.id]]
+                                   :where [:and
+                                           [:in :f.fk_target_field_id field-ids]
+                                           [:= :f.active true]
+                                           [:= :t.active true]]}))
 
 (mu/defn sandbox-exists-for-table?
   "Whether a Sandbox is defined on the Table with `table-id`."

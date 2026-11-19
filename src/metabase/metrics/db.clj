@@ -75,9 +75,9 @@
   "The id and `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field :id] columns) :id [:in field-ids]))
+  (t2/select (into [:model/FieldOverlay :id] columns) :id [:in field-ids]))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))

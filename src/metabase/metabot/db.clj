@@ -474,14 +474,14 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn active-visible-tables-named
   "The ID, schema, and name of the active, unhidden Tables in the Database with `database-id` whose name is one of
   `table-names`."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential {:min 1} :string]]
-  (t2/select [:model/Table :id :schema :name]
+  (t2/select [:model/TableOverlay :id :schema :name]
              :db_id database-id
              :name [:in table-names]
              :active true
@@ -496,7 +496,7 @@
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
+  (t2/select-one-fn :db_id :model/TableOverlay :id table-id))
 
 (defn readable-active-table-database-id
   "The Database ID of the active Table with `table-id`, or nil when there is no such table *or*
@@ -512,19 +512,19 @@
   and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
   user whose access comes through that path."
   [table-id]
-  (when-let [table (t2/select-one :model/Table :id table-id :active true)]
+  (when-let [table (t2/select-one :model/TableOverlay :id table-id :active true)]
     (when (mi/can-read? (t2/hydrate table :can_read))
       (:db_id table))))
 
 (mu/defn tables-by-id
   "A map of ID to Table for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
+  (t2/select-fn->fn :id identity :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn table-summaries
   "The ID, names, schema, Database ID, and description of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids]))
+  (t2/select [:model/TableOverlay :id :name :display_name :schema :db_id :description] :id [:in table-ids]))
 
 (mu/defn table-schema-rows
   "Return the ID, name, schema, and database ID of each table in `table-ids`.
@@ -532,13 +532,13 @@
   Rows also include `:is_published` and `:collection_id`, which `can-read?` and `can-query?` need to check access
   through a collection, present even when nil."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]))
+  (t2/select [:model/TableOverlay :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]))
 
 (mu/defn table-curation-rows
   "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
   `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
+  (t2/select [:model/TableOverlay :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
              :id [:in table-ids]))
 
 (mu/defn visible-table-summaries
@@ -546,7 +546,7 @@
   `database-id`."
   [database-id :- ::lib.schema.id/database
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :description]
+  (t2/select [:model/TableOverlay :id :name :schema :description]
              :db_id database-id
              :id [:in table-ids]
              :active true
@@ -566,7 +566,7 @@
   `database-id` that are visible to the current user for querying."
   [database-id :- ::lib.schema.id/database
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :description]
+  (t2/select [:model/TableOverlay :id :name :schema :description]
              :db_id database-id
              :id [:in table-ids]
              :active true
@@ -582,7 +582,7 @@
   the Database with `database-id` that are visible to the current user for querying, excluding `excluded-table-ids`."
   [database-id :- ::lib.schema.id/database
    excluded-table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/reducible-select [:model/Table :id :name :schema :description]
+  (t2/reducible-select [:model/TableOverlay :id :name :schema :description]
                        :db_id database-id
                        :active true
                        :visibility_type nil
@@ -599,7 +599,7 @@
   current user for querying, most viewed first."
   [database-id :- :int
    limit :- ms/PositiveInt]
-  (t2/select [:model/Table :id :db_id :name :schema :description]
+  (t2/select [:model/TableOverlay :id :db_id :name :schema :description]
              :db_id database-id
              :active true
              :visibility_type nil
@@ -611,7 +611,7 @@
   "Up to `limit` IDs, names, and schemas of the active, unhidden Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    limit :- ms/PositiveInt]
-  (t2/select [:model/Table :id :name :schema]
+  (t2/select [:model/TableOverlay :id :name :schema]
              :db_id database-id
              :active true
              :visibility_type nil
@@ -620,7 +620,7 @@
 (mu/defn active-tables-for-database
   "The presentable columns of the active Tables in the Database with `database-id`, ordered by schema and name."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
+  (t2/select [:model/TableOverlay :id :name :display_name :schema :db_id :description]
              :db_id database-id
              :active true
              {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
@@ -629,7 +629,7 @@
   "The presentable columns of the active Tables in `schema` of the Database with `database-id`, ordered by name."
   [database-id :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
+  (t2/select [:model/TableOverlay :id :name :display_name :schema :db_id :description]
              :db_id database-id
              :schema schema
              :active true
@@ -639,7 +639,7 @@
   "The distinct `:schema` rows of the active Tables in the Database with `database-id`, ordered by schema."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select-distinct [:schema]
-             :from            [(t2/table-name :model/Table)]
+             :from            [(t2/table-name :model/TableOverlay)]
              :where           [:and [:= :db_id database-id] [:= :active true]]
              :order-by        [[:schema :asc]]}))
 
@@ -683,7 +683,7 @@
    table :- :string]
   (t2/select-one :model/QueryTable
                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                  :from      [[(t2/table-name :model/Table) :t]]
+                  :from      [[(t2/table-name :model/TableOverlay) :t]]
                   :where  [:and
                            [:= :t.db_id db-id]
                            (table-match-clause {:schema schema :table table})]}))
@@ -698,7 +698,7 @@
                            [:table :string]]]]
   (t2/select :model/QueryTable
              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-              :from      [[(t2/table-name :model/Table) :t]]
+              :from      [[(t2/table-name :model/TableOverlay) :t]]
               :where  [:and
                        [:= :t.db_id db-id]
                        (into [:or] (map table-match-clause) tables)]}))
@@ -708,17 +708,17 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id))
+  (t2/select-one-fn :fingerprint :model/FieldOverlay :id field-id))
 
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
@@ -875,7 +875,7 @@
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (if (seq table-ids)
-    (t2/select :model/Table :id [:in table-ids])
+    (t2/select :model/TableOverlay :id [:in table-ids])
     []))
 
 (mu/defn cards-for-read-check
@@ -1166,7 +1166,7 @@
   whatever its visibility."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
-  (t2/select [:model/Table :schema :name]
+  (t2/select [:model/TableOverlay :schema :name]
              :db_id [:auto/param database-id]
              :active true
              {:where [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]}))
@@ -1177,7 +1177,7 @@
   result can hold Tables whose names do not start with the prefix."
   [database-id :- ::lib.schema.id/database
    prefixes    :- [:sequential {:min 1} :string]]
-  (t2/select [:model/Table :schema :name]
+  (t2/select [:model/TableOverlay :schema :name]
              :db_id [:auto/param database-id]
              :active true
              {:where (into [:or]

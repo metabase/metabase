@@ -110,7 +110,7 @@
 (mr/def :event/table-read
   [:map {:closed true}
    [:user-id  pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Table %)]]])
+   [:object [:fn #(some (fn [model] (t2/instance-of? model %)) [:model/Table :model/TableOverlay])]]])
 
 (mr/def ::permission-failure
   [:map {:closed true}

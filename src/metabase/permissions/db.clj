@@ -63,7 +63,7 @@
   "The `perm-type` rows in `scope` of the User with `user-id`'s groups."
   [user-id perm-type scope]
   ^:allow-subquery {:from      [[(t2/table-name :model/DataPermissions) :p]]
-                    :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+                    :left-join [[(t2/table-name :model/TableOverlay) :mt] [:= :mt.id :p.table_id]]
                     :where     (into [:and [:in :p.group_id (user-group-ids-query user-id)]]
                                      (scope-clauses perm-type scope))})
 
@@ -102,7 +102,7 @@
                     [:exists ^:allow-subquery
                      {:select    [1]
                       :from      [[(t2/table-name :model/DataPermissions) :p]]
-                      :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+                      :left-join [[(t2/table-name :model/TableOverlay) :mt] [:= :mt.id :p.table_id]]
                       :where     (into [:and
                                         [:= :p.group_id :pgm.group_id]
                                         [:= :p.perm_value (u/qualified-name v)]]
@@ -175,7 +175,7 @@
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:p.table_id :mt.db_id :p.perm_value]
              :from            [[(t2/table-name :model/DataPermissions) :p]]
-             :join            [[(t2/table-name :model/Table) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
+             :join            [[(t2/table-name :model/TableOverlay) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
              :where           [:and
                                [:= :p.perm_type (u/qualified-name perm-type)]
                                [:in :p.table_id table-ids]
@@ -427,7 +427,7 @@
       [:in column-or-exp
        ^:allow-subquery
        {:select [:mt.id]
-        :from   [[(t2/table-name :model/Table) :mt]]
+        :from   [[(t2/table-name :model/TableOverlay) :mt]]
         :where  (into [:and (when active-only? [:= :mt.active true])]
                       (map (fn [[perm-type level]] (grant-clause perm-type level (holds perm-type))))
                       permission-mapping)}])))
@@ -461,7 +461,7 @@
    permission-mapping              :- ::permissions.schema/permission-mapping]
   ^:allow-subquery
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
-   :from   [[(t2/table-name :model/Table) :mt]]
+   :from   [[(t2/table-name :model/TableOverlay) :mt]]
    :join   [[:data_permissions :dp] [:or
                                      [:and
                                       [:= :mt.db_id :dp.db_id]
@@ -1186,28 +1186,28 @@
   `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
   see [[metabase.permissions.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id))
+  (t2/select-one [:model/TableOverlay :id :db_id :schema :data_source] :id table-id))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
+  (t2/select-one-fn :db_id :model/TableOverlay :id table-id))
 
 (mu/defn table-database-ids
   "The ID and Database ID of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
+  (t2/select [:model/TableOverlay :id :db_id] :id [:in table-ids]))
 
 (mu/defn active-table-locations-for-database
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true))
+  (t2/select [:model/TableOverlay :id :db_id :schema] :db_id database-id :active true))
 
 (mu/defn table-ids-and-schemas-excluding
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."
   [database-id        :- ::lib.schema.id/database
    excluded-table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :schema]
+  (t2/select [:model/TableOverlay :id :schema]
              {:where [:and
                       [:= :db_id database-id]
                       [:not [:in :id excluded-table-ids]]]}))
@@ -1215,7 +1215,7 @@
 (mu/defn field-visibility-info
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))
+  (t2/select [:model/FieldOverlay :id :visibility_type :table_id] :id [:in field-ids]))
 
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."

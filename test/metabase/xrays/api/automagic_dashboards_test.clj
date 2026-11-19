@@ -94,6 +94,12 @@
   (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth"
     (is (some? (api-call! "table/%s/rule/example/indepth" [(mt/id :venues)])))))
 
+(deftest table-xray-related-test
+  (testing "GET /api/automagic-dashboards/table/:id suggests related X-rays"
+    (mt/dataset test-data
+      (is (seq (get-in (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
+                       [:related :zoom-in]))))))
+
 (deftest xray-dashboard-parameter-types-test
   (testing "Should set correct parameter types"
     (mt/dataset test-data

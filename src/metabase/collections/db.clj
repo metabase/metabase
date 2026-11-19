@@ -468,7 +468,7 @@
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
+  (t2/select-pks-set :model/TableOverlay :collection_id [:in collection-ids] :is_published true))
 
 (mu/defn unpublish-tables-in-collections!
   "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
@@ -511,7 +511,7 @@
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
   [collection-ids]
   (t2/query {:select-distinct [:collection_id]
-             :from            [(t2/table-name :model/Table)]
+             :from            [(t2/table-name :model/TableOverlay)]
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]

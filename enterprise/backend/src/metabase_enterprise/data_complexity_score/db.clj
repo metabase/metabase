@@ -16,7 +16,7 @@
   "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select   [:table_id [:%count.* :field_count]]
-             :from     [:metabase_field]
+             :from     [(t2/table-name :model/Field)]
              :where    [:and
                         [:= :active true]
                         [:in :table_id table-ids]]
@@ -62,7 +62,7 @@
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
+  (t2/select [:model/TableOverlay :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
              :active true
              :db_id  [:not= audit-database-id]))
 

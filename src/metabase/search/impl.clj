@@ -483,7 +483,7 @@
     (-> (assoc row :can_write (can-write? search-ctx row))
         (dissoc :can_query))
 
-    (mi/instance-of? :model/Table row)
+    (some #(mi/instance-of? % row) [:model/Table :model/TableOverlay])
     (-> (assoc row :can_write (can-write? search-ctx (assoc row :db_id (:database_id row))))
         (dissoc :can_query))
 

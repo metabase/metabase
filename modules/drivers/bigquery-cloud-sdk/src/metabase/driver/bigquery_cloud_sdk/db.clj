@@ -34,4 +34,4 @@
   "Whether the Table with `table-id` has an active database-partitioned Field named `field-name`."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
-  (t2/exists? :model/Field :table_id table-id :name field-name :database_partitioned true :active true))
+  (t2/exists? :model/FieldOverlay :table_id table-id :name field-name :database_partitioned true :active true))

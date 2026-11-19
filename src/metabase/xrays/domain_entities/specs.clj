@@ -10,9 +10,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
+   [metabase.xrays.automagic-dashboards.schema]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]))
 
 (mr/def ::xrays-dimension
@@ -192,7 +192,7 @@
    {:closed true}
    [:breakout_dimensions [:maybe ::instantiated-breakouts]]
    [:description         [:maybe Description]]
-   [:dimensions          [:map-of ::field-name (ms/InstanceOf :model/Field)]]
+   [:dimensions          [:map-of ::field-name :metabase.xrays.automagic-dashboards.schema/field]]
    [:metrics             [:maybe ::instantiated-metrics]]
    [:name                DomainEntityReference]
    [:segments            [:maybe ::instantiated-segments]]

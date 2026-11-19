@@ -90,7 +90,7 @@
    "metric"     :model/Card
    "dashboard"  :model/Dashboard
    "collection" :model/Collection
-   "table"      :model/Table
+   "table"      :model/TableOverlay
    "database"   :model/Database
    "document"   :model/Document
    "user"       :model/User})

@@ -35,9 +35,14 @@
               (map #(update % 0 qp.util/normalize-token)))
         (tree-seq sequential? identity form)))
 
+(def ^:private overlay->model
+  "The model whose x-rays spec covers each read-only overlay model."
+  {:model/TableOverlay :model/Table
+   :model/FieldOverlay :model/Field})
+
 (defn- spec-fn
   [entity k]
-  (let [model (mi/model entity)]
+  (let [model (overlay->model (mi/model entity) (mi/model entity))]
     (or (k (xrays.spec/spec model))
         (throw (ex-info (format "No x-rays %s for model %s" (name k) model) {:model model, :key k})))))
 

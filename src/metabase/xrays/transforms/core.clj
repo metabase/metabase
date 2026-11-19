@@ -3,14 +3,13 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.db :as xrays.db]
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
@@ -91,7 +90,7 @@
 (mu/defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
-  (if (mi/instance-of? :model/Table entity)
+  (if (magic.util/table? entity)
     (u/the-id entity)
     (str "card__" (u/the-id entity))))
 
@@ -140,12 +139,10 @@
 
 (def ^:private Tableset
   [:sequential
-   [:and
-    (ms/InstanceOf :model/Table)
-    [:merge
-     :metabase.warehouse-schema.schema/table
-     [:map {:closed true}
-      [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]]])
+   [:merge
+    :metabase.warehouse-schema.schema/table
+    [:map {:closed true}
+     [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset

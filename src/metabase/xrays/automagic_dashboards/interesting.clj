@@ -66,7 +66,7 @@
   "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
   {:arglists '([template-type model])}
   (fn [template-type model]
-    [template-type (mi/model model)]))
+    [template-type (magic.util/root-model model)]))
 
 (defn- optimal-temporal-resolution
   [field]
@@ -102,7 +102,7 @@
 
  TODO (Cam 10/21/25) -- we wouldn't need to do this at all if we further reworked the X-Ray code to either fetch
  `:metadata/column`s directly or use Metadata Providers."
-  [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- (ms/InstanceOf :model/Field)]
+  [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- :metabase.xrays.automagic-dashboards.schema/field]
   (let [col (if fk-target-field-id
               (-> (xrays.db/metadata-column fk-target-field-id)
                   (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
@@ -371,7 +371,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
-  [source :- (ms/InstanceOf #{:model/Table :model/Card})]
+  [source :- :metabase.xrays.automagic-dashboards.schema/source]
   (xrays.db/database ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
@@ -395,7 +395,7 @@
 
 (defn- add-field-self-reference [{{:keys [entity]} :root :as context} dimensions]
   (cond-> dimensions
-    (= :model/Field (mi/model entity))
+    (magic.util/field? entity)
     (add-field-links-to-definitions (enriched-field-with-sources context entity))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

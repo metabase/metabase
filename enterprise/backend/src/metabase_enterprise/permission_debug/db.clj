@@ -21,7 +21,7 @@
 (defn- blocked-tables-select
   [user-id tables-expr permissions-blocking permissions-granting]
   {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-   :from   [[(t2/table-name :model/Table) :blocked]]
+   :from   [[(t2/table-name :model/TableOverlay) :blocked]]
    :join   [[(perms/select-tables-and-groups-granting-perm
               {:user-id user-id :is-superuser? false :is-data-analyst? false}
               permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]

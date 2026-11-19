@@ -21,7 +21,7 @@
    database-id :- ::lib.schema.id/database
    opts        :- [:maybe ActiveTablesOpts]]
   (let [{:keys [table-ids schema]} opts]
-    (t2/select :model/Table
+    (t2/select :model/TableOverlay
                {:select columns
                 :where  (cond-> [:and [:= :db_id database-id] [:= :active true]]
                           (contains? opts :table-ids) (conj [:in :id table-ids])
@@ -32,14 +32,14 @@
 (mu/defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field {:where    [:and
-                                      [:in :table_id table-ids]
-                                      [:= :active true]]
-                           :order-by schema.table/field-order-rule}))
+  (t2/select :model/FieldOverlay {:where    [:and
+                                             [:in :table_id table-ids]
+                                             [:= :active true]]
+                                  :order-by schema.table/field-order-rule}))
 
 (mu/defn active-fields
   "The active Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
-  (t2/select :model/Field {:where [:and
-                                   [:in :id field-ids]
-                                   [:= :active true]]}))
+  (t2/select :model/FieldOverlay {:where [:and
+                                          [:in :id field-ids]
+                                          [:= :active true]]}))

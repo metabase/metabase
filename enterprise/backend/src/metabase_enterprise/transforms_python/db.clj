@@ -20,17 +20,17 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids]))
+  (t2/select-fn-set :db_id [:model/TableOverlay :db_id] :id [:in table-ids]))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id))
+  (t2/select-one-fn :db_id (t2/table-name :model/TableOverlay) :id table-id))
 
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
@@ -75,7 +75,7 @@
 (mu/defn top-level-fields-metadata
   "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
+  (t2/select [:model/FieldOverlay :id :name :base_type :effective_type :semantic_type :database_type :database_position]
              :table_id table-id
              :active true
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)

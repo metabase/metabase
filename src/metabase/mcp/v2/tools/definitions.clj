@@ -60,7 +60,7 @@
   "Resolve a numeric `table_id` behind the table's read check. \"Doesn't exist\" and \"exists but
    not readable\" collapse into the same not-found error."
   [table-id]
-  (v2.resolve/resolve-and-read :model/Table table-id))
+  (v2.resolve/resolve-and-read :model/TableOverlay table-id))
 
 (defn- resolve-existing
   "Resolve an update's `id` (numeric or entity_id) to the row behind `model`'s read check, with

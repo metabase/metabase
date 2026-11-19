@@ -19,10 +19,10 @@
 (defn uploaded-table?
   "Whether the database with `database-id` has an active uploaded table."
   [database-id]
-  (t2/exists? :model/Table {:where [:and
-                                    [:= :active true]
-                                    [:= :is_upload true]
-                                    [:= :db_id database-id]]}))
+  (t2/exists? :model/TableOverlay {:where [:and
+                                           [:= :active true]
+                                           [:= :is_upload true]
+                                           [:= :db_id database-id]]}))
 
 (defn user-created-dashboard?
   "Whether an unarchived dashboard exists outside `example-dashboard-id` and `audit-collection-ids`."

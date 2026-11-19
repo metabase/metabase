@@ -243,6 +243,9 @@
     [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
     [:collection              {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:can_query               {:optional true} [:maybe :boolean]]
+    [:segments                {:optional true} [:maybe [:sequential [:ref :metabase.segments.schema/segment]]]]
+    [:measures                {:optional true} [:maybe [:sequential [:ref :metabase.measures.schema/measure]]]]
+    [:metrics                 {:optional true} [:maybe [:sequential [:ref :metabase.queries.schema/card]]]]
     [:owner                   {:optional true} [:maybe [:map {:closed true}
                                                         [:id          {:optional true} ::lib.schema.id/user]
                                                         [:email       {:optional true} :string]

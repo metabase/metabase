@@ -74,10 +74,10 @@
 (mu/defn segment-database-id
   "The Database id of the Table of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
-                                         :from [[(t2/table-name :model/Table) :t]]
-                                         :join [[:segment :m] [:= :t.id :m.table_id]]
-                                         :where [:= :m.id segment-id]}))
+  (t2/select-one-fn :db_id :model/TableOverlay {:select [:t.db_id]
+                                                :from [[(t2/table-name :model/TableOverlay) :t]]
+                                                :join [[:segment :m] [:= :t.id :m.table_id]]
+                                                :where [:= :m.id segment-id]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

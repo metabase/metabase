@@ -10,6 +10,7 @@
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (deftest hydrate-name-field-test
@@ -44,6 +45,14 @@
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (t2/hydrate :name_field)
                mt/derecordize))))
+  (testing "A Field a user marks as the name of its Table is its name field"
+    (mt/with-temp [:model/Table {table-id :id}   {}
+                   :model/Field {pk-id :id}      {:table_id table-id :name "ID" :semantic_type :type/PK}
+                   :model/Field {label-id :id :as label} {:table_id table-id :name "LABEL" :base_type :type/Text}]
+      (field-user-settings/upsert-field-user-settings! label {:semantic_type :type/Name})
+      (is (=? {:name_field {:id label-id :semantic_type :type/Name}}
+              (-> (t2/select-one [:model/FieldOverlay :name :table_id :semantic_type] :id pk-id)
+                  (t2/hydrate :name_field))))))
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
     (is (= {:name          "ID"
             :table_id      (mt/id :checkins)

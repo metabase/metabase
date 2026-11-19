@@ -22,7 +22,7 @@
   [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
    [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
    [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
-   [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
+   [(t2/table-name :model/TableOverlay) :tbl]         [:= :tbl.id :ia.table_id]
    [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
 
 (mu/defn synced-action-details-clause :- [:fn vector?]
@@ -56,7 +56,7 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id))
+  (t2/select-one-fn :db_id [:model/TableOverlay :db_id] :id table-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -111,12 +111,12 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -240,7 +240,7 @@
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
+  (t2/select [:model/FieldOverlay :id :base_type :display_name :description] :id [:in field-ids]))
 
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
@@ -271,12 +271,12 @@
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable true))
+  (t2/exists? :model/TableOverlay :db_id database-id :is_writable true))
 
 (mu/defn table-with-unknown-writability-exists?
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable nil))
+  (t2/exists? :model/TableOverlay :db_id database-id :is_writable nil))
 
 (mu/defn synced-action-items :- [:sequential ::actions.schema/action]
   "The Actions with `ids`, with their model and its Collection, and their own Collection, with ancestors, as remote

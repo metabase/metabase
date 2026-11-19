@@ -27,7 +27,7 @@
   This is because the `:entity_type` of the table is `:entity/TransactionTable` as can be seen here:
 
   ```clojure
-  (t2/select-one-fn :entity_type :model/Table :name \"ORDERS\")
+  (t2/select-one-fn :entity_type :model/TableOverlay :name \"ORDERS\")
   ;=> :entity/TransactionTable
   ```
 
@@ -185,7 +185,7 @@
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
   tree of dashboard cards to fill the dashboards. This multimethod is for turning a given entity into a root."
   {:arglists '([entity])}
-  mi/model)
+  magic.util/root-model)
 
 (mu/defmethod ->root :model/Table :- ::ads/root
   [table]
@@ -252,7 +252,7 @@
   [{query :dataset_query, :as _card-or-question} :- ::ads/card-or-question]
   (lib/native-only-query? query))
 
-(mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn- source-question :- [:maybe :metabase.queries.schema/card]
   [card-or-question :- ::ads/card-or-question]
   (when-let [source-card-id (source-card-id card-or-question)]
     (xrays.db/card source-card-id)))
@@ -414,7 +414,7 @@
   "Source fields from tables that are applicable to the entity being x-rayed."
   [{:keys [source _entity] :as _root} tables]
   (let [db (source->db source)]
-    (if (mi/instance-of? :model/Table source)
+    (if (magic.util/table? source)
       (comp (->> (-> (xrays.db/visible-fields-for-tables (map u/the-id tables))
                      (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
                  field/with-targets
@@ -440,7 +440,7 @@
   This is applicable to all dashboard templates."
   [{:keys [source] :as root} :- ::ads/root]
   {:pre [source]}
-  (let [tables        (concat [source] (when (mi/instance-of? :model/Table source)
+  (let [tables        (concat [source] (when (magic.util/table? source)
                                          (linked-tables source)))
         table->fields (relevant-fields root tables)]
     {:source       (assoc source :fields (table->fields source))
@@ -540,7 +540,7 @@
 
 (defn- drilldown-fields
   [root available-dimensions]
-  (when (->> root :source (mi/instance-of? :model/Table))
+  (when (->> root :source (magic.util/table?))
     (->> available-dimensions
          vals
          (mapcat :matches)
@@ -557,7 +557,7 @@
                 :title       (tru "Compare with {0}" (:comparison-name segment))
                 :description ""})
              (when ((some-fn :query-filter :cell-query) root)
-               [{:url         (if (->> root :source (mi/instance-of? :model/Table))
+               [{:url         (if (->> root :source (magic.util/table?))
                                 (str (:url root) "/compare/table/" (-> root :source u/the-id))
                                 (str (:url root) "/compare/adhoc/"
                                      (magic.util/encode-base64-json
@@ -666,7 +666,7 @@
               (drilldown-fields root available-dimensions)
               (related-entities root)
               (comparisons root))
-       (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
+       (fill-related max-related (get related-selectors (-> root :entity magic.util/root-model)))))
 
 (mu/defn- generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
@@ -732,7 +732,7 @@
 (defmulti ^:private automagic-analysis-method
   {:arglists '([entity opts])}
   (fn [entity _]
-    (mi/model entity)))
+    (magic.util/root-model entity)))
 
 (defn automagic-analysis
   "Create a transient dashboard analyzing given entity.
@@ -777,7 +777,7 @@
                                          :xrays/database-id ((some-fn :database-id :database_id) question)}))))
        (lib/aggregations (:dataset_query question))))
 
-(mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
+(mu/defn- collect-breakout-fields :- [:maybe [:sequential :metabase.xrays.automagic-dashboards.schema/field]]
   [root     :- ::ads/root
    question :- ::ads/card-or-question]
   (for [breakout     (lib/breakouts (:dataset_query question))

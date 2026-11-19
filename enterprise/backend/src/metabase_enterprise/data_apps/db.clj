@@ -190,7 +190,7 @@
   "The active Tables with `table-ids`, in name then id order."
   [table-ids :- [:set ::lib.schema.id/table]]
   (if (seq table-ids)
-    (t2/select :model/Table
+    (t2/select :model/TableOverlay
                {:where    [:and [:= :active true] [:in :id table-ids]]
                 :order-by [[:name :asc] [:id :asc]]})
     []))
@@ -198,7 +198,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table {:where [:= :id table-id]}))
+  (t2/select-one :model/TableOverlay {:where [:= :id table-id]}))
 
 (mu/defn resource-cards
   "The unarchived Cards in the collection with `collection-id`, in name then id order."
@@ -240,7 +240,7 @@
 (mu/defn field-ids-and-table-ids
   "The id and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
+  (t2/select [:model/FieldOverlay :id :table_id] :id [:in field-ids]))
 
 (mu/defn card-dimensions
   "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
@@ -251,18 +251,18 @@
 (mu/defn table-names
   "The id, database id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids]))
+  (t2/select [:model/TableOverlay :id :db_id :name :display_name] :id [:in table-ids]))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+  (t2/select-one-fn :table_id :model/FieldOverlay :id field-id))
 
 (mu/defn published-tables-in-collections
   "The active, published Tables in `collection-ids`, in name then id order."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (if (seq collection-ids)
-    (t2/select :model/Table
+    (t2/select :model/TableOverlay
                {:where    [:and
                            [:= :active true]
                            [:= :is_published true]

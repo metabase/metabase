@@ -84,7 +84,9 @@
    [:metadata/measure              :metabase.measures.schema/measure]
    [:model/Database                :metabase.warehouses.schema/database]
    [:model/Table                   :metabase.warehouse-schema.schema/table]
+   [:model/TableOverlay            :metabase.warehouse-schema.schema/table]
    [:model/Field                   ::model-field]
+   [:model/FieldOverlay            ::model-field]
    [:model/Card                    :metabase.queries.schema/card]
    [:model/Segment                 :metabase.segments.schema/segment]
    [:model/Measure                 :metabase.measures.schema/measure]
@@ -223,7 +225,7 @@
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
-          :from   [(t2/table-name :model/Table)]}))
+          :from   [(t2/table-name :model/TableOverlay)]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -292,8 +294,8 @@
                 :dimension/type
                 :values/human_readable_values
                 :values/values]
-    :from      [[(t2/table-name :model/Field) :field]]
-    :left-join [[(t2/table-name :model/Table) :table]
+    :from      [[(t2/table-name :model/FieldOverlay) :field]]
+    :left-join [[(t2/table-name :model/TableOverlay) :table]
                 [:= :field/table_id :table/id]
                 [(t2/table-name :model/Dimension) :dimension]
                 [:and
@@ -446,7 +448,7 @@
                 :segment/archived
                 :segment/definition]
     :from      [[(t2/table-name :model/Segment) :segment]]
-    :left-join [[(t2/table-name :model/Table) :table]
+    :left-join [[(t2/table-name :model/TableOverlay) :table]
                 [:= :segment/table_id :table/id]]}))
 
 (t2/define-after-select :metadata/segment
@@ -489,7 +491,7 @@
                 :measure/dimensions
                 :measure/dimension_mappings]
     :from      [[(t2/table-name :model/Measure) :measure]]
-    :left-join [[(t2/table-name :model/Table) :table]
+    :left-join [[(t2/table-name :model/TableOverlay) :table]
                 [:= :measure/table_id :table/id]]}))
 
 (t2/define-after-select :metadata/measure

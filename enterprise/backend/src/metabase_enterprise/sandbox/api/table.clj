@@ -16,7 +16,7 @@
 (mu/defn only-sandboxed-perms? :- :boolean
   "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides
   existing permission on the table."
-  [table :- (ms/InstanceOf :model/Table)]
+  [table :- :metabase.warehouse-schema.schema/table]
   (boolean (seq (sandbox.api.util/enforced-sandboxes-for-tables #{(:id table)}))))
 
 (defn- filter-fields-for-sandboxing [table query-metadata-response]

@@ -19,6 +19,21 @@
    [metabase.xrays.db :as xrays.db]
    [ring.util.codec :as codec]))
 
+(defn table?
+  "Whether `entity` is a Table, read from `metabase_table` or as users see it from `v_table_overlay`."
+  [entity]
+  (boolean (some #(mi/instance-of? % entity) [:model/Table :model/TableOverlay])))
+
+(defn field?
+  "Whether `entity` is a Field, read from `metabase_field` or as users see it from `v_field_overlay`."
+  [entity]
+  (boolean (some #(mi/instance-of? % entity) [:model/Field :model/FieldOverlay])))
+
+(defn root-model
+  "The model x-rays dispatch on for `entity`: Tables and Fields as users see them count as Tables and Fields."
+  [entity]
+  (get {:model/TableOverlay :model/Table, :model/FieldOverlay :model/Field} (mi/model entity) (mi/model entity)))
+
 (mu/defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
   [{:keys [base_type semantic_type]} :- [:or ::ads/field ::ads/root.entity]
@@ -82,7 +97,7 @@
   (match/match-many form [:field & _] &match))
 
 (mu/defn ->field :- [:maybe [:and
-                             (ms/InstanceOf :model/Field)
+                             :metabase.xrays.automagic-dashboards.schema/field
                              ::ads/field]]
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root} :- ::ads/root

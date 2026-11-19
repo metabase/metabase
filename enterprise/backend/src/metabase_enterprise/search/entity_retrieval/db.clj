@@ -24,7 +24,7 @@
   narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    id             :- [:maybe ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :description]
+  (t2/select [:model/TableOverlay :id :name :display_name :description]
              {:where [:and
                       [:in :collection_id collection-ids]
                       [:= :is_published true]

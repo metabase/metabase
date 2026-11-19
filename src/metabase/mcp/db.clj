@@ -40,19 +40,19 @@
   "The Table with `table-id`, or nil. Unlike [[select-one-by-id]], a nil `table-id` is answered with nil
   rather than refused — callers reach here with a column value, not with an id an agent supplied."
   [table-id]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (defn field-types
   "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
   [field-id]
-  (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
+  (t2/select-one [:model/FieldOverlay :base_type :effective_type] :id field-id))
 
 (defn nullable-fields-with-fingerprints
   "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
   `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
   so callers guard it."
   [field-ids]
-  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+  (t2/select [:model/FieldOverlay :id :database_is_nullable :fingerprint]
              :id [:in field-ids]
              :database_is_nullable true))
 
@@ -98,14 +98,14 @@
   "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
   rather than an empty result, so callers guard it."
   [table-ids]
-  (t2/select :model/Table :id [:in table-ids] :active true))
+  (t2/select :model/TableOverlay :id [:in table-ids] :active true))
 
 (defn active-visible-fields-for-tables
   "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
   table position then id order. `table-ids` is expected non-empty — an empty `:in` is a SQL error rather than
   an empty result, so callers guard it."
   [table-ids]
-  (t2/select [:model/Field :id :name :table_id :position]
+  (t2/select [:model/FieldOverlay :id :name :table_id :position]
              :table_id [:in table-ids]
              :active true
              :visibility_type [:not-in ["hidden" "sensitive" "retired"]]

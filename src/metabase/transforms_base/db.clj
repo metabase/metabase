@@ -49,7 +49,7 @@
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+  (t2/select-one-fn :table_id :model/FieldOverlay :id field-id))
 
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
@@ -63,14 +63,14 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn table-for-transform
   "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
   that hasn't been saved yet, in which case there is no owned Table either."
   [transform-id :- [:maybe ::lib.schema.id/transform]]
   (when transform-id
-    (t2/select-one :model/Table :transform_id transform-id)))
+    (t2/select-one :model/TableOverlay :transform_id transform-id)))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
@@ -106,7 +106,7 @@
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-vec :name [:model/Field :name :position]
+  (t2/select-fn-vec :name [:model/FieldOverlay :name :position]
                     :table_id table-id :active true
                     {:order-by [[:position :asc]]}))
 
@@ -114,7 +114,7 @@
   "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
   triple; `schema` may be nil)."
   [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
-  (t2/select [:model/Table :id :db_id :schema :name]
+  (t2/select [:model/TableOverlay :id :db_id :schema :name]
              {:where (into [:or]
                            (map (fn [[db-id schema table-name]]
                                   [:and
@@ -128,4 +128,4 @@
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids]))
+  (t2/select [:model/TableOverlay :id :db_id :schema :name] :id [:in table-ids]))

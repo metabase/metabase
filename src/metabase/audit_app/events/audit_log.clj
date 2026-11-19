@@ -264,18 +264,25 @@
    :event/remote-sync-create-branch       [:sync_task_type :version]
    :event/remote-sync-stash               [:sync_task_type :version]})
 
+(def ^:private overlay->model
+  "The model whose audit spec covers each read-only overlay model."
+  {:model/TableOverlay :model/Table
+   :model/FieldOverlay :model/Field})
+
 (defn- manual-details
   "The details that the row of the event `topic` of a manual action stores of its `object`."
   [topic object]
-  (cond
-    (contains? object-columns topic)
-    (select-keys object (get object-columns topic))
+  (let [model (when (t2/instance? object)
+                (overlay->model (t2/model object) (t2/model object)))]
+    (cond
+      (contains? object-columns topic)
+      (select-keys object (get object-columns topic))
 
-    (and (t2/instance? object) (audit.spec/spec (t2/model object)))
-    (details-of (t2/model object) object {:object object :topic topic})
+      (and model (audit.spec/spec model))
+      (details-of model object {:object object :topic topic})
 
-    :else
-    {}))
+      :else
+      {})))
 
 (defn- record-manual!
   "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object."

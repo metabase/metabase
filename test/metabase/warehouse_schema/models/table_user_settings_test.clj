@@ -102,6 +102,14 @@
       (is (empty? (warehouse-schema.db/table-ids-with-user-settings #{t1 t2})))
       (is (= [:metabase-transform nil] (map (comp :data_source user-table) [t1 t2]))))))
 
+(deftest publication-reads-user-settings-test
+  (testing "the publication of a Table is the one its user settings record"
+    (mt/with-temp [:model/Collection {collection-id :id}     {}
+                   :model/Table      {table-id :id :as table} {}]
+      (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id collection-id})
+      (is (= {table-id {:is_published true :collection_id collection-id}}
+             (warehouse-schema.db/table-publication-columns [table-id]))))))
+
 (deftest custom-order-fields-test
   (testing "a custom order is recorded as the Fields' user custom_position and applied to their position"
     (mt/with-temp [:model/Table {table-id :id :as table} {}

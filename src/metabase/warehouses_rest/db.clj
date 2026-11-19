@@ -16,7 +16,7 @@
 (mu/defn active-visible-tables-for-databases
   "The active, visible Tables of the Databases with `database-ids`, in schema then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :active          true
              :db_id           [:in database-ids]
              :visibility_type nil
@@ -26,7 +26,7 @@
 (mu/defn active-visible-schemas-for-databases
   "The Database id and schema of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select [:model/Table :db_id :schema]
+  (t2/select [:model/TableOverlay :db_id :schema]
              :db_id           [:in database-ids]
              :active          true
              :visibility_type nil))
@@ -85,7 +85,7 @@
   [database-id  :- ::lib.schema.id/database
    like-pattern :- [:or :string vector?]
    limit        :- ms/PositiveInt]
-  (t2/select [:model/Table :id :db_id :schema :name]
+  (t2/select [:model/TableOverlay :id :db_id :schema :name]
              {:where    [:and [:= :db_id database-id]
                          [:= :active true]
                          [:like :%lower.name like-pattern]
@@ -160,16 +160,18 @@
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
-  (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-             :metabase_field.active          true
-             :%lower.metabase_field/name     [:like like-pattern]
-             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-             :table.db_id                    database-id
-             {:order-by   [[[:lower :metabase_field.name] :asc]
+  (t2/select [:model/FieldOverlay :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
+             {:where      [:and
+                           [:= (u/qualified-key (t2/table-name :model/FieldOverlay) :active) true]
+                           [:like [:lower (u/qualified-key (t2/table-name :model/FieldOverlay) :name)] like-pattern]
+                           [:not-in (u/qualified-key (t2/table-name :model/FieldOverlay) :visibility_type)
+                            ["sensitive" "retired"]]
+                           [:= :table.db_id database-id]]
+              :order-by   [[[:lower (u/qualified-key (t2/table-name :model/FieldOverlay) :name)] :asc]
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              :inner-join [[(t2/table-name :model/Table) :table] [:and :table.active
-                                                                  [:= :table.id :metabase_field.table_id]]]
+              :inner-join [[(t2/table-name :model/TableOverlay) :table] [:and :table.active
+                                                                         [:= :table.id (u/qualified-key (t2/table-name :model/FieldOverlay) :table_id)]]]
               :limit      limit}))
 
 (mu/defn table-ids-for-database
@@ -180,7 +182,7 @@
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
+  (t2/select [:model/FieldOverlay :id :name :display_name :table_id :base_type :semantic_type]
              :table_id        [:in table-ids]
              :visibility_type [:not-in ["sensitive" "retired"]]))
 
@@ -225,14 +227,14 @@
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/FieldValues
               :field_id [:in ^:allow-subquery {:select     [:f.id]
-                                               :from       [[:metabase_field :f]]
-                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                               :from       [[(t2/table-name :model/Field) :f]]
+                                               :right-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
                                                :where      [:= :t.db_id [:auto/param database-id]]}]))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true))
+  (t2/select :model/TableOverlay :db_id database-id :active true))
 
 (mu/defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -242,7 +244,7 @@
    include-hidden? :- :boolean]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
+    (t2/select-fn-set :schema :model/TableOverlay :db_id database-id :active true
                       (merge {:order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
@@ -251,7 +253,7 @@
   "The active Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id database-id
              :schema schema
              :active true
@@ -261,7 +263,7 @@
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id database-id
              :schema schema
              :active true
@@ -288,7 +290,7 @@
              [^:allow-subquery {:select [[:%count.* :segment]]
                                 :from   [:segment]
                                 :where  [:in :table_id ^:allow-subquery {:select [:id]
-                                                                         :from   [:metabase_table]
+                                                                         :from   [(t2/table-name :model/TableOverlay)]
                                                                          :where  [:= :db_id database-id]}]}
               :segment]
              [^:allow-subquery {:select [[:%count.* :transform]]

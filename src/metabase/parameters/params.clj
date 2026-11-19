@@ -138,18 +138,19 @@
   [_model _k _nil]
   nil)
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :name_field]
-  "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
-  Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
-  public/embedded field values search widgets. This only includes the information needed to power those widgets, and
-  no more."
-  [_model _k fields]
-  (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
-    (for [field fields]
-      ;; add matching `:name_field` if it's a PK
-      (when field
-        (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
-                                   (table-id->name-field (:table_id field))))))))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (methodical/defmethod t2/batched-hydrate [model :name_field]
+    "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
+    Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
+    public/embedded field values search widgets. This only includes the information needed to power those widgets, and
+    no more."
+    [_model _k fields]
+    (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
+      (for [field fields]
+        ;; add matching `:name_field` if it's a PK
+        (when field
+          (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
+                                     (table-id->name-field (:table_id field)))))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.

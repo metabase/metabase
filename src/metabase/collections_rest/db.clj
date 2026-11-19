@@ -41,7 +41,7 @@
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from            [(t2/table-name :model/Table)]
+             :from            [(t2/table-name :model/TableOverlay)]
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]]}))

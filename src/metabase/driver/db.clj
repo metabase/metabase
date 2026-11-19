@@ -20,12 +20,12 @@
 (mu/defn table-field-names
   "The names of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-vec :name [:model/Field :name] :table_id table-id))
+  (t2/select-fn-vec :name [:model/FieldOverlay :name] :table_id table-id))
 
 (mu/defn json-field-names-with-unfolding-disabled
   "The names of the JSON Fields of the Table with `table-id` that have JSON unfolding disabled."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :name [:model/Field :name]
+  (t2/select-fn-set :name [:model/FieldOverlay :name]
                     :table_id table-id
                     :base_type :type/JSON
                     :json_unfolding false))

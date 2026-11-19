@@ -28,7 +28,7 @@
   "Reducible ID, published flag, data layer, and data authority of the active Tables that are published or
   authoritative."
   []
-  (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
+  (t2/reducible-select [:model/TableOverlay :id :is_published :data_layer :data_authority]
                        {:where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]

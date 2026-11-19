@@ -89,7 +89,7 @@
                     (queries/model? source))
         mp     (lib-be/application-database-metadata-provider database)
         query  (as-> (lib/query mp (cond
-                                     (mi/instance-of? :model/Table source) (lib.metadata/table mp (u/the-id source))
+                                     (magic.util/table? source) (lib.metadata/table mp (u/the-id source))
                                      (mi/instance-of? :model/Card source)  (lib.metadata/card mp (u/the-id source)))) $query
                  (reduce lib/aggregate $query (:xrays/aggregations metric-definition))
                  (reduce lib/breakout  $query (:xrays/breakouts metric-definition))

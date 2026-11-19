@@ -33,7 +33,9 @@
    :details mi/transform-json})
 
 (def ^:private model-name->audit-logged-name
-  {"RootCollection" "Collection"})
+  {"RootCollection" "Collection"
+   "TableOverlay"   "Table"
+   "FieldOverlay"   "Field"})
 
 (defn model-name
   "Given an instance of a model or a keyword model identifier, returns the name to store in the database as a string, or `nil` if it cannot be computed."

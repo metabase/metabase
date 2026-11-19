@@ -42,7 +42,7 @@
   [alias :- :keyword
    opts  :- ::remote-sync.schema/synced-filter-opts]
   [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
-                                                           :from   [[(t2/table-name :model/Field) :f]]
+                                                           :from   [[(t2/table-name :model/FieldOverlay) :f]]
                                                            :where  [:in :f.table_id
                                                                     ^:allow-subquery {:select [:settings.table_id]
                                                                                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
@@ -51,12 +51,12 @@
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn fields-by-id
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
@@ -66,34 +66,34 @@
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
+  (t2/select [:model/FieldOverlay :id :table_id] :id [:in field-ids]))
 
 (mu/defn field-table-id
   "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+  (t2/select-one-fn :table_id :model/FieldOverlay :id field-id))
 
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
-  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id))
+  (t2/select-one-pk :model/FieldOverlay :name field-name :parent_id parent-id :table_id table-id))
 
 (mu/defn field-values-eligibility
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id))
+  (t2/select-one [:model/FieldOverlay :base_type :visibility_type :has_field_values :preview_display] :id field-id))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field {:where [:= :table_id table-id]}))
+  (t2/select-pks-set :model/FieldOverlay {:where [:= :table_id table-id]}))
 
 (mu/defn active-field-ids-for-table
   "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true))
+  (t2/select-pks-set :model/FieldOverlay :table_id table-id :active true))
 
 (defn- field-order-order-by
   [field-order]
@@ -114,12 +114,12 @@
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
+  (t2/select [:model/FieldOverlay :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
 
 (mu/defn active-fields-for-tables
   "The active, unretired Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              :active true
              :table_id [:in table-ids]
              :visibility_type [:not= "retired"]
@@ -132,7 +132,7 @@
                     :table_id [:in table-ids]
                     :semantic_type (app-db/isa :type/PK)
                     :visibility_type [:not-in ["sensitive" "retired"]]
-                    {:from [[(t2/table-name :model/Field) :f]]}))
+                    {:from [[(t2/table-name :model/FieldOverlay) :f]]}))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -161,8 +161,8 @@
     (into {}
           (map (juxt :id :db_id))
           (t2/query {:select [:f.id :t.db_id]
-                     :from   [[(t2/table-name :model/Field) :f]]
-                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                     :from   [[(t2/table-name :model/FieldOverlay) :f]]
+                     :join   [[(t2/table-name :model/TableOverlay) :t] [:= :t.id :f.table_id]]
                      :where  [:in :f.id (vec field-ids)]}))
     {}))
 
@@ -198,9 +198,9 @@
    names    :- [:set :string]]
   (set
    (t2/select-fn-set (comp u/lower-case-en :name)
-                     :model/Field
+                     :model/FieldOverlay
                      {:select    [:f.name]
-                      :from      [[(t2/table-name :model/Field) :f]]
+                      :from      [[(t2/table-name :model/FieldOverlay) :f]]
                       :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
                       :where     [:and
                                   [:= :f.table_id table-id]
@@ -213,7 +213,7 @@
   []
   (t2/reducible-query
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
-    :from      [[(t2/table-name :model/Field) :f]]
+    :from      [[(t2/table-name :model/FieldOverlay) :f]]
     :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))
 
 (mu/defn set-field-display-name!
@@ -239,7 +239,7 @@
   [table-id :- ::lib.schema.id/table]
   (set (t2/select-fn-set :field_id :model/FieldUserSettings
                          {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                          :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
+                          :join  [[(t2/table-name :model/FieldOverlay) :f] [:= :f.id :u.field_id]]
                           :where [:= :f.table_id table-id]})))
 
 (mu/defn insert-field-user-settings!
@@ -376,7 +376,7 @@
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
-             {:join  [[(t2/table-name :model/Field) :field]
+             {:join  [[(t2/table-name :model/FieldOverlay) :field]
                       [:= :metabase_fieldvalues.field_id :field.id]]
               :where [:and
                       [:in :field.table_id table-ids]
@@ -480,19 +480,19 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (if (seq table-ids)
     (t2/select-pk->fn #(select-keys % [:is_published :collection_id])
-                      [:model/Table :id :is_published :collection_id]
+                      [:model/TableOverlay :id :is_published :collection_id]
                       :id [:in table-ids])
     {}))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn update-table!
   "Apply `changes` to the ::warehouse-schema.schema/table with `table-id`, returning the number updated."
@@ -509,29 +509,29 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn table-by-name
   "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema))
+  (t2/select-one :model/TableOverlay :name table-name :db_id database-id :schema schema))
 
 (mu/defn table-name-and-schema
   "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :name :schema] :id table-id))
+  (t2/select-one [:model/TableOverlay :name :schema] :id table-id))
 
 (mu/defn table-database-id
   "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
+  (t2/select-one-fn :db_id :model/TableOverlay :id table-id))
 
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id]
-  (t2/select :model/Table :db_id database-id :active true))
+  (t2/select :model/TableOverlay :db_id database-id :active true))
 
 (defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -540,7 +540,7 @@
   [database-id include-hidden?]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
+    (t2/select-fn-set :schema :model/TableOverlay :db_id database-id :active true
                       (merge {:order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
@@ -548,7 +548,7 @@
 (defn active-tables-in-schema
   "The active Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id schema]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id database-id
              :schema schema
              :active true
@@ -557,7 +557,7 @@
 (defn active-visible-tables-in-schema
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id schema]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id database-id
              :schema schema
              :active true
@@ -591,7 +591,7 @@
   (t2/reducible-query
    {:select    [:t.id :t.name :t.display_name
                 [:u.display_name :user_display_name]]
-    :from      [[(t2/table-name :model/Table) :t]]
+    :from      [[(t2/table-name :model/TableOverlay) :t]]
     :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]}))
 
 (mu/defn set-table-display-name!
@@ -658,12 +658,12 @@
   user queries, active or not, so that dependencies broken by a dropped or hidden table stay visible, without those of
   the sample and audit databases unless `:include-sample-databases?`, located by their database."
   [{:keys [include-sample-databases?] :as opts} :- :metabase.dependencies.items/items-opts]
-  {:select    [[:metabase_table.id :entity_id] [:metabase_table.display_name :name] [:database.name :location]]
-   :from      [:metabase_table]
-   :left-join [[:metabase_database :database] [:= :metabase_table.db_id :database.id]]
+  {:select    [[:t.id :entity_id] [:t.display_name :name] [:database.name :location]]
+   :from      [[(t2/table-name :model/TableOverlay) :t]]
+   :left-join [[:metabase_database :database] [:= :t.db_id :database.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [(collections.listing/visible-tables-clause :metabase_table.id opts)
+                    [(collections.listing/visible-tables-clause :t.id opts)
                      (when-not include-sample-databases?
                        [:and [:not :database.is_sample] [:not :database.is_audit]])])})
 
@@ -684,7 +684,7 @@
               [:t.db_id :database_id]
               [[:!= :t.archived_at nil] :archived]
               [(h2x/literal "table") :model]]
-     :from   [[(t2/table-name :model/Table) :t]]
+     :from   [[(t2/table-name :model/TableOverlay) :t]]
      :where  [:and
               [:= :t.is_published true]
               (collections.listing/poison-when-pinned-clause pinned-state)
@@ -704,13 +704,13 @@
   "The non-hidden Tables with `table-ids` with their Database name and sync status."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/hydrate
-   (t2/select :model/Table
+   (t2/select :model/TableOverlay
               {:select [:t.id :t.name :t.description
                         :t.display_name :t.active :t.visibility_type :t.schema
                         [:db.name :database-name]
                         [:db.id :db_id]
                         [:db.initial_sync_status :initial-sync-status]]
-               :from [[(t2/table-name :model/Table) :t]]
+               :from [[(t2/table-name :model/TableOverlay) :t]]
                :where [:and
                        [:or
                         [:= :visibility_type nil]

@@ -271,4 +271,4 @@
   [query-map]
   (when-let [table-id (get-in query-map [:stages 0 :source-table])]
     (when (int? table-id)
-      (api/query-check :model/Table table-id))))
+      (api/query-check :model/TableOverlay table-id))))

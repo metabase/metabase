@@ -143,7 +143,7 @@
    _body
    _request]
   (api/check-data-studio-access)
-  (let [table (api/read-check :model/Table id)]
+  (let [table (api/read-check :model/TableOverlay id)]
     (when (:is_published table)
       (publishing-info id))))
 

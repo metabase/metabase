@@ -114,17 +114,17 @@
 (mu/defn field-names
   "The id, name, and display name of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :display_name] :id [:in (mapv long field-ids)]))
+  (t2/select [:model/FieldOverlay :id :name :display_name] :id [:in (mapv long field-ids)]))
 
 (mu/defn table-names
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)]))
+  (t2/select [:model/TableOverlay :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)]))
 
 (mu/defn table-database-ids
   "The id and Database id of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)]))
+  (t2/select [:model/TableOverlay :id :db_id] :id [:in (mapv long table-ids)]))
 
 (mu/defn card-names
   "The id and name of the Cards with `card-ids`."

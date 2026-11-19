@@ -49,9 +49,9 @@
 (mu/defn published-table-count-in-collections
   "The number of published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/count :model/Table {:where [:and
-                                  [:= :is_published true]
-                                  [:in :collection_id collection-ids]]}))
+  (t2/count :model/TableOverlay {:where [:and
+                                         [:= :is_published true]
+                                         [:in :collection_id collection-ids]]}))
 
 (mu/defn unarchived-metric-count-in-collections
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
@@ -161,7 +161,7 @@
   "The Database id and schema of the Tables of the non-internal Databases."
   []
   (t2/query {:select [:t.db_id :t.schema]
-             :from      [[(t2/table-name :model/Table) :t]]
+             :from      [[(t2/table-name :model/TableOverlay) :t]]
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where  (mi/non-internal-filter-clause :model/Database :d)}))
 
@@ -169,8 +169,8 @@
   "The Table id of the Fields of the non-internal Databases."
   []
   (t2/query {:select [:f.table_id]
-             :from      [[(t2/table-name :model/Field) :f]]
-             :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
+             :from      [[(t2/table-name :model/FieldOverlay) :f]]
+             :join [[(t2/table-name :model/TableOverlay) :t] [:= :t.id :f.table_id]
                     [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where (mi/non-internal-filter-clause :model/Database :d)}))
 
@@ -368,7 +368,7 @@
 (mu/defn upload-table-exists?
   "Whether an uploaded Table exists."
   []
-  (t2/exists? :model/Table :is_upload true))
+  (t2/exists? :model/TableOverlay :is_upload true))
 
 (mu/defn snippet-collection-exists?
   "Whether a snippet Collection exists."

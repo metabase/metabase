@@ -76,7 +76,7 @@
                     :from      [[:report_card :card]]
                     :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                                 [:metabase_database :db]           [:= :card.database_id :db.id]
-                                [(t2/table-name :model/Table) :t]        [:= :card.table_id :t.id]
+                                [(t2/table-name :model/TableOverlay) :t]        [:= :card.table_id :t.id]
                                 [:core_user :u]                    [:= :card.creator_id :u.id]
                                 :latest_qe                         [:= :card.id :latest_qe.card_id]
                                 :query_runs                        [:= :card.id :query_runs.card_id]

@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -71,12 +72,12 @@
 
 (defn- table-ids-of-database-query
   [database-id]
-  ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]})
+  ^:allow-subquery {:from [(t2/table-name :model/TableOverlay)], :select [:id], :where [:= :db_id database-id]})
 
 (mu/defn fields-exist-for-database?
   "Whether any Field belongs to a Table of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)]))
+  (t2/exists? :model/FieldOverlay :table_id [:in (table-ids-of-database-query database-id)]))
 
 (mu/defn delete-childless-fields-for-database!
   "Delete the childless Fields of the Tables of the Database with `database-id`, returning the number deleted."
@@ -94,7 +95,7 @@
                                                                    :parent_fields]]}]
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                                                           :where  [:= :child_field.parent_id (u/qualified-key (t2/table-name :model/Field) :id)]}]])]
     ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)
@@ -115,7 +116,7 @@
   [database-id :- ::lib.schema.id/database]
   (if-let [action-ids (not-empty (into (t2/select-fn-set :action_id :model/QueryAction :database_id database-id)
                                        (t2/select-fn-set :action_id :model/ImplicitAction
-                                                         {:join  [[(t2/table-name :model/Table) :table]
+                                                         {:join  [[(t2/table-name :model/TableOverlay) :table]
                                                                   [:= :table.id :implicit_action.table_id]]
                                                           :where [:= :table.db_id database-id]})))]
     (t2/delete! :model/Action :id [:in action-ids])
@@ -158,12 +159,12 @@
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/TableOverlay :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
 
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id  [:in database-ids]
              :active true
              {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
@@ -176,7 +177,7 @@
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
+  (t2/select :model/FieldOverlay :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

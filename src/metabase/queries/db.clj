@@ -257,15 +257,15 @@
                          [:field.name :field-name]
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
-             :from      [[:metabase_field :field]]
-             :left-join [[(t2/table-name :model/Table) :table]
+             :from      [[(t2/table-name :model/FieldOverlay) :field]]
+             :left-join [[(t2/table-name :model/TableOverlay) :table]
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
   "Map of the ID of each Field with `field-ids` to its Table ID."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]))
+  (t2/select-pk->fn :table_id :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."

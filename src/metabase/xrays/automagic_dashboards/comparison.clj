@@ -7,7 +7,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
-   [metabase.models.interface :as mi]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -30,7 +29,7 @@
    :metabase.warehouse-schema.schema/table
    :metabase.segments.schema/segment
    ::queries.schema/card
-   :metabase.warehouse-schema.schema/field
+   :metabase.xrays.automagic-dashboards.schema/field
    ::queries.schema/query
    ::ads/adhoc-question])
 
@@ -261,7 +260,7 @@
                           :description ""})
                        (when (and ((some-fn :query-filter :cell-query) left)
                                   (not= (:source left) (:entity right)))
-                         [{:url         (if (->> left :source (mi/instance-of? :model/Table))
+                         [{:url         (if (->> left :source (magic.util/table?))
                                           (str (:url left) "/compare/table/"
                                                (-> left :source u/the-id))
                                           (str (:url left) "/compare/adhoc/"
@@ -317,7 +316,7 @@
                                                             (names/cell-title left))))
           right              (cond-> right
                                (part-vs-whole-comparison? left right)
-                               (assoc :comparison-name (if (mi/instance-of? :model/Table (:entity right))
+                               (assoc :comparison-name (if (magic.util/table? (:entity right))
                                                          (tru "All {0}" (:short-name right))
                                                          (tru "{0}, all {1}"
                                                               (comparison-name right)

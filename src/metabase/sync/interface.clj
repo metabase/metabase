@@ -150,7 +150,7 @@
 
 (mr/def ::TableInstance
   [:and
-   (ms/InstanceOf :model/Table)
+   [:or (ms/InstanceOf :model/Table) (ms/InstanceOf :model/TableOverlay)]
    ::no-kebab-case-keys])
 
 (def TableInstance
@@ -159,9 +159,8 @@
 
 (mr/def ::FieldInstance
   [:and
-   [:and
-    (ms/InstanceOf :model/Field)
-    ::no-kebab-case-keys]])
+   [:or (ms/InstanceOf :model/Field) (ms/InstanceOf :model/FieldOverlay)]
+   ::no-kebab-case-keys])
 
 (def FieldInstance
   "Schema for a valid instance of a Metabase Field."

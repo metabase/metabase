@@ -72,7 +72,7 @@
 (mu/defn active-table-schemas
   "The set of schemas of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :schema :model/Table :db_id database-id :active true))
+  (t2/select-fn-set :schema :model/TableOverlay :db_id database-id :active true))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."

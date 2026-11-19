@@ -62,7 +62,7 @@
   (t2/select :model/Sandbox
              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
               :from   [[:sandboxes :s]]
-              :join   [[(t2/table-name :model/Table) :t]
+              :join   [[(t2/table-name :model/TableOverlay) :t]
                        [:= :s.table_id :t.id]]
               :where  [:and
                        (when group-id [:= :s.group_id group-id])
@@ -82,7 +82,7 @@
                 [:table.db_id :db_id]
                 [:table.schema :schema]]
     :from      [[:sandboxes]]
-    :left-join [[(t2/table-name :model/Table) :table]
+    :left-join [[(t2/table-name :model/TableOverlay) :table]
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and
                 [:in :sandboxes.group_id group-ids]
@@ -152,7 +152,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn tables-of-database
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
@@ -160,7 +160,7 @@
   [db-id        :- ::lib.schema.id/database
    schema-only? :- :boolean
    schema       :- [:maybe :string]]
-  (t2/select [:model/Table :id :db_id :schema]
+  (t2/select [:model/TableOverlay :id :db_id :schema]
              {:where [:and
                       [:= :db_id db-id]
                       (when schema-only?
@@ -171,14 +171,14 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
                  :id ^:allow-subquery {:select [:t.db_id]
-                                       :from      [[(t2/table-name :model/Table) :t]]
+                                       :from      [[(t2/table-name :model/TableOverlay) :t]]
                                        :where  [:= :t.id table-id]}))
 
 (mu/defn fields-of-table-named
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
+  (t2/select [:model/FieldOverlay :id :name] :table_id table-id :name [:in field-names]))
 
 (mu/defn cards-by-id
   "A map of Card ID to the query-related columns of the Cards with `card-ids`."

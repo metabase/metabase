@@ -56,12 +56,12 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
+  (t2/select-one [:model/TableOverlay :db_id :schema :id] :id table-id))
 
 (mu/defn synced-segment-items :- [:sequential ::segments.schema/segment]
   "The Segments with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
@@ -77,10 +77,10 @@
   [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
   {:select    [[:segment.id :entity_id] [:segment.name :name] [:table.display_name :location]]
    :from      [:segment]
-   :left-join [[:metabase_table :table] [:= :segment.table_id :table.id]]
+   :left-join [[(t2/table-name :model/TableOverlay) :table] [:= :segment.table_id :table.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [[:in :segment.table_id ^:allow-subquery {:select [:metabase_table.id]
-                                                              :from   [:metabase_table]
-                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                    [[:in :segment.table_id ^:allow-subquery {:select [:visible_table.id]
+                                                              :from   [[(t2/table-name :model/TableOverlay) :visible_table]]
+                                                              :where  (collections.listing/visible-tables-clause :visible_table.id opts)}]
                      (collections.listing/archived-clause :segment include-archived)])})

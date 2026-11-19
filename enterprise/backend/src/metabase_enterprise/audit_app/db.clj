@@ -56,17 +56,17 @@
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id :- ::lib.schema.id/database
    table-names :- [:or [:set :string] [:sequential :string]]]
-  (t2/select :model/Table :db_id database-id :name [:in table-names]))
+  (t2/select :model/TableOverlay :db_id database-id :name [:in table-names]))
 
 (mu/defn tables-of-database-in-id-order
   "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :schema :active] :db_id database-id {:order-by [[:id :asc]]}))
+  (t2/select [:model/TableOverlay :id :name :schema :active] :db_id database-id {:order-by [[:id :asc]]}))
 
 (mu/defn active-public-table-exists?
   "Whether the Database with `database-id` has an active Table in the `public` schema."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :schema "public" :active true))
+  (t2/exists? :model/TableOverlay :db_id database-id :schema "public" :active true))
 
 (mu/defn table-ids-to-downcase
   "The IDs of the Metabase-managed Tables of the Database with `database-id` that have no lower-cased counterpart
@@ -74,7 +74,7 @@
   [database-id :- ::lib.schema.id/database]
   (mapv :id
         (t2/query {:select [:table.id]
-                   :from      [[(t2/table-name :model/Table) :table]]
+                   :from      [[(t2/table-name :model/TableOverlay) :table]]
                    :where  [:and [:= :table.db_id database-id]
                             ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                             [:not= :table.name "DATABASECHANGELOG"]
@@ -83,7 +83,7 @@
                             [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                             [:not [:like :table.name "QRTZ_%"]]
                             [:not [:exists ^:allow-subquery {:select [1]
-                                                             :from   [[(t2/table-name :model/Table) :self_table]]
+                                                             :from   [[(t2/table-name :model/TableOverlay) :self_table]]
                                                              :where  [:and
                                                                       [:= :self_table.db_id :table.db_id]
                                                                       [:or
@@ -104,8 +104,8 @@
   [database-id :- ::lib.schema.id/database]
   (mapv :id
         (t2/query {:select     [:field.id]
-                   :from      [[(t2/table-name :model/Field) :field]]
-                   :inner-join [[(t2/table-name :model/Table) :table]
+                   :from      [[(t2/table-name :model/FieldOverlay) :field]]
+                   :inner-join [[(t2/table-name :model/TableOverlay) :table]
                                 [:= :table.id :field.table_id]]
                    :where      [:and [:= :table.db_id database-id]
                                 [:not= :table.name "DATABASECHANGELOG"]
@@ -113,8 +113,8 @@
                                 [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                                 [:not [:like :table.name "QRTZ_%"]]
                                 [:not [:exists ^:allow-subquery {:select     [1]
-                                                                 :from       [[(t2/table-name :model/Field) :self_field]]
-                                                                 :inner-join [[(t2/table-name :model/Table) :self_table]
+                                                                 :from       [[(t2/table-name :model/FieldOverlay) :self_field]]
+                                                                 :inner-join [[(t2/table-name :model/TableOverlay) :self_table]
                                                                               [:= :self_table.id :self_field.table_id]]
                                                                  :where      [:and
                                                                               [:= :self_table.db_id :table.db_id]
@@ -147,7 +147,7 @@
               {:table_id
                [:in
                 ^:allow-subquery {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
+                                  :from   [(t2/table-name :model/TableOverlay)]
                                   :where  [:= :db_id database-id]}]}
               {:name [:upper :name]}))
 
@@ -165,7 +165,7 @@
 (mu/defn field-names-of-table
   "The `:id` and `:name` of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name] :table_id table-id))
+  (t2/select [:model/FieldOverlay :id :name] :table_id table-id))
 
 (mu/defn card-result-metadata-reducible
   "Reducible raw `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`."

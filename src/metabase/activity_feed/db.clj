@@ -5,6 +5,7 @@
    [metabase.activity-feed.schema :as activity-feed.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -37,13 +38,13 @@
 (mu/defn recent-tables
   "The recently viewed Tables with `ids`, with their Database names and sync status."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Table
+  (t2/select [:model/TableOverlay
               :id :name :db_id :active
               :display_name [:metabase_database.initial_sync_status :initial-sync-status]
               [:visibility_type :visibility_type]
               [:metabase_database.name :database-name]]
-             {:where     [:in :metabase_table.id ids]
-              :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
+             {:where     [:in (u/qualified-key (t2/table-name :model/TableOverlay) :id) ids]
+              :left-join [:metabase_database [:= :metabase_database.id (u/qualified-key (t2/table-name :model/TableOverlay) :db_id)]]}))
 
 (mu/defn recent-dashboard-and-table-views
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
@@ -99,7 +100,7 @@
 (mu/defn table-exists?
   "Whether a Table with `id` exists."
   [id :- ::lib.schema.id/table]
-  (t2/exists? :model/Table :id id))
+  (t2/exists? :model/TableOverlay :id id))
 
 (mu/defn collection-exists?
   "Whether a Collection with `id` exists."
@@ -119,7 +120,7 @@
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id))
+  (t2/select-one :model/TableOverlay :id id))
 
 (mu/defn collection
   "The Collection with `id`, or nil."

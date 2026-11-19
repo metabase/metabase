@@ -537,16 +537,18 @@
   [& {:keys [id schema name]}]
   (format "Table %s ''%s''" (or (str id) "") (str (when (seq schema) (str schema ".")) name)))
 
-(defmethod name-for-logging :model/Table [table]
-  (table-name-for-logging table))
+(doseq [model [:model/Table :model/TableOverlay]]
+  (defmethod name-for-logging model [table]
+    (table-name-for-logging table)))
 
 (defn field-name-for-logging
   "Return an appropriate string for logging a field in sync logging messages."
   [& {:keys [id name]}]
   (format "Field %s ''%s''" (or (str id) "") name))
 
-(defmethod name-for-logging :model/Field [field]
-  (field-name-for-logging field))
+(doseq [model [:model/Field :model/FieldOverlay]]
+  (defmethod name-for-logging model [field]
+    (field-name-for-logging field)))
 
 ;;; this is used for result metadata stuff.
 (defmethod name-for-logging :default [{field-name :name}]

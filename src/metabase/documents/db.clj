@@ -171,7 +171,7 @@
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id))
+  (t2/select-one :model/TableOverlay :id id))
 
 (mu/defn dashboard
   "The Dashboard with `id`, or nil."

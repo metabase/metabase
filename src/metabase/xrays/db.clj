@@ -18,19 +18,19 @@
   "The Table with `table-id`, or nil. `table-id` may be nil (some callers pass a Card's or Metric's possibly-absent
   table id), in which case this returns nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn tables-in-schema
   "The Tables in `schema` of the Database with `database-id`. `schema` may be nil (some drivers have no
   schema concept)."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select :model/Table :db_id database-id :schema schema))
+  (t2/select :model/TableOverlay :db_id database-id :schema schema))
 
 (mu/defn sibling-tables
   "The active, visible Tables in `schema` of the Database with `database-id` other than `table-id`. `schema`
@@ -38,7 +38,7 @@
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-id    :- ::lib.schema.id/table]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id           database-id
              :schema          schema
              :id              [:not= table-id]
@@ -50,7 +50,7 @@
   Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+  (t2/select [:model/TableOverlay :id :schema :display_name :entity_type :db_id
               [:ts.count :num-fields]
               [[:and
                 [:>= :ts.count 2]
@@ -64,7 +64,7 @@
                                                          [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
                                                                    [:inline 1] :else [:inline nil]]]
                                                           :count_pks_and_fks]]
-                                              :from     [[(t2/table-name :model/Field) :f]]
+                                              :from     [[(t2/table-name :model/FieldOverlay) :f]]
                                               :where    [:= :f.active true]
                                               :group-by [:f.table_id]} :ts]
                            [:and [:= :ts.table_id :id]
@@ -79,12 +79,12 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id))
+  (t2/select-one-fn :name :model/FieldOverlay :id field-id))
 
 (mu/defn metadata-column
   "The `:metadata/column` with `field-id`, or nil."
@@ -94,22 +94,22 @@
 (mu/defn fields-targeting
   "The Fields whose FK target is the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select :model/Field :fk_target_field_id field-id))
+  (t2/select :model/FieldOverlay :fk_target_field_id field-id))
 
 (mu/defn fk-fields-for-tables
   "The FK Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids]))
+  (t2/select :model/FieldOverlay :fk_target_field_id [:not= nil] :table_id [:in table-ids]))
 
 (mu/defn active-fk-fields-for-table
   "The active FK Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :fk_target_field_id [:not= nil] :active true))
+  (t2/select :model/FieldOverlay :table_id table-id :fk_target_field_id [:not= nil] :active true))
 
 (mu/defn fk-target-field-ids-for-table
   "The FK target Field ids of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :fk_target_field_id :model/Field
+  (t2/select-fn-set :fk_target_field_id :model/FieldOverlay
                     :table_id           table-id
                     :fk_target_field_id [:not= nil]
                     :active             true))
@@ -117,17 +117,17 @@
 (mu/defn active-field-ids-for-table
   "The ids of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :id :model/Field :table_id table-id :active true))
+  (t2/select-fn-set :id :model/FieldOverlay :table_id table-id :active true))
 
 (mu/defn table-ids-of-fields-targeting
   "The Table ids of the active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (t2/select-fn-set :table_id :model/FieldOverlay :fk_target_field_id [:in field-ids] :active true))
 
 (mu/defn visible-fields-for-tables
   "The active, normally visible, previewable Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              :table_id [:in table-ids]
              :visibility_type "normal"
              :preview_display true
@@ -137,7 +137,7 @@
   "The active, normally visible Fields of the Table with `table-id` other than `field-id`."
   [table-id :- [:maybe ::lib.schema.id/table]
    field-id :- [:maybe ::lib.schema.id/field]]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              :table_id        table-id
              :id              [:not= field-id]
              :visibility_type "normal"

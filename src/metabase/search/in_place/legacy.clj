@@ -618,12 +618,12 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/TableOverlay) :table] [:= :measure.table_id :table.id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/TableOverlay) :table] [:= :segment.table_id :table.id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [table-db-id], :as search-ctx}]

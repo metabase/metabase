@@ -14,7 +14,6 @@
    [metabase.segments.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mr/def ::string-or-18n-string
@@ -33,7 +32,9 @@
    {:dispatch t2/model}
    [:xrays/Metric  [:ref ::metric]]
    [:model/Table   [:merge :metabase.warehouse-schema.schema/table [:ref ::related-keys]]]
+   [:model/TableOverlay [:merge :metabase.warehouse-schema.schema/table [:ref ::related-keys]]]
    [:model/Field   [:ref ::field]]
+   [:model/FieldOverlay [:ref ::field]]
    [:model/Segment [:merge :metabase.segments.schema/segment [:ref ::related-keys]]]
    [:model/Card    [:merge :metabase.queries.schema/card [:ref ::related-keys]
                     [:map [:entity_type {:optional true} :keyword]]]]
@@ -77,7 +78,17 @@
 
 (mr/def ::source
   [:or
-   (ms/InstanceOf #{:model/Table :model/Card})
+   [:merge
+    :metabase.warehouse-schema.schema/table
+    [:ref ::related-keys]
+    [:map
+     [:fields        {:optional true} [:maybe [:sequential [:ref ::field]]]]
+     [:domain_entity {:optional true} [:maybe [:ref :metabase.xrays.domain-entities.specs/instantiated-domain-entity]]]]]
+   [:merge
+    :metabase.queries.schema/card
+    [:map
+     [:fields      {:optional true} [:maybe [:sequential [:ref ::field]]]]
+     [:entity_type {:optional true} :keyword]]]
    [:map {:closed true}
     [:entity_type [:and
                    qualified-keyword?

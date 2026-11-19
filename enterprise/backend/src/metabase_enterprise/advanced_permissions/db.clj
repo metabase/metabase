@@ -11,7 +11,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (mu/defn group-manager?
   "Whether the User with `user-id` manages the PermissionsGroup with `group-id`."
@@ -42,7 +42,7 @@
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select [[:t.db_id :db_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [[(t2/table-name :model/Table) :t]
+             :join   [[(t2/table-name :model/TableOverlay) :t]
                       [:= :s.table_id :t.id]]
              :where  [:and
                       [:= :s.group_id group-id]
@@ -84,7 +84,7 @@
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:s.group_id :group_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [[(t2/table-name :model/Table) :t]
+             :join   [[(t2/table-name :model/TableOverlay) :t]
                       [:= :t.id :s.table_id]]
              :where  [:and
                       [:in :s.group_id group-ids]
