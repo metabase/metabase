@@ -603,10 +603,10 @@
 
   It reads the provider's own error object, so it runs before [[provider-error-xf]] replaces that object."
   (map (fn [part]
-         (let [error (when (= :error (:type part)) (:error part))]
-           (if-let [kind (when (map? error) (provider-failure-kind nil error))]
-             (assoc part :provider-failure kind)
-             part)))))
+         (if-let [kind (when (= :error (:type part))
+                         (provider-failure-kind nil (:error part)))]
+           (assoc part :provider-failure kind)
+           part))))
 
 (defn- missing-required-permission
   "Returns the metabot permission keyword that the current user is missing

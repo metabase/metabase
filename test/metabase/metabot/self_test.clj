@@ -3083,6 +3083,8 @@
                                     nil
                                     (self.core/reducible-with-api-errors inner "anthropic" (constantly "unused"))))]
       (is (identical? boom ex))
+      (is (nil? (self/call-failure ex))
+          "it is not a provider failure")
       (is (= ["Metabot bug"] @messages)
           "a wrapper inside sees the real error's message"))))
 
@@ -3329,12 +3331,6 @@
              (self/call-failure (caught #(self.core/resolve-auth "anthropic" "Anthropic" nil true))))))
     (is (= :not-configured
            (self/call-failure (caught #(#'self/parse-provider-model "nonexistent/some-model"))))))
-  (testing "an exception that Metabot's own code throws while the stream is reduced is not the provider's"
-    (let [e (caught #(reduce (fn [_ _] (throw (NullPointerException.)))
-                             nil
-                             (self.core/reducible-with-api-errors [1] "anthropic" (constantly "API error"))))]
-      (is (instance? NullPointerException e))
-      (is (nil? (self/call-failure e)))))
   (testing "a failure that is not a provider API error"
     (is (nil? (self/call-failure (ex-info "boom" {:status 429}))))
     (is (nil? (self/call-failure (Exception. "boom"))))))

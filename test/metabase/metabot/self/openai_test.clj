@@ -184,13 +184,13 @@
                      {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error"}}}]
           bare      [{:type "response.created" :response {:id "resp_1"}}
                      {:type "response.failed"  :response {:id "resp_1"}}]]
-      (is (=? [{:type :start} {:type :error :errorText "server_error"}]
+      (is (=? [{:type :start} {:type      :error
+                               :errorText "server_error"
+                               ;; the error object gets the text as its message
+                               :error     {:code "server_error" :message "server_error"}}]
               (into [] (openai/openai->aisdk-chunks-xf) code-only)))
       (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
-              (into [] (openai/openai->aisdk-chunks-xf) bare)))
-      (testing "the code-only error object gets the text as its message"
-        (is (=? [{:type :start} {:type :error :error {:code "server_error" :message "server_error"}}]
-                (into [] (openai/openai->aisdk-chunks-xf) code-only)))))))
+              (into [] (openai/openai->aisdk-chunks-xf) bare))))))
 
 (deftest ^:parallel openai-response-failed-reaches-wire-and-persistence-test
   (testing "a response.failed error flows through to both the wire line and the persisted turn error"

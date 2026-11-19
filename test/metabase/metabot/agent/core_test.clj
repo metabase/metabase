@@ -2050,38 +2050,30 @@
                                                                  "openrouter/anthropic/claude-haiku-4.5" e))))
       :not-found      (rethrown-api-error! "openrouter" 404 {:error {:code 404 :message "No endpoints found"}})
       :auth           (rethrown-api-error! "openrouter" 401 {:error {:code 401 :message "No auth credentials found"}})
-      :not-configured (self.core/missing-api-key-ex "OpenRouter")))
-  (testing "a 400 for a request that Metabot made has no kind"
-    (is (= [nil] (map :provider-failure (mt/as-admin (agent-loop-error-parts!
-                                                      "openrouter/anthropic/claude-haiku-4.5"
-                                                      (rethrown-api-error! "openrouter" 400 openrouter-overflow-body))))))))
+      :not-configured (self.core/missing-api-key-ex "OpenRouter")
+      ;; a 400 for a request that Metabot made has no kind
+      nil             (rethrown-api-error! "openrouter" 400 openrouter-overflow-body))))
 
 (deftest agent-loop-streamed-provider-failure-error-part-test
   (testing "a provider failure that OpenRouter streams after its 200 tags the error part with its kind"
-    (is (= [:rate-limit] (map :provider-failure (mt/as-admin (agent-loop-streamed-error-parts!
-                                                              (openrouter-midstream-error-chunks
-                                                               {:code 429 :message "Rate limit exceeded"})))))))
+    (are [kind error]
+         (= [kind] (map :provider-failure (mt/as-admin (agent-loop-streamed-error-parts!
+                                                        (openrouter-midstream-error-chunks error)))))
+      :rate-limit {:code 429 :message "Rate limit exceeded"}
+      ;; Input that OpenRouter's moderation flags is not a credentials failure.
+      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
+      nil         {:code     403
+                   :message  "anthropic/claude-haiku-4.5 requires moderation"
+                   :metadata {:reasons ["harassment"] :flagged_input "..."}}
+      ;; a streamed error that is not a provider failure
+      nil         {:code 400 :message "Bad request"}
+      ;; An integer code outside the HTTP status range is the vendor's own code, not a status.
+      ;; https://docs.z.ai/api-reference/api-code (1113 "Insufficient balance or no resource package")
+      nil         {:code 1113 :message "Insufficient balance"}))
   (testing "a streamed HTTP status gets the same user-facing error as the status of a failed request"
     (is (=? [{:error {:error-code "ai_provider_rate_limit"} :provider-failure :rate-limit}]
             (mt/as-admin (agent-loop-streamed-error-parts!
                           (openrouter-midstream-error-chunks {:code 429 :message "Rate limit exceeded"}))))))
-  (testing "input that OpenRouter's moderation flags is not a credentials failure"
-    ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
-    (is (= [nil] (map :provider-failure (mt/as-admin (agent-loop-streamed-error-parts!
-                                                      (openrouter-midstream-error-chunks
-                                                       {:code     403
-                                                        :message  "anthropic/claude-haiku-4.5 requires moderation"
-                                                        :metadata {:reasons       ["harassment"]
-                                                                   :flagged_input "..."}})))))))
-  (testing "a streamed error that is not a provider failure has no kind"
-    (is (= [nil] (map :provider-failure (mt/as-admin (agent-loop-streamed-error-parts!
-                                                      (openrouter-midstream-error-chunks
-                                                       {:code 400 :message "Bad request"})))))))
-  (testing "an integer code outside the HTTP status range is the vendor's own code, not a status"
-    ;; https://docs.z.ai/api-reference/api-code (1113 "Insufficient balance or no resource package")
-    (is (= [nil] (map :provider-failure (mt/as-admin (agent-loop-streamed-error-parts!
-                                                      (openrouter-midstream-error-chunks
-                                                       {:code 1113 :message "Insufficient balance"})))))))
   (testing "a provider failure that OpenAI's Responses API streams after its 200 tags the error part with its kind"
     (are [kind event]
          (= [kind] (map :provider-failure
