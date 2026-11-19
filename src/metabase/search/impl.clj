@@ -72,8 +72,8 @@
   [search-ctx instance]
   (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
-;; Read off the metadata `hydrate-checks` sets, so the answer comes once per batch, not once per row. An instance that
-;; skipped `hydrate-checks` is denied, and logged, since that means a path to the check left it out.
+;; Reads the `::queryable-database?` metadata that `hydrate-checks` sets, so the answer comes once per batch.
+;; An instance without it is denied and logged, since some path skipped `hydrate-checks`.
 (defmethod check-permissions-for-model :indexed-entity
   [_search-ctx instance]
   (let [answer (::queryable-database? (meta instance))]
@@ -421,7 +421,7 @@
    :model/Database    [:can_read]})
 
 (def ^:private page-checks
-  "The checks to hydrate on the page of search results, the ones [[add-can-write]] returns."
+  "The checks to hydrate on the page of search results: the `:can_write` that [[add-can-write]] keeps in the response."
   {:model/Card      [:can_write]
    :model/Dashboard [:can_write]
    :model/Table     [:can_write]})
@@ -445,13 +445,14 @@
           (t2/hydrate (search.db/collection-permission-rows collection-ids) :can_write))))
 
 (defn- with-exploration-ids
-  "`documents` with their `:exploration_id`, from one query. A Document's content gate reads it, and looks it up per
-  Document when it is missing. A search result does not carry it, and the semantic engine does not filter out the
-  Documents of Explorations, so it cannot be assumed nil."
+  "Each of `documents` with its `:exploration_id`, looked up for all of them in one query when it is missing."
   [documents]
-  (let [ids             (into [] (comp (remove #(contains? % :exploration_id)) (map :id) (distinct)) documents)
-        exploration-ids (when (seq ids) (search.db/document-exploration-ids ids))]
-    (map #(cond-> % (not (contains? % :exploration_id)) (assoc :exploration_id (get exploration-ids (:id %))))
+  ;; A Document's content gate reads `:exploration_id`, and looks it up per Document when it is missing. A search
+  ;; result does not carry it, and the semantic engine does not filter out the Documents of Explorations, so it
+  ;; cannot be assumed nil.
+  (let [lacking (into [] (comp (remove #(contains? % :exploration_id)) (map :id) (distinct)) documents)
+        lookup  (when (seq lacking) (search.db/document-exploration-ids lacking))]
+    (map #(cond-> % (contains? lookup (:id %)) (assoc :exploration_id (get lookup (:id %))))
          documents)))
 
 (defn- model-check-answers
@@ -474,9 +475,9 @@
                       [[model (:id row)] (merge (select-keys (meta row) checks) (select-keys row checks))]))))
         (group-by t2/model results)))
 
-(defn- queryable-database-ids
-  "The ids of the Databases of the indexed-entity `results` on whose every Table the user of `search-ctx` has
-  unrestricted data access and native query creation."
+(defn- indexed-entity-queryable-db-ids
+  "The ids of the Databases of the indexed-entity `results` that the user of `search-ctx` can query natively, with
+  unrestricted data access to every Table."
   [search-ctx results]
   (let [db-ids (into [] (comp (filter #(= "indexed-entity" (:model %))) (keep :database_id) (distinct)) results)]
     (when (seq db-ids)
@@ -488,20 +489,23 @@
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
   per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`.
-  Outside `:page`, tags indexed entities with whether their Database is queryable, for their permission check."
+  Outside `:page`, tags the metadata of each indexed entity with `::queryable-database?`, whether its Database is
+  queryable, for its permission check."
   [search-ctx phase results]
-  (let [results        (vec results)
-        collection-ids (when (not= phase :read)
-                         (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
-        answers        (with-search-user search-ctx
-                         (merge (collection-check-answers collection-ids) (model-check-answers phase results)))
-        queryable-dbs  (when (not= phase :page) (queryable-database-ids search-ctx results))]
+  (let [results          (vec results)
+        collection-ids   (when (not= phase :read)
+                           (into []
+                                 (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct))
+                                 results))
+        answers          (with-search-user search-ctx
+                           (merge (collection-check-answers collection-ids) (model-check-answers phase results)))
+        queryable-db-ids (when (not= phase :page) (indexed-entity-queryable-db-ids search-ctx results))]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))
           (vary-meta merge (select-keys answer [:can_read]))
-          (cond-> (and queryable-dbs (= "indexed-entity" (:model result)))
-            (vary-meta assoc ::queryable-database? (contains? queryable-dbs (:database_id result))))))))
+          (cond-> (and queryable-db-ids (= "indexed-entity" (:model result)))
+            (vary-meta assoc ::queryable-database? (contains? queryable-db-ids (:database_id result))))))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's

@@ -427,7 +427,6 @@
   (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
 
 (mu/defn document-exploration-ids
-  "The `:exploration_id` of each Document with `document-ids`, as a map of id to Exploration id, which holds a nil for
-  a Document of no Exploration."
+  "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :exploration_id :model/Document :id [:in document-ids]))
