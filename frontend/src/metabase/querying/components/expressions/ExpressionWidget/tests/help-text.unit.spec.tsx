@@ -1,5 +1,23 @@
 jest.unmock("@uiw/react-codemirror");
 
+// HighlightExpressionParts formats the help text example again on each render
+// and sets state when the result arrives. Deliver the result on a timer, so the
+// update lands inside the act() or waitFor() that the test awaits, not in the
+// gap after one of them.
+jest.mock("metabase/querying/expressions", () => {
+  const actual = jest.requireActual("metabase/querying/expressions");
+  return {
+    ...actual,
+    formatExpressionParts: async (
+      ...args: Parameters<typeof actual.formatExpressionParts>
+    ) => {
+      const result = await actual.formatExpressionParts(...args);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return result;
+    },
+  };
+});
+
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
