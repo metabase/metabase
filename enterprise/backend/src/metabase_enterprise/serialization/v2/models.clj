@@ -113,6 +113,7 @@
    :model/ExplorationQueryResult
    :model/ExplorationThread
    :model/ExplorationThreadTimeline
+   :model/FieldOverlay
    :model/ImplicitAction
    :model/ImpersonationQueryCache
    :model/LoginHistory
@@ -179,6 +180,7 @@
    :model/StoredResult
    :model/StoredResultUse
    :model/SupportAccessGrantLog
+   :model/TableOverlay
    :model/TableRemapping
    :model/TaskHistory
    :model/TaskRun

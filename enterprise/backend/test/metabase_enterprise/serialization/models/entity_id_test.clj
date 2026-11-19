@@ -69,6 +69,8 @@
     :model/ExplorationBlock
     :model/ExplorationPage
     :model/ExplorationThreadTimeline
+    :model/FieldOverlay
+    :model/TableOverlay
     :model/StoredResult
     :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
