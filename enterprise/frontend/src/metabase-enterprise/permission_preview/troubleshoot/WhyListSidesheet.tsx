@@ -657,6 +657,8 @@ function DataRows({
   const fullAccess = targets.filter(isFullAccess);
   const tableCount = fullAccess.length;
   const isFolded = tableCount > 1;
+  const hasToggle =
+    isFolded || targets.some((target) => target.security != null);
   return (
     <CardRows>
       {targets
@@ -686,6 +688,7 @@ function DataRows({
               key={index}
               target={target}
               value={getDataStatusLabel(target)}
+              hasChevronSlot={hasToggle}
               onOpen={() => onOpen(target)}
             />
           ),
@@ -760,7 +763,7 @@ function ToggleRow({
           aria-expanded={isOpen}
           onClick={toggle}
         >
-          <Flex align="center" gap="xs" miw={0}>
+          <Flex align="center" gap="sm" miw={0}>
             <Icon
               name={isOpen ? "chevrondown" : "chevronright"}
               c="text-secondary"
@@ -772,7 +775,7 @@ function ToggleRow({
         {status}
       </div>
       <Collapse in={isOpen}>
-        <Box pl="lg" pt="sm" pb="sm">
+        <Box pl="xl" pt="sm" pb="sm">
           {children}
         </Box>
       </Collapse>
@@ -1027,6 +1030,7 @@ function SummaryTables({
   );
   const viewable = tables.filter((target) => getTableStatus(target) === "view");
   const viewableCount = viewable.length;
+  const hasChevronSlot = filtered.length > 0 || viewableCount > 1;
   return (
     <Box>
       {filtered.map((target, index) => (
@@ -1049,7 +1053,11 @@ function SummaryTables({
           )}
         </ToggleRow>
       ))}
-      <AccessRows targets={blocked} onOpen={onOpen} />
+      <AccessRows
+        targets={blocked}
+        hasChevronSlot={hasChevronSlot}
+        onOpen={onOpen}
+      />
       {viewableCount > 1 ? (
         <ToggleRow
           rowKey="summary-full-access-tables"
@@ -1068,7 +1076,11 @@ function SummaryTables({
           <AccessRows targets={viewable} onOpen={onOpen} />
         </ToggleRow>
       ) : (
-        <AccessRows targets={viewable} onOpen={onOpen} />
+        <AccessRows
+          targets={viewable}
+          hasChevronSlot={hasChevronSlot}
+          onOpen={onOpen}
+        />
       )}
     </Box>
   );
@@ -1141,11 +1153,13 @@ function VerdictAlert({ verdict }: { verdict: WhyVerdict }) {
 function AccessRows({
   targets,
   hasGroup = true,
+  hasChevronSlot,
   onOpen,
 }: {
   targets: WhyTarget[];
   /** Whether each row names the group its value comes from. */
   hasGroup?: boolean;
+  hasChevronSlot?: boolean;
   onOpen: (target: WhyTarget) => void;
 }) {
   return (
@@ -1155,6 +1169,7 @@ function AccessRows({
           key={index}
           target={target}
           hasGroup={hasGroup}
+          hasChevronSlot={hasChevronSlot}
           onOpen={() => onOpen(target)}
         />
       ))}
@@ -1167,6 +1182,7 @@ function AccessRow({
   label,
   value,
   hasGroup = true,
+  hasChevronSlot,
   onOpen,
 }: {
   target: WhyTarget;
@@ -1176,6 +1192,7 @@ function AccessRow({
   value?: string;
   /** Whether to name the group the value comes from, under the name. */
   hasGroup?: boolean;
+  hasChevronSlot?: boolean;
   onOpen: () => void;
 }) {
   const option = getPreviewOption(target.column, target.cell.value);
@@ -1185,6 +1202,7 @@ function AccessRow({
   return (
     <Row
       name={label ?? <TargetName target={target} />}
+      hasChevronSlot={hasChevronSlot}
       detail={
         hasGroup && value == null && group != null && !isBlocking
           ? t`from ${group}`
@@ -1241,10 +1259,13 @@ function Row({
   name,
   detail,
   status,
+  hasChevronSlot = false,
 }: {
   name: ReactNode;
   detail?: string;
   status: ReactNode;
+  /** An empty chevron-wide slot first, so the name lines up with the rows beside it that open in place. */
+  hasChevronSlot?: boolean;
 }) {
   const nameId = useUniqueId();
   const detailId = useUniqueId();
@@ -1254,6 +1275,7 @@ function Row({
       role="group"
       aria-labelledby={detail != null ? `${nameId} ${detailId}` : nameId}
     >
+      {hasChevronSlot && <Box w="1rem" style={{ flexShrink: 0 }} />}
       <Box flex={1} miw={0}>
         <Box id={nameId} miw={0}>
           {name}
@@ -1316,7 +1338,7 @@ function Disclosure({
   return (
     <div>
       <UnstyledButton aria-expanded={isExpanded} maw="100%" onClick={toggle}>
-        <Flex align="flex-start" gap="xs" wrap="nowrap">
+        <Flex align="flex-start" gap="sm" wrap="nowrap">
           <Icon
             name={isExpanded ? "chevrondown" : "chevronright"}
             c="text-secondary"
@@ -1333,7 +1355,9 @@ function Disclosure({
           </Stack>
         </Flex>
       </UnstyledButton>
-      <Collapse in={isExpanded}>{children}</Collapse>
+      <Collapse in={isExpanded}>
+        <Box pl="xl">{children}</Box>
+      </Collapse>
     </div>
   );
 }

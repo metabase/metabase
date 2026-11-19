@@ -540,6 +540,35 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("indents a section's rows by the xl step (24px), so they start under the section's name, not its chevron", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (4)"));
+
+    const toggle = await findToggle("Orders · Sample Database");
+    /* eslint-disable testing-library/no-node-access */
+    const sectionContent = getFold("Tables (4)").nextElementSibling
+      ?.firstElementChild as HTMLElement;
+    /* eslint-enable testing-library/no-node-access */
+    expect(sectionContent).toContainElement(toggle);
+    expect(sectionContent).toHaveStyle({
+      paddingLeft: "var(--mantine-spacing-xl)",
+    });
+  });
+
+  it("gives a Blocked table a chevron-wide slot before its name, so it lines up with a filtered table that opens in place", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (4)"));
+
+    const reviews = await findRowStatus("Reviews · Sample Database");
+    /* eslint-disable testing-library/no-node-access */
+    const slot = reviews.closest("[role='group']")?.firstElementChild;
+    /* eslint-enable testing-library/no-node-access */
+    expect(slot).toBeEmptyDOMElement();
+    expect(slot).toHaveStyle({ width: "1rem" });
+  });
+
   it("puts every table in Tables, Blocked ones too, with the filtered one opening to its rules", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
     await openSeeEverything();
@@ -1042,7 +1071,7 @@ describe("WhyListSidesheet", () => {
     expect(link.firstElementChild).toHaveStyle({ height: "1lh" });
   });
 
-  it("pads an opened row's content by the xs step, so the first attribute doesn't touch the row's hover band", async () => {
+  it("pads an opened row's content by the sm step (8px), so the first attribute doesn't touch the row's hover band", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
 
     const toggle = await findToggle("Orders · Sample Database");
@@ -1055,7 +1084,9 @@ describe("WhyListSidesheet", () => {
     /* eslint-enable testing-library/no-node-access */
     expect(content).toHaveTextContent("Rules set by Sales");
     expect(content).toHaveStyle({
-      paddingTop: "var(--mantine-spacing-xs)",
+      paddingTop: "var(--mantine-spacing-sm)",
+      // the chips start under the row's name: its 16px chevron plus the 8px gap
+      paddingLeft: "var(--mantine-spacing-xl)",
     });
   });
 

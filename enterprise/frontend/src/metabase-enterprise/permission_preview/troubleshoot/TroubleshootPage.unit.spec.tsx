@@ -65,11 +65,7 @@ describe("TroubleshootPage", () => {
     expect(bandStyle).toContain("padding-left: var(--mantine-spacing-lg)");
     expect(bandStyle).toContain("padding-right: var(--mantine-spacing-lg)");
     expect(bandStyle).toContain("padding-block: var(--mantine-spacing-sm)");
-    for (const name of [
-      "Back to all collections",
-      "Explain access",
-      "Open in new tab",
-    ]) {
+    for (const name of ["Back to all collections", "Explain access"]) {
       expect(screen.getByRole("button", { name })).toHaveStyle(
         "--button-height: var(--button-height-md)",
       );
@@ -130,15 +126,7 @@ describe("TroubleshootPage", () => {
     ).toHaveTextContent("Previewing as Sandy Sales");
   });
 
-  it("keeps Open in new tab white under its hover tint, like Explain access", async () => {
-    setup({});
-
-    expect(
-      await screen.findByRole("button", { name: "Open in new tab" }),
-    ).toHaveClass("bandButton");
-  });
-
-  it("keeps Back to all collections white under its hover tint, like Open in new tab", async () => {
+  it("keeps Back to all collections white under its hover tint, like Explain access", async () => {
     setup({});
 
     expect(
@@ -146,12 +134,15 @@ describe("TroubleshootPage", () => {
     ).toHaveClass("bandButton");
   });
 
-  it("offers Open in new tab as one button, with no more-options menu", async () => {
+  it("offers no Open in new tab and no more-options menu, only Explain access after the address", async () => {
     setup({});
 
     expect(
-      await screen.findByRole("button", { name: "Open in new tab" }),
+      await screen.findByRole("button", { name: "Explain access" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open in new tab" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "More preview options" }),
     ).not.toBeInTheDocument();

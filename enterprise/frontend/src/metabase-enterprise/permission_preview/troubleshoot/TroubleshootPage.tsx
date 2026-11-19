@@ -31,14 +31,12 @@ import {
   sendEndPreviewBeacon,
   useEndPreviewMutation,
   useGetAffectingAttributesQuery,
-  useStartPreviewMutation,
   useStartPreviewSessionMutation,
 } from "../api";
 import {
   CONTENT_PREVIEW_ALL_COLLECTIONS_PATH,
   getContentPreviewUrl,
 } from "../content-preview";
-import { getPreviewUrl } from "../preview-state";
 import {
   type PreviewRouteParams,
   parsePrincipal,
@@ -76,7 +74,6 @@ export function TroubleshootPage() {
   const groupMemberCount = useGroupMemberCount(principal);
   const isNarrow = useIsNarrowPreview();
 
-  const [startPreview] = useStartPreviewMutation();
   const request = usePreviewRequest(principal, pickedValues);
   const { preview, error } = usePreviewSession(request, restartCount);
 
@@ -98,36 +95,6 @@ export function TroubleshootPage() {
     setOpenedPath(path);
     setFramePath(path);
     setOpenCount((count) => count + 1);
-  };
-
-  // the frame's item in a "View app as…" tab of its own, as the same person with the same values
-  const handleOpenInNewTab = async () => {
-    if (principal == null) {
-      return;
-    }
-    // opened before the request, while the click still counts, so the popup blocker lets it through
-    const newTab = window.open("about:blank", "_blank");
-    const result = await startPreview({
-      ...principal,
-      attributes: pickedValues,
-    });
-    if (newTab == null || result.data == null) {
-      newTab?.close();
-      return;
-    }
-    newTab.opener = null;
-    newTab.location.assign(
-      getPreviewUrl(framePath, {
-        userId: result.data.user_id,
-        userName: result.data.user_name,
-        principalType: principal.type,
-        principalId: principal.id,
-        principalName: result.data.principal_name,
-        attributes: result.data.attributes,
-        returnPath: `${window.location.pathname}${window.location.search}`,
-        previewId: result.data.preview_id,
-      }),
-    );
   };
 
   const handleContentFrameRestart = () => {
@@ -211,16 +178,6 @@ export function TroubleshootPage() {
               disabled={preview == null}
               onClick={() => setIsWhyOpen((isOpen) => !isOpen)}
             />
-            <Tooltip label={t`Open in new tab`}>
-              <Button
-                className={S.bandButton}
-                style={{ flexShrink: 0 }}
-                aria-label={t`Open in new tab`}
-                leftSection={<Icon name="external" />}
-                disabled={preview == null}
-                onClick={handleOpenInNewTab}
-              />
-            </Tooltip>
           </PreviewBand>
           <AttributeBar
             key={`${principal.type}-${principal.id}`}
