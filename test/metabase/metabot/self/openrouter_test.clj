@@ -84,9 +84,9 @@
                                                      :temperature 0.3})))
 
 (deftest ^:parallel request-body-drops-temperature-for-models-that-reject-it-test
-  (testing "the GPT-5 and o-series families take no explicit temperature"
-    (doseq [model ["openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4" "openai/gpt-5.4-mini"
-                   "openai/o1" "openai/o3-mini"]]
+  (testing "the GPT-5, GPT-6 and o-series families take no explicit temperature"
+    (doseq [model ["openai/gpt-6.2-astra" "openai/gpt-6.2-sol" "openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4"
+                   "openai/gpt-5.4-mini" "openai/o1" "openai/o3-mini"]]
       (testing model
         (is (nil? (request-body-temperature model))))))
   (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"

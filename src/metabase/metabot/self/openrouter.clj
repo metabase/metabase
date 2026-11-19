@@ -196,11 +196,11 @@
 
 (defn- model-supports-temperature?
   "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's
-  GPT-5 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
+  GPT-5, GPT-6 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
   prefix is off)."
   [model]
   (let [model (str model)]
-    (not (or (str/starts-with? model "openai/gpt-5")
+    (not (or (re-find #"^openai/gpt-[56]" model)
              (re-find #"^openai/o\d" model)
              (and (anthropic-model? model)
                   (claude/model-current-gen? (subs model (count "anthropic/"))))))))
