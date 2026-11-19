@@ -30,10 +30,10 @@
     {:schema schema :name name}))
 
 (defn qualified
-  "`schema.name` of the test-data table `table-key`, for SQL."
+  "`schema.name` of the test-data table `table-key`, for SQL, or `name` when the table has no schema."
   [table-key]
   (let [{:keys [schema name]} (table-ref table-key)]
-    (str schema "." name)))
+    (if schema (str schema "." name) name)))
 
 (defn id+name
   "An `id` and a `name` column, typed as the current driver spells an integer and a text type."
