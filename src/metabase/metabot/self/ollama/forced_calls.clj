@@ -60,8 +60,7 @@
    [:map {:closed true}
     [:mode        ::mode]
     [:mechanism   ::mechanism]
-    [:schema      {:optional true} [:map {::mr/deliberately-open true
-                                          :description "a JSON Schema the decoder is constrained by"}]]
+    [:schema      {:optional true} [:map {:description "a JSON Schema the decoder is constrained by"}]]
     [:instruction {:optional true} :string]]
    [:fn {:error/message "a :schema belongs to a :grammar, and every :grammar needs one"}
     (fn [{:keys [mechanism schema]}]
@@ -77,17 +76,14 @@
 (mr/def ::choice
   "One `choices` entry of a non-streaming Chat Completions answer. Open, like every other shape a
   provider sends rather than one we compose: a build that adds a field must not fail validation for it."
-  [:map {::mr/deliberately-open true
-         :description "a Chat Completions choice"}
+  [:map {:description "a Chat Completions choice"}
    [:finish_reason {:optional true} [:maybe :string]]
-   [:message       {:optional true} [:maybe [:map {::mr/deliberately-open true
-                                                   :description "a Chat Completions assistant message"}]]]])
+   [:message       {:optional true} [:maybe [:map {:description "a Chat Completions assistant message"}]]]])
 
 (mr/def ::chat-completions-body
   "A Chat Completions request body. Open on purpose — this namespace reads and writes two of its keys
   and must not care about the rest."
-  [:map {::mr/deliberately-open true
-         :description "a Chat Completions request body"}])
+  [:map {:description "a Chat Completions request body"}])
 
 (def ^:private tool-name
   "A grammar-forced answer has no tool call of its own, so [[read-back-xf]] mints one — under the name

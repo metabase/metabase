@@ -208,7 +208,12 @@
           (is (contains? models verified-model))
           (is (not (contains? models plain-model))))
         (is (= #{verified-model}
-               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items"))))))))))
+               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items")))))))
+      (testing "lists an uncurated metric once what it's defined on is curated, agreeing with metric/{id}"
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (is (= #{verified-model plain-metric}
+                 (item-ids (first (read-uris metabot :internal
+                                             (str "metabase://collection/" coll-id "/items")))))))))))
 
 (deftest read-resource-curated-only-dashboards-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -237,12 +242,30 @@
                      :model/DashboardCard _                 {:dashboard_id       dash-id
                                                              :card_id            plain-id
                                                              :parameter_mappings [(mapping plain-id)]}
+                     :model/Card          {metric-id :id}   {:type          :metric
+                                                             :dataset_query (count-metric-query (orders-query))}
+                     :model/DashboardCard {metric-dc :id}   {:dashboard_id       dash-id
+                                                             :card_id            metric-id
+                                                             :parameter_mappings [(mapping metric-id)]}
                      :model/Metabot       metabot           {:name "curated metabot", :use_verified_content true}]
-        (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
-          (is (=? [{:id "date", :connected_dashcards [curated-dc]}]
-                  (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
-                      first
-                      (get-in [:content :structured-output :parameters])))))))))
+        (let [connected (fn []
+                          (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
+                              first
+                              (get-in [:content :structured-output :parameters])
+                              first
+                              :connected_dashcards
+                              set))
+              items     (fn []
+                          (into #{}
+                                (keep :dashcard_id)
+                                (get-in (first (read-uris metabot :internal
+                                                          (str "metabase://dashboard/" dash-id "/items")))
+                                        [:content :structured-output :items])))]
+          (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
+            (is (= #{curated-dc} (connected) (items))))
+          (testing "and of an uncurated metric once what it's defined on is curated"
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+              (is (= #{curated-dc metric-dc} (connected) (items))))))))))
 
 (defn- first-request-text!
   "The text of the first LLM request a turn of the agent loop makes for `opts`, with the LLM mocked to answer at once."
@@ -715,23 +738,32 @@
                                                          :dataset_query (orders-query)}
                        :model/Card {plain-question :id} {:type :question :name "plain recent question"
                                                          :dataset_query (orders-query)}
+                       :model/Card {plain-metric :id} {:type :metric :name "plain recent metric"
+                                                       :dataset_query (count-metric-query (orders-query))}
                        :model/Table {raw-table :id} {:db_id (mt/id) :name "raw_recent_table" :active true}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (verify-card! verified-model)
           (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
             (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
           (let [items (fn [metabot]
-                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]}
+                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]
+                                         ["metric" plain-metric]}
                                        (juxt :type :id))
                                  (get-in (first (read-uris metabot :internal "metabase://user/recent-items"))
-                                         [:content :structured-output :items])))]
+                                         [:content :structured-output :items])))
+                pairs (fn [metabot] (into #{} (map (juxt :type :id)) (items metabot)))]
             ;; key on type and id: a temp Card's id can coincide with a temp Table's
             (is (=? [{:type "model" :id verified-model}] (items metabot)))
             (testing "the unrestricted Metabot lists them all, with their public types and URIs"
               (is (=? [{:type "table" :uri (str "metabase://table/" raw-table)}
                        {:type "question" :uri (str "metabase://question/" plain-question)}
                        {:type "model" :uri (str "metabase://model/" verified-model)}]
-                      (items nil))))))))))
+                      (items nil))))
+            (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
+              (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
+              (is (= #{["model" verified-model]} (pairs metabot)))
+              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                (is (= #{["model" verified-model] ["metric" plain-metric]} (pairs metabot)))))))))))
 
 (deftest curation-subject-test
   (testing "transforms can never be curated"
@@ -894,13 +926,12 @@
       (let [mp            (mt/metadata-provider)
             reviews-count (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews))) (lib/count))
             orders-count  (count-metric-query (orders-query))]
-        (mt/with-temp [:model/Measure {raw-measure :id} {:name "reviews count" :table_id (mt/id :reviews)
+        (mt/with-temp [:model/Measure {raw-measure :id} {:name "reviews count"
                                                          :definition reviews-count}
-                       :model/Measure {orders-measure :id} {:name "orders count" :table_id (mt/id :orders)
+                       :model/Measure {orders-measure :id} {:name "orders count"
                                                             :definition orders-count}
                        :model/Segment {raw-segment :id}
                        {:name       "rated"
-                        :table_id   (mt/id :reviews)
                         :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                 (lib/> (lib.metadata/field mp (mt/id :reviews :rating)) 3))}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1366,9 +1397,9 @@
   (testing "a measure in the trash is never curated"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [orders-count (lib/aggregate (orders-query) (lib/count))]
-        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count"
                                                   :definition orders-count}
-                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                       :model/Measure {trashed :id} {:name "trashed orders count"
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1380,9 +1411,9 @@
   (testing "a query using a measure in the trash is refused, as a read of that measure is"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [orders-count (lib/aggregate (orders-query) (lib/count))]
-        (mt/with-temp [:model/Measure {live :id} {:name "orders count" :table_id (mt/id :orders)
+        (mt/with-temp [:model/Measure {live :id} {:name "orders count"
                                                   :definition orders-count}
-                       :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
+                       :model/Measure {trashed :id} {:name "trashed orders count"
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}
                        :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
@@ -1712,11 +1743,9 @@
             orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))
             price  (first (filter #(= (:id %) (mt/id :products :price)) (lib/visible-columns orders)))]
         (mt/with-temp [:model/Measure {raw-measure :id} {:name       "reviews count"
-                                                         :table_id   (mt/id :reviews)
                                                          :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                                                     (lib/count))}
                        :model/Measure {hop-measure :id} {:name       "orders product price"
-                                                         :table_id   (mt/id :orders)
                                                          :definition (lib/aggregate orders (lib/sum price))}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -1730,7 +1759,7 @@
   "The viewing context of an ad-hoc query on the card `card-id`, rendered for `metabot` under `profile-id`."
   [metabot profile-id card-id]
   (let [mp    (mt/metadata-provider)
-        query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))]
+        query (lib/query mp (lib.metadata/card mp card-id))]
     (as-metabot metabot profile-id
                 #(user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))))
 

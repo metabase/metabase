@@ -43,12 +43,15 @@
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
+(mr/def ::segment.name
+  ms/NonBlankString)
+
 (mr/def ::segment.update
   "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."
   [:map {:closed true}
    [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:name                    {:optional true} [:maybe :string]]
+   [:name                    {:optional true} [:maybe ::segment.name]]
    [:description             {:optional true} [:maybe :string]]
    [:archived                {:optional true} [:maybe :boolean]]
    [:definition              {:optional true} [:maybe ::segment.definition]]

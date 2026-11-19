@@ -50,10 +50,12 @@ const regularQuestion = createMockCollectionItem({
 
 interface SetupOpts {
   collectionItems?: CollectionItem[];
+  withUndos?: boolean;
 }
 
 function setup({
   collectionItems = [pinnedDashboard, regularQuestion],
+  withUndos = false,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([createMockDatabase()]);
   setupBookmarksEndpoints([]);
@@ -77,7 +79,7 @@ function setup({
       />
       <Route path="/model/:slug" element={<DestinationPage entity="Model" />} />
     </>,
-    { withRouter: true, withDND: true },
+    { withRouter: true, withDND: true, withUndos },
   );
   if (!router) {
     throw new Error("withRouter renders a router");
@@ -165,8 +167,14 @@ function setupItemUpdateEndpoint(
   { id, model }: Pick<CollectionItem, "id" | "model">,
 ) {
   const apiModel = model === "dashboard" ? "dashboard" : "card";
+  let archivedItem: CollectionItem | undefined;
   fetchMock.put(`path:/api/${apiModel}/${id}`, (call) => {
     const body: unknown = JSON.parse(String(call.options.body));
+    if (isItemUpdate(body) && body.archived === false && archivedItem) {
+      items.push(archivedItem);
+      archivedItem = undefined;
+      return { id };
+    }
     const index = items.findIndex(
       (item) => item.id === id && item.model === model,
     );
@@ -174,7 +182,7 @@ function setupItemUpdateEndpoint(
       return { status: 400 };
     }
     if (body.archived) {
-      items.splice(index, 1);
+      [archivedItem] = items.splice(index, 1);
     } else if ("collection_position" in body) {
       items[index] = {
         ...items[index],
@@ -436,5 +444,143 @@ describe("CollectionContent pinned dashboard menu", () => {
       expect(screen.queryByText(DASHBOARD_NAME)).not.toBeInTheDocument();
     });
     expect(screen.getByText(QUESTION_NAME)).toBeInTheDocument();
+  });
+});
+
+describe("CollectionContent pinned metrics", () => {
+  const SCALAR_METRIC_NAME = "Count of orders";
+  const TIMESERIES_METRIC_NAME = "Count of orders over time";
+
+  function createMetricItems() {
+    return [
+      createMockCollectionItem({
+        id: 21,
+        name: SCALAR_METRIC_NAME,
+        model: "metric",
+        display: "scalar",
+        description: null,
+        can_write: true,
+        collection_id: collection.id,
+        collection_position: 1,
+      }),
+      createMockCollectionItem({
+        id: 22,
+        name: TIMESERIES_METRIC_NAME,
+        model: "metric",
+        display: "line",
+        description: null,
+        can_write: true,
+        collection_id: collection.id,
+        collection_position: 1,
+      }),
+    ];
+  }
+
+  function getTable() {
+    return within(screen.getByTestId("collection-table"));
+  }
+
+  it("shows pinned metrics in a collection, and unpins and pins them", async () => {
+    const items = createMetricItems();
+    setupItemUpdateEndpoint(items, getItem(items, SCALAR_METRIC_NAME));
+    setupItemUpdateEndpoint(items, getItem(items, TIMESERIES_METRIC_NAME));
+    setup({ collectionItems: items });
+
+    await waitFor(() => getPinnedCard(TIMESERIES_METRIC_NAME));
+    expect(getPinnedCard(SCALAR_METRIC_NAME)).toBeInTheDocument();
+    expect(getPinnedSection().getAllByText("A metric")).toHaveLength(2);
+    expect(
+      await within(await screen.findByTestId("collection-table")).findByText(
+        SCALAR_METRIC_NAME,
+      ),
+    ).toBeInTheDocument();
+
+    await openPinnedCardMenu(SCALAR_METRIC_NAME);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Unpin" }),
+    );
+    await waitFor(() => {
+      expect(
+        getPinnedSection().queryByText(SCALAR_METRIC_NAME),
+      ).not.toBeInTheDocument();
+    });
+    expect(getPutBodies("path:/api/card/21")).toEqual([
+      { collection_position: null },
+    ]);
+    expect(getPinnedCard(TIMESERIES_METRIC_NAME)).toBeInTheDocument();
+    expect(getTable().getByText(SCALAR_METRIC_NAME)).toBeInTheDocument();
+
+    await openPinnedCardMenu(TIMESERIES_METRIC_NAME);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Unpin" }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId("pinned-items")).not.toBeInTheDocument();
+    });
+    expect(getPutBodies("path:/api/card/22")).toEqual([
+      { collection_position: null },
+    ]);
+    expect(getTable().getByText(TIMESERIES_METRIC_NAME)).toBeInTheDocument();
+
+    await openRowMenu(SCALAR_METRIC_NAME);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Pin this" }),
+    );
+    const pinnedCard = await waitFor(() => getPinnedCard(SCALAR_METRIC_NAME));
+    expect(within(pinnedCard).getByText("A metric")).toBeInTheDocument();
+    expect(getPutBodies("path:/api/card/21")).toEqual([
+      { collection_position: null },
+      { collection_position: 1 },
+    ]);
+    expect(
+      getPinnedSection().queryByText(TIMESERIES_METRIC_NAME),
+    ).not.toBeInTheDocument();
+    expect(getTable().getByText(SCALAR_METRIC_NAME)).toBeInTheDocument();
+  });
+
+  it("moves a pinned and an unpinned metric to the trash, and restores the pinned one with undo", async () => {
+    const items = createMetricItems();
+    items[1] = { ...items[1], collection_position: null };
+    setupItemUpdateEndpoint(items, getItem(items, SCALAR_METRIC_NAME));
+    setupItemUpdateEndpoint(items, getItem(items, TIMESERIES_METRIC_NAME));
+    setup({ collectionItems: items, withUndos: true });
+    await waitFor(() => getPinnedCard(SCALAR_METRIC_NAME));
+
+    await openPinnedCardMenu(SCALAR_METRIC_NAME);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Move to trash" }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId("pinned-items")).not.toBeInTheDocument();
+    });
+    expect(getPutBodies("path:/api/card/21")).toEqual([{ archived: true }]);
+    const trashToast = await screen.findByTestId("toast-undo");
+    expect(within(trashToast).getByText("Trashed metric")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(trashToast).getByRole("button", { name: "Undo" }),
+    );
+    const restoredCard = await waitFor(() => getPinnedCard(SCALAR_METRIC_NAME));
+    expect(restoredCard).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Trashed metric")).not.toBeInTheDocument();
+    });
+    expect(getPutBodies("path:/api/card/21")).toEqual([
+      { archived: true },
+      { archived: false },
+    ]);
+
+    await openRowMenu(TIMESERIES_METRIC_NAME);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Move to trash" }),
+    );
+    await waitFor(() => {
+      expect(
+        getTable().queryByText(TIMESERIES_METRIC_NAME),
+      ).not.toBeInTheDocument();
+    });
+    expect(getPutBodies("path:/api/card/22")).toEqual([{ archived: true }]);
+    expect(await screen.findByText("Trashed metric")).toBeInTheDocument();
+    expect(getPinnedCard(SCALAR_METRIC_NAME)).toBeInTheDocument();
   });
 });

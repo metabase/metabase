@@ -13,6 +13,8 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { setPendingMetabotCard } from "metabase/redux/query-builder";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
 
@@ -23,6 +25,7 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_STRUCTURED_CARD,
+  TEST_UNSAVED_NATIVE_CARD,
   revertNotebookQueryChange,
   setup,
   triggerMetadataChange,
@@ -479,6 +482,49 @@ describe("QueryBuilder - unsaved changes warning", () => {
       expect(
         screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("native questions Metabot opened", () => {
+    const openMetabotCard = async () => {
+      const { router, store } = await setup({ card: null, initialRoute: "/" });
+      const url = Urls.generatedEntity({
+        type: "card",
+        query: { query: TEST_UNSAVED_NATIVE_CARD.dataset_query },
+      });
+
+      act(() => {
+        store.dispatch(setPendingMetabotCard({ url }));
+        router.navigate(url);
+      });
+      await waitForLoaderToBeRemoved();
+      await waitForNativeQueryEditorReady();
+
+      return { router };
+    };
+
+    it("does not show custom warning modal when leaving Metabot's query via SPA navigation", async () => {
+      const { router } = await openMetabotCard();
+
+      act(() => {
+        router.navigate("/redirect");
+      });
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving Metabot's query after editing it", async () => {
+      const { router } = await openMetabotCard();
+
+      await triggerNativeQueryChange();
+      await waitForSaveToBeEnabled();
+      act(() => {
+        router.navigate("/redirect");
+      });
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
   });
 

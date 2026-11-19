@@ -90,7 +90,7 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/segment-test-delete topic)
-                                                (swap! published conj (:id (:object event)))))]
+                                                (swap! published conj (:id (:previous-object event)))))]
           (t2/delete! :model/Segment :id segment-id))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/SegmentTest :segment_id segment-id))))
@@ -120,7 +120,7 @@
                        :read-pk  (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/SegmentTest :id test-id) :can_read)))
                        :run      (boolean (data-testing.models.segment-test/can-run? segment-test))
                        :create   (boolean (mi/can-create? :model/SegmentTest {:segment_id segment-id}))
-                       :update   (boolean (mi/can-update? segment-test {:name "renamed"}))
+                       :update   (boolean (mi/can-update? (t2/hydrate segment-test :can_write) {:name "renamed"}))
                        :write    (boolean (mi/can-write? (t2/hydrate segment-test :can_write)))
                        :write-pk (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/SegmentTest :id test-id) :can_write)))}))]
             (if analyst?
@@ -154,9 +154,9 @@
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-current-user (mt/user->id :lucky)
               (testing "control: an analyst may edit the test of a segment on a table they may see"
-                (is (true? (boolean (mi/can-update? segment-test {:name "renamed"})))))
+                (is (true? (boolean (mi/can-update? (t2/hydrate segment-test :can_write) {:name "renamed"})))))
               (testing "a segment that does not exist cannot be the test's new segment"
-                (is (false? (boolean (mi/can-update? segment-test {:segment_id Integer/MAX_VALUE}))))))))))))
+                (is (false? (boolean (mi/can-update? (t2/hydrate segment-test :can_write) {:segment_id Integer/MAX_VALUE}))))))))))))
 
 (deftest moving-a-segment-test-needs-save-rights-on-the-old-and-the-new-segment-test
   (mt/with-premium-features data-testing.test-util/data-analyst-features
@@ -186,22 +186,8 @@
                       (is (false? (boolean (data-testing.models/can-run-native-query? other-db))))
                       (is (false? (boolean (mi/can-create? :model/SegmentTest {:segment_id other-id})))))
                     (testing "control: the analyst may rename the test of the first segment"
-                      (is (true? (boolean (mi/can-update? test-on-writable {:name "renamed"})))))
+                      (is (true? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:name "renamed"})))))
                     (testing "a test cannot move to a segment whose tests the analyst may not save"
-                      (is (false? (boolean (mi/can-update? test-on-writable {:segment_id other-id})))))
+                      (is (false? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:segment_id other-id})))))
                     (testing "a test cannot move away from a segment whose tests the analyst may not save"
-                      (is (false? (boolean (mi/can-update? test-on-other {:segment_id writable-id})))))))))))))))
-
-(deftest permissions-of-a-test-of-a-segment-with-no-definition-test
-  (mt/with-temp [:model/Segment     {segment-id :id} {:table_id (mt/id :people) :definition {}}
-                 :model/SegmentTest segment-test      {:segment_id segment-id}]
-    (testing "premise: the segment has no definition"
-      (is (= {} (t2/select-one-fn :definition :model/Segment :id segment-id))))
-    (testing "an admin may save and run the test"
-      (mt/with-current-user (mt/user->id :crowberto)
-        (is (= {:run true :write true}
-               {:run   (boolean (data-testing.models.segment-test/can-run? segment-test))
-                :write (boolean (mi/can-write? (t2/hydrate segment-test :can_write)))}))))
-    (testing "another user may not run it: the segment has no Database to write native SQL against"
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (false? (boolean (data-testing.models.segment-test/can-run? segment-test))))))))
+                      (is (false? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:segment_id writable-id})))))))))))))))

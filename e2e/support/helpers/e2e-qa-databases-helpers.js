@@ -330,8 +330,8 @@ export function waitForSyncToFinish({
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  // `sync_schema` submits to a single-threaded task pool and can be queued
-  // behind a slow task or bump into an already-running sync, so in some scenarios one-shot
+  // A `sync_schema` request that arrives while a scheduled sync of the same database
+  // runs on the same server is skipped, so in some scenarios one-shot
   // schema sync may be silently dropped. If we assume such scenario, we force
   // schema sync to be retriggered occasionally.
   // (https://linear.app/metabase/issue/QUE2-663/calls-to-sync-schema-are-occasionally-silently-dropped)

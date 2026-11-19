@@ -1,6 +1,7 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,10 +9,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.xrays :as queries.xrays]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
@@ -185,3 +188,11 @@
                           (and (lib/mbql-stage? query stage-number)
                                (not (lib/has-clauses? query stage-number))))
                         (range 0 (count (:stages query)))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Query [_model]
+  {:skip? true})
+
+(defmethod xrays/spec :model/Query [_model]
+  {:related queries.xrays/related-query})

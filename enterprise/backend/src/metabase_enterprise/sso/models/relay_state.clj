@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.db :as sso.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.util.random :as random]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -89,3 +90,8 @@
   "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
   []
   (sso.db/delete-relay-states-expired-at! (t/offset-date-time)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SsoRelayState [_model]
+  {:skip? true})

@@ -143,6 +143,9 @@ export function createEmbeddedAnalyticsJsUsage(
   const metabotEmbeds = Array.from(activeEmbeds).filter(
     (element) => element.properties.componentName === "metabase-metabot",
   );
+  const hasDataAppEmbeds = Array.from(activeEmbeds).some(
+    (element) => element.properties.componentName === "metabase-data-app",
+  );
 
   // Build dashboard component
   if (dashboardEmbeds.length > 0) {
@@ -389,6 +392,10 @@ export function createEmbeddedAnalyticsJsUsage(
         },
       ],
     });
+  }
+
+  if (hasDataAppEmbeds) {
+    event.components.push({ name: "data_app", properties: [] });
   }
 
   return event;

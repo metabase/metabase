@@ -136,4 +136,14 @@ describe("getFilteredClauses", () => {
     // The array should be sorted
     expect(results[0].clauses[0]).toEqual(getHelpText("case", database));
   });
+
+  it("should list aggregations and non-aggregation functions in a custom aggregation (metabase#62987)", () => {
+    const { results } = setup({ expressionMode: "aggregation" });
+    const displayNames = results.flatMap((group) =>
+      group.clauses.map((clause) => clause.displayName),
+    );
+
+    expect(displayNames).toContain("CountIf");
+    expect(displayNames).toContain("notEmpty");
+  });
 });

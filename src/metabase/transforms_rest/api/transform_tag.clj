@@ -3,15 +3,17 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.interface :as mi]
+   [metabase.events.core :as events]
    [metabase.transforms-rest.db :as transforms-rest.db]
-   [metabase.transforms.core :as transforms.core]
-   [metabase.util.i18n :refer [deferred-tru LocalizedString]]
+   [metabase.util.i18n :refer [LocalizedString]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(doseq [topic [:event/transform-tag-create :event/transform-tag-update :event/transform-tag-delete]]
+  (events/derive! topic :metabase/event))
 
 (def ^:private TransformTagResponse
   [:map {:closed true}
@@ -30,10 +32,9 @@
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag")
-  (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
-  (api/check-400 (not (transforms.core/tag-name-exists? name))
-                 (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (transforms-rest.db/insert-tag! name))
+  (api/create-check :model/TransformTag {:name name})
+  (let [tag (transforms-rest.db/insert-tag! name)]
+    tag))
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag."
@@ -43,11 +44,10 @@
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
-  (api/write-check (transforms-rest.db/tag tag-id))
-  (api/check-400 (not (transforms.core/tag-name-exists-excluding? name tag-id))
-                 (deferred-tru "A tag with the name ''{0}'' already exists." name))
+  (api/update-check (api/check-404 (transforms-rest.db/tag tag-id)) {:name name})
   (transforms-rest.db/update-tag! tag-id name)
-  (transforms-rest.db/tag tag-id))
+  (let [tag (transforms-rest.db/tag tag-id)]
+    tag))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs."

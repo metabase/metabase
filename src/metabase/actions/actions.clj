@@ -346,11 +346,7 @@
           :model-action
           (check-actions-enabled-for-database db)
           :data-editing
-          (do
-            ;; TODO more granular controls
-            (when-not (api/check-superuser)
-              (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
-            (check-data-editing-enabled-for-database db))))
+          (check-data-editing-enabled-for-database db)))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
           (let [context  (-> existing-context

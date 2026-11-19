@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -51,6 +52,37 @@
       (mt/with-temp [:model/Transform     {transform-id :id} {}
                      :model/TransformTest {test-id :id}      {:transform_id transform-id}]
         (mt/user-http-request :crowberto :get 404 (str "ee/transform-test/" test-id "/run"))))))
+
+(deftest now-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {mbql-id :id}   (data-testing.test-util/id-transform :people)
+                   :model/Transform {native-id :id} (transform)]
+      (mt/with-model-cleanup [:model/TransformTest]
+        (let [body    (fn [transform-id]
+                        {:transform_id transform-id :name "My test" :inputs inputs :expectations expectations
+                         :now          "2026-10-13T09:00:00+09:00"})
+              created (mt/user-http-request :crowberto :post 200 "ee/transform-test" (body mbql-id))]
+          (testing "POST saves `now` as the moment it names"
+            (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created)))))
+          (testing "`now` on a test of a native transform is refused"
+            (is (= "transform-test.now-on-native-sql"
+                   (:error-code (mt/user-http-request :crowberto :post 501 "ee/transform-test" (body native-id)))))))))))
+
+(deftest put-now-on-native-transform-test-is-refused-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {mbql-id :id}        (data-testing.test-util/id-transform :people)
+                   :model/Transform     {native-id :id}      (transform)
+                   :model/TransformTest {mbql-test-id :id}   {:transform_id mbql-id :inputs inputs :expectations expectations}
+                   :model/TransformTest {native-test-id :id} {:transform_id native-id :inputs inputs :expectations expectations}]
+      (testing "a PUT that sets only `now` on a test of a native transform is refused, and `now` is not saved"
+        (is (= "transform-test.now-on-native-sql"
+               (:error-code (mt/user-http-request :crowberto :put 501 (str "ee/transform-test/" native-test-id)
+                                                  {:now "2026-10-13T00:00:00Z"}))))
+        (is (nil? (t2/select-one-fn :now :model/TransformTest :id native-test-id))))
+      (testing "control: the same PUT on a test of an MBQL transform saves `now`"
+        (is (= (t/instant "2026-10-13T00:00:00Z")
+               (t/instant (:now (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" mbql-test-id)
+                                                      {:now "2026-10-13T00:00:00Z"})))))))))
 
 (deftest crud-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
@@ -293,9 +325,8 @@
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
                 (refused-writes :lucky)))
-            (testing "saving or deleting tests needs native access to source database"
-              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
-                                                                            :perms/create-queries :query-builder}
+            (testing "saving or deleting tests needs native access to source database, which transforms permission needs"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/create-queries :query-builder}
                 (refused-writes :lucky)))
             (testing "with both, data analysts can change tests"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes

@@ -35,6 +35,7 @@
   [database-id sql params]
   {:database (data-testing.subject/testable-database database-id)
    :compiled {:query sql :params params}
+   :native?  true
    :writes?  true})
 
 (defn- do-with-write-plan!

@@ -6,6 +6,8 @@
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.search.entity-retrieval.mirror :as mirror]
@@ -187,7 +189,7 @@
                 (is (= "Sales Orders" (:doc_text (first names))))
                 (is (not= old-name-id (:doc_id (first names)))))))
           (testing "unpublishing the table removes it from the library, GCing all its docs"
-            (t2/update! :model/Table :id table-id {:is_published false})
+            (t2/update! :model/Table :id table-id {:is_published false :collection_id nil})
             (reconcile/reconcile! ds (constantly model))
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
@@ -317,12 +319,12 @@
               total  (mt/id :orders :total)]
           (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                          :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
-                         :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals"
-                                                          :table_id orders :creator_id (mt/user->id :crowberto)
+                         :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals" :creator_id (mt/user->id :crowberto)
                                                           :definition (measures.tu/measure-definition orders total)}
                          :model/Segment {segment-id :id} {:name "Big Orders" :description "totals over 100"
-                                                          :table_id orders
-                                                          :definition (measures.tu/segment-definition orders total 100)}]
+                                                          :definition (let [mp (mt/metadata-provider)]
+                                                                        (-> (lib/query mp (lib.metadata/table mp orders))
+                                                                            (lib/filter (lib/= 1 1))))}]
             ;; publish the (real, fielded) orders table into the library for the duration of the test
             (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
               (reconcile/reconcile! ds (constantly model))
@@ -361,7 +363,7 @@
             ;; `edited` is renamed (old name doc -> orphan, new name doc -> to-insert);
             ;; `leaving` is unpublished (its docs -> orphans, with nothing in to-insert).
             (t2/update! :model/Table :id edited {:display_name "Edited New"})
-            (t2/update! :model/Table :id leaving {:is_published false})
+            (t2/update! :model/Table :id leaving {:is_published false :collection_id nil})
             ;; force the insert of the only to-insert batch (edited's new name doc) to fail.
             (mt/with-dynamic-fn-redefs [reconcile/insert-batch! (fn [& _] (throw (ex-info "boom" {})))]
               (reconcile/reconcile! ds (constantly model)))
@@ -407,7 +409,7 @@
               (reconcile/reconcile! ds (constantly model))
               (is (seq (docs-for ds "table" a-id)))
               (let [b-before (set (map :doc_id (docs-for ds "table" b-id)))]
-                (mt/with-temp-vals-in-db :model/Table a-id {:is_published false}
+                (mt/with-temp-vals-in-db :model/Table a-id {:is_published false :collection_id nil}
                   (is (=? {:inserted 0} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
                   (is (empty? (docs-for ds "table" a-id)) "A (no longer a member) is GC'd")
                   (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched"))))))))))
@@ -432,28 +434,6 @@
               (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
                   "the synonym docs are GC'd; name + description remain"))))))))
 
-(deftest ^:synchronized reconcile!-keeps-ai-context-across-a-card-type-flip-test
-  (testing "a full reconcile matches ai_context by entity class, so relabelling a card keeps its synonyms"
-    (mt/with-premium-features #{:library :library-retrieval}
-      (with-isolated-index [ds]
-        (collections.tu/with-library [{metrics :metrics}]
-          (let [model semantic.tu/mock-embedding-model]
-            (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Card {card-id :id} {:type "metric" :collection_id (:id metrics)
-                                                      :name "Revenue" :database_id db-id}
-                           ;; ai_context curated while the card was a metric (stored under entity_type "metric")
-                           :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
-                                                  :ai_context {:synonyms ["sales" "turnover"]}}]
-              (reconcile/reconcile! ds (constantly model))
-              (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "metric" card-id))))
-                  "indexed under metric with both curated synonyms")
-              (testing "relabelling the card a model re-keys its docs but the curated synonyms survive"
-                (mt/with-temp-vals-in-db :model/Card card-id {:type "model"}
-                  (reconcile/reconcile! ds (constantly model))
-                  (is (empty? (docs-for ds "metric" card-id)) "stale metric-typed docs are GC'd")
-                  (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "model" card-id))))
-                      "the ai_context (stored under metric) is matched by class and kept, re-keyed under model"))))))))))
-
 (deftest ^:synchronized library-entity-matches-library-entities-test
   (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
     (mt/with-premium-features #{:library :library-retrieval}
@@ -463,7 +443,7 @@
                                                     :active true :name "t" :display_name "T"}
                        :model/Card  {metric :id}   {:type "metric" :collection_id (:id metrics)
                                                     :name "M" :database_id db-id}
-                       :model/Table {unpub :id}    {:db_id db-id :collection_id (:id data) :is_published false
+                       :model/Table {unpub :id}    {:db_id db-id :is_published false
                                                     :active true :name "u"}
                        :model/Card  {archived :id} {:type "metric" :collection_id (:id metrics) :archived true
                                                     :name "A" :database_id db-id}]

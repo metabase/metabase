@@ -26,11 +26,11 @@
         {:keys [rows]} (stale.impl/find-candidates
                         {:collection-ids  :all
                          ;; NOT (vals common/entity-type->model): find-candidates throws on models
-                         ;; with no find-stale-query method, and :model/Collection has none
+                         ;; with no staleness spec, and :model/Collection has none
                          :models          (into #{} (map common/entity-type->model)
                                                 cd.schema/non-collection-entity-types)
                          ;; name + recency come from the stale query - the per-model recency source
-                         ;; stays single-sourced in the `find-stale-query` arms; collection_id feeds
+                         ;; stays single-sourced in the staleness specs; collection_id feeds
                          ;; the container post-filter below.
                          :include-columns #{:name :last_used_at :collection_id}
                          :cutoff-date     cutoff

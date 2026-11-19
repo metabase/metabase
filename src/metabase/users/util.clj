@@ -78,7 +78,6 @@
                           [:source                  {:optional true, :default :admin} [:enum :setup :admin]]
                           [:tenant-id               {:optional true} [:maybe ms/PositiveInt]]
                           [:invite-target           {:optional true} [:maybe users.schema/InviteTarget]]]]
-  (api/check-superuser)
   (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))
                  {:errors     {:email (tru "Email address already in use.")}
                   :error_code "email-already-in-use"})

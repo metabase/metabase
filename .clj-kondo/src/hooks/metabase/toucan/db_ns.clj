@@ -446,7 +446,7 @@
                       :type :metabase/t2-implicit-pk)))))))))
 
 (def change-log-tables
-  "The models that the change log covers, with their tables. `metabase.change-log.hooks-test` checks it against them."
+  "The models that the change log covers, with their tables. `metabase.change-log.events-test` checks it against them."
   {:model/Card                       :report_card
    :model/Dashboard                  :report_dashboard
    :model/Database                   :metabase_database
