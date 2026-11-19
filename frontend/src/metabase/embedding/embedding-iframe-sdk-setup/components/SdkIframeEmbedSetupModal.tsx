@@ -74,9 +74,8 @@ export const SdkIframeEmbedSetupContent = () => {
     settings,
   );
 
-  const dataAppStatus = useDataAppStatus(settings);
-  const isDataAppMissing =
-    dataAppStatus !== null && dataAppStatus !== "available";
+  const { status: dataAppStatus, isDataAppMissing } =
+    useDataAppStatus(settings);
 
   const isMissingResource =
     isDataAppMissing ||
@@ -99,13 +98,8 @@ export const SdkIframeEmbedSetupContent = () => {
     )
     .with({ isDataAppOnCodeStep: true, dataAppStatus: "loading" }, () => null)
     .with(
-      { isDataAppOnCodeStep: true, dataAppStatus: "error" },
-      () => t`Could not load the list of data apps.`,
-    )
-    .with(
       { isDataAppOnCodeStep: true, dataAppStatus: "unavailable" },
-      () =>
-        t`This data app isn't available to embed. Make it live in Data Studio to preview it.`,
+      () => t`This data app can't be previewed.`,
     )
     .otherwise(() => t`Preview will appear when you select what to embed`);
 

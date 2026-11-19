@@ -3,13 +3,26 @@ import { PLUGIN_DATA_APPS } from "metabase/plugins";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
 
-export type DataAppStatus = "loading" | "error" | "unavailable" | "available";
+export type DataAppStatus = "loading" | "unavailable" | "available";
 
 /**
- * Whether the selected data app can be embedded. Draft and outdated apps
- * cannot. Returns `null` when the settings are not for a data app.
+ * Whether the selected data app can be embedded. Draft, outdated and removed
+ * apps cannot, and neither can any app when the app list fails to load.
+ * `status` is `null` and `isDataAppMissing` is `false` when the settings are
+ * not for a data app.
  */
 export const useDataAppStatus = (
+  settings: SdkIframeEmbedSetupSettings,
+): { status: DataAppStatus | null; isDataAppMissing: boolean } => {
+  const status = useStatus(settings);
+
+  return {
+    status,
+    isDataAppMissing: status !== null && status !== "available",
+  };
+};
+
+const useStatus = (
   settings: SdkIframeEmbedSetupSettings,
 ): DataAppStatus | null => {
   const isDataApp = settings.componentName === "metabase-data-app";
@@ -28,13 +41,9 @@ export const useDataAppStatus = (
     return "loading";
   }
 
-  if (error) {
-    return "error";
-  }
-
   const appSlug = getEmbeddedAppSlugFromPath(settings.path);
   const selectedApp = apps?.find((app) => app.slug === appSlug);
-  const isAvailable = !!selectedApp?.enabled && !selectedApp.outdated;
+  const isAvailable = !error && !!selectedApp?.enabled && !selectedApp.outdated;
 
   return isAvailable ? "available" : "unavailable";
 };

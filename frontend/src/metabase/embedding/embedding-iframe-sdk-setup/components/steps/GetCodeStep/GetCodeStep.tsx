@@ -72,11 +72,13 @@ export const GetCodeStep = () => {
 
   return (
     <Stack gap="lg" flex={1}>
-      {showDataAppSetup && !isSsoEnabledAndConfigured && (
-        <SetupSsoAlert variant="data-app" />
+      {showDataAppSetup && (
+        <DataAppEnableEmbeddingCard
+          alert={
+            !isSsoEnabledAndConfigured && <SetupSsoAlert variant="data-app" />
+          }
+        />
       )}
-
-      {showDataAppSetup && <DataAppEnableEmbeddingCard />}
 
       {!isGuestEmbed && experience !== "data-app" && <MetabaseAccountCard />}
 
