@@ -53,7 +53,7 @@ export type DataTestUrls<T extends DataTest> = {
 
 export type DataTestReadOnlyResult = {
   readOnly: boolean;
-  isLoading: boolean;
+  isLoading?: boolean;
   error?: unknown;
 };
 
@@ -70,10 +70,10 @@ export type DataTestTypeDefinition<T extends DataTest> = {
   useRunTestMutation: (options?: {
     fixedCacheKey?: string;
   }) => DataTestRunMutation;
-  useReadOnly: (
-    subjectId: DataTestSubjectId | SkipToken,
-    tests: readonly T[],
-  ) => DataTestReadOnlyResult;
+  useReadOnly: (opts: {
+    subjectId: DataTestSubjectId | SkipToken;
+    tests: readonly T[];
+  }) => DataTestReadOnlyResult;
   getSubjectId: (test: T) => DataTestSubjectId;
   useTestUrls: () => DataTestUrls<T>;
   testType: DataTestType;

@@ -53,7 +53,7 @@ export function DataTestList<K extends DataTestType>({
     readOnly,
     isLoading: isLoadingReadOnly,
     error: readOnlyError,
-  } = definition.useReadOnly(subjectId, tests ?? []);
+  } = definition.useReadOnly({ subjectId, tests: tests ?? [] });
 
   if (tests == null || isLoadingTests || isLoadingReadOnly) {
     return (
