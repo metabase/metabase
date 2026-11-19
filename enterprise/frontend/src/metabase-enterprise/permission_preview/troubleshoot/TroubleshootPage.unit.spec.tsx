@@ -138,6 +138,14 @@ describe("TroubleshootPage", () => {
     ).toHaveClass("bandButton");
   });
 
+  it("keeps Back to all collections white under its hover tint, like Open in new tab", async () => {
+    setup({});
+
+    expect(
+      await screen.findByRole("button", { name: "Back to all collections" }),
+    ).toHaveClass("bandButton");
+  });
+
   it("offers Open in new tab as one button, with no more-options menu", async () => {
     setup({});
 

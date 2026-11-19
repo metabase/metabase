@@ -13,6 +13,8 @@ import { PreviewBanner } from "./PreviewBanner";
 import type { PreviewPrincipal } from "./api";
 import type { PreviewState } from "./preview-state";
 
+jest.mock("./PreviewBand.module.css", () => ({ bandButton: "bandButton" }));
+
 const STATE: PreviewState = {
   userId: 2,
   userName: "Sandy Sales",
@@ -96,6 +98,16 @@ describe("PreviewBanner", () => {
       expect(
         screen.getByRole("navigation", { name: "Preview settings" }),
       ).toBeInTheDocument();
+    });
+
+    it("keeps Preview settings white under its hover tint, like Explain access", async () => {
+      await setup({ widthPx: 768 });
+
+      expect(
+        screen.getByRole("button", {
+          name: "sidebar_open icon Preview settings",
+        }),
+      ).toHaveClass("bandButton");
     });
 
     it("shortens Exit preview to Exit and Explain access to an icon with a tooltip", async () => {

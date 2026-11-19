@@ -26,6 +26,7 @@ import {
   isNarrowPreview,
   useIsNarrowPreview,
 } from "./PreviewBand";
+import S from "./PreviewBand.module.css";
 import { PrincipalList } from "./PrincipalList";
 import {
   UnsavedEditsBandSection,
@@ -191,6 +192,7 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
           }
           leftSection={
             <Button
+              className={S.bandButton}
               size="sm"
               variant={isPanelOpen ? "light" : "default"}
               style={{ flexShrink: 0 }}

@@ -196,6 +196,7 @@ export function TroubleshootPage() {
             {/* the item kept across a person switch may be one the new person can't open */}
             <Tooltip label={t`Back to all collections`}>
               <Button
+                className={S.bandButton}
                 style={{ flexShrink: 0 }}
                 aria-label={t`Back to all collections`}
                 leftSection={<Icon name="home" />}
