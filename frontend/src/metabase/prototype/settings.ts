@@ -4,6 +4,16 @@ import type {
   SegmentedPrototypeSetting,
 } from "./types";
 
+export const EXPRESSION_EDITOR_VERSION_SETTING: SegmentedPrototypeSetting = {
+  key: "expression-editor-version",
+  type: "segmented",
+  label: "Expression editor",
+  description:
+    "A: one code editor for everything: an expression, a request in words, or an inline AI prompt; templates and functions in the side panel.",
+  options: [{ value: "a", label: "Version A" }],
+  defaultValue: "a",
+};
+
 export const EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING: BooleanPrototypeSetting =
   {
     key: "expression-columns-outside-brackets",
@@ -51,6 +61,7 @@ export const EXPRESSION_PREVIEW_CONTEXT_SETTING: SegmentedPrototypeSetting = {
  * reads them with `usePrototypeSetting`. See PROTOTYPE.md.
  */
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
+  EXPRESSION_EDITOR_VERSION_SETTING,
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_HIDE_AI_SETTING,
