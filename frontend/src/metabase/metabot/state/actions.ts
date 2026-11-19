@@ -538,36 +538,47 @@ const openGeneratedEntity =
 /** Where a sidebar turn proposed to take the user. */
 type TurnDestination =
   | { type: "generated-entity"; entity: GeneratedEntity }
-  | { type: "saved-dashboard"; dashboardId: DashboardId; url: string };
+  | SavedDashboardDestination;
+
+type SavedDashboardDestination = {
+  type: "saved-dashboard";
+  dashboardId: DashboardId;
+  url: string;
+};
 
 /**
  * Navigates to the last place a sidebar turn proposed, once the turn has ended.
+ * When that is a chart and the user is on a dashboard, the chart stays in the
+ * conversation as a link, and the dashboard the turn saved, if any, opens instead.
  * It leaves the user where they are when:
  * - they moved while the turn ran, or are moving now;
  * - they already see the saved dashboard;
- * - the proposal is a chart and they are on a dashboard (the chart stays in the
- *   conversation as a link);
  * - leaving would discard unsaved work.
  */
 const openTurnDestination =
-  (destination: TurnDestination, startUrl: string | undefined) =>
+  (
+    proposal: TurnDestination,
+    savedDashboard: SavedDashboardDestination | undefined,
+    startUrl: string | undefined,
+  ) =>
   (dispatch: Dispatch) => {
     const viewedDashboardId = getViewedDashboardId();
+    const isChartWhileOnDashboard =
+      proposal.type === "generated-entity" &&
+      proposal.entity.type === "card" &&
+      viewedDashboardId != null;
+    const destination = isChartWhileOnDashboard ? savedDashboard : proposal;
+    if (!destination) {
+      return;
+    }
     // ad-hoc questions share a pathname and differ in the hash
     const hasUserMoved =
       getRouterUrl() !== startUrl || getIsNavigationPending();
-    const isChartWhileOnDashboard =
-      destination.type === "generated-entity" &&
-      destination.entity.type === "card" &&
-      viewedDashboardId != null;
     const isViewingDestination =
       destination.type === "saved-dashboard" &&
       destination.dashboardId === viewedDashboardId;
     const shouldStay =
-      hasUserMoved ||
-      isChartWhileOnDashboard ||
-      isViewingDestination ||
-      hasUnsavedChanges();
+      hasUserMoved || isViewingDestination || hasUnsavedChanges();
     if (shouldStay) {
       return;
     }
@@ -595,6 +606,8 @@ export const sendAgentRequest = createAsyncThunk<
     const startUrl = getRouterUrl();
     // the last chart or dashboard the turn proposed, opened when it ends
     let destination: TurnDestination | undefined;
+    // the last dashboard the turn saved, opened when a later chart can't be
+    let savedDashboard: SavedDashboardDestination | undefined;
 
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
@@ -718,11 +731,12 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
 
                 if (open && canOpenDashboards) {
-                  destination = {
+                  savedDashboard = {
                     type: "saved-dashboard",
                     dashboardId: dashboard_id,
                     url,
                   };
+                  destination = savedDashboard;
                 }
               })
               .with({ type: "data-tool_title" }, (part) => {
@@ -853,7 +867,7 @@ export const sendAgentRequest = createAsyncThunk<
       }
 
       if (destination) {
-        dispatch(openTurnDestination(destination, startUrl));
+        dispatch(openTurnDestination(destination, savedDashboard, startUrl));
       }
 
       const shouldPollForTitle =

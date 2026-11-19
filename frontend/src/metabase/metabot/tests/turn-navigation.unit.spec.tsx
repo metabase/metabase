@@ -320,6 +320,15 @@ describe("metabot > where a sidebar turn leaves the user", () => {
     expect(mockedNavigate).toHaveBeenCalledWith(Urls.generatedEntity(lastCard));
   });
 
+  it("opens the saved dashboard when a later chart can't open on a dashboard", async () => {
+    mockedGetRouterLocation.mockReturnValue(viewing("/dashboard/12-sales"));
+
+    await streamTurn({ parts: [dashboardSavedPart(), cardPart(createCard())] });
+
+    expect(mockedNavigate).toHaveBeenCalledTimes(1);
+    expect(mockedNavigate).toHaveBeenCalledWith("/dashboard/43");
+  });
+
   it("hands a chart to the embedding SDK as it arrives", async () => {
     mockedIsEmbeddingSdk.mockReturnValue(true);
     const card = createCard();
