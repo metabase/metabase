@@ -593,7 +593,8 @@ export const waitForDashboardToLoad = async () => {
       expect(
         screen.queryByTestId("dashboard-header-skeleton"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      // each dashcard can show its own loader
+      expect(screen.queryAllByTestId("loading-indicator")).toHaveLength(0);
     },
     { timeout: 3000 },
   );
