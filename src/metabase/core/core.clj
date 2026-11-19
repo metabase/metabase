@@ -122,7 +122,7 @@
 (defn- shutdown-steps
   "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
   []
-  [;; no job starts from here on, so none starts against what the steps below stop
+  [;; a running scheduler starts no new job from here on, so none starts against what the steps below stop
    ["put the scheduler in standby" #(task/standby-scheduler!)]
    ;; before the steps that flush what requests produce, such as queued messages and API key usage, so nothing
    ;; arrives after its flush; the requests in flight get up to MB_JETTY_STOP_TIMEOUT to finish

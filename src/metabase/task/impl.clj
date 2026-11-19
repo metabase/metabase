@@ -186,11 +186,13 @@
   []
   (let [[old-scheduler] (mc/reset-vals! scheduler-component nil)]
     (when old-scheduler
-      (when-let [running (seq (.getCurrentlyExecutingJobs ^Scheduler old-scheduler))]
-        (log/warnf "Stopping the scheduler while %d jobs are still running: %s"
-                   (count running)
-                   (str/join ", " (map #(str (.getKey (.getJobDetail ^JobExecutionContext %))) running))))
-      (qs/shutdown old-scheduler))))
+      (try
+        (when-let [running (seq (.getCurrentlyExecutingJobs ^Scheduler old-scheduler))]
+          (log/warnf "Stopping the scheduler while %d jobs are still running: %s"
+                     (count running)
+                     (str/join ", " (map #(str (.getKey (.getJobDetail ^JobExecutionContext %))) running))))
+        (finally
+          (qs/shutdown old-scheduler))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
