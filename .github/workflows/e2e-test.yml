@@ -184,10 +184,8 @@ jobs:
       # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
       # below (ci-conductor failed-tests reporting reads it in after:spec).
       # Snapshot generation is itself a Cypress run that fires after:spec, so
-      # this must precede it. Placed late, not after checkout: the Actions jobs
-      # API is eventually consistent, so the longer the job has been alive the
-      # more reliably the lookup resolves. JOB_ID exported here persists to the
-      # steps below. DEV-1999.
+      # this must precede it. JOB_ID exported here persists to the steps below.
+      # DEV-1999.
       - uses: ./.github/actions/resolve-job-id
 
       - name: Download database snapshots
