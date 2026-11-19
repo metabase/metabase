@@ -2004,9 +2004,9 @@ def _read_only(stmt: exp.Expression) -> bool:
 
 
 # Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
-# a string, which the table check never sees, reads or writes the database server's files, or changes state that the
-# run's rollback leaves changed (the random seed, the statistics, replication slots and origins). Most need privileges
-# a connection user rarely has.
+# a string, which the table check never sees, reads or writes the database server's files, reads or changes
+# replication slots and origins, or changes state that the run's rollback leaves changed (the random seed, the
+# statistics).
 _UNCONFINED_FUNCTIONS = frozenset(
     {
         # Postgres: a table, a schema or the database as XML, read by the name passed in

@@ -72,7 +72,8 @@
    :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "next value for"}}
 
   ;; A confined write also refuses the functions that read a table named in a string, read or write the server's
-  ;; files, or change state that the run's rollback leaves changed. The other modes admit them.
+  ;; files, read or change replication slots and origins, or change state that the run's rollback leaves changed.
+  ;; The other modes admit them.
   {:name       "a confined write reads no table named in a string"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = table_to_xml('secrets', true, false, '')::text WHERE id = 1"
