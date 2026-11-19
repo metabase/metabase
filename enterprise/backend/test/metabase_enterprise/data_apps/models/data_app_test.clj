@@ -69,12 +69,15 @@
     (t2/delete! :model/DataApp :id id)
     (is (not (t2/exists? :model/Collection :id collection-id)))))
 
-(deftest writes-are-normalized-and-validated-against-the-schema-test
-  (mt/with-temp [:model/DataApp {id :id} {:name          "  M  "
-                                          :bundle_path   "./dist/index.js"
-                                          :allowed_hosts ["https://API.example.com/"]}]
+(deftest writes-are-validated-against-the-schema-test
+  (mt/with-temp [:model/DataApp {id :id} {:name          "M"
+                                          :bundle_path   "dist/index.js"
+                                          :allowed_hosts ["https://api.example.com"]}]
     (is (=? {:name "M" :bundle_path "dist/index.js" :version 1 :allowed_hosts ["https://api.example.com"]}
             (t2/select-one :model/DataApp :id id)))
+    (testing "a value that its entry point would have normalized is refused, not repaired"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
+                            (t2/update! :model/DataApp :id id {:bundle_path "./dist/index.js"}))))
     (testing "an update with an invalid column is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
                             (t2/update! :model/DataApp :id id {:bundle_path "../escape.js"})))

@@ -35,20 +35,10 @@
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write
   ;; the string shorthand is migrated to {:instructions s}, so storage is always the object form and every
   ;; write path (CRUD API, serdes import, direct appdb write) is normalized at this one boundary.
-  {:ai_context {:in  (comp mi/json-in osi.schema/normalize-ai-context)
-                :out mi/json-out-with-keywordization}})
-
-;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
-;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
-;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
-(t2/define-before-insert :model/OsiAiContext
-  [row]
-  (update row :entity_type entity-retrieval/normalize-entity-type))
-
-(t2/define-before-update :model/OsiAiContext
-  [row]
-  (cond-> row
-    (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type)))
+  {:ai_context  {:in  (comp mi/json-in osi.schema/normalize-ai-context)
+                 :out mi/json-out-with-keywordization}
+   :entity_type {:in  entity-retrieval/normalize-entity-type
+                 :out identity}})
 
 ;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
 ;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The nudge

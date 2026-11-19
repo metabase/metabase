@@ -69,10 +69,9 @@
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
 
 (defn- prepare
-  "The DataApp `row` normalized and validated against `schema`."
+  "The DataApp `row` validated against `schema`, with its bundle hash."
   [schema row]
   (->> row
-       (lib/normalize schema)
        (mu/validate-throw schema)
        with-bundle-hash))
 
@@ -183,6 +182,11 @@
   [entity]
   (lib/normalize ::data-apps.schema/bundle-path (:path entity)))
 
+(defn- import-bundle-paths
+  "Imports the bundle `paths` of data apps normalized, as a request gives them."
+  [_store _entities paths _opts]
+  (mapv #(lib/normalize ::data-apps.schema/bundle-path %) paths))
+
 (defn- export-bundles
   "Exports the `bundles` of data `apps` as the files at their bundle paths."
   [_store apps bundles _opts]
@@ -204,11 +208,19 @@
         entities
         files))
 
+(defn- with-manifest-defaults
+  "The DataApp load `row` with the defaults of the manifest columns that its file leaves out."
+  [row]
+  (cond-> row
+    (and (contains? row :version) (nil? (:version row)))             (assoc :version 1)
+    (and (contains? row :allowed_hosts) (nil? (:allowed_hosts row))) (assoc :allowed_hosts [])))
+
 (defn- before-load
-  "The DataApp load `items` without the bundles their local rows already hold."
+  "The DataApp load `items` with the defaults of their manifest columns and without the bundles their local rows
+  already hold."
   [items]
   (mapv (fn [{:keys [row local] :as item}]
-          (cond-> item
+          (cond-> (update item :row with-manifest-defaults)
             (and local (some-> ^bytes (:bundle row) bytes-hash (= (:bundle_hash local))))
             (update :row dissoc :bundle)))
         items))
@@ -269,7 +281,7 @@
    :transform           {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
                          :bundle_path            {:as     :path
                                                   :export serialization/export-unchanged
-                                                  :import serialization/import-unchanged}
+                                                  :import import-bundle-paths}
                          :bundle                 {:as     :serdes/resources
                                                   :export export-bundles
                                                   :import import-bundles}}
