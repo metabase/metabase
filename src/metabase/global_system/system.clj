@@ -338,13 +338,12 @@
                             relevant)
         ;; a running component ranks by its own start position, which stands in for the dependencies nobody declared;
         ;; one that is not running has nothing to stop, so it ranks above them all and clears as soon as its users
-        ;; have, leaving what it uses to their own positions; the key breaks ties, so the order never depends on how
-        ;; the graph library treats equal nodes
+        ;; have, leaving what it uses to their own positions. Only those that are not running share a rank, and they
+        ;; all clear before the next running component, so how the graph library orders them changes nothing.
         rank        (u/for-map [k relevant]
-                      [k [(or (position k) Long/MAX_VALUE)
-                          (str k)]])]
+                      [k (or (position k) Long/MAX_VALUE)])]
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
-    ;; greatest rank last; the placeholder has no rank, and nil compares below every rank
+    ;; greatest rank last; the placeholder comes first, since every relevant component uses it
     (keep #(get-in running [% :handle])
           (reverse (dep/topo-sort #(compare (rank %1) (rank %2)) sortable)))))
 

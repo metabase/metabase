@@ -811,6 +811,24 @@
         (finally
           (cleanup! handles))))))
 
+(deftest ^:synchronized halt-order-after-a-component-stops-test
+  (testing "a component that started and then stopped counts as not running, not by where it started"
+    (let [m       (system/mutable-component-handle ::stopped-m (constantly nil))
+          x       (system/mutable-component-handle ::stopped-x (constantly nil))
+          a       (system/mutable-component-handle ::stopped-a (constantly nil))
+          b       (system/mutable-component-handle ::stopped-b (constantly nil))
+          handles [m x a b]]
+      (try
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (constantly nil)))
+        (system/stop! m)
+        ;; a uses b through m, and b started after x, so b stops before x
+        (is (= [a b x]
+               (filterv (set handles) (halt-order {::stopped-a #{::stopped-m}
+                                                   ::stopped-m #{::stopped-b}}))))
+        (finally
+          (cleanup! handles))))))
+
 (deftest dependency-cycle-test
   (testing "dependencies that form a cycle are refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"
