@@ -13,9 +13,11 @@
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.")
 
+(def ^:private default-shutdown-timeout-seconds 20)
+
 (defsetting notification-shutdown-timeout-seconds
   "How long shutdown waits for queued and running notifications to send before it abandons them."
-  :default    20
+  :default    default-shutdown-timeout-seconds
   :export?    false
   :type       :integer
   :setter     :none
@@ -28,9 +30,10 @@
                       (max 0)
                       (min 86400))
                   (catch Exception e
-                    (log/warnf "Could not read the notification shutdown timeout, so shutdown waits 20 seconds: %s"
+                    (log/warnf "Could not read the notification shutdown timeout, so shutdown waits %d seconds: %s"
+                               default-shutdown-timeout-seconds
                                (ex-message e))
-                    20)))
+                    default-shutdown-timeout-seconds)))
   :doc "Metabase stops sending notifications when it shuts down. It sends what is already queued for up to this many
   seconds, then abandons the rest and logs how many were left. The default leaves room for the other shutdown steps
   within the 30-second grace period Kubernetes gives a pod by default. Raise it if your deployment allows a longer
