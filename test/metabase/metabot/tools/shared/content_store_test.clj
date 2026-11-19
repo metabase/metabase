@@ -33,7 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.serialization.resolve :as serialization.resolve]
    [metabase.test :as mt]
@@ -352,7 +352,7 @@
                 (is (nil? (shared.content-store/query-for-export query audited?)))))))))))
 
 (deftest card-source-check-preprocesses-only-a-card-query-for-a-non-admin-test
-  (testing "the view-data check on a saved question's sources preprocesses only a query on a saved question,
+  (testing "the query processor check on a saved question preprocesses only a query on a saved question,
             and only for a non-admin"
     (mt/with-temp [:model/Card {card-id :id}
                    {:dataset_query (lib/query (mt/metadata-provider)
@@ -361,8 +361,8 @@
                        {:database (mt/id) :type :query :query {:source-table source-table}})
             calls    (fn [user query]
                        (let [n    (atom 0)
-                             orig (mt/original-fn #'query-perms/query->resolved-source-ids)]
-                         (mt/with-dynamic-fn-redefs [query-perms/query->resolved-source-ids
+                             orig (mt/original-fn #'qp.perms/check-query-permissions*)]
+                         (mt/with-dynamic-fn-redefs [qp.perms/check-query-permissions*
                                                      (fn [q] (swap! n inc) (orig q))]
                            (mt/with-test-user user
                              (is (some? (:mp (shared.content-store/query-for-export query false)))
@@ -371,6 +371,21 @@
         (is (= 0 (calls :rasta (query-on (mt/id :venues)))))
         (is (= 1 (calls :rasta (query-on (str "card__" card-id)))))
         (is (= 0 (calls :crowberto (query-on (str "card__" card-id)))))))))
+
+(deftest card-source-check-refuses-a-wrapped-refusal-test
+  (testing "a permission refusal in the cause chain of the query processor's check is a refusal, not an unchecked query"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (let [query {:database (mt/id) :type :query :query {:source-table (str "card__" card-id)}}]
+        (mt/with-test-user :rasta
+          (is (some? (:mp (shared.content-store/query-for-export query false)))
+              "precondition: the query is cleared")
+          (mt/with-dynamic-fn-redefs [qp.perms/check-query-permissions*
+                                      (fn [_]
+                                        (throw (ex-info "Error preprocessing query" {:type :qp}
+                                                        (ex-info "Denied" {:status-code 403}))))]
+            (is (nil? (shared.content-store/query-for-export query false)))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape

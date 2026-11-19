@@ -131,7 +131,7 @@
     (message/msg ["Fix that part of the query and retry."])
 
     :card-source-not-runnable
-    (message/msg [(str "Tell the user that they need data access to the tables under it. "
+    (message/msg [(str "Tell the user that they need access to the data and the saved questions under it. "
                        "Do not retry with other columns or with another query on it.")])
 
     :card-source-preprocessing-failed

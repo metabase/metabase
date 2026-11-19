@@ -781,6 +781,29 @@
                 (is (not (rasta-has-view-data? :categories)) "precondition")
                 (check-refused (card-source-query model-id) refusal ["NAME"])))))))))
 
+(deftest adhoc-viewing-context-model-on-unreadable-question-test
+  (testing "a readable model built on a question in a collection the user cannot read is refused"
+    (mt/with-temp [:model/Collection {coll-id :id}     {:name "Private"}
+                   :model/Card       {question-id :id} {:collection_id coll-id
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :venues)}}}
+                   :model/Card       {model-id :id}    {:type          :model
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table
+                                                                                   (str "card__" question-id)}}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-test-user :rasta
+        (is (rasta-has-view-data? :venues) "precondition: the user has view-data on the table")
+        (is (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id model-id) :can_read))
+            "precondition: the model is readable")
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id question-id) :can_read)))
+            "precondition: the question under it is not")
+        (check-refused (card-source-query model-id)
+                       (re-pattern (str "You do not have permissions to view Card " question-id "\\."))
+                       ["NAME"])))))
+
 (deftest adhoc-viewing-context-table-joins-blocked-card-test
   (testing "a table query that joins a card on a blocked table is refused"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)

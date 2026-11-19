@@ -1003,10 +1003,10 @@
 ;;; ----- a saved question, model or metric that the user cannot run ----------------------------
 
 (defn- card-source-not-runnable!
-  "Reject the query: the current user can read `card`, but has no data access to the tables under it."
+  "Reject the query: the current user can read `card`, but not the data or the saved questions under it."
   [card]
-  (throw (ex-info (format (str "You can open %s, but you do not have data access to the tables under it, "
-                               "so no query on it can run.")
+  (throw (ex-info (format (str "You can open %s, but you do not have access to the data or the saved questions "
+                               "under it, so no query on it can run.")
                           (quoting/quoted (:name card)))
                   {:agent-error? true
                    :status-code  403
@@ -1025,24 +1025,26 @@
                   cause)))
 
 (defn- card-runnable?
-  "Whether the current user has the data access that the query processor needs for a query on `card`.
+  "Whether the query processor lets the current user run a query on `card`.
 
   Throws [[card-preprocessing-failed!]] when the query processor cannot prepare the query of `card`."
   [card]
   (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
     (try
       (shared.content-store/card-sources-accessible? (lib/query mp (lib.metadata/card mp (:id card))))
-      (catch clojure.lang.ExceptionInfo e
+      (catch Exception e
         ;; Fail closed: nothing here lets the build go on. The classes are those of `check-query-preprocessing!`:
-        ;; an app-DB failure stays an internal error, and a permission failure is a denial.
+        ;; an app-DB failure stays an internal error, and a permission failure is a denial. The query processor
+        ;; refuses a card over an inactive table with a bare `Exception`.
         (cond
           (database-error? e)                                                (throw e)
           (some #(= 403 (:status-code (ex-data %))) (u/full-exception-chain e)) false
-          (= :qp (:type (ex-data e)))                                        (card-preprocessing-failed! card e)
+          (or (= :qp (:type (ex-data e)))
+              (= Exception (class e)))                                       (card-preprocessing-failed! card e)
           :else                                                              (throw e))))))
 
 (defn- check-card-sources-runnable!
-  "Reject `parsed-query` when it reads a Card, as a source or as a metric, whose tables the current user cannot view.
+  "Reject `parsed-query` when the current user cannot run a query on a Card it reads, as a source or as a metric.
 
   The query processor refuses such a query, and repair's errors would name the Card's columns. A Card that is missing
   or that the user cannot read is left to resolve's own answer."

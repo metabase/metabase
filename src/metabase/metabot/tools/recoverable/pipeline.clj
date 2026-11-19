@@ -210,11 +210,11 @@
 ;;; Permissions
 
 (defpipeline-error card-source-not-runnable!
-  "The query reads a saved question, model or metric that the user can read, but the user has no data access to the
-  tables under it."
-  ;; No retry helps: every query on that card needs the same data access.
+  "The query reads a saved question, model or metric that the user can read, but not the data or the saved questions
+  under it."
+  ;; No retry helps: every query on that card needs the same access.
   [{:uses #{}
-    :text (str "Tell the user that they need data access to the tables under it. "
+    :text (str "Tell the user that they need access to the data and the saved questions under it. "
                "Do not retry with other columns or with another query on it.")}])
 
 (defpipeline-error card-source-preprocessing-failed!

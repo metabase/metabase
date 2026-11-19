@@ -44,9 +44,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -4572,6 +4572,35 @@
                                                  :type     :query
                                                  :query    {:source-table (str "card__" model-id)}})))))))))))))
 
+(deftest source-card-on-an-unreadable-question-is-refused-test
+  (testing "a user who can read a model but not the question under it cannot build a query on the model"
+    (mt/with-temp [:model/Collection {coll-id :id}     {:name "Private"}
+                   :model/Card       {question-id :id} {:collection_id coll-id
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :venues)}}}
+                   :model/Card       {model-id :id model-eid :entity_id}
+                   {:name          "Model on a private question"
+                    :type          :model
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)}}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-test-user :rasta
+        (is (rasta-has-view-data? :venues) "precondition: the user has view-data on the table")
+        (is (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id model-id) :can_read))
+            "precondition: the model is readable")
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id question-id) :can_read)))
+            "precondition: the question under it is not")
+        (testing "the query processor refuses a query on the model"
+          (is (re-find (re-pattern (str "You do not have permissions to view Card " question-id "\\."))
+                       (str (qp-refusal {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (str "card__" model-id)}})))))
+        (check-not-runnable (card-source-data model-eid {"aggregation" [["count" {}]]})
+                            "Model on a private question"
+                            ["NAME" "PRICE"])))))
+
 (deftest table-query-joining-a-blocked-card-is-refused-test
   (testing "a table query that joins a model on a blocked table is refused, though the outer table is queryable"
     (mt/with-temp [:model/Card {model-id :id model-eid :entity_id}
@@ -4624,10 +4653,10 @@
       (testing "an admin builds the query, and the build preprocesses no card source for the check"
         (mt/with-test-user :crowberto
           (let [calls (atom 0)]
-            (mt/with-dynamic-fn-redefs [query-perms/query->resolved-source-ids
+            (mt/with-dynamic-fn-redefs [qp.perms/check-query-permissions*
                                         (fn [& args]
                                           (swap! calls inc)
-                                          (apply (mt/original-fn #'query-perms/query->resolved-source-ids) args))]
+                                          (apply (mt/original-fn #'qp.perms/check-query-permissions*) args))]
               (is (contains? (result-column-names query) "Double")))
             (is (= 0 @calls)))))
       (testing "a user with view-data but no create-queries access builds the query, since the card read authorizes it"
@@ -4636,7 +4665,13 @@
           (mt/with-test-user :rasta
             (is (rasta-has-view-data? :venues) "precondition")
             (is (not (can-query-table? :venues)) "precondition")
-            (is (= #{} (set/difference #{"Double" "NAME"} (result-column-names query))))))))))
+            (let [calls (atom 0)]
+              (mt/with-dynamic-fn-redefs [qp.perms/check-query-permissions*
+                                          (fn [& args]
+                                            (swap! calls inc)
+                                            (apply (mt/original-fn #'qp.perms/check-query-permissions*) args))]
+                (is (= #{} (set/difference #{"Double" "NAME"} (result-column-names query)))))
+              (is (= 1 @calls) "the card source check ran once"))))))))
 
 (defn- no-fields-model-card
   "A model on the table `table-id`, for a table with no fields, so that the query processor cannot prepare it."
@@ -4666,6 +4701,31 @@
         (testing "an admin is not checked, so the build does not change"
           (mt/with-test-user :crowberto
             (is (some? (get-in (construct/execute-representations-query query) [:structured-output :query])))))))))
+
+(deftest source-card-on-an-inactive-table-is-refused-test
+  (testing "a non-admin gets a final, declared error for a model on an inactive table, which the query processor refuses"
+    (mt/with-temp [:model/Card {model-id :id model-eid :entity_id} {:name          "Venues model"
+                                                                    :type          :model
+                                                                    :database_id   (mt/id)
+                                                                    :table_id      (mt/id :venues)
+                                                                    :dataset_query (venues-model-dataset-query)}]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+        (mt/with-test-user :rasta
+          (is (re-find #"is inactive"
+                       (try
+                         (qp/process-query {:database (mt/id)
+                                            :type     :query
+                                            :query    {:source-table (str "card__" model-id)}})
+                         ""
+                         (catch Exception e
+                           (ex-message e))))
+              "precondition: the query processor refuses a query on the model")
+          (let [query (card-source-data model-eid)]
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/card-source-preprocessing-failed}
+                    (build-outcome query)))
+            (is (=? {:agent-error? true :error :card-source-preprocessing-failed :status-code 400}
+                    (build-error-data query)))))))))
 
 (deftest card-source-check-keeps-other-failures-test
   (testing "a failure of the card check that is not the query processor's own refusal is not made a declared error"

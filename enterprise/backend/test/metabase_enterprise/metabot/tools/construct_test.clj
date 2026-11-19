@@ -13,6 +13,7 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -219,3 +220,41 @@
           (is (contains? names "NAME"))
           (doseq [hidden ["PRICE" "LATITUDE" "LONGITUDE"]]
             (is (not (contains? names hidden)) hidden)))))))
+
+(deftest native-model-in-a-database-with-a-blocked-table-is-refused-test
+  (testing "a native model whose result_metadata names no table is refused when any table of its database is blocked"
+    (mt/with-premium-features #{:advanced-permissions}
+      (let [native (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM VENUES")
+            cols   (mapv #(dissoc % :id :table_id) (mt/cols (qp/process-query native)))]
+        (mt/with-temp [:model/Card {model-id :id model-eid :entity_id} {:name            "Native venues model"
+                                                                        :type            :model
+                                                                        :database_id     (mt/id)
+                                                                        :dataset_query   native
+                                                                        :result_metadata cols}]
+          (is (not-any? (some-fn :id :table_id) (t2/select-one-fn :result_metadata :model/Card :id model-id))
+              "precondition: the stored result_metadata names no field and no table")
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :blocked)
+            (let [query {:database (mt/id)
+                         :type     :query
+                         :query    {:source-table (str "card__" model-id)}}]
+              (mt/with-test-user :rasta
+                (testing "the query processor refuses a query on the model through the block rule"
+                  (is (re-find #"You do not have permissions to run this query\."
+                               (try
+                                 (qp/process-query query)
+                                 ""
+                                 (catch clojure.lang.ExceptionInfo e
+                                   (ex-message e))))))
+                (testing "query-for-export refuses the query, and does not report it as unchecked"
+                  (is (nil? (shared.content-store/query-for-export query true))))
+                (testing "the build of a query on the model is refused"
+                  (is (=? {:agent-error? true :error :card-source-not-runnable :status-code 403}
+                          (try
+                            (construct/execute-representations-query
+                             {:lib/type "mbql/query"
+                              :stages   [{:lib/type "mbql.stage/mbql" :source-card model-eid}]})
+                            nil
+                            (catch clojure.lang.ExceptionInfo e
+                              (ex-data e))))))))))))))

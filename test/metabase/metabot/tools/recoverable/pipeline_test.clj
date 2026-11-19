@@ -437,7 +437,7 @@
 
 (deftest ^:parallel card-source-not-runnable-recovery-test
   (is (= (str "Query failed.\n"
-              "Tell the user that they need data access to the tables under it. "
+              "Tell the user that they need access to the data and the saved questions under it. "
               "Do not retry with other columns or with another query on it.")
          (pipeline-error-text! :card-source-not-runnable))))
 
