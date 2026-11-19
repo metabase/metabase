@@ -16,7 +16,7 @@ import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedd
 /**
  * Keeps the data app router and the host's `path` in sync.
  *
- * Navigates the router when `path` or `navigationRequest` changes, and calls
+ * Navigates the router to `navigationRequest` when set, otherwise to `path`, and calls
  * `onPathChange` for every other change of the app's page, with the ID of the
  * last navigation request it handled.
  **/
@@ -79,16 +79,11 @@ export function useDataAppPathNavigation({
     [slug],
   );
 
+  // A request is cleared when a newer `path` arrives, so the latest of the two wins.
   useEffect(() => {
-    navigateToHostPath(path);
-  }, [path, navigateToHostPath]);
-
-  useEffect(() => {
-    if (navigationRequest) {
-      navigationIdRef.current = navigationRequest.navigationId;
-      navigateToHostPath(navigationRequest.path);
-    }
-  }, [navigationRequest, navigateToHostPath]);
+    navigationIdRef.current = navigationRequest?.navigationId;
+    navigateToHostPath(navigationRequest?.path ?? path);
+  }, [path, navigationRequest, navigateToHostPath]);
 }
 
 function getCurrentUrl(): URL {

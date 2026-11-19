@@ -239,6 +239,8 @@ export function DataAppFrame({
               if (getEmbeddedAppSlugFromPath(data.path) !== slug) {
                 if (isPathControlledRef.current) {
                   navigateIframe(pathRef.current);
+                } else {
+                  iframePathRef.current = data.path;
                 }
 
                 return;
@@ -289,6 +291,8 @@ export function DataAppFrame({
   // With `initialPath` only, the host does not navigate the app. When the host starts passing `path`, the app goes to it.
   useLayoutEffect(() => {
     if (!isPathControlled) {
+      // Reports are only queued while the host passes `path`, so none of these can come back as an echo.
+      reportedPathsRef.current = [];
       return;
     }
 

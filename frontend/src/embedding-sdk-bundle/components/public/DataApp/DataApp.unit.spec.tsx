@@ -620,6 +620,41 @@ describe("DataApp", () => {
     ]);
   });
 
+  it("navigates to path when the host starts passing it while the app is on a page `path` rejects", () => {
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/customers/acme%2Feu");
+    postMessage.mockClear();
+
+    rerender(<DataApp path="boba-hq" />);
+
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
+  });
+
+  it("navigates to a page reported before the host stopped passing path", () => {
+    const onPathChange = jest.fn<void, [string]>();
+    const { iframe, postMessage, rerender } = setup({
+      path: "boba-hq",
+      onPathChange,
+    });
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders");
+
+    rerender(<DataApp onPathChange={onPathChange} />);
+    pathChangeMessage(iframe, "boba-hq/products");
+    postMessage.mockClear();
+
+    rerender(<DataApp path="boba-hq/orders" onPathChange={onPathChange} />);
+
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq/orders"), ORIGIN],
+    ]);
+  });
+
   it("ignores a report sent before the iframe handled the host's latest navigation", async () => {
     function HostWithProductsButton() {
       const [path, setPath] = useState("boba-hq");
