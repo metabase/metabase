@@ -551,3 +551,11 @@
     (mc/binding (task.impl/scheduler-handle) refusing-scheduler
                 (fn []
                   (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))))))
+
+(deftest standby-scheduler-test
+  (testing "standby stops the scheduler firing triggers without shutting it down"
+    (mt/with-temp-scheduler!
+      (task/standby-scheduler!)
+      (is (= {:standby? true, :shutdown? false}
+             {:standby?  (.isInStandbyMode (task/scheduler))
+              :shutdown? (.isShutdown (task/scheduler))})))))

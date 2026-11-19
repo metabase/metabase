@@ -174,11 +174,21 @@
         (qs/start (scheduler))
         (log/info "Task scheduler started"))))
 
+(defn standby-scheduler!
+  "Stop the scheduler firing triggers, and leave the jobs already running to finish.
+   Does nothing when there is no scheduler."
+  []
+  (some-> (scheduler) .standby))
+
 (defn stop-scheduler!
-  "Stop our Quartzite scheduler and shutdown any running executions."
+  "Stop our Quartzite scheduler without waiting for the jobs still running, which are logged."
   []
   (let [[old-scheduler] (mc/reset-vals! scheduler-component nil)]
     (when old-scheduler
+      (when-let [running (seq (.getCurrentlyExecutingJobs ^Scheduler old-scheduler))]
+        (log/warnf "Stopping the scheduler while %d jobs are still running: %s"
+                   (count running)
+                   (str/join ", " (map #(str (.getKey (.getJobDetail ^JobExecutionContext %))) running))))
       (qs/shutdown old-scheduler))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
