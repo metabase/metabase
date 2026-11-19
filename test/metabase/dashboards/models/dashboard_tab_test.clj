@@ -1,9 +1,12 @@
 (ns metabase.dashboards.models.dashboard-tab-test
   (:require
    [clojure.test :refer :all]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -99,3 +102,19 @@
              {:id    empty-tab-id
               :cards []}]
             (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)))))
+
+(deftest ^:parallel dashtab-columns-schema-test
+  (testing "DashboardTab has name and position that is not negative"
+    (doseq [bad [{:name " "} {:position -1}]]
+      (testing (pr-str bad)
+        (is (not (mr/validate ::dashboards.schema/dashboard-tab.update bad)))))
+    (is (mr/validate ::dashboards.schema/dashboard-tab.update {:name "Tab" :position 0}))))
+
+(deftest dashtab-dashboard-is-frozen-test
+  (testing "DashboardTab stays in its Dashboard"
+    (mt/with-temp [:model/Dashboard dash  {}
+                   :model/Dashboard other {}
+                   :model/DashboardTab tab {:dashboard_id (u/the-id dash)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move"
+                            (t2/update! :model/DashboardTab :id (u/the-id tab) {:dashboard_id (u/the-id other)})))
+      (is (= (u/the-id dash) (t2/select-one-fn :dashboard_id :model/DashboardTab :id (u/the-id tab)))))))

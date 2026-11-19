@@ -128,6 +128,7 @@
      audit-app
      auth-provider
      batch-processing
+     change-log
      channel
      collections
      content-verification
@@ -135,7 +136,6 @@
      core.version
      dashboards
      data-apps
-     dependencies
      documents
      embedding
      enterprise/transforms

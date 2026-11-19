@@ -133,7 +133,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
-                (is (false? (mi/can-update? snippet {:name "New Name"}))
+                (is (false? (mi/can-update? (t2/hydrate snippet :can_write) {:name "New Name"}))
                     "Snippet should NOT be updatable in read-only mode when library is synced")))))))))
 
 (deftest remote-sync-read-only-read-perms-still-allowed-test

@@ -91,8 +91,7 @@
   [database-id & {:keys [table-ids] :as opts}]
   (if (and (contains? opts :table-ids) (empty? table-ids))
     []
-    (filter mi/can-read? (t2/hydrate (erd.db/active-tables-in-database table-select-columns database-id opts)
-                                     :can_read))))
+    (mi/readable (erd.db/active-tables-in-database table-select-columns database-id opts))))
 
 (defn- readable-table-ids
   [database-id & opts]

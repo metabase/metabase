@@ -62,7 +62,8 @@
 (events/derive! :event/card-create-with-result-metadata ::card-create-with-result-metadata)
 
 (m/defmethod events/publish-event! ::card-create-with-result-metadata
-  "Handle recent-view processing for created cards with result metadata."
+  "Handle recent-view processing for created cards with result metadata, which a request supplies and a row does not
+  tell from the one the server computes."
   [topic {:keys [card-id user-id]}]
   (try
     (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card card-id :view)

@@ -34,10 +34,9 @@
 (def ^:private d2 "A dimension id; dimension ids are uuids." "00000000-0000-4000-8000-0000000000d2")
 
 (defn- count-metric-query []
-  (lib/->legacy-MBQL
-   (let [mp (mt/metadata-provider)]
-     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-         (lib/aggregate (lib/count))))))
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (defn- mk-block!
   "Insert a one-metric, one-dimension block on `tid` and return its instance."

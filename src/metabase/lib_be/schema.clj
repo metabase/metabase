@@ -75,7 +75,19 @@
    [true  ::empty-query]
    [false ::maybe-legacy-query]])
 
+(defn- legacy-query?
+  "Whether `query` is a legacy MBQL query map, normalized or not."
+  [query]
+  (and (map? query) (contains? #{:query :native} (lib/normalized-query-type query))))
+
+(mr/def ::external-legacy-query
+  "A legacy MBQL query as exports before MBQL 5 wrote it, which import converts to MBQL 5 once its references resolve."
+  [:map [:type [:enum {:decode/normalize keyword} :query :native]]])
+
 (def external-registry
   "[[lib.schema/external-registry]] for a stored query as serialization writes it, which has portable references the
-  app DB normalization of [[::maybe-legacy-query]] cannot resolve, so it is normalized as a plain query."
-  (assoc lib.schema/external-registry ::maybe-legacy-query [:ref ::lib.schema/query]))
+  app DB normalization of [[::maybe-legacy-query]] cannot resolve, so it is normalized as a plain query, or as the
+  legacy query of an older export."
+  (assoc lib.schema/external-registry ::maybe-legacy-query [:multi {:dispatch legacy-query?}
+                                                            [true [:ref ::external-legacy-query]]
+                                                            [false [:ref ::lib.schema/query]]]))

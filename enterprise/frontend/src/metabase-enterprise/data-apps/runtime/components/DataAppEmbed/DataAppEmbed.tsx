@@ -3,7 +3,7 @@ import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";

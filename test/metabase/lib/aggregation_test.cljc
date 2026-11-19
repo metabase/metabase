@@ -1114,7 +1114,8 @@
                      (lib/aggregate (lib/count))
                      (lib/aggregate (lib/sum total))
                      (lib/breakout pid))
-          q'     (lib/query mp (lib.convert/->legacy-MBQL q))]
+          ;; existing usage -- do not use going forward
+          q'     (lib/query mp #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL q))]
       (is (= 2 (count (lib/aggregations q'))))
       (is (= 1 (count (lib/breakouts q')))))))
 

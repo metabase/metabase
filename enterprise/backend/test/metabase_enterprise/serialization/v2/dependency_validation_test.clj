@@ -5,6 +5,9 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.test-util :as search.tu]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -177,7 +180,10 @@
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}
-                                 :model/Segment {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
+                                 :model/Segment {segment-id :id} {:name       "Seg"
+                                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                                    (lib/filter (lib/= 1 1))))}
                                  :model/Card    _ {:name          "Card"
                                                    :collection_id coll-id
                                                    :database_id   db-id

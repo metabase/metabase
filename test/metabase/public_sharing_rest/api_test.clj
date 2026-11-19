@@ -2618,7 +2618,7 @@
                      :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
                      :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
                      :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
-                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                     :model/TimelineEvent _on-archived {:timeline_id (:id archived) :archived true}
                      :model/Dashboard dashboard (public-dashboard-properties)
                      :model/Card first-card
                      {:display "line"

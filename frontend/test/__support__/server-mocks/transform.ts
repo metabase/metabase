@@ -1,6 +1,7 @@
 import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import type {
+  CollectionId,
   DagTransform,
   Dataset,
   InspectorLensId,
@@ -52,6 +53,13 @@ export function setupUpdateTransformEndpoint(
 
 export function setupDeleteTransformEndpoint(transformId: TransformId) {
   fetchMock.delete(`path:/api/transform/${transformId}`, 204);
+}
+
+export function setupDeleteTransformsFolderEndpoint(
+  collectionId: CollectionId,
+  response: RouteResponse = 204,
+) {
+  fetchMock.delete(`path:/api/transform/collection/${collectionId}`, response);
 }
 
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {

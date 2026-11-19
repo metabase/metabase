@@ -20,6 +20,8 @@
   ([metadata-provider query]
    (-> (lib/query metadata-provider query)
        fix-bad-field-id-refs/fix-bad-field-id-refs
+       ;; existing usage -- do not use going forward
+       #_{:clj-kondo/ignore [:deprecated-var]}
        lib/->legacy-MBQL)))
 
 (deftest ^:parallel wrap-fields-in-joined-field-test
@@ -312,7 +314,8 @@
         (is (=? {:stages [{} {:expressions [[:field {:lib/expression-name "My Date"} "DATE_COL"]]}]}
                 result)))
       (testing "->legacy-MBQL :expressions must have string keys, not nil"
-        (let [mbql4 (lib/->legacy-MBQL result)
+        ;; existing usage -- do not use going forward
+        (let [mbql4 #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL result)
               exprs (get-in mbql4 [:query :expressions])]
           (is (every? string? (keys exprs))
               (str "Assert failed: :expressions should always use string keys, got: " (pr-str exprs))))))))

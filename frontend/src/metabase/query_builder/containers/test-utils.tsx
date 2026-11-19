@@ -49,6 +49,7 @@ import type {
   Dataset,
   Timeline,
   UnsavedCard,
+  User,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -236,6 +237,8 @@ interface SetupOpts {
   initialRoute?: string;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
+  withUndos?: boolean;
+  currentUser?: User;
 }
 
 export const setup = async ({
@@ -253,6 +256,13 @@ export const setup = async ({
   }`,
   timelines = [],
   timelinesResponse,
+  withUndos = false,
+  currentUser = createMockUser({
+    permissions: createMockUserPermissions({
+      can_create_queries: true,
+      can_create_native_queries: true,
+    }),
+  }),
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -319,14 +329,10 @@ export const setup = async ({
     </>,
     {
       withRouter: true,
+      withUndos,
       initialRoute,
       storeInitialState: createMockState({
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({
-            can_create_queries: true,
-            can_create_native_queries: true,
-          }),
-        }),
+        currentUser,
         settings: mockSettings({ "site-url": "http://localhost:3000" }),
       }),
     },

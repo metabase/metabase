@@ -24,6 +24,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -199,9 +200,7 @@
                        (contains? args :collection_position) (assoc :collection_position collection_position)
                        (contains? args :archived)            (assoc :archived (boolean archived))
                        new-query                             (assoc :dataset_query new-query))
-        card-updates (api/updates-with-archived-directly card-before raw-updates)]
-    (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! card-id query))
+        card-updates (api/updates-without-collection-when-archiving card-before raw-updates)]
     (queries/check-allowed-to-update-card! card-before card-updates)
     (queries/update-card! {:card-before-update    card-before
                            :card-updates          card-updates
@@ -221,8 +220,8 @@
     [:maybe [:or
              [:int {:description "Numeric id of the metric to update."}]
              [:string {:description "21-character entity_id of the metric to update."}]]]]
-   [:name {:optional true}
-    [:maybe [:string {:min 1 :description "Create only (editable on update): display name of the metric."}]]]
+   [:name {:optional true :description "Create only (editable on update): display name of the metric."}
+    [:maybe ::queries.schema/card.name]]
    [:definition {:optional true}
     [:maybe [:map {:description (str "The metric's query: a full single-stage query holding exactly one aggregation "
                                      "and at most one breakout. Accepts the same numeric-id shape get_content's "
