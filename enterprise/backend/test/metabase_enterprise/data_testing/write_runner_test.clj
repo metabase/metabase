@@ -318,3 +318,23 @@
                                          :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
         (testing "a run leaves the setting as it found it"
           (is (= "off" (string-setting db-id))))))))
+
+(defn- write-name-1!
+  "Run a saved test of the UPDATE of the people table that sets person 1's name to the Postgres expression `value`,
+  with an expectation that the name is the Postgres expression `expected`."
+  [value expected]
+  (run-write! (str "UPDATE " (qualified :people) " SET name = " value " WHERE id = ?") [1] [(people-rows)]
+              [(reading {:type :empty
+                         :name "person 1 has the name"
+                         :sql  (str "SELECT * FROM %s WHERE id = 1 AND name <> " expected)})]))
+
+(deftest write-with-a-backslash-in-an-e-string-test
+  (mt/test-driver :postgres
+    (testing "a write whose E'' string ends in a doubled backslash runs, and stores one backslash"
+      (is (=? {:status       :passed
+               :expectations [{:name "person 1 has the name" :status :passed}]}
+              (write-name-1! "E'a\\\\'" "'a' || chr(92)"))))
+    (testing "a doubled backslash before a letter stores a backslash and the letter, not a control character"
+      (is (=? {:status       :passed
+               :expectations [{:name "person 1 has the name" :status :passed}]}
+              (write-name-1! "E'a\\\\nb'" "'a' || chr(92) || 'nb'"))))))

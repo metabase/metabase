@@ -11,8 +11,12 @@ logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
+from sqlglot.dialects.postgres import Postgres
 from sqlglot.errors import ParseError
+from sqlglot.generators.postgres import PostgresGenerator
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
+from sqlglot.parsers.postgres import PostgresParser
+from sqlglot.tokens import TokenType
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
 # syntax `{name: Type}`, so a positional JDBC placeholder `?` (a nameless Placeholder)
@@ -30,6 +34,39 @@ def _placeholder_sql_keep_positional(self, expression: exp.Placeholder) -> str:
 
 
 ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
+
+
+# sqlglot (as of 30.20.0) reads a Postgres E'' string into its value only in part: `\\` becomes one backslash and
+# `\n` a newline, while `\x41` and `\101` stay as written. It writes that value back without doubling a backslash, so
+# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. Neither
+# reading can be undone from the value, so the parser keeps the text between the quotes as written, and the Postgres
+# generator writes that text back while the node still holds the value it was parsed with.
+_E_STRING_AS_WRITTEN = "metabase_e_string_as_written"
+
+
+def _parse_e_string(self, token):
+    node = self.expression(
+        exp.ByteString(this=token.text, is_bytes=self.dialect.BYTE_STRING_IS_BYTES_TYPE or None), token
+    )
+    if type(self.dialect) is Postgres:
+        # The token spans the `E'` or `e'` prefix and the closing quote.
+        node.meta[_E_STRING_AS_WRITTEN] = (token.text, self.sql[token.start + 2 : token.end])
+    return node
+
+
+PostgresParser.NUMERIC_PARSERS = {**PostgresParser.NUMERIC_PARSERS, TokenType.BYTE_STRING: _parse_e_string}
+PostgresParser.PRIMARY_PARSERS = {**PostgresParser.PRIMARY_PARSERS, TokenType.BYTE_STRING: _parse_e_string}
+_postgres_bytestring_sql = PostgresGenerator.bytestring_sql
+
+
+def _bytestring_sql_as_written(self, expression: exp.ByteString) -> str:
+    written = expression.meta.get(_E_STRING_AS_WRITTEN)
+    if type(self.dialect) is Postgres and written is not None and written[0] == expression.this:
+        return f"e'{written[1]}'"
+    return _postgres_bytestring_sql(self, expression)
+
+
+PostgresGenerator.bytestring_sql = _bytestring_sql_as_written
 
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
@@ -2114,8 +2151,8 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
 
 def _hidden_by_string_setting(sql: str) -> bool:
     """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
-    reads it as one, lexing as the setting's default (on) does, and writes an E'' literal's backslash undoubled, so a
-    rebuilt E'' literal can run past its end under either setting."""
+    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote in a
+    standard literal, written so or made by rebuilding a dollar-quoted string as one, moves the end of that literal."""
     return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
@@ -2195,8 +2232,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             if problem is None and dialect == "postgres" and _hidden_by_string_setting(rebuilt):
                 problem = ("backslash-quote", None)
             # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
-            # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
-            # its quote moves. The rebuild must pass the same checks and rebuild to itself.
+            # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
+            # the rebuild must pass the same checks and rebuild to itself.
             if problem is None and stmt_type == "confined-write" and recheck:
                 again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect, recheck=False))
                 if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
