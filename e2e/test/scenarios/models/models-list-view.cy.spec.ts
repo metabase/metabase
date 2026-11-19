@@ -7,6 +7,7 @@ describe("scenarios > models list view", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("createCard");
 
     H.createNativeQuestion({
       name: "Native Model",
@@ -68,6 +69,13 @@ describe("scenarios > models list view", () => {
       .should("be.visible");
     cy.findByTestId("list-view").should("be.visible");
 
+    cy.log("The URL moves to the duplicate after it renders; reload only then");
+    cy.wait("@createCard").then(({ response }) => {
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/model/${response?.body.id}-`),
+      );
+    });
     cy.reload();
     cy.findByTestId("qb-header")
       .findByText("Native Model - Duplicate")
