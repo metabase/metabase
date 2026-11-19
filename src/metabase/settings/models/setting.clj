@@ -740,6 +740,16 @@
   [row]
   (into [] (comp (map (comp str/trim str)) (remove str/blank?)) row))
 
+(defn- csv-rows
+  "The rows of `csv-string`, lazily, without blank rows after the first.
+   Realizing a row that is not valid CSV throws."
+  [csv-string]
+  (let [rows (csv/read-csv csv-string)]
+    (lazy-seq
+     ;; `first` and `rest`, not destructuring, which would parse the second row too.
+     (when-let [rows (seq rows)]
+       (cons (first rows) (remove #(every? str/blank? %) (rest rows)))))))
+
 (defn- parse-string-value
   "The value of `setting-type` that its stored string form `string-value` encodes."
   [setting-type ^String string-value]
@@ -750,8 +760,8 @@
     :keyword                     (keyword string-value)
     :timestamp                   (u.date/parse string-value)
     :json                        (json/decode+kw string-value)
-    ;; Only the first line is read. [[validate-settings-formatting!]] warns about the rest.
-    :csv                         (csv-entries (first (csv/read-csv string-value)))
+    ;; Only the first line is read. [[validate-settings-formatting!]] warns about the rest of an env var.
+    :csv                         (some-> (first (csv/read-csv string-value)) csv-entries)
     string-value))
 
 (defn- random-uuid-str []
@@ -1014,12 +1024,14 @@
 
 (defn- serialize-csv
   "The stored form of `value`, a list of entries or a CSV string of one line.
+   Returns nil, which stores nothing, for nil, an empty string or an empty list.
+   Any other value is stored as printed.
    Throws a 400 for a string that is not valid CSV or spans several lines."
   [value]
   (cond
     (string? value)
     (let [rows (try
-                 (doall (csv/read-csv value))
+                 (doall (csv-rows value))
                  (catch Exception _
                    ;; Leave the parse error out: it can quote part of the value, which may be secret.
                    (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
@@ -1028,11 +1040,17 @@
       (serialize-csv (first rows)))
 
     (sequential? value)
-    (when-let [entries (not-empty (csv-entries value))]
-      (with-open [writer (StringWriter.)]
-        ;; Write the row without its line ending. An entry with a newline in it is quoted, so it stays in this row.
-        (csv/write-csv writer [entries] :newline :lf)
-        (str/replace (str writer) #"\n\z" "")))
+    (let [entries (csv-entries value)]
+      (cond
+        (seq entries)
+        (with-open [writer (StringWriter.)]
+          ;; Write the row without its line ending. An entry with a newline in it is quoted, so it stays in this row.
+          (csv/write-csv writer [entries] :newline :lf)
+          (str/replace (str writer) #"\n\z" ""))
+
+        ;; Only blank entries: store a value that reads as an empty list, so it overrides a non-empty default.
+        (seq value)
+        ","))
 
     (nil? value)
     nil
@@ -1831,7 +1849,7 @@
   (when-let [[env-var value] (env-var-source setting)]
     ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
     ;; they parse, so a parse error after the first line counts as one.
-    (let [rows               (csv/read-csv value)
+    (let [rows               (csv-rows value)
           first-line-parses? (try (some? (seq rows)) (catch Exception _ false))
           more-lines?        (try (some? (next rows)) (catch Exception _ true))]
       (when (and first-line-parses? more-lines?)
@@ -1843,7 +1861,7 @@
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
   (doseq [setting (vals @registered-settings)
-          ;; A custom getter reads the raw value its own way, so it may not ignore later lines.
+          ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
           :when   (and (= :csv (:type setting))
                        (not (:custom-getter? setting)))]
     (warn-about-ignored-csv-lines! setting))

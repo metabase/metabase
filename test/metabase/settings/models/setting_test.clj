@@ -585,7 +585,10 @@
             (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd"))))
   (testing "ignores spaces around entries, and blank entries, as an env var or a stored string can have them"
     (is (= ["A" "B" "C"]
-           (fetch-csv-setting-value! " A , B,, C ,")))))
+           (fetch-csv-setting-value! " A , B,, C ,"))))
+  (testing "reads an empty string as nil, and only blank entries as an empty list"
+    (is (nil? (fetch-csv-setting-value! "")))
+    (is (= [] (fetch-csv-setting-value! ",")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
@@ -614,11 +617,24 @@
   (testing "stores a CSV string in the same form as a list"
     (is (= {:db-value "A,B,\"C1,C2\"", :parsed-value ["A" "B" "C1,C2"]}
            (set-and-fetch-csv-setting-value! " A , B,,\"C1,C2\""))))
-  (testing "stores nothing for a value with no entries"
-    (doseq [blank ["" " , " [] [" "]]]
-      (testing (pr-str blank)
+  (testing "stores nothing for an empty value"
+    (doseq [empty-value ["" []]]
+      (testing (pr-str empty-value)
         (is (= {:db-value nil, :parsed-value nil}
-               (set-and-fetch-csv-setting-value! blank))))))
+               (set-and-fetch-csv-setting-value! empty-value))))))
+  (testing "stores only blank entries as an empty list, which overrides a default"
+    (doseq [blank [" , " [" "]]]
+      (testing (pr-str blank)
+        (is (= {:db-value ",", :parsed-value []}
+               (set-and-fetch-csv-setting-value! blank)))
+        (test-csv-setting-with-default! blank)
+        (is (= [] (test-csv-setting-with-default)))))
+    (test-csv-setting-with-default! nil))
+  (testing "accepts a string that ends in blank lines"
+    (doseq [trailing ["A,B\n\n" "A,B\r\n \r\n"]]
+      (testing (pr-str trailing)
+        (is (= {:db-value "A,B", :parsed-value ["A" "B"]}
+               (set-and-fetch-csv-setting-value! trailing))))))
   (testing "rejects a CSV string that does not parse, or spans several lines, and keeps the stored value"
     (test-csv-setting! "A,B")
     (doseq [[bad message] [["A,\"B"  "Invalid comma-separated value."]
@@ -1761,25 +1777,26 @@
   :getter     (constantly []))
 
 (deftest csv-setting-ignored-lines-warning-test
-  (letfn [(warnings [raw-value]
+  (letfn [(warnings-about [env-var]
             (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
-              (get-parse-exception :csv raw-value)
-              (into []
-                    (comp (map :message) (filter #(str/includes? % "MB_TEST_CSV_VALIDATION_SETTING")))
-                    (messages))))]
+              (try
+                (setting/validate-settings-formatting!)
+                (catch Exception _))
+              (into [] (comp (map :message) (filter #(str/includes? % env-var))) (messages))))
+          (warnings [raw-value]
+            (mt/with-temp-env-var-value! [mb-test-csv-validation-setting raw-value]
+              (warnings-about "MB_TEST_CSV_VALIDATION_SETTING")))]
     (testing "warns that only the first line of a multi-line env var is read"
-      (doseq [raw-value ["1,2\n3" "1,2\n\"3"]]
+      (doseq [raw-value ["1,2\n3" "1,2\n\"3" "1,2\n\n3"]]
         (testing (pr-str raw-value)
           (is (= [(str "Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. "
                        "Put comma-separated values on one line.")]
                  (warnings raw-value))))))
     (testing "says nothing about a setting with a custom getter, which may read every line"
       (mt/with-temp-env-var-value! [mb-test-csv-custom-getter-setting "1\n2"]
-        (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
-          (setting/validate-settings-formatting!)
-          (is (not-any? #(str/includes? (:message %) "MB_TEST_CSV_CUSTOM_GETTER_SETTING") (messages))))))
-    (testing "says nothing about one line, or about a first line that does not parse, which fails validation instead"
-      (doseq [raw-value ["1,2" "1,\"2"]]
+        (is (= [] (warnings-about "MB_TEST_CSV_CUSTOM_GETTER_SETTING")))))
+    (testing "says nothing about one line, blank lines after it, or a first line that fails validation instead"
+      (doseq [raw-value ["1,2" "1,2\n\n" "1,\"2"]]
         (testing (pr-str raw-value)
           (is (= [] (warnings raw-value))))))))
 
