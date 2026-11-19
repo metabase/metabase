@@ -33,8 +33,8 @@
     are injected into the AST unsanitized — callers must ensure they are system-generated.")
   (single-stmt-of-type [parser dialect sql stmt-type check-rebuild?]
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
-    reconstructed from the parsed AST. With `check-rebuild?`, the reconstruction must also pass the same checks and
-    reconstruct to itself.")
+    reconstructed from the parsed AST. With `check-rebuild?`, the reconstruction must also pass the same checks,
+    reconstruct to itself, and for Postgres read as one statement whatever `standard_conforming_strings` is.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
 

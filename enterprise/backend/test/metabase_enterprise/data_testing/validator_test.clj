@@ -262,6 +262,10 @@
            (select-keys (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
                                        [:expectation "check"])
                         [:error-type :reason]))))
+  (testing "a SELECT with a backslash before a quote, which Postgres reads as two statements with standard_conforming_strings off, is refused"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :reason     "backslash-quote"}
+            (single-select :postgres "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files" nil))))
   (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
     (is (= "SELECT e'it''s' AS id"
            (single-select :postgres "SELECT E'it\\'s' AS id" nil))))

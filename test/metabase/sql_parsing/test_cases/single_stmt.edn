@@ -42,78 +42,84 @@
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
-  ;; the literal there. Each refused case below is one statement to SQLGlot whose rebuild runs the DELETE as a second
-  ;; statement on such a server.
-  {:name       "a quote after a backslash hides a second statement from Postgres with standard_conforming_strings off"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'a\\''; DELETE FROM orders; --'"
-   :stmt-type  "write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+  ;; the literal there. A caller that executes the rebuild of a "read-only" statement is refused, as
+  ;; "backslash-quote", a rebuild that Postgres reads as more than one statement under either setting. Each refused
+  ;; case below is one statement to SQLGlot whose rebuild runs the DELETE as a second statement on such a server. The
+  ;; other statement types, and a caller that only reads the verdict, are not checked for it.
+  {:name              "a read with a backslash before a quote is not checked for the setting"
+   :dialect           "postgres"
+   :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}}
 
-  {:name       "so does a rebuild that has the backslash before a quote though the text had none"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = $q$a\\$q$ || $q$; DELETE FROM orders; --$q$"
-   :stmt-type  "write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+  {:name              "an executed read-only statement with a backslash before a quote is refused"
+   :dialect           "postgres"
+   :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}
 
-  {:name       "so does a rebuilt E'' string, which hides a second statement whatever the setting"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = E'a\\\\' || $q$; DELETE FROM orders; --$q$"
-   :stmt-type  "write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+  {:name              "a quote after a backslash hides a second statement from Postgres with standard_conforming_strings off"
+   :dialect           "postgres"
+   :sql               "SELECT 'a\\''; DELETE FROM orders; --' AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}
 
-  {:name       "a read is refused for the same reason"
-   :dialect    "postgres"
-   :sql        "SELECT $q$a\\$q$ || $q$; RESET ROLE; DELETE FROM orders; --$q$"
-   :stmt-type  "read"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+  {:name              "so does a rebuild that has the backslash before a quote though the text had none"
+   :dialect           "postgres"
+   :sql               "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}
 
-  {:name       "so is a read whose rebuilt E'' string hides a second statement with the setting on"
-   :dialect    "postgres"
-   :sql        "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
-   :stmt-type  "read"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+  {:name              "so does a rebuilt E'' string, which hides a second statement whatever the setting"
+   :dialect           "postgres"
+   :sql               "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}
+   :classify-expected {:verdict :allowed :single-stmt? true}}
 
   {:name       "a quote doubled inside a literal is one statement under either setting"
    :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'it''s'"
-   :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = 'it''s'"}}
+   :sql        "SELECT 'it''s' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true :sql "SELECT 'it''s' AS note"}}
 
   {:name       "a dollar-quoted string without backslashes is one statement under either setting"
    :dialect    "postgres"
-   :sql        "UPDATE orders SET note = $q$it's; DELETE FROM orders$q$"
-   :stmt-type  "write"
+   :sql        "SELECT $q$it's; DELETE FROM orders$q$ AS note"
+   :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "a backslash that is not before a quote is one statement under either setting"
    :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'C:\\temp' WHERE id = 1"
-   :stmt-type  "write"
+   :sql        "SELECT 'C:\\temp' AS note"
+   :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "a literal ending in a backslash is one statement, or with the setting off, text Postgres refuses whole"
    :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'C:\\'"
-   :stmt-type  "write"
+   :sql        "SELECT 'C:\\' AS note"
+   :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "an E'' string whose quote is escaped is one statement under either setting"
    :dialect    "postgres"
-   :sql        "UPDATE orders SET note = E'it\\'s; DELETE FROM orders'"
-   :stmt-type  "write"
+   :sql        "SELECT E'it\\'s; DELETE FROM orders' AS note"
+   :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "a backslash before a quote in a quoted name or a comment ends no literal"
    :dialect    "postgres"
-   :sql        "UPDATE \"a\\'\" SET note = 'x' /* b\\' */ WHERE id = 1"
-   :stmt-type  "write"
+   :sql        "SELECT 'x' AS \"a\\'\" /* b\\' */"
+   :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "Redshift is not checked for the setting: SQLGlot reads its backslash as an escape already"
    :dialect    "redshift"
-   :sql        "UPDATE orders SET note = 'it\\'s'"
-   :stmt-type  "write"
+   :sql        "SELECT 'it\\'s' AS note"
+   :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt

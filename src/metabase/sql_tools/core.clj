@@ -267,7 +267,8 @@
   parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy
   OOM) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
   original one. Only `:verdict :allowed` is permission to proceed. For `\"read-only\"`, the `:sql` must also
-  pass the same checks and reconstruct to itself (`:reason \"rebuild-differs\"`).
+  pass the same checks and reconstruct to itself (`:reason \"rebuild-differs\"`), and on Postgres read as one
+  statement whatever `standard_conforming_strings` is (`:reason \"backslash-quote\"`).
 
   See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
   for the same question asked by a caller that only needs a verdict."

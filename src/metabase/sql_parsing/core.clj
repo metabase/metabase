@@ -640,7 +640,9 @@
   same question asked by a caller that only needs a verdict.
 
   For `\"read-only\"`, the `:sql` must itself pass the same checks and reconstruct to itself; otherwise the
-  verdict is `:disallowed` with `:reason \"rebuild-differs\"` and the reconstruction's own reason as `:detail`."
+  verdict is `:disallowed` with `:reason \"rebuild-differs\"` and the reconstruction's own reason as `:detail`.
+  On Postgres, it must also read as one statement whatever `standard_conforming_strings` is (`:reason
+  \"backslash-quote\"`)."
   [dialect sql stmt-type]
   (classify-single-stmt dialect sql stmt-type executable-limits))
 
