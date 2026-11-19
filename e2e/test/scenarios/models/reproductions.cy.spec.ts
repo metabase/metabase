@@ -21,7 +21,11 @@ describe("issue 23449", () => {
     cy.wait("@cardUpdate");
     // Turning the question into a model re-runs its query
     cy.wait("@modelQuery").then(({ response }) => {
-      expect(response?.body.error).to.not.exist;
+      expect(response, "model query response").to.exist;
+      if (!response) {
+        throw new Error("The model query got no response");
+      }
+      expect(response.body.error).to.not.exist;
     });
   }
 
