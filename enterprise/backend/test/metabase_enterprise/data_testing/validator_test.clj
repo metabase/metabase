@@ -204,7 +204,7 @@
   (testing "an E'' string ending in a doubled backslash passes the re-check of its rebuild, and keeps both backslashes"
     (is (= "UPDATE t SET name = e'a\\\\' WHERE id = 1"
            (write-refusal "UPDATE t SET name = E'a\\\\' WHERE id = 1"))))
-  (testing "text after such a string that holds `setval` stays a string, so the write passes and calls nothing"
+  (testing "the text after such a string stays a string though it holds `setval`, so the write passes and calls nothing"
     (is (= "UPDATE t SET name = e'\\\\' || ''' || (SELECT setval($z$s$z$, 1))::text --' WHERE id = 1"
            (write-refusal (str "UPDATE t SET name = E'\\\\' || $q$' || (SELECT setval($z$s$z$, 1))::text --$q$"
                                " WHERE id = 1"))))))

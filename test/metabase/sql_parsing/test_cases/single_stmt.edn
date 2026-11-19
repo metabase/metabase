@@ -98,7 +98,7 @@
    :stmt-type  "confined-write"
    :expected   {:verdict :disallowed :single-stmt? true :reason "unconfined-function" :detail "setseed"}}
 
-  {:name       "nor resets the server's statistics"
+  {:name       "nor resets the database's statistics"
    :dialect    "postgres"
    :sql        "UPDATE orders SET note = pg_stat_reset()::text WHERE id = 1"
    :stmt-type  "confined-write"
