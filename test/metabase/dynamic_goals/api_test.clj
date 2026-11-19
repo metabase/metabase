@@ -59,11 +59,13 @@
                                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                       (lib/aggregate (lib/count))))}]
       ;; the test client keywordizes the type key and parses numeric keys back to ints
-      (is (=? {:card    {card-id {:status "completed"
-                                  :data   {:cols [{:name "count"}] :rows [[1000]]}}}
-               :measure {Integer/MAX_VALUE {:status "failed" :error_type "not-found" :error string?}}}
+      (is (=? {:card    {card-id           {:status "completed"
+                                            :data   {:cols [{:name "count"}] :rows [[1000]]}}
+                         Integer/MAX_VALUE {:status "failed" :error_type "not-found" :error string?}}
+               :measure {measure-id {:status "completed" :data {:rows [[100]]}}}}
               (goal-values :crowberto [{:type "card" :id card-id :columns ["count"]}
-                                       {:type "measure" :id Integer/MAX_VALUE}])))
+                                       {:type "card" :id Integer/MAX_VALUE}
+                                       {:type "measure" :id measure-id}])))
       (testing "no sources, an empty body"
         (is (= {} (goal-values :crowberto [])))))))
 

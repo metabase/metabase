@@ -1054,10 +1054,10 @@
                                                                                        :type   "card"
                                                                                        :column "count"}}}]
       (let [runs          (atom 0)
-            process-query qp/process-query]
-        (with-redefs [qp/process-query (fn [& args]
-                                         (swap! runs inc)
-                                         (apply process-query args))]
+            process-query (mt/original-fn #'qp/process-query)]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
+                                                       (swap! runs inc)
+                                                       (apply process-query args))]
           (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
             (is (=? {:status "completed" :row_count 1} resp))
             (is (not (contains? (:data resp) :referenced_entities)))
