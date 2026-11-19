@@ -15,6 +15,7 @@ export interface MetricUrls {
   dimensions: (cardId: CardId) => string;
   dependencies: (cardId: CardId) => string;
   history: (cardId: CardId) => string;
+  tests?: (cardId: CardId) => string;
   database?: (databaseId: DatabaseId) => string;
   table?: (databaseId: DatabaseId, tableId: TableId) => string;
 }

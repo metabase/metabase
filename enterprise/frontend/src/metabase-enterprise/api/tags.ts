@@ -12,6 +12,7 @@ import {
 import {
   type ActionDependencyNode,
   type CardDependencyNode,
+  type CardTest,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
   type DataAppDependencyNode,
@@ -58,6 +59,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "security-advisory",
   "session",
   "transform-test",
+  "card-test",
   "data-test-run",
 ] as const;
 
@@ -314,6 +316,18 @@ export function provideTransformTestListTags(
     listTag("transform-test"),
     ...tests.flatMap(provideTransformTestTags),
   ];
+}
+
+export function provideCardTestTags(
+  test: CardTest,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("card-test", test.id)];
+}
+
+export function provideCardTestListTags(
+  tests: CardTest[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("card-test"), ...tests.flatMap(provideCardTestTags)];
 }
 
 export function provideDataTestRunTags(
