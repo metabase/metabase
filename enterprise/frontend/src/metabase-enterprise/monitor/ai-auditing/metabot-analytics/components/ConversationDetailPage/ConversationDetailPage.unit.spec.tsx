@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   createMockMetabotTextPart,
+  createMockMetabotToolCallPart,
   createMockParentedMessage,
   setupGroupsEndpoint,
   setupMetabotConversationEndpoint,
@@ -14,6 +15,7 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
+import { defer } from "metabase/utils/promise";
 import type {
   ConversationDetail,
   ConversationFeedback,
@@ -28,12 +30,6 @@ import {
   createMockVersion,
 } from "metabase-types/api/mocks";
 
-import {
-  createMockConversationDetail,
-  createMockSucceededToolCall,
-} from "../../tests/fixtures";
-import * as Transcript from "../../utils/transcript";
-
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
 jest.mock("metabase/monitor/components/MonitorLayout", () => ({
@@ -44,16 +40,6 @@ jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
   openSaveDialog: jest.fn(),
 }));
-
-jest.mock("../../utils/transcript", () => {
-  const actual = jest.requireActual<typeof Transcript>(
-    "../../utils/transcript",
-  );
-  return {
-    ...actual,
-    conversationToMarkdown: jest.fn(actual.conversationToMarkdown),
-  };
-});
 
 jest.mock("metabase/monitor/components/MonitorLayout/Sidebar", () => ({
   Sidebar: ({ children }: { children: React.ReactNode }) => children,
@@ -102,11 +88,10 @@ function inProgressMessage(id: string, parentId: string): ConversationMessage {
 }
 
 function toolCallPart(id: string): AgentMessagePart {
-  return createMockSucceededToolCall({
+  return createMockMetabotToolCallPart({
     id: `${id}-tool-call`,
-    name: "search",
     args: JSON.stringify({ query: "orders" }),
-    output: { output: "Found 3 orders", structured_output: { count: 3 } },
+    result: JSON.stringify({ count: 3 }),
   });
 }
 
@@ -114,7 +99,28 @@ function createConversation(
   messages: ConversationMessage[],
   feedback: ConversationFeedback[] = [],
 ): ConversationDetail {
-  return createMockConversationDetail({ messages, feedback });
+  return {
+    conversation_id: "convo-1",
+    created_at: "2026-01-01T00:00:00Z",
+    title: "A conversation",
+    user: null,
+    message_count: 2,
+    total_tokens: 30,
+    profile_id: "internal",
+    slack_permalink: null,
+    messages,
+    queries: [],
+    search_count: 0,
+    query_count: 0,
+    ip_address: null,
+    embedding_hostname: null,
+    embedding_path: null,
+    user_agent: null,
+    sanitized_user_agent: null,
+    forked_from_conversation_id: null,
+    fork_boundary_message_id: null,
+    feedback,
+  };
 }
 
 interface SetupOpts {
@@ -472,24 +478,16 @@ describe("ConversationDetailPage", () => {
     );
   });
 
-  describe("export", () => {
-    const BRANCHED_CONVERSATION = createConversation([
+  describe("JSON download", () => {
+    const CONVERSATION = createConversation([
       userMessage("u1", null, "count orders"),
-      agentMessage("a1", "u1", "first try"),
-      agentMessage("a2", "u1", "kept answer", toolCallPart("a2")),
+      agentMessage("a1", "u1", "an answer"),
     ]);
+    const DOWNLOAD_BUTTON = { name: "Download JSON" };
 
     beforeEach(() => {
-      jest.mocked(navigator.clipboard.writeText).mockClear();
       jest.mocked(openSaveDialog).mockClear();
     });
-
-    async function chooseExportItem(name: string) {
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Export" }),
-      );
-      await userEvent.click(await screen.findByRole("menuitem", { name }));
-    }
 
     // jsdom's Blob has no .text()
     function readBlobText(blob: Blob): Promise<string> {
@@ -501,6 +499,15 @@ describe("ConversationDetailPage", () => {
       });
     }
 
+    async function waitForDownloadToFinish(button: HTMLElement) {
+      await waitFor(() => {
+        expect(
+          within(button).queryByTestId("loading-indicator"),
+        ).not.toBeInTheDocument();
+      });
+      expect(button).toBeEnabled();
+    }
+
     function lastSavedFile() {
       const lastCall = jest.mocked(openSaveDialog).mock.lastCall;
       if (!lastCall) {
@@ -510,163 +517,34 @@ describe("ConversationDetailPage", () => {
       return { fileName, blob };
     }
 
-    it("offers to copy or download the transcript", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Export" }),
-      );
+    it("offers a JSON download of the conversation", async () => {
+      setup({ conversation: CONVERSATION });
 
       expect(
-        await screen.findByRole("menuitem", { name: "Copy as Markdown" }),
+        await screen.findByRole("button", DOWNLOAD_BUTTON),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("menuitem", { name: "Download Markdown" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("menuitem", { name: "Download JSON" }),
-      ).toBeInTheDocument();
-    });
-
-    it("returns focus to the Export button after an item is chosen", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await chooseExportItem("Download Markdown");
-
-      await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Export" })).toHaveFocus(),
-      );
-    });
-
-    it("copies the Markdown transcript and confirms with a toast", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await chooseExportItem("Copy as Markdown");
-
-      expect(
-        await screen.findByText("Copied the conversation as Markdown"),
-      ).toBeInTheDocument();
-      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
-      const [copied] = jest.mocked(navigator.clipboard.writeText).mock.calls[0];
-      expect(copied).toMatch(/^# A conversation\n/);
-      expect(copied).toContain("kept answer");
-      expect(copied).toContain("#### Tool call: `search`");
-      expect(copied).not.toContain("first try");
-    });
-
-    it("confirms every copy, including one right after another", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await chooseExportItem("Copy as Markdown");
-      expect(
-        await screen.findByText("Copied the conversation as Markdown"),
-      ).toBeInTheDocument();
-
-      await chooseExportItem("Copy as Markdown");
-
-      await waitFor(() =>
-        expect(
-          screen.getAllByText("Copied the conversation as Markdown"),
-        ).toHaveLength(2),
-      );
-      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(2);
-    });
-
-    it("copies the branch on screen after switching to another attempt", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Previous version" }),
-      );
-      await chooseExportItem("Copy as Markdown");
-
-      expect(
-        await screen.findByText("Copied the conversation as Markdown"),
-      ).toBeInTheDocument();
-      const [copied] = jest.mocked(navigator.clipboard.writeText).mock.calls[0];
-      expect(copied).toContain("first try");
-      expect(copied).not.toContain("kept answer");
-    });
-
-    it("exports Slack messages as they are shown, converted to Markdown", async () => {
-      setup({
-        conversation: {
-          ...createConversation([
-            userMessage("u1", null, "where are the docs?"),
-            agentMessage("a1", "u1", "See <https://example.com|the docs>"),
-          ]),
-          profile_id: "slackbot",
-        },
-      });
-
-      await chooseExportItem("Copy as Markdown");
-
-      expect(
-        await screen.findByText("Copied the conversation as Markdown"),
-      ).toBeInTheDocument();
-      const [copied] = jest.mocked(navigator.clipboard.writeText).mock.calls[0];
-      expect(copied).toContain("See [the docs](https://example.com)");
-    });
-
-    it("shows an error toast when the clipboard refuses the copy", async () => {
-      jest
-        .mocked(navigator.clipboard.writeText)
-        .mockRejectedValueOnce(new Error("Denied"));
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await chooseExportItem("Copy as Markdown");
-
-      expect(
-        await screen.findByText("Couldn't copy the conversation"),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Copied the conversation as Markdown"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows an error toast when the transcript cannot be built", async () => {
-      jest
-        .mocked(Transcript.conversationToMarkdown)
-        .mockImplementationOnce(() => {
-          throw new Error("Unexpected data");
-        });
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await chooseExportItem("Download Markdown");
-
-      expect(
-        await screen.findByText("Couldn't export the conversation"),
-      ).toBeInTheDocument();
-      expect(openSaveDialog).not.toHaveBeenCalled();
-    });
-
-    it("downloads the Markdown transcript", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-
-      await chooseExportItem("Download Markdown");
-
-      expect(openSaveDialog).toHaveBeenCalledTimes(1);
-      const { fileName, blob } = lastSavedFile();
-      expect(fileName).toBe("metabot-conversation-convo-1.md");
-      expect(blob.type).toBe("text/markdown");
-      const text = await readBlobText(blob);
-      expect(text).toMatch(/^# A conversation\n/);
-      expect(text).toContain("kept answer");
     });
 
     it("downloads the conversation exactly as the API sent it, in a versioned JSON envelope", async () => {
+      // As the backend writes it: Cheshire spells doubles 45.0 and
+      // 1.23456789E7, and JSON.parse would round 9007199254740993.
       const responseText = JSON.stringify({
-        ...BRANCHED_CONVERSATION,
+        ...CONVERSATION,
         total_tokens: 1,
-      }).replace('"total_tokens":1', '"total_tokens":9007199254740993');
+      }).replace(
+        '"total_tokens":1',
+        '"total_tokens":9007199254740993,"cost":45.0,"rows":1.23456789E7',
+      );
       setup({
-        conversation: BRANCHED_CONVERSATION,
+        conversation: CONVERSATION,
         conversationResponseText: responseText,
       });
 
-      await chooseExportItem("Download JSON");
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+      await userEvent.click(button);
 
-      await waitFor(() => expect(openSaveDialog).toHaveBeenCalledTimes(1));
+      await waitForDownloadToFinish(button);
+      expect(openSaveDialog).toHaveBeenCalledTimes(1);
       const { fileName, blob } = lastSavedFile();
       expect(fileName).toBe("metabot-conversation-convo-1.json");
       expect(blob.type).toBe("application/json");
@@ -675,22 +553,41 @@ describe("ConversationDetailPage", () => {
         /^\{"format":"metabase\.metabot-conversation","version":1,"exported_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","metabase_version":"v1\.58\.0","conversation":/,
       );
       expect(text.endsWith(`"conversation":${responseText}}`)).toBe(true);
+      expect(() => JSON.parse(text)).not.toThrow();
     });
 
-    it("shows an error toast when the conversation cannot be fetched for the JSON download", async () => {
-      setup({ conversation: BRANCHED_CONVERSATION });
-      expect(
-        await screen.findByRole("button", { name: "Export" }),
-      ).toBeInTheDocument();
-      setupMetabotConversationEndpointError(
-        BRANCHED_CONVERSATION.conversation_id,
+    it("shows that it is loading and ignores clicks until the download is ready", async () => {
+      setup({ conversation: CONVERSATION });
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+      const response = defer<string>();
+      setupMetabotConversationRawEndpoint(
+        CONVERSATION.conversation_id,
+        response.promise,
       );
 
-      await chooseExportItem("Download JSON");
+      await userEvent.click(button);
+      expect(
+        await within(button).findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+      expect(button).toBeDisabled();
+      await userEvent.click(button, { pointerEventsCheck: 0 });
+      response.resolve(JSON.stringify(CONVERSATION));
+
+      await waitForDownloadToFinish(button);
+      expect(openSaveDialog).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows an error toast and saves nothing when the conversation cannot be fetched", async () => {
+      setup({ conversation: CONVERSATION });
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+      setupMetabotConversationEndpointError(CONVERSATION.conversation_id);
+
+      await userEvent.click(button);
 
       expect(
         await screen.findByText("Couldn't export the conversation"),
       ).toBeInTheDocument();
+      await waitForDownloadToFinish(button);
       expect(openSaveDialog).not.toHaveBeenCalled();
     });
   });

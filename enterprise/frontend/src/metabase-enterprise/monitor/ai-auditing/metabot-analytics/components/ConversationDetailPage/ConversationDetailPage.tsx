@@ -59,7 +59,7 @@ import type {
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
-import { ConversationExportMenu } from "./ConversationExportMenu";
+import { ConversationDownloadButton } from "./ConversationDownloadButton";
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
@@ -162,9 +162,8 @@ export function ConversationDetailPage() {
             <ConversationHeader
               conversation={conversation}
               actions={
-                <ConversationExportMenu
-                  conversation={conversation}
-                  messages={messages}
+                <ConversationDownloadButton
+                  conversationId={conversation.conversation_id}
                 />
               }
             />

@@ -14,16 +14,20 @@ export function setupMetabotConversationEndpoint(
 
 /**
  * Serve the conversation detail as exactly `responseText`, for JSON that
- * `JSON.stringify` can't produce, such as an integer above 2^53.
+ * `JSON.stringify` can't produce, such as an integer above 2^53. Pass a
+ * promise to hold the response until it resolves.
  */
 export function setupMetabotConversationRawEndpoint(
   conversationId: string,
-  responseText: string,
+  responseText: string | Promise<string>,
 ) {
-  setupMetabotConversationRoute(conversationId, {
-    body: responseText,
-    headers: { "Content-Type": "application/json" },
-  });
+  setupMetabotConversationRoute(
+    conversationId,
+    Promise.resolve(responseText).then((body) => ({
+      body,
+      headers: { "Content-Type": "application/json" },
+    })),
+  );
 }
 
 /** Make the conversation detail fail from now on, replacing any earlier mock. */
