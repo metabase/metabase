@@ -50,6 +50,11 @@
       (thunk))
     @calls))
 
+(defn- enqueued-search-models
+  "The search models of the documents that the updates in `enqueued`, as [[capture-enqueues!]] returns them, name."
+  [enqueued]
+  (into #{} (comp cat (map first)) enqueued))
+
 (defn- cascading-documents-of
   "What [[search/cascading-documents]] enumerates for the card with `card-id`."
   [card-id]
@@ -200,9 +205,7 @@
           (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:width "full"})
           (is (= {:last_editor_id   (mt/user->id :crowberto)
                   :model_updated_at (t/instant (t2/select-one-fn :updated_at :report_dashboard :id dash-id))}
-                 (-> (indexed)
-                     (update :model_updated_at t/instant)
-                     (select-keys [:last_editor_id :model_updated_at])))))))))
+                 (update (indexed) :model_updated_at t/instant))))))))
 
 (deftest update-of-unread-joined-column-enqueues-only-readers-test
   (testing "an update reindexes the documents that read a column it set, not the ones it is joined into"
@@ -213,8 +216,8 @@
         ;; Only the collection's own document reads its description; the card and the dashboard in it read its name,
         ;; type, location and authority level.
         (is (= #{"collection"}
-               (->> (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"}))
-                    (into #{} (comp (mapcat identity) (map first))))))))))
+               (enqueued-search-models
+                (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"})))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"

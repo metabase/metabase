@@ -55,7 +55,7 @@
     (let [[_ update delete] (map :event @received)]
       (is (= "t" (:name (:previous-object update))))
       (is (= "u" (:name (:object update))))
-      (is (not (contains? update :changes)))
+      (is (not (contains? update :changed)))
       (is (= (mt/user->id :rasta) (:user-id update)))
       (is (= "u" (:name (:previous-object delete))))
       (is (not (contains? delete :object))))))
@@ -91,12 +91,21 @@
       (is (not (contains? event :object))))))
 
 (deftest create-collected-after-update-test
-  (testing "a creation whose own hooks write the row again is still a creation"
-    (let [creator (mt/user->id :rasta)]
-      (events/with-batched-events
-        (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline {:name "a" :icon "cake" :creator_id creator})]
-          (t2/update! ::events-test-timeline/Timeline :id id {:name "b"})))
-      (is (= [:event/events-test-timeline-create] (topics))))))
+  (testing "a creation whose own hooks write the row again is still a creation, and carries no changed columns"
+    (let [new-row {:name "a" :icon "cake" :creator_id (mt/user->id :rasta)}
+          merged  (atom [])]
+      (events/register-owned-consumer! ::merged
+                                       (constantly :merged)
+                                       (fn [_owner events _all] (swap! merged into events)))
+      (try
+        (events/with-batched-events
+          (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline new-row)]
+            (t2/update! ::events-test-timeline/Timeline :id id {:name "b"})))
+        (is (= [:event/events-test-timeline-create] (topics)))
+        (is (=? [{:operation :create}] @merged))
+        (is (not-any? #(contains? % :changed) @merged))
+        (finally
+          (events.tu/unregister! ::merged))))))
 
 (deftest batch-rollback-test
   (is (thrown? Exception
@@ -238,7 +247,6 @@
     (try
       (with-timeline-cleanup
         (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-changed"))]
-          (reset! received [])
           (testing "an update carries the columns it set, which include the updated_at its timestamp hook set"
             (t2/update! ::events-test-timeline/Timeline :id id {:icon "star"})
             (is (= [#{:icon :updated_at}] @changed)))
@@ -247,9 +255,7 @@
             (events/with-batched-events
               (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-changed-1"})
               (t2/update! ::events-test-timeline/Timeline :id id {:description "d"}))
-            (is (= [#{:name :description :updated_at}] @changed)))
-          (testing "the published event does not carry them"
-            (is (every? #(not (contains? (:event %) :changed)) @received)))))
+            (is (= [#{:name :description :updated_at}] @changed)))))
       (finally
         (events.tu/unregister! ::changed)))))
 

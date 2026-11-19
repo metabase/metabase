@@ -42,12 +42,13 @@
 
 (t2/define-before-update :hook/events
   [instance]
-  (when (seq (t2/changes instance))
-    (let [model    (model-of &model)
-          previous (t2/instance model (t2.realize/realize (t2/original instance)))]
-      (collect! model :update instance {:object          (settled (t2.realize/realize instance) previous)
-                                        :previous-object previous
-                                        :changed         (set (keys (t2/changes instance)))})))
+  (let [changes (t2/changes instance)]
+    (when (seq changes)
+      (let [model    (model-of &model)
+            previous (t2/instance model (t2.realize/realize (t2/original instance)))]
+        (collect! model :update instance {:object          (settled (t2.realize/realize instance) previous)
+                                          :previous-object previous
+                                          :changed         (set (keys changes))}))))
   instance)
 
 (t2/define-before-delete :hook/events

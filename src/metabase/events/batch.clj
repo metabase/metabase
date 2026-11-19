@@ -41,8 +41,10 @@
                     {:model model}))))
 
 (def ^:private CollectedEvent
-  "A write of a row: its model, its kind, the row after it for a create or an update, the row before it for an update
-  or a delete, and the columns an update set, which include an `:updated_at` that the row after it cannot show."
+  "A write of a row: its model, its kind, the row after it for a create or an update, and the row before it for an
+  update or a delete.
+  An update also carries `:changed`, the columns it set, among them the `:updated_at` that `:object` shows with its
+  old value."
   [:map
    [:model     :keyword]
    [:operation Operation]
