@@ -972,17 +972,17 @@
 
 (mu/defn collection-transform-items :- [:maybe :map]
   "The query of the Transforms of the source types the user can use in `collection` that the collection items listing of
-  `opts` holds, nil when the namespace of `collection` holds no Transform or `opts` restrict the items to the pinned
-  ones or to those created by a user, which no Transform is or records."
+  `opts` holds, nil when `opts` restrict the items to those
+  created by a user, which Transforms do not record, and none of them when `opts` restrict the items to the pinned
+  ones, which no Transform is."
   [collection                              :- :map
    {:keys [pinned-state created-by-id]} :- :map]
-  (when (and (collections.listing/holds-model? :model/Transform collection)
-             (nil? created-by-id)
-             (not= pinned-state :is_pinned))
+  (when (nil? created-by-id)
     (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
       {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
        :from   [[:transform :transform]]
        :where  [:and
+                (collections.listing/poison-when-pinned-clause pinned-state)
                 [:= :collection_id (:id collection)]
                 (if (seq enabled-types)
                   [:in :source_type enabled-types]

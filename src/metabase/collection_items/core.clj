@@ -157,11 +157,11 @@
 (def ^:private item-specs*
   (memoize/fifo
    (fn [_spec-methods]
-     (update-vals (models.resolution/spec-entries-by-name collection-items.spec/spec) second))
+     (models.resolution/spec-entries-by-name collection-items.spec/spec))
    :fifo/threshold 1))
 
 (defn- item-specs
-  "The collection items spec of each type of item, by the name of the type."
+  "The model and the collection items spec of each type of item, as `[model spec]`, by the name of the type."
   []
   (item-specs* (methods collection-items.spec/spec)))
 
@@ -173,7 +173,7 @@
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
-                          (if-let [hydrate (:hydrate (get (item-specs) model))]
+                          (if-let [hydrate (:hydrate (second (get (item-specs) model)))]
                             (hydrate collection options rows)
                             rows)))
                    cat
@@ -314,7 +314,7 @@
                                                        [:select :select-distinct])]]
                         (-> query
                             (update select-clause-type add-missing-columns all-select-columns)
-                            (update select-clause-type add-model-ranking (:rank (get specs (name model)) default-rank))))
+                            (update select-clause-type add-model-ranking (:rank (second (get specs (name model))) default-rank))))
         search-clause (search-text-clause search-text)
         rows-query    (cond-> {:select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
@@ -355,15 +355,18 @@
 
 (defn- item-queries
   "The query of each type of item of `models`, every type when `models` is empty, that lists some items in `collection`
-  under `options`, by the keyword of the name of the type, in name order."
+  under `options`, by the keyword of the name of the type, in name order. A Collection of a namespace that does not hold
+  the model of a type lists no item of the type."
   [collection models options]
-  (into (sorted-map)
-        (keep (fn [[item-name {:keys [items]}]]
-                (let [item (keyword item-name)]
-                  (when (or (empty? models) (contains? models item))
-                    (when-let [query (items collection options)]
-                      [item (vary-meta query assoc :allow-subquery true)])))))
-        (item-specs)))
+  (let [collection-namespace (keyword (:namespace collection))]
+    (into (sorted-map)
+          (keep (fn [[item-name [model {:keys [items]}]]]
+                  (let [item (keyword item-name)]
+                    (when (and (or (empty? models) (contains? models item))
+                               (collection/namespace-allowed? model collection-namespace))
+                      (when-let [query (items collection options)]
+                        [item (vary-meta query assoc :allow-subquery true)])))))
+          (item-specs))))
 
 (mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."

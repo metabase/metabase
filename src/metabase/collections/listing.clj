@@ -2,12 +2,10 @@
   "HoneySQL helpers for the queries that list collection content and table content readable by a user: the content of
   the collections they read, the content of the tables they query, the location of an item in its collection, and the
   items outside personal collections, and the ones that list the items of one collection: the Collections whose items
-  the user sees, the items of the pinned state a listing asks for, and the namespaces of the collections that hold a
-  model."
+  the user sees and the items of the pinned state a listing asks for."
   (:require
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
-   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -87,6 +85,20 @@
     1 = 1"
   [:= [:inline 1] [:inline 1]])
 
+(def ^:private always-false-hsql-expr
+  "A Honey SQL expression that is never true.
+
+    1 = 2"
+  [:= [:inline 1] [:inline 2]])
+
+(defn poison-when-pinned-clause
+  "The clause that keeps no row when `pinned-state` is `:is_pinned` and all of them otherwise, for the items that have
+  no notion of pinning."
+  [pinned-state]
+  (if (= pinned-state :is_pinned)
+    always-false-hsql-expr
+    always-true-hsql-expr))
+
 (defn pinned-state->clause
   "The clause keeping the rows whose `col`, their `:collection_position` by default, is that of `pinned-state`, `:all`,
   `:is_pinned` or `:is_not_pinned`, all of them for another one."
@@ -123,9 +135,3 @@
        [:and [:= collection-id-field nil] (clause :read)]
        [:and [:not= collection-id-field nil] (clause :write)]]
       (clause :read))))
-
-(defn holds-model?
-  "Whether the namespace of `collection`, the Root Collection of a namespace included, is one that Collections hold the
-  items of `model` in."
-  [model collection]
-  (contains? (collection/allowed-namespaces model) (keyword (:namespace collection))))

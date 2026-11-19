@@ -669,14 +669,13 @@
 
 (mu/defn collection-table-items :- [:maybe :map]
   "The query of the published tables in `collection` that the user queries and that the collection items listing of
-  `opts` holds, nil when the library is not a feature of the instance, the namespace of `collection` holds no table or
-  `opts` restrict the items to the pinned ones or to those created by a user, which no table is or records."
+  `opts` holds, nil when the library is not a feature of the instance or
+  `opts` restrict the items to those created by a user, which tables do not record, and none of them when `opts` restrict
+  the items to the pinned ones, which no table is."
   [collection                                       :- :map
    {:keys [archived? pinned-state created-by-id]} :- :map]
   (when (and (premium-features/has-feature? :library)
-             (collections.listing/holds-model? :model/Table collection)
-             (nil? created-by-id)
-             (not= pinned-state :is_pinned))
+             (nil? created-by-id))
     {:select [:t.id
               [:t.id :table_id]
               [:t.display_name :name]
@@ -688,6 +687,7 @@
      :from   [[(t2/table-name :model/Table) :t]]
      :where  [:and
               [:= :t.is_published true]
+              (collections.listing/poison-when-pinned-clause pinned-state)
               (collections.listing/visible-items-clause :t.collection_id archived? {:root-namespace nil})
               (perms/visible-tables-filter-clause
                :t.id

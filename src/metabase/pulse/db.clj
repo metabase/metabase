@@ -468,12 +468,11 @@
 
 (mu/defn collection-pulse-items :- [:maybe :map]
   "The query of the Pulses, but the alerts and the dashboard subscriptions, in `collection` that the collection items
-  listing of `opts` holds, nil when the namespace of `collection` holds no Pulse or `opts` restrict the items to those
-  created by a user, which Pulses do not record."
+  listing of `opts` holds, nil when `opts` restrict the items to
+  those created by a user, which Pulses do not record."
   [collection                                        :- :map
    {:keys [archived? pinned-state created-by-id]} :- :map]
-  (when (and (collections.listing/holds-model? :model/Pulse collection)
-             (nil? created-by-id))
+  (when (nil? created-by-id)
     {:select-distinct [:p.id
                        :p.name
                        :p.entity_id

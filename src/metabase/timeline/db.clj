@@ -152,16 +152,15 @@
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
 (mu/defn collection-timeline-items :- [:maybe :map]
-  "The query of the Timelines in `collection` that the collection items listing of `opts` holds, nil when the namespace of
-  `collection` holds no Timeline or `opts` restrict the items to the pinned ones or to those created by a user, which no
-  Timeline is or records."
+  "The query of the Timelines in `collection` that the collection items listing of `opts` holds, nil when
+  `opts` restrict the items to those created by a user, which Timelines do not record,
+  and none of them when `opts` restrict the items to the pinned ones, which no Timeline is."
   [collection                                       :- :map
    {:keys [archived? pinned-state created-by-id]} :- :map]
-  (when (and (collections.listing/holds-model? :model/Timeline collection)
-             (nil? created-by-id)
-             (not= pinned-state :is_pinned))
+  (when (nil? created-by-id)
     {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
      :from   [[:timeline :timeline]]
      :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
               [:= :archived (boolean archived?)]]}))

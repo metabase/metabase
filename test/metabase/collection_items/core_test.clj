@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [metabase.collection-items.core :as collection-items]
    [metabase.collection-items.spec :as collection-items.spec]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.resolution :as models.resolution]
@@ -52,11 +53,11 @@
                                           :created-by-id (mt/user->id :crowberto)))]
           (is (= #{} (models-of result)))
           (is (= [:card] (:models result)))))
-      (testing "a type that is never pinned is left out of the pinned items"
+      (testing "a type that is never pinned is listed, with no item, among the pinned items"
         (let [result (list-items (options :models #{:card :timeline :pulse}
                                           :pinned-state :is_pinned))]
           (is (= #{} (models-of result)))
-          (is (= [:card :pulse] (:models result)))))
+          (is (= [:card :pulse :timeline] (:models result)))))
       (testing "no type left to list gives an empty page"
         (let [result (list-items (options :models #{:timeline}
                                           :created-by-id (mt/user->id :crowberto)))]
@@ -69,6 +70,21 @@
                            (request/with-limit-and-offset 50 0
                              (collection-items/collection-children snippets (options :models #{:card :timeline :snippet}))))]
             (is (= [:snippet] (:models result)))))))))
+
+(deftest root-collection-models-test
+  (let [list-models (fn [options]
+                      (mt/with-current-user (mt/user->id :crowberto)
+                        (request/with-limit-and-offset 50 0
+                          (:models (collection-items/collection-children collection/root-collection options)))))]
+    (testing "the plain listing of the Root Collection"
+      (is (= [:card :collection :dashboard :dataset :document :exploration :metric :pulse :timeline]
+             (list-models (options)))))
+    (testing "the pinned items of the Root Collection"
+      (is (= [:card :collection :dashboard :dataset :document :exploration :metric :pulse :timeline]
+             (list-models (options :pinned-state :is_pinned)))))
+    (testing "the items of the Root Collection created by a user"
+      (is (= [:card :dashboard :dataset :document :metric]
+             (list-models (options :created-by-id (mt/user->id :crowberto))))))))
 
 (deftest root-collection-items-query-count-test
   (testing "listing the Root Collection issues no query per item"

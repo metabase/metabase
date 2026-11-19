@@ -241,41 +241,39 @@
                        (when-not include-personal-collections?
                          (collections.listing/outside-personal-collections-clause :document :collection))])}))
 
-(mu/defn collection-document-items :- [:maybe :map]
-  "The query of the Documents in `collection` that the collection items listing of `opts` holds, nil when the namespace
-  of `collection` holds no Document. The Documents of an Exploration are only listed when `:show-exploration-documents?`."
+(mu/defn collection-document-items :- :map
+  "The query of the Documents in `collection` that the collection items listing of `opts` holds. The Documents of an Exploration are only listed when `:show-exploration-documents?`."
   [collection :- :map
    {:keys [archived? pinned-state created-by-id show-exploration-documents?]} :- :map]
-  (when (collections.listing/holds-model? :model/Document collection)
-    {:select [:document.id
-              :document.name
-              :document.collection_id
-              :document.collection_position
-              :document.archived
-              :document.archived_directly
-              :document.exploration_id
-              [:u.id :last_edit_user]
-              [:u.email :last_edit_email]
-              [:u.first_name :last_edit_first_name]
-              [:u.last_name :last_edit_last_name]
-              [:r.timestamp :last_edit_timestamp]
-              [(h2x/literal "document") :model]]
-     :from [[:document :document]]
-     :left-join [[:revision :r] [:and
-                                 [:= :r.model_id :document.id]
-                                 [:= :r.model (h2x/literal "Document")]
-                                 (revisions.sql/newest-revision-clause :r "Document" :document.id)]
-                 [:core_user :u] [:= :u.id :r.user_id]]
-     :where [:and
-             (collections.listing/visible-items-clause :document.collection_id archived? {:root-namespace nil})
-             (if (collection/is-trash? collection)
-               [:= :document.archived_directly true]
-               [:and
-                [:= :document.collection_id (:id collection)]
-                [:= :document.archived_directly false]])
-             (when created-by-id
-               [:= :document.creator_id created-by-id])
-             [:= :document.archived (boolean archived?)]
-             (when-not show-exploration-documents?
-               [:= :document.exploration_id nil])
-             (collections.listing/pinned-state->clause pinned-state :document.collection_position)]}))
+  {:select [:document.id
+            :document.name
+            :document.collection_id
+            :document.collection_position
+            :document.archived
+            :document.archived_directly
+            :document.exploration_id
+            [:u.id :last_edit_user]
+            [:u.email :last_edit_email]
+            [:u.first_name :last_edit_first_name]
+            [:u.last_name :last_edit_last_name]
+            [:r.timestamp :last_edit_timestamp]
+            [(h2x/literal "document") :model]]
+   :from [[:document :document]]
+   :left-join [[:revision :r] [:and
+                               [:= :r.model_id :document.id]
+                               [:= :r.model (h2x/literal "Document")]
+                               (revisions.sql/newest-revision-clause :r "Document" :document.id)]
+               [:core_user :u] [:= :u.id :r.user_id]]
+   :where [:and
+           (collections.listing/visible-items-clause :document.collection_id archived? {:root-namespace nil})
+           (if (collection/is-trash? collection)
+             [:= :document.archived_directly true]
+             [:and
+              [:= :document.collection_id (:id collection)]
+              [:= :document.archived_directly false]])
+           (when created-by-id
+             [:= :document.creator_id created-by-id])
+           [:= :document.archived (boolean archived?)]
+           (when-not show-exploration-documents?
+             [:= :document.exploration_id nil])
+           (collections.listing/pinned-state->clause pinned-state :document.collection_position)]})

@@ -332,17 +332,17 @@
 
 (mu/defn collection-action-items :- [:maybe :map]
   "The query of the actions without a model in `collection` that the collection items listing of `opts` holds, nil when
-  `collection` is not in the namespace of data actions or data apps or `opts` restrict the items to the pinned ones or to
-  those created by a user, which no action is or records."
+  `collection` is not in the namespace of data actions or data apps or `opts` restrict the items to those created by a user,
+  which actions do not record, and none of them when `opts` restrict the items to the pinned ones, which no action is."
   [collection                                       :- :map
    {:keys [archived? pinned-state created-by-id]} :- :map]
   (when (and (contains? #{collection/data-actions-ns collection/data-apps-ns} (some-> (:namespace collection) keyword))
-             (nil? created-by-id)
-             (not= pinned-state :is_pinned))
+             (nil? created-by-id))
     {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
               :action.archived :action.archived_directly [(h2x/literal "action") :model]]
      :from   [[:action :action]]
      :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
               [:= :action.collection_id (:id collection)]
               [:= :action.model_id nil]
               [:= :action.archived (boolean archived?)]]}))

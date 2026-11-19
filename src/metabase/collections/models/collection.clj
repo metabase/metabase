@@ -2280,6 +2280,21 @@
   [_]
   default-allowed-namespaces)
 
+(defmulti namespace-allowed?
+  "Whether instances of `model` are allowed to go in a Collection of `collection-namespace`, a keyword or nil. By
+  default, when `collection-namespace` is one of the [[allowed-namespaces]] of the model."
+  {:arglists '([model collection-namespace])}
+  (fn [model _collection-namespace]
+    (t2.protocols/dispatch-value model)))
+
+(defmethod namespace-allowed? :default
+  [model collection-namespace]
+  (contains? (allowed-namespaces model) collection-namespace))
+
+(defmethod namespace-allowed? :model/Collection
+  [_ _]
+  true)
+
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
   `allowed-namespaces`), or throw an Exception.

@@ -99,11 +99,9 @@
    :where  [:= :archived (boolean archived?)]})
 
 (mu/defn collection-snippet-items :- [:maybe :map]
-  "The query of the snippets in `collection` that the collection items listing of `opts` holds, nil when the namespace
-  of `collection` holds no snippet or `opts` restrict the items to those created by a user, which snippets do not
-  record."
+  "The query of the snippets in `collection` that the collection items listing of `opts` holds, nil when `opts`
+  restrict the items to those created by a user, which snippets do not record."
   [collection                :- :map
    {:keys [created-by-id] :as opts} :- :map]
-  (when (and (collections.listing/holds-model? :model/NativeQuerySnippet collection)
-             (nil? created-by-id))
+  (when (nil? created-by-id)
     (snippets-collection-children-query collection opts)))

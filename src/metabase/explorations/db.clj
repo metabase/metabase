@@ -929,13 +929,11 @@
                :all_edits]]}))
 
 (mu/defn collection-exploration-items :- [:maybe :map]
-  "The query of the Explorations in `collection` that the collection items listing of `opts` holds, nil when the
-  namespace of `collection` holds no Exploration or `opts` restrict the items to those created by a user, which
-  Explorations do not record."
+  "The query of the Explorations in `collection` that the collection items listing of `opts` holds, nil when `opts`
+  restrict the items to those created by a user, which Explorations do not record."
   [collection                                        :- :map
    {:keys [archived? pinned-state created-by-id]} :- :map]
-  (when (and (collections.listing/holds-model? :model/Exploration collection)
-             (nil? created-by-id))
+  (when (nil? created-by-id)
     {:select [:exploration.id
               :exploration.name
               :exploration.description
