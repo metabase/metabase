@@ -50,6 +50,7 @@ export function FormulaEditButton({
     <UnstyledButton
       className={S.chipButton}
       aria-label={t`Edit the formula of ${label}`}
+      aria-expanded={isEditing}
       onClick={handleClick}
     >
       {children}

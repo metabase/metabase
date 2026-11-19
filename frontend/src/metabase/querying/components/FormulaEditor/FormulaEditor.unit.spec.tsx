@@ -17,13 +17,16 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
 } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { FormulaEditor } from "./FormulaEditor";
 import type { FormulaEditorProps, NamedExpression } from "./types";
 
 jest.unmock("@uiw/react-codemirror");
 
-type SetupOpts = Pick<FormulaEditorProps, "initialSource">;
+type SetupOpts = Partial<
+  Pick<FormulaEditorProps, "initialSource" | "query" | "expressionIndex">
+>;
 
 async function setup(options: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -47,6 +50,29 @@ async function setup(options: SetupOpts = {}) {
   );
   const view = await created.promise;
   return { view, onSubmit, onCancel };
+}
+
+function createDoubledTotalQuery() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        expressions: [
+          {
+            name: "Doubled",
+            value: {
+              type: "operator",
+              operator: "*",
+              args: [
+                { type: "column", name: "TOTAL" },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
 }
 
 async function replaceFormula(view: EditorView, source: string) {
@@ -89,6 +115,30 @@ describe("FormulaEditor", () => {
     await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
     await userEvent.keyboard("{Enter}");
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a new formula refer to an existing custom column", async () => {
+    const { onSubmit } = await setup({
+      query: createDoubledTotalQuery(),
+      initialSource: "[Doubled] + 1",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let the edited custom column refer to itself", async () => {
+    const { onSubmit } = await setup({
+      query: createDoubledTotalQuery(),
+      expressionIndex: 0,
+      initialSource: "[Doubled] + 1",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/.+/);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it.each(["/", "{Tab}", "{Shift>}{Tab}{/Shift}"])(

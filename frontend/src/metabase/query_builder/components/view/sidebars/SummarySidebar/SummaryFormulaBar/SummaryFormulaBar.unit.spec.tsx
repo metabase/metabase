@@ -1030,6 +1030,20 @@ describe("editing a formula chip", () => {
     expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
   });
 
+  it("marks a formula chip as expanded while its formula is open in the bar", async () => {
+    await setupFormulaQuery();
+    const chip = getFormulaChip("Sum total");
+    expect(chip).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(chip);
+    await expectFormula("Sum([Total])");
+    expect(chip).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{Escape}");
+    await expectClosed();
+    expect(chip).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("renames on a double-click without opening the bar", async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
