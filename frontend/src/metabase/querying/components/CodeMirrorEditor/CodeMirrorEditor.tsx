@@ -36,6 +36,7 @@ export type CodeMirrorEditorProps = {
   highlightedLineNumbers?: number[];
   placeholder?: string;
   readOnly?: boolean;
+  autoFocus?: boolean;
   hasSqlGenerationAccess?: boolean;
   extensions?: Extension[];
   onChange?: (queryText: string) => void;
@@ -64,6 +65,7 @@ export const CodeMirrorEditor = forwardRef<
     highlightedLineNumbers,
     placeholder: placeholderProp,
     readOnly,
+    autoFocus = true,
     hasSqlGenerationAccess,
     extensions: customExtensions,
     onChange,
@@ -186,7 +188,7 @@ export const CodeMirrorEditor = forwardRef<
         onChange={onChange}
         height="100%"
         onUpdate={handleUpdate}
-        autoFocus
+        autoFocus={autoFocus}
         autoCorrect="off"
         placeholder={placeholder}
         highlightRanges={highlightedRanges}

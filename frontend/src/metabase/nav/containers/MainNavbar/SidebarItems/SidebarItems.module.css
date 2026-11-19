@@ -13,6 +13,12 @@
   }
 }
 
+/* Proto nav: one level = chevron→icon = icon→label distance (24px), so nested
+   chevrons sit under the parent's icon and nested icons under its label. */
+.protoNodeRoot {
+  padding-left: calc(var(--tree-depth) * 1.5rem);
+}
+
 .selected {
   color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background_surface-brand-subtle);

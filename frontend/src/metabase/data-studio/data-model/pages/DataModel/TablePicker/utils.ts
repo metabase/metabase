@@ -150,28 +150,39 @@ export function transformToTreeTableFormat(
   );
 }
 
+export function transformDatabaseChildrenToTreeTable(
+  database: DatabaseNode,
+  canFlattenSingleSchema = true,
+): TablePickerTreeNode[] {
+  const isSingleSchema = database.children.length === 1;
+  const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
+
+  if (shouldFlattenSingleSchema) {
+    return sort(database.children[0].children).map(transformTableNode);
+  }
+
+  return sort(database.children).flatMap((schema) => {
+    if (schema.label === UNNAMED_SCHEMA_NAME) {
+      return sort(schema.children).map(transformTableNode);
+    }
+    return [transformSchemaNode(schema)];
+  });
+}
+
 function transformDatabaseNode(
   database: DatabaseNode,
   canFlattenSingleSchema: boolean,
 ): TablePickerTreeNode {
   const { databaseId } = database.value;
-  const isSingleSchema = database.children.length === 1;
-  const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
-
-  let children: TablePickerTreeNode[];
-  let isLoaded = database.loaded === true;
-  if (shouldFlattenSingleSchema) {
-    const [schema] = database.children;
-    children = sort(schema.children).map(transformTableNode);
-    isLoaded = isLoaded && schema.loaded === true;
-  } else {
-    children = sort(database.children).flatMap((schema) => {
-      if (schema.label === UNNAMED_SCHEMA_NAME) {
-        return sort(schema.children).map(transformTableNode);
-      }
-      return [transformSchemaNode(schema)];
-    });
-  }
+  const children = transformDatabaseChildrenToTreeTable(
+    database,
+    canFlattenSingleSchema,
+  );
+  // A flattened single schema's tables are only there once the schema loaded too
+  const [singleSchema] = database.children;
+  const isFlattened = canFlattenSingleSchema && database.children.length === 1;
+  const isLoaded =
+    database.loaded === true && (!isFlattened || singleSchema.loaded === true);
 
   return {
     id: `db:${databaseId}`,

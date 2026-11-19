@@ -351,6 +351,7 @@ function ModernDataPicker({
               setFocusPicker(true);
             }
           }}
+          onFocus={() => setIsOpened(true)}
           onClickCapture={(e) => {
             e.stopPropagation();
             setIsOpened(true);

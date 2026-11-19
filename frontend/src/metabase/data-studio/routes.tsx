@@ -22,6 +22,7 @@ import * as Urls from "metabase/urls";
 
 import { getDataStudioActionRoutes } from "./actions/routes";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
+import { getDataStudioEventsRoutes } from "./events/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
 import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
@@ -118,6 +119,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
             {getDataStudioTransformRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}
+          {getDataStudioEventsRoutes()}
           {getDataStudioSnippetRoutes()}
           {getDataStudioActionRoutes(IsAdmin)}
           {PLUGIN_DATA_APPS.isEnabled ? (

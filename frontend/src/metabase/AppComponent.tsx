@@ -43,6 +43,7 @@ import { AppKBarProvider } from "./AppKBarProvider";
 import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
+import { PROTO_NAV_ENABLED } from "./nav/containers/ProtoNavbar/flag";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
@@ -120,7 +121,7 @@ export function App() {
           <KeyboardTriggeredErrorModal />
           <Flex className={CS.spread} direction="column">
             <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
+            {isAppBarVisible && !PROTO_NAV_ENABLED && <AppBarContainer />}
             <Flex
               className={cx(
                 CS.overflowHidden,

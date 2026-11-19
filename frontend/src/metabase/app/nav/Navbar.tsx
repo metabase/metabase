@@ -5,6 +5,10 @@ import { getUser } from "metabase/current-user";
 import { getDashboard } from "metabase/dashboard/shell-selectors";
 import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
+import {
+  PROTO_NAV_ENABLED,
+  ProtoNavbar,
+} from "metabase/nav/containers/ProtoNavbar";
 import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { useLocation, useParams } from "metabase/router";
@@ -40,6 +44,19 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
 
   if (!user) {
     return null;
+  }
+
+  if (PROTO_NAV_ENABLED) {
+    return isAdminApp ? (
+      <AdminNavbar path={location.pathname} adminPaths={adminPaths} />
+    ) : (
+      <ProtoNavbar
+        isOpen={isOpen}
+        location={location}
+        params={params}
+        dashboard={dashboard}
+      />
+    );
   }
 
   return isAdminApp ? (

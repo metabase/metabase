@@ -10,6 +10,7 @@ import {
 import { EditableDescription } from "metabase/common/components/EditableDescription";
 import { EditableText } from "metabase/common/components/EditableText";
 import { getIsTenantUser, getUser } from "metabase/current-user";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -103,7 +104,11 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     );
   }
 
-  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
+  if (
+    !PROTO_NAV_ENABLED &&
+    PLUGIN_COLLECTIONS.isSyncedCollection(collection) &&
+    !isTenantUser
+  ) {
     // external users should see the normal icon, they should not know about what synced collections are
     return <Icon name="synced_collection" size={24} c="core-brand" />;
   }

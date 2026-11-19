@@ -105,6 +105,17 @@ export function LegacyBrowseRedirect() {
 const queryBuilder = () =>
   loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 
+const newQueryPage = () =>
+  import("metabase/query_builder/components/NewQueryPage").then(
+    ({ NewQueryPage }) => ({ Component: NewQueryPage }),
+  );
+
+// PROTOTYPE: static mock of the GitHub repo remote sync publishes from.
+const mockedGithubRepoPage = () =>
+  import("metabase/nav/containers/ProtoNavbar/MockedGithubRepo").then(
+    ({ MockedGithubRepoPage }) => ({ Component: MockedGithubRepoPage }),
+  );
+
 const metabotQueryBuilder = () =>
   loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
     Component: MetabotQueryBuilder,
@@ -254,6 +265,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
       // For compatibility: use the standard setup for embedding
       { path: "/setup/embedding", element: redirect("/setup") },
+
+      // PROTOTYPE: a stand-in for an external GitHub page, so no auth needed.
+      { path: "/mocked-github-repo", lazy: mockedGithubRepoPage },
 
       // APP
       {
@@ -415,6 +429,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   { index: true, lazy: queryBuilder },
                   { path: "notebook", lazy: queryBuilder },
                   { path: "ask", lazy: metabotQueryBuilder },
+                  { path: "new", lazy: newQueryPage },
+                  { path: "new/notebook", lazy: newQueryPage },
+                  { path: "new/sql", lazy: newQueryPage },
                   ...toRouteObjects(getExplorationsRoutes()),
                   { path: ":slug", lazy: queryBuilder },
                   { path: ":slug/notebook", lazy: queryBuilder },

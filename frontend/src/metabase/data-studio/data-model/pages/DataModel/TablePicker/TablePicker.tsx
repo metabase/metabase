@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
@@ -18,6 +19,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { useSelection } from "../contexts/SelectionContext";
@@ -59,7 +61,6 @@ export function TablePicker({
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
-
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
 
   useEffect(() => {
@@ -99,6 +100,21 @@ export function TablePicker({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+
+        {path.databaseId != null &&
+          path.schemaName != null &&
+          path.tableId == null && (
+            <Button
+              component={ForwardRefLink}
+              to={Urls.dataStudioSchemaViewer({
+                databaseId: path.databaseId,
+                schema: path.schemaName,
+              })}
+              leftSection={<Icon name="network" size={16} c="icon-primary" />}
+            >
+              {t`View schema`}
+            </Button>
+          )}
 
         <Popover
           width={rem(340)}

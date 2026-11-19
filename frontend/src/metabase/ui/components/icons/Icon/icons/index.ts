@@ -68,6 +68,7 @@ import combine_component from "./combine.svg?component";
 import comment_component from "./comment.svg?component";
 import company_component from "./company.svg?component";
 import compare_component from "./compare.svg?component";
+import compass_component from "./compass.svg?component";
 import connections_component from "./connections.svg?component";
 import contract_component from "./contract.svg?component";
 import copy_component from "./copy.svg?component";
@@ -211,6 +212,7 @@ import progress_component from "./progress.svg?component";
 import publish_component from "./publish.svg?component";
 import published_component from "./published.svg?component";
 import pulse_component from "./pulse.svg?component";
+import query_component from "./query.svg?component";
 import question_component from "./question.svg?component";
 import quote_component from "./quote.svg?component";
 import receipt_component from "./receipt.svg?component";
@@ -371,6 +373,7 @@ export const Icons: Record<IconName, React.FC> = {
   cloud_12: cloud_12_component,
   cloud_filled: cloud_filled_component,
   compare: compare_component,
+  compass: compass_component,
   combine: combine_component,
   company: company_component,
   comment: comment_component,
@@ -532,6 +535,7 @@ export const Icons: Record<IconName, React.FC> = {
   sum: sum_component,
   sync: sync_component,
   synced_collection: synced_collection_component,
+  query: query_component,
   question: question_component,
   quote: quote_component,
   return: return_component,

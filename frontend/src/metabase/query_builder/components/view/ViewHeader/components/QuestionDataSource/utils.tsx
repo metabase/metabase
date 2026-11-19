@@ -1,6 +1,7 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
@@ -124,19 +125,6 @@ function getQueryDataSourceParts(
   const databaseId = Lib.databaseID(query);
   const database = Lib.databaseMetadata(query);
 
-  if (databaseId != null && database != null) {
-    const databaseInfo = Lib.displayInfo(query, -1, database);
-    parts.push({
-      icon: !subHead ? "database" : undefined,
-      name: databaseInfo.displayName,
-      href:
-        databaseId >= 0
-          ? Urls.browseDatabase({ id: databaseId, name: databaseInfo.name })
-          : undefined,
-      model: "database",
-    });
-  }
-
   const items = [
     getPrimarySourceMetadata(query),
     ...Lib.joins(query, -1).map((join) => Lib.joinedThing(query, join)),
@@ -146,6 +134,27 @@ function getQueryDataSourceParts(
     .filter(isNotNull);
 
   const [sourceItem] = items;
+
+  if (databaseId != null && database != null) {
+    const databaseInfo = Lib.displayInfo(query, -1, database);
+    const sourceSchemaName =
+      sourceItem?.type === "table" ? sourceItem.schemaName : null;
+    parts.push({
+      icon: !subHead ? "database" : undefined,
+      name: databaseInfo.displayName,
+      href:
+        databaseId >= 0
+          ? PROTO_NAV_ENABLED && sourceSchemaName != null
+            ? Urls.dataStudioData({
+                databaseId,
+                schemaName: sourceSchemaName,
+              })
+            : Urls.browseDatabase({ id: databaseId, name: databaseInfo.name })
+          : undefined,
+      model: "database",
+    });
+  }
+
   if (sourceItem == null) {
     return filterParts(parts);
   }
@@ -195,10 +204,15 @@ function getSchemaPart(
     name: sourceItem.schemaName,
     href:
       databaseId >= 0
-        ? Urls.browseSchema({
-            db_id: databaseId,
-            schema_name: sourceItem.schemaName,
-          })
+        ? PROTO_NAV_ENABLED
+          ? Urls.dataStudioData({
+              databaseId,
+              schemaName: sourceItem.schemaName,
+            })
+          : Urls.browseSchema({
+              db_id: databaseId,
+              schema_name: sourceItem.schemaName,
+            })
         : undefined,
   };
 }

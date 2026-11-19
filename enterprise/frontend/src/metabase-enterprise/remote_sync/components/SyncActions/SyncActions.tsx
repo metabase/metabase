@@ -6,7 +6,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useSetting } from "metabase/settings";
-import { SettingsSection } from "metabase/settings-components";
 import { Button, Divider, Group, Stack, Text } from "metabase/ui";
 import {
   useImportChangesMutation,
@@ -17,7 +16,8 @@ import type { RemoteSyncTaskId } from "metabase-types/api";
 import { trackPullChanges, trackRemoteSyncDeactivated } from "../../analytics";
 import { SyncTaskModal } from "../SyncTaskModal";
 
-export function SyncActionsSection() {
+// Pull-now and turn-off actions, shown under Advanced on the settings page.
+export function SyncActions() {
   const isEnabled = useSetting("remote-sync-enabled");
   const syncType = useSetting("remote-sync-type");
 
@@ -26,7 +26,7 @@ export function SyncActionsSection() {
   }
 
   return (
-    <SettingsSection stackProps={{ gap: "lg" }}>
+    <Stack gap="lg">
       {syncType === "read-only" && (
         <>
           <ActionRow
@@ -38,11 +38,11 @@ export function SyncActionsSection() {
         </>
       )}
       <ActionRow
-        title={t`Turn off remote sync`}
+        title={t`Turn off git integration`}
         description={t`Content stays on this instance, but it won't sync with the repository any more.`}
         action={<DisableButton />}
       />
-    </SettingsSection>
+    </Stack>
   );
 }
 
@@ -106,7 +106,7 @@ function DisableButton() {
 
   const handleClick = () =>
     showConfirmation({
-      title: t`Turn off remote sync?`,
+      title: t`Turn off git integration?`,
       message: t`Content stays on this instance, but it won't sync with the repository any more.`,
       confirmButtonText: t`Turn off`,
       onConfirm: async () => {
@@ -118,7 +118,7 @@ function DisableButton() {
   return (
     <>
       <Button flex="none" loading={isLoading} onClick={handleClick}>
-        {t`Turn off remote sync`}
+        {t`Turn off git integration`}
       </Button>
       {modalContent}
     </>

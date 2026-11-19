@@ -45,6 +45,8 @@ type LibraryTreePageProps = {
   createMenu?: ReactNode;
   pageMenu?: LibraryPageMenuProps;
   emptyState?: ReactNode;
+  /** Turns off row selection and bulk actions, e.g. for read-only views */
+  showCheckboxes?: boolean;
   children?: ReactNode;
   renderRowMenu: (item: TreeItem) => ReactNode;
   isChildrenLoading?: (row: Row<TreeItem>) => boolean;
@@ -69,6 +71,7 @@ export function LibraryTreePage({
   createMenu,
   pageMenu,
   emptyState,
+  showCheckboxes = true,
   children,
   renderRowMenu,
   isChildrenLoading,
@@ -80,6 +83,7 @@ export function LibraryTreePage({
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const canSelectRows = showCheckboxes && !isRemoteSyncReadOnly;
   const { treeTableInstance, allRows, emptyMessage } =
     useLibraryTreeTableInstance({
       tree,
@@ -147,7 +151,7 @@ export function LibraryTreePage({
                 ) : (
                   <TreeTable
                     instance={treeTableInstance}
-                    showCheckboxes={!isRemoteSyncReadOnly}
+                    showCheckboxes={canSelectRows}
                     getSelectionState={getSelectionState}
                     isRowDisabled={getRowCovered}
                     onCheckboxClick={onCheckboxClick}
@@ -172,7 +176,7 @@ export function LibraryTreePage({
         </Stack>
       </SectionLayout>
       {children}
-      {!isRemoteSyncReadOnly && (
+      {canSelectRows && (
         <LibraryBulkActions
           selectedItems={selectedItems}
           selectionSection={selectionSection}

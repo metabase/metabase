@@ -16,6 +16,7 @@ import { useLatest, useMount } from "react-use";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { selectMetadataProvider } from "metabase/metadata-store";
+import { parseNewQueryMode } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import {
@@ -28,6 +29,7 @@ import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryE
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector, useStore } from "metabase/redux";
 import type { QueryModalType } from "metabase/redux/store";
+import { useLocation } from "metabase/router";
 import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -198,10 +200,14 @@ export const NativeQueryEditorRoot = forwardRef<
   const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
     useState(false);
 
-  // do not show reference sidebar on small screens automatically
+  // do not show reference sidebar on small screens automatically,
+  // or on the New Query SQL idle page where the editor is embedded
+  // in a compact prompt card.
   const screenSize = useNotebookScreenSize();
+  const { pathname } = useLocation();
+  const isNewQuerySqlPage = parseNewQueryMode(pathname) === "sql";
   const shouldOpenDataReference =
-    screenSize !== "small" && canAutoOpenDataReference;
+    screenSize !== "small" && canAutoOpenDataReference && !isNewQuerySqlPage;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
@@ -404,6 +410,7 @@ export const NativeQueryEditorRoot = forwardRef<
                   query={query}
                   proposedQuery={proposedQuestion?.query()}
                   readOnly={readOnly}
+                  autoFocus={!isNewQuerySqlPage}
                   placeholder={placeholder}
                   hasSqlGenerationAccess={hasSqlGenerationAccess}
                   highlightedLineNumbers={highlightedLineNumbers}

@@ -5,5 +5,9 @@ export function useIsAskPage() {
   // Metabot also renders outside the app router (the SDK, and component tests
   // that mount it bare), where there is no ask page.
   const location = useMaybeLocation();
-  return matchPath(Urls.askQuestion(), location?.pathname ?? "") !== null;
+  const pathname = location?.pathname ?? "";
+  return (
+    matchPath(Urls.askQuestion(), pathname) !== null ||
+    pathname === "/question/new"
+  );
 }

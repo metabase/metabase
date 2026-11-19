@@ -5,13 +5,14 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { getUserIsAdmin } from "metabase/current-user";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { ActionIcon, Box, Flex, Group, Icon } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Group, Icon } from "metabase/ui";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
@@ -118,7 +119,18 @@ export const AdminNavbar = ({
           currentPath={currentPath}
           isAdmin={isAdmin}
         />
-        <AppSwitcher />
+        {PROTO_NAV_ENABLED ? (
+          <Button
+            component={Link}
+            to="/"
+            variant="subtle"
+            c="text-primary-inverse"
+          >
+            {t`Back to app`}
+          </Button>
+        ) : (
+          <AppSwitcher />
+        )}
       </Group>
     </Flex>
   );

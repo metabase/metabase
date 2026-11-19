@@ -52,6 +52,8 @@ export const MetabotChat = ({
   config = defaultConfig,
   className,
   headerActions,
+  hideInput = false,
+  hideEmptyState = false,
   size = "md",
 }: {
   conversationId: string;
@@ -60,6 +62,8 @@ export const MetabotChat = ({
   config?: MetabotChatConfig;
   className?: string;
   headerActions?: ReactNode;
+  hideInput?: boolean;
+  hideEmptyState?: boolean;
   size?: "md" | "lg";
 }) => {
   const [
@@ -137,7 +141,7 @@ export const MetabotChat = ({
           data-testid="metabot-chat-messages"
           {...{ [METABOT_HOVER_CARD_BOUNDARY_ATTR]: "" }}
         >
-          {!hasMessages && !metabot.isDoingScience && (
+          {!hasMessages && !metabot.isDoingScience && !hideEmptyState && (
             <>
               {/* empty state */}
               <Flex
@@ -232,7 +236,7 @@ export const MetabotChat = ({
         </Box>
       </Box>
 
-      {isConfigured && (
+      {isConfigured && !hideInput && (
         <Box className={Styles.footerContainer}>
           <Box className={Styles.textInputContainer}>
             {metabot.longChatNotice && onNewConversation && (

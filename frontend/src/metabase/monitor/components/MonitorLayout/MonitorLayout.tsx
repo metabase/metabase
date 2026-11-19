@@ -21,6 +21,7 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
@@ -294,6 +295,15 @@ export function MonitorLayout() {
       )}
     </>
   );
+
+  // The prototype nav's Monitor section replaces the Monitor sidebar.
+  if (PROTO_NAV_ENABLED) {
+    return (
+      <MonitorContent>
+        <Outlet />
+      </MonitorContent>
+    );
+  }
 
   return (
     <AreaLayout
