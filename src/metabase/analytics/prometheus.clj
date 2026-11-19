@@ -1159,9 +1159,9 @@
 
 (defn clear!
   "Call Collector.clear() on given metric.
-   Does nothing when no registry is set up, as after [[shutdown!]]; setting one up here would restart what shutdown
-   stopped."
+   Does nothing when no registry is set up, as after [[shutdown!]]."
   [metric]
+  ;; never sets a registry up, which after shutdown would restart what it stopped
   (when-let [registry (:registry system)]
     (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry registry) metric nil)))))
 

@@ -963,25 +963,6 @@
                      (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
               (is (= 0 (notification.send/queue-size queue))))))))))
 
-(deftest shutdown-timeout-setting-test
-  (testing "a shutdown timeout that does not parse, or is out of range, still gives a deadline shutdown can use"
-    (is (= {"30s"         20
-            "-5"          0
-            "99999999999" 86400}
-           (into {} (for [value ["30s" "-5" "99999999999"]]
-                      (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" value]
-                        [value (notification.settings/notification-shutdown-timeout-seconds)])))))))
-
-(deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
-  (testing "a dispatcher that cannot be created does not keep the other from closing"
-    (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
-      (with-redefs-fn {#'notification.send/dedup-priority-dispatcher  (delay dispatcher)
-                       #'notification.send/simple-blocking-dispatcher (delay (throw (ex-info "No pool" {})))}
-        (fn []
-          (notification.send/shutdown!)
-          (is (= ::notification.send/shutdown
-                 ((:dispatch-fn dispatcher) {:id 1 :payload_type :notification/testing}))))))))
-
 (deftest notification-dispatcher-shutdown-timeout-test
   (testing "a dispatcher that cannot empty its queue in time stops sending, even when a send swallows the interrupt"
     (let [sending     (java.util.concurrent.CountDownLatch. 1)
@@ -1014,3 +995,22 @@
                 :interrupted? (deref interrupted 5000 false)
                 :sent-later   (deref sent-later 1000 nil)
                 :refused      (dispatch-fn {:id 3 :payload_type :notification/testing})}))))))
+
+(deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
+  (testing "a dispatcher that cannot be created does not keep the other from closing"
+    (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
+      (with-redefs-fn {#'notification.send/dedup-priority-dispatcher  (delay dispatcher)
+                       #'notification.send/simple-blocking-dispatcher (delay (throw (ex-info "No pool" {})))}
+        (fn []
+          (notification.send/shutdown!)
+          (is (= ::notification.send/shutdown
+                 ((:dispatch-fn dispatcher) {:id 1 :payload_type :notification/testing}))))))))
+
+(deftest shutdown-timeout-setting-test
+  (testing "a shutdown timeout that does not parse, or is out of range, still gives a deadline shutdown can use"
+    (is (= {"30s"         20
+            "-5"          0
+            "99999999999" 86400}
+           (into {} (for [value ["30s" "-5" "99999999999"]]
+                      (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" value]
+                        [value (notification.settings/notification-shutdown-timeout-seconds)])))))))

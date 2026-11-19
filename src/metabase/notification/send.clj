@@ -534,20 +534,20 @@
         shutdown-fn (fn [timeout-ms]
                       (log/infof "Gracefully shutting down notification dispatcher with %d pending notifications to process" (queue-size queue))
                       (close-fn)
-                      (if (try
-                            (.awaitTermination ^ThreadPoolExecutor executor
-                                               timeout-ms
-                                               java.util.concurrent.TimeUnit/MILLISECONDS)
-                            (catch InterruptedException _
-                              (log/warn "Interrupted while waiting for notification executor to terminate")
-                              false))
-                        (do (log/info "Notification worker shut down successfully")
-                            true)
-                        (do (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
-                                       (queue-size queue))
-                            (.set abandon-flag true)
-                            (.shutdownNow ^ThreadPoolExecutor executor)
-                            false)))]
+                      (let [drained? (try
+                                       (.awaitTermination ^ThreadPoolExecutor executor
+                                                          timeout-ms
+                                                          java.util.concurrent.TimeUnit/MILLISECONDS)
+                                       (catch InterruptedException _
+                                         (log/warn "Interrupted while waiting for notification executor to terminate")
+                                         false))]
+                        (if drained?
+                          (log/info "Notification worker shut down successfully")
+                          (do (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
+                                         (queue-size queue))
+                              (.set abandon-flag true)
+                              (.shutdownNow ^ThreadPoolExecutor executor)))
+                        drained?))]
     (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (start-worker!))
@@ -638,10 +638,11 @@
       (try
         ;; all of them refuse new notifications before any wait begins, so no dispatcher takes work while another drains
         (run! #((:close-fn %)) workers)
-        (let [timeout-s (notification.settings/notification-shutdown-timeout-seconds)
-              deadline  (+ (System/nanoTime) (* 1000000000 timeout-s))]
+        (let [timeout-s    (notification.settings/notification-shutdown-timeout-seconds)
+              deadline     (+ (System/nanoTime) (* 1000000000 timeout-s))
+              remaining-ms #(max 0 (quot (- deadline (System/nanoTime)) 1000000))]
           ;; every dispatcher gets its wait, even after one ran out, so each one left over is interrupted
-          (when (every? true? (mapv #((:shutdown-fn %) (max 0 (quot (- deadline (System/nanoTime)) 1000000))) workers))
+          (when (every? true? (mapv #((:shutdown-fn %) (remaining-ms)) workers))
             (log/info "All notification workers shut down successfully")))
         (catch Exception e
           (log/errorf "Error shutting down notification workers: %s" (ex-message e)))))))
