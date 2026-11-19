@@ -1160,10 +1160,10 @@
      (prometheus/set registry metric (qualified-vals labels) amount))))
 
 (defn clear!
-  "Call Collector.clear() on given metric."
+  "Call Collector.clear() on given metric.
+   Does nothing when no registry is set up, as after [[shutdown!]]; setting one up here would restart what shutdown
+   stopped."
   [metric]
-  (when-not system
-    (setup!))
   (when system
     (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
 

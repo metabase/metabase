@@ -273,13 +273,17 @@
       (is (= {:inc     nil
               :dec     nil
               :observe nil
-              :set     nil}
+              :set     nil
+              :clear   nil
+              :system  nil}
              {:inc     (prometheus/inc! :metabase-email/messages)
               :dec     (prometheus/dec! :metabase-search/queue-size)
               :observe (prometheus/observe! :metabase-notification/wait-duration-ms
                                             {:payload-type :notification/card}
                                             5)
-              :set     (prometheus/set! :metabase-search/queue-size 1)})))))
+              :set     (prometheus/set! :metabase-search/queue-size 1)
+              :clear   (prometheus/clear! :metabase-search/queue-size)
+              :system  @#'prometheus/system})))))
 
 (deftest pull-collector-test
   (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
