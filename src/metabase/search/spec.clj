@@ -337,6 +337,16 @@
                                  [:= (add-table :updated field) (add-table :this field)]))
     :else                (throw (ex-info "Unknown :id form" {:id id-fields}))))
 
+(def overlays
+  "The base models whose rows search reads through an overlay of their user settings, mapped to that overlay."
+  {:model/Table :model/TableOverlay
+   :model/Field :model/FieldOverlay})
+
+(def overlaid-by
+  "The user-settings models, mapped to the base model whose rows they overlay and the column naming that row."
+  {:model/TableUserSettings [:model/Table :table_id]
+   :model/FieldUserSettings [:model/Field :field_id]})
+
 (defn- search-model-hooks
   "Generate a map indicating which search-models to update based on which fields are modified for a given model."
   [spec]

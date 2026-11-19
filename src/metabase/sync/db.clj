@@ -92,46 +92,51 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
+
+(mu/defn stored-field-order :- [:maybe :keyword]
+  "The `field_order` of the Table with `table-id` as stored, without the one a user set."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :field_order :model/Table :id table-id))
 
 (mu/defn table-in-database
   "The Table with `table-id` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :db_id database-id :id table-id))
+  (t2/select-one :model/TableOverlay :db_id database-id :id table-id))
 
 (mu/defn table-by-name
   "The Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :name table-name))
+  (t2/select-one :model/TableOverlay :db_id database-id :name table-name))
 
 (mu/defn table-by-schema-and-name
   "The Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :name table-name :schema schema))
+  (t2/select-one :model/TableOverlay :db_id database-id :name table-name :schema schema))
 
 (mu/defn inactive-table-by-schema-and-name
   "The inactive Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :schema schema :name table-name :active false))
+  (t2/select-one :model/TableOverlay :db_id database-id :schema schema :name table-name :active false))
 
 (mu/defn active-table-id-by-name
   "The ID of the active Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
-  (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true))
+  (t2/select-one-pk :model/TableOverlay :db_id database-id :name table-name :active true))
 
 (mu/defn active-tables-by-lower-name-and-schema
   "The active Tables of the Database with `database-id` whose lower-cased name and schema match, hidden ones included."
   [database-id  :- ::lib.schema.id/database
    lower-name   :- :string
    lower-schema :- [:maybe :string]]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id database-id
              :%lower.name lower-name
              :%lower.schema lower-schema
@@ -150,7 +155,7 @@
   [database-id :- ::lib.schema.id/database
    amount      :- :int
    unit        :- :keyword]
-  (t2/select :model/Table
+  (t2/select :model/TableOverlay
              :db_id database-id
              :active false
              :archived_at nil
@@ -160,39 +165,39 @@
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
+  (t2/select-pk->fn :db_id :model/TableOverlay :id [:in table-ids]))
 
 (mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [:model/Table :schema] :db_id database-id))
+  (t2/reducible-select [:model/TableOverlay :schema] :db_id database-id))
 
 (mu/defn active-table-ids-reducible
   "Reducible `:id` rows of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [:model/Table :id] :db_id database-id :active true))
+  (t2/reducible-select [:model/TableOverlay :id] :db_id database-id :active true))
 
 (mu/defn active-table-count
   "The number of active Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Table :db_id database-id :active true))
+  (t2/count :model/TableOverlay :db_id database-id :active true))
 
 (mu/defn sync-table-ids
   "The IDs of the synced Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-vec :id :model/Table :db_id database-id {:where (sync-tables-clause (t2/table-name :model/Table))}))
+  (t2/select-fn-vec :id :model/TableOverlay :db_id database-id {:where (sync-tables-clause (t2/table-name :model/TableOverlay))}))
 
 (mu/defn sync-table-schemas
   "The distinct `:schema` rows of the synced Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select-distinct [:schema]
-             :from            [[(t2/table-name :model/Table) :t]]
+             :from            [[(t2/table-name :model/TableOverlay) :t]]
              :where           [:and (sync-tables-clause :t) [:= :t.db_id database-id]]}))
 
 (mu/defn sync-tables-count
   "The number of synced Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Table :db_id database-id {:where (sync-tables-clause (t2/table-name :model/Table))}))
+  (t2/count :model/TableOverlay :db_id database-id {:where (sync-tables-clause (t2/table-name :model/TableOverlay))}))
 
 (mu/defn sync-tables-reducible
   "Reducible synced Tables of the Database with `database-id` ordered by schema and name, optionally narrowed to
@@ -200,9 +205,9 @@
   [database-id  :- ::lib.schema.id/database
    schema-names :- [:maybe [:or [:set [:maybe :string]] [:sequential [:maybe :string]]]]
    table-names  :- [:maybe [:or [:set :string] [:sequential :string]]]]
-  (t2/reducible-select :model/Table
+  (t2/reducible-select :model/TableOverlay
                        :db_id database-id
-                       {:where    [:and (sync-tables-clause (t2/table-name :model/Table))
+                       {:where    [:and (sync-tables-clause (t2/table-name :model/TableOverlay))
                                    (when (seq schema-names) [:in :schema schema-names])
                                    (when (seq table-names) [:in :name table-names])]
                         :order-by [[:schema :asc] [:name :asc]]}))
@@ -210,12 +215,12 @@
 (mu/defn sync-tables-by-earliest-analyzed-reducible
   "Reducible synced Tables of the Database with `database-id` ordered by the earliest `last_analyzed` of their Fields."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select :model/Table
+  (t2/reducible-select :model/TableOverlay
                        {:select    [:t.*]
-                        :from      [[(t2/table-name :model/Table) :t]]
+                        :from      [[(t2/table-name :model/TableOverlay) :t]]
                         :left-join [[^:allow-subquery {:select   [:table_id
                                                                   [[:min :last_analyzed] :earliest_last_analyzed]]
-                                                       :from     [(t2/table-name :model/Field)]
+                                                       :from     [(t2/table-name :model/FieldOverlay)]
                                                        :group-by [:table_id]} :sub]
                                     [:= :t.id :sub.table_id]]
                         :where     [:and (sync-tables-clause :t) [:= :t.db_id database-id]]
@@ -266,12 +271,12 @@
 (mu/defn fields
   "The Fields with `field-ids`, which `our-metadata` diffs against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn fields-for-field-values
   "The columns needed to scan FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
+  (t2/select [:model/FieldOverlay :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
               :table_id :has_field_values]
              :id [:in field-ids]))
 
@@ -327,7 +332,7 @@
    refingerprint?     :- :boolean
    version->base-types :- [:map-of :int [:set [:or :keyword :string]]]
    limit              :- ms/PositiveInt]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              {:where    [:and
                          [:= :table_id table-id]
                          (needs-fingerprint-update-clause refingerprint? version->base-types)]
@@ -337,12 +342,12 @@
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id))
+  (t2/select-one-fn :fingerprint :model/FieldOverlay :id field-id))
 
 (mu/defn active-fields-metadata-for-table
   "The sync metadata columns of the active Fields of the Table with `table-id`, in field order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+  (t2/select [:model/FieldOverlay :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
               :parent_id :id :description :database_position :nfc_path
               :database_is_auto_increment :database_required
               :database_default :database_is_generated :database_is_nullable :database_is_pk
@@ -355,7 +360,7 @@
   "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
   [table-id :- ::lib.schema.id/table
    limit    :- ms/PositiveInt]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              :table_id table-id
              :active true
              :visibility_type "normal"
@@ -366,7 +371,7 @@
   [table-id    :- ::lib.schema.id/table
    parent-id   :- [:maybe ms/PositiveInt]
    lower-names :- [:sequential :string]]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              :table_id table-id
              :%lower.name [:in lower-names]
              :parent_id parent-id
@@ -376,7 +381,7 @@
   "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
   [table-id            :- ::lib.schema.id/table
    fingerprint-version :- :int]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              :table_id table-id
              :active true
              :visibility_type [:not-in ["sensitive" "retired"]]
@@ -386,7 +391,7 @@
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
   [table-id :- ::lib.schema.id/table]
-  (t2/count :model/Field
+  (t2/count :model/FieldOverlay
             :table_id table-id
             :active true
             :visibility_type [:not-in ["sensitive" "retired"]]
@@ -405,7 +410,7 @@
    [:= :dimension_interestingness nil]
    [:not-in :visibility_type ["sensitive" "retired"]]
    [:in :table_id ^:allow-subquery {:select [:id]
-                                    :from   [(t2/table-name :model/Table)]
+                                    :from   [(t2/table-name :model/TableOverlay)]
                                     :where  [:= :db_id database-id]}]])
 
 (mu/defn unscored-field-ids-for-database :- [:sequential ::lib.schema.id/field]
@@ -420,9 +425,9 @@
    limit       :- ms/PositiveInt]
   ;; `select-fn-vec` gives nil rather than an empty vector when nothing matches, which is every call once the
   ;; backfill has caught up
-  (or (t2/select-fn-vec :id :model/Field
+  (or (t2/select-fn-vec :id :model/FieldOverlay
                         {:select   [:id]
-                         :from     [(t2/table-name :model/Field)]
+                         :from     [(t2/table-name :model/FieldOverlay)]
                          :where    [:and (unscored-fields-clause database-id) [:> :id after-id]]
                          :order-by [[:id :asc]]
                          :limit    limit})
@@ -431,18 +436,18 @@
 (mu/defn unscored-field-count-for-database :- :int
   "How many active, visible Fields of the Database with `database-id` have no dimension interestingness score."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Field {:where (unscored-fields-clause database-id)}))
+  (t2/count :model/FieldOverlay {:where (unscored-fields-clause database-id)}))
 
-(mu/defn fields-for-interestingness-scoring :- [:sequential (ms/InstanceOf :model/Field)]
+(mu/defn fields-for-interestingness-scoring :- [:sequential :metabase.sync.interface/FieldInstance]
   "The Fields with `field-ids`, for interestingness scoring."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/FieldOverlay :id [:in field-ids]))
 
 (mu/defn top-level-field-ids-by-name
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select-pks-vec :model/Field :name [:in field-names] :table_id table-id :parent_id nil))
+  (t2/select-pks-vec :model/FieldOverlay :name [:in field-names] :table_id table-id :parent_id nil))
 
 (mu/defn top-level-field-ids-by-schema-table-and-name-reducible
   "Reducible `:id` rows of the top-level Fields of the Database with `database-id` matching one of the
@@ -450,8 +455,8 @@
   [database-id        :- ::lib.schema.id/database
    schema+table+names :- [:sequential [:tuple :string :string :string]]]
   (t2/reducible-query {:select     [[:f.id]]
-                       :from      [[(t2/table-name :model/Field) :f]]
-                       :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                       :from      [[(t2/table-name :model/FieldOverlay) :f]]
+                       :inner-join [[(t2/table-name :model/TableOverlay) :t] [:= :f.table_id :t.id]]
                        :where      [:and
                                     [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
                                     [:= :t.db_id database-id]
@@ -460,15 +465,15 @@
 (mu/defn indexed-field-ids-for-table
   "The IDs of the Fields of the Table with `table-id` marked as indexed."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :database_indexed true))
+  (t2/select-pks-set :model/FieldOverlay :table_id table-id :database_indexed true))
 
 (mu/defn indexed-top-level-field-ids-for-database
   "The IDs of the top-level Fields of the Database with `database-id` marked as indexed."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Field
+  (t2/select-pks-set :model/FieldOverlay
                      {}
                      :table_id [:in ^:allow-subquery {:select [[:t.id]]
-                                                      :from   [[(t2/table-name :model/Table) :t]]
+                                                      :from   [[(t2/table-name :model/TableOverlay) :t]]
                                                       :where  [:= :t.db_id database-id]}]
                      :parent_id nil
                      :database_indexed true))
@@ -493,7 +498,7 @@
   "The ID of the Field named `field-name` of the Table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
-  (t2/select-one-pk :model/Field :name field-name :table_id table-id))
+  (t2/select-one-pk :model/FieldOverlay :name field-name :table_id table-id))
 
 (mu/defn reactivate-fields!
   "Mark the Fields with `field-ids` active, returning the number updated."
@@ -541,8 +546,8 @@
                :last_analyzed       nil
                :table_id            [:in ^:allow-subquery
                                      {:select [:id]
-                                      :from   [(t2/table-name :model/Table)]
-                                      :where  [:and (sync-tables-clause :metabase_table) [:= :db_id database-id]]}]}
+                                      :from   [[(t2/table-name :model/TableOverlay) :t]]
+                                      :where  [:and (sync-tables-clause :t) [:= :t.db_id database-id]]}]}
               {:last_analyzed :%now}))
 
 (defn- fk-field-id-subquery
@@ -553,8 +558,8 @@
   [db-id table-schema table-name column-name unless-user-set?]
   ^:allow-subquery
   {:select    [[[:min :f.id] :id]]
-   :from      [[(t2/table-name :model/Field) :f]]
-   :join      [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+   :from      [[(t2/table-name :model/FieldOverlay) :f]]
+   :join      [[(t2/table-name :model/TableOverlay) :t] [:= :f.table_id :t.id]]
    :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :f.id :u.field_id]]
    :where     [:and
                (when unless-user-set?
@@ -584,7 +589,7 @@
   (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name true)))
         pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name false)))]
     (if (and fk-id pk-id)
-      (let [field    (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id)
+      (let [field    (t2/select-one [:model/FieldOverlay :id :fk_target_field_id :has_field_values] :id fk-id)
             user-set (warehouse-schema.user-settings/user-set-field-columns (field-user-settings fk-id))]
         (if (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
           (update-field!
@@ -604,12 +609,12 @@
     [:= :data_sensitivity nil]))
 
 (defn- user-set-data-sensitivity-clause
-  "Honey SQL clause matching Fields whose `data_sensitivity` a user set."
-  []
+  "Honey SQL clause matching the Fields of `model` whose `data_sensitivity` a user set."
+  [model]
   [:exists ^:allow-subquery {:select [1]
                              :from   [[(t2/table-name :model/FieldUserSettings) :s]]
                              :where  [:and
-                                      [:= :s.field_id :metabase_field.id]
+                                      [:= :s.field_id (u/qualified-key (t2/table-name model) :id)]
                                       [:not= :s.data_sensitivity nil]]}])
 
 (mu/defn fields-to-scan-for-data-sensitivity
@@ -617,13 +622,13 @@
   without a label a user set, ordered by ID."
   [table-id       :- ::lib.schema.id/table
    rescan-public? :- [:maybe :boolean]]
-  (t2/select :model/Field
+  (t2/select :model/FieldOverlay
              {:where    [:and
                          [:= :table_id table-id]
                          [:= :active true]
                          [:not= :visibility_type "retired"]
                          (data-sensitivity-to-scan-clause rescan-public?)
-                         [:not (user-set-data-sensitivity-clause)]]
+                         [:not (user-set-data-sensitivity-clause :model/FieldOverlay)]]
               :order-by [[:id :asc]]}))
 
 (mu/defn table-ids-with-fields-to-scan-for-data-sensitivity
@@ -631,29 +636,29 @@
   data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]])."
   [database-id    :- ::lib.schema.id/database
    rescan-public? :- [:maybe :boolean]]
-  (t2/select-fn-set :table_id :model/Field
-                    {:select   [[:metabase_field.table_id :table_id]]
-                     :from     [(t2/table-name :model/Field)]
-                     :join     [(t2/table-name :model/Table) [:= :metabase_field.table_id :metabase_table.id]]
+  (t2/select-fn-set :table_id :model/FieldOverlay
+                    {:select   [[:f.table_id :table_id]]
+                     :from     [[(t2/table-name :model/FieldOverlay) :f]]
+                     :join     [[(t2/table-name :model/TableOverlay) :t] [:= :f.table_id :t.id]]
                      :where    [:and
-                                [:= :metabase_table.db_id database-id]
-                                [:= :metabase_table.active true]
-                                [:= :metabase_field.active true]
-                                [:not= :metabase_field.visibility_type "retired"]
+                                [:= :t.db_id database-id]
+                                [:= :t.active true]
+                                [:= :f.active true]
+                                [:not= :f.visibility_type "retired"]
                                 (data-sensitivity-to-scan-clause rescan-public?)]
-                     :group-by [:metabase_field.table_id]}))
+                     :group-by [:f.table_id]}))
 
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/reducible-select :model/Table :id [:in table-ids] {:order-by [[:schema :asc] [:name :asc]]}))
+  (t2/reducible-select :model/TableOverlay :id [:in table-ids] {:order-by [[:schema :asc] [:name :asc]]}))
 
 (defn- classifier-data-sensitivity-clause
   "Honey SQL clause matching Fields whose non-null `data_sensitivity` the data-sensitivity classifier wrote."
   []
   [:and
    [:not= :data_sensitivity nil]
-   [:not (user-set-data-sensitivity-clause)]])
+   [:not (user-set-data-sensitivity-clause :model/Field)]])
 
 (mu/defn reset-classifier-data-sensitivity-for-table!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
@@ -673,7 +678,7 @@
   [database-id :- ::lib.schema.id/database]
   (let [where [:and
                [:in :table_id ^:allow-subquery {:select [:id]
-                                                :from   [(t2/table-name :model/Table)]
+                                                :from   [(t2/table-name :model/TableOverlay)]
                                                 :where  [:= :db_id database-id]}]
                (classifier-data-sensitivity-clause)]]
     (t2/with-transaction [_conn]

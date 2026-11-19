@@ -50,14 +50,22 @@
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) user-settings/user-settable-field-columns)
+  (when (and (every? #(nil? (get settings %)) (conj user-settings/user-settable-field-columns :position))
              (not-any? #(get settings %) (vals user-settings/field-set-flags)))
     (warehouse-schema.db/delete-field-user-settings! [(:field_id settings)]))
   settings)
 
+(defn- with-user-changes
+  "`settings` with the user `changes` it writes completed for its Field, whose dependents follow them."
+  [settings changes]
+  (let [field (warehouse-schema.db/field (:field_id settings))
+        user  (field/user-changes field (select-keys changes user-settings/user-settable-field-columns))]
+    (field/apply-user-changes! field user)
+    (with-set-flags (merge settings user) (merge changes user))))
+
 (t2/define-before-insert :model/FieldUserSettings
   [settings]
-  (with-set-flags settings settings))
+  (with-user-changes settings settings))
 
 (t2/define-after-insert :model/FieldUserSettings
   [settings]
@@ -65,7 +73,7 @@
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
-  (with-set-flags settings (t2/changes settings)))
+  (with-user-changes settings (t2/changes settings)))
 
 (t2/define-after-update :model/FieldUserSettings
   [settings]
@@ -98,8 +106,8 @@
       (warehouse-schema.db/delete-dimensions-of-type-for-field! id :internal))))
 
 (mu/defn upsert-field-user-settings!
-  "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
-  row; a nil for a column without a set flag unsets it."
+  "Record the user-settable Field columns present in `settings` as the user values of `field` in its settings; a nil
+  for a column without a set flag unsets it."
   [{:keys [id] :as field} :- ::warehouse-schema.schema/field
    settings               :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
@@ -107,25 +115,16 @@
       (t2/with-transaction [_]
         (remove-remappings-ended-by! field settings)
         (warehouse-schema.db/update-or-insert-field-user-settings!
-         id (fn [existing] (cond->> settings existing (with-set-flags settings))))
-        (warehouse-schema.db/update-field! id settings)))))
+         id (fn [existing] (cond->> settings existing (with-set-flags settings))))))))
 
 (mu/defn set-custom-positions!
-  "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
+  "Record `field-id->position` as the Fields' user `custom_position`s in their settings."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
   (t2/with-transaction [_]
-    (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->position))
-          missing  (remove existing (keys field-id->position))]
-      (when (seq missing)
-        (warehouse-schema.db/insert-field-user-settings!
-         (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
-      (when (seq existing)
-        (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))
-      (warehouse-schema.db/update-field-custom-positions! field-id->position))))
+    (warehouse-schema.db/set-field-user-settings-positions! :custom_position field-id->position)))
 
 (mu/defn unset-field-user-settings!
-  "Drop the user values of the Field columns `ks` for `field` from its settings, leaving its row as it is for sync to
-  take over."
+  "Drop the user values of the Field columns `ks` for `field` from its settings, bringing back its own values."
   [{:keys [id]} :- ::warehouse-schema.schema/field
    ks           :- [:sequential (into [:enum] user-settings/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings id)
@@ -137,7 +136,7 @@
            ks))))
 
 (mu/defn delete-field-user-settings!
-  "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
+  "Delete the settings of the Fields with `field-ids`, bringing back their own values."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (doseq [batch (partition-all 1000 field-ids)]
     (warehouse-schema.db/delete-field-user-settings! batch)))
@@ -179,7 +178,6 @@
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
    :before-load   warehouse-schema.serialization/field-user-settings-before-load
-   :after-load    warehouse-schema.serialization/field-user-settings-after-load
    :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 
 (defmethod remote-sync/spec :model/FieldUserSettings

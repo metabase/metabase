@@ -11,7 +11,7 @@
 (defn- get-humanized-display-name! [actual-name strategy]
   (tu/with-temporary-setting-values [humanization-strategy strategy]
     (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
-      (t2/select-one-fn :display_name :model/Table, :id table-id))))
+      (t2/select-one-fn :display_name :model/TableOverlay, :id table-id))))
 
 (deftest humanized-display-name-test
   (testing "check that we get the expected :display_name with humanization *enabled*"
@@ -34,7 +34,7 @@
                                                            :none     "fussybird_sightings"}}]
       (tu/with-temporary-setting-values [humanization-strategy "simple"]
         (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
-          (letfn [(display-name [] (t2/select-one-fn :display_name :model/Table, :id table-id))]
+          (letfn [(display-name [] (t2/select-one-fn :display_name :model/TableOverlay, :id table-id))]
             (testing "initial display name"
               (is (= (:initial expected)
                      (display-name))))
@@ -56,7 +56,7 @@
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
               (warehouse-schema.settings/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
-                     (t2/select-one-fn :display_name :model/Table, :id table-id))))))))))
+                     (t2/select-one-fn :display_name :model/TableOverlay, :id table-id))))))))))
 
 (deftest do-not-overwrite-user-set-field-display-names-test
   (testing "a Field's display name is custom when it's set in FieldUserSettings or differs from the old strategy's humanization"
@@ -67,11 +67,11 @@
         (field-user-settings/upsert-field-user-settings! {:id user-set-id} {:display_name "User's Name"})
         (warehouse-schema.settings/humanization-strategy! "none")
         (testing "the user-set Field keeps the user's name"
-          (is (= "User's Name" (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
+          (is (= "User's Name" (t2/select-one-fn :display_name :model/FieldOverlay, :id user-set-id))))
         (testing "a raw display name that differs from the old humanization is left alone"
-          (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-id))))
+          (is (= "Some Other Name" (t2/select-one-fn :display_name :model/FieldOverlay, :id custom-id))))
         (testing "a humanized display name is rewritten to the new strategy"
-          (is (= "bird_watchers" (t2/select-one-fn :display_name :model/Field, :id synced-id))))))))
+          (is (= "bird_watchers" (t2/select-one-fn :display_name :model/FieldOverlay, :id synced-id))))))))
 
 (deftest invalid-strategies-default-to-simple
   (tu/with-temporary-raw-setting-values [humanization-strategy "invalid-choice"]

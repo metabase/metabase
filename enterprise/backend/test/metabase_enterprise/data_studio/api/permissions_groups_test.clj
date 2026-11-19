@@ -7,9 +7,9 @@
    [toucan2.core :as t2]))
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id`."
+  "The value of `column` on the Table with `table-id`, as users see it."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id))
+  (t2/select-one-fn column :model/TableOverlay :id table-id))
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group - Data Analysts group is visible with the feature"

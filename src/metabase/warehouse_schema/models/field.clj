@@ -222,6 +222,23 @@
   [field-name]
   (str "[\"" field-name "\",%]"))
 
+(defn user-changes
+  "The `changes` a user makes to `field`, the Field as users see it, with the effective type a new coercion strategy
+  implies; throws a 400 for a foreign key target outside its Database."
+  [field changes]
+  (let [changed (merge field changes)]
+    (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id changes))
+      (check-fk-target changed))
+    (merge changes (coercion-changes changed changes))))
+
+(defn apply-user-changes!
+  "Bring the Dimension and the nested Fields of `field` up to date with the user `changes` to it."
+  [{:keys [id table_id name]} changes]
+  (when (:display_name changes)
+    (warehouse-schema.db/rename-dimension-for-field! id (:display_name changes)))
+  (when (contains? changes :json_unfolding)
+    (warehouse-schema.db/set-nested-fields-active! table_id (nested-fields-pattern name) (boolean (:json_unfolding changes)))))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [field (merge field

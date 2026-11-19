@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -9,6 +10,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
@@ -97,8 +99,15 @@
     (warehouse-schema.db/delete-table-user-settings! [(:table_id settings)]))
   settings)
 
+(defn- check-update
+  "Throws a 400 for the user values in `changes` that the Table of `settings`, as users see it, cannot take."
+  [settings changes]
+  (table/check-update (select-keys changes user-settings/user-settable-table-columns)
+                      (warehouse-schema.db/table (:table_id settings))))
+
 (t2/define-before-insert :model/TableUserSettings
   [settings]
+  (check-update settings settings)
   (completed-settings settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
@@ -107,6 +116,7 @@
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
+  (check-update settings (t2/changes settings))
   (completed-settings settings (t2/changes settings)))
 
 (t2/define-after-update :model/TableUserSettings
@@ -115,9 +125,16 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
+(defn- update-field-positions!
+  "Reorder the Fields of the Tables with `table-ids` in their user settings when `ks`, the user columns just written,
+  include `:field_order`."
+  [table-ids ks]
+  (when (some #{:field_order} ks)
+    (run! table/update-user-field-positions! table-ids)))
+
 (mu/defn upsert-table-user-settings!
-  "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
-  row; a nil for a column without a set flag unsets it."
+  "Record the user-settable Table columns present in `settings` as the user values of `table` in its settings; a nil
+  for a column without a set flag unsets it."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    settings     :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
@@ -125,11 +142,10 @@
       (t2/with-transaction [_]
         (warehouse-schema.db/update-or-insert-table-user-settings!
          id (fn [existing] (cond-> settings existing (with-set-flags settings settings))))
-        (warehouse-schema.db/update-table! id settings)))))
+        (update-field-positions! [id] (keys settings))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
-  "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
-  the rows."
+  "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings."
   [table-ids :- [:set ::lib.schema.id/table]
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
@@ -140,8 +156,8 @@
             (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
           (when (seq existing)
             (warehouse-schema.db/update-table-user-settings-for-tables!
-             existing (with-set-flags settings settings settings))))
-        (warehouse-schema.db/update-tables! table-ids settings)))))
+             existing (with-set-flags settings settings settings)))
+          (update-field-positions! table-ids (keys settings)))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -154,13 +170,11 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    (upsert-table-user-settings! table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
-    (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
+    (upsert-table-user-settings! table {:field_order :custom})))
 
 (mu/defn unset-table-user-settings!
-  "Drop the user values of the Table columns `ks` for `table` from its settings, leaving its row as it is for sync to
-  take over."
+  "Drop the user values of the Table columns `ks` for `table` from its settings, bringing back its own values."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    ks           :- [:sequential (into [:enum] user-settings/user-settable-table-columns)]]
   (when (warehouse-schema.db/table-user-settings id)
@@ -169,15 +183,31 @@
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
                           (user-settings/table-set-flags k) (conj [(user-settings/table-set-flags k) false]))))
-           ks))))
+           ks))
+    (update-field-positions! [id] ks)))
 
 (mu/defn delete-table-user-settings!
-  "Delete the settings of the Tables with `table-ids`, leaving their rows as they are for sync to take over."
+  "Delete the settings of the Tables with `table-ids`, bringing back their own values."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (doseq [batch (partition-all 1000 table-ids)]
-    (warehouse-schema.db/delete-table-user-settings! batch)))
+    (warehouse-schema.db/delete-table-user-settings! batch)
+    (warehouse-schema.db/clear-field-user-settings-positions! batch)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod audit/spec :model/TableUserSettings [_model]
+  {:track          [:table_id]
+   :track-redacted [:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer
+                    :data_source :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority
+                    :is_published :collection_id :description_set :visibility_type_set :caveats_set
+                    :points_of_interest_set :data_layer_set :data_source_set]
+   :skip           []
+   :topics         {}
+   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
+                     :details warehouse-schema.audit/settings-moment-details}
+                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
+                     :details warehouse-schema.audit/settings-moment-details}]
+   :subject        warehouse-schema.audit/settings-subject})
 
 (defmethod events/spec :model/TableUserSettings
   [_model]

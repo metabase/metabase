@@ -39,7 +39,7 @@
 (defn- user-table-fn
   "The value of `column` on the Table with `table-id`."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id))
+  (t2/select-one-fn column :model/TableOverlay :id table-id))
 
 (deftest ^:parallel unauthenticated-test
   (is (= (get api.response/response-unauthentic :body)
@@ -177,7 +177,7 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults :h2) :segments :field_values :metrics :measures)
-            (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
+            (t2/hydrate (t2/select-one [:model/TableOverlay :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
                         :pk_field :collection)
@@ -198,7 +198,7 @@
                                                         :schema       nil}]
         (is (= (merge
                 (dissoc (table-defaults) :segments :field_values :metrics :measures :db)
-                (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
+                (t2/hydrate (t2/select-one [:model/TableOverlay :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
                             :pk_field :collection)
@@ -259,7 +259,7 @@
       (testing "Sensitive fields are included"
         (is (= (merge
                 (update (table-defaults) :db merge {:details nil, :write_data_details nil, :admin_details nil, :initial_sync_error nil})
-                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                (t2/hydrate (t2/select-one [:model/TableOverlay :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
@@ -267,7 +267,7 @@
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
-                 :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
+                 :fields       [(assoc (field-details (t2/select-one :model/FieldOverlay :id (mt/id :users :id)))
                                        :semantic_type              "type/PK"
                                        :table_id                   (mt/id :users)
                                        :name                       "ID"
@@ -291,7 +291,7 @@
                                                                     :semantic_type "type/Name",
                                                                     :settings nil,
                                                                     :table_id (mt/id :users)})
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
+                                (assoc (field-details (t2/select-one :model/FieldOverlay :id (mt/id :users :name)))
                                        :semantic_type              "type/Name"
                                        :table_id                   (mt/id :users)
                                        :name                       "NAME"
@@ -306,7 +306,7 @@
                                        :database_required          false
                                        :database_is_auto_increment false
                                        :name_field                 nil)
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                (assoc (field-details (t2/select-one :model/FieldOverlay :id (mt/id :users :last_login)))
                                        :table_id                   (mt/id :users)
                                        :name                       "LAST_LOGIN"
                                        :display_name               "Last Login"
@@ -320,7 +320,7 @@
                                        :database_required          false
                                        :database_is_auto_increment false
                                        :name_field                 nil)
-                                (assoc (field-details (t2/select-one :model/Field :table_id (mt/id :users), :name "PASSWORD"))
+                                (assoc (field-details (t2/select-one :model/FieldOverlay :table_id (mt/id :users), :name "PASSWORD"))
                                        :semantic_type              "type/Category"
                                        :table_id                   (mt/id :users)
                                        :name                       "PASSWORD"
@@ -353,7 +353,7 @@
       (testing "Sensitive fields should not be included"
         (is (= (merge
                 (table-defaults)
-                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                (t2/hydrate (t2/select-one [:model/TableOverlay :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
@@ -361,7 +361,7 @@
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
-                 :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
+                 :fields       [(assoc (field-details (t2/select-one :model/FieldOverlay :id (mt/id :users :id)))
                                        :table_id         (mt/id :users)
                                        :semantic_type    "type/PK"
                                        :name             "ID"
@@ -384,7 +384,7 @@
                                                     :semantic_type "type/Name",
                                                     :settings nil,
                                                     :table_id (mt/id :users)})
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
+                                (assoc (field-details (t2/select-one :model/FieldOverlay :id (mt/id :users :name)))
                                        :table_id         (mt/id :users)
                                        :semantic_type     "type/Name"
                                        :name             "NAME"
@@ -398,7 +398,7 @@
                                        :database_required false
                                        :database_is_auto_increment false
                                        :name_field        nil)
-                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                (assoc (field-details (t2/select-one :model/FieldOverlay :id (mt/id :users :last_login)))
                                        :table_id                 (mt/id :users)
                                        :name                     "LAST_LOGIN"
                                        :display_name             "Last Login"
@@ -480,7 +480,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
-              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/hydrate (t2/select-one [:model/TableOverlay :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
                :entity_type     nil
@@ -560,7 +560,7 @@
                      :set    {:data_authority "federated"}
                      :where  [:= :id (:id table)]})
       (testing "Unexpected values are converted to :unknown"
-        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table :data_authority] :id (:id table)))))
+        (is (= :unknown (t2/select-one-fn :data_authority [:model/TableOverlay :data_authority] :id (:id table)))))
       (testing "API GET endpoint returns :unknown for tables with unknown data_authority"
         (let [api-response (mt/user-http-request :crowberto :get 200 (format "table/%d" (:id table)))]
           (is (= "unknown" (:data_authority api-response))))))))
@@ -571,7 +571,7 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
-                     :model/Table    table (-> (t2/select-one :model/Table :id (mt/id :venues))
+                     :model/Table    table (-> (t2/select-one :model/TableOverlay :id (mt/id :venues))
                                                (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
@@ -639,8 +639,8 @@
 (deftest ^:parallel get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
-      (let [checkins-user-field (t2/select-one :model/Field :id (mt/id :checkins :user_id))
-            users-id-field      (t2/select-one :model/Field :id (mt/id :users :id))]
+      (let [checkins-user-field (t2/select-one :model/FieldOverlay :id (mt/id :checkins :user_id))
+            users-id-field      (t2/select-one :model/FieldOverlay :id (mt/id :users :id))]
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
@@ -659,7 +659,7 @@
                                             #_#_:database_indexed  true
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics :measures)
-                                                            (t2/select-one [:model/Table
+                                                            (t2/select-one [:model/TableOverlay
                                                                             :id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
                                                                            :id (mt/id :checkins))
@@ -680,7 +680,7 @@
                                             #_#_:database_indexed true
                                             :table            (merge
                                                                (dissoc (table-defaults :h2) :db :segments :field_values :metrics :measures)
-                                                               (t2/select-one [:model/Table
+                                                               (t2/select-one [:model/TableOverlay
                                                                                :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
                                                                               :id (mt/id :users))
@@ -695,14 +695,14 @@
     (testing "GET /api/table/:id/query_metadata"
       (is (= (merge
               (table-defaults)
-              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+              (t2/hydrate (t2/select-one [:model/TableOverlay :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
                :can_write    false
                :name         "CATEGORIES"
                :display_name "Categories"
                :fields       [(merge
-                               (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
+                               (field-details (t2/select-one :model/FieldOverlay :id (mt/id :categories :id)))
                                {:table_id          (mt/id :categories)
                                 :semantic_type     "type/PK"
                                 :name              "ID"
@@ -726,7 +726,7 @@
                                                     :settings nil,
                                                     :table_id (mt/id :categories)}})
                               (merge
-                               (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
+                               (field-details (t2/select-one :model/FieldOverlay :id (mt/id :categories :name)))
                                {:table_id                   (mt/id :categories)
                                 :semantic_type              "type/Name"
                                 :name                       "NAME"
@@ -917,7 +917,7 @@
           (is (=? {:success true}
                   (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)))
           (is (= custom-field-order
-                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                 (->> (t2/hydrate (t2/select-one :model/TableOverlay :id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
       (testing "Can we set custom field ordering with a wrapped {:field_order [...]} body?"
@@ -927,14 +927,14 @@
                   (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
                                         {:field_order custom-field-order})))
           (is (= custom-field-order
-                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                 (->> (t2/hydrate (t2/select-one :model/TableOverlay :id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
       (finally
         (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                               {:field_order original-field-order})
         (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
-        (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-vec :model/Field :table_id (mt/id :venues))])))))
+        (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-vec :model/FieldOverlay :table_id (mt/id :venues))])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/append-csv                                        |
@@ -1301,7 +1301,7 @@
         []]]
       (let [db (mt/db)
             db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
-            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field :id (mt/id :country :continent_id))]
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/FieldOverlay :id (mt/id :country :continent_id))]
         ;; 1. add FK relationship in the database targeting continent_1
         (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
         (sync/sync-database! (:id db) {:scan :schema})
@@ -1442,7 +1442,7 @@
         (testing "the new positions are stored"
           (is (= [["a" "b"] ["c" "d"]]
                  (for [table-id [t1 t2]]
-                   (->> (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)
+                   (->> (t2/hydrate (t2/select-one :model/TableOverlay :id table-id) :fields)
                         :fields
                         (map :name))))))))))
 

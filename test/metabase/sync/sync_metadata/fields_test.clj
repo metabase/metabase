@@ -97,8 +97,8 @@
                      (fn [database]
                        (set
                         (map (partial into {})
-                             (t2/select [:model/Field :id :name :active]
-                                        :table_id [:in (t2/select-pks-set :model/Table :db_id (u/the-id database))])))))]
+                             (t2/select [:model/FieldOverlay :id :name :active]
+                                        :table_id [:in (t2/select-pks-set :model/TableOverlay :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
@@ -121,7 +121,7 @@
               "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
               (fn [database]
                 (t2/select-fn->fn :name (partial into {}) :model/Field
-                                  :table_id [:in (t2/select-pks-set :model/Table :db_id (u/the-id database))])))))))
+                                  :table_id [:in (t2/select-pks-set :model/TableOverlay :db_id (u/the-id database))])))))))
 
 (deftest mark-inactive-remove-fks-test
   (testing "when a column is dropped from the DB, sync should wipe foreign key targets and their semantic type"
@@ -133,13 +133,13 @@
                               "(3, 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/id))
-      (let [tables          (t2/select-pks-set :model/Table :db_id (mt/id))
+      (let [tables          (t2/select-pks-set :model/TableOverlay :db_id (mt/id))
             get-field-to-update (fn []
                                   (t2/select-one
-                                   :model/Field
+                                   :model/FieldOverlay
                                    :name "example_bird_name"
                                    :table_id [:in tables]))
-            field-to-drop   (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
+            field-to-drop   (t2/select-one :model/FieldOverlay :name "example_name" :table_id [:in tables])
             field-to-update (get-field-to-update)]
         (t2/update! :model/Field :id (u/the-id field-to-update) {:semantic_type      :type/FK
                                                                  :fk_target_field_id (u/the-id field-to-drop)})
@@ -170,19 +170,19 @@
                         "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
             (jdbc/execute! db-spec [stmt]))
           (sync/sync-database! (:id db))
-          (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
+          (let [field (t2/select-one [:model/FieldOverlay :id] :name "string_tbc_int_col")]
             (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field))
                                   {:coercion_strategy :Coercion/String->Integer})
             (sync/sync-database! (:id db))
             (is (=? {:effective_type    :type/Integer
                      :coercion_strategy :Coercion/String->Integer}
-                    (t2/select-one :model/Field :id (:id field))))
+                    (t2/select-one :model/FieldOverlay :id (:id field))))
             (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
             (sync/sync-database! (:id db))
             (testing "the base type change unsets the user's coercion, on the Field and for the user"
               (is (=? {:coercion_strategy nil
                        :effective_type    :type/Integer}
-                      (t2/select-one :model/Field :id (:id field))))))
+                      (t2/select-one :model/FieldOverlay :id (:id field))))))
           (finally
             (jdbc/execute! db-spec ["DROP TABLE IF EXISTS \"base_type_change_test\";"])))))))
 
@@ -193,7 +193,7 @@
            (with-test-db-before-and-after-altering
              "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
              (fn [database]
-               (let [table (t2/hydrate (t2/select-one :model/Table :db_id (u/the-id database)) :fields)]
+               (let [table (t2/hydrate (t2/select-one :model/TableOverlay :db_id (u/the-id database)) :fields)]
                  (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
@@ -215,7 +215,7 @@
              (fn [database]
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
-                                      :query    {:source-table (t2/select-one-pk :model/Table
+                                      :query    {:source-table (t2/select-one-pk :model/TableOverlay
                                                                                  :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
@@ -228,7 +228,7 @@
 (deftest pk-sync-test
   (testing "Test PK Syncing"
     (mt/with-temp-copy-of-db
-      (letfn [(get-pk-details [] (t2/select-one [:model/Field :semantic_type :database_is_pk], :id (mt/id :venues :id)))]
+      (letfn [(get-pk-details [] (t2/select-one [:model/FieldOverlay :semantic_type :database_is_pk], :id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
@@ -239,7 +239,7 @@
                   :semantic_type  nil}
                  (get-pk-details))))
         (testing "Calling sync-table! should set the semantic type again"
-          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
+          (sync/sync-table! (t2/select-one :model/TableOverlay :id (mt/id :venues)))
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
                  (get-pk-details))))
@@ -250,7 +250,7 @@
                  (get-pk-details))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
           (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
-          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
+          (sync/sync-table! (t2/select-one :model/TableOverlay :id (mt/id :venues)))
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
                  (get-pk-details))))))))
@@ -283,7 +283,7 @@
           []]]
         (let [db (mt/db)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
-              get-fk #(t2/select-one :model/Field :id (mt/id :country :continent_id))]
+              get-fk #(t2/select-one :model/FieldOverlay :id (mt/id :country :continent_id))]
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! (:id db) {:scan :schema})
@@ -313,12 +313,12 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/FieldOverlay :semantic_type :fk_target_field_id]
                                                                                 :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
+                   :fk-target-exists? (t2/exists? :model/FieldOverlay :id fk_target_field_id)}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
@@ -339,11 +339,11 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id))]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/FieldOverlay :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
+                   :fk-target-exists? (t2/exists? :model/FieldOverlay :id fk_target_field_id)}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
@@ -416,7 +416,7 @@
                 "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
       (mt/dataset country
-        (let [tables (t2/select :model/Table :db_id (mt/id))]
+        (let [tables (t2/select :model/TableOverlay :db_id (mt/id))]
           (doseq [[message sync-fields-and-fks!] {"for specific tables" (fn []
                                                                           (run! sync-fields/sync-fields-for-table! tables)
                                                                           (run! sync-fks/sync-fks-for-table! tables))
@@ -443,11 +443,11 @@
                       (testing "Correct number fo tables updated by set-initial-table-sync-complete-for-db! in batches"
                         (is (= 2 @tables-updated)))))
                   (sync-fields-and-fks!))
-                (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
+                (let [continent-id-field (t2/select-one :model/FieldOverlay :%lower.name "id" :table_id (mt/id :continent))]
                   (is (= [{:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (u/the-id continent-id-field)}
                           {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
                           {:name "name",         :semantic_type nil,      :fk_target_field_id nil}]
-                         (->> (t2/select [:model/Field
+                         (->> (t2/select [:model/FieldOverlay
                                           [:%lower.name :name]
                                           :semantic_type
                                           :fk_target_field_id]
@@ -456,9 +456,9 @@
                               (sort-by :name)))))))))))))
 
 (defn db->fields [db]
-  (let [tables (t2/select :model/Table :db_id (u/the-id db))]
+  (let [tables (t2/select :model/TableOverlay :db_id (u/the-id db))]
     (mapcat (fn [table]
-              (t2/select :model/Field :table_id (u/the-id table)))
+              (t2/select :model/FieldOverlay :table_id (u/the-id table)))
             tables)))
 
 (deftest auto-cruft-fields-with-an-l-test
@@ -492,8 +492,8 @@
   (testing "When a field becomes crufty via auto-cruft settings, preview_display should be set to false (#10851)"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       (sync-metadata/sync-db-metadata! (:id db))
-      (let [details-field (t2/select-one :model/Field :name "details"
-                                         :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
+      (let [details-field (t2/select-one :model/FieldOverlay :name "details"
+                                         :table_id [:in (map :id (t2/select :model/TableOverlay :db_id (u/the-id db)))])]
         (is (=? {:visibility_type :normal
                  :preview_display true}
                 details-field)
@@ -502,7 +502,7 @@
         (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
         (is (=? {:visibility_type :details-only
                  :preview_display false}
-                (t2/select-one :model/Field :id (:id details-field)))
+                (t2/select-one :model/FieldOverlay :id (:id details-field)))
             "after auto-cruft: field should have visibility_type=details-only AND preview_display=false")))))
 
 (deftest sync-fields-resilient-to-non-existence-test
@@ -533,19 +533,19 @@
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync/sync-database! (:id database))
-            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
-                  field-after-first-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+            (let [table-id (t2/select-one-pk :model/TableOverlay :db_id (u/the-id database) :name "test_table")
+                  field-after-first-sync (t2/select-one :model/FieldOverlay :table_id table-id :name "something")]
               (is (= :details-only (:visibility_type field-after-first-sync))
                   "First sync should set visibility_type to :details-only for large JSONB"))
-            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
-                  field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
+            (let [table-id (t2/select-one-pk :model/TableOverlay :db_id (u/the-id database) :name "test_table")
+                  field-id (t2/select-one-pk :model/FieldOverlay :table_id table-id :name "something")]
               (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
+              (is (= :normal (:visibility_type (t2/select-one :model/FieldOverlay :id field-id)))
                   "Manual change should set visibility_type to :normal"))
             (sync/sync-database! (:id database))
-            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
-                  field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
+            (let [table-id (t2/select-one-pk :model/TableOverlay :db_id (u/the-id database) :name "test_table")
+                  field-id (t2/select-one-pk :model/FieldOverlay :table_id table-id :name "something")]
+              (is (= :normal (:visibility_type (t2/select-one :model/FieldOverlay :id field-id)))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
 
 (deftest hiding-a-case-variant-table-leaves-the-other-tables-fields-alone-test
@@ -562,7 +562,7 @@
           (testing (format "hiding %s" hidden)
             (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
               (sync-metadata/sync-db-metadata! (:id database))
-              (let [table-id       #(t2/select-one-pk :model/Table :db_id (u/the-id database) :name %)
+              (let [table-id       #(t2/select-one-pk :model/TableOverlay :db_id (u/the-id database) :name %)
                     active-by-name #(t2/select-fn->fn :name :active :model/Field :table_id (table-id %))]
                 (is (= expected (active-by-name visible)))
                 (mt/user-http-request :crowberto :put 200 (format "table/%d" (table-id hidden)) {:visibility_type "hidden"})
@@ -579,9 +579,9 @@
                               "(3, 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/id))
-      (let [tables (t2/select-pks-set :model/Table :db_id (mt/id))
-            birds-example-name-field (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
-            flocks-example-bird-name-field (t2/select-one :model/Field :name "example_bird_name" :table_id [:in tables])]
+      (let [tables (t2/select-pks-set :model/TableOverlay :db_id (mt/id))
+            birds-example-name-field (t2/select-one :model/FieldOverlay :name "example_name" :table_id [:in tables])
+            flocks-example-bird-name-field (t2/select-one :model/FieldOverlay :name "example_bird_name" :table_id [:in tables])]
         (testing "should not have FK relationship"
           (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
           (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
@@ -591,7 +591,7 @@
           :fk_target_field_id (u/the-id birds-example-name-field)})
         (testing "after sync, user-set FK is preserved"
           (sync/sync-database! (mt/id))
-          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
+          (let [field-after-sync (t2/select-one :model/FieldOverlay :id (u/the-id flocks-example-bird-name-field))]
             (is (= :type/FK (:semantic_type field-after-sync)))
             (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))
 
@@ -606,15 +606,15 @@
       (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
       (is (= 1 (sync.db/mark-fk! db-id "s" "fk_table" "pk_id" "s" "pk_table" "id")))
       (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
-              (t2/select-one :model/Field :id fk-id))))))
+              (t2/select-one :model/FieldOverlay :id fk-id))))))
 
 (deftest database-default-test
   (with-test-db
     (let [ddl "CREATE TABLE t (a INTEGER DEFAULT 42, b INTEGER NULL)"]
       (jdbc/execute! one-off-dbs/*conn* [ddl])
       (sync/sync-database! (mt/id))
-      (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
-            {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
+      (let [table (t2/select-one :model/TableOverlay :db_id (mt/id) :name "T")
+            {a "A", b "B"} (u/index-by :name (t2/select :model/FieldOverlay :table_id (:id table)))]
         (is (= "42" (:database_default a)))
         (is (nil? (:database_default b)))))))
 
@@ -623,8 +623,8 @@
     (let [ddl "CREATE TABLE t (a INTEGER GENERATED ALWAYS AS 42, b INTEGER NULL)"]
       (jdbc/execute! one-off-dbs/*conn* [ddl])
       (sync/sync-database! (mt/id))
-      (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
-            {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
+      (let [table (t2/select-one :model/TableOverlay :db_id (mt/id) :name "T")
+            {a "A", b "B"} (u/index-by :name (t2/select :model/FieldOverlay :table_id (:id table)))]
         (is (true? (:database_is_generated a)))
         (is (false? (:database_is_generated b)))))))
 
@@ -633,8 +633,8 @@
     (let [ddl "CREATE TABLE t (a INTEGER NULL, b INTEGER NOT NULL)"]
       (jdbc/execute! one-off-dbs/*conn* [ddl])
       (sync/sync-database! (mt/id))
-      (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
-            {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
+      (let [table (t2/select-one :model/TableOverlay :db_id (mt/id) :name "T")
+            {a "A", b "B"} (u/index-by :name (t2/select :model/FieldOverlay :table_id (:id table)))]
         (is (true? (:database_is_nullable a)))
         (is (false? (:database_is_nullable b)))))))
 
@@ -645,7 +645,7 @@
                               [["ngoc@metabase.com"]]]]
       (let [db       (mt/db)
             field-id (mt/id :sens_table :email)
-            field    #(t2/select-one-fn :data_sensitivity :model/Field :id field-id)
+            field    #(t2/select-one-fn :data_sensitivity :model/FieldOverlay :id field-id)
             mirror   #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)]
         (testing "a freshly synced field is unclassified and has no user-settings row"
           (is (nil? (field)))
@@ -663,7 +663,7 @@
                                {:field-name "ssn", :base-type :type/Text}
                                {:field-name "notes", :base-type :type/Text}]
                               [["ngoc@metabase.com" "123-45-6789" "called back twice"]]]]
-      (let [field  #(t2/select-one-fn :data_sensitivity :model/Field :id (mt/id :app_users %))
+      (let [field  #(t2/select-one-fn :data_sensitivity :model/FieldOverlay :id (mt/id :app_users %))
             mirror #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (mt/id :app_users %))]
         (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :app_users :email)) {:data_sensitivity "PUBLIC"})
         (is (nil? (field :ssn)))
@@ -687,7 +687,7 @@
         (let [db       (mt/db)
               db-spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               field-id (mt/id :readd_table :email)
-              field    #(t2/select-one [:model/Field :active :data_sensitivity] :id field-id)
+              field    #(t2/select-one [:model/FieldOverlay :active :data_sensitivity] :id field-id)
               mirror   #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)]
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
           (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" DROP COLUMN \"EMAIL\";"])
@@ -742,9 +742,9 @@
     (mt/test-driver :h2
       (mt/with-temp-copy-of-db
         (let [table-id     (mt/id :venues)
-              custom-order (vec (reverse (t2/select-pks-vec :model/Field :table_id table-id {:order-by [:database_position]})))
-              field-order  #(t2/select-pks-vec :model/Field :table_id table-id {:order-by [:position]})]
+              custom-order (vec (reverse (t2/select-pks-vec :model/FieldOverlay :table_id table-id {:order-by [:database_position]})))
+              field-order  #(t2/select-pks-vec :model/FieldOverlay :table_id table-id {:order-by [:position]})]
           (mt/user-http-request :crowberto :put 200 (format "table/%d/fields/order" table-id) custom-order)
           (dotimes [_ 2]
             (is (= custom-order (field-order)))
-            (sync-fields/sync-fields-for-table! (t2/select-one :model/Table :id table-id))))))))
+            (sync-fields/sync-fields-for-table! (t2/select-one :model/TableOverlay :id table-id))))))))

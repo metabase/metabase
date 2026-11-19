@@ -43,8 +43,8 @@
   "Columns of Field or Table that classifiers are allowed to be set."
   [model]
   (case model
-    :model/Field #{:semantic_type :preview_display :has_field_values}
-    :model/Table #{:entity_type}))
+    (:model/Field :model/FieldOverlay) #{:semantic_type :preview_display :has_field_values}
+    (:model/Table :model/TableOverlay) #{:entity_type}))
 
 (def ^:private FieldOrTableInstance
   [:or
@@ -68,8 +68,8 @@
     ;; cool, now we should be ok to update the model
     (when values-to-set
       (case (mi/model original-model)
-        :model/Field (sync-util/update-field-unless-user-set! (u/the-id original-model) values-to-set)
-        :model/Table (sync-util/update-table-unless-user-set! (u/the-id original-model) values-to-set))
+        (:model/Field :model/FieldOverlay) (sync-util/update-field-unless-user-set! (u/the-id original-model) values-to-set)
+        (:model/Table :model/TableOverlay) (sync-util/update-table-unless-user-set! (u/the-id original-model) values-to-set))
       true)))
 
 (def ^:private ClassifyOpts

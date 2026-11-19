@@ -290,8 +290,8 @@
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (testing "Field rows show copied metadata"
-        (let [field-1 (t2/select-one :model/Field :id field-1-id)
-              field-2 (t2/select-one :model/Field :id field-2-id)]
+        (let [field-1 (t2/select-one :model/FieldOverlay :id field-1-id)
+              field-2 (t2/select-one :model/FieldOverlay :id field-2-id)]
           (is (= "Order Total" (:display_name field-1)))
           (is (= "The total amount" (:description field-1)))
           (is (= :type/Currency (:semantic_type field-1)))
@@ -333,7 +333,7 @@
                                              :base_type                 "type/Integer"}])}
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-      (let [field (t2/select-one :model/Field :id field-id)]
+      (let [field (t2/select-one :model/FieldOverlay :id field-id)]
         (is (= "Product ID" (:display_name field)))
         (is (= "The product identifier" (:description field))))
       (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]

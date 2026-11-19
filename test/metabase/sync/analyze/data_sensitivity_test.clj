@@ -13,7 +13,7 @@
 (defn- label
   "The `data_sensitivity` of the Field."
   [field-or-id]
-  (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)))
+  (t2/select-one-fn :data_sensitivity :model/FieldOverlay :id (u/the-id field-or-id)))
 
 (defn- mirror-label [field-or-id]
   (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (u/the-id field-or-id)))
@@ -221,9 +221,9 @@
         (sync/sync-database! (mt/id)))
       (let [labels (fn [table]
                      (into {} (map (juxt (comp u/lower-case-en :name) :data_sensitivity))
-                           (t2/select [:model/Field :name :data_sensitivity] :table_id (mt/id table))))]
+                           (t2/select [:model/FieldOverlay :name :data_sensitivity] :table_id (mt/id table))))]
         (testing "app_users is a UserTable, so the gated city rule fires alongside the explicit name rules"
-          (is (= :entity/UserTable (t2/select-one-fn :entity_type :model/Table :id (mt/id :app_users))))
+          (is (= :entity/UserTable (t2/select-one-fn :entity_type :model/TableOverlay :id (mt/id :app_users))))
           (is (= {"id"          :PUBLIC
                   "ssn"         :PII
                   "email"       :PII
@@ -237,7 +237,7 @@
                  (labels :products))))
         (testing "no mirror rows were created"
           (is (zero? (t2/count :model/FieldUserSettings
-                               :field_id [:in (t2/select-pks-set :model/Field :table_id [:in [(mt/id :app_users) (mt/id :products)]])]))))
+                               :field_id [:in (t2/select-pks-set :model/FieldOverlay :table_id [:in [(mt/id :app_users) (mt/id :products)]])]))))
         (testing "the analyze step recorded its counts in task_history"
           (is (=? {:status       :success
                    :task_details {:fields-scanned 11 :fields-labeled 4 :fields-failed 0}}
@@ -254,10 +254,10 @@
   (mt/test-driver :postgres
     (testing "inet columns sync as :type/IPAddress base and semantic type and are labeled SYS_TELEMETRY whatever their name"
       (mt/dataset inet-columns
-        (let [field-ids (t2/select-pks-set :model/Field :table_id (mt/id :connections) :name [:in ["client_ip" "addr"]])]
+        (let [field-ids (t2/select-pks-set :model/FieldOverlay :table_id (mt/id :connections) :name [:in ["client_ip" "addr"]])]
           (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity nil})
           (is (= #{[:type/IPAddress :type/IPAddress]}
-                 (t2/select-fn-set (juxt :base_type :semantic_type) :model/Field :id [:in field-ids])))
+                 (t2/select-fn-set (juxt :base_type :semantic_type) :model/FieldOverlay :id [:in field-ids])))
           (sync/scan-data-sensitivity! (mt/id))
           (is (= {"client_ip" :SYS_TELEMETRY "addr" :SYS_TELEMETRY}
                  (t2/select-fn->fn :name :data_sensitivity :model/Field :id [:in field-ids]))))))))

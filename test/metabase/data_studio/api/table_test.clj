@@ -20,7 +20,7 @@
 (defn- user-table-fn
   "The value of `column` on the Table with `table-id`."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id))
+  (t2/select-one-fn column :model/TableOverlay :id table-id))
 
 (deftest bulk-edit-visibility-sync-test
   (testing "POST /api/data-studio/table/edit visibility field synchronization"
@@ -111,7 +111,7 @@
                                          (assoc body :table_ids [writable-id locked-id])))))))
       (testing "nothing was written to either table"
         (is (= #{:internal}
-               (t2/select-fn-set :data_layer :model/Table :id [:in [writable-id locked-id]]))))
+               (t2/select-fn-set :data_layer :model/TableOverlay :id [:in [writable-id locked-id]]))))
       (testing "selection of writable tables goes through"
         (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                                         {:table_ids [writable-id] :data_layer "final"})))))))
@@ -359,9 +359,9 @@
                                :data_layer     "hidden"
                                :data_authority "authoritative"
                                :data_source    "ingested"})
-        (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
-        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
-        (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
+        (is (= #{:hidden} (t2/select-fn-set :data_layer :model/TableOverlay :db_id [:in [clojure jvm]])))
+        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/TableOverlay :db_id [:in [clojure jvm]])))
+        (is (= #{:ingested} (t2/select-fn-set :data_source :model/TableOverlay :db_id [:in [clojure jvm]]))))
       (testing "updating with all selectors"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids  [clojure]
@@ -374,9 +374,9 @@
                 classes    :internal
                 gc         :internal
                 jit        :internal}
-               (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
+               (t2/select-pk->fn :data_layer :model/TableOverlay :db_id [:in [clojure jvm]]))))
       (testing "can update owner_email"
-        (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{nil} (t2/select-fn-set :owner_email :model/TableOverlay :db_id [:in [clojure jvm]])))
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids [clojure]
                                :owner_email  "clojure-owner@example.com"})
@@ -386,9 +386,9 @@
                 classes    nil
                 gc         nil
                 jit        nil}
-               (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]]))))
+               (t2/select-pk->fn :owner_email :model/TableOverlay :db_id [:in [clojure jvm]]))))
       (testing "can update owner_user_id"
-        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/TableOverlay :db_id [:in [clojure jvm]])))
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids      [beans classes]
                                :owner_user_id  (mt/user->id :rasta)})
@@ -398,7 +398,7 @@
                 classes    (mt/user->id :rasta)
                 gc         nil
                 jit        nil}
-               (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]])))))))
+               (t2/select-pk->fn :owner_user_id :model/TableOverlay :db_id [:in [clojure jvm]])))))))
 
 ;;; ------------------------------------------------- Selection Tests -------------------------------------------------
 

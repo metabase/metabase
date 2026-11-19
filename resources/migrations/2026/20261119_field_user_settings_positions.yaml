@@ -1,0 +1,72 @@
+## Move the field orders users set out of metabase_table and metabase_field, where they used to be written back, into
+## metabase_field_user_settings.position, leaving the stored order of those Tables the database order. Only the Fields of
+## Tables with a user field order other than the database order whose position differs from their database position get
+## a position in their user settings; the others read the same position from their own row.
+
+databaseChangeLog:
+  - changeSet:
+      id: xqk4xv
+      author: ranquild
+      comment: Record in the existing user settings of a Field the position that the field order a user set for its Table put it in
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET position = (SELECT f.position FROM metabase_field f WHERE f.id = metabase_field_user_settings.field_id)
+              WHERE EXISTS (SELECT 1
+                            FROM metabase_field f
+                            JOIN metabase_table_user_settings tu ON tu.table_id = f.table_id
+                            WHERE f.id = metabase_field_user_settings.field_id
+                              AND tu.field_order IS NOT NULL
+                              AND tu.field_order <> 'database'
+                              AND f.position <> f.database_position)
+      rollback:
+
+  - changeSet:
+      id: wpq2rm
+      author: ranquild
+      comment: Add user settings for the Fields that the field order a user set for their Table put in another position than their database position
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabase_field_user_settings (field_id, position)
+              SELECT f.id, f.position
+              FROM metabase_field f
+              JOIN metabase_table_user_settings tu ON tu.table_id = f.table_id
+              WHERE tu.field_order IS NOT NULL
+                AND tu.field_order <> 'database'
+                AND f.position <> f.database_position
+                AND NOT EXISTS (SELECT 1 FROM metabase_field_user_settings u WHERE u.field_id = f.id)
+      rollback:
+
+  - changeSet:
+      id: fus3ix
+      author: ranquild
+      comment: Put the Fields of the Tables a user set a field order for back in their database position
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET position = database_position
+              WHERE position <> database_position
+                AND EXISTS (SELECT 1
+                            FROM metabase_table_user_settings tu
+                            WHERE tu.table_id = metabase_field.table_id
+                              AND tu.field_order IS NOT NULL)
+      rollback:
+
+  - changeSet:
+      id: mzo7tr
+      author: ranquild
+      comment: Store the database order as the field order of the Tables a user set a field order for
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET field_order = 'database'
+              WHERE field_order <> 'database'
+                AND EXISTS (SELECT 1
+                            FROM metabase_table_user_settings tu
+                            WHERE tu.table_id = metabase_table.id
+                              AND tu.field_order IS NOT NULL)
+      rollback:

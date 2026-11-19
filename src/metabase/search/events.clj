@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -18,6 +19,17 @@
   (or (search/indexed-model? model)
       (isa? model :search/indexed)
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
+
+(defn- as-overlaid-event
+  "A write of user settings as a write of the row they overlay: their create or delete re-derives that row's documents
+  in full, and their update changes the columns it changes."
+  [{:keys [model operation object previous-object] :as event}]
+  (if-let [[base-model column] (search.spec/overlaid-by model)]
+    (let [as-base #(some-> % (assoc :id (get % column)))]
+      (if (= :update operation)
+        (assoc event :model base-model :object (as-base object) :previous-object (as-base previous-object))
+        (assoc event :model base-model :operation :create :object (as-base (or object previous-object)))))
+    event))
 
 (defn- capture-dependents
   "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable, skipping the
@@ -72,7 +84,7 @@
   [_owner events _all]
   (when-not search.ingestion/*disable-updates*
     (let [edited     (into #{} (keep edited-dashboard-id) events)
-          events     (filter #(feeds-index? (:model %) (:operation %)) events)
+          events     (into [] (comp (map as-overlaid-event) (filter #(feeds-index? (:model %) (:operation %)))) events)
           by-op      (group-by :operation events)
           created    (map #(t2/instance (:model %) (:object %)) (:create by-op))
           updated    (map updated-instance (:update by-op))
@@ -89,6 +101,9 @@
 (events/register-capture! :search capture-dependents)
 (events/register-owned-consumer! :search
                                  (fn [{:keys [model operation] :as event}]
-                                   (when (or (feeds-index? model operation) (edited-dashboard-id event)) :search))
+                                   (when (or (feeds-index? model operation)
+                                             (search.spec/overlaid-by model)
+                                             (edited-dashboard-id event))
+                                     :search))
                                  handle!
                                  {:last? true})

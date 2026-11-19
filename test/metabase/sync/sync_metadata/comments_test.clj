@@ -18,7 +18,7 @@
 (defn- db->fields
   "The name and description sync itself recorded for each Field of `db`, ignoring any description a user set."
   [db]
-  (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
+  (let [table-ids (t2/select-pks-set :model/TableOverlay :db_id (u/the-id db))]
     (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids])))))
 
 (tx/defdataset basic-field-comments
@@ -58,10 +58,11 @@
           (let [field-id (mt/id "update_desc" "updated_desc")]
             (t2/update! :model/Field :id field-id {:description nil})
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:description "updated description"})
-            (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
+            (sync/sync-table! (t2/select-one :model/TableOverlay :id (mt/id "update_desc")))
             (is (= #{{:name (mt/format-name "id"), :description nil}
                      {:name (mt/format-name "updated_desc"), :description "updated description"}}
-                   (db->fields (mt/db))))
+                   (set (map (partial into {})
+                             (t2/select [:model/FieldOverlay :name :description] :table_id (mt/id "update_desc"))))))
             (is (=? {:description "updated description" :description_set true}
                     (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
@@ -71,16 +72,16 @@
       (mt/dataset basic-field-comments
         (mt/with-temp-copy-of-db
           (let [field-id (mt/id "basic_field_comments" "with_comment")
-                table    (t2/select-one :model/Table :id (mt/id "basic_field_comments"))]
+                table    (t2/select-one :model/TableOverlay :id (mt/id "basic_field_comments"))]
             (testing "adds the source DB comment back"
               (t2/update! :model/Field :id field-id {:description nil})
               (sync/sync-table! table)
               (is (= "comment"
-                     (t2/select-one-fn :description :model/Field :id field-id))))
+                     (t2/select-one-fn :description :model/FieldOverlay :id field-id))))
             (testing "keeps it cleared when the user cleared it"
               (field-user-settings/upsert-field-user-settings! {:id field-id} {:description nil})
               (sync/sync-table! table)
-              (is (nil? (t2/select-one-fn :description :model/Field :id field-id))))))))))
+              (is (nil? (t2/select-one-fn :description :model/FieldOverlay :id field-id))))))))))
 
 (defn- basic-table [table-name comment]
   (tx/map->DatabaseDefinition {:database-name     (str table-name "_db")
@@ -90,7 +91,7 @@
                                                     :table-comment     comment}]}))
 
 (defn- db->tables [db]
-  (set (map (partial into {}) (t2/select [:model/Table :name :description] :db_id (u/the-id db)))))
+  (set (map (partial into {}) (t2/select [:model/TableOverlay :name :description] :db_id (u/the-id db)))))
 
 (defmethod driver/database-supports? [::driver/driver ::table-comments-sync]
   [_driver _feature _database]
@@ -149,4 +150,4 @@
                (tx/map->TableDefinition {:table-name table-name
                                          :table-comment added-comment})))))
           (sync-tables/sync-tables-and-database! (lib.metadata/database (mt/metadata-provider)))
-          (is (true? (t2/exists? :model/Table :db_id (mt/id) :description added-comment))))))))
+          (is (true? (t2/exists? :model/TableOverlay :db_id (mt/id) :description added-comment))))))))

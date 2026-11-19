@@ -78,12 +78,6 @@
             local (update :row #(merge (zipmap user-settings/user-settable-field-columns (repeat nil)) %))))
         items))
 
-(defn field-user-settings-after-load
-  "Writes the user-set columns of the loaded FieldUserSettings `items` to their Fields."
-  [items]
-  (doseq [{{:keys [field_id] :as settings} :instance} items]
-    (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
-
 (defn table-user-settings-storage-paths
   "The storage path of each of the TableUserSettings `entities`, in the directory of its Table with a
   `___tableusersettings` suffix."
@@ -100,15 +94,6 @@
           (cond-> #{} collection_id (conj [:model/Collection collection_id])))
         entities))
 
-(defn- without-derived-half
-  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
-  [{:keys [visibility_type data_layer] :as changes}]
-  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
-    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
-      (dissoc changes :data_layer)
-      (dissoc changes :visibility_type))
-    changes))
-
 (defn- load-legacy-fields!
   "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
   FieldUserSettings of their Tables."
@@ -120,12 +105,10 @@
        (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
 
 (defn table-user-settings-after-load
-  "Writes the user-set columns of the loaded TableUserSettings `items` to their Tables, loading the FieldUserSettings
-  of older exports."
+  "Loads the FieldUserSettings of older exports in the loaded TableUserSettings `items`, and reorders the Fields of
+  those whose field order they set."
   [items]
   (load-legacy-fields! items)
-  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
-    (warehouse-schema.db/update-table! table_id (without-derived-half
-                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
+  (doseq [{{:keys [table_id]} :instance :keys [entity]} items]
     (when (:field_order entity)
-      (table/update-field-positions! (warehouse-schema.db/table table_id)))))
+      (table/update-user-field-positions! table_id))))

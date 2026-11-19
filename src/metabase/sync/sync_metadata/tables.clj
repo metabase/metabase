@@ -191,7 +191,7 @@
   is the app-DB Table instance we already hold, so we don't re-select it; `:sample?` is whether `database` is the Sample
   Database."
   [database          :- i/DatabaseInstance
-   existing          :- (ms/InstanceOf :model/Table)
+   existing          :- i/TableInstance
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
   (sync-util/update-table-unless-user-set! (:id existing)
                                            (cond-> (cruft-dependent-cols existing database ::reactivate)
@@ -277,7 +277,7 @@
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed. Returns true if a row was updated."
   [table-metadata :- i/DatabaseMetadataTable
-   metabase-table :- (ms/InstanceOf :model/Table)
+   metabase-table :- i/TableInstance
    metabase-database :- i/DatabaseInstance]
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
@@ -318,7 +318,7 @@
   "Update metadata for the tables present in both `table-metadatas` and `metabase-tables`. Returns
   the number of tables actually updated."
   [table-metadatas :- [:set i/DatabaseMetadataTable]
-   metabase-tables :- [:set (ms/InstanceOf :model/Table)]
+   metabase-tables :- [:set i/TableInstance]
    metabase-database :- i/DatabaseInstance]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
@@ -359,7 +359,7 @@
   (let [names (into [] (comp (map :name) (distinct)) tables)]
     (if (seq names)
       (m/index-by table-name+schema
-                  (sync.db/tables-by-name (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
+                  (sync.db/tables-by-name (into [:model/TableOverlay :id :name :schema :data_authority :active] keys-to-update)
                                           (u/the-id database)
                                           names))
       {})))

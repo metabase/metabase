@@ -217,15 +217,17 @@
       (record-event! event user-id {}))))
 
 (defn- record-moments!
-  "Record the rows that the spec of a model derives from a column that its writes change."
+  "Record the rows that the spec of a model derives from a column that its writes change, under the subject of each
+  write."
   [events]
   (doseq [{:keys [model operation user-id] :as event} events
           :when (and user-id (contains? #{:create :update} operation))
           {moment-topic :topic, applies? :when, moment-details :details} (:moments (audit.spec/spec model))
-          :when (applies? event)]
+          :when (applies? event)
+          :let  [[subject-model subject-id] (subject-of event)]]
     (record! moment-topic {:user-id  user-id
-                           :model    model
-                           :model-id (:id (row-of event))
+                           :model    subject-model
+                           :model-id subject-id
                            :details  (if moment-details (moment-details event) {})})))
 
 (defn- record-lifecycle-events!

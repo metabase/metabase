@@ -20,12 +20,12 @@
 (defn- user-table
   "The Table with `table-id`."
   [table-id]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
 (defn- user-tables
   "The Tables with `table-ids`, ordered by `order-by`."
   [table-ids order-by]
-  (t2/select :model/Table :id [:in table-ids] {:order-by [order-by]}))
+  (t2/select :model/TableOverlay :id [:in table-ids] {:order-by [order-by]}))
 
 (defn- user-table-fn
   "The value of `column` on the Table with `table-id`."

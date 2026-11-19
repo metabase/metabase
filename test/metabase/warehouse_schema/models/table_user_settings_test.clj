@@ -7,25 +7,27 @@
    [toucan2.core :as t2]))
 
 (defn- user-table
-  "The Table row."
+  "The Table as users see it."
   [table-id]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/TableOverlay :id table-id))
 
-(deftest table-user-settings-write-table-row-test
+(deftest table-user-settings-overlay-table-row-test
   (mt/with-temp [:model/Table {table-id :id :as table} {:name         "sync_name"
                                                         :display_name "Sync Name"
                                                         :description  "sync description"
                                                         :entity_type  :entity/GenericTable}]
     (table-user-settings/upsert-table-user-settings! table {:display_name "User Name" :description nil})
-    (testing "user values, user NULL included, are written to Table; rest of row is intact"
+    (testing "user values, user NULL included, overlay the Table; rest of row is intact"
       (is (=? {:id table-id :display_name "User Name" :description nil :entity_type :entity/GenericTable}
-              (user-table table-id))))
+              (user-table table-id)))
+      (is (=? {:display_name "Sync Name" :description "sync description"}
+              (t2/select-one :model/Table :id table-id))))
     (testing "settings record which columns user set"
       (is (=? {:display_name "User Name" :description nil :description_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))
-    (testing "unsetting leaves Table as it is for sync to take over"
+    (testing "unsetting brings back the Table's own values"
       (table-user-settings/unset-table-user-settings! table [:display_name :description])
-      (is (=? {:display_name "User Name" :description nil} (user-table table-id)))
+      (is (=? {:display_name "Sync Name" :description "sync description"} (user-table table-id)))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
 (deftest not-null-columns-need-no-flag-test
@@ -34,9 +36,9 @@
       (is (= :database (:field_order (user-table table-id))))
       (table-user-settings/upsert-table-user-settings! table {:field_order :alphabetical})
       (is (= :alphabetical (:field_order (user-table table-id))))
-      (testing "clearing it keeps the Table's value, and drops the row it emptied"
+      (testing "clearing it brings back the Table's value, and drops the row it emptied"
         (table-user-settings/unset-table-user-settings! table [:field_order])
-        (is (= :alphabetical (:field_order (user-table table-id))))
+        (is (= :database (:field_order (user-table table-id))))
         (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id)))))))
 
 (deftest visibility-pair-is-recorded-whole-test
@@ -110,6 +112,23 @@
       (is (= {table-id {:is_published true :collection_id collection-id}}
              (warehouse-schema.db/table-publication-columns [table-id]))))))
 
+(deftest field-order-overlays-positions-test
+  (testing "a field order a user sets places the Fields through their settings, leaving their stored positions"
+    (mt/with-temp [:model/Table {table-id :id :as table} {:field_order :database}
+                   :model/Field {b-id :id}               {:table_id table-id :name "B" :database_position 0 :position 0}
+                   :model/Field {a-id :id}               {:table_id table-id :name "A" :database_position 1 :position 1}]
+      (table-user-settings/upsert-table-user-settings! table {:field_order :alphabetical})
+      (is (= [a-id b-id] (t2/select-pks-vec :model/FieldOverlay :table_id table-id {:order-by [[:position :asc]]})))
+      (is (= {b-id 0 a-id 1} (t2/select-pk->fn :position :model/Field :table_id table-id)))
+      (testing "a Field already in its place gets no settings"
+        (mt/with-temp [:model/Field {c-id :id} {:table_id table-id :name "C" :database_position 2 :position 2}]
+          (table-user-settings/upsert-table-user-settings! table {:field_order :alphabetical})
+          (is (= #{a-id b-id} (t2/select-fn-set :field_id :model/FieldUserSettings :field_id [:in [a-id b-id c-id]])))))
+      (testing "unsetting the field order brings back the stored positions and drops the emptied settings"
+        (table-user-settings/unset-table-user-settings! table [:field_order])
+        (is (= [b-id a-id] (t2/select-pks-vec :model/FieldOverlay :table_id table-id {:order-by [[:position :asc]]})))
+        (is (empty? (t2/select :model/FieldUserSettings :field_id [:in [a-id b-id]])))))))
+
 (deftest custom-order-fields-test
   (testing "a custom order is recorded as the Fields' user custom_position and applied to their position"
     (mt/with-temp [:model/Table {table-id :id :as table} {}
@@ -118,18 +137,19 @@
       (table-user-settings/custom-order-fields! table [f2 f1])
       (is (= :custom (:field_order (user-table table-id))))
       (is (= {f2 0 f1 1} (t2/select-fn->fn :field_id :custom_position :model/FieldUserSettings :field_id [:in [f1 f2]])))
-      (is (= [f2 f1] (t2/select-pks-vec :model/Field :table_id table-id {:order-by [[:position :asc]]})))
-      (is (= {f2 0 f1 1} (t2/select-pk->fn :custom_position :model/Field :table_id table-id))))))
+      (is (= [f2 f1] (t2/select-pks-vec :model/FieldOverlay :table_id table-id {:order-by [[:position :asc]]})))
+      (is (= {f2 0 f1 1} (t2/select-pk->fn :custom_position :model/FieldOverlay :table_id table-id))))))
 
-(deftest deleting-settings-keeps-table-row-test
-  (testing "deleting the settings leaves the Table as it is for sync to take over"
+(deftest deleting-settings-brings-back-table-values-test
+  (testing "deleting the settings brings back the Table's own values"
     (mt/with-temp [:model/Table {table-id :id :as table} {:name "sync_name" :data_authority :unconfigured}]
       (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative
                                                               :display_name   "User Name"
                                                               :description    "user description"})
       (table-user-settings/delete-table-user-settings! [table-id])
-      (is (=? {:data_authority :authoritative :description "user description" :display_name "User Name"}
+      (is (=? {:data_authority :unconfigured :description nil :display_name (mt/malli=? :string)}
               (user-table table-id)))
+      (is (not= "User Name" (:display_name (user-table table-id))))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
 (deftest unchanged-half-of-visibility-pair-is-recorded-test

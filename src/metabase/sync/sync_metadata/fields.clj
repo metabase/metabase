@@ -49,6 +49,7 @@
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -99,7 +100,10 @@
          ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
          ;; Re-fetch our metadata because there might be some things that have changed after calling
          ;; `sync-instances`
-         (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))))
+         (sync-metadata/update-metadata! database
+                                         (assoc table :field_order (sync.db/stored-field-order (u/the-id table)))
+                                         db-metadata
+                                         (fields.our-metadata/our-metadata table))))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

@@ -1,7 +1,8 @@
 (ns metabase.warehouse-schema.audit
   "What the audit spec of a Table needs beyond its columns."
   (:require
-   [metabase.util.events :as u.events]))
+   [metabase.util.events :as u.events]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,3 +23,13 @@
   "The details to store for the `event` of a publication of a Table."
   [{:keys [object]}]
   (select-keys object [:id :name :db_id]))
+
+(defn settings-subject
+  "The Table under which the row of the `event` of a write of its user settings is recorded."
+  [{:keys [object previous-object]}]
+  [:model/Table (:table_id (or object previous-object))])
+
+(defn settings-moment-details
+  "The details to store for the `event` of a publication of a Table through its user settings."
+  [{:keys [object]}]
+  (select-keys (warehouse-schema.db/table (:table_id object)) [:id :name :db_id]))

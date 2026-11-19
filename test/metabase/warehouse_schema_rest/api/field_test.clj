@@ -32,12 +32,12 @@
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (=? (merge
-             (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
+             (t2/select-one [:model/FieldOverlay :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
                              :database_position :database_required :database_is_auto_increment]
                             :id (mt/id :users :name))
              {:table_id         (mt/id :users)
               :table            (merge
-                                 (t2/select-one [:model/Table :created_at :updated_at
+                                 (t2/select-one [:model/TableOverlay :created_at :updated_at
                                                  :initial_sync_status :view_count]
                                                 :id (mt/id :users))
                                  {:description             nil
@@ -112,7 +112,7 @@
 (defn- field-row
   "The Field row in `metabase_field`."
   [field-id]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/FieldOverlay :id field-id))
 
 (defn simple-field-details [field]
   (select-keys field [:name
@@ -304,12 +304,12 @@
               ;; ensure that there is no coercion strategy from previous tests
               (let [response (set-strategy! nil)]
                 (is (= "type/Integer" (:effective_type response)))
-                (is (contains? (get-in (t2/select-one :model/Field :id field-id) [:fingerprint :type]) :type/Number)))
+                (is (contains? (get-in (t2/select-one :model/FieldOverlay :id field-id) [:fingerprint :type]) :type/Number)))
               (let [response (set-strategy! :Coercion/UNIXSeconds->DateTime)]
                 (is (= "type/Instant" (:effective_type response)))
                 (is (= "type/Instant" (:effective_type (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
                 (is (= :type/Instant (:effective_type (field-row field-id))))
-                (is (contains? (get-in (t2/select-one :model/Field :id field-id) [:fingerprint :type]) :type/DateTime))))))))))
+                (is (contains? (get-in (t2/select-one :model/FieldOverlay :id field-id) [:fingerprint :type]) :type/DateTime))))))))))
 
 (deftest update-field-coercion-set-then-cleared-test
   (testing "PUT /api/field/:id"
@@ -536,7 +536,7 @@
                                       {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
-  (-> (t2/select-one :model/Field :id field-id)
+  (-> (t2/select-one :model/FieldOverlay :id field-id)
       (t2/hydrate :dimensions)
       :dimensions
       first))
@@ -944,7 +944,7 @@
             (mt/with-db database
               ;; Sync the new database
               (sync/sync-database! (:id database))
-              (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
+              (let [field (t2/select-one :model/FieldOverlay :id (mt/id :json :json_bit))
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
@@ -954,7 +954,7 @@
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                          updated-db)))
                     nested-fields          (fn []
-                                             (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                             (->> (t2/select :model/FieldOverlay :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                                   (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                 (testing "json_unfolding is enabled by default at the field level"
                   (is (true? (:json_unfolding field))))
@@ -986,7 +986,7 @@
               (mt/with-db database
                 ;; Sync the new database
                 (sync/sync-database! (:id database))
-                (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
+                (let [get-field (fn [] (t2/select-one :model/FieldOverlay :id (mt/id :json :json_bit)))
                       get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                       set-json-unfolding-for-field! (fn [v]
                                                       (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
@@ -996,7 +996,7 @@
                                                      (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                            updated-db)))
                       nested-fields (fn []
-                                      (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                      (->> (t2/select :model/FieldOverlay :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                            (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                   (testing "nested fields are not created"
                     (is (empty? (nested-fields))))

@@ -9,7 +9,7 @@
 
 (mr/def ::Table
   [:and
-   (ms/InstanceOf :model/Table)
+   [:or (ms/InstanceOf :model/Table) (ms/InstanceOf :model/TableOverlay)]
    ::no-kebab-case-keys])
 
 ;; TODO: fix memory issues with `mu/defn` and `ms/InstanceOf` so we don't need to do this
@@ -32,7 +32,7 @@
 
 (mr/def ::Field
   [:and
-   (ms/InstanceOf :model/Field)
+   [:or (ms/InstanceOf :model/Field) (ms/InstanceOf :model/FieldOverlay)]
    ::qp-results-cased-map])
 
 (def Field

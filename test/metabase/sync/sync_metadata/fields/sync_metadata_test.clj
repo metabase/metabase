@@ -384,7 +384,7 @@
                :effective_type      :type/Text
                :fingerprint_version 0
                :semantic_type       :type/Category}
-              (t2/select-one :model/Field :id field-id)))
+              (t2/select-one :model/FieldOverlay :id field-id)))
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id field-id))))))
 
@@ -557,7 +557,7 @@
           (is (=? {:base_type        :type/Integer
                    :effective_type   :type/Integer
                    :data_sensitivity :PII}
-                  (t2/select-one :model/Field :id field-id)))
+                  (t2/select-one :model/FieldOverlay :id field-id)))
           (is (=? {:effective_type   nil
                    :data_sensitivity :PII}
                   (t2/select-one :model/FieldUserSettings :field_id field-id))))

@@ -183,15 +183,29 @@
   warehouse-schema.db/field-order-rule)
 
 (defn update-field-positions!
-  "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
+  "Set the `:position` of each Field of the Table `table`, as stored, to its place in the Table's `:field_order`."
   [table]
   (doall
-   (map-indexed (fn [new-position field]
-                  (warehouse-schema.db/update-field! (u/the-id field) {:position new-position}))
-                ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (warehouse-schema.db/field-ids-for-table-ordered
-                 (u/the-id table)
-                 (:field_order table)))))
+   (map-indexed (fn [new-position field-id]
+                  (warehouse-schema.db/update-field! field-id {:position new-position}))
+                (warehouse-schema.db/field-ids-for-table-ordered :model/Field (u/the-id table) (:field_order table)))))
+
+(defn update-user-field-positions!
+  "Record in the user settings of each Field of the Table with `table-id` its place in the field order a user set for
+  the Table where its stored position differs, clearing the others, and all of them when no user set one or the one set
+  is `:database`, which the stored positions follow."
+  [table-id]
+  (let [field-order (some-> (warehouse-schema.db/table-user-settings table-id) :field_order keyword)]
+    (warehouse-schema.db/clear-field-user-settings-positions! [table-id])
+    (when (and field-order (not= field-order :database))
+      (let [stored (warehouse-schema.db/stored-field-positions table-id)]
+        (warehouse-schema.db/set-field-user-settings-positions!
+         :position
+         (into {}
+               (keep-indexed (fn [position field-id]
+                               (when (not= position (stored field-id))
+                                 [field-id position])))
+               (warehouse-schema.db/field-ids-for-table-ordered :model/FieldOverlay table-id field-order)))))))
 
 (defn- check-changes
   "Throws a 400 for a change in `changes` that `original`, the Table as stored, cannot take."
@@ -256,13 +270,18 @@
                  :data_authority :unconfigured}
                 (keys table))))
 
+(defn check-update
+  "Throws a 400 for `changes` that `original`, the Table as users see it, cannot take."
+  [changes original]
+  (check-changes changes original)
+  (when (some #(contains? changes %) [:is_published :collection_id])
+    (check-publication (merge original changes))))
+
 (t2/define-before-update :model/Table
   [table]
   (let [changes  (t2/changes table)
         original (t2/original table)]
-    (check-changes changes original)
-    (when (some #(contains? changes %) [:is_published :collection_id])
-      (check-publication table))
+    (check-update changes original)
     (when (contains? changes :field_order)
       (update-field-positions! table))
     (merge table (visibility-changes changes original) (activity-changes changes original))))

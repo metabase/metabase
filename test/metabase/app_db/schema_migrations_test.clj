@@ -5471,3 +5471,46 @@
           (testing (name table)
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
+
+(deftest field-user-settings-positions-test
+  (testing "xqk4xv..mzo7tr move the field orders users set out of metabase_table and metabase_field into the Fields' settings"
+    (impl/test-migrations ["xqk4xv" "mzo7tr"] [migrate!]
+      (let [db-id     (t2/insert-returning-pk! :metabase_database {:name       "db"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            table!    (fn [field-order]
+                        (t2/insert-returning-pk! :metabase_table {:active      true
+                                                                  :db_id       db-id
+                                                                  :name        (str (random-uuid))
+                                                                  :field_order field-order
+                                                                  :created_at  :%now
+                                                                  :updated_at  :%now}))
+            field!    (fn [table-id field-name database-position position]
+                        (t2/insert-returning-pk! :metabase_field {:table_id          table-id
+                                                                  :name              field-name
+                                                                  :base_type         "type/Text"
+                                                                  :database_type     "TEXT"
+                                                                  :database_position database-position
+                                                                  :position          position
+                                                                  :created_at        :%now
+                                                                  :updated_at        :%now}))
+            ordered   (table! "alphabetical")
+            b-id      (field! ordered "B" 0 1)
+            a-id      (field! ordered "A" 1 0)
+            c-id      (field! ordered "C" 2 2)
+            unordered (table! "alphabetical")
+            d-id      (field! unordered "D" 0 1)]
+        (t2/insert! :metabase_table_user_settings {:table_id ordered :field_order "alphabetical"})
+        (t2/insert! :metabase_field_user_settings {:field_id b-id :description "B" :description_set true})
+        (migrate!)
+        (testing "a Field the user order moved keeps its position in its settings, existing or new"
+          (is (= {a-id 0 b-id 1}
+                 (t2/select-fn->fn :field_id :position :metabase_field_user_settings :field_id [:in [a-id b-id c-id]]))))
+        (testing "the Fields of the Table go back to their database position, and its stored order to the database order"
+          (is (= {a-id 1 b-id 0 c-id 2} (t2/select-pk->fn :position :metabase_field :table_id ordered)))
+          (is (= "database" (t2/select-one-fn :field_order :metabase_table :id ordered))))
+        (testing "a Table without a user field order keeps its stored order"
+          (is (= 1 (t2/select-one-fn :position :metabase_field :id d-id)))
+          (is (= "alphabetical" (t2/select-one-fn :field_order :metabase_table :id unordered))))))))

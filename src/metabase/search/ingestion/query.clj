@@ -54,13 +54,13 @@
                                                                      (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
-      :from      [[(t2/table-name (:model spec)) :this]]
+      :from      [[(t2/table-name (search.spec/overlays (:model spec) (:model spec))) :this]]
       :where     (:where spec [:= [:inline 1] [:inline 1]])
       :left-join (when (:joins spec)
                    (into []
                          cat
                          (for [[join-alias [join-model join-condition]] (:joins spec)]
-                           [[(t2/table-name join-model) join-alias]
+                           [[(t2/table-name (search.spec/overlays join-model join-model)) join-alias]
                             join-condition])))})))
 
 (def ^:private spec-index-query-memo (memoize spec-index-query*))

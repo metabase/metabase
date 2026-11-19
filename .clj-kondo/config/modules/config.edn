@@ -2742,10 +2742,14 @@
                     :model/Database
                     :model/Document
                     :model/Exploration
+                    :model/Field
+                    :model/FieldOverlay
+                    :model/FieldUserSettings
                     :model/Measure
                     :model/Segment
                     :model/Table
                     :model/TableOverlay
+                    :model/TableUserSettings
                     :model/Transform
                     :model/User}}
 
@@ -3131,7 +3135,10 @@
            sync
            util
            util.config}
-   :model-imports #{:model/Field :model/Table}}
+   :model-imports #{:model/Field
+                    :model/FieldOverlay
+                    :model/Table
+                    :model/TableOverlay}}
 
   system
   {:team "UX West"

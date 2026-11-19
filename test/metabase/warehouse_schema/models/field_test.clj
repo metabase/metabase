@@ -303,19 +303,20 @@
       (is (not (t2/exists? :model/FieldUserSettings :field_id field-id))))))
 
 (deftest data-sensitivity-user-setting-test
-  (testing "user-set label is written to Field and recorded in its settings"
+  (testing "user-set label overlays the Field and is recorded in its settings"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-field-user-settings! field {:data_sensitivity :PUBLIC})
-      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldOverlay :id field-id)))
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
-  (testing "upserting nil unsets label, clearing it on Field and dropping emptied settings"
+  (testing "upserting nil unsets label, bringing back the Field's own and dropping emptied settings"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-field-user-settings! field {:data_sensitivity :PUBLIC})
       (field-user-settings/upsert-field-user-settings! field {:data_sensitivity nil})
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id)))
-      (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id))))))
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/FieldOverlay :id field-id))))))
 
-(deftest field-user-settings-write-field-row-test
+(deftest field-user-settings-overlay-field-row-test
   (mt/with-temp [:model/Field {edited-id :id :as edited} {:name              "sync_name"
                                                           :display_name      "Sync Name"
                                                           :description       "sync description"
@@ -325,37 +326,40 @@
                                                           :coercion_strategy nil}
                  :model/Field {plain-id :id} {:display_name "Plain"}]
     (field-user-settings/upsert-field-user-settings! edited {:display_name "User Name" :description nil :semantic_type nil})
-    (testing "user values, user NULL included, are written to Field; rest of row is intact"
+    (testing "user values, user NULL included, overlay the Field; rest of row is intact"
       (is (=? {:id edited-id :display_name "User Name" :description nil :semantic_type nil :base_type :type/Text
                :effective_type :type/Text :coercion_strategy nil :visibility_type :normal}
+              (t2/select-one :model/FieldOverlay :id edited-id)))
+      (is (=? {:display_name "Sync Name" :description "sync description" :semantic_type :type/Category}
               (t2/select-one :model/Field :id edited-id)))
-      (is (=? {:id plain-id :display_name "Plain"} (t2/select-one :model/Field :id plain-id))))
+      (is (=? {:id plain-id :display_name "Plain"} (t2/select-one :model/FieldOverlay :id plain-id))))
     (testing "settings record which columns user set"
       (is (=? {:display_name "User Name" :description nil :description_set true :semantic_type nil
                :semantic_type_set true :fk_target_field_id_set false}
               (t2/select-one :model/FieldUserSettings :field_id edited-id))))
-    (testing "unsetting leaves Field as it is for sync to take over"
+    (testing "unsetting brings back the Field's own values"
       (field-user-settings/unset-field-user-settings! edited [:display_name :description])
-      (is (=? {:display_name "User Name" :description nil :semantic_type nil}
-              (t2/select-one :model/Field :id edited-id))))
-    (testing "coercion follows user's effective_type, and unsetting both leaves them for sync"
+      (is (=? {:display_name "Sync Name" :description "sync description" :semantic_type nil}
+              (t2/select-one :model/FieldOverlay :id edited-id))))
+    (testing "coercion follows user's effective_type, and unsetting both brings back the Field's own"
       (field-user-settings/upsert-field-user-settings! edited {:effective_type    :type/Integer
                                                                :coercion_strategy :Coercion/String->Integer})
       (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-              (t2/select-one :model/Field :id edited-id)))
+              (t2/select-one :model/FieldOverlay :id edited-id)))
       (field-user-settings/unset-field-user-settings! edited [:effective_type :coercion_strategy])
-      (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-              (t2/select-one :model/Field :id edited-id))))))
+      (is (=? {:effective_type :type/Text :coercion_strategy nil}
+              (t2/select-one :model/FieldOverlay :id edited-id))))))
 
-(deftest deleting-field-settings-keeps-field-row-test
-  (testing "deleting the settings leaves the Field as it is for sync to take over"
+(deftest deleting-field-settings-brings-back-field-values-test
+  (testing "deleting the settings brings back the Field's own values"
     (mt/with-temp [:model/Field {field-id :id :as field} {:name "sync_name" :semantic_type :type/Category}]
       (field-user-settings/upsert-field-user-settings! field {:semantic_type    :type/Email
                                                               :visibility_type  :sensitive
                                                               :display_name     "User Name"})
       (field-user-settings/delete-field-user-settings! [field-id])
-      (is (=? {:semantic_type :type/Email :visibility_type :sensitive :display_name "User Name"}
-              (t2/select-one :model/Field :id field-id)))
+      (is (=? {:semantic_type :type/Category :visibility_type :normal}
+              (t2/select-one :model/FieldOverlay :id field-id)))
+      (is (not= "User Name" (t2/select-one-fn :display_name :model/FieldOverlay :id field-id)))
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))))
 
 (deftest upsert-field-user-settings-flags-test
@@ -386,13 +390,13 @@
       (is (nil? (:name (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
 
 (deftest deactivating-fk-target-unsets-user-fk-test
-  (testing "retiring Field drops user-set FKs pointing at it and clears them on source Field"
+  (testing "retiring Field drops user-set FKs pointing at it, bringing back the source Field's own semantic type"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {:semantic_type :type/Category}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK :fk_target_field_id target-id})
       (t2/update! :model/Field :id target-id {:active false})
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
-      (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
+      (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/FieldOverlay :id source-id)))))
   (testing "retiring Field also drops a user-set FK semantic type whose target sync set"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
@@ -400,7 +404,7 @@
       (t2/update! :model/Field :id source-id {:fk_target_field_id target-id})
       (t2/update! :model/Field :id target-id {:active false})
       (is (not (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id source-id)))
-      (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
+      (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/FieldOverlay :id source-id)))))
   (testing "retiring Field keeps a user-set semantic type other than FK on a Field sync pointed at it"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
@@ -409,7 +413,7 @@
       (t2/update! :model/Field :id target-id {:active false})
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
-      (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))
+      (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/FieldOverlay :id source-id))))))
 
 (deftest sync-base-type-change-keeps-fk-remapping-test
   (testing "A base type change written by sync keeps the foreign key target and external remapping of a Field"
