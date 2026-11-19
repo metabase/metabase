@@ -242,7 +242,8 @@
   nil)
 
 (defn clear-instance-workspace!
-  "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
+  "Turn `workspaces-enabled` off and delete the instance's own `:model/TableRemapping` rows. The rows of the
+   workspaces that requests name stay.
    Leaves each database's `database-workspace-schema` in place; it has no effect
    while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
    since that value wins over the stored one."
@@ -250,7 +251,7 @@
   (ws.settings/workspaces-enabled! false)
   ;; The setting's setter deletes the remap rows only when the value changes. Delete
   ;; them here too, so that rows left while the setting was already off also go.
-  (ws.db/delete-all-table-remappings!)
+  (ws.db/delete-instance-table-remappings!)
   nil)
 
 (defn translate-instance-workspace-setting!
@@ -290,14 +291,30 @@
 
    The two do not meet: an instance with workspaces of its own can't turn `workspaces-enabled` on, and a request on a
    sidecar can't name a workspace ([[request-workspace-problem]]). [[workspace-mode?]], [[db-workspace-namespace]] and
-   [[workspace-connection-details]] read this."
+   [[workspace-connection-details]] read this.
+
+   Throws when the thread names a workspace that does not exist, for example one deleted while a transform of it
+   runs: the thread must not go on as if it named none, with the Databases' own logins and production targets."
   []
   (cond
     (ws.settings/workspaces-enabled)
     {:mode :sidecar}
 
     (workspaces/current-workspace-id)
-    (ws.request-workspace/request-workspace (workspaces/current-workspace-id))))
+    (let [workspace-id (workspaces/current-workspace-id)]
+      (or (ws.request-workspace/request-workspace workspace-id)
+          (throw (ex-info (tru "There is no workspace {0}." (str workspace-id))
+                          {:status-code 400 :workspace-id workspace-id}))))))
+
+(defn- bound-database
+  "The entry of the Database with `database-id` in the workspace `workspace` that the request names
+  ([[ws.request-workspace/request-workspace]]), or nil when it is not one of the workspace's Databases. Throws when it
+  is one that is not provisioned: its output schema and login may not exist, and the Database's own must not be used."
+  [{:keys [workspace-id databases unprovisioned-database-ids]} database-id]
+  (when (contains? unprovisioned-database-ids database-id)
+    (throw (ex-info (tru "Database {0} of workspace {1} is not provisioned." (str database-id) (str workspace-id))
+                    {:status-code 400 :database-id database-id :workspace-id workspace-id})))
+  (get databases database-id))
 
 (defenterprise request-workspace-problem
   "EE impl: why a request can't work in the workspace with `workspace-id`, or nil when it can. It can when every
@@ -369,10 +386,10 @@
    connection would log in as the parent. Ungated like [[workspace-mode?]]."
   :feature :none
   [database-id]
-  (when-let [{:keys [mode databases]} (current-workspace)]
+  (when-let [{:keys [mode] :as workspace} (current-workspace)]
     (case mode
       :sidecar nil
-      :bound   (when-let [{:keys [details problem]} (get databases database-id)]
+      :bound   (when-let [{:keys [details problem]} (bound-database workspace database-id)]
                  (when problem
                    (throw (ex-info problem {:status-code 400 :database-id database-id})))
                  details))))
@@ -387,16 +404,17 @@
 
 (defn db-workspace-namespace
   "Return the workspace output namespace map `{:db ?, :schema ?}` for `db-id`, or
-   `nil` when the current thread works in no workspace ([[current-workspace]]) or the database has no
-   `database-workspace-schema`, or is not a provisioned database of the workspace that the request names. Either key may be absent depending on the driver's
+   `nil` when the current thread works in no workspace ([[current-workspace]]), or the database has no
+   `database-workspace-schema`, or is not a database of the workspace that the request names. Throws for a database of
+   that workspace that is not provisioned. Either key may be absent depending on the driver's
    `qualified-name-components`."
   [db-id]
-  (when-let [{:keys [mode databases]} (current-workspace)]
+  (when-let [{:keys [mode] :as workspace} (current-workspace)]
     (case mode
       :sidecar (when-let [database (ws.db/database db-id)]
                  (some->> (database-workspace-schema database)
                           (expand-output-namespace database)))
-      :bound   (when-let [output-namespace (get-in databases [db-id :output-namespace])]
+      :bound   (when-let [output-namespace (:output-namespace (bound-database workspace db-id))]
                  (when-let [database (ws.db/database db-id)]
                    (expand-output-namespace database output-namespace))))))
 

@@ -386,10 +386,10 @@
    to-schema   :- :string]
   (t2/delete! :model/TableRemapping :database_id database-id :to_db to-db :to_schema to-schema))
 
-(mu/defn delete-all-table-remappings!
-  "Delete every TableRemapping."
+(mu/defn delete-instance-table-remappings!
+  "Delete the instance's own TableRemappings, and none of the workspaces that requests name."
   []
-  (t2/delete! :model/TableRemapping))
+  (t2/delete! :model/TableRemapping :workspace_id 0))
 
 ;;; ---------------------------------------- Workspace copy metadata -------------------------------------------
 ;;;

@@ -7,8 +7,12 @@
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
+   [metabase.app-db.core :as app-db]
    [metabase.driver.sync :as driver.sync]
+   [metabase.events.core :as events]
    [metabase.query-processor.middleware.cache :as qp.cache]
    [metabase.test :as mt]
    [metabase.workspaces.core :as workspaces]
@@ -74,9 +78,10 @@
        (t2/update! :model/WorkspaceDatabase {:database_id db-id} {:status :provisioning})
        (is (re-find #"not provisioned" (workspaces/request-workspace-problem workspace-id)))
        (workspaces/with-workspace-id workspace-id
-         (testing "such a database is not in the workspace"
-           (is (nil? (ws/db-workspace-namespace db-id)))
-           (is (nil? (ws/workspace-connection-details db-id)))))
+         (testing "such a database is refused, and does not fall back to the Database's own login and schemas"
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not provisioned" (ws/db-workspace-namespace db-id)))
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not provisioned"
+                                 (ws/workspace-connection-details db-id)))))
        (t2/update! :model/WorkspaceDatabase {:database_id db-id} {:status :provisioned}))
      (testing "a workspace with no databases"
        (mt/with-temp [:model/Workspace {empty-id :id} {:name "empty"}]
@@ -109,14 +114,33 @@
        (is (some? (ws/workspace-connection-details db-id)))
        (testing "a deprovisioned database leaves the cached workspace at once"
          (t2/update! :model/WorkspaceDatabase {:database_id db-id} {:status :deprovisioning})
-         (is (nil? (ws/workspace-connection-details db-id))))))))
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not provisioned"
+                               (ws/workspace-connection-details db-id))))))))
+
+(deftest a-workspace-that-is-gone-fails-closed-test
+  (do-with-request-workspace
+   (fn [{:keys [workspace-id db-id]}]
+     (testing "a thread bound to a workspace that does not exist does not fall back to the instance's own"
+       (workspaces/with-workspace-id Integer/MAX_VALUE
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"There is no workspace" (workspaces/workspace-bound?)))
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"There is no workspace" (workspaces/workspace-mode?)))
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"There is no workspace"
+                               (ws.transform-hooks/workspace-transform-target db-id {:type :table :schema "public" :name "orders"})))))
+     (testing "a workspace deleted while a thread is bound to it"
+       (workspaces/with-workspace-id workspace-id
+         (is (true? (workspaces/workspace-bound?)))
+         (t2/delete! :model/WorkspaceDatabase :workspace_id workspace-id)
+         (t2/delete! :model/Workspace :id workspace-id)
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"There is no workspace" (workspaces/workspace-bound?)))
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"There is no workspace"
+                               (ws.transform-hooks/workspace-transform-target db-id {:type :table :schema "public" :name "orders"}))))))))
 
 (deftest request-workspace-refuses-what-a-workspace-refuses-test
   (do-with-request-workspace
    (fn [{:keys [workspace-id]}]
      (workspaces/with-workspace-id workspace-id
        (testing "features that a workspace refuses are refused in a request that names one"
-         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported on a workspace"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Actions is not supported in a request that names a workspace\.$"
                                (workspaces/check-not-in-workspace-mode! "Actions"))))))))
 
 (deftest request-workspace-queries-are-not-cached-test
@@ -198,3 +222,46 @@
        (is (not (t2/exists? :model/TableRemapping :database_id db-id)))
        (finally
          (t2/delete! :model/TableRemapping :database_id db-id))))))
+
+(deftest clearing-the-instance-workspace-keeps-request-workspace-remappings-test
+  (do-with-request-workspace
+   (fn [{:keys [workspace-id db-id]}]
+     (try
+       (remap-orders! db-id "instance_schema")
+       (workspaces/with-workspace-id workspace-id
+         (remap-orders! db-id "mb__isolation_test"))
+       (ws/clear-instance-workspace!)
+       (testing "the instance's own remappings go"
+         (is (nil? (orders-target db-id))))
+       (testing "a workspace's remappings stay"
+         (workspaces/with-workspace-id workspace-id
+           (is (= "mb__isolation_test" (orders-target db-id)))))
+       (finally
+         (t2/delete! :model/TableRemapping :database_id db-id))))))
+
+(defn- cached-ids []
+  (set (keys @@#'ws.request-workspace/cache)))
+
+(deftest request-workspace-cache-test
+  (do-with-request-workspace
+   (fn [{:keys [workspace-id db-id]}]
+     ;; the test's writes are in a transaction, which the cache leaves alone
+     (mt/with-dynamic-fn-redefs [app-db/in-transaction? (constantly false)]
+       (ws.request-workspace/invalidate!)
+       (testing "a workspace that does not exist is not cached, so a request that names it later reads it"
+         (is (nil? (ws.request-workspace/request-workspace Integer/MAX_VALUE)))
+         (is (not (contains? (cached-ids) Integer/MAX_VALUE))))
+       (testing "a workspace is cached"
+         (is (some? (ws.request-workspace/request-workspace workspace-id)))
+         (is (contains? (cached-ids) workspace-id)))
+       (testing "an entry older than the maximum age goes when another workspace is cached"
+         (swap! @#'ws.request-workspace/cache assoc -1 {:value {} :read-at (- (System/nanoTime) (* 60 1000 1000 1000))})
+         (ws.request-workspace/invalidate!)
+         (swap! @#'ws.request-workspace/cache assoc -1 {:value {} :read-at (- (System/nanoTime) (* 60 1000 1000 1000))})
+         (ws.request-workspace/request-workspace workspace-id)
+         (is (not (contains? (cached-ids) -1))))
+       (testing "an update of a Database drops the cache: its details decide whether the workspace's login can be used"
+         (is (contains? (cached-ids) workspace-id))
+         (let [db (t2/select-one :model/Database :id db-id)]
+           (events/publish-event! :event/database-update {:object db :previous-object db :user-id (mt/user->id :crowberto)}))
+         (is (empty? (cached-ids))))))))

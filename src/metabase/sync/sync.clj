@@ -28,8 +28,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouses.core :as warehouses]
-   [metabase.workspaces.core :as workspaces])
+   [metabase.warehouses.core :as warehouses])
   (:import
    (java.time.temporal Temporal)))
 
@@ -98,14 +97,13 @@
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect. Runs in no workspace that a request names, like every sync."
   [table :- i/TableInstance]
-  (workspaces/without-workspace
-    (database-routing/with-anonymous-router-access
-      (let [database (driver.u/lib-database (:db_id table))]
-        (sync-metadata/sync-table-metadata! database table)
-        (analyze/analyze-table! table)
-        (sync.field-values/update-field-values-for-table! database table)
-        (sync-util/set-initial-table-sync-complete! table)
-        table))))
+  (database-routing/with-anonymous-router-access
+    (let [database (driver.u/lib-database (:db_id table))]
+      (sync-metadata/sync-table-metadata! database table)
+      (analyze/analyze-table! table)
+      (sync.field-values/update-field-values-for-table! database table)
+      (sync-util/set-initial-table-sync-complete! table)
+      table)))
 
 (mu/defn start-initial-sync!
   "Start the first sync of `database`, which a user created through the API when `previous-database` is nil, or
@@ -157,6 +155,5 @@
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
         (database-routing/with-anonymous-router-access
-          (workspaces/without-workspace
-            (sync.fingerprint/refingerprint-field! field))))
+          (sync.fingerprint/refingerprint-field! field)))
       :sync/no-connection)))

@@ -45,7 +45,6 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -545,9 +544,9 @@
       ;; `distinct-values` returns nil when the warehouse scan failed, which is not the same as a
       ;; field that genuinely has no values: persisting it would read as "empty" and delete the
       ;; values we already have. Leave whatever is cached in place instead.
-      ;; The values are stored for every workspace, so they are read in no workspace that a request names.
-      (if-let [{rows :values} (workspaces/without-workspace
-                                (database-routing/with-anonymous-router-access (distinct-values field)))]
+      ;; The values are stored for every workspace, so they are read in no workspace that a request names, as all work
+      ;; with anonymous router access is.
+      (if-let [{rows :values} (database-routing/with-anonymous-router-access (distinct-values field))]
         ;; rows are 1-tuples — unwrap for storage.
         (persist-field-values! field existing-fv (seq (map first rows)))
         ::fv-fetch-failed))

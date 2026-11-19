@@ -47,19 +47,21 @@
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  ;; Read the workspace schema once and decide from that read. A second read could see a schema cleared since the
-  ;; first, and return the canonical target on a workspace instance.
-  (let [workspace-ns (ws/db-workspace-namespace db-id)]
+  ;; Read the workspace and its schema once, and decide from that read. A second read could see a schema cleared
+  ;; since the first, and return the canonical target on a workspace instance. A thread that names a workspace that is
+  ;; gone throws here ([[ws/current-workspace]]).
+  (let [mode         (:mode (ws/current-workspace))
+        workspace-ns (when mode (ws/db-workspace-namespace db-id))]
     (cond
       (some? workspace-ns)
       (retarget target (ws.table-remapping/transform-target-remapping db-id target))
 
-      (ws/workspace-bound?)
+      (= :bound mode)
       (throw (ex-info (tru "Database {0} is not a provisioned database of the workspace that the request names, so its transforms have no safe target."
                            db-id)
                       {:status-code 400 :database-id db-id}))
 
-      (ws/workspace-mode?)
+      (= :sidecar mode)
       (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
                            db-id)
                       {:status-code 400 :database-id db-id}))

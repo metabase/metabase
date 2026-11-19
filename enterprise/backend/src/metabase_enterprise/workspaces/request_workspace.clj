@@ -7,17 +7,31 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.login :as ws.login]
-   [metabase.app-db.core :as app-db]))
+   [metabase.app-db.core :as app-db]
+   [metabase.driver :as driver]))
 
 (set! *warn-on-reflection* true)
 
+(defn engine-problem
+  "Why a request can't use the Database `db` with a workspace's login because of its engine, or nil. A request's
+  connections get the workspace's login from a JDBC connection pool
+  ([[metabase.driver.connection.workspaces/maybe-swap-details]]). Nothing checks that the connections of another
+  engine do the same."
+  [db]
+  (when-not (isa? driver/hierarchy (keyword (:engine db)) :sql-jdbc)
+    (format (str "Database %s uses engine %s. A request can name a workspace only for engines that connect through a "
+                 "JDBC connection pool.")
+            (pr-str (:name db)) (name (:engine db)))))
+
 (defn- database-entry
   "What a request in the workspace uses for the Database of the provisioned WorkspaceDatabase `workspace-database`.
-  `:problem` says why the Database can't be used with the workspace's login ([[ws.login/login-problem]]), or is nil."
+  `:problem` says why the Database can't be used with the workspace's login ([[engine-problem]],
+  [[ws.login/login-problem]]), or is nil."
   [{:keys [database_id output_namespace] :as workspace-database}]
   {:output-namespace output_namespace
    :details          (ws.login/workspace-login-details workspace-database)
-   :problem          (some-> (ws.db/database database_id) ws.login/login-problem)})
+   :problem          (when-let [db (ws.db/database database_id)]
+                       (or (engine-problem db) (ws.login/login-problem db)))})
 
 (defn- load-workspace
   "The workspace with `workspace-id` as [[request-workspace]] gives it, read from the app DB."
@@ -38,7 +52,7 @@
   (* 5 1000 1000 1000))
 
 (defn invalidate!
-  "Drop this process's cache of every workspace. Call it after a WorkspaceDatabase changes."
+  "Drop this process's cache of every workspace. Call it after a WorkspaceDatabase or a Database changes."
   []
   (reset! cache {}))
 
@@ -59,5 +73,12 @@
       (if (and read-at (< (- now (long read-at)) (long max-age-ns)))
         value
         (let [value (load-workspace workspace-id)]
-          (swap! cache assoc workspace-id {:value value :read-at now})
+          ;; A workspace that does not exist is not cached: one created later must be read at once. Entries past the
+          ;; maximum age go, so the cache holds only the workspaces that requests named recently.
+          (swap! cache (fn [entries]
+                         (cond-> (into {}
+                                       (filter (fn [[_ {:keys [read-at]}]] (< (- now (long read-at)) (long max-age-ns))))
+                                       entries)
+                           value       (assoc workspace-id {:value value :read-at now})
+                           (nil? value) (dissoc workspace-id))))
           value)))))

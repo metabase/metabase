@@ -24,8 +24,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]))
+   [metabase.util.malli :as mu]))
 
 (defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
   (if version
@@ -130,8 +129,7 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (workspaces/without-workspace
-     (database-routing/with-anonymous-router-access
-       (sync-fields/sync-fields-for-table! database table)
-       (sync-fks/sync-fks-for-table! database table)
-       (sync-indexes/maybe-sync-indexes-for-table! database table)))))
+   (database-routing/with-anonymous-router-access
+     (sync-fields/sync-fields-for-table! database table)
+     (sync-fks/sync-fks-for-table! database table)
+     (sync-indexes/maybe-sync-indexes-for-table! database table))))

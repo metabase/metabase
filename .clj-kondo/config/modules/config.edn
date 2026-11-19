@@ -961,7 +961,7 @@
   database-routing
   {:team "UX West"
    :api  #{metabase.database-routing.core}
-   :uses #{lib.schema premium-features}}
+   :uses #{lib.schema premium-features workspaces}}
 
   documents
   {:team "UX West"

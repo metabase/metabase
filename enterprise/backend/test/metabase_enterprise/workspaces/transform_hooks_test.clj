@@ -38,21 +38,20 @@
 (deftest workspace-transform-target-fails-closed-test
   (testing "on a workspace instance, the read-only target of a database with no workspace schema is refused too,
             so no existence check reads the production table"
-    (mt/with-dynamic-fn-redefs [ws/workspace-mode?         (constantly true)
+    (mt/with-dynamic-fn-redefs [ws/current-workspace      (constantly {:mode :sidecar})
                                 ws/db-workspace-namespace (constantly nil)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database 42 has no workspace schema"
                             (ws.transform-hooks/workspace-transform-target
                              42 {:schema "public" :name "orders" :type :table}))))
     (testing "in a workspace that the request names, the database is not one of the workspace's"
-      (mt/with-dynamic-fn-redefs [ws/workspace-mode?         (constantly true)
-                                  ws/workspace-bound?        (constantly true)
+      (mt/with-dynamic-fn-redefs [ws/current-workspace      (constantly {:mode :bound})
                                   ws/db-workspace-namespace (constantly nil)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Database 42 is not a provisioned database of the workspace that the request names"
                               (ws.transform-hooks/workspace-transform-target
                                42 {:schema "public" :name "orders" :type :table})))))
     (testing "control: outside workspace mode the canonical target passes through"
-      (mt/with-dynamic-fn-redefs [ws/workspace-mode?         (constantly false)
+      (mt/with-dynamic-fn-redefs [ws/current-workspace      (constantly nil)
                                   ws/db-workspace-namespace (constantly nil)]
         (is (= {:schema "public" :name "orders" :type :table}
                (ws.transform-hooks/workspace-transform-target
@@ -60,7 +59,8 @@
 
 (deftest workspace-transform-target-rewrites-schema-test
   (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the computed to-spec, and nothing is recorded"
-    (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
+    (mt/with-dynamic-fn-redefs [ws/current-workspace       (constantly {:mode :sidecar})
+                                ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                                 ws.table-remapping/transform-target-remapping
                                 (constantly {:db nil :schema "ws_alice" :name "public__orders"})
                                 ws.table-remapping/add-transform-target-mapping!

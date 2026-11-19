@@ -63,7 +63,8 @@
   "True when the current request works in a workspace that it names ([[current-workspace-id]]), while other requests
    of this instance work in other workspaces or in none. Then the results of a query hold that workspace's data, so
    nothing that other requests read, such as the query cache, may keep them. False on a sidecar, whose every request
-   works in the instance's own workspace. The OSS fallback returns false."
+   works in the instance's own workspace. Throws when the thread names a workspace that does not exist, so that it
+   does not go on as if it named none. The OSS fallback returns false."
   metabase-enterprise.workspaces.core
   []
   false)
@@ -156,7 +157,9 @@
    is not per-database — see namespace docstring for the rationale."
   [feature-name]
   (when (workspace-mode?)
-    (throw (ex-info (str feature-name " is not supported on a workspace instance.")
+    (throw (ex-info (str feature-name (if (workspace-bound?)
+                                        " is not supported in a request that names a workspace."
+                                        " is not supported on a workspace instance."))
                     {:status-code 400
                      :feature feature-name
                      :workspace-mode true}))))
