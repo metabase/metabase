@@ -1164,8 +1164,8 @@
    Does nothing when no registry is set up, as after [[shutdown!]]; setting one up here would restart what shutdown
    stopped."
   [metric]
-  (when system
-    (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
+  (when-let [registry (:registry system)]
+    (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry registry) metric nil)))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"
