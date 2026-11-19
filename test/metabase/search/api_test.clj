@@ -27,6 +27,7 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1000,56 +1001,86 @@
          :archived_directly true
          :collection_id (:collection_id m)))
 
-(deftest indexed-entity-perms-query-count-test
-  (testing "The database permission check of indexed entities runs once per search, not once per result"
-    (mt/dataset airports
-      (mt/with-temp [:model/Card model {:type          :model
-                                        :dataset_query (mt/mbql-query municipality)}]
-        (model-index/add-values! (model-index/create
-                                  (mt/$ids {:model-id   (:id model)
-                                            :pk-ref     $municipality.id
-                                            :value-ref  $municipality.name
-                                            :creator-id (mt/user->id :rasta)})))
-        (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
-                                                       :create-queries :query-builder-and-native}}
-          (let [calls   (atom 0)
-                orig    (mt/original-fn #'perms/every-table-in-database-permissions-for-user)
-                search! (fn [q]
-                          (reset! calls 0)
-                          {:results (count (:data (make-search-request :rasta [:q q :models "indexed-entity" :limit 1000
-                                                                               :search_engine "in-place"])))
-                           :calls   @calls})]
-            (mt/with-dynamic-fn-redefs [perms/every-table-in-database-permissions-for-user
-                                        (fn [& args] (swap! calls inc) (apply orig args))]
-              (let [narrow (search! "san")
-                    broad  (search! "a")]
-                (is (< (* 10 (:results narrow)) (:results broad)))
-                (is (= (:calls narrow) (:calls broad)))))))))))
+(defn- insert-rows
+  "A row factory that inserts a `model` row per name, on top of its `with-temp` defaults and `(attrs collection)`."
+  ([model] (insert-rows model (constantly {})))
+  ([model attrs]
+   (fn [collection names]
+     (doseq [n names]
+       (t2/insert! model (merge (mt/with-temp-defaults model) (attrs collection) {:name n}))))))
 
-(deftest document-page-query-count-test
-  (testing "A page of Documents costs no more app DB queries than a single Document"
-    (let [search-string (mt/random-name)]
-      (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (doseq [i (range 10)]
-          (t2/insert! :model/Document {:name          (str search-string " " i)
-                                       :collection_id coll-id
-                                       :creator_id    (mt/user->id :crowberto)
-                                       :document      {:type "doc" :content []}
-                                       :content_type  "application/json+vnd.prose-mirror"}))
-        (try
-          (let [search! (fn [limit]
-                          (t2/with-call-count [call-count]
-                            {:results (count (:data (make-search-request :rasta [:q search-string :models "document"
-                                                                                 :limit limit :search_engine "in-place"])))
-                             :calls   (call-count)}))
-                ;; the first search loads caches the later ones reuse
-                _       (search! 10)
-                one     (search! 1)
-                ten     (search! 10)]
-            (is (= [1 10] [(:results one) (:results ten)]))
-            (is (= (:calls one) (:calls ten))))
-          (finally
-            (t2/delete! :model/Document :collection_id coll-id)))))))
+(defn- insert-model! [collection]
+  (t2/insert-returning-instance! :model/Card (assoc (mt/with-temp-defaults :model/Card)
+                                                    :collection_id (:id collection)
+                                                    :type :model)))
+
+(def ^:private search-row-factories
+  "Per search model, a function of the collection to put rows in and the names of the rows to make."
+  {"collection"     (insert-rows :model/Collection #(hash-map :location (collection/children-location %)))
+   "dashboard"      (insert-rows :model/Dashboard #(hash-map :collection_id (:id %)))
+   "card"           (insert-rows :model/Card #(hash-map :collection_id (:id %) :type :question))
+   "dataset"        (insert-rows :model/Card #(hash-map :collection_id (:id %) :type :model))
+   "metric"         (insert-rows :model/Card #(hash-map :collection_id (:id %) :type :metric))
+   "document"       (insert-rows :model/Document #(hash-map :collection_id (:id %)))
+   "exploration"    (insert-rows :model/Exploration)
+   "segment"        (insert-rows :model/Segment (fn [_] {:table_id (mt/id :venues)}))
+   "measure"        (insert-rows :model/Measure (fn [_] {:table_id (mt/id :venues)}))
+   "table"          (insert-rows :model/Table (fn [_] {:db_id (mt/id)}))
+   "database"       (insert-rows :model/Database)
+   "action"         (fn [collection names]
+                      (let [model (insert-model! collection)]
+                        ((insert-rows :model/Action (constantly {:model_id (:id model) :type :query})) collection names)))
+   "data-app"       (fn [_collection names]
+                      (doseq [n names]
+                        (let [app (t2/insert-returning-instance! :model/DataApp (assoc (mt/with-temp-defaults :model/DataApp) :name n))]
+                          (perms/grant-collection-read-permissions! (perms/all-users-group) (:resource_collection_id app)))))
+   "indexed-entity" (fn [collection names]
+                      (let [model (insert-model! collection)
+                            index (model-index/create (mt/$ids {:model-id   (:id model)
+                                                                :pk-ref     $venues.id
+                                                                :value-ref  $venues.name
+                                                                :creator-id (mt/user->id :rasta)}))]
+                        (doseq [[i n] (map-indexed vector names)]
+                          (t2/insert! :model/ModelIndexValue {:model_index_id (:id index) :model_pk i :name n}))
+                        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id index)))))})
+
+(deftest search-query-count-does-not-grow-with-results-test
+  (let [;; models only superusers see never reach a permission check for rasta
+        models   (->> (search.spec/specifications)
+                      (remove (comp #{:superuser} :visibility val))
+                      (map key)
+                      sort)
+        many     10
+        search!  (fn [model query]
+                   (t2/with-call-count [call-count]
+                     {:rows    (count (:data (make-search-request :rasta [:q query :models model :limit 100])))
+                      :queries (call-count)}))
+        measure! (fn [model]
+                   (let [[one-q many-q] (repeatedly 2 mt/random-name)]
+                     (mt/with-temp [:model/Collection collection {}]
+                       (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+                       ((search-row-factories model) collection [one-q])
+                       ((search-row-factories model) collection (map #(str many-q " " %) (range many)))
+                       ;; the first searches load caches the later ones reuse
+                       (search! model many-q)
+                       (search! model one-q)
+                       (let [one  (search! model one-q)
+                             rows (search! model many-q)]
+                         {:rows [(:rows one) (:rows rows)] :extra-queries (- (:queries rows) (:queries one))}))))]
+    (testing "every search model has a row factory"
+      (is (= [] (remove search-row-factories models))))
+    (mt/with-model-cleanup (->> models
+                                (map (comp :db-model search.config/model->db-model))
+                                (remove #{:model/ModelIndexValue}) ; no id; goes with its model's Card
+                                distinct)
+      (mt/with-premium-features #{:data-apps}
+        (let [check! #(is (= (zipmap models (repeat {:rows [1 many] :extra-queries 0}))
+                             (into {} (map (juxt identity measure!)) models)))]
+          (testing "in-place"
+            (search.tu/with-legacy-search (check!)))
+          (when (search.engine/supported-engine? :search.engine/appdb)
+            (testing "appdb"
+              (check!))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
