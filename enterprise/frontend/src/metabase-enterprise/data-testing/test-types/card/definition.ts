@@ -11,7 +11,6 @@ import {
 } from "metabase-enterprise/api";
 import type { CardId, CardTest } from "metabase-types/api";
 
-import { trackCardTestTriggerManualRun } from "../../analytics";
 import type {
   DataTestReadOnlyResult,
   DataTestTypeDefinition,
@@ -59,7 +58,7 @@ export const cardTestDefinition: DataTestTypeDefinition<CardTest> = {
   getTestUrl: (test) => Urls.dataStudioMetricTest(test.card_id, test.id),
   getTestRunsUrl: (test, params) =>
     Urls.dataStudioMetricTestRuns(test.card_id, test.id, params),
-  trackManualRun: trackCardTestTriggerManualRun,
+  testType: "card",
   getListLabel: () => t`Tests`,
   getRunDescription: () =>
     t`Runs the query on the test data and checks the rows it returns. The real tables aren't touched.`,

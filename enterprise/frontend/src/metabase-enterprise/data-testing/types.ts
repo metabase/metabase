@@ -11,8 +11,6 @@ import type {
   TransformTest,
 } from "metabase-types/api";
 
-import type { DataTestRunTriggeredFrom } from "./analytics";
-
 /** The fields of a test that the pages of every test type show. */
 export type DataTest = {
   id: DataTestId;
@@ -71,10 +69,7 @@ export type DataTestTypeDefinition<T extends DataTest> = {
   getSubjectId: (test: T) => DataTestSubjectId;
   getTestUrl: (test: T) => string;
   getTestRunsUrl: (test: T, params?: Urls.DataTestRunListParams) => string;
-  trackManualRun: (opts: {
-    testId: DataTestId;
-    triggeredFrom: DataTestRunTriggeredFrom;
-  }) => void;
+  testType: DataTestType;
   getListLabel: () => string;
   getRunDescription: () => string;
   SubjectLink: ComponentType<{ test: T }>;
