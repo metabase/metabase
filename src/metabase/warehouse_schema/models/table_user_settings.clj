@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -214,3 +215,7 @@
   {:name                 (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
    :synced-items         warehouse-schema.db/synced-table-user-settings-items
    :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})
+
+(defmethod dependencies/spec :model/TableUserSettings [_model]
+  {:part-of      {:type :table :key :table_id}
+   :part-columns #{:display_name :visibility_type :data_layer :field_order}})

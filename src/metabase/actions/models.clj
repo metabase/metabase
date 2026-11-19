@@ -848,4 +848,14 @@
    :items actions.db/dependency-action-items
 
    :hydrate      actions.dependencies/hydrate
-   :dependencies actions.dependencies/dependencies})
+   :dependencies actions.dependencies/dependencies
+
+   :dependency-columns #{:model_id :type}})
+
+(defmethod dependencies/spec :model/QueryAction [_model]
+  {:part-of      {:type :action :key :action_id}
+   :part-columns #{:dataset_query}})
+
+(defmethod dependencies/spec :model/ImplicitAction [_model]
+  {:part-of      {:type :action :key :action_id}
+   :part-columns #{:table_id}})

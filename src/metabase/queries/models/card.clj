@@ -1930,4 +1930,8 @@
 
    :hydrate      queries.dependencies/hydrate
    :dependencies queries.dependencies/dependencies
-   :analysis     queries.dependencies/analysis})
+   :analysis     queries.dependencies/analysis
+
+   :dependency-columns #{:type :dataset_query :dimension_mappings :parameters}
+   :analysis-columns   #{:type :dataset_query}
+   :output-columns     #{:type :result_metadata}})

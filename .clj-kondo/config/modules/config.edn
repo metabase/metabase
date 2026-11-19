@@ -3542,6 +3542,7 @@
            audit-app
            cache
            change-log
+           dependencies
            driver
            events
            lib
@@ -4210,7 +4211,6 @@
            app-db
            batch-processing
            collections
-           data-apps
            database-routing
            dependencies
            documents
@@ -4224,7 +4224,6 @@
            measures.schema
            models
            native-query-snippets
-           permissions
            premium-features
            queries
            query-processor
@@ -4242,25 +4241,12 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
-                    :model/DashboardTab
                     :model/DataApp
-                    :model/Database
                     :model/Dimension
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
-                    :model/FieldValues
-                    :model/ImplicitAction
-                    :model/Measure
-                    :model/NativeQuerySnippet
-                    :model/QueryAction
-                    :model/Sandbox
-                    :model/Segment
-                    :model/Table
-                    :model/TableUserSettings
-                    :model/Transform}}
+                    :model/FieldValues}}
 
   enterprise/dependencies.replacement
   {:team "Graphy"

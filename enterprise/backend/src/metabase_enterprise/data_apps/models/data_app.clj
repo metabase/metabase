@@ -297,4 +297,6 @@
    :items data-apps.db/dependency-data-app-items
 
    :hydrate      data-apps.dependencies/hydrate
-   :dependencies data-apps.dependencies/dependencies})
+   :dependencies data-apps.dependencies/dependencies
+
+   :dependency-columns #{:resource_collection_id}})

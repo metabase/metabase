@@ -225,4 +225,7 @@
    :inlined? true
    :items    measures.db/dependency-measure-items
 
-   :dependencies measures.dependencies/dependencies})
+   :dependencies measures.dependencies/dependencies
+
+   :dependency-columns #{:definition :table_id}
+   :output-columns     #{:definition :table_id}})

@@ -238,4 +238,7 @@
    :inlined? true
    :items    native-query-snippets.db/dependency-snippet-items
 
-   :dependencies native-query-snippets.dependencies/dependencies})
+   :dependencies native-query-snippets.dependencies/dependencies
+
+   :dependency-columns #{:content :template_tags}
+   :output-columns     #{:content :template_tags}})

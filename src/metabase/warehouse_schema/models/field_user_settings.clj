@@ -2,6 +2,7 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -10,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
@@ -182,3 +184,7 @@
   [_model]
   {:synced-items         warehouse-schema.db/synced-field-user-settings-items
    :synced-filter-clause warehouse-schema.db/synced-field-clause})
+
+(defmethod dependencies/spec :model/FieldUserSettings [_model]
+  {:part-of      {:type :table :key :field_id :via [:model/Field :table_id]}
+   :part-columns (conj warehouse-schema.dependencies/field-columns :custom_position :json_unfolding)})

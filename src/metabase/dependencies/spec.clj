@@ -14,10 +14,21 @@
   - `:hydrate`, a fn of a vector of rows returning them with what `:dependencies` needs, loaded in bulk.
   - `:dependencies`, a pure fn of a hydrated row returning its dependencies as `{entity-type #{entity-id}}`, which
     makes the job compute the entity's dependencies.
+  - `:analysis`, a fn of a row, whose query reads the metadata of its own database, returning the set of errors its
+    analysis finds, empty when it is fine, which makes the job analyze the entity.
   - `:after-dependencies`, a fn of a row and its direct dependents as `{entity-type #{entity-id}}` returning the
     dependents whose edges to the entity no longer hold, which the job drops after it stores the dependencies.
-  - `:analysis`, a fn of a row, whose query reads the metadata of its own database, returning the set of errors its
-    analysis finds, empty when it is fine, which makes the job analyze the entity."
+
+  The consumer that marks the statuses a write makes stale reads the writes of every model with a spec, even an empty
+  one, through these plain data keys:
+
+  - `:dependency-columns`, the columns whose update has the dependency job compute the entity's dependencies again.
+  - `:analysis-columns`, the columns whose update has the analysis job analyze the entity again.
+  - `:output-columns`, the columns whose update changes what the entities depending on the entity read.
+  - `:part-of`, for a model whose rows are parts of an entity, `{:type entity-type :key column}`: the entity of the type
+    whose id the column holds, or with `:via [model column]` the one whose id that column holds of the row of that
+    model whose id the column holds.
+  - `:part-columns`, with `:part-of`, the columns whose update changes the entity the row is a part of."
   (:require
    [toucan2.model :as t2.model]))
 
@@ -31,11 +42,19 @@
    [:items              {:optional true} ifn?]
    [:hydrate            {:optional true} ifn?]
    [:dependencies       {:optional true} ifn?]
+   [:analysis           {:optional true} ifn?]
    [:after-dependencies {:optional true} ifn?]
-   [:analysis           {:optional true} ifn?]])
+   [:dependency-columns {:optional true} [:set :keyword]]
+   [:analysis-columns   {:optional true} [:set :keyword]]
+   [:output-columns     {:optional true} [:set :keyword]]
+   [:part-of            {:optional true} [:map {:closed true}
+                                          [:type :keyword]
+                                          [:key  :keyword]
+                                          [:via  {:optional true} [:tuple :keyword :keyword]]]]
+   [:part-columns       {:optional true} [:set :keyword]]])
 
 (defmulti spec
-  "The dependencies spec of `model`, or nil when no dependency is tracked for the model."
+  "The dependencies spec of `model`, or nil when the dependency graph reads nothing of the model."
   {:arglists '([model])}
   identity)
 

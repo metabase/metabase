@@ -336,4 +336,6 @@
   {:type  :sandbox
    :items sandbox.db/dependency-sandbox-items
 
-   :dependencies sandbox.dependencies/dependencies})
+   :dependencies sandbox.dependencies/dependencies
+
+   :dependency-columns #{:card_id}})

@@ -612,4 +612,6 @@
   {:type  :document
    :items documents.db/dependency-document-items
 
-   :dependencies documents.dependencies/dependencies})
+   :dependencies documents.dependencies/dependencies
+
+   :dependency-columns #{:content_type :document}})

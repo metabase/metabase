@@ -235,4 +235,8 @@
    :items segments.db/dependency-segment-items
 
    :dependencies segments.dependencies/dependencies
-   :analysis     segments.dependencies/analysis})
+   :analysis     segments.dependencies/analysis
+
+   :dependency-columns #{:definition :table_id}
+   :analysis-columns   #{:definition :table_id}
+   :output-columns     #{:definition :table_id}})

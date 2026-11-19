@@ -10,6 +10,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -511,3 +512,7 @@
       (set-questions-archived! (vec ids) true))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (set-questions-archived! (vec ids) false))))
+
+(defmethod dependencies/spec :model/DashboardCard [_model]
+  {:part-of      {:type :dashboard :key :dashboard_id}
+   :part-columns #{:card_id :dashboard_id :visualization_settings}})

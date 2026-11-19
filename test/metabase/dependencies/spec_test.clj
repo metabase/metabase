@@ -28,3 +28,11 @@
             :when (not (contains? not-listed-types entity-type))]
       (testing model
         (is (some? (:items (dependencies/spec model))))))))
+
+(deftest ^:parallel part-columns-come-with-part-of-test
+  (testing "a spec declares `:part-columns` exactly when it declares `:part-of`"
+    (dependencies/type->model)
+    (doseq [model (keys (dissoc (methods dependencies/spec) :default))
+            :let  [spec (dependencies/spec model)]]
+      (testing model
+        (is (= (contains? spec :part-of) (contains? spec :part-columns)))))))

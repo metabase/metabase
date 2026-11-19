@@ -640,4 +640,6 @@
 
 (defmethod dependencies/spec :model/Table [_model]
   {:type  :table
-   :items warehouse-schema.db/dependency-table-items})
+   :items warehouse-schema.db/dependency-table-items
+
+   :output-columns #{:name :schema :display_name :active :visibility_type}})

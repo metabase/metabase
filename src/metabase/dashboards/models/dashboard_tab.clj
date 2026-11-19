@@ -7,6 +7,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
@@ -188,3 +189,7 @@
 (defmethod remote-sync/spec :model/DashboardTab
   [_model]
   {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})
+
+(defmethod dependencies/spec :model/DashboardTab [_model]
+  {:part-of      {:type :dashboard :key :dashboard_id}
+   :part-columns #{}})

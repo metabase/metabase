@@ -583,5 +583,8 @@
 
    :hydrate            transforms.dependencies/hydrate
    :dependencies       transforms.dependencies/dependencies
+   :analysis           transforms.dependencies/analysis
    :after-dependencies transforms.dependencies/after-dependencies
-   :analysis           transforms.dependencies/analysis})
+
+   :dependency-columns #{:source :target}
+   :analysis-columns   #{:source :target}})

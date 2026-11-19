@@ -594,4 +594,6 @@
    :items dashboards.db/dependency-dashboard-items
 
    :hydrate      dashboards.dependencies/hydrate
-   :dependencies dashboards.dependencies/dependencies})
+   :dependencies dashboards.dependencies/dependencies
+
+   :dependency-columns #{:parameters}})

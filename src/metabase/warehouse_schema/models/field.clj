@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
@@ -21,6 +22,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -506,3 +508,7 @@
    :entity-ref    warehouse-schema.serialization/field-entity-ref
    :storage-paths warehouse-schema.serialization/field-storage-paths
    :rows-by-refs  serialization/field-rows-by-refs})
+
+(defmethod dependencies/spec :model/Field [_model]
+  {:part-of      {:type :table :key :table_id}
+   :part-columns warehouse-schema.dependencies/field-columns})

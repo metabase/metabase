@@ -5,6 +5,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -100,3 +101,6 @@
   [_model]
   {:synced-items         warehouse-schema.db/synced-dimension-items
    :synced-filter-clause warehouse-schema.db/synced-field-clause})
+
+(defmethod dependencies/spec :model/Dimension [_model]
+  {})

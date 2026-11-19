@@ -2,6 +2,7 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
@@ -49,3 +50,7 @@
    :parent    {:model :model/DashboardCard :key :dashboardcard_id :order :position}
    :transform {:dashboardcard_id serialization/import-only-transform
                :card_id (serialization/fk-transform :model/Card)}})
+
+(defmethod dependencies/spec :model/DashboardCardSeries [_model]
+  {:part-of      {:type :dashboard :key :dashboardcard_id :via [:model/DashboardCard :dashboard_id]}
+   :part-columns #{:card_id :dashboardcard_id}})

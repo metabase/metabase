@@ -432,10 +432,12 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
 
-(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
-  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
+(mu/defn column-value :- [:maybe ms/PositiveInt]
+  "The `column` of the row of `model` with `id`, or nil."
+  [model  :- :keyword
+   column :- :keyword
+   id     :- ms/PositiveInt]
+  (t2/select-one-fn column [model column] :id [:auto/param id]))
 
 (mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
   "The `:table_id` of the Field with `field-id`, or nil."
