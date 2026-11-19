@@ -772,7 +772,7 @@ function ToggleRow({
         {status}
       </div>
       <Collapse in={isOpen}>
-        <Box pl="lg" pt="xs" pb="sm">
+        <Box pl="lg" pt="sm" pb="sm">
           {children}
         </Box>
       </Collapse>
