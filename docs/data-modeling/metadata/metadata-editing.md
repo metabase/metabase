@@ -12,8 +12,6 @@ redirect_from:
 
 _Admin > Table metadata_
 
-Metabase lets you add and edit metadata for your tables and columns.
-
 ![Table metadata settings](../images/table-metadata-settings.png)
 
 The **Table metadata settings only affect the way Metabase displays the data. None of the settings change the data in your database.**
