@@ -383,6 +383,26 @@
                                      dashcard-id
                                      "."))))))))))
 
+(deftest remove-filter-reports-archived-subscriptions-test
+  (sales-dashboard!
+   (fn [{:keys [dash-id]}]
+     (t2/update! :model/Dashboard :id dash-id {:parameters [{:id   "gone"
+                                                             :name "Gone"
+                                                             :slug "gone"
+                                                             :type "category"}]})
+     (mt/with-fake-inbox
+       (mt/with-temp [:model/Pulse _ {:dashboard_id dash-id
+                                      :creator_id   (mt/user->id :rasta)
+                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+         (mt/with-current-user (mt/user->id :rasta)
+           (let [result (call {:dashboard_id dash-id
+                               :ops          [{:op "remove_parameter", :parameter_id "gone"}]})]
+             (testing "the result lists the subscription removing the filter archived"
+               (is (str/includes? (:output result)
+                                  (str "so they were archived:\n"
+                                       "  - A subscription created by \"Rasta Toucan\" with no recipients, "
+                                       "which used \"Gone\"")))))))))))
+
 (deftest ^:parallel dropped-connections-text-test
   (testing "a series that lost its connection is named apart, without the advice to wire it again"
     (is (= ["The \"Category\" filter is no longer connected to dashcard 3 or to the series on dashcards 4, 5."

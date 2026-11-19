@@ -478,6 +478,31 @@
                    tool-result
                    :archived_subscriptions)))))))
 
+(deftest unreadable-archived-subscription-row-test
+  (testing "a subscription the caller can't read is reported by its id and missing filters only"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard    dash           {:name       "Sales"
+                                                         :parameters [{:id   "gone"
+                                                                       :name "Gone"
+                                                                       :slug "gone"
+                                                                       :type "category"}]}
+                     :model/Pulse        {pulse-id :id} {:dashboard_id (:id dash)
+                                                         :creator_id   (mt/user->id :crowberto)
+                                                         :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/PulseChannel _              {:channel_type :slack
+                                                         :pulse_id     pulse-id
+                                                         :details      {:channel "#private"}
+                                                         :enabled      true}]
+        (is (= [{:id             pulse-id
+                 :filters        [{:id "gone", :name "Gone"}]
+                 :already_broken false}]
+               (-> (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                               (wire {:method "update"
+                                      :id     (:id dash)
+                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
+                   tool-result
+                   :archived_subscriptions)))))))
+
 (deftest write-only-token-gets-archived-subscription-count-test
   (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"
     (mt/with-fake-inbox

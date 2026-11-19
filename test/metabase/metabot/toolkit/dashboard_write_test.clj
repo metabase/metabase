@@ -275,7 +275,5 @@
         (mt/with-current-user (mt/user->id :rasta)
           (is (=? {:effects {:archived-subscriptions [{:id own, :readable? true, :already-broken? false}
                                                       {:id other, :readable? false}]}}
-                  (update-in (dashboard-write/write! {:dashboard (hydrated (:id dash))
-                                                      :ops       [{:op "remove_parameter", :parameter_id "gone"}]})
-                             [:effects :archived-subscriptions]
-                             (partial sort-by :id)))))))))
+                  (dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                           :ops       [{:op "remove_parameter", :parameter_id "gone"}]}))))))))
