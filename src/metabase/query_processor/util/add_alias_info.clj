@@ -54,16 +54,13 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [mapv select-keys some empty? not-empty get-in]]))
+   [metabase.util.performance :refer [empty? get-in mapv not-empty select-keys some]]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *escape-alias-fn* :- :string
@@ -482,26 +479,9 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join ::join-alias->escaped ::desired-alias->escaped))))
 
-(mu/defn- add-alias-info* :- ::lib.schema/query
-  [query   :- ::lib.schema/query
-   options :- [:maybe ::options]]
-  (try
-    (-> query
-        (escape-join-aliases options)
-        (assoc ::original query)
-        add-alias-info**
-        clean-up-our-mess
-        (dissoc ::original))
-    (catch Throwable e
-      (throw (ex-info (format "Error adding alias info to query: %s" (ex-message e))
-                      {:query query, :options options}
-                      e)))))
-
-(mu/defn add-alias-info :- :map
+(mu/defn add-alias-info :- ::lib.schema/query
   "Add extra info to `:field` clauses, `:expression` references, and `:aggregation` references in `query`. `query` must
   be fully preprocessed.
-
-  Works on MBQL 5 queries, MBQL 4 (legacy) outer queries, or MBQL 4 inner queries.
 
   Adds some or all of the following keys:
 
@@ -527,32 +507,18 @@
 
   If this is a nested column, the path to the column, e.g. for `grandparent.parent.child` this will be `[\"grandparent\"
   \"child\"]."
-  ([query :- [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query :metabase.legacy-mbql.schema/MBQLInnerQuery]]
+  ([query :- ::lib.schema/query]
    (add-alias-info query nil))
-
-  ([query   :- [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query :metabase.legacy-mbql.schema/MBQLInnerQuery]
+  ([query   :- ::lib.schema/query
     options :- [:maybe ::options]]
-   (cond
-     ;; MBQL 5 query
-     (= (:lib/type query) :mbql/query)
-     (add-alias-info* query options)
-
-     ;; MBQL 4 outer query
-     (:type query)
-     (-> (lib/query (qp.store/metadata-provider) query)
-         (add-alias-info* options)
-         lib/->legacy-MBQL)
-
-     ;; MBQL 4 inner MBQL query
-     ((some-fn :source-table :source-query) query)
+   (try
      (-> query
-         ;; legacy inner-query entry point; the deprecated bridge is the only path to a Lib query here
-         #_{:clj-kondo/ignore [:deprecated-var]}
-         annotate.legacy-helper-fns/legacy-inner-query->mbql5-query
-         (add-alias-info options)
-         lib/->legacy-MBQL
-         :query)
-
-     :else
-     (throw (ex-info "Don't know what type of query this is, cannot add-alias-info!"
-                     {:query query, :type qp.error-type/qp})))))
+         (escape-join-aliases options)
+         (assoc ::original query)
+         add-alias-info**
+         clean-up-our-mess
+         (dissoc ::original))
+     (catch Throwable e
+       (throw (ex-info (format "Error adding alias info to query: %s" (ex-message e))
+                       {:query query, :options options}
+                       e))))))

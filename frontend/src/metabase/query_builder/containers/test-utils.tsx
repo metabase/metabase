@@ -45,10 +45,12 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Bookmark,
   Card,
+  CardQueryMetadata,
   Database,
   Dataset,
   Timeline,
   UnsavedCard,
+  User,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -234,8 +236,15 @@ interface SetupOpts {
   database?: Database;
   echoQueryParameters?: boolean;
   initialRoute?: string;
+  metadata?: CardQueryMetadata;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
+  withUndos?: boolean;
+  currentUser?: User;
+  /**
+   * Set to false to look at the page while the question is still loading.
+   */
+  waitForLoad?: boolean;
 }
 
 export const setup = async ({
@@ -251,8 +260,17 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
+  metadata = createMockCardQueryMetadata({ databases: [database] }),
   timelines = [],
   timelinesResponse,
+  withUndos = false,
+  currentUser = createMockUser({
+    permissions: createMockUserPermissions({
+      can_create_queries: true,
+      can_create_native_queries: true,
+    }),
+  }),
+  waitForLoad = true,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -274,7 +292,6 @@ export const setup = async ({
     value: false,
   });
 
-  const metadata = createMockCardQueryMetadata({ databases: [database] });
   setupAdhocQueryMetadataEndpoint(metadata);
 
   if (isSavedCard(card)) {
@@ -319,18 +336,25 @@ export const setup = async ({
     </>,
     {
       withRouter: true,
+      withUndos,
       initialRoute,
       storeInitialState: createMockState({
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({
-            can_create_queries: true,
-            can_create_native_queries: true,
-          }),
-        }),
+        currentUser,
         settings: mockSettings({ "site-url": "http://localhost:3000" }),
       }),
     },
   );
+
+  const result = {
+    container,
+    router: checkNotNull(router),
+    mockEventListener,
+    store,
+  };
+
+  if (!waitForLoad) {
+    return result;
+  }
 
   await waitForLoaderToBeRemoved();
   const opensSavedQuestion =
@@ -343,12 +367,7 @@ export const setup = async ({
     await waitForQueryToStart();
   }
 
-  return {
-    container,
-    router: checkNotNull(router),
-    mockEventListener,
-    store,
-  };
+  return result;
 };
 
 /**

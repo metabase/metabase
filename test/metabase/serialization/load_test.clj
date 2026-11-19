@@ -1,6 +1,7 @@
 (ns metabase.serialization.load-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -75,6 +76,38 @@
                                                                                  :stages   "x"})])))
           (is (= "changed again" (t2/select-one-fn :name :model/Card :id (:id card)))))
         (is (some? coll))))))
+
+(defn- max-id [table]
+  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [table]})) 0))
+
+(deftest continue-on-error-records-only-what-loads-test
+  (testing "a batch that fails after writing rows and reloads one entity at a time records only the rows that stay"
+    (mt/with-premium-features #{:change-log}
+      (mt/with-temp [:model/Collection    {coll-id :id}          {:name "serdes load"}
+                     :model/Dashboard     {dash-id :id :as dash} {:collection_id coll-id :name "dash"}
+                     :model/DashboardCard _                      {:dashboard_id dash-id}]
+        (let [[exported] (export-all :model/Dashboard [dash])
+              good       (assoc exported :entity_id (eid \v) :name "serdes good" :dashcards [])
+              broken     (-> exported
+                             (assoc :entity_id (eid \w) :name "serdes broken")
+                             (update :dashcards (partial mapv #(assoc % :entity_id (eid \u) :card_id (eid \m)))))
+              top-log    (max-id :change_log)
+              top-rev    (max-id :revision)]
+          (try
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (= 1 (count (load-all [good broken] :continue-on-error true)))))
+            (let [good-id (t2/select-one-pk :model/Dashboard :entity_id (eid \v))]
+              (is (some? good-id))
+              (is (not (t2/exists? :model/Dashboard :entity_id (eid \w))))
+              (when config/ee-available?
+                (is (= #{good-id}
+                       (into #{} (map :row_id) (t2/query {:select [:row_id]
+                                                          :from   [:change_log]
+                                                          :where  [:and [:> :id top-log] [:= :table_name "report_dashboard"]]})))))
+              (is (= #{good-id}
+                     (t2/select-fn-set :model_id :model/Revision :model "Dashboard" :id [:> top-rev]))))
+            (finally
+              (t2/delete! :model/Dashboard :entity_id [:in [(eid \v) (eid \w)]]))))))))
 
 (deftest local-rows-test
   (testing "finds the local row each exported entity matches, without creating what it refers to"

@@ -1,6 +1,7 @@
 (ns metabase.queries.models.parameter-card
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
@@ -97,10 +98,9 @@
   [parameterized-object-type :- ::parameterized-object-type
    parameterized-object-id   :- pos-int?
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
-  (when-not mi/*deserializing?*
-    (when-let [wanted (not-empty (values-source-card-ids parameters))]
-      (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
-        (read-check-cards (into #{} (remove #(contains? existing %)) wanted))))))
+  (when-let [wanted (not-empty (values-source-card-ids parameters))]
+    (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
+      (read-check-cards (into #{} (remove #(contains? existing %)) wanted)))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
@@ -114,3 +114,8 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ParameterCard [_model]
+  {:skip? false})

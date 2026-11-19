@@ -46,6 +46,10 @@ To view usage analytics for a question, dashboard, or model:
 
 Metabase will take you to the relevant usage dashboard and plug in the item's ID.
 
+## Turn on user data collection to see IP addresses and user agents
+
+To see IP addresses, user agents, embed paths, query parameters, the values people submit when they run an action, and Metabot conversation metadata in usage analytics, an admin needs to go to **Admin** > **Settings** > **General** and turn on [**Collect user data to display in usage analytics**](../configuring-metabase/settings.md#collect-user-data-to-display-in-usage-analytics). The setting is off by default. Metabase only logs this data while the setting is on, so activity from before you turn it on won't include this data.
+
 ## How long Metabase keeps usage data
 
 By default, Metabase will keep the data about [activity](./usage-analytics-reference.md#activity-log), [views](./usage-analytics-reference.md#view-log), and [query execution](./usage-analytics-reference.md#query-log) for **720 days**. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).

@@ -1,6 +1,11 @@
+/* Same colors as the description in SelectItemWithDescription */
 .symbol {
-  [aria-selected="true"] & {
-    /* override styling from SelectItem.module.css */
-    color: var(--mb-color-text-selected) !important;
+  flex: 0 0 auto;
+  color: var(--mb-color-text-secondary);
+  line-height: 1rem;
+
+  [data-combobox-option]:hover &,
+  [data-combobox-selected] & {
+    color: var(--mb-color-text-secondary-inverse);
   }
 }

@@ -3,6 +3,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -85,11 +86,13 @@
 
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
-  The param map must supply `:creator_id`. Returns the created Workspace with
-  `:databases` and `:creator` hydrated."
-  [{:keys [name creator_id databases]}]
+  The param map must supply `:creator_id`; `:idempotency_key` is optional. Throws a
+  duplicate-key error, inserting nothing, when the creator already has a Workspace
+  with that `:idempotency_key`. Returns the created Workspace with `:databases` and
+  `:creator` hydrated."
+  [{:keys [name creator_id idempotency_key databases]}]
   (t2/with-transaction [_conn]
-    (let [workspace-id (ws.db/insert-workspace! name creator_id)]
+    (let [workspace-id (ws.db/insert-workspace! name creator_id idempotency_key)]
       (when (seq databases)
         (ws.db/insert-workspace-databases!
          (mapv #(with-workspace-database-defaults % workspace-id) databases)))
@@ -147,3 +150,8 @@
           (ws.db/insert-workspace-databases!
            (mapv #(with-workspace-database-defaults % id) to-insert)))))
     (get-workspace id)))
+
+;;; ----------------------------------------------- Specs -----------------------------------------------
+
+(defmethod app-db-copy/spec :model/Workspace [_model]
+  {:skip? false})

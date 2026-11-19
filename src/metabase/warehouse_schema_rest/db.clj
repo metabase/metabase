@@ -12,30 +12,16 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn field-and-target-database-ids
-  "The `:source_db_id` and `:target_db_id` of the Fields with `source-field-id` and `target-field-id`."
-  [source-field-id :- ::lib.schema.id/field
-   target-field-id :- ::lib.schema.id/field]
-  (t2/query {:select [[:source_t.db_id :source_db_id]
-                      [:target_t.db_id :target_db_id]]
-             :from      [[(t2/table-name :model/Field) :sf]]
-             :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
-                      [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
-                      [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
-             :where  [:= :sf.id source-field-id]}))
-
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn set-nested-fields-active!
-  "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
-  `nfc-path-pattern`, returning the number updated."
-  [table-id          :- ::lib.schema.id/table
-   nfc-path-pattern  :- :string
-   active?           :- :boolean]
-  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+(mu/defn nested-fields-exist? :- :boolean
+  "Whether the Table with `table-id` has Fields whose NFC path matches the SQL LIKE `nfc-path-pattern`."
+  [table-id         :- ::lib.schema.id/table
+   nfc-path-pattern :- :string]
+  (t2/exists? :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern]))
 
 (mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
@@ -52,17 +38,6 @@
   [id      :- ::lib.schema.id/dimension
    changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
   (t2/update! :model/Dimension :id id changes))
-
-(mu/defn rename-dimension-for-field!
-  "Set the name of the Dimension of the Field with `field-id`."
-  [field-id       :- ::lib.schema.id/field
-   dimension-name :- :string]
-  (t2/update! :model/Dimension :field_id field-id {:name dimension-name}))
-
-(mu/defn delete-dimension!
-  "Delete the Dimension with `id`."
-  [id :- ::lib.schema.id/dimension]
-  (t2/delete! :model/Dimension :id id))
 
 (mu/defn delete-dimensions-for-field!
   "Delete the Dimensions of the Field with `field-id`."
@@ -136,11 +111,6 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
-
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
   [database-id :- ::lib.schema.id/database]
@@ -169,7 +139,7 @@
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
+  (t2/delete! :model/FieldValues :field_id [:in field-ids]))
 
 (mu/defn update-or-insert-full-field-values!
   "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting

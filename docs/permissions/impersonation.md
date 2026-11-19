@@ -120,6 +120,8 @@ For example, if you created a role named `vermont_sales_team` in your database w
 
 Some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
 
+The attribute's value must be different from the default role of the database connection. For MySQL, Snowflake, and SQL Server, the default role is the value of the **Role** field in the connection settings. For Starburst/Trino, it's the username of the connection. Metabase ignores case when it compares the two values. If the values match, Metabase won't run the person's queries and shows the error: `Connection impersonation attribute is invalid: role must not be the database default role.`
+
 People in one group can have different attribute values, but must have the same attribute key. See [People in a group with impersonation access to data do not necessarily share the same privileges](#people-in-a-group-with-impersonation-access-to-data-do-not-necessarily-share-the-same-privileges).
 
 ### Set up impersonation

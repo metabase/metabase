@@ -587,8 +587,7 @@
                     :type     :native}
                    query)))
          (lib/update-query-stage 0 update :parameters concat parameters)
-         (qp.native/expand-stage 0)
-         lib/->legacy-MBQL))))
+         (qp.native/expand-stage 0)))))
 
 (defn- expand*
   "Expand parameters inside native `query`, returning the resulting native query map. Expands against
@@ -600,7 +599,8 @@
    (-> (expand** mp (if (:lib/type query)
                       query
                       (mbql.normalize/normalize query)))
-       :native
+       (lib/query-stage 0)
+       (set/rename-keys {:native :query})
        (select-keys [:query :params :template-tags])
        (update :params vec))))
 

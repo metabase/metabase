@@ -149,15 +149,16 @@
 (defn- visible-dashcards
   "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
   and charts whose question they can read.
-  When the session may only reach curated content, charts also need a curated question, as in the dashboard's items."
+  When the session may only reach curated content, charts also need a curated card, or a metric whose definition
+  passes [[curation/usable-metric-ids]], as in the dashboard's items."
   [dashboard-id]
   (let [dashcards (metabot.db/dashcards dashboard-id)
         card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
         readable  (if (seq card-ids)
-                    (into #{} (map :id) (filterv mi/can-read? (t2/hydrate (metabot.db/cards-for-read-check card-ids) :can_read)))
+                    (into #{} (map :id) (mi/readable (metabot.db/cards-for-read-check card-ids)))
                     #{})
         visible   (if (shared/curated-only?)
-                    (into #{} (map second) (curation/curated-ids (for [id readable] ["card" id])))
+                    (curation/usable-metric-ids readable)
                     readable)]
     (filter #(or (:action_id %) (nil? (:card_id %)) (contains? visible (:card_id %))) dashcards)))
 
@@ -201,7 +202,7 @@
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
-                      (filter mi/can-read? (t2/hydrate (metabot.db/fields (set field-ids)) :table :can_read)))]
+                      (mi/readable (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 

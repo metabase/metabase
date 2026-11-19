@@ -12,70 +12,8 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
-(mu/defn collections-by-id
-  "A map of ID to Collection for `collection-ids`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
-
-(mu/defn stale-cards
-  "The listing columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card
-              :id
-              :dashboard_id
-              :description
-              :collection_id
-              :name
-              :entity_id
-              :archived
-              :collection_position
-              :display
-              :database_id
-              [nil :location]
-              :dataset_query
-              :card_schema
-              ;; :type is read by `queries/model?` when labelling the row; the rest are here only
-              ;; because :dataset_query is schema-governed and the Card schema upgrade needs them.
-              :type
-              :entity_id
-              :result_metadata
-              :dimensions
-              :dimension_mappings
-              :last_used_at
-              [^:allow-subquery
-               {:select   [:status]
-                :from     [:moderation_review]
-                :where    [:and
-                           [:= :moderated_item_type "card"]
-                           [:= :moderated_item_id :report_card.id]
-                           [:= :most_recent true]]
-                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                ;; protecting against potential bugs
-                :order-by [[:id :desc]]
-                :limit    1}
-               :moderated_status]]
-             :id [:in card-ids]))
-
-(mu/defn stale-dashboards
-  "The listing columns of the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (t2/select [:model/Dashboard
-              :id
-              :description
-              :collection_id
-              :name
-              :entity_id
-              :archived
-              :collection_position
-              [:last_viewed_at :last_used_at]
-              ["dashboard" :model]
-              [nil :dashboard_id]
-              [nil :location]
-              [nil :database_id]]
-             :id [:in dashboard-ids]))
-
 (defn- stale-content-union
-  "The union of `union-queries` (per-model SELECTs from `metabase.staleness.core/find-stale-query`),
+  "The union of `union-queries` (per-model SELECTs from the `:candidates` of the staleness specs),
   aliased for use as a `:from` source."
   [union-queries]
   [[^:allow-subquery {:union-all union-queries} :dummy_alias]])
