@@ -1,5 +1,12 @@
 const { H } = cy;
 
+function triggerStatsPingAndExpectEvent() {
+  cy.request("POST", "api/testing/stats");
+  H.expectSnowplowEvent({
+    event: { event_name: "instance_stats" },
+  });
+}
+
 describe("scenarios > stats > snowplow", () => {
   beforeEach(() => {
     H.restore();
@@ -11,20 +18,13 @@ describe("scenarios > stats > snowplow", () => {
   it(
     "should send a snowplow event when the stats ping is triggered on OSS",
     { tags: "@OSS" },
-    () => {
-      cy.request("POST", "api/testing/stats");
-      H.expectSnowplowEvent({
-        event: { event_name: "instance_stats" },
-      });
-    },
+    triggerStatsPingAndExpectEvent,
   );
 
-  it("should send a snowplow event when the stats ping is triggered on EE", () => {
-    cy.request("POST", "api/testing/stats");
-    H.expectSnowplowEvent({
-      event: { event_name: "instance_stats" },
-    });
-  });
+  it(
+    "should send a snowplow event when the stats ping is triggered on EE",
+    triggerStatsPingAndExpectEvent,
+  );
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
