@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.transform-transform-tag
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
@@ -9,11 +10,18 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
+
 (methodical/defmethod t2/table-name :model/TransformTransformTag [_model] :transform_transform_tag)
 
 (doto :model/TransformTransformTag
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformTransformTag [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformTransformTag [_]
   {:schema    ::transforms.schema/external-transform-transform-tag

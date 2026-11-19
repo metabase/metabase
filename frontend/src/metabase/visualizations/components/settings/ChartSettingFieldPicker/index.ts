@@ -1,1 +1,4 @@
-export { ChartSettingFieldPicker } from "./ChartSettingFieldPicker";
+export {
+  ChartSettingFieldPicker,
+  ChartSettingSingleFieldPicker,
+} from "./ChartSettingFieldPicker";

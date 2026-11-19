@@ -19,7 +19,6 @@
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection
-  archive-or-unarchive-collection!
   has-remote-synced-collection?
   clear-remote-synced-collection!
   create-library-collection!
@@ -42,4 +41,6 @@
   data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
-  annotate-dashboards])
+  annotate-dashboards
+  present-collection
+  with-effective-ancestors])

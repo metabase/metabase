@@ -24,6 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import { fetchCardData } from "metabase/dashboard/actions/data-fetching";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
@@ -195,7 +196,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <MockDashboardContext
       dashboardId={dashboard.id}
       dashboard={dashboard}
@@ -230,7 +231,7 @@ function setup({
     },
   );
 
-  return { onReplaceCard };
+  return { onReplaceCard, store };
 }
 
 describe("DashCard", () => {
@@ -477,6 +478,43 @@ describe("DashCard", () => {
       },
     );
   });
+
+  it.each([0, 200])(
+    "should show a warning icon when the card query fails after %i ms",
+    async (delay) => {
+      jest.useRealTimers();
+      const xrayDashboard = createMockDashboard({
+        id: "/auto/dashboard/table/1",
+      });
+      const xrayDashcard = createMockDashboardCard({
+        dashboard_id: xrayDashboard.id,
+        card: createMockCard({ name: "My Card", dataset_query: ORDERS_QUERY }),
+      });
+      fetchMock.post(
+        "path:/api/dataset",
+        { status: 500, body: { message: "Query failed" } },
+        { delay },
+      );
+      const { store } = setup({
+        dashboard: xrayDashboard,
+        dashcard: xrayDashcard,
+        dashcardData: {},
+      });
+
+      await act(() =>
+        store.dispatch(
+          fetchCardData(xrayDashcard.card, xrayDashcard, { reload: true }),
+        ),
+      );
+
+      expect(await screen.findByText("My Card")).toBeVisible();
+      const warningIcon = getIcon("warning");
+      expect(warningIcon).toBeVisible();
+      // jsdom has no layout, so check the rendered SVG size to catch a zero-sized icon
+      expect(Number(warningIcon.getAttribute("width"))).toBeGreaterThan(0);
+      expect(Number(warningIcon.getAttribute("height"))).toBeGreaterThan(0);
+    },
+  );
 
   it("should show a text card", () => {
     const textCard = createMockTextDashboardCard({ text: "Hello, world!" });
@@ -1198,6 +1236,90 @@ describe("DashCard", () => {
     });
   });
 
+  describe("official collection badge", () => {
+    const officialDashcard = createMockDashboardCard({
+      id: 21,
+      collection_authority_level: "official",
+      card: createMockCard({
+        id: 22,
+        name: "Official Question",
+        display: "table",
+      }),
+    });
+
+    const setupOfficial = ({
+      hasFeature,
+      dashboardAuthorityLevel = null,
+    }: {
+      hasFeature: boolean;
+      dashboardAuthorityLevel?: "official" | null;
+    }) => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({
+          official_collections: hasFeature,
+        }),
+      });
+      setupEnterpriseOnlyPlugin("collections");
+
+      setup({
+        dashboard: createMockDashboard({
+          name: "Regular Dashboard",
+          collection_authority_level: dashboardAuthorityLevel,
+          dashcards: [officialDashcard],
+        }),
+        dashcard: officialDashcard,
+        dashcardData: {
+          [officialDashcard.id]: {
+            [officialDashcard.card.id]:
+              tableDashcardData[tableDashcard.id][tableDashcard.card.id],
+          },
+        },
+      });
+    };
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("shows the official badge on a question from an official collection in a regular dashboard", async () => {
+      setupOfficial({ hasFeature: true });
+
+      const caption = await screen.findByTestId("legend-caption");
+      // The visualization loads lazily, so let it finish before asserting.
+      await waitForLoaderToBeRemoved();
+      expect(
+        within(caption).getByText("Official Question"),
+      ).toBeInTheDocument();
+      expect(
+        within(caption).getByLabelText("official_collection icon"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the official badge when the dashboard is official too", async () => {
+      setupOfficial({ hasFeature: true, dashboardAuthorityLevel: "official" });
+
+      const caption = await screen.findByTestId("legend-caption");
+      // The visualization loads lazily, so let it finish before asserting.
+      await waitForLoaderToBeRemoved();
+      expect(
+        within(caption).getByText("Official Question"),
+      ).toBeInTheDocument();
+      expect(queryIcon("official_collection")).not.toBeInTheDocument();
+    });
+
+    it("does not show the official badge without the official_collections feature", async () => {
+      setupOfficial({ hasFeature: false });
+
+      const caption = await screen.findByTestId("legend-caption");
+      // The visualization loads lazily, so let it finish before asserting.
+      await waitForLoaderToBeRemoved();
+      expect(
+        within(caption).getByText("Official Question"),
+      ).toBeInTheDocument();
+      expect(queryIcon("official_collection")).not.toBeInTheDocument();
+    });
+  });
+
   describe("edit mode", () => {
     it("should not show the info icon", () => {
       setup({ isEditing: true });
@@ -1207,6 +1329,34 @@ describe("DashCard", () => {
     it("should show a 'replace card' action", async () => {
       setup({ isEditing: true });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should show the iframe preview and actions panel after clicking Done", async () => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const dashcard = createMockIFrameDashboardCard({ justAdded: true });
+      setup({
+        dashboard: { ...testDashboard, dashcards: [dashcard] },
+        dashcard,
+        dashcardData: {},
+        isEditing: true,
+      });
+
+      expect(
+        screen.queryByTestId("dashboardcard-actions-panel"),
+      ).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        "https://example.com",
+      );
+      expect(screen.queryByTestId("iframe-card-input")).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("dashboardcard-actions-panel"),
+      ).toBeInTheDocument();
     });
 
     it("should not show the chevron icon (VIZ-1111)", () => {

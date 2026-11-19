@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.collections.models.collection :as collection]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -16,8 +18,13 @@
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.transforms-base.db :as transforms-base.db]
+   [metabase.transforms-base.ordering :as ordering]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.query-test-util :as query-test-util]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -93,8 +100,7 @@
 
 (mt/when-ee-evailable
  (deftest native-transform-requires-query-builder-and-native-test
-   (testing "Writing a native-query transform requires \"Query builder and native\" on the source database, even if the
-             group was misconfigured with transforms permission but only query-builder access (no native)."
+   (testing "Writing a native-query transform requires \"Query builder and native\" on the source database."
      (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
@@ -115,44 +121,145 @@
                ;; the (mis)configured transforms group.
                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
-               (testing "transforms granted, but create-queries only query-builder (no native) — preexisting misconfiguration"
+               (testing "transforms cannot be granted while create-queries is only query-builder (no native)"
                  (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
-                 (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transforms permission requires"
+                                       (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)))
                  (mt/with-current-user (mt/user->id :rasta)
-                   (testing "native transform cannot be written"
-                     (is (not (mi/can-write? (t2/hydrate native :can_write)))))
-                   (testing "non-native (MBQL) transform is unaffected"
-                     (is (mi/can-write? (t2/hydrate mbql :can_write))))))
+                   (is (not (mi/can-write? (t2/hydrate native :can_write))))
+                   (is (not (mi/can-write? (t2/hydrate mbql :can_write))))))
                (testing "with query-builder-and-native, native transform can be written"
                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
                  (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
                  (mt/with-current-user (mt/user->id :rasta)
                    (is (mi/can-write? (t2/hydrate native :can_write)))))))))))))
 
-(deftest no-events-during-deserialization-test
-  (testing "Transform lifecycle hooks do not publish events during deserialization"
-    (let [events-published (atom [])
-          source           {:type  :query
-                            :query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
-      (with-redefs [events/publish-event! (fn [topic event]
-                                            (swap! events-published conj [topic event]))]
-        (testing "events fire normally for insert/update/delete"
-          (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform" :source source}]
-            (is (some #(= :event/create-transform (first %)) @events-published))
-            (reset! events-published [])
-            (t2/update! :model/Transform :id transform-id {:name "Updated Name"})
-            (is (some #(= :event/update-transform (first %)) @events-published))
-            (reset! events-published [])
-            (t2/delete! :model/Transform :id transform-id)
-            (is (some #(= :event/delete-transform (first %)) @events-published))))
-        (reset! events-published [])
-        (testing "events are suppressed during deserialization"
-          (binding [mi/*deserializing?* true]
-            (mt/with-temp [:model/Transform {transform-id :id} {:name "Deserialized Transform" :source source}]
-              (t2/update! :model/Transform :id transform-id {:name "Deserialized Update"})
-              (t2/delete! :model/Transform :id transform-id)))
-          (is (empty? @events-published)))))))
+(defn- status-code-of
+  "The status code of the exception `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:status-code (ex-data e)))))
+
+(defn- python-transform-writing-to
+  "A Transform row with a Python source that writes to the Database `target-db-id`."
+  [target-db-id]
+  (assoc (mt/with-temp-defaults :model/Transform)
+         :source {:type :python :source-tables [] :body "print(\"hello\")"}
+         :target {:type "table" :name (str "target_" (mt/random-name)) :database target-db-id}))
+
+(deftest derived-columns-ignore-incoming-values-test
+  (testing "insert computes source_type, source_database_id and target_db_id from the source and target"
+    (mt/with-temp [:model/Database {other-db :id} {}
+                   :model/Transform transform {:source_type        :python
+                                               :source_database_id other-db
+                                               :target_db_id       other-db}]
+      (is (=? {:source_type        :native
+               :source_database_id (mt/id)
+               :target_db_id       (mt/id)}
+              (t2/select-one :model/Transform :id (:id transform))))))
+  (testing "a new source recomputes the columns, also when it reads another database"
+    (mt/with-temp [:model/Database {other-db :id} {}
+                   :model/Transform {id :id} {}]
+      (t2/update! :model/Transform :id id
+                  {:source {:type  :query
+                            :query (lib/native-query (lib-be/application-database-metadata-provider other-db) "SELECT 1")}})
+      (is (=? {:source_database_id other-db
+               :target_db_id       other-db}
+              (t2/select-one :model/Transform :id id))))))
+
+(deftest derived-columns-cannot-change-alone-test
+  (mt/with-temp [:model/Database {other-db :id} {}
+                 :model/Transform {id :id} {}]
+    (doseq [changes [{:source_type :python}
+                     {:source_database_id other-db}
+                     {:target_db_id other-db}]]
+      (testing (str "changing only " (pr-str (keys changes)))
+        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id changes))))))))
+
+(deftest source-database-id-is-callers-when-source-names-none-test
+  (mt/when-ee-evailable
+   (testing "a Python source without a database leaves source_database_id to the writer"
+     (let [defaults (mt/with-temp-defaults :model/Transform)]
+       (mt/with-temp [:model/Database {other-db :id} {}
+                      :model/Transform {id :id} (assoc defaults
+                                                       :source {:type :python :source-tables [] :body "print(\"hello\")"}
+                                                       :source_database_id other-db)]
+         (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
+         (testing "writing the same value again changes nothing"
+           (t2/update! :model/Transform :id id {:source_database_id other-db})
+           (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id))))
+         (testing "it changes alone"
+           (t2/update! :model/Transform :id id {:source_database_id (mt/id)})
+           (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform :id id))))
+         (testing "a source that names a database derives it again"
+           (t2/update! :model/Transform :id id {:source {:type :python :source-tables [] :body "print(1)" :source-database other-db}})
+           (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
+           (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:source_database_id (mt/id)}))))))))))
+
+(deftest target-database-must-accept-transforms-test
+  (mt/when-ee-evailable
+   (mt/with-temp [:model/Database {audit-db :id}  {:is_audit true}
+                  :model/Database {sample-db :id} {:is_sample true}
+                  :model/Database {router-db :id} {}
+                  :model/Database {dest-db :id}   {:router_database_id router-db}]
+     (testing "a target database that does not exist"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to Integer/MAX_VALUE))))))
+     (testing "the audit database"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to audit-db))))))
+     (testing "the sample database"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to sample-db))))))
+     (testing "a destination database of database routing"
+       (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to dest-db))))))
+     (testing "retargeting an existing transform onto such a database"
+       (mt/with-temp [:model/Transform {id :id} (python-transform-writing-to (mt/id))]
+         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
+                                                 {:target {:type "table" :name "retargeted" :database audit-db}}))))
+         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
+                                                 {:target {:type "table" :name "retargeted" :database dest-db}})))))))))
+
+(deftest schema-checks-source-and-target-test
+  (testing "target without a name"
+    (is (not (mr/validate ::transforms.schema/transform-target {:type "table" :database 1}))))
+  (testing "target of an unknown type"
+    (is (not (mr/validate ::transforms.schema/transform-target {:type "view" :name "v" :database 1}))))
+  (testing "query source without a query"
+    (is (not (mr/validate ::transforms.schema/transform-source {:type :query})))))
+
+(deftest cycles-are-rejected-on-update-test
+  (let [mp     (mt/metadata-provider)
+        schema (or (:default_schema (mt/db)) "PUBLIC")]
+    (mt/with-temp [:model/Table {table1 :id} {:schema schema :name "cycle_table_1"}
+                   :model/Field _ {:table_id table1 :name "foo"}
+                   :model/Table {table2 :id} {:schema schema :name "cycle_table_2"}
+                   :model/Transform {id :id} {:source {:type :query :query (lib/query mp (lib.metadata/table mp table1))}
+                                              :target {:type "table" :schema schema :name "cycle_table_2"}
+                                              :target_table_id table2}]
+      (testing "retargeting a transform onto its own source table"
+        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
+                                                {:target {:type "table" :schema schema :name "cycle_table_1"}})))))
+      (testing "an update that leaves the source and target alone checks no cycle"
+        (is (nil? (status-code-of #(t2/update! :model/Transform :id id {:name "renamed"}))))))))
+
+(deftest collection-is-checked-on-update-test
+  (mt/with-temp [:model/Collection {transforms-id :id} {:namespace collection/transforms-ns}
+                 :model/Collection {regular-id :id} {}
+                 :model/Transform {id :id} {:collection_id transforms-id}]
+    (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:collection_id regular-id}))))
+    (is (= transforms-id (t2/select-one-fn :collection_id :model/Transform :id id)))))
+
+(deftest model-writes-publish-lifecycle-events-test
+  (let [events-published (atom [])]
+    (with-redefs [events/publish-event! (fn [topic _event]
+                                          (swap! events-published conj topic))]
+      (mt/with-temp [:model/Transform {transform-id :id} {}]
+        (t2/update! :model/Transform :id transform-id {:name "Updated Name"})
+        (t2/delete! :model/Transform :id transform-id)))
+    (is (= [:event/transform-create :event/transform-update :event/transform-delete]
+           (filterv #{:event/transform-create :event/transform-update :event/transform-delete} @events-published)))))
 
 (defn- stored-deps [transform-id]
   (t2/select-one-fn :table_dependencies :model/Transform :id transform-id))
@@ -185,7 +292,7 @@
                :start_time   (stale-test/datetime-months-ago months-ago)
                :end_time     (stale-test/datetime-months-ago months-ago)}))
 
-(deftest find-stale-query-test
+(deftest stale-candidates-test
   (testing "a transform is stale when never run past a created_at grace period, or its most recent run predates the cutoff"
     (let [cutoff-months   6
           old-months      (+ cutoff-months 2) ; predates the cutoff
@@ -228,8 +335,7 @@
         ;; (previous fire ~10 months ago), the daily schedule has fired thousands of times since
         (insert-run! on-schedule-id :succeeded old-months)
         (insert-run! missed-schedule-id :succeeded old-months)
-        (let [stale-ids (set (map :id (t2/query (staleness/find-stale-query
-                                                 :model/Transform
+        (let [stale-ids (set (map :id (t2/query ((staleness/candidates-fn :model/Transform)
                                                  {:collection-ids :all
                                                   :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
           (testing "a never-run transform is stale only once its created_at passes the cutoff"
@@ -250,8 +356,8 @@
           (testing "the schedule exception does not shield never-run transforms"
             (is (contains? stale-ids never-scheduled-id))))))))
 
-(deftest find-stale-query-collection-scoping-test
-  (testing "find-stale-query scopes transforms to :collection-ids, like the card and dashboard arms"
+(deftest stale-candidates-collection-scoping-test
+  (testing "the Transform candidates scope transforms to :collection-ids, like the card and dashboard arms"
     (let [cutoff-months 6
           ;; never run and created before the cutoff, so each one is stale on the created_at arm alone
           long-ago      (stale-test/datetime-months-ago (+ cutoff-months 2))]
@@ -265,8 +371,7 @@
               stale-ids (fn [collection-ids]
                           (into #{}
                                 (comp (map :id) (filter mine))
-                                (t2/query (staleness/find-stale-query
-                                           :model/Transform
+                                (t2/query ((staleness/candidates-fn :model/Transform)
                                            {:collection-ids collection-ids
                                             :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
           (testing "a named collection returns its own stale transforms and no others"
@@ -404,3 +509,68 @@
               (is (not (t2/exists? :model/Transform :id transform-id)))))
           (finally
             (t2/delete! :model/Transform :id transform-id)))))))
+
+(defn- cycle-table-query [table-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp table-id))))
+
+(defn- cycle-transform [query name]
+  {:source {:type :query :query query}
+   :name   (str "transform_" name)
+   :target {:schema "PUBLIC" :name name :type "table"}})
+
+(defmacro ^:private with-cycle-scan-count
+  "Run `body` and return how many times it scanned the transforms for a cycle."
+  [& body]
+  `(let [scans# (atom 0)
+         scan#  (dynamic-redefs/original-fn #'ordering/get-transform-cycle)]
+     (mt/with-dynamic-fn-redefs [ordering/get-transform-cycle (fn [& args#]
+                                                                (swap! scans# inc)
+                                                                (apply scan# args#))]
+       ~@body)
+     @scans#))
+
+(deftest cycle-check-runs-when-definition-changes-test
+  (mt/with-temp [:model/Table {table-1 :id} {:schema "PUBLIC", :name "cycle_1"}
+                 :model/Field _ {:table_id table-1, :name "foo"}
+                 :model/Table {table-2 :id} {:schema "PUBLIC", :name "cycle_2"}
+                 :model/Field _ {:table_id table-2, :name "foo"}
+                 :model/Table {table-3 :id} {:schema "PUBLIC", :name "cycle_3"}
+                 :model/Field _ {:table_id table-3, :name "foo"}
+                 :model/Transform _ (-> (cycle-transform (cycle-table-query table-1) "cycle_2")
+                                        (assoc :target_table_id table-2))
+                 :model/Transform {reader :id} (cycle-transform (cycle-table-query table-2) "cycle_4")
+                 :model/Transform {writer :id} (-> (cycle-transform (cycle-table-query table-3) "cycle_1")
+                                                   (assoc :target_table_id table-1))]
+    (let [schema "PUBLIC"]
+      (testing "an update that leaves the definition alone scans nothing"
+        (is (zero? (with-cycle-scan-count
+                     (t2/update! :model/Transform :id reader {:name "renamed" :description "described"})
+                     (t2/update! :model/Transform :id reader {:last_checkpoint_value "5"})))))
+      (testing "closing a loop from the target side, with the source untouched, is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
+                              (t2/update! :model/Transform :id reader {:target {:schema schema :name "cycle_1" :type "table"}}))))
+      (testing "closing a loop from the source side is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
+                              (t2/update! :model/Transform :id writer {:source {:type :query :query (cycle-table-query table-2)}}))))
+      (testing "an update of the source scans once"
+        (is (= 1 (with-cycle-scan-count
+                   (t2/update! :model/Transform :id reader {:source {:type :query :query (cycle-table-query table-3)}}))))))))
+
+(deftest cycle-check-runs-once-per-update-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Table {table-1 :id} {:schema "PUBLIC", :name "once_1"}
+                     :model/Field _ {:table_id table-1, :name "foo"}
+                     :model/Table {table-2 :id} {:schema "PUBLIC", :name "once_2"}
+                     :model/Field _ {:table_id table-2, :name "foo"}
+                     :model/Transform {id :id} (cycle-transform (cycle-table-query table-1) "once_3")]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [& _] true)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "an update through the write function scans once"
+              (is (= 1 (with-cycle-scan-count
+                         (transforms.core/update-transform! id {:source {:type :query :query (cycle-table-query table-2)}})))))
+            (testing "writing the stored definition again, as a SerDes reimport does, scans nothing"
+              (let [stored (t2/select-one :model/Transform :id id)]
+                (is (zero? (with-cycle-scan-count
+                             (t2/update! :model/Transform :id id (select-keys stored [:name :source :target])))))))))))))

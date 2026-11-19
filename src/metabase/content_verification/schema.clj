@@ -5,6 +5,12 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::moderation-review.status
+  [:maybe [:enum "verified"]])
+
+(mr/def ::moderation-review.item-type
+  [:enum "card" :card "dashboard" :dashboard])
+
 (mr/def ::moderation-review
   "A ModerationReview as selected from the app DB: every column of `:moderation_review`."
   [:merge
@@ -18,9 +24,9 @@
   [:map {:closed true}
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:status              {:optional true} [:maybe [:or :keyword :string]]]
+   [:status              {:optional true} ::moderation-review.status]
    [:text                {:optional true} [:maybe :string]]
    [:moderated_item_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:moderated_item_type {:optional true} [:maybe [:or :keyword :string]]]
+   [:moderated_item_type {:optional true} ::moderation-review.item-type]
    [:moderator_id        {:optional true} [:maybe ms/PositiveInt]]
    [:most_recent         {:optional true} [:maybe :boolean]]])

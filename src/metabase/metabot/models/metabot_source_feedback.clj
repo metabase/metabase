@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-source-feedback
   "Persist Metabot source feedback"
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -36,3 +37,8 @@
    feedbacks k
    #(metabot.db/user-summaries-by-id (keep :user_id feedbacks))
    :user_id {:default nil}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotSourceFeedback [_model]
+  {:skip? false})

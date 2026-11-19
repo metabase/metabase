@@ -30,6 +30,8 @@
     (or (-> clause
             lib/->mbql5
             (->> (#'optimize-temporal-clauses/optimize-clause query [:stages 0]))
+            ;; existing usage -- do not use going forward
+            #_{:clj-kondo/ignore [:deprecated-var]}
             lib/->legacy-MBQL)
         clause)))
 
@@ -41,6 +43,8 @@
    (let [query (lib/query metadata-provider query)]
      (-> query
          optimize-temporal-clauses/optimize-temporal-clauses
+         ;; existing usage -- do not use going forward
+         #_{:clj-kondo/ignore [:deprecated-var]}
          lib/->legacy-MBQL))))
 
 (defn- optimize-filters
@@ -525,6 +529,8 @@
                                  [:relative-datetime 1 :minute]]]}}
               (-> query
                   optimize-temporal-clauses/optimize-temporal-clauses
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel optimize-filter-with-nested-compatible-field-3
@@ -702,6 +708,8 @@
                                             [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :day}]
                                             [:relative-datetime -30 :day]
                                             [:relative-datetime -1 :day]]}}))
+               ;; existing usage -- do not use going forward
+               #_{:clj-kondo/ignore [:deprecated-var]}
                lib/->legacy-MBQL)))))
 
 (deftest ^:parallel optimize-with-expression-ref-test

@@ -9,6 +9,7 @@
    [metabase.lib.schema.literal]
    [metabase.user-key-value.models.user-key-value :as user-key-value]
    [metabase.user-key-value.models.user-key-value.types :as types]
+   [metabase.user-key-value.schema :as user-key-value.schema]
    [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -23,7 +24,7 @@
                                     [:namespace ms/NonBlankString]]
    _query-params
    {v :value, expires-at :expires_at} :- [:map {:closed true}
-                                          [:value      {:optional true} [:maybe [:or :string number? :boolean ms/OpaqueJSONObject [:sequential [:or :string number? :boolean ms/OpaqueJSONObject]]]]]
+                                          [:value      {:optional true} [:maybe [:or :string number? :boolean ::user-key-value.schema/value.object [:sequential [:or :string number? :boolean ::user-key-value.schema/value.object]]]]]
                                           [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
   (try
     (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value

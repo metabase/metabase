@@ -1,6 +1,8 @@
 (ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.login-history.app-db-copy :as login-history.app-db-copy]
    [metabase.login-history.db :as login-history.db]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
@@ -92,3 +94,9 @@
 
 (t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/LoginHistory [_model]
+  {:skip?     false
+   :transform login-history.app-db-copy/transform-login-history})

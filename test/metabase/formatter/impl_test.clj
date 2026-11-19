@@ -53,6 +53,36 @@
         (is (= "12,346" (fmt-part {:decimals 0})))
         (is (= "2" (fmt-fn 2 nil)))))))
 
+(deftest duration-formatting-test
+  (doseq [{:keys [name fmt-fn]} formatters]
+    (testing (str "Duration formatting" name)
+      (is (= "0:01:12" (fmt-fn 72 {:number_style "duration"})))
+      (is (= "1h 2m 3s" (fmt-fn 3723 {:number_style   "duration"
+                                      :duration_style "narrow"})))
+      (is (= "0:01:12" (fmt-fn 72000 {:number_style  "duration"
+                                      :duration_unit "millisecond"})))
+      (is (= "0:01:12" (fmt-fn 1.2 {:number_style "duration"
+                                    :scale        60})))
+      (is (= "about 0:01:12 total" (fmt-fn 72 {:number_style "duration"
+                                               :prefix       "about "
+                                               :suffix       " total"})))
+      (is (= "1.234:05:06,500" (fmt-fn 4442706.5 {:number_style       "duration"
+                                                  :duration_precision "millisecond"
+                                                  :number_separators  ",."})))
+      (is (= "1:02:03" (fmt-fn 3723.25 {:number_style "duration"
+                                        :decimals     3}))))))
+
+(deftest duration-ignores-percentage-semantic-type-test
+  (is (= "0:01:12"
+         (str ((formatter/number-formatter {:id 1 :name "FOO" :semantic_type :type/Percentage}
+                                           {:column_settings
+                                            {(lib/column-name->column-settings-key "FOO") {:number_style "duration"}}})
+               72)))))
+
+(deftest duration-global-separators-test
+  (mt/with-temporary-setting-values [custom-formatting {:type/Number {:number_separators ",."}}]
+    (is (= "1.234:05:06" (format-with-field-id 4442706 {:number_style "duration"})))))
+
 (deftest scientific-notation-formatting-test
   (doseq [{:keys [name fmt-fn]} formatters]
     (let [value    12345.5432

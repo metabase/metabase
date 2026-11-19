@@ -7,7 +7,7 @@ redirect_from:
 
 # Upgrading Metabase
 
-This page covers how to upgrade to a new Metabase release.
+To see what changed in each release, check out:
 
 - [Announcement posts for major releases](https://www.metabase.com/releases)
 - [Changelogs](https://www.metabase.com/changelog).

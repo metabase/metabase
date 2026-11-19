@@ -37,7 +37,7 @@
 
 (defn- spec-index-query*
   [_db-type search-model]
-  (let [spec         (search.spec/spec search-model)
+  (let [spec         (search.spec/search-model-spec search-model)
         fn-deps      (search.spec/collect-fn-attr-req-fields spec)
         fn-selects   (map (fn [field]
                             [(keyword (str "this." (name field))) field])
@@ -85,7 +85,7 @@
   ;; Built through the same attr machinery as [[spec-index-query]], so a compound `:id` lands identically here.
   (first (search.spec/qualify-columns
           :this
-          (attrs->select-items {:id (-> (search.spec/spec search-model) :attrs :id)}))))
+          (attrs->select-items {:id (-> (search.spec/search-model-spec search-model) :attrs :id)}))))
 
 (defn doc-id-expression
   "[[doc-id-select-item]] without any alias."

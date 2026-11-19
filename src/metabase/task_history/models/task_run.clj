@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -47,26 +48,9 @@
   "Valid entity types for task runs."
   #{:database :card :dashboard})
 
-(def ^:private task-run-status #{:started :success :failed :abandoned})
-
-(defn- assert-task-run-status
-  [status]
-  (assert (task-run-status (keyword status)) "Invalid task run status"))
-
 (t2/define-before-insert :model/TaskRun
   [task-run]
   (merge {:started_at (mi/now), :updated_at (mi/now)} task-run))
-
-(t2/define-after-insert :model/TaskRun
-  [task-run]
-  (assert-task-run-status (:status task-run))
-  task-run)
-
-(t2/define-before-update :model/TaskRun
-  [task-run]
-  (when (contains? task-run :status)
-    (assert-task-run-status (:status task-run)))
-  task-run)
 
 (t2/deftransforms :model/TaskRun
   {:run_type    mi/transform-keyword
@@ -221,3 +205,8 @@
   {:style/indent 1}
   [run-info & body]
   `(do-with-task-run ~run-info (fn [] ~@body)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskRun [_model]
+  {:skip? true})

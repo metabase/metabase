@@ -82,20 +82,15 @@
        :model/Dashboard _              {:name (str "dash 1 " search-string)}
        :model/Dashboard _              {:name (str "dash 2 " search-string)}
        :model/Dashboard _              {:name (str "dash 3 " search-string)}
-       :model/Database  {db-id :id}    {:name (str "database 1 " search-string)}
+       :model/Database  _              {:name (str "database 1 " search-string)}
        :model/Database  _              {:name (str "database 2 " search-string)}
        :model/Database  _              {:name (str "database 3 " search-string)}
-       :model/Table     {table-id :id} {:db_id  db-id
-                                        :schema nil}
        :model/Card      _              {:name (str "metric 1 " search-string) :type :metric}
        :model/Card      _              {:name (str "metric 1 " search-string) :type :metric}
        :model/Card      _              {:name (str "metric 2 " search-string) :type :metric}
-       :model/Segment   _              {:table_id table-id
-                                        :name     (str "segment 1 " search-string)}
-       :model/Segment   _              {:table_id table-id
-                                        :name     (str "segment 2 " search-string)}
-       :model/Segment   _              {:table_id table-id
-                                        :name     (str "segment 3 " search-string)}]
+       :model/Segment   _              {:name (str "segment 1 " search-string)}
+       :model/Segment   _              {:name (str "segment 2 " search-string)}
+       :model/Segment   _              {:name (str "segment 3 " search-string)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (binding [config/*request-id* (random-uuid)]
           (let [do-search (fn []

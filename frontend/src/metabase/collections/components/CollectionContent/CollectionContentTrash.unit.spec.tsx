@@ -58,12 +58,14 @@ interface SetupOpts {
   collection?: Collection;
   collectionItems?: CollectionItem[];
   archivedItems?: CollectionItem[];
+  withUndos?: boolean;
 }
 
 async function setup({
   collection = TRASH_COLLECTION,
   collectionItems = [],
   archivedItems,
+  withUndos = false,
 }: SetupOpts = {}) {
   setupCollectionsEndpoints({
     collections: [FIRST_COLLECTION],
@@ -91,7 +93,7 @@ async function setup({
       path="/"
       element={<CollectionContent collectionId={collection.id} />}
     />,
-    { withRouter: true, withDND: true },
+    { withRouter: true, withDND: true, withUndos },
   );
 
   await waitForLoaderToBeRemoved();
@@ -413,5 +415,97 @@ describe("CollectionContent > trash", () => {
         });
       },
     );
+  });
+
+  describe("trashed metrics", () => {
+    const countMetric = createTrashedItem({
+      id: 21,
+      model: "metric",
+      name: "Count of orders",
+    });
+    const timeseriesMetric = createTrashedItem({
+      id: 22,
+      model: "metric",
+      name: "Count of orders over time",
+    });
+
+    // Stands in for PUT and DELETE /api/card/:id: the item leaves the trash
+    // only when the request for its own id arrives.
+    function setupTrashedMetrics() {
+      const collectionItems = [countMetric, timeseriesMetric];
+      const removeItem = (id: number) => {
+        const index = collectionItems.findIndex((item) => item.id === id);
+        collectionItems.splice(index, 1);
+      };
+      collectionItems.forEach(({ id }) => {
+        fetchMock.put(`path:/api/card/${id}`, (call) => {
+          const body: unknown = JSON.parse(String(call.options.body));
+          if (
+            typeof body !== "object" ||
+            body == null ||
+            !("archived" in body) ||
+            body.archived !== false
+          ) {
+            return { status: 400 };
+          }
+          removeItem(id);
+          return { id, archived: false };
+        });
+        fetchMock.delete(`path:/api/card/${id}`, () => {
+          removeItem(id);
+          return { status: 204 };
+        });
+      });
+      return setup({ collectionItems, withUndos: true });
+    }
+
+    it("should restore a trashed metric and permanently delete another one", async () => {
+      await setupTrashedMetrics();
+
+      await openRowMenu(timeseriesMetric.name);
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Restore/ }),
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByText(timeseriesMetric.name),
+        ).not.toBeInTheDocument();
+      });
+      expect(
+        await screen.findByText(`${timeseriesMetric.name} has been restored.`),
+      ).toBeInTheDocument();
+      const restoreBodies = fetchMock.callHistory
+        .calls(`path:/api/card/${timeseriesMetric.id}`, { method: "PUT" })
+        .map((call): unknown => JSON.parse(String(call.options.body)));
+      expect(restoreBodies).toEqual([{ archived: false }]);
+      expect(getRow(countMetric.name)).toBeInTheDocument();
+
+      await openRowMenu(countMetric.name);
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Delete permanently/ }),
+      );
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Delete permanently",
+        }),
+      );
+      await waitFor(() => {
+        expect(screen.queryByText(countMetric.name)).not.toBeInTheDocument();
+      });
+      expect(
+        await screen.findByText("This item has been permanently deleted."),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls(`path:/api/card/${countMetric.id}`, {
+          method: "DELETE",
+        }),
+      ).toHaveLength(1);
+      expect(
+        fetchMock.callHistory.calls(`path:/api/card/${timeseriesMetric.id}`, {
+          method: "DELETE",
+        }),
+      ).toHaveLength(0);
+      expect(screen.queryByTestId("collection-table")).not.toBeInTheDocument();
+    });
   });
 });

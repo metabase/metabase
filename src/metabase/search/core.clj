@@ -47,9 +47,11 @@
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec
+  explode-camel-case
+  indexed-model?
+  search-model-spec
   spec
-  specifications
-  define-spec]
+  specifications]
  [search.util
   collapse-id
   indexed-entity-id->model-index-id
@@ -286,14 +288,19 @@
              steps))))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
+(defn update-changed!
+  "Enqueue re-indexing derived from the updated `instances`, each only for the hooks its changes touch."
+  [instances]
+  (enqueue-hook-selectors! instances false))
+
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
   [instances]
   (enqueue-hook-selectors! instances true))
 
 (defn feeds-documents?
-  "Whether [[bulk-update!]] would enqueue anything for `instances`.
-  A superseded revision or review, for one, feeds no document: every hook it would trigger requires `most_recent`."
+  "Whether [[bulk-update!]] would enqueue anything for `instances`, which a superseded moderation review, for one, does
+  not, since the hook it would trigger requires `most_recent`."
   [instances]
   (boolean (seq (hook-selectors instances true))))
 

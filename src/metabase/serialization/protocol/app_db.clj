@@ -60,34 +60,48 @@
                    (into {} (map (fn [[field-ref row]] [(:id row) field-ref])) level)
                    (merge found level))))))))
 
-(defmulti rows-by-refs
-  "The map from each of the set `refs` to the oldest row of `model` in the app DB with that ref, with only `columns`
-  unless nil. By default the refs are entity ids; a model identified otherwise has a method of its own."
-  {:arglists '([model refs columns])}
-  (fn [model _refs _columns] model))
-
-(defmethod rows-by-refs :default [model eids columns]
+(defn- rows-by-entity-ids
+  "The map from each of the set `eids` to the oldest row of `model` in the app DB with that entity id, with only
+  `columns` unless nil, throwing when `model` is identified otherwise."
+  [model eids columns]
   (when-not (= [:entity_id] (serialization.spec/identity-columns model))
     (throw (ex-info (format "No query for the refs of %s" model) {:model model})))
   (select-by-column-refs model eids columns #(serialization.db/rows-by-entity-ids model %1 %2)))
 
-(defmethod rows-by-refs :model/User [model refs columns]
-  (select-by-column-refs model refs columns serialization.db/users-by-emails))
+(defn rows-by-refs
+  "The map from each of the set `refs` to the oldest row of `model` in the app DB with that ref, with only `columns`
+  unless nil, by the `:rows-by-refs` of the spec of `model`. By default the refs are entity ids, and emails for Users."
+  [model refs columns]
+  (if-let [f (:rows-by-refs (serialization.spec/spec model))]
+    (f refs columns)
+    (if (= :model/User model)
+      (select-by-column-refs model refs columns serialization.db/users-by-emails)
+      (rows-by-entity-ids model refs columns))))
 
-(defmethod rows-by-refs :model/Database [model refs columns]
-  (select-by-column-refs model refs columns serialization.db/databases-by-names))
+(defn database-rows-by-refs
+  "The `:rows-by-refs` of Databases, whose refs are their names."
+  [refs columns]
+  (select-by-column-refs :model/Database refs columns serialization.db/databases-by-names))
 
-(defmethod rows-by-refs :model/Table [_ refs columns]
+(defn table-rows-by-refs
+  "The `:rows-by-refs` of Tables, whose refs are `[db-name schema table-name]`."
+  [refs columns]
   (select-tables-by-refs refs columns))
 
-(defmethod rows-by-refs :model/Field [_ refs columns]
+(defn field-rows-by-refs
+  "The `:rows-by-refs` of Fields, whose refs are `[db-name schema table-name & field-names]`."
+  [refs columns]
   (select-fields-by-refs refs columns))
 
-(defmethod rows-by-refs :model/Setting [model refs columns]
-  (select-by-column-refs model refs columns serialization.db/settings-by-keys))
+(defn setting-rows-by-refs
+  "The `:rows-by-refs` of Settings, whose refs are their keys."
+  [refs columns]
+  (select-by-column-refs :model/Setting refs columns serialization.db/settings-by-keys))
 
-(defmethod rows-by-refs :model/Channel [model refs columns]
-  (select-by-column-refs model refs columns serialization.db/channels-by-names))
+(defn channel-rows-by-refs
+  "The `:rows-by-refs` of Channels, whose refs are their names."
+  [refs columns]
+  (select-by-column-refs :model/Channel refs columns serialization.db/channels-by-names))
 
 (defn- rows-by-ref-ids
   "The map from each of `refs` to the oldest row of `model` whose `column` holds the id that `ids`, a map from ref to
@@ -99,20 +113,31 @@
         rows     (protocol.util/in-batches (set (vals ids)) #(query % cols))]
     (protocol.util/rows-by-ref model (set refs) #(get id->ref (get % column)) rows)))
 
-(defmethod rows-by-refs :model/FieldUserSettings [model refs columns]
+(defn field-user-settings-rows-by-refs
+  "The `:rows-by-refs` of FieldUserSettings, whose refs are the refs of their Fields."
+  [refs columns]
   (let [field-ids (update-vals (select-fields-by-refs refs [:id]) :id)]
-    (rows-by-ref-ids model refs field-ids :field_id columns serialization.db/field-user-settings-by-field-ids)))
+    (rows-by-ref-ids :model/FieldUserSettings refs field-ids :field_id columns
+                     serialization.db/field-user-settings-by-field-ids)))
 
-(defmethod rows-by-refs :model/Dimension [model refs columns]
+(defn dimension-rows-by-refs
+  "The `:rows-by-refs` of Dimensions, whose refs are the refs of their Fields."
+  [refs columns]
   (let [field-ids (update-vals (select-fields-by-refs refs [:id]) :id)]
-    (rows-by-ref-ids model refs field-ids :field_id columns serialization.db/dimensions-by-field-ids)))
+    (rows-by-ref-ids :model/Dimension refs field-ids :field_id columns serialization.db/dimensions-by-field-ids)))
 
-(defmethod rows-by-refs :model/TableUserSettings [model refs columns]
+(defn table-user-settings-rows-by-refs
+  "The `:rows-by-refs` of TableUserSettings, whose refs are the refs of their Tables."
+  [refs columns]
   (let [table-ids (update-vals (select-tables-by-refs refs [:id]) :id)]
-    (rows-by-ref-ids model refs table-ids :table_id columns serialization.db/table-user-settings-by-table-ids)))
+    (rows-by-ref-ids :model/TableUserSettings refs table-ids :table_id columns
+                     serialization.db/table-user-settings-by-table-ids)))
 
-(defmethod rows-by-refs :model/FieldValues [model refs columns]
-  (let [field-ids (update-vals (select-fields-by-refs (into #{} (map first) refs) [:id]) :id)
+(defn field-values-rows-by-refs
+  "The `:rows-by-refs` of FieldValues, whose refs are `[field-ref type]`."
+  [refs columns]
+  (let [model     :model/FieldValues
+        field-ids (update-vals (select-fields-by-refs (into #{} (map first) refs) [:id]) :id)
         pk        (serialization.spec/primary-key model)
         cols      (protocol.util/select-columns columns [pk :field_id :type])
         id->ref   (into {} (map (fn [[ref id]] [id ref])) field-ids)
@@ -124,9 +149,12 @@
   "The model of the content each `:entity_type` of an OsiAiContext other than a Table names by entity id."
   {"card" :model/Card "measure" :model/Measure "segment" :model/Segment})
 
-(defmethod rows-by-refs :model/OsiAiContext [model refs columns]
-  (let [pk   (serialization.spec/primary-key model)
-        cols (protocol.util/select-columns columns [pk :entity_type :entity_local_id])]
+(defn osi-ai-context-rows-by-refs
+  "The `:rows-by-refs` of OsiAiContexts, whose refs are `[entity-type local-ref]`."
+  [refs columns]
+  (let [model :model/OsiAiContext
+        pk    (serialization.spec/primary-key model)
+        cols  (protocol.util/select-columns columns [pk :entity_type :entity_local_id])]
     (into {}
           (mapcat (fn [[entity-type type-refs]]
                     (let [local-refs (into #{} (map second) type-refs)
@@ -143,54 +171,19 @@
                                                  #(vector entity-type (id->ref (:entity_local_id %))) rows))))
           (group-by first refs))))
 
-(defmulti rows-by-parent-pks
-  "The rows of `model`, with only `columns` unless nil, whose parent has its primary key in the set `parent-pks`."
-  {:arglists '([model parent-pks columns])}
-  (fn [model _parent-pks _columns] model))
-
-(defmethod rows-by-parent-pks :default [model _parent-pks _columns]
-  (throw (ex-info (format "No query for the children of %s" model) {:model model})))
-
-(defn- children-rows
-  "The rows of `model` whose parent has its primary key in `parent-pks`, with `query` a fn of a batch of parent primary
-  keys and the columns to select."
-  [model parent-pks columns query]
-  (let [cols (protocol.util/select-columns columns [(serialization.spec/primary-key model)
-                                                    (:key (serialization.spec/parent model))])]
+(defn rows-by-parent-pks
+  "The rows of `model`, with only `columns` unless nil, whose parent has its primary key in the set `parent-pks`, a
+  batch at a time, by the `:rows-by-parent-pks` of the spec of `model`, by default those whose `:parent` `:key` column
+  holds one of them."
+  [model parent-pks columns]
+  (let [spec       (serialization.spec/spec model)
+        parent-key (-> spec :parent :key)
+        query      (or (:rows-by-parent-pks spec)
+                       (when parent-key
+                         #(serialization.db/rows-by-column-values model parent-key %1 %2))
+                       (throw (ex-info (format "No query for the children of %s" model) {:model model})))
+        cols       (protocol.util/select-columns columns [(serialization.spec/primary-key model) parent-key])]
     (protocol.util/in-batches parent-pks #(query % cols))))
-
-(defmethod rows-by-parent-pks :model/Dimension [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/dimensions-by-field-ids))
-
-(defmethod rows-by-parent-pks :model/DashboardTab [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/dashboard-tabs-by-dashboard-ids))
-
-(defmethod rows-by-parent-pks :model/DashboardCard [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/dashboard-cards-by-dashboard-ids))
-
-(defmethod rows-by-parent-pks :model/DashboardCardSeries [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/dashboard-card-series-by-dashboard-card-ids))
-
-(defmethod rows-by-parent-pks :model/TimelineEvent [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/timeline-events-by-timeline-ids))
-
-(defmethod rows-by-parent-pks :model/MetabotPrompt [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/metabot-prompts-by-metabot-ids))
-
-(defmethod rows-by-parent-pks :model/TransformJobTransformTag [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/transform-job-tags-by-job-ids))
-
-(defmethod rows-by-parent-pks :model/TransformTransformTag [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/transform-tags-by-transform-ids))
-
-(defmethod rows-by-parent-pks :model/TableIndex [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/table-indexes-by-transform-ids))
-
-(defmethod rows-by-parent-pks :model/QueryAction [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/query-actions-by-action-ids))
-
-(defmethod rows-by-parent-pks :model/ImplicitAction [model parent-pks columns]
-  (children-rows model parent-pks columns serialization.db/implicit-actions-by-action-ids))
 
 (defn- with-retries
   "What `f` returns, retried up to `retries` times with backoff when it throws a transient DB error, like a deadlock."

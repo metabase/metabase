@@ -1,6 +1,7 @@
 (ns metabase.search.models.search-index-metadata
   (:require
    [java-time.api :as t]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.search.db :as search.db]
    [metabase.util :as u]
@@ -80,3 +81,8 @@
     (search.db/delete-obsolete-index-metadata! most-recent
                                                (filter some? [our-version (first most-recent)])
                                                (t/minus (t/zoned-date-time) pending-table-cut-off))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SearchIndexMetadata [_model]
+  {:skip? true})
