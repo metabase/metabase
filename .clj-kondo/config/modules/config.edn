@@ -4537,7 +4537,6 @@
            sql-tools
            util
            util.classloader
-           warehouse-schema-overlay
            enterprise/serialization}
    :model-imports #{:model/Card
                     :model/Collection
