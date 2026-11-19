@@ -1124,9 +1124,7 @@
 
 (defn- drop-database! [admin-spec db-name]
   ;; Redshift's DROP DATABASE has no IF EXISTS, and it cannot run in a transaction block
-  (try (jdbc/execute! admin-spec [(format "DROP DATABASE \"%s\"" db-name)] {:transaction? false})
-       (catch Throwable t
-         (log/warnf t "Test cleanup failed: DROP DATABASE %s" db-name))))
+  (jdbc/execute! admin-spec [(format "DROP DATABASE \"%s\"" db-name)] {:transaction? false}))
 
 (defn- public-create-test-db-name
   "A name for the database that [[workspace-public-create-other-database-live-test]] creates. It carries the creation
@@ -1151,7 +1149,10 @@
   (doseq [{db-name :datname} (jdbc/query admin-spec ["SELECT datname FROM pg_database"])
           :when (leaked-public-create-database? db-name)]
     (log/infof "Dropping leaked test database %s" db-name)
-    (drop-database! admin-spec db-name)))
+    ;; a concurrent CI job may still be using it
+    (try (drop-database! admin-spec db-name)
+         (catch Throwable t
+           (log/warnf t "Could not drop leaked test database %s" db-name)))))
 
 (deftest ^:synchronized workspace-public-create-other-database-live-test
   ;; a new database's `public` grants CREATE to PUBLIC by default, and every user may connect to it: init must find
@@ -1178,7 +1179,15 @@
             (is (str/includes? (ex-message error)
                                (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2-name)))))
         (finally
-          (drop-database! admin-spec db2-name))))))
+          (let [drop-error (try (drop-database! admin-spec db2-name)
+                                nil
+                                (catch Throwable t
+                                  t))]
+            (is (nil? drop-error)
+                (format (str "Could not drop test database %s: %s. It stays on the shared Redshift cluster, which "
+                             "allows 64 databases; leaked databases fill it until every run's CREATE DATABASE fails.")
+                        db2-name
+                        (some-> drop-error ex-message)))))))))
 
 (deftest ^:synchronized workspace-grant-refuses-public-writes-live-test
   (mt/test-driver :redshift
