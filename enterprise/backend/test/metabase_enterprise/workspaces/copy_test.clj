@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.query-processor.copy-metadata :as ws.copy-metadata]
    [metabase-enterprise.workspaces.request-workspace-test :as request-workspace-test]
+   [metabase-enterprise.workspaces.row-security-test :as row-security-test]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -125,24 +126,26 @@
                            table-id)))))))
 
 (deftest query-metadata-test
-  (do-with-orders
-   (fn [{:keys [workspace-id db-id table-id field-ids]}]
-     (record! workspace-id db-id table-id [(column "id" :type/Integer "int4" 0)
-                                           (column "created" :type/DateTime "timestamp" 1)
-                                           (column "total" :type/Float "float8" 2)])
-     (let [path    (format "table/%d/query_metadata" table-id)
-           headers {:request-options {:headers {"x-metabase-workspace-id" (str workspace-id)}}}]
-       (testing "without the header, the shared fields"
-         (is (= ["id" "created" "first" "name"] (map :name (:fields (mt/user-http-request :crowberto :get 200 path))))))
-       (testing "in the workspace, the copy's fields, in the table's field order"
-         (let [fields (:fields (mt/user-http-request :crowberto :get 200 path headers))]
-           (is (= ["id" "created" "total"] (map :name fields)))
-           (is (=? {:id (field-ids "created") :base_type "type/DateTime" :coercion_strategy nil}
-                   (second fields)))))
-       (testing "a retired column the copy has stays out"
-         (t2/update! :model/Field :table_id table-id :name "total" {:visibility_type :retired})
-         (is (= ["id" "created"]
-                (map :name (:fields (mt/user-http-request :crowberto :get 200 path headers))))))))))
+  ;; a request can name a workspace only where row-level security keeps the rows of workspaces apart
+  (row-security-test/with-request-workspaces-enabled
+    (do-with-orders
+     (fn [{:keys [workspace-id db-id table-id field-ids]}]
+       (record! workspace-id db-id table-id [(column "id" :type/Integer "int4" 0)
+                                             (column "created" :type/DateTime "timestamp" 1)
+                                             (column "total" :type/Float "float8" 2)])
+       (let [path    (format "table/%d/query_metadata" table-id)
+             headers {:request-options {:headers {"x-metabase-workspace-id" (str workspace-id)}}}]
+         (testing "without the header, the shared fields"
+           (is (= ["id" "created" "first" "name"] (map :name (:fields (mt/user-http-request :crowberto :get 200 path))))))
+         (testing "in the workspace, the copy's fields, in the table's field order"
+           (let [fields (:fields (mt/user-http-request :crowberto :get 200 path headers))]
+             (is (= ["id" "created" "total"] (map :name fields)))
+             (is (=? {:id (field-ids "created") :base_type "type/DateTime" :coercion_strategy nil}
+                     (second fields)))))
+         (testing "a retired column the copy has stays out"
+           (t2/update! :model/Field :table_id table-id :name "total" {:visibility_type :retired})
+           (is (= ["id" "created"]
+                  (map :name (:fields (mt/user-http-request :crowberto :get 200 path headers)))))))))))
 
 (deftest deprovisioned-database-loses-its-copy-rows-test
   (do-with-orders

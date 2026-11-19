@@ -9,6 +9,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.row-security-test :as row-security-test]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -67,45 +68,47 @@
   synced: a canonical schema with a source table `src-name` holding `(1, a) (2, b)`, an output table `out-name`
   holding `(99, pre-existing)`, and two provisioned workspaces of the Database."
   [f]
-  (mt/test-driver :postgres
-    (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
-      (let [admin-details (:details (mt/db))
-            admin-spec    (sql-jdbc.conn/connection-details->spec :postgres admin-details)
-            run-id        (subs (str (random-uuid)) 0 8)
-            main-schema   (str "canonical_schema_" run-id)
-            src-name      (str "x_input_table_" run-id)
-            out-name      (str "x_output_table_" run-id)
-            exec!         #(jdbc/execute! admin-spec [%])]
-        (try
-          (exec! (format "CREATE SCHEMA \"%s\"" main-schema))
-          (exec! (format "CREATE TABLE \"%s\".\"%s\" (id integer, v text)" main-schema src-name))
-          (exec! (format "INSERT INTO \"%s\".\"%s\" VALUES (1, 'a'), (2, 'b')" main-schema src-name))
-          (exec! (format "CREATE TABLE \"%s\".\"%s\" (id integer, v text)" main-schema out-name))
-          (exec! (format "INSERT INTO \"%s\".\"%s\" VALUES (99, 'pre-existing')" main-schema out-name))
-          (mt/with-temp [:model/Database ws-db {:engine :postgres :details admin-details :name (str "ws-e2e-" run-id)}]
-            (let [workspaces (vec (for [n ["a" "b"]]
-                                    (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id "-" n)
-                                                                             :creator_id (mt/user->id :crowberto)})]
-                                      (assoc (provision-workspace-database! ws-id (:id ws-db) [main-schema])
-                                             :workspace-id ws-id))))]
-              (try
-                (is (= [:provisioned :provisioned] (map :status workspaces)))
-                (mt/with-db ws-db
-                  (sync/sync-database! (:id ws-db) {:scan :schema})
-                  (f {:admin-details admin-details
-                      :admin-spec    admin-spec
-                      :main-schema   main-schema
-                      :src-name      src-name
-                      :out-name      out-name
-                      :ws-db         ws-db
-                      :workspaces    workspaces
-                      :table         #(t2/select-one :model/Table :db_id (:id ws-db) :schema main-schema :name %)}))
-                (finally
-                  (doseq [{:keys [workspace-id]} workspaces
-                          :when (t2/exists? :model/Workspace :id workspace-id)]
-                    (ws/delete-workspace! workspace-id))))))
-          (finally
-            (exec! (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" main-schema))))))))
+  ;; a request can name a workspace only where row-level security keeps the rows of workspaces apart
+  (row-security-test/with-request-workspaces-enabled
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (let [admin-details (:details (mt/db))
+              admin-spec    (sql-jdbc.conn/connection-details->spec :postgres admin-details)
+              run-id        (subs (str (random-uuid)) 0 8)
+              main-schema   (str "canonical_schema_" run-id)
+              src-name      (str "x_input_table_" run-id)
+              out-name      (str "x_output_table_" run-id)
+              exec!         #(jdbc/execute! admin-spec [%])]
+          (try
+            (exec! (format "CREATE SCHEMA \"%s\"" main-schema))
+            (exec! (format "CREATE TABLE \"%s\".\"%s\" (id integer, v text)" main-schema src-name))
+            (exec! (format "INSERT INTO \"%s\".\"%s\" VALUES (1, 'a'), (2, 'b')" main-schema src-name))
+            (exec! (format "CREATE TABLE \"%s\".\"%s\" (id integer, v text)" main-schema out-name))
+            (exec! (format "INSERT INTO \"%s\".\"%s\" VALUES (99, 'pre-existing')" main-schema out-name))
+            (mt/with-temp [:model/Database ws-db {:engine :postgres :details admin-details :name (str "ws-e2e-" run-id)}]
+              (let [workspaces (vec (for [n ["a" "b"]]
+                                      (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id "-" n)
+                                                                               :creator_id (mt/user->id :crowberto)})]
+                                        (assoc (provision-workspace-database! ws-id (:id ws-db) [main-schema])
+                                               :workspace-id ws-id))))]
+                (try
+                  (is (= [:provisioned :provisioned] (map :status workspaces)))
+                  (mt/with-db ws-db
+                    (sync/sync-database! (:id ws-db) {:scan :schema})
+                    (f {:admin-details admin-details
+                        :admin-spec    admin-spec
+                        :main-schema   main-schema
+                        :src-name      src-name
+                        :out-name      out-name
+                        :ws-db         ws-db
+                        :workspaces    workspaces
+                        :table         #(t2/select-one :model/Table :db_id (:id ws-db) :schema main-schema :name %)}))
+                  (finally
+                    (doseq [{:keys [workspace-id]} workspaces
+                            :when (t2/exists? :model/Workspace :id workspace-id)]
+                      (ws/delete-workspace! workspace-id))))))
+            (finally
+              (exec! (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" main-schema)))))))))
 
 (defn- active-field-names
   "The names of the active shared Fields of the Table with `table-id`."

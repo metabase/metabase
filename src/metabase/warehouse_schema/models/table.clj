@@ -530,7 +530,7 @@
                :database_require_filter :is_writable :data_authority :data_source :data_layer
                :owner_email :is_published]
    :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target :is_defective_duplicate
-               :unique_table_helper]
+               :unique_table_helper :workspace_id]
    :transform {:archived_at    serialization/date-transform
                :deactivated_at serialization/date-transform
                :db_id          serialization/database-transform

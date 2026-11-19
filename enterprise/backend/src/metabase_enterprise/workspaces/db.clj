@@ -549,3 +549,45 @@
     (t2/delete! :model/WorkspaceTableCopy
                 :workspace_id [:auto/param workspace-id]
                 :table_id     [:in table-ids])))
+
+;;; ------------------------------------------ Row-level security -------------------------------------------------
+;;;
+;;; On Postgres, a policy on `metabase_table` and `metabase_field` shows a connection the shared rows and those of its
+;;; workspace ([[metabase.app-db.core/with-workspace-id]]). The migration creates the policies; these turn them on.
+
+(def ^:private row-security-tables
+  "The app DB tables that hold rows a workspace owns."
+  ["metabase_table" "metabase_field"])
+
+(mu/defn row-security-bypassed? :- :boolean
+  "Whether the app DB role skips row-level security, as a superuser or a role with BYPASSRLS does."
+  []
+  (boolean (:bypassed (t2/query-one ["SELECT rolsuper OR rolbypassrls AS bypassed FROM pg_roles WHERE rolname = current_user"]))))
+
+(mu/defn row-security-forced? :- :boolean
+  "Whether row-level security is on, and forced for the table owner, on every table that holds rows a workspace owns."
+  []
+  (let [rows (t2/query (into ["SELECT relrowsecurity AND relforcerowsecurity AS forced FROM pg_class
+                               WHERE relkind = 'r' AND relname IN (?, ?)"]
+                             row-security-tables))]
+    (and (= (count row-security-tables) (count rows))
+         (every? :forced rows))))
+
+(mu/defn set-row-security! :- :nil
+  "Turn row-level security on, forced for the table owner, or off, on every table that holds rows a workspace owns."
+  [on? :- :boolean]
+  (doseq [table row-security-tables]
+    (t2/query (if on?
+                [(format "ALTER TABLE %s ENABLE ROW LEVEL SECURITY" table)]
+                [(format "ALTER TABLE %s DISABLE ROW LEVEL SECURITY" table)]))
+    (t2/query (if on?
+                [(format "ALTER TABLE %s FORCE ROW LEVEL SECURITY" table)]
+                [(format "ALTER TABLE %s NO FORCE ROW LEVEL SECURITY" table)])))
+  nil)
+
+(mu/defn workspace-owned-rows-exist? :- :boolean
+  "Whether a workspace owns a Table or a Field. Reads every workspace."
+  []
+  (app-db/with-workspace-id :all
+    (or (t2/exists? :model/Table {:where [:not= :workspace_id nil]})
+        (t2/exists? :model/Field {:where [:not= :workspace_id nil]}))))

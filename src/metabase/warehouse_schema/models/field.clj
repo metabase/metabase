@@ -482,7 +482,7 @@
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :visibility_type]
    :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-               :is_defective_duplicate :unique_field_helper]
+               :is_defective_duplicate :unique_field_helper :workspace_id]
    :children  {:dimensions :model/Dimension}
    :transform {:table_id           table-transform
                :fk_target_field_id field-transform

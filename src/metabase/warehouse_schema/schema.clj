@@ -58,6 +58,8 @@
    [:map {:closed true}
     [:id                         ::lib.schema.id/field]
     [:unique_field_helper        {:optional true} [:maybe :int]]
+    ;; the workspace that owns a Field only it has, or nil for a shared one; set by the app DB, never by an update
+    [:workspace_id               {:optional true} [:maybe pos-int?]]
     [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
     [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
     [:target                     {:optional true} [:maybe [:ref ::field]]]
@@ -237,6 +239,8 @@
    [:map {:closed true}
     [:id                      ::lib.schema.id/table]
     [:unique_table_helper     {:optional true} [:maybe :string]]
+    ;; the workspace that owns a Table only it has, or nil for a shared one; set by the app DB, never by an update
+    [:workspace_id            {:optional true} [:maybe pos-int?]]
     [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
     [:fields                  {:optional true} [:maybe [:sequential ::field]]]
     [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]

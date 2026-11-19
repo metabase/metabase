@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
+   [metabase-enterprise.workspaces.row-security-test :as row-security-test]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
    [metabase.app-db.core :as app-db]
@@ -69,8 +70,18 @@
 (deftest request-workspace-problem-test
   (do-with-request-workspace
    (fn [{:keys [workspace-id db-id]}]
-     (testing "a request can work in a workspace whose every database is provisioned"
-       (is (nil? (workspaces/request-workspace-problem workspace-id))))
+     (testing "a request can work in a workspace whose every database is provisioned, on an app DB whose row-level
+               security keeps the rows of workspaces apart"
+       (row-security-test/with-request-workspaces-enabled
+         (is (nil? (workspaces/request-workspace-problem workspace-id)))))
+     (testing "not when the app DB does not keep the rows of workspaces apart"
+       (is (re-find #"request-workspaces-enabled|PostgreSQL|row-level security"
+                    (workspaces/request-workspace-problem workspace-id)))
+       (row-security-test/with-request-workspaces-enabled
+         (mt/with-dynamic-fn-redefs [ws.db/row-security-forced? (constantly false)]
+           (is (re-find #"row-level security is off" (workspaces/request-workspace-problem workspace-id))))
+         (mt/with-dynamic-fn-redefs [ws.db/row-security-bypassed? (constantly true)]
+           (is (re-find #"superuser" (workspaces/request-workspace-problem workspace-id))))))
      (testing "an unknown workspace"
        (is (= (str "There is no workspace " Integer/MAX_VALUE ".")
               (workspaces/request-workspace-problem Integer/MAX_VALUE))))

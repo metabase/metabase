@@ -5528,3 +5528,66 @@
       (testing "rollback restores the unique key of a source table"
         (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping nil "public__orders_2")
                                                                    :to_schema "other"))))))))
+
+(deftest request-workspace-owned-tables-and-fields-test
+  (impl/test-migrations ["1st6ml"] [migrate!]
+    (let [db-id    (t2/insert-returning-pk! :metabase_database {:name "db" :engine "postgres" :details "{}"
+                                                                :created_at :%now :updated_at :%now})
+          ws-id    (t2/insert-returning-pk! :workspace {:name "ws" :created_at :%now :updated_at :%now})
+          table    (fn [m] (merge {:db_id db-id :schema "public" :name "orders" :active true
+                                   :created_at :%now :updated_at :%now} m))
+          field    (fn [table-id m] (merge {:table_id table-id :name "total" :base_type "type/Integer"
+                                            :database_type "integer" :active true
+                                            :created_at :%now :updated_at :%now} m))
+          shared   (t2/insert-returning-pk! :metabase_table (table {}))
+          boundary (with-open [conn (.getConnection (mdb/data-source))]
+                     (liquibase/with-liquibase [liquibase conn]
+                       (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+      (t2/insert! :metabase_field (field shared {}))
+      (migrate!)
+      (testing "existing Tables and Fields are shared"
+        (is (= [nil] (t2/select-fn-vec :workspace_id :metabase_table)))
+        (is (= [nil] (t2/select-fn-vec :workspace_id :metabase_field))))
+      (when (= :postgres (mdb/db-type))
+        (testing "a Table or Field a connection inserts is in the connection's workspace"
+          (with-open [conn (.getConnection (mdb/data-source))]
+            (jdbc/execute! {:connection conn} [(format "SET metabase.workspace_id = '%d'" ws-id)])
+            (jdbc/execute! {:connection conn}
+                           ["INSERT INTO metabase_table (db_id, schema, name, active, created_at, updated_at)
+                             VALUES (?, 'public', 'only_ws', true, now(), now())" db-id])
+            (jdbc/execute! {:connection conn} ["SET metabase.workspace_id = '0'"])
+            (jdbc/execute! {:connection conn}
+                           ["INSERT INTO metabase_table (db_id, schema, name, active, created_at, updated_at)
+                             VALUES (?, 'public', 'shared_2', true, now(), now())" db-id]))
+          (is (= ws-id (t2/select-one-fn :workspace_id :metabase_table :name "only_ws")))
+          (is (nil? (t2/select-one-fn :workspace_id :metabase_table :name "shared_2"))))
+        (testing "a workspace can own a Table or Field with the key of a shared one"
+          (let [owned (t2/insert-returning-pk! :metabase_table (table {:workspace_id ws-id}))]
+            (t2/insert! :metabase_field (field shared {:workspace_id ws-id}))
+            (t2/insert! :metabase_field (field owned {:workspace_id ws-id}))
+            (is (thrown? Exception (t2/insert! :metabase_table (table {}))))
+            (is (thrown? Exception (t2/insert! :metabase_table (table {:workspace_id ws-id}))))
+            (is (thrown? Exception (t2/insert! :metabase_field (field shared {}))))
+            (is (thrown? Exception (t2/insert! :metabase_field (field shared {:workspace_id ws-id}))))))
+        (testing "the policies are in place, and row-level security is off"
+          (is (= #{"metabase_table" "metabase_field"}
+                 (set (map :t (t2/query ["SELECT polrelid::regclass::text AS t FROM pg_policy WHERE polname = 'workspace'"])))))
+          (is (= [false false]
+                 (map :relrowsecurity (t2/query ["SELECT relrowsecurity FROM pg_class
+                                                  WHERE relname IN ('metabase_table', 'metabase_field')"]))))))
+      (testing "a workspace's Tables and Fields are deleted with it"
+        (t2/insert! :metabase_table (table {:name "owned_2" :workspace_id ws-id}))
+        (t2/delete! :workspace :id ws-id)
+        (is (= [nil] (distinct (t2/select-fn-vec :workspace_id :metabase_table))))
+        (is (= [nil] (distinct (t2/select-fn-vec :workspace_id :metabase_field)))))
+      (with-open [conn (.getConnection (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase conn]
+          (rollback/rollback-to-deployment! conn liquibase boundary)))
+      (testing "rollback drops the columns"
+        (is (not (contains? (t2/select-one :metabase_table) :workspace_id)))
+        (is (not (contains? (t2/select-one :metabase_field) :workspace_id))))
+      (when (= :postgres (mdb/db-type))
+        (testing "rollback restores the unique keys and drops the policies"
+          (is (thrown? Exception (t2/insert! :metabase_table (table {}))))
+          (is (thrown? Exception (t2/insert! :metabase_field (field shared {}))))
+          (is (empty? (t2/query ["SELECT 1 FROM pg_policy WHERE polname = 'workspace'"]))))))))

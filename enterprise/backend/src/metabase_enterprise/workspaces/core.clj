@@ -78,6 +78,7 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.core :as app-db]
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -316,17 +317,11 @@
                     {:status-code 400 :database-id database-id :workspace-id workspace-id})))
   (get databases database-id))
 
-(defenterprise request-workspace-problem
-  "EE impl: why a request can't work in the workspace with `workspace-id`, or nil when it can. It can when every
-   database of the workspace is provisioned, and the workspace's login is the only login of each
-   ([[metabase-enterprise.workspaces.login/login-problem]])."
-  :feature :workspaces
+(defn- workspace-problem
+  "Why a request can't work in the workspace with `workspace-id` because of the workspace, or nil."
   [workspace-id]
   (let [{:keys [databases unprovisioned-database-ids] :as workspace} (ws.request-workspace/request-workspace workspace-id)]
     (cond
-      (ws.settings/workspaces-enabled)
-      (tru "This instance is a workspace, so a request can''t name another one.")
-
       (nil? workspace)
       (tru "There is no workspace {0}." (str workspace-id))
 
@@ -338,6 +333,34 @@
 
       :else
       (some :problem (vals databases)))))
+
+(defn- row-security-problem
+  "Why the app DB can't keep the Tables and Fields of workspaces apart, or nil when it can: a request in a workspace
+  must not see another's, and one in none must see only the shared ones."
+  []
+  (cond
+    (not (ws.settings/request-workspaces-enabled))
+    (tru "Requests can''t name a workspace until the request-workspaces-enabled setting is on.")
+
+    (not= :postgres (app-db/db-type))
+    (tru "Workspaces that a request names need a PostgreSQL application database.")
+
+    (ws.db/row-security-bypassed?)
+    (tru "Workspaces that a request names need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")
+
+    (not (ws.db/row-security-forced?))
+    (tru "Requests can''t name a workspace: row-level security is off on metabase_table or metabase_field. Turn the request-workspaces-enabled setting off and on again.")))
+
+(defenterprise request-workspace-problem
+  "EE impl: why a request can't work in the workspace with `workspace-id`, or nil when it can. It can when the app DB
+   keeps the rows of workspaces apart ([[row-security-problem]]), every database of the workspace is provisioned, and
+   the workspace's login is the only login of each ([[metabase-enterprise.workspaces.login/login-problem]])."
+  :feature :workspaces
+  [workspace-id]
+  (if (ws.settings/workspaces-enabled)
+    (tru "This instance is a workspace, so a request can''t name another one.")
+    (or (workspace-problem workspace-id)
+        (row-security-problem))))
 
 (defenterprise workspace-mode?
   "EE impl: true iff the current thread works in a workspace ([[current-workspace]]): this whole instance is one, or

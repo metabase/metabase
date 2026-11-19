@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
+   [metabase.app-db.core :as mdb]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
@@ -67,3 +68,32 @@
   :export?    false
   :audit      :never
   :doc        false)
+
+(defn- set-request-workspaces-enabled!
+  "Setter of [[request-workspaces-enabled]]: turn the row-level security that keeps the rows of workspaces apart on or
+  off, then store `new-value`."
+  [new-value]
+  (let [new-value (boolean (cond-> new-value (string? new-value) setting/string->boolean))]
+    (if new-value
+      (do
+        (when-not (= :postgres (mdb/db-type))
+          (throw (ex-info (tru "Workspaces that a request names need a PostgreSQL application database.")
+                          {:status-code 400})))
+        (when (ws.db/row-security-bypassed?)
+          (throw (ex-info (tru "Workspaces that a request names need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")
+                          {:status-code 400}))))
+      (when (and (= :postgres (mdb/db-type)) (ws.db/workspace-owned-rows-exist?))
+        (throw (ex-info (tru "Workspaces own Tables or Fields, which every connection would see without row-level security. Delete those workspaces first.")
+                        {:status-code 400}))))
+    (when (= :postgres (mdb/db-type))
+      (ws.db/set-row-security! new-value))
+    (setting/set-value-of-type! :boolean :request-workspaces-enabled new-value)))
+
+(defsetting request-workspaces-enabled
+  (deferred-tru "Whether a superuser''s request can name a workspace of this instance with the `X-Metabase-Workspace-Id` header. Turning it on turns on PostgreSQL row-level security on `metabase_table` and `metabase_field`, so each workspace sees only the Tables and Fields it shares or owns. It needs a PostgreSQL application database whose user row-level security applies to. With it on, `pg_dump` of the application database by its owner needs `--enable-row-security`. It can''t turn off while workspaces own Tables or Fields.")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    false
+  :audit      :getter
+  :setter     set-request-workspaces-enabled!)
