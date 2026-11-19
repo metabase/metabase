@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [medley.core :as m]
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -26,6 +27,7 @@
    [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.xrays.spec :as xrays]
@@ -653,3 +655,7 @@
 (defmethod collection-items/spec :model/Table [_model]
   {"table" {:items   warehouse-schema.db/collection-table-items
             :hydrate warehouse-schema.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Table [_model]
+  {"table" {:load   warehouse-schema.db/recent-view-tables
+            :render warehouse-schema.recent-views/render}})

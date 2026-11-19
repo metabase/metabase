@@ -5,6 +5,7 @@
    [better-cond.core :as b]
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -44,6 +45,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
+   [metabase.queries.recent-views :as queries.recent-views]
    [metabase.queries.replacement :as queries.replacement]
    [metabase.queries.revisions :as queries.revisions]
    [metabase.queries.schema :as queries.schema]
@@ -1949,3 +1951,14 @@
    "metric"  {:rank    4
               :items   queries.db/collection-metric-items
               :hydrate queries.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Card [_model]
+  {"card"    {:load   queries.db/recent-view-cards
+              :render queries.recent-views/render-card
+              :type   "question"}
+   "dataset" {:load   queries.db/recent-view-cards
+              :render queries.recent-views/render-model
+              :type   "model"}
+   "metric"  {:load   queries.db/recent-view-cards
+              :render queries.recent-views/render-metric
+              :type   "metric"}})

@@ -23,18 +23,21 @@
 
   E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [colorize.core :as colorize]
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.activity-feed.collection-recent-views]
    [metabase.activity-feed.db :as activity-feed.db]
+   [metabase.activity-feed.recent-views.spec :as recent-views.spec]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.batch-processing.core :as grouper]
-   [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -74,51 +77,57 @@
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
                        (map :id)))))
 
-(def ^:private rv-model->toucan-model
-  "Maps each rv-model keyword to the Toucan model backing it. `:card`, `:dataset`, and `:metric` are all stored in
-  recent_views as \"card\" and backed by `:model/Card`; a join with report_card is needed to distinguish between
-  them — see [[rv-model->card-type]]."
-  {:card       :model/Card
-   :dataset    :model/Card
-   :metric     :model/Card
-   :dashboard  :model/Dashboard
-   :table      :model/Table
-   :collection :model/Collection
-   :document   :model/Document})
-
 (def rv-models
-  "Keywords representing entity types that can be returned as recent views."
-  (vec (keys rv-model->toucan-model)))
+  "Keywords representing entity types that can be returned as recent views. They are the names of the types of recent
+  view that the models declare in their [[metabase.activity-feed.recent-views.spec/spec]]."
+  [:card :dataset :metric :dashboard :table :collection :document])
+
+(defn- db-model
+  "The `recent_views.model` string a view of `model` is stored under."
+  [model]
+  (u/lower-case-en (name model)))
+
+(def ^:private specs*
+  (memoize/fifo
+   (fn [_spec-methods]
+     (let [entries (models.resolution/spec-entries-by-name recent-views.spec/spec)]
+       {:entries entries
+        :names   (into {}
+                       (map (fn [[view-name [model {card-type :type}]]]
+                              [[(db-model model) card-type] view-name]))
+                       entries)}))
+   :fifo/threshold 1))
+
+(defn- specs
+  "The spec of each type of recent view by its name, as `{:entries {name [model spec]}, :names {[stored-model type] name}}`."
+  []
+  (specs* (methods recent-views.spec/spec)))
+
+(defn- entry
+  "The `[model spec]` of the type of recent view named `view-name`."
+  [view-name]
+  (get-in (specs) [:entries (name view-name)]))
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (rv-model->toucan-model rvm))
+  (first (entry rvm)))
 
-(def ^:private card-type->rv-model
-  "Mapping from report_card.type to rv-model keyword."
-  {"model"    :dataset
-   "question" :card
-   "metric"   :metric})
+(defn- view-name
+  "The name of the type of recent view a stored view stands for, from its stored `model` and the `card_type` of the
+  Card it is about."
+  [{:keys [model card_type]}]
+  (let [names (:names (specs))]
+    (or (get names [model card_type])
+        model)))
 
-(def ^:private rv-model->card-type
-  "Mapping from rv-model keyword to report_card.type string."
-  (set/map-invert card-type->rv-model))
-
-(defn- rv-model->db-model
-  "The `recent_views.model` string an rv-model is stored under. `:card`, `:dataset`, and `:metric` are all stored as
-  \"card\"; they are told apart by joining report_card.type."
-  [model]
-  (if (rv-model->card-type model)
-    "card"
-    (name model)))
-
-(defn- ids-to-prune-for-user+model [user-id model context]
-  (activity-feed.db/recent-view-ids-to-prune (rv-model->db-model model)
-                                             user-id
-                                             (name context)
-                                             (rv-model->card-type model)
-                                             *recent-views-stored-per-user-per-model*))
+(defn- ids-to-prune-for-user+model [user-id rv-model context]
+  (let [[model {card-type :type}] (entry rv-model)]
+    (activity-feed.db/recent-view-ids-to-prune (db-model model)
+                                               user-id
+                                               (name context)
+                                               card-type
+                                               *recent-views-stored-per-user-per-model*)))
 
 (defn- overflowing-model-buckets [user-id context]
   (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
@@ -237,250 +246,56 @@
      [:document [:map
                  [:parent_collection ::pc]]]]]))
 
-(defmulti fill-recent-view-info
-  "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]].
+(defn- view-spec
+  "The spec of the type of recent view a stored view stands for, or nil."
+  [recent-view]
+  (second (entry (view-name recent-view))))
 
-  For most items, we gather information from the db in a single query, but certain things are more prudent to check
-  with code (e.g. a collection's parent collection.)
+(defn fill-recent-view-info
+  "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]], using
+  the `:render` of the spec of its type. `recent-view` holds the loaded object as `:model_object`.
 
   Sometimes we get an invalid or inconsistent recent view record. (E.g. the parent collection for an item no longer
   exists). In these cases we simply do not include the value in the recent views response."
-  {:arglists '([recent-view])}
-  (fn [{:keys [model #_model_id #_timestamp card_type]}]
-    (or (card-type->rv-model card_type)
-        (keyword model))))
-
-(defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
-
-(defn- ellide-archived
-  "Returns the model when it's not archived.
-  We use this to ensure that archived models are not returned in the recent views."
-  [model]
-  (when (false? (:archived model)) model))
-
-(defn- root-coll []
-  (select-keys
-   (root/root-collection-with-ui-details nil)
-   [:id :name :authority_level]))
-
-;; ================== Recent Cards ==================
-
-(defn card-recents
-  "Query to select `report_card` data"
-  [card-ids]
-  (if-not (seq card-ids)
-    []
-    (t2/hydrate (activity-feed.db/cards-for-recent-views card-ids) :can_read :can_write)))
-
-(defn- fill-parent-coll [model-object]
-  (if (:collection_id model-object)
-    {:id (:collection_id model-object)
-     :name (:collection_name model-object)
-     :authority_level (some-> (:collection_authority_level model-object) name)}
-    (root-coll)))
-
-(defn- parent-collection-valid?
-  "Returns true when a parent collection actually exists for this item.
-
-  Careful: the root collection will have a nil `collection_id` and a nil `collection_name`. We return false when the
-  collection has a `collection_id`, and a nil `collection_name`."
-  [{:keys [collection_id entity-coll-id]}]
-  (not (and entity-coll-id (nil? collection_id))))
-
-(defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
-  (when-let [card (and
-                   (mi/can-read? model_object)
-                   ;; The parent collection exists:
-                   (parent-collection-valid? model_object)
-                   (ellide-archived model_object))]
-    {:id model_id
-     :dashboard (when (:dashboard_id card)
-                  {:name (:dashboard_name card)
-                   :id (:dashboard_id card)})
-     :name (:name card)
-     :database_id (:database_id card)
-     :description (:description card)
-     :display (some-> card :display name)
-     :result_metadata (:result_metadata card)
-     :dataset_query (:dataset_query card)
-     :entity_id (:entity_id card)
-     :visualization_settings (:visualization_settings card)
-     :model :card
-     :can_write (mi/can-write? card)
-     :timestamp (str timestamp)
-     :moderated_status (:moderated-status card)
-     :parent_collection (fill-parent-coll card)}))
-
-(defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
-  (when-let [dataset (and
-                      (mi/can-read? model_object)
-                      ;; If the parent collection no longer exists, there won't be a name.
-                      (parent-collection-valid? model_object)
-                      (ellide-archived model_object))]
-    {:id model_id
-     :name (:name dataset)
-     :database_id (:database_id dataset)
-     :description (:description dataset)
-     :model :dataset
-     :result_metadata (:result_metadata dataset)
-     :can_write (mi/can-write? dataset)
-     :timestamp (str timestamp)
-     ;; another table that doesn't differentiate between card and dataset :cry:
-     :moderated_status (:moderated-status dataset)
-     :parent_collection (fill-parent-coll dataset)}))
-
-(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
-  (when-let [metric (and
-                     (mi/can-read? model_object)
-                     (parent-collection-valid? model_object)
-                     (ellide-archived model_object))]
-    {:id model_id
-     :name (:name metric)
-     :description (:description metric)
-     :display (some-> metric :display name)
-     :model :metric
-     :result_metadata (:result_metadata metric)
-     :can_write (mi/can-write? metric)
-     :timestamp (str timestamp)
-     :moderated_status (:moderated-status metric)
-     :parent_collection (fill-parent-coll metric)}))
-
-;; ================== Recent Dashboards ==================
-
-(defn- dashboard-recents
-  "Query to select recent dashboard data"
-  [dashboard-ids]
-  (if (empty? dashboard-ids)
-    []
-    (t2/hydrate (activity-feed.db/dashboards-for-recent-views dashboard-ids) :can_read :can_write)))
-
-(defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
-  (when-let [dashboard (and (mi/can-read? model_object)
-                            (parent-collection-valid? model_object)
-                            (ellide-archived model_object))]
-    {:id model_id
-     :name (:name dashboard)
-     :description (:description dashboard)
-     :model :dashboard
-     :can_write (mi/can-write? dashboard)
-     :timestamp (str timestamp)
-     :moderated_status (:moderated-status dashboard)
-     :parent_collection (fill-parent-coll dashboard)}))
-
-;; ================== Recent Collections ==================
-
-(defn- collection-recents
-  "Query to select recent collection data"
-  [collection-ids]
-  (if-not (seq collection-ids)
-    []
-    (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
-          collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
-      (->> (t2/hydrate collections :effective_parent :can_read :can_write)
-           (map #(m/dissoc-in % [:effective_parent :type]))))))
-
-(defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
-  (when-let [collection (and
-                         (mi/can-read? model_object)
-                         (ellide-archived model_object))]
-    {:id model_id
-     :name (:name collection)
-     :description (:description collection)
-     :model :collection
-     :can_write (mi/can-write? collection)
-     :timestamp (str timestamp)
-     :authority_level (some-> (:authority_level collection) name)
-     :collection_type (some-> (:type collection) name)
-     :effective_location (:effective_location collection)
-     :parent_collection (or (:effective_parent collection) (root-coll))}))
-
-;; ================== Recent Tables ==================
-
-(defn- table-recents
-  "Query to select recent table data"
-  [table-ids]
-  (if-not (seq table-ids)
-    []
-    (t2/hydrate (activity-feed.db/visible-tables-for-recent-views table-ids) :can_read :can_write)))
-
-(defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
-  (let [table model_object]
-    (when (and (not= "hidden" (:visibility_type table))
-               (:database-name table)
-               (:active table)
-               (mi/can-read? table))
-      {:id model_id
-       :name (:name table)
-       :description (:description table)
-       :model :table
-       :display_name (:display_name table)
-       :can_write (mi/can-write? table)
-       :timestamp (str timestamp)
-       :table_schema (:schema table)
-       :database {:id (:db_id table)
-                  :name (:database-name table)
-                  :initial_sync_status (:initial-sync-status table)}})))
+  [{:keys [model_object] :as recent-view}]
+  (let [{:keys [render]} (or (view-spec recent-view)
+                             (throw (ex-info "Unknown model" {:model recent-view})))]
+    (render model_object recent-view)))
 
 (def ^:private query-context->recent-context
   {:views      "view"
    :selections "selection"})
 
-(defn- rv-models->db-models
-  "Convert rv-model keywords to database model strings — see [[rv-model->db-model]]."
-  [models]
-  (when (seq models)
-    (distinct (map rv-model->db-model models))))
-
 (defn ^:private do-query [user-id context models]
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
-  (let [db-models (rv-models->db-models models)]
+  (let [entries (keep entry models)]
     (activity-feed.db/recent-views-with-card-type user-id
                                                   (map query-context->recent-context context)
-                                                  db-models
-                                                  (keep rv-model->card-type models)
+                                                  (when (seq models)
+                                                    (distinct (map (comp db-model first) entries)))
+                                                  (keep (comp :type second) entries)
                                                   (contains? (set context) :selections))))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
 
-(defn- post-process [entity->id->data options recent-view]
+(defn- load-model-objects
+  "Loads the objects of `views` in bulk, one `:load` per fn the specs of the views share, as `{load-fn {id object}}`."
+  [views]
+  (-> (group-by (comp :load view-spec) (filter view-spec views))
+      (update-vals #(m/index-by :id ((:load (view-spec (first %))) (mapv :model_id %))))))
+
+(defn- post-process [model-objects options recent-view]
   (when recent-view
-    (let [entity (some-> recent-view :model keyword)
-          id (some-> recent-view :model_id)]
-      (when-let [model-object (get-in entity->id->data [entity id])]
-        (let [processed-item (some-> (assoc recent-view :model_object model-object)
-                                     fill-recent-view-info
-                                     (dissoc :card_type)
-                                     (update :model model->return-model))]
-          ;; Remove result_metadata if include-metadata? is false
-          (cond-> processed-item
-            (not (:include-metadata? options)) (dissoc :result_metadata)))))))
-
-;; ================== Recent Documents ==================
-
-(defn- document-recents
-  "Query to select recent document data. Returns documents with their collection information
-  for use in recent views display."
-  [document-ids]
-  (if-not (seq document-ids)
-    []
-    (t2/hydrate (activity-feed.db/documents-for-recent-views document-ids) :can_read :can_write)))
-
-(defn- get-entity->id->data [views]
-  (let [{card-ids       :card
-         dashboard-ids  :dashboard
-         collection-ids :collection
-         table-ids :table
-         document-ids :document} (as-> views views
-                                   (group-by (comp keyword :model) views)
-                                   (update-vals views #(mapv :model_id %)))
-        tables (table-recents table-ids)]
-    {:card       (m/index-by :id (card-recents card-ids))
-     :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
-     :collection (m/index-by :id (collection-recents collection-ids))
-     :table      (m/index-by :id tables)
-     :document   (m/index-by :id (document-recents document-ids))}))
+    (when-let [model-object (get-in model-objects [(:load (view-spec recent-view)) (:model_id recent-view)])]
+      (let [processed-item (some-> (assoc recent-view :model_object model-object)
+                                   fill-recent-view-info
+                                   (dissoc :card_type)
+                                   (update :model model->return-model))]
+        ;; Remove result_metadata if include-metadata? is false
+        (cond-> processed-item
+          (not (:include-metadata? options)) (dissoc :result_metadata))))))
 
 (def ^:private ItemValidator (mr/validator Item))
 
@@ -521,10 +336,10 @@
                 [:models {:optional true} [:maybe [:sequential (into [:enum] rv-models)]]]]]
    (let [models (:models options)
          recent-items (do-query user-id context models)
-         entity->id->data (get-entity->id->data recent-items)
+         model-objects (load-model-objects recent-items)
          view-items (into []
                           (comp
-                           (keep (partial post-process entity->id->data options))
+                           (keep (partial post-process model-objects options))
                            (keep error-avoider)
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]

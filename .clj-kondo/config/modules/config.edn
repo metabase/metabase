@@ -174,7 +174,9 @@
   {:team "UX West"
    :api  #{metabase.activity-feed.api
            metabase.activity-feed.core
-           metabase.activity-feed.init}
+           metabase.activity-feed.init
+           metabase.activity-feed.recent-views.render
+           metabase.activity-feed.recent-views.spec}
    :uses #{api
            app-db
            batch-processing
@@ -828,6 +830,7 @@
            metabase.dashboards.settings
            metabase.dashboards.write}
    :uses #{actions
+           activity-feed
            analytics
            api
            api.eid-translation
@@ -2303,7 +2306,8 @@
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
-   :uses #{analytics
+   :uses #{activity-feed
+           analytics
            analytics.interface
            api
            api.eid-translation
@@ -3648,7 +3652,8 @@
           metabase.warehouse-schema.schema
           metabase.warehouse-schema.table
           metabase.warehouse-schema.user-settings}
-   :uses #{api
+   :uses #{activity-feed
+           api
            api.eid-translation
            app-db
            audit-app

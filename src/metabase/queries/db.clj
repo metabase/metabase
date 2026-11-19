@@ -775,3 +775,44 @@
   [collection :- :map
    opts       :- :map]
   (collection-card-items :metric collection opts))
+
+(mu/defn recent-view-cards
+  "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/hydrate
+   (t2/select :model/Card
+              {:select [:card.name
+                        :card.description
+                        :card.archived
+                        :card.id
+                        :card.database_id
+                        :card.display
+                        :card.card_schema
+                        ;; required alongside :card_schema for the Card schema upgrade
+                        :card.type
+                        :card.dimensions
+                        :card.dimension_mappings
+                        :card.result_metadata
+                        :card.dataset_query
+                        :card.entity_id
+                        :card.visualization_settings
+                        [:dashboard.id :dashboard_id]
+                        [:dashboard.name :dashboard_name]
+                        [:card.collection_id :entity-coll-id]
+                        [:mr.status :moderated-status]
+                        [:collection.id :collection_id]
+                        [:collection.name :collection_name]
+                        [:collection.authority_level :collection_authority_level]]
+               :from [[:report_card :card]]
+               :where [:in :card.id card-ids]
+               :left-join [[:moderation_review :mr]
+                           [:and
+                            [:= :mr.moderated_item_id :card.id]
+                            [:= :mr.moderated_item_type "card"]
+                            [:= :mr.most_recent true]]
+                           [:collection]
+                           [:and
+                            [:= :collection.id :card.collection_id]
+                            [:= :collection.archived false]]
+                           [:report_dashboard :dashboard]
+                           [:= :dashboard.id :card.dashboard_id]]}) :can_read :can_write))

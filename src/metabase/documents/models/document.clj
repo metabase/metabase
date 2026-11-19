@@ -1,5 +1,6 @@
 (ns metabase.documents.models.document
   (:require
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -11,6 +12,7 @@
    [metabase.documents.db :as documents.db]
    [metabase.documents.dependencies :as documents.dependencies]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.recent-views :as documents.recent-views]
    [metabase.documents.schema :as documents.schema]
    [metabase.documents.search :as documents.search]
    [metabase.documents.serialization :as documents.serialization]
@@ -621,3 +623,7 @@
 (defmethod collection-items/spec :model/Document [_model]
   {"document" {:items   documents.db/collection-document-items
                :hydrate documents.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Document [_model]
+  {"document" {:load   documents.db/recent-view-documents
+               :render documents.recent-views/render}})

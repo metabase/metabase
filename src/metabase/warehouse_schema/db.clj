@@ -699,3 +699,22 @@
               (if archived?
                 [:!= :t.archived_at nil]
                 [:= :t.archived_at nil])]}))
+
+(mu/defn recent-view-tables
+  "The non-hidden Tables with `table-ids` with their Database name and sync status."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/hydrate
+   (t2/select :model/Table
+              {:select [:t.id :t.name :t.description
+                        :t.display_name :t.active :t.visibility_type :t.schema
+                        [:db.name :database-name]
+                        [:db.id :db_id]
+                        [:db.initial_sync_status :initial-sync-status]]
+               :from [[(t2/table-name :model/Table) :t]]
+               :where [:and
+                       [:or
+                        [:= :visibility_type nil]
+                        [:!= :visibility_type "hidden"]]
+                       [:in :t.id table-ids]]
+               :left-join [[:metabase_database :db]
+                           [:= :db.id :t.db_id]]}) :can_read :can_write))

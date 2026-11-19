@@ -653,3 +653,29 @@
                  [:= :d.creator_id created-by-id])
                [:= :d.archived (boolean archived?)]
                (collections.listing/pinned-state->clause pinned-state)]})
+
+(mu/defn recent-view-dashboards
+  "The Dashboards with `dashboard-ids` with their Collection and moderation status."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/hydrate
+   (t2/select :model/Dashboard
+              {:select [:dash.id
+                        :dash.name
+                        :dash.description
+                        :dash.archived
+                        [:dash.collection_id :entity-coll-id]
+                        [:c.id :collection_id]
+                        [:c.name :collection_name]
+                        [:c.authority_level :collection_authority_level]
+                        [:mr.status :moderated-status]]
+               :from [[:report_dashboard :dash]]
+               :where [:in :dash.id dashboard-ids]
+               :left-join [[:moderation_review :mr]
+                           [:and
+                            [:= :mr.moderated_item_id :dash.id]
+                            [:= :mr.moderated_item_type "dashboard"]
+                            [:= :mr.most_recent true]]
+                           [:collection :c]
+                           [:and
+                            [:= :c.id :dash.collection_id]
+                            [:= :c.archived false]]]}) :can_read :can_write))

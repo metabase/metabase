@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -16,6 +17,7 @@
    [metabase.dashboards.dependencies :as dashboards.dependencies]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.recent-views :as dashboards.recent-views]
    [metabase.dashboards.replacement :as dashboards.replacement]
    [metabase.dashboards.revisions :as dashboards.revisions]
    [metabase.dashboards.schema :as dashboards.schema]
@@ -611,3 +613,7 @@
   {"dashboard" {:rank    1
                 :items   dashboards.db/collection-dashboard-items
                 :hydrate dashboards.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Dashboard [_model]
+  {"dashboard" {:load   dashboards.db/recent-view-dashboards
+                :render dashboards.recent-views/render}})

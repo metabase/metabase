@@ -277,3 +277,22 @@
            (when-not show-exploration-documents?
              [:= :document.exploration_id nil])
            (collections.listing/pinned-state->clause pinned-state :document.collection_position)]})
+
+(mu/defn recent-view-documents
+  "The Documents with `document-ids` with their Collection."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/hydrate
+   (t2/select :model/Document
+              {:select [:d.id
+                        :d.name
+                        :d.archived
+                        [:d.collection_id :entity-coll-id]
+                        [:c.id :collection_id]
+                        [:c.name :collection_name]
+                        [:c.authority_level :collection_authority_level]]
+               :from [[:document :d]]
+               :where [:in :d.id document-ids]
+               :left-join [[:collection :c]
+                           [:and
+                            [:= :c.id :d.collection_id]
+                            [:= :c.archived false]]]}) :can_read :can_write))
