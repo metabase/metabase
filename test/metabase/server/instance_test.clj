@@ -32,6 +32,7 @@
               :truststore           "10"
               :max-threads          10
               :max-idle-time        10
+              :stop-timeout         10
               :ssl-port             10
               :send-server-version? false}
              (#'server.instance/jetty-config))))))
@@ -75,7 +76,7 @@
                        (.countDown started)
                        (.await finish 10 TimeUnit/SECONDS)
                        (respond {:status 200, :headers {}, :body "finished"})))
-          server   (doto ^Server (server.instance/create-server handler {:port 0, :join? false})
+          server   (doto ^Server (server.instance/create-server handler {:port 0, :join? false, :stop-timeout 5000})
                      (.start))
           port     (.. server getURI getPort)
           response (future (http/get (format "http://localhost:%d/" port) {:throw-exceptions false}))]
@@ -92,6 +93,29 @@
                  (select-keys (deref response 10000 nil) [:status :body])))
           (deref stopped 10000 nil)
           (is (.isStopped server)))
+        (finally
+          (.countDown finish)
+          (.stop server))))))
+
+(deftest stop-cuts-off-requests-after-the-stop-timeout-test
+  (testing "a request that outlasts the stop timeout is cut off, and the stop does not throw"
+    (let [started (CountDownLatch. 1)
+          finish  (CountDownLatch. 1)
+          handler (fn [_request respond _raise]
+                    (future
+                      (.countDown started)
+                      (.await finish 10 TimeUnit/SECONDS)
+                      (respond {:status 200, :headers {}, :body "too late"})))
+          server  (doto ^Server (server.instance/create-server handler {:port 0, :join? false, :stop-timeout 100})
+                    (.start))
+          port    (.. server getURI getPort)]
+      (try
+        (future (http/get (format "http://localhost:%d/" port) {:throw-exceptions false}))
+        (is (.await started 10 TimeUnit/SECONDS))
+        ;; Jetty marks a stop that timed out as failed rather than stopped, but nothing is left running
+        (is (= {:returned nil, :running? false}
+               {:returned (#'server.instance/stop-server! server)
+                :running? (.isRunning server)}))
         (finally
           (.countDown finish)
           (.stop server))))))

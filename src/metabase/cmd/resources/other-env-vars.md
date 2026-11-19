@@ -403,7 +403,7 @@ Password for Java TrustStore file.
 
 Type: integer<br>
 Default: `5000`<br>
-Since: v65.0
+Since: v66.0
 
 How long, in milliseconds, Metabase waits for requests in progress to finish when it shuts down. Metabase stops accepting new requests as soon as shutdown starts. Requests still running after this time are cut off.
 

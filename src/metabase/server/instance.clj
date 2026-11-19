@@ -15,6 +15,7 @@
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
+   (java.util.concurrent TimeoutException)
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.ee9.servlet ServletContextHandler ServletHandler)
    (org.eclipse.jetty.server Server)))
@@ -44,6 +45,7 @@
             :min-threads   (config/config-int :mb-jetty-minthreads)
             :max-queued    (config/config-int :mb-jetty-maxqueued)
             :max-idle-time (config/config-int :mb-jetty-maxidletime)
+            :stop-timeout  (config/config-int :mb-jetty-stop-timeout)
             :send-server-version? false})
     (config/config-int :mb-jetty-request-header-size) (assoc :request-header-size (config/config-int
                                                                                    :mb-jetty-request-header-size))
@@ -124,7 +126,8 @@
                                [:trust-password       {:optional true} :string]
                                [:client-auth          {:optional true} :keyword]
                                [:sni-host-check?      {:optional true} :boolean]
-                               [:join?                {:optional true} :boolean]]]]
+                               [:join?                {:optional true} :boolean]
+                               [:stop-timeout         {:optional true} :int]]]]
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
@@ -134,11 +137,22 @@
                           (.setAllowNullPathInfo true)
                           (.insertHandler (statistics-handler/new-handler))
                           (.setServletHandler handler))]
-    (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
+    (doto ^Server (#'ring-jetty/create-server (-> options (dissoc :stop-timeout) (assoc :async? true)))
       (.setHandler servlet-handler)
-      ;; on stop, Jetty stops accepting connections and waits up to this long for responses still being written,
-      ;; including those sent later from another thread; without it, stopping cuts them off
-      (.setStopTimeout (config/config-int :mb-jetty-stop-timeout)))))
+      ;; on stop, Jetty stops accepting connections and waits up to this many milliseconds for responses still being
+      ;; written, including those sent later from another thread; at 0, Jetty's default, stopping cuts them off
+      (.setStopTimeout (:stop-timeout options 0)))))
+
+(defn- stop-server!
+  "Stop `server`, letting the requests in flight finish within its stop timeout."
+  [^Server server]
+  (log/info "Shutting Down Embedded Jetty Webserver")
+  (try
+    (.stop server)
+    ;; Jetty stops the server, then throws when requests outlasted the stop timeout; cutting them off is the intent
+    (catch TimeoutException _
+      (log/warnf "Stopped the web server with requests still running after %d ms, which were cut off"
+                 (.getStopTimeout server)))))
 
 (mu/defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
@@ -171,9 +185,7 @@
                      (.addSuppressed e stop-e)))
                  (throw e)))
              new-server))
-         (fn [^Server server]
-           (log/info "Shutting Down Embedded Jetty Webserver")
-           (.stop server)))]
+         stop-server!)]
     (when started?
       :started)))
 
