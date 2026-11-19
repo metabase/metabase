@@ -246,6 +246,12 @@
   "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
   1000)
 
+(defenterprise delete-associated-database-router!
+  "OSS implementation, which has no routers to delete."
+  metabase-enterprise.database-routing.models
+  [_db-id]
+  nil)
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -253,6 +259,8 @@
   ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
   ;; / fields for a Database whose deletion is about to be refused.
   (reconcile-workspace-database-refs-before-delete! id)
+  (warehouses.db/delete-destination-databases! id)
+  (delete-associated-database-router! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)

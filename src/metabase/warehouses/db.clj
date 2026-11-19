@@ -109,6 +109,11 @@
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
+(mu/defn delete-destination-databases!
+  "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/delete! :model/Database :router_database_id router-database-id))
+
 (mu/defn delete-actions-for-database!
   "Delete the query Actions whose query runs against the Database with `database-id` and the implicit Actions that write
   to one of its Tables, returning the number deleted."

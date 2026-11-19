@@ -31,12 +31,6 @@
   [_db :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise delete-associated-database-router!
-  "OSS version, does nothing"
-  metabase-enterprise.database-routing.models
-  [_db-id]
-  nil)
-
 (defenterprise-schema db-routing-enabled? :- :boolean
   "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database."
   metabase-enterprise.database-routing.models

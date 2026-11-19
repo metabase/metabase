@@ -32,3 +32,13 @@
            (t2/insert! :model/DatabaseRouter {:database_id dest-id :user_attribute "tenant"})))
       (is (pos? (t2/insert! :model/DatabaseRouter {:database_id router-db-id :user_attribute "tenant"})))
       (t2/delete! :model/DatabaseRouter :database_id router-db-id))))
+
+(deftest router-database-delete-takes-destinations-and-router-test
+  (mt/with-temp [:model/Database {router-db-id :id} {}
+                 :model/Database {other-db-id :id} {}
+                 :model/Database {destination-id :id} {:router_database_id router-db-id}
+                 :model/DatabaseRouter {router-id :id} {:database_id router-db-id :user_attribute "tenant"}]
+    (t2/delete! :model/Database :id router-db-id)
+    (is (not (t2/exists? :model/Database :id destination-id)))
+    (is (not (t2/exists? :model/DatabaseRouter :id router-id)))
+    (is (t2/exists? :model/Database :id other-db-id))))

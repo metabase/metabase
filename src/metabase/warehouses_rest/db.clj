@@ -205,11 +205,6 @@
    changes     :- ::warehouses.schema/database.update]
   (t2/update! :model/Database :id database-id changes))
 
-(mu/defn delete-destination-databases!
-  "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
-  [router-database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :router_database_id router-database-id))
-
 (mu/defn delete-database!
   "Delete the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]

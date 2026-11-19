@@ -61,8 +61,9 @@
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
 
 (defenterprise delete-associated-database-router!
-  "Deletes the Database Router associated with this router database."
-  :feature :database-routing
+  "Deletes the Database Router associated with this router database, even while the `:database-routing` feature is
+  unavailable."
+  :feature :none
   [db-id]
   (database-routing.db/delete-router! db-id))
 
