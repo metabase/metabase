@@ -91,9 +91,14 @@ export function DataAppFrame({
     message: string;
   } | null>(null);
 
+  // Each failure loads a new iframe, which sends its own ready message.
+  const [iframeKey, setIframeKey] = useState(0);
+
   // An error belongs to the path it happened on, so a route change loads the iframe again.
+  // The route may change before the error renders, so a new iframe is loaded even then.
   if (failure && failure.path !== path) {
     setFailure(null);
+    setIframeKey((key) => key + 1);
   }
 
   const error = failure?.path === path ? failure.message : null;
@@ -284,6 +289,7 @@ export function DataAppFrame({
     store,
     locale,
     error,
+    iframeKey,
     onPathChangeRef,
     isPathControlledRef,
   ]);
@@ -313,6 +319,7 @@ export function DataAppFrame({
 
   return (
     <iframe
+      key={iframeKey}
       ref={iframeRef}
       src={srcRef.current}
       className={className}
