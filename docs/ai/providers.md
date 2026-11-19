@@ -66,6 +66,8 @@ Supported models:
 | GPT-5.6 Sol   | `gpt-5.6-sol`   | 922,000                 |
 | GPT-5.6 Terra | `gpt-5.6-terra` | 922,000                 |
 | GPT-6 Astra   | `gpt-6-astra`   | 922,000                 |
+| GPT-6.2 Astra | `gpt-6.2-astra` | 922,000                 |
+| GPT-6.2 Sol   | `gpt-6.2-sol`   | 922,000                 |
 
 Credentials:
 
