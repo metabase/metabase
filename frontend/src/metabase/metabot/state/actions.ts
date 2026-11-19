@@ -522,14 +522,13 @@ const getViewedDashboardId = (): DashboardId | undefined => {
 };
 
 /**
- * Opens a chart or dashboard that Metabot generated. Marks a card as Metabot's,
- * so the query builder does not count a native one as the user's unsaved work
- * until they change it.
+ * Opens a chart or dashboard that Metabot generated, and marks a card as Metabot's for the query builder.
  */
 const openGeneratedEntity =
   (entity: GeneratedEntity) => (dispatch: Dispatch) => {
     const path = Urls.generatedEntity(entity);
     if (entity.type === "card") {
+      // so the query builder does not count a native one as unsaved work until the user changes it
       dispatch(setPendingMetabotCard({ url: path }));
     }
     navigate(path);
@@ -548,8 +547,8 @@ type SavedDashboardDestination = {
 
 /**
  * Navigates to the last place a sidebar turn proposed, once the turn has ended.
- * When that is a chart and the user is on a dashboard, the chart stays in the
- * conversation as a link, and the dashboard the turn saved, if any, opens instead.
+ * When that is a chart and the user is on a dashboard, the chart stays in the conversation as a link,
+ * and the dashboard the turn saved, if any, opens instead.
  * It leaves the user where they are when:
  * - they moved while the turn ran, or are moving now;
  * - they already see the saved dashboard;
@@ -738,7 +737,7 @@ export const sendAgentRequest = createAsyncThunk<
                   };
                   destination = savedDashboard;
                 } else if (savedDashboard?.dashboardId === dashboard_id) {
-                  // a later save that doesn't open it, such as trashing it, withdraws it
+                  // a later save that doesn't open it means the turn trashed it, which withdraws it
                   if (destination === savedDashboard) {
                     destination = undefined;
                   }
