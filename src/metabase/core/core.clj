@@ -120,13 +120,16 @@
 ;; Public only so the test can read it; nothing else should.
 (def shutdown-step-uses
   "Shutdown step label -> the labels of the steps whose stops it uses, each of which must run after it."
-  {"stop the web server"      #{"stop queue listeners"
+  {;; scheduled jobs feed the queue listeners, MQ and notifications, so no job may start once those stop
+   "put the scheduler in standby" #{"stop queue listeners" "run shutdown logic" "shut down notifications"}
+   "stop the web server"      #{"stop queue listeners"
                                 "run shutdown logic"
                                 "shut down notifications"
                                 "shut down tracing"
                                 "shut down analytics"
                                 "halt the global system"}
-   "stop queue listeners"     #{"shut down tracing" "shut down analytics"}
+   ;; the field-value listener runs warehouse queries on pools the halt closes
+   "stop queue listeners"     #{"shut down tracing" "shut down analytics" "halt the global system"}
    "stop the token refresher" #{"shut down analytics"}
    "run shutdown logic"       #{"stop the scheduler"}
    "stop the scheduler"       #{"shut down notifications"
