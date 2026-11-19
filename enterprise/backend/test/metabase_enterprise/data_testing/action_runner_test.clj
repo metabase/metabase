@@ -121,9 +121,7 @@
               parameters {"id" 1 "name" "Wood"}]
           (testing "control: a card test of the same table refuses an input that lacks a column the card reads"
             (is (=? {:error-type ::data-testing.errors/missing-input-columns
-                     :columns    {(str (:schema (data-testing.test-util/categories-table)) "."
-                                       (:name (data-testing.test-util/categories-table)))
-                                  ["name"]}}
+                     :columns    {(data-testing.test-util/qualified :categories) ["name"]}}
                     (validation-refusal :card (data-testing.db/card model-id) (categories-input-with "id") nil))))
           (testing "an action test whose input declares every column the write uses is accepted"
             (is (nil? (validation-refusal :action action (categories-input-with "id" "name") parameters))))

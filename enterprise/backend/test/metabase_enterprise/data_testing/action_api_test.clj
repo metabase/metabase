@@ -158,7 +158,7 @@
   "Call `thunk` with this instance in workspace mode, the test database in the workspace, and the real categories table
   remapped to a workspace copy, `ws_action_test.categories`, which does not exist: a query that reached it would fail."
   [thunk]
-  (let [{:keys [schema name]} (data-testing.test-util/categories-table)]
+  (let [{:keys [schema name]} (data-testing.test-util/table-ref :categories)]
     (ws.tu/with-workspace-db!
       (mt/id) "ws_action_test"
       (fn []
@@ -175,13 +175,12 @@
   "The default query action, with its SQL naming the categories table with its schema: the workspace remapping rewrites
   only a name written with its schema."
   []
-  (let [{:keys [schema name]} (data-testing.test-util/categories-table)]
-    {:dataset_query {:database (mt/id)
-                     :type     :native
-                     :native   {:query         (format "UPDATE %s.%s\nSET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\nWHERE id = {{id}}"
-                                                       schema name)
-                                :template-tags {"id"   {:name "id" :display-name "ID" :type :number :required true}
-                                                "name" {:name "name" :display-name "Name" :type :text :required false}}}}}))
+  {:dataset_query {:database (mt/id)
+                   :type     :native
+                   :native   {:query         (format "UPDATE %s\nSET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\nWHERE id = {{id}}"
+                                                     (data-testing.test-util/qualified :categories))
+                              :template-tags {"id"   {:name "id" :display-name "ID" :type :number :required true}
+                                              "name" {:name "name" :display-name "Name" :type :text :required false}}}}})
 
 (deftest ^:synchronized action-tests-run-on-a-workspace-instance-test
   (testing "On a workspace instance, which refuses to run an action, an action test runs on the same terms as anywhere else"

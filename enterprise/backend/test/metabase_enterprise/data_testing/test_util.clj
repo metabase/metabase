@@ -120,27 +120,19 @@
   (mt/rows (mt/process-query (mt/native-query {:query  "SELECT id FROM categories WHERE name = ?"
                                                :params [category-name]}))))
 
-(defn categories-table
-  "The `{:schema :name}` of the test-data `categories` table."
-  []
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id :categories))]
-    {:schema schema :name name}))
-
 (defn categories-input
   "An input standing in for the `categories` table with categories 1 `Toy` and 2 `Food`."
   []
-  (let [[int-type text-type] (cast-types)]
-    {:table   (categories-table)
-     :format  "rows"
-     :columns [{:name "id" :cast_type int-type} {:name "name" :cast_type text-type}]
-     :rows    [{"id" 1 "name" "Toy"} {"id" 2 "name" "Food"}]}))
+  {:table   (table-ref :categories)
+   :format  "rows"
+   :columns (id+name)
+   :rows    [{"id" 1 "name" "Toy"} {"id" 2 "name" "Food"}]})
 
 (defn categories-named
   "An `empty` expectation that categories 1 and 2 are named `name-1` and `name-2`, and that there are no others."
   [name-1 name-2]
   {:type "empty"
    :name (str "1 is " name-1 " and 2 is " name-2)
-   :sql  (let [{:keys [schema name]} (categories-table)]
-           (format (str "SELECT * FROM %s.%s WHERE (id = 1 AND name <> '%s') OR (id = 2 AND name <> '%s')"
-                        " OR id NOT IN (1, 2)")
-                   schema name name-1 name-2))})
+   :sql  (format (str "SELECT * FROM %s WHERE (id = 1 AND name <> '%s') OR (id = 2 AND name <> '%s')"
+                      " OR id NOT IN (1, 2)")
+                 (qualified :categories) name-1 name-2)})
