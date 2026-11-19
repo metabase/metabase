@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
@@ -12,6 +12,7 @@ import {
   getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/nav/selectors";
+import { useIsUsageAnalyticsContent } from "metabase/app/nav/use-is-usage-analytics-content";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
@@ -45,6 +46,12 @@ import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+
+const MonitorNavbar = lazy(() =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/components/MonitorLayout"
+  ).then(({ MonitorNavbar }) => ({ default: MonitorNavbar })),
+);
 
 const getErrorComponent = ({
   status,
@@ -94,6 +101,9 @@ export function App() {
   const isNavBarEnabled = useSelector((state) =>
     getIsNavBarEnabled(state, routerProps),
   );
+  // PROTOTYPE: Usage analytics dashboards, questions and collections keep their
+  // URLs but show inside Monitor: its nav instead of the main nav and app bar.
+  const isUsageAnalyticsContent = useIsUsageAnalyticsContent();
 
   const onError = (error: unknown) => dispatch(setErrorPage(error));
   const { pathname } = location;
@@ -120,7 +130,7 @@ export function App() {
           <KeyboardTriggeredErrorModal />
           <Flex className={CS.spread} direction="column">
             <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
+            {isAppBarVisible && !isUsageAnalyticsContent && <AppBarContainer />}
             <Flex
               className={cx(
                 CS.overflowHidden,
@@ -132,7 +142,15 @@ export function App() {
               pos="relative"
               bg="background_page-primary"
             >
-              {isNavBarEnabled && <Navbar />}
+              {/* One slot for either nav, so the page beside it isn't remounted
+                  when the choice changes. */}
+              {isUsageAnalyticsContent ? (
+                <Suspense fallback={null}>
+                  <MonitorNavbar />
+                </Suspense>
+              ) : (
+                isNavBarEnabled && <Navbar />
+              )}
               <Box
                 component="main"
                 ref={setViewportElement}
@@ -156,6 +174,7 @@ export function App() {
                   isAdminApp ||
                   isDataStudioApp ||
                   isMonitorApp ||
+                  isUsageAnalyticsContent ||
                   isEmbeddingHubApp ||
                   isDataApp
                 }

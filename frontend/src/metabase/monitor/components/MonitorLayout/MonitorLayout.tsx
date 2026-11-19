@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -31,7 +32,7 @@ import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
 
-type ActiveSection = MonitorSection | null;
+type ActiveSection = MonitorSection | "usage-analytics" | null;
 
 function getActiveSection(pathname: string): ActiveSection {
   return match(pathname)
@@ -81,10 +82,38 @@ function getActiveSection(pathname: string): ActiveSection {
       P.string.startsWith(Urls.monitorAiAuditingUsage()),
       () => "ai-auditing-usage-stats",
     )
+    .with(
+      P.string.startsWith(Urls.monitorUsageAnalytics()),
+      () => "usage-analytics",
+    )
     .otherwise(() => null);
 }
 
 export function MonitorLayout() {
+  return (
+    <MonitorArea>
+      <MonitorContent>
+        <Outlet />
+      </MonitorContent>
+    </MonitorArea>
+  );
+}
+
+/**
+ * PROTOTYPE: Monitor's nav on its own, for Usage analytics content (dashboards,
+ * questions, collections) shown at its usual URL, so it stays in Monitor.
+ */
+export function MonitorNavbar() {
+  return <MonitorArea activeSectionOverride="usage-analytics" />;
+}
+
+function MonitorArea({
+  activeSectionOverride,
+  children,
+}: {
+  activeSectionOverride?: ActiveSection;
+  children?: ReactNode;
+}) {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
@@ -115,7 +144,7 @@ export function MonitorLayout() {
   const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
   const canAccessApiKeyUsageTab = useSelector(canAccessApiKeyUsage);
 
-  const activeSection = getActiveSection(pathname);
+  const activeSection = activeSectionOverride ?? getActiveSection(pathname);
 
   // Same args as the main nav's tree, so this reuses its cached response.
   const { data: collections = [] } = useListCollectionsTreeQuery({
@@ -190,7 +219,8 @@ export function MonitorLayout() {
             <AreaTab
               label={usageAnalyticsCollection.name}
               icon="audit"
-              to={Urls.collection(usageAnalyticsCollection)}
+              to={Urls.monitorUsageAnalytics()}
+              isSelected={activeSection === "usage-analytics"}
               showLabel={isNavbarOpened}
             />
           )}
@@ -336,9 +366,7 @@ export function MonitorLayout() {
       onNavbarToggle={setIsNavbarOpened}
       upperNav={upperNav}
     >
-      <MonitorContent>
-        <Outlet />
-      </MonitorContent>
+      {children}
     </AreaLayout>
   );
 }

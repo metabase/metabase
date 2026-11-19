@@ -170,6 +170,14 @@ const collectionLanding = () =>
     /* webpackChunkName: "collection" */ "metabase/collections/components/CollectionLanding"
   ).then((module) => ({ Component: module.default }));
 
+// PROTOTYPE: the Usage analytics collection, shown inside Monitor.
+const usageAnalyticsLanding = () =>
+  import(
+    /* webpackChunkName: "collection" */ "metabase/collections/components/UsageAnalyticsCollectionLanding"
+  ).then(({ UsageAnalyticsCollectionLanding }) => ({
+    Component: UsageAnalyticsCollectionLanding,
+  }));
+
 const trashCollectionLanding = () =>
   import(
     /* webpackChunkName: "trash-collection" */ "metabase/collections/components/TrashCollectionLanding"
@@ -537,7 +545,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               ),
 
               // MONITOR
-              ...toRouteObjects(getMonitorRoutes()),
+              ...toRouteObjects(getMonitorRoutes(usageAnalyticsLanding)),
 
               // EMBEDDING HUB
               ...toRouteObjects(getEmbeddingHubRoutes()),

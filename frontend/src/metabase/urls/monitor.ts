@@ -94,6 +94,10 @@ export function monitorSessions() {
   return `${ROOT_URL}/sessions`;
 }
 
+export function monitorUsageAnalytics() {
+  return `${ROOT_URL}/usage-analytics`;
+}
+
 export function monitorSessionDetail(sessionId: string) {
   return `${monitorSessions()}/${sessionId}`;
 }
