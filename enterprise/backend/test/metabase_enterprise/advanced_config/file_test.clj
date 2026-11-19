@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.test :as mt]
@@ -126,6 +127,13 @@
       (testing "handle lisp-case/snake-case and case variations"
         (is (= (mock-config-with-setting "Parrot Hilton")
                (#'advanced-config.file/config (mock-config-with-setting "{{env config-file-bird-name}}") {:expand-templates? true})))))))
+
+(deftest ^:parallel keywordize-matches-environ-test
+  (testing "our copy of keywordize normalizes names exactly like environ"
+    (doseq [s ["MY_PG2_PASSWORD" "MY_PG_2_PASSWORD" "my-pg2-password" "user.dir" "MyVar" "MB_DB_HOST"]]
+      (is (= (@#'environ.core/keywordize s)
+             (#'advanced-config.file/keywordize s))
+          s))))
 
 (deftest ^:parallel expand-template-env-var-with-digits-test
   (testing "env var names with a digit next to a letter resolve to the key environ stores them under"
