@@ -13,6 +13,9 @@ import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } =
   SAMPLE_DATABASE;
 
+// The brand color the model editor gives the header of the selected column
+const SELECTED_HEADER_COLOR = "rgb(80, 158, 226)";
+
 describe("scenarios > models editor > metadata", () => {
   beforeEach(() => {
     H.restore();
@@ -260,6 +263,33 @@ describe("scenarios > models editor > metadata", () => {
       cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
     }
 
+    function getHeaderContent(name: string) {
+      return H.tableHeaderColumn(name).closest(
+        "[data-testid=model-column-header-content]",
+      );
+    }
+
+    function assertHeaderSelection({
+      selected,
+      notSelected,
+    }: {
+      selected: string;
+      notSelected: string;
+    }) {
+      // A hovered header has the selected color too, so the pointer leaves the table first
+      cy.findByLabelText("Display name").realHover();
+      getHeaderContent(selected).should(
+        "have.css",
+        "background-color",
+        SELECTED_HEADER_COLOR,
+      );
+      getHeaderContent(notSelected).should(
+        "not.have.css",
+        "background-color",
+        SELECTED_HEADER_COLOR,
+      );
+    }
+
     function assertNoError() {
       cy.button("Get Answer").should("not.exist");
       cy.get("main")
@@ -304,8 +334,11 @@ describe("scenarios > models editor > metadata", () => {
     H.waitForLoaderToBeRemoved();
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
+    assertHeaderSelection({ selected: "ID", notSelected: "Total" });
+
     H.tableHeaderClick("Total");
     cy.findByLabelText("Display name").should("have.value", "Total");
+    assertHeaderSelection({ selected: "Total", notSelected: "ID" });
   });
 
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
