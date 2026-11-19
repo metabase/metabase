@@ -78,6 +78,7 @@ export function usePublishedTableSegmentPage(
         tableId,
         segmentId,
       ),
+      tests: Urls.dataStudioPublishedTableSegmentTestList(tableId, segmentId),
     };
   }, [tableId, segmentId]);
 

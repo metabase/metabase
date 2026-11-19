@@ -61,3 +61,74 @@ export function getMetricTestRoutes() {
     </>
   );
 }
+
+const publishedTableSegmentTestListPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/SegmentTestListPage"
+  ).then(({ PublishedTableSegmentTestListPage }) => ({
+    Component: PublishedTableSegmentTestListPage,
+  }));
+
+const dataModelSegmentTestListPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/SegmentTestListPage"
+  ).then(({ DataModelSegmentTestListPage }) => ({
+    Component: DataModelSegmentTestListPage,
+  }));
+
+const segmentTestOverviewPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/SegmentTestOverviewPage"
+  ).then(({ SegmentTestOverviewPage }) => ({
+    Component: SegmentTestOverviewPage,
+  }));
+
+const segmentTestRunsPage = () =>
+  import(
+    /* webpackChunkName: "data-testing" */ "./pages/SegmentTestRunsPage"
+  ).then(({ SegmentTestRunsPage }) => ({
+    Component: SegmentTestRunsPage,
+  }));
+
+const PUBLISHED_TABLE_SEGMENT_TESTS_PATH = ":tableId/segments/:segmentId/tests";
+
+export function getPublishedTableSegmentTestRoutes() {
+  return (
+    <>
+      <Route
+        path={PUBLISHED_TABLE_SEGMENT_TESTS_PATH}
+        lazy={publishedTableSegmentTestListPage}
+      />
+      <Route
+        path={`${PUBLISHED_TABLE_SEGMENT_TESTS_PATH}/:testId`}
+        lazy={segmentTestOverviewPage}
+      />
+      <Route
+        path={`${PUBLISHED_TABLE_SEGMENT_TESTS_PATH}/:testId/runs`}
+        lazy={segmentTestRunsPage}
+      />
+    </>
+  );
+}
+
+const DATA_MODEL_SEGMENT_TESTS_PATH =
+  "database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/tests";
+
+export function getDataModelSegmentTestRoutes() {
+  return (
+    <>
+      <Route
+        path={DATA_MODEL_SEGMENT_TESTS_PATH}
+        lazy={dataModelSegmentTestListPage}
+      />
+      <Route
+        path={`${DATA_MODEL_SEGMENT_TESTS_PATH}/:testId`}
+        lazy={segmentTestOverviewPage}
+      />
+      <Route
+        path={`${DATA_MODEL_SEGMENT_TESTS_PATH}/:testId/runs`}
+        lazy={segmentTestRunsPage}
+      />
+    </>
+  );
+}
