@@ -9,6 +9,7 @@
   that commits later than that gets its position after the next logged write, on any node."
   (:require
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
    [metabase.global-system.system :as system]
    [metabase.util.log :as log])
@@ -27,7 +28,7 @@
   "How many entries one UPDATE numbers: 1,000, or one on MariaDB. There an update of many rows can wait for rows that
   open transactions inserted (`ids-out-of-order-test`)."
   []
-  (if (change-log.db/mariadb?) 1 1000))
+  (if (mdb/mariadb?) 1 1000))
 
 (defn- number-entries!
   "Numbers the committed entries that have no position. The first gets the clock in microseconds, or the next free
