@@ -5,7 +5,7 @@ summary: "A map of the modular embedding docs: dashboards, charts, the query bui
 
 # Modular embedding components
 
-Modular embedding gives you a handful of components you can drop into your app, with either web components or the React SDK. This page maps out the docs for each one.
+Modular embedding gives you a handful of components you can drop into your app, with either web components or the React SDK.
 
 > While you can use attributes and props to show or hide parts of an embedded component, they're _not_ a substitute for [permissions](../permissions/start.md). Even if you hide stuff, people could still grab their token from the frontend and use it to query the Metabase API.
 
