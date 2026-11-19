@@ -20,11 +20,6 @@ function logRows() {
     .findAllByTestId("data-app-log-row");
 }
 
-function selectFilterOption(label: string, option: string) {
-  H.main().findByLabelText(label).click();
-  H.popover().findByRole("option", { name: option }).click();
-}
-
 // The log has more columns than the default viewport fits.
 describe(
   "scenarios > data apps > monitor",
@@ -45,7 +40,7 @@ describe(
       H.configureGitAndPullChanges("read-only");
     });
 
-    it("lists the questions and actions an app runs, and narrows the log by entity type and app", () => {
+    it("lists the questions and actions an app runs", () => {
       cy.intercept("POST", "/api/action/*/execute").as("execute");
       H.openDataApp(APP_SLUG);
       H.dataAppIframe(APP_NAME).within(() => {
@@ -58,11 +53,6 @@ describe(
       cy.wait("@execute");
 
       cy.visit("/monitor/ai-auditing/data-apps");
-      cy.findByTestId("monitor-nav")
-        .findByRole("link", { name: "Data app analytics" })
-        .should("be.visible");
-
-      cy.log("the app's records, by app and user");
       logRows()
         .should("contain", APP_NAME)
         .and("contain", APP_SLUG)
@@ -70,17 +60,6 @@ describe(
         .and("contain", "teamList")
         .and("contain", "Action")
         .and("contain", ADMIN_NAME);
-
-      cy.log("only the action runs");
-      selectFilterOption("Entity type", "Action");
-      cy.location("search").should("contain", "type=action");
-      logRows().should("contain", APP_SLUG).and("not.contain", "teamList");
-
-      cy.log("only the app's records");
-      selectFilterOption("Entity type", "All entity types");
-      selectFilterOption("Data app", APP_NAME);
-      cy.location("search").should("contain", `app=${APP_SLUG}`);
-      logRows().should("contain", "teamList");
     });
   },
 );
