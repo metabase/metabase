@@ -1,11 +1,14 @@
 (ns metabase-enterprise.data-testing.test-util
   "Helpers shared by the data-testing tests."
   (:require
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn cast-types
   "An integer and a text `cast_type` the current driver accepts as a `CAST` target.
@@ -55,6 +58,19 @@
       (merge {:error-type (:error-type (ex-data e))
               :message    (ex-message e)}
              (select-keys (ex-data e) data-keys)))))
+
+(defn run-card-test!
+  "Save `card`, a map of Card columns, and a CardTest of it with `inputs` and `expectations`, and run the test, started
+  by crowberto."
+  [card inputs expectations]
+  (mt/with-temp [:model/Card     {card-id :id} card
+                 :model/CardTest {test-id :id} {:card_id      card-id
+                                                :inputs       inputs
+                                                :expectations expectations}]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (data-testing.runner/run-test! :card
+                                     (t2/select-one :model/Card :id card-id)
+                                     (t2/select-one :model/CardTest :id test-id)))))
 
 (defn people-rows-input
   "A rows input standing in for `PUBLIC.PEOPLE`, declaring `column-names` as text, with no rows."

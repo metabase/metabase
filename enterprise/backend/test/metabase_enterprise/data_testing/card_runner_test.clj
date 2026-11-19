@@ -8,7 +8,7 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
-   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util :refer [run-card-test!]]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -81,19 +81,6 @@
   (if (= :clickhouse driver/*driver*)
     "UInt64"
     (first (data-testing.test-util/cast-types))))
-
-(defn- run-card-test!
-  "Save `card`, a map of Card columns, and a CardTest of it with `inputs` and `expectations`, and run the test, started
-  by crowberto."
-  [card inputs expectations]
-  (mt/with-temp [:model/Card     {card-id :id} card
-                 :model/CardTest {test-id :id} {:card_id      card-id
-                                                :inputs       inputs
-                                                :expectations expectations}]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (data-testing.runner/run-test! :card
-                                     (t2/select-one :model/Card :id card-id)
-                                     (t2/select-one :model/CardTest :id test-id)))))
 
 (defn- outcome!
   "The `:status` of the run of `card`'s test, or the `:error-type` of its refusal."

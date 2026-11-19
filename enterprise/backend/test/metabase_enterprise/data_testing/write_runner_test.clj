@@ -38,34 +38,40 @@
    :compiled {:query sql :params params}
    :writes?  true})
 
+(defn- do-with-write-plan!
+  "Call `f` with a function returning the `:parameters` of each definition `subject-plan` was called with. While `f`
+  runs, `subject-plan` returns the write `sql` with `params`, on the Database with `database-id`, for any subject."
+  [database-id sql params f]
+  (let [asked (atom [])]
+    (with-redefs [data-testing.subject/subject-plan (fn [_subject-type _subject definition]
+                                                      (swap! asked conj (:parameters definition))
+                                                      (write-plan database-id sql params))]
+      (f #(deref asked)))))
+
+(defn- people-card
+  "The columns of a card whose query reads the people table. A write plan takes the place of its query."
+  []
+  {:dataset_query (lib/native-query (mt/metadata-provider)
+                                    (str "SELECT id FROM " (data-testing.test-util/qualified :people)))})
+
 (defn- do-with-write-subject!
-  "Call `f` with a card and a function returning the `:parameters` of each definition `subject-plan` was called with.
-  While `f` runs, `subject-plan` returns the write `sql` with `params`, on the Database with `database-id` (by
-  default the test database), for any subject."
-  ([sql params f]
-   (do-with-write-subject! (mt/id) sql params f))
-  ([database-id sql params f]
-   (let [asked (atom [])]
-     (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                       (str "SELECT id FROM " (data-testing.test-util/qualified :people)))}]
-       (with-redefs [data-testing.subject/subject-plan (fn [_subject-type _subject definition]
-                                                         (swap! asked conj (:parameters definition))
-                                                         (write-plan database-id sql params))]
-         (f card #(deref asked)))))))
+  "Call `f` with a saved [[people-card]] and a function returning the `:parameters` of each definition `subject-plan`
+  was called with. While `f` runs, `subject-plan` returns the write `sql` with `params` on the test database, for any
+  subject."
+  [sql params f]
+  (mt/with-temp [:model/Card card (people-card)]
+    (do-with-write-plan! (mt/id) sql params #(f card %))))
 
 (defn- run-write!
   "Run a saved test of the write `sql` with `params`, over `inputs`, checking `expectations`, on the Database with
-  `database-id` (by default the test database)."
+  `database-id` (by default the test database), started by crowberto."
   ([sql params inputs expectations]
    (run-write! (mt/id) sql params inputs expectations))
   ([database-id sql params inputs expectations]
-   (do-with-write-subject!
+   (do-with-write-plan!
     database-id sql params
-    (fn [card _asked]
-      (mt/with-temp [:model/CardTest card-test {:card_id      (:id card)
-                                                :inputs       inputs
-                                                :expectations expectations}]
-        (data-testing.runner/run-test! :card card card-test))))))
+    (fn [_asked]
+      (data-testing.test-util/run-card-test! (people-card) inputs expectations)))))
 
 (defn- refusal!
   "The `:error-type` of the refusal of a test of the write `sql` with `params`, or nil when it is not refused."
