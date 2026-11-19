@@ -1,12 +1,12 @@
-// CI Conductor dispatches this, in place of re-running a PR's failed "Run tests"
-// run. It asks ci-conductor whether every failure on the PR's head commit is a
-// flake. When it is sure, and a person has confirmed it, it posts a passing
+// CI Conductor's "make pass" button dispatches this for a PR's failed "Run
+// tests" run. It asks ci-conductor whether every failure on the PR's head commit
+// is a flake. When it is sure, and a person has confirmed it, it posts a passing
 // check for each job that failed, which includes the required `*-result`
 // checks. It also records the auto-pass in eng-stats and says so on the PR.
 //
 // Anything short of a clear yes (auto-pass turned off, an unreachable server, an
-// answer about another commit) re-runs the failed jobs instead, which is what
-// the dispatch stood in for.
+// answer about another commit) passes nothing and leaves the run as it is.
+// Re-running is a separate button in CI Conductor.
 //
 // Runs from flaky-rerun-auto-pass.yml, so no test suite needs to know about it.
 // GitHub sends no `workflow_run: requested` event for a re-run, which is why a
@@ -172,8 +172,7 @@ export type PullRequest = {
 /**
  * Why the dispatched run is not one to act on, or null when it is: a finished
  * "Run tests" run of a PR from this repo, for the commit the PR is at now.
- * Acting on anything else, by passing or re-running, would be wrong, so none of
- * these fall back to a re-run.
+ * Passing anything else would be wrong.
  */
 export function runMismatch(opts: {
   run: WorkflowRun;
@@ -258,8 +257,7 @@ export async function fetchFlakeProbability(opts: {
 }
 
 /**
- * Why the failures must be run again rather than passed, or the flake
- * probability to pass them with. Each step only runs when the ones before it
+ * Why the failures can't be passed, or the flake probability to pass them with. Each step only runs when the ones before it
  * allow an auto-pass, so a turned-off auto-pass never calls ci-conductor.
  */
 async function decide(
@@ -340,14 +338,6 @@ async function attemptJobs(runId: number, attempt: number): Promise<Job[]> {
       return jobs;
     }
   }
-}
-
-async function rerunFailedJobs(ctx: Context, reason: string): Promise<void> {
-  console.log(`Not auto-passing: ${reason}. Re-running the failed jobs.`);
-  await github(`/actions/runs/${ctx.runId}/rerun-failed-jobs`, {
-    method: "POST",
-  });
-  summarize(`### Re-ran the failed jobs\n\nNot auto-passing: ${reason}.`);
 }
 
 /** A check from the GitHub Actions app with the same name as a job counts for branch protection. */
@@ -434,7 +424,8 @@ async function main(): Promise<void> {
 
   const decision = await decide(process.env, ctx, jobs);
   if (!decision.autoPass) {
-    await rerunFailedJobs(ctx, decision.reason);
+    console.log(`::warning::Not auto-passing: ${decision.reason}.`);
+    summarize(`### Didn't auto-pass\n\n${decision.reason}.`);
     return;
   }
 
