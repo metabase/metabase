@@ -128,7 +128,61 @@
                 (mt/user-http-request :crowberto :post 422 "ee/segment-test" (body segment-id)))))
       (testing "a run of a saved test of it is refused the same way"
         (is (=? {:error-code "segment-test.uncompilable-subject"}
-                (mt/user-http-request :crowberto :post 422 (str "ee/segment-test/" test-id "/run"))))))))
+                (mt/user-http-request :crowberto :post 422 (str "ee/segment-test/" test-id "/run")))))
+      (testing "an edit of the inputs of a saved test of it is refused the same way, and changes nothing"
+        (let [before (t2/select-one :model/SegmentTest :id test-id)]
+          (is (=? {:error-code "segment-test.uncompilable-subject"}
+                  (mt/user-http-request :crowberto :put 422 (str "ee/segment-test/" test-id)
+                                        {:inputs [(assoc (first inputs) :rows [{"ID" 3 "SOURCE" "Google"}])]})))
+          (is (= before (t2/select-one :model/SegmentTest :id test-id))))))))
+
+(deftest a-test-of-a-segment-whose-table-does-not-exist-is-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
+                   :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+      (let [missing-table-id (inc (t2/select-one-fn :max-id [:model/Table [:%max.id :max-id]]))]
+        (testing "control: a test of the segment runs while its table exists"
+          (is (=? {:status "passed"} (mt/user-http-request :crowberto :post 200 (str "ee/segment-test/" test-id "/run")))))
+        ;; A raw write: the model refuses a definition whose table does not exist.
+        (t2/query-one {:update :segment
+                       :set    {:definition (str "{\"lib/type\":\"mbql/query\",\"database\":" (mt/id) ","
+                                                 "\"stages\":[{\"lib/type\":\"mbql.stage/mbql\","
+                                                 "\"source-table\":" missing-table-id "}]}")}
+                       :where  [:= :id segment-id]})
+        (testing "POST refuses a test of a segment whose definition names a table that does not exist"
+          (is (=? {:error-code "segment-test.uncompilable-subject"}
+                  (mt/user-http-request :crowberto :post 422 "ee/segment-test" (body segment-id)))))
+        (testing "a run of a saved test of it is refused the same way"
+          (is (=? {:error-code "segment-test.uncompilable-subject"}
+                  (mt/user-http-request :crowberto :post 422 (str "ee/segment-test/" test-id "/run")))))
+        (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id)))))
+
+(deftest a-revert-cannot-move-a-test-onto-an-archived-segment-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Segment {archived-id :id} (data-testing.test-util/from-google-segment)
+                   :model/Segment {active-id :id}   (data-testing.test-util/from-google-segment)]
+      (let [test-id     (:id (mt/user-http-request :crowberto :post 200 "ee/segment-test" (body archived-id)))
+            path        (str "ee/segment-test/" test-id)
+            _           (mt/user-http-request :crowberto :put 200 path {:segment_id active-id})
+            creation-id (:id (first (filter :is_creation
+                                            (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" test-id)))))]
+        (try
+          (t2/update! :model/Segment :id archived-id {:archived true})
+          (testing "a revert to the revision on the archived segment is refused, and leaves the test where it is"
+            (is (pos-int? creation-id))
+            (is (=? {:error-code "segment-test.archived-subject"}
+                    (mt/user-http-request :crowberto :post 422 "revision/revert" {:entity      "segment-test"
+                                                                                  :id          test-id
+                                                                                  :revision_id creation-id})))
+            (is (= active-id (t2/select-one-fn :segment_id :model/SegmentTest :id test-id))))
+          (testing "control: once the segment is restored, the same revert moves the test back"
+            (t2/update! :model/Segment :id archived-id {:archived false})
+            (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity      "segment-test"
+                                                                          :id          test-id
+                                                                          :revision_id creation-id})
+            (is (= archived-id (t2/select-one-fn :segment_id :model/SegmentTest :id test-id))))
+          (finally
+            (t2/delete! :model/SegmentTest :id test-id)))))))
 
 (deftest run-saved-test-test
   (mt/with-premium-features #{:transforms-testing}
@@ -248,6 +302,7 @@
                                                         :expectations expectations
                                                         :created_at   #t "2025-01-01T00:00:00Z"}]
       (let [path      (str "ee/segment-test/" test-id)
+            run-ids   (atom #{})
             test-name (t2/select-one-fn :name :model/SegmentTest :id test-id)
             listed    (fn [& params]
                         (into #{} (map :id) (apply mt/user-http-request :crowberto :get 200 "ee/segment-test" params)))]
@@ -256,7 +311,8 @@
           (testing "the list leaves the test out, unless asked to include archived subjects"
             (is (not (contains? (listed) test-id)))
             (is (not (contains? (listed :segment-id segment-id) test-id)))
-            (is (contains? (listed :include-archived true) test-id)))
+            (is (contains? (listed :include-archived true) test-id))
+            (is (contains? (listed :segment-id segment-id :include-archived true) test-id)))
           (testing "the test is still readable by id"
             (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 path))))
           (testing "a run is refused, and records no run"
@@ -281,11 +337,15 @@
             (is (=? {:error-code "segment-test.archived-subject"}
                     (mt/user-http-request :crowberto :put 422 path {:segment_id segment-id}))))
           (testing "a test of an archived segment can be deleted"
+            ;; Deleting the test clears `test_id` on its runs, so the cleanup below finds them by id.
+            (reset! run-ids (t2/select-pks-set :model/DataTestRun :test_type "segment" :test_id test-id))
             (t2/update! :model/SegmentTest :id test-id {:segment_id segment-id})
             (mt/user-http-request :crowberto :delete 204 path)
             (is (not (t2/exists? :model/SegmentTest :id test-id))))
           (finally
-            (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id)))))))
+            (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id)
+            (when (seq @run-ids)
+              (t2/delete! :model/DataTestRun :id [:in @run-ids]))))))))
 
 (deftest segment-test-ignores-now-test
   (testing "a segment test has no `now`: the API drops it as it drops any key a request does not declare"

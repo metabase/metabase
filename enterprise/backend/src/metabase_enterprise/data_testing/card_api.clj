@@ -65,7 +65,7 @@
   retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
   declared name that differs from the table's only in case does not match it.
 
-  A test of an archived card is refused, as is a run or an edit of one."
+  A test of an archived card is refused."
   [_route-params
    _query-params
    {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
@@ -74,7 +74,7 @@
   (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
-  "Update a card test. The update is refused when the test's card, after it, is archived.
+  "Update a card test. The update is refused when it leaves the test on an archived card.
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
@@ -112,9 +112,11 @@
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
-  Any other status means the run was refused and nothing meaningful ran, as when the card is archived. A refusal of
-  the test itself carries the `:error-code` naming which refusal it was; a missing test (404), missing permission (403)
-  or missing feature (402) carries none."
+  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
+  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
+  carries none.
+
+  A run of a test whose card is archived is refused."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]

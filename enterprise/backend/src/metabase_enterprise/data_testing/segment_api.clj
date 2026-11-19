@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -24,14 +25,21 @@
   (data-testing.errors/refusing "segment-test" thunk))
 
 (mu/defn- testable-segment
-  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when it has no definition: there is
-  then no query to test."
+  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when there is no query to test: its
+  definition reads back empty, or names a table that does not exist."
   [segment-id :- ms/PositiveInt]
-  (let [segment (data-testing.db/segment segment-id)]
-    (when (and segment (empty? (:definition segment)))
-      (throw (data-testing.errors/ex ::data-testing.errors/uncompilable-subject
-                                     (tru "The segment has no definition, so there is no query to test.")
-                                     {})))
+  (let [{:keys [definition] :as segment} (data-testing.db/segment segment-id)]
+    (when segment
+      (when (empty? definition)
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/uncompilable-subject
+                (tru "The segment''s definition is empty or unreadable, so there is no query to test.")
+                {})))
+      (when-not (some-> (lib/primary-source-table-id definition) data-testing.db/table-exists?)
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/uncompilable-subject
+                (tru "The segment''s table does not exist, so there is no query to test.")
+                {}))))
     segment))
 
 (mu/defn- validate-test! :- :nil
@@ -80,7 +88,10 @@
   retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
   declared name that differs from the table's only in case does not match it.
 
-  A test of an archived segment is refused, as is a run or an edit of one."
+  A test of an archived segment is refused.
+
+  A test of a segment whose definition is empty, cannot be read, or names a table that does not exist is refused as
+  one whose query cannot be compiled."
   [_route-params
    _query-params
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
@@ -89,7 +100,7 @@
   (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
-  "Update a segment test. The update is refused when the test's segment, after it, is archived."
+  "Update a segment test. The update is refused when it leaves the test on an archived segment."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -120,9 +131,12 @@
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
-  Any other status means the run was refused and nothing meaningful ran, as when the segment is archived. A refusal of
-  the test itself carries the `:error-code` naming which refusal it was; a missing test (404), missing permission (403)
-  or missing feature (402) carries none."
+  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
+  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
+  carries none.
+
+  A run of a test whose segment is archived is refused. A run of a test of a segment whose definition is empty,
+  cannot be read, or names a table that does not exist is refused as one whose query cannot be compiled."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [segment-test (api/read-check :model/SegmentTest id)]

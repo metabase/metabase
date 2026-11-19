@@ -22,16 +22,15 @@
 
 (defmulti column-names-ignore-case?
   "Whether `driver` treats two column names that differ only in case as one name, so that a table cannot hold both.
-  Every driver that supports `:transforms/testing` states its own answer; the default, false, is for the others."
+  False by default."
   {:arglists '([driver])}
   identity
   :hierarchy #'driver/hierarchy)
 
 (defmethod column-names-ignore-case? :default [_driver] false)
 
-;; MySQL and MariaDB, SQL Server with its default collation, and DuckDB compare column names without regard to case.
-;; Redshift folds quoted names to lower case too, unless `enable_case_sensitive_identifier` is on. H2, Postgres and
-;; ClickHouse keep both names.
+;; Every driver that runs data tests states its answer, so that a new one cannot take the default by omission. SQL Server
+;; ignores case under its default collation, and Redshift unless `enable_case_sensitive_identifier` is on.
 (doseq [[driver ignores-case?] {:h2         false
                                 :postgres   false
                                 :clickhouse false

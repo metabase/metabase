@@ -553,9 +553,10 @@
   [driver stmt params]
   ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
   ;; ask when there are parameters that could outnumber the placeholders.
-  ;; Nor in a data test's transaction: on Postgres and Redshift the describe runs on the server, and a failed describe
-  ;; aborts the transaction, so the statement's own execution would report "current transaction is aborted" instead of
-  ;; its error.
+  ;; Nor on a data test's connection: on Postgres and Redshift the describe runs on the server, and a failed describe
+  ;; aborts the open transaction, so the statement's own execution would report "current transaction is aborted"
+  ;; instead of its error. `execute-raw-queries!` also runs its statements in one transaction and keeps the check: no
+  ;; caller of it sends a parameterized statement after another statement, the only case in which that abort happens.
   (when (and (seq params)
              (not (in-test-transaction? stmt))
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)

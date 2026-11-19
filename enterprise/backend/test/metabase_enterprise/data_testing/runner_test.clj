@@ -459,10 +459,10 @@
 
 (deftest every-driver-that-runs-data-tests-states-its-column-name-case-rule-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-    (is (not= (get-method data-testing.u/column-names-ignore-case? :default)
-              (get-method data-testing.u/column-names-ignore-case? driver/*driver*))
-        (str "Add a `column-names-ignore-case?` method for " driver/*driver* ": the missing-columns check and the "
-             "output-column check compare names by it."))))
+    ;; `methods` rather than `get-method`, which would find the method of a parent such as `:postgres`.
+    (is (contains? (methods data-testing.u/column-names-ignore-case?) driver/*driver*)
+        (str "Add a `column-names-ignore-case?` method for " driver/*driver* ": data testing compares column names "
+             "by it."))))
 
 ;;; --------------------------------------------- columns-read ---------------------------------------------
 

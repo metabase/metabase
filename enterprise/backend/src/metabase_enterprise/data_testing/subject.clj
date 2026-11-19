@@ -77,12 +77,12 @@
   "Throws `::data-testing.errors/archived-subject` when `subject`, a `subject-type`, is archived."
   [subject-type :- ::subject-type
    subject      :- [:maybe [:map [:archived {:optional true} [:maybe :boolean]]]]]
+  ;; Transforms have no archived state.
   (when (:archived subject)
     (throw (data-testing.errors/ex ::data-testing.errors/archived-subject
                                    (case subject-type
-                                     :card      (tru "The card is archived. Restore it to test it.")
-                                     :segment   (tru "The segment is archived. Restore it to test it.")
-                                     :transform (tru "The transform is archived. Restore it to test it."))
+                                     :card    (tru "The card is archived. Restore it to test it.")
+                                     :segment (tru "The segment is archived. Restore it to test it."))
                                    {}))))
 
 (def output-token

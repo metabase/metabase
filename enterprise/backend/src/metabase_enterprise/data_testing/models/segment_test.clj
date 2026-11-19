@@ -2,9 +2,11 @@
   "`:model/SegmentTest`: a saved test of one segment."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -128,6 +130,9 @@
 (defn- revert-segment-test!
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
+  (data-testing.errors/refusing "segment-test"
+                                #(data-testing.subject/check-not-archived
+                                  :segment (data-testing.db/segment (:segment_id snapshot))))
   (update-segment-test! id (select-keys snapshot revision-columns)))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------

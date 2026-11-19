@@ -20,13 +20,6 @@ summary: Breaking changes to the Metabase API, listed by release.
   of tables that Metabase hides, and the columns marked sensitive or retired, are not checked. On a database that keeps
   the case of column names, a declared name that differs from the table's only in case is missing.
 
-- Card tests whose card is archived are left out of `GET /api/ee/card-test`, unless the request passes
-  `include-archived=true`. `POST /api/ee/card-test/:id/run` refuses to run such a test, with `422` and the
-  `error-code` `card-test.archived-subject`, and records no run. `POST /api/ee/card-test` and
-  `PUT /api/ee/card-test/:id` refuse the same way when the test's card, after the change, is archived.
-  `GET /api/ee/card-test/:id` and `DELETE /api/ee/card-test/:id` work as before. Restoring the card restores its
-  tests.
-
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
   **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.

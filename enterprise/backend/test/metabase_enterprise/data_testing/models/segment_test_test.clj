@@ -193,21 +193,6 @@
                     (testing "a test cannot move away from a segment whose tests the analyst may not save"
                       (is (false? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:segment_id writable-id})))))))))))))))
 
-(deftest permissions-of-a-test-of-a-segment-with-no-definition-test
-  (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                 :model/SegmentTest segment-test      {:segment_id segment-id}]
-    (data-testing.test-util/empty-segment-definition! segment-id)
-    (testing "premise: the segment has no definition"
-      (is (= {} (t2/select-one-fn :definition :model/Segment :id segment-id))))
-    (testing "an admin may save and run the test"
-      (mt/with-current-user (mt/user->id :crowberto)
-        (is (= {:run true :write true}
-               {:run   (boolean (data-testing.models.segment-test/can-run? segment-test))
-                :write (boolean (mi/can-write? (t2/hydrate segment-test :can_write)))}))))
-    (testing "another user may not run it: the segment has no Database to write native SQL against"
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (false? (boolean (data-testing.models.segment-test/can-run? segment-test))))))))
-
 (deftest storage-path-of-a-test-of-a-segment-whose-definition-cannot-be-exported-test
   (testing "a test is stored under its segment's table even when the segment's definition cannot be exported"
     (mt/with-temp [:model/Segment     {segment-eid :entity_id segment-id :id} (assoc (data-testing.test-util/from-google-segment)

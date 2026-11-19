@@ -362,6 +362,7 @@
                                                     :expectations expectations
                                                     :created_at   #t "2025-01-01T00:00:00Z"}]
       (let [path      (str "ee/card-test/" test-id)
+            run-ids   (atom #{})
             test-name (t2/select-one-fn :name :model/CardTest :id test-id)
             listed    (fn [& params]
                         (into #{} (map :id) (apply mt/user-http-request :crowberto :get 200 "ee/card-test" params)))]
@@ -370,7 +371,8 @@
           (testing "the list leaves the test out, unless asked to include archived subjects"
             (is (not (contains? (listed) test-id)))
             (is (not (contains? (listed :card-id card-id) test-id)))
-            (is (contains? (listed :include-archived true) test-id)))
+            (is (contains? (listed :include-archived true) test-id))
+            (is (contains? (listed :card-id card-id :include-archived true) test-id)))
           (testing "the test is still readable by id"
             (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 path))))
           (testing "a run is refused, and records no run"
@@ -395,8 +397,39 @@
             (is (=? {:error-code "card-test.archived-subject"}
                     (mt/user-http-request :crowberto :put 422 path {:card_id card-id}))))
           (testing "a test of an archived card can be deleted"
+            ;; Deleting the test clears `test_id` on its runs, so the cleanup below finds them by id.
+            (reset! run-ids (t2/select-pks-set :model/DataTestRun :test_type "card" :test_id test-id))
             (t2/update! :model/CardTest :id test-id {:card_id card-id})
             (mt/user-http-request :crowberto :delete 204 path)
             (is (not (t2/exists? :model/CardTest :id test-id))))
           (finally
-            (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)))))))
+            (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)
+            (when (seq @run-ids)
+              (t2/delete! :model/DataTestRun :id [:in @run-ids]))))))))
+
+(deftest a-revert-cannot-move-a-test-onto-an-archived-card-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {archived-id :id} (card)
+                   :model/Card {active-id :id}   (card)]
+      (let [test-id     (:id (mt/user-http-request :crowberto :post 200 "ee/card-test" (body archived-id)))
+            path        (str "ee/card-test/" test-id)
+            _           (mt/user-http-request :crowberto :put 200 path {:card_id active-id})
+            creation-id (:id (first (filter :is_creation
+                                            (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id)))))]
+        (try
+          (t2/update! :model/Card :id archived-id {:archived true})
+          (testing "a revert to the revision on the archived card is refused, and leaves the test where it is"
+            (is (pos-int? creation-id))
+            (is (=? {:error-code "card-test.archived-subject"}
+                    (mt/user-http-request :crowberto :post 422 "revision/revert" {:entity      "card-test"
+                                                                                  :id          test-id
+                                                                                  :revision_id creation-id})))
+            (is (= active-id (t2/select-one-fn :card_id :model/CardTest :id test-id))))
+          (testing "control: once the card is restored, the same revert moves the test back"
+            (t2/update! :model/Card :id archived-id {:archived false})
+            (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity      "card-test"
+                                                                          :id          test-id
+                                                                          :revision_id creation-id})
+            (is (= archived-id (t2/select-one-fn :card_id :model/CardTest :id test-id))))
+          (finally
+            (t2/delete! :model/CardTest :id test-id)))))))
