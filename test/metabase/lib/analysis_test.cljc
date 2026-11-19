@@ -17,26 +17,41 @@
                   :columns.person user-id-field
                   :columns.timestamp created-at-field
                   :from "2026-03-11"
-                  :granularity "day" ; or "week"
-                  ;; :breakout [field ref] (depends on window functions)
-                  ;; :habit.active [expression] (second stage filter)
-                  ;; :habit.values "counts" | "percent" (second stage aggregation)
-                  }]
-    (is (=? {:lib/type :mbql/query
-             :stages [{:lib/type :mbql.stage/mbql
-                       :source-table (:id table)
-                       :aggregation
-                       [[:distinct {}
-                         [:field {:effective-type :type/DateTimeWithLocalTZ
-                                  :base-type :type/DateTimeWithLocalTZ
-                                  :temporal-unit :day}
-                          (:id created-at-field)]]]
-                       :breakout [[:field {:effective-type :type/Integer
-                                           :base-type :type/Integer}
-                                   (:id user-id-field)]]}
-                      {:lib/type :mbql.stage/mbql
-                       :aggregation [[:count {}]]
-                       :breakout [[:field {:effective-type :type/Integer
-                                           :base-type :type/Integer}
-                                   "count"]]}]}
-            (analysis/->mbql analysis)))))
+                  :granularity "day"}]
+    (testing "basic habit"
+      (is (=? {:lib/type :mbql/query
+               :stages [{:lib/type :mbql.stage/mbql
+                         :source-table (:id table)
+                         :aggregation
+                         [[:distinct {}
+                           [:field {:effective-type :type/DateTimeWithLocalTZ
+                                    :base-type :type/DateTimeWithLocalTZ
+                                    :temporal-unit :day}
+                            (:id created-at-field)]]]
+                         :breakout [[:field {:effective-type :type/Integer
+                                             :base-type :type/Integer}
+                                     (:id user-id-field)]]}
+                        {:lib/type :mbql.stage/mbql
+                         :aggregation [[:count {}]]
+                         :breakout [[:field {:effective-type :type/Integer
+                                             :base-type :type/Integer}
+                                     "count"]]}]}
+              (analysis/->mbql analysis))))
+    (testing "habit with active filter and percent"
+      (let [active-expr (lib/= 12 user-id-field)
+            analysis (assoc analysis
+                            :habit.active active-expr
+                            :habit.values "percent")]
+        (is (=? {:lib/type :mbql.stage/mbql
+                 :aggregation [[:count {}]]
+                 :filters [[:= {} 12
+                            [:field {:effective-type :type/Integer
+                                     :base-type :type/Integer}
+                             (:id user-id-field)]]]
+                 :breakout [[:field {:effective-type :type/Integer
+                                     :base-type :type/Integer}
+                             "count"]]}
+                (-> (analysis/->mbql analysis)
+                    :stages second)))))
+    ;; TODO: blocked on window functions
+    #_(testing "breakout field ref setting")))

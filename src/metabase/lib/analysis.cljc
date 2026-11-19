@@ -1,11 +1,11 @@
 (ns metabase.lib.analysis
   (:require
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.lib.core :as lib]))
 
 (defn ->mbql
   "Convert the given analysis stage into MBQL."
-  [{:keys [kind query from granularity] habit-active :habit.active
+  [{:keys [kind query from granularity]
+    habit-active :habit.active habit-values :habit.values
     person-column :columns.person timestamp-column :columns.timestamp
     :as _analysis}]
   (when-not (= "habit" kind) (throw (ex-info "unsupported analysis kind" {:kind kind})))
