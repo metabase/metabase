@@ -121,16 +121,12 @@ export function useSummaryFormulaBar({
         activeDraft.wellId,
       );
     } else if (activeDraft?.kind === "edit" && editedFormula) {
-      // a rename on the chip while the bar is open makes the name a given one
-      const hasGeneratedName =
-        editedFormula.name != null &&
-        editedFormula.name === activeDraft.generatedName;
       const result = editSummaryFormula(
         query,
         stageIndex,
         editedFormula,
         expression,
-        hasGeneratedName,
+        activeDraft.hasCustomName,
       );
       onEdit(result.query, result.options);
     }
@@ -152,7 +148,7 @@ export function useSummaryFormulaBar({
     if (name != null && isDefaultFormulaName(name, source)) {
       setDraft((draft) =>
         draft?.kind === "edit" && draft.key === key
-          ? { ...draft, generatedName: name }
+          ? { ...draft, hasCustomName: false }
           : draft,
       );
     }
@@ -182,7 +178,14 @@ export function useSummaryFormulaBar({
     inputRef.current = input;
     nextKey.current += 1;
     const key = nextKey.current;
-    setDraft({ kind: "edit", key, wellId, formula, source: "" });
+    setDraft({
+      kind: "edit",
+      key,
+      wellId,
+      formula,
+      source: "",
+      hasCustomName: formula.name != null,
+    });
     ownership.open();
     // the bar holds one line, so the printer must not wrap
     format(formula.clause, { query, stageIndex, printWidth: Infinity })

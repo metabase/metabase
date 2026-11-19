@@ -92,7 +92,11 @@ export function DimensionChip({
   return (
     <WellChip
       drag={{ kind: "dimension", item }}
-      rename={item.expression && getFormulaRename(item.expression)}
+      rename={
+        item.expression && !isEditing
+          ? getFormulaRename(item.expression)
+          : undefined
+      }
       isSelected={isEditing}
       onRemove={onRemove}
     >

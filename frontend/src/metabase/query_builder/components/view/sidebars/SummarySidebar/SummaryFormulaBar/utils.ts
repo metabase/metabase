@@ -248,13 +248,13 @@ function getEditedFormulaName(
   stageIndex: number,
   formula: SummaryFormula,
   sourceName: string,
-  hasGeneratedName: boolean,
+  hasCustomName: boolean,
 ): string {
   const { name } = formula;
   if (name == null) {
     return sourceName;
   }
-  if (!hasGeneratedName || isDefaultFormulaName(name, sourceName)) {
+  if (hasCustomName || isDefaultFormulaName(name, sourceName)) {
     return name;
   }
   return formula.wellId === "columns"
@@ -313,14 +313,14 @@ export function editSummaryFormula(
   stageIndex: number,
   formula: SummaryFormula,
   { name: sourceName, clause }: NamedExpression,
-  hasGeneratedName: boolean,
+  hasCustomName: boolean,
 ): { query: Lib.Query; options: SummaryQueryChangeOptions } {
   const nextName = getEditedFormulaName(
     query,
     stageIndex,
     formula,
     sourceName,
-    hasGeneratedName,
+    hasCustomName,
   );
   const nextQuery = Lib.replaceClause(
     query,

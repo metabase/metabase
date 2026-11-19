@@ -40,8 +40,7 @@ export type SummaryFormulaDraft = {
   | {
       kind: "edit";
       formula: SummaryFormulaEdit;
-      /** The formula's name when it was generated from its source, once that is printed. */
-      generatedName?: string;
+      hasCustomName: boolean;
     }
 );
 

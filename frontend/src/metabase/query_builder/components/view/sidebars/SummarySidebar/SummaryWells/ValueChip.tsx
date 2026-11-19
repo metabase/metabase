@@ -77,7 +77,9 @@ export function ValueChip({
     <WellChip
       drag={{ kind: "value", item }}
       rename={
-        isFormula ? { name: item.label, onRename: handleRename } : undefined
+        isFormula && !isEditing
+          ? { name: item.label, onRename: handleRename }
+          : undefined
       }
       isSelected={isEditing}
       onRemove={onRemove}
