@@ -497,9 +497,9 @@
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
     ;; :source-table) in ex-data. Reversing these leaks that through the parameter path.
     (check-parameter-permissions (:parameters card) query)
-    (queries/with-copy-source-card source-card
-      (queries/check-allowed-to-create-card! card card-type))
-    (let [created-card (queries/create-card! card @api/*current-user*)]
+    (let [created-card (queries/with-copy-source-card source-card
+                         (queries/check-allowed-to-create-card! card card-type)
+                         (queries/create-card! card @api/*current-user*))]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -520,9 +520,9 @@
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (queries/with-copy-source-card orig-card
-      (api/create-check :model/Card new-card))
-    (-> (queries/create-card! new-card @api/*current-user*)
+    (-> (queries/with-copy-source-card orig-card
+          (api/create-check :model/Card new-card)
+          (queries/create-card! new-card @api/*current-user*))
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
