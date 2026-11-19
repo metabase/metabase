@@ -20,6 +20,25 @@
     :bigquery-cloud-sdk ["INT64" "STRING"]
     ["INTEGER" "VARCHAR(50)"]))
 
+(defn table-ref
+  "The `{:schema :name}` of the test-data table `table-key`, as compiled SQL names it."
+  [table-key]
+  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
+    {:schema schema :name name}))
+
+(defn qualified
+  "`schema.name` of the test-data table `table-key`, for SQL."
+  [table-key]
+  (let [{:keys [schema name]} (table-ref table-key)]
+    (str schema "." name)))
+
+(defn id+name
+  "An `id` and a `name` column, typed as the current driver spells an integer and a text type."
+  []
+  (let [[int-type text-type] (cast-types)]
+    [{:name "id" :cast_type int-type}
+     {:name "name" :cast_type text-type}]))
+
 (def data-analyst-features
   "The premium features with which a data analyst can open transform tests."
   ;; advanced-permissions: the Data Analyst role only opens Data Studio while the plan includes it

@@ -23,18 +23,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as compiled SQL references it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
-
-(defn- qualified
-  "`schema.name` of the test-data table `table-key`, for native SQL."
-  [table-key]
-  (let [{:keys [schema name]} (table-ref table-key)]
-    (str schema "." name)))
-
 (defn- table-query
   "An MBQL query of the test-data table `table-key`."
   [table-key]
@@ -55,7 +43,7 @@
 (defn- people-card
   "A native card selecting `id` and `name` from the people table."
   []
-  (native-card (str "SELECT id, name FROM " (qualified :people))))
+  (native-card (str "SELECT id, name FROM " (data-testing.test-util/qualified :people))))
 
 (def ^:private one-person
   "SELECT 1 AS id, 'abc' AS name")
@@ -63,14 +51,7 @@
 (defn- people-input
   "An input standing in for the people table with the rows of `sql`."
   [sql]
-  {:table (table-ref :people) :format :sql :sql sql})
-
-(defn- id+name
-  "The `id` and `name` columns of the output, typed as the current driver spells those types."
-  []
-  (let [[int-type text-type] (data-testing.test-util/cast-types)]
-    [{:name "id" :cast_type int-type}
-     {:name "name" :cast_type text-type}]))
+  {:table (data-testing.test-util/table-ref :people) :format :sql :sql sql})
 
 (defn- orders-rows
   "An input standing in for the orders table with `rows` over its fields `field-keys`, all integers. The columns are
@@ -79,7 +60,7 @@
   (let [[int-type] (data-testing.test-util/cast-types)
         mp         (mt/metadata-provider)
         names      (mapv #(:name (lib.metadata/field mp (mt/id :orders %))) field-keys)]
-    {:table   (table-ref :orders)
+    {:table   (data-testing.test-util/table-ref :orders)
      :format  :rows
      :columns (mapv (fn [column-name] {:name column-name :cast_type int-type}) names)
      :rows    (mapv #(zipmap names %) rows)}))
@@ -133,9 +114,9 @@
       (let [result (run-card-test! (people-card)
                                    [(people-input one-person)]
                                    [{:type :equals :name "equals passes" :format :rows
-                                     :columns (id+name) :rows [{"id" 1 "name" "abc"}]}
+                                     :columns (data-testing.test-util/id+name) :rows [{"id" 1 "name" "abc"}]}
                                     {:type :equals :name "equals fails" :format :rows
-                                     :columns (id+name) :rows [{"id" 1 "name" "xyz"}]}
+                                     :columns (data-testing.test-util/id+name) :rows [{"id" 1 "name" "xyz"}]}
                                     {:type :empty :name "empty passes" :sql "SELECT * FROM {{output}} WHERE id <> 1"}
                                     {:type :empty :name "empty fails" :sql "SELECT * FROM {{ output }} WHERE id = 1"}])]
         (is (= :failed (:status result)))
@@ -169,14 +150,14 @@
                (run! (sql "name only" "SELECT 'abc' AS name")))))
       (testing "the expected query reads the input and the output through the run's temp tables"
         (is (= {"from the input" :passed "from the output" :passed}
-               (run! (sql "from the input" (str "SELECT id, name FROM " (qualified :people)))
+               (run! (sql "from the input" (str "SELECT id, name FROM " (data-testing.test-util/qualified :people)))
                      (sql "from the output" "SELECT id, name FROM {{output}}")))))
       (testing "a column the output lacks makes that expectation an error"
         (is (= ::data-testing.errors/unknown-column
                (get-in (run! (sql "no such column" "SELECT 1 AS nope")) ["no such column" :error :type]))))
       (testing "an expected query that reads a table the test does not stand in for is refused before it runs"
         (is (= ::data-testing.errors/unremapped-reference
-               (:error-type (data-testing.test-util/refusal #(run! (sql "real table" (str "SELECT id FROM " (qualified :orders))))))))))))
+               (:error-type (data-testing.test-util/refusal #(run! (sql "real table" (str "SELECT id FROM " (data-testing.test-util/qualified :orders))))))))))))
 
 (deftest equals-sql-matches-columns-across-case-and-reports-the-expected-spelling-test
   (mt/test-drivers #{:h2 :postgres}
@@ -211,7 +192,7 @@
           (is (= ::data-testing.errors/colliding-columns type))
           (is (re-find #"(?i)\bid\b" message) message)))
       (testing "a compared column that takes the name of the comparison's own column is refused"
-        (let [{:keys [type message]} (error-of (native-card (str "SELECT id AS __mb_src FROM " (qualified :people)))
+        (let [{:keys [type message]} (error-of (native-card (str "SELECT id AS __mb_src FROM " (data-testing.test-util/qualified :people)))
                                                "SELECT 1 AS __mb_src")]
           (is (= ::data-testing.errors/colliding-columns type))
           (is (re-find #"(?i)__mb_src" message) message)))
@@ -223,7 +204,7 @@
 (deftest card-with-a-repeated-column-name-is-refused-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [run!   (fn [sql]
-                   (data-testing.test-util/refusal #(run-card-test! (native-card (str sql " FROM " (qualified :people)))
+                   (data-testing.test-util/refusal #(run-card-test! (native-card (str sql " FROM " (data-testing.test-util/qualified :people)))
                                                                     [(people-input one-person)]
                                                                     [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))
           names? (fn [message] (boolean (re-find #"(?i)named: id\." message)))]
@@ -239,7 +220,7 @@
     (testing "a database that keeps the case of quoted names stores both columns, so the test runs"
       (is (= :passed
              (:status (run-card-test! (native-card (str "SELECT id AS \"id\", name AS \"ID\" FROM "
-                                                        (qualified :people)))
+                                                        (data-testing.test-util/qualified :people)))
                                       [(people-input one-person)]
                                       [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))))))
 
@@ -322,12 +303,12 @@
       (testing "passes with every column of the joined table in its input"
         (is (= {"two widgets" :passed}
                (outcomes (run-card-test! (category-count-card)
-                                         [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
+                                         [orders-input {:table (data-testing.test-util/table-ref :products) :format :sql :sql every-product-column}]
                                          [by-category])))))
       (testing "an input with only the columns the card names cannot stand in for the joined table"
         (let [{:keys [error-type message]}
               (data-testing.test-util/refusal #(run-card-test! (category-count-card)
-                                                               [orders-input {:table  (table-ref :products) :format :sql
+                                                               [orders-input {:table  (data-testing.test-util/table-ref :products) :format :sql
                                                                               :sql    "SELECT 1 AS id, 'Widget' AS category"}]
                                                                [by-category]))]
           (is (= ::data-testing.errors/query-failed error-type))
@@ -336,7 +317,7 @@
       (testing "an expectation naming a column the output lacks lists the compiled column names"
         (let [[expectation] (:expectations
                              (run-card-test! (category-count-card)
-                                             [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
+                                             [orders-input {:table (data-testing.test-util/table-ref :products) :format :sql :sql every-product-column}]
                                              [{:type :equals :name "by display name" :format :rows
                                                :columns [{:name "Category" :cast_type text-type}
                                                          {:name "count" :cast_type (count-type)}]
@@ -355,19 +336,19 @@
                                                                                           [(two-orders-of-product-1)]
                                                                                           [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
         (is (= ::data-testing.errors/missing-inputs error-type))
-        (is (re-find (re-pattern (str "(?i)" (:name (table-ref :products)))) message))
+        (is (re-find (re-pattern (str "(?i)" (:name (data-testing.test-util/table-ref :products)))) message))
         (is (= runs-before (card-run-ids)))))
     (testing "Guard B: an expectation reading a real table is refused"
       (is (= ::data-testing.errors/unremapped-reference
              (:error-type (data-testing.test-util/refusal #(run-card-test! (people-card)
                                                                            [(people-input one-person)]
                                                                            [{:type :empty :name "reads orders"
-                                                                             :sql  (str "SELECT * FROM {{output}} o JOIN " (qualified :orders)
+                                                                             :sql  (str "SELECT * FROM {{output}} o JOIN " (data-testing.test-util/qualified :orders)
                                                                                         " r ON o.id = r.id")}]))))))))
 
 (deftest data-modifying-cte-writing-a-table-named-like-a-cte-is-refused-test
   (mt/test-driver :postgres
-    (let [orders  (:name (table-ref :orders))
+    (let [orders  (:name (data-testing.test-util/table-ref :orders))
           deletes (fn [ctes]
                     (native-card (str "WITH " ctes "d AS (DELETE FROM " orders " WHERE id = -1 RETURNING id) "
                                       "SELECT id FROM d")))
@@ -387,7 +368,7 @@
                                                                (column orders :orders :created_at)])}
             timestamp (sql.qp/inline-value driver/*driver* (t/local-date-time 2024 1 2 23 30))
             result    (run-card-test! card
-                                      [{:table  (table-ref :orders) :format :sql
+                                      [{:table  (data-testing.test-util/table-ref :orders) :format :sql
                                         :sql    (str "SELECT 1 AS id, " timestamp " AS created_at")}]
                                       [{:type :empty :name "the input timestamp is unchanged"
                                         :sql  (str "SELECT * FROM {{output}} WHERE created_at <> " timestamp)}
@@ -454,7 +435,7 @@
         (testing "a card whose SQL fails on the warehouse is refused as `query-failed`"
           (is (= ::data-testing.errors/query-failed
                  (:error-type (data-testing.test-util/refusal #(run-card-test! (native-card (str "SELECT id, name, no_such_column FROM "
-                                                                                                 (qualified :people)))
+                                                                                                 (data-testing.test-util/qualified :people)))
                                                                                [(people-input one-person)]
                                                                                [{:type :empty :name "never reached" :sql "SELECT * FROM {{output}}"}]))))))
         (testing "every temp table the run created is dropped"

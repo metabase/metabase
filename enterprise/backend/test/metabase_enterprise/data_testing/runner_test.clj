@@ -18,12 +18,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as the transform's compiled SQL will reference it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
-
 (defn- with-people-transform
   "Call `f` with the schema and name of the people table and a transform selecting `id, name` from it into
   `people_summary` in the same schema."
@@ -137,13 +131,6 @@
           (testing "no rows stand in for an empty table"
             (is (= :passed (run [] (str "SELECT * FROM " output))))))))))
 
-(defn- id+name
-  "The `id` and `name` columns of the output, typed as the current driver spells those types."
-  []
-  (let [[int-type text-type] (data-testing.test-util/cast-types)]
-    [{:name "id" :cast_type int-type}
-     {:name "name" :cast_type text-type}]))
-
 (defn- check-empty-expectation!
   [schema table transform description where expected]
   (let [result (run-test! schema table transform one-row
@@ -247,7 +234,7 @@
         (testing "passes when the output matches the expected rows"
           (let [result (run-test! schema table transform one-row
                                   [{:type :equals :name "output" :format :rows
-                                    :columns (id+name)
+                                    :columns (data-testing.test-util/id+name)
                                     :rows    [{"id" 1 "name" "abc"}]}])]
             (is (= :passed (:status result)))
             (is (= [:passed] (mapv :status (:expectations result))))))))))
@@ -259,7 +246,7 @@
         (testing "a single differing cell is reported by column name"
           (let [result   (run-test! schema table transform one-row
                                     [{:type :equals :name "output" :format :rows
-                                      :columns (id+name)
+                                      :columns (data-testing.test-util/id+name)
                                       :rows    [{"id" 1 "name" "xyz"}]}])
                 [expect] (:expectations result)]
             (is (= :failed (:status result)))
@@ -288,7 +275,7 @@
           (let [result   (run-test! schema table transform
                                     (str "SELECT id, name FROM (" one-row " UNION ALL " one-row ") AS t")
                                     [{:type :equals :name "output" :format :rows
-                                      :columns (id+name)
+                                      :columns (data-testing.test-util/id+name)
                                       :rows    [{"id" 1 "name" "abc"}]}])
                 [expect] (:expectations result)]
             (is (= :failed (:status result)))
@@ -306,7 +293,7 @@
           (let [result (run-test! schema table transform
                                   (str "SELECT 1 AS id, CAST(NULL AS " (second (data-testing.test-util/cast-types)) ") AS name")
                                   [{:type :equals :name "output" :format :rows
-                                    :columns (id+name)
+                                    :columns (data-testing.test-util/id+name)
                                     :rows    [{"id" 1 "name" nil}]}])]
             (is (= :passed (:status result)))))))))
 
@@ -343,8 +330,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       ;; reads orders and people; declares only orders → people would fall through to the real table.
       (let [mp                              (mt/metadata-provider)
-            {pschema :schema, people :name} (table-ref :people)
-            {oschema :schema, orders :name} (table-ref :orders)]
+            {pschema :schema, people :name} (data-testing.test-util/table-ref :people)
+            {oschema :schema, orders :name} (data-testing.test-util/table-ref :orders)]
         (mt/with-temp [:model/Transform transform
                        {:source {:type  :query
                                  :query (lib/native-query
@@ -378,9 +365,9 @@
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}
-                                       {:table (table-ref :orders) :format :sql
+                                       {:table (data-testing.test-util/table-ref :orders) :format :sql
                                         :sql "SELECT 1 AS id"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
           (let [ex (try (data-testing.runner/run-test! :transform transform transform-test)
@@ -404,8 +391,8 @@
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
-                                       {:table (table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
+                                       {:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
           (let [ex (try (data-testing.runner/run-test! :transform transform transform-test)
                         nil
@@ -445,7 +432,7 @@
                         :target {:type "table" :schema schema :name "people_qualified" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}]
                         :expectations [{:type :empty :name "only the input row"
                                         :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]
