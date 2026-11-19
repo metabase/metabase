@@ -62,6 +62,9 @@ export function TroubleshootPage() {
   const navigate = useNavigate();
   const principalType = parsePrincipalType(params);
   const principal = parsePrincipal(params);
+  // the list the sidebar shows, which a tab switch changes without changing who is previewed
+  const [listType, setListType] = useState(principalType);
+  useEffect(() => setListType(principalType), [principalType]);
   const [pickedValues, setPickedValues] = useState<Record<string, string>>({});
   const [openedPath, setOpenedPath] = useState(START_PATH);
   const [openCount, setOpenCount] = useState(0);
@@ -157,11 +160,9 @@ export function TroubleshootPage() {
       >
         <Flex flex={1} mih={0}>
           <PreviewSidebar
-            principalType={principalType}
+            principalType={listType}
             principal={principal}
-            onPrincipalTypeChange={(type) =>
-              navigate(getTroubleshootUrl({ type }))
-            }
+            onPrincipalTypeChange={setListType}
             onPrincipalChange={handlePrincipalChange}
           />
         </Flex>
@@ -312,11 +313,8 @@ export function TroubleshootPage() {
   );
 }
 
-function getTroubleshootUrl(principal: Principal | { type: PrincipalType }) {
-  const base = `${getPermissionsBasePath()}/troubleshoot`;
-  return "id" in principal
-    ? `${base}/${principal.type}/${principal.id}`
-    : `${base}/${principal.type}`;
+function getTroubleshootUrl({ type, id }: Principal) {
+  return `${getPermissionsBasePath()}/troubleshoot/${type}/${id}`;
 }
 
 function getWhoName(

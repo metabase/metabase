@@ -114,6 +114,20 @@ describe("TroubleshootPage", () => {
     expect(address).toHaveValue("/");
   });
 
+  it("keeps previewing the same person while the sidebar switches to the Group list", async () => {
+    setup({});
+    await screen.findByRole("button", { name: "Sandy Sales" });
+
+    await userEvent.click(screen.getByText("Group"));
+
+    expect(
+      await screen.findByPlaceholderText("Search for a group"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Previewing as" }),
+    ).toHaveTextContent("Previewing as Sandy Sales");
+  });
+
   it("offers Open in new tab as one button, with no more-options menu", async () => {
     setup({});
 
