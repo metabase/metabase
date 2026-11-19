@@ -860,6 +860,18 @@
 
 ;;; ------------------------------------------------ -set-premium-embedding-token! ------------------------------------------------
 
+(deftest cloud-license-token-is-read-only-test
+  (let [original-token    (tu/random-token)
+        replacement-token (tu/random-token)]
+    (mt/with-temp-env-var-value! [hm-deploy-time "2026-11-02T00:00:00Z"
+                                  mb-premium-embedding-token nil]
+      (mt/with-temporary-raw-setting-values [premium-embedding-token original-token]
+        (with-store [_ (constantly good-status)]
+          (mt/user-http-request :crowberto :put 403 "setting/premium-embedding-token" {:value replacement-token})
+          (mt/user-http-request :crowberto :put 403 "setting" {:premium-embedding-token replacement-token})
+          (mt/user-http-request :crowberto :put 403 "setting/premium-embedding-token" {:value nil})
+          (is (= original-token (premium-features/premium-embedding-token))))))))
+
 (deftest set-premium-embedding-token-canonical-invalid-test
   (testing "When MetaStore says the token is invalid (canonical), throws 400 with MetaStore's message"
     (let [old-token (tu/random-token)]
