@@ -13,6 +13,7 @@ import {
   type PreviewDatabase,
   type PreviewTableAccess,
   type Principal,
+  type PrincipalType,
   useDebugPermissionsQuery,
   useGetCollectionsPreviewQuery,
   useGetDataPreviewQuery,
@@ -95,6 +96,8 @@ export type WhyList = {
 
 /** The preview being explained: the user it runs as, and the attribute values and unsaved edits it runs with. */
 export type WhyPreview = {
+  /** Whether the preview is of a real user, or of a group or tenant that a stand-in user stands for. */
+  principalType: PrincipalType;
   userId: number;
   previewId?: string;
   unsavedEditsId?: string;
@@ -156,13 +159,24 @@ export function useWhyList(
   ) {
     return null;
   }
+  const personalCollectionName =
+    preview?.principalType === "user"
+      ? t`${who}'s personal collection`
+      : t`Their personal collection`;
+  const main = namePersonalCollection(mainCollections, personalCollectionName);
+  const shared = namePersonalCollection(
+    sharedCollections,
+    personalCollectionName,
+  );
+  const tenant = namePersonalCollection(
+    tenantCollections,
+    personalCollectionName,
+  );
   const collections: CollectionLists = {
-    main: mainCollections,
-    shared: sharedCollections,
-    tenant: tenantCollections,
-    all: [mainCollections, sharedCollections, tenantCollections].flatMap(
-      (list) => list.collections,
-    ),
+    main,
+    shared,
+    tenant,
+    all: [main, shared, tenant].flatMap((list) => list.collections),
   };
   const summary = getSummaryPage(who, collections, dataPreview);
   if (item == null) {
@@ -201,6 +215,19 @@ export function useWhyList(
       queryCheck,
     ),
     summary,
+  };
+}
+
+/** The list with its personal collection named `name`; a group or tenant preview has no one whose name could go there. */
+function namePersonalCollection(
+  list: PreviewCollectionsResponse,
+  name: string,
+): PreviewCollectionsResponse {
+  return {
+    ...list,
+    collections: list.collections.map((collection) =>
+      collection.source === "personal" ? { ...collection, name } : collection,
+    ),
   };
 }
 
@@ -588,14 +615,10 @@ function getCollectionWhyTarget(
   who: string,
   collection: PreviewCollection,
 ): WhyTarget {
-  const name =
-    collection.source === "personal"
-      ? t`${who}'s personal collection`
-      : collection.name;
   return {
-    title: name,
+    title: collection.name,
     who,
-    subject: { label: t`Collection`, value: name },
+    subject: { label: t`Collection`, value: collection.name },
     column: "collection",
     cell: collection.access,
     security: null,

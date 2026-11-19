@@ -285,7 +285,11 @@ export function TroubleshootPage() {
         isOpen={isWhyOpen}
         preview={
           preview != null
-            ? { userId: preview.user_id, previewId: preview.preview_id }
+            ? {
+                principalType,
+                userId: preview.user_id,
+                previewId: preview.preview_id,
+              }
             : null
         }
         whoName={whoName}

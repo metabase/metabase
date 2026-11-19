@@ -36,7 +36,11 @@ const SANDY: PreviewPrincipal = {
   groups: [],
 };
 
-const SANDY_PREVIEW: WhyPreview = { userId: SANDY.id, previewId: "preview-1" };
+const SANDY_PREVIEW: WhyPreview = {
+  principalType: "user",
+  userId: SANDY.id,
+  previewId: "preview-1",
+};
 
 const SALES_COLLECTION_ID = 5;
 
@@ -455,6 +459,52 @@ describe("useWhyList", () => {
         expect(getPageCollections(result.current)).toEqual([
           "Tenant Collection: Acme",
           "Sandy Sales's personal collection",
+        ]),
+      );
+    });
+
+    it("names the personal collection Their personal collection in a group preview, whose stand-in user has no name to put there", async () => {
+      const { result } = setup({
+        path: "/",
+        isAllCollections: true,
+        preview: { ...SANDY_PREVIEW, principalType: "group" },
+        collections: {
+          default: [
+            getCollection("root", "Our analytics", 0, "read"),
+            PERSONAL_COLLECTION,
+          ],
+        },
+      });
+
+      await waitFor(() =>
+        expect(getPageCollections(result.current)).toEqual([
+          "Our analytics",
+          "Their personal collection",
+        ]),
+      );
+    });
+
+    it("names the personal collection Their personal collection in a tenant preview, so it isn't read as the tenant's own", async () => {
+      const { result } = setup({
+        path: "/",
+        isAllCollections: true,
+        isTenantUser: true,
+        preview: { ...SANDY_PREVIEW, principalType: "tenant" },
+        collections: {
+          default: [PERSONAL_COLLECTION],
+          tenant: [
+            {
+              ...getCollection(9, "Tenant Collection: Acme", 0, "write"),
+              source: "tenant",
+            },
+          ],
+        },
+      });
+
+      await waitFor(() =>
+        expect(getPageCollections(result.current)).toEqual([
+          "Tenant Collection: Acme",
+          "Their personal collection",
         ]),
       );
     });

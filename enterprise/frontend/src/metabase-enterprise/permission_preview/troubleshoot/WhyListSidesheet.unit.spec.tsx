@@ -1246,7 +1246,7 @@ function setup({
 function getProps(openedItem: OpenedItem | null) {
   return {
     isOpen: true,
-    preview: { userId: SANDY.id },
+    preview: { principalType: "user" as const, userId: SANDY.id },
     whoName: "Sandy Sales",
     sentenceWhoName: "Sandy Sales",
     openedItem,

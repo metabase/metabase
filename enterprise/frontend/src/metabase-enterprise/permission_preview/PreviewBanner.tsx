@@ -279,6 +279,7 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
       <WhyListSidesheet
         isOpen={isWhyOpen}
         preview={{
+          principalType: state.principalType,
           userId: state.userId,
           previewId: state.previewId,
           unsavedEditsId: state.unsavedEdits?.isApplied
