@@ -611,30 +611,28 @@
   (testing "keeps spaces and newlines inside an entry"
     (is (= {:db-value "A,\"B\nC\",D E", :parsed-value ["A" "B\nC" "D E"]}
            (set-and-fetch-csv-setting-value! ["A" "B\nC" "D E"]))))
+  (testing "should be able to set nil CSV setting"
+    (is (= {:db-value nil, :parsed-value nil}
+           (set-and-fetch-csv-setting-value! nil))))
+  (testing "default values for CSV settings should work"
+    (test-csv-setting-with-default! nil)
+    (is (= ["A" "B" "C"]
+           (test-csv-setting-with-default)))))
+
+(deftest csv-setting-string-value-test
   (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
     (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
            (set-and-fetch-csv-setting-value! "A,B,C"))))
   (testing "stores a CSV string in the same form as a list"
     (is (= {:db-value "A,B,\"C1,C2\"", :parsed-value ["A" "B" "C1,C2"]}
            (set-and-fetch-csv-setting-value! " A , B,,\"C1,C2\""))))
-  (testing "stores nothing for an empty value"
-    (doseq [empty-value ["" []]]
-      (testing (pr-str empty-value)
-        (is (= {:db-value nil, :parsed-value nil}
-               (set-and-fetch-csv-setting-value! empty-value))))))
-  (testing "stores only blank entries as an empty list, which overrides a default"
-    (doseq [blank [" , " [" "]]]
-      (testing (pr-str blank)
-        (is (= {:db-value ",", :parsed-value []}
-               (set-and-fetch-csv-setting-value! blank)))
-        (test-csv-setting-with-default! blank)
-        (is (= [] (test-csv-setting-with-default)))))
-    (test-csv-setting-with-default! nil))
   (testing "accepts a string that ends in blank lines"
     (doseq [trailing ["A,B\n\n" "A,B\r\n \r\n"]]
       (testing (pr-str trailing)
         (is (= {:db-value "A,B", :parsed-value ["A" "B"]}
-               (set-and-fetch-csv-setting-value! trailing))))))
+               (set-and-fetch-csv-setting-value! trailing)))))))
+
+(deftest csv-setting-invalid-string-test
   (testing "rejects a CSV string that does not parse, or spans several lines, and keeps the stored value"
     (test-csv-setting! "A,B")
     (doseq [[bad message] [["A,\"B"  "Invalid comma-separated value."]
@@ -646,14 +644,29 @@
                  nil
                  (catch clojure.lang.ExceptionInfo e
                    [(ex-message e) (ex-data e)]))))
-        (is (= ["A" "B"] (test-csv-setting))))))
-  (testing "should be able to set nil CSV setting"
+        (is (= ["A" "B"] (test-csv-setting)))))))
+
+(deftest csv-setting-empty-value-test
+  (testing "stores nothing for an empty string, so the default applies"
     (is (= {:db-value nil, :parsed-value nil}
-           (set-and-fetch-csv-setting-value! nil))))
-  (testing "default values for CSV settings should work"
-    (test-csv-setting-with-default! nil)
-    (is (= ["A" "B" "C"]
-           (test-csv-setting-with-default)))))
+           (set-and-fetch-csv-setting-value! ""))))
+  (try
+    (testing "stores an empty list, or only blank entries, as an empty list that overrides a default"
+      (doseq [empty-list [[] [" "] " , "]]
+        (testing (pr-str empty-list)
+          (is (= {:db-value ",", :parsed-value []}
+                 (set-and-fetch-csv-setting-value! empty-list)))
+          (test-csv-setting-with-default! empty-list)
+          (is (= [] (test-csv-setting-with-default))))))
+    (testing "keeps an empty list when what was read is written back, or imported from its stored form"
+      (test-csv-setting-with-default! [])
+      (test-csv-setting-with-default! (test-csv-setting-with-default))
+      (is (= [] (test-csv-setting-with-default)))
+      (test-csv-setting-with-default! nil)
+      (setting/set-string! :test-csv-setting-with-default ",")
+      (is (= [] (test-csv-setting-with-default))))
+    (finally
+      (test-csv-setting-with-default! nil))))
 
 (deftest csv-setting-user-facing-value-test
   (testing "`user-facing-value` should be `nil` for CSV Settings with default values"
