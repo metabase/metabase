@@ -44,8 +44,8 @@
   (get (swap! batch-locks update job-key #(or % (ReentrantLock. true))) job-key))
 
 (mu/defn- run-batch-locked! :- :any
-  "Run a batch of `job` once no other runner on this instance is running one, and return its result. Two runners
-  taking a batch at once would process the same entities."
+  "Run a batch of `job` once no other runner on this node is running one, and return its result. Two runners taking a
+  batch at once would process the same entities."
   [{:keys [run-batch!] :as job} :- Job]
   (let [lock (batch-lock job)]
     (.lock lock)

@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest failed-entity-columns-cover-every-analyzed-type-test
-  (is (= deps.analysis-finding/analyzable-entities
+  (is (= (set (deps.analysis-finding/analyzed-types))
          (set (keys @#'dependencies.db/failed-entity-columns)))))
 
 (deftest cause-columns-cover-every-source-type-test

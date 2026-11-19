@@ -36,6 +36,7 @@
           analysis (:analysis (dependencies/spec model))
           results  (try (analysis entity)
                         (catch Exception e
+                          (dependencies.db/throw-unless-app-db-reachable! e)
                           (log/errorf "Error analyzing entity: %s" (ex-message e))
                           #{(lib/validation-exception-error (.getMessage e))}))]
       (models.analysis-finding/upsert-analysis!
@@ -52,16 +53,6 @@
     (catch Exception record-e
       (log/errorf "Recording the failure of entity %s %s failed: %s" (name entity-type) entity-id (ex-message record-e))))
   nil)
-
-(mu/defn- analyze-entity!
-  "Analyze `entity`, recording a failure as a failed finding before rethrowing it."
-  [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
-  (try (upsert-analysis! entity)
-       (catch Throwable e
-         (log/errorf "Analyzing entity %s %s failed: %s"
-                     (t2/model entity) (:id entity) (ex-message e))
-         (record-failed-finding! (dependencies/model-type (t2/model entity)) (:id entity) e)
-         (throw e))))
 
 (mu/defn- record-analysis-failure! :- :nil
   "Count a failed analysis of the entity `entity-type` `entity-id`; the job gives up after `dependency-max-failures`."
@@ -118,10 +109,13 @@
                                                             (record-failed-finding! entity-type entity-id e)
                                                             (record-analysis-failure! entity-type entity-id)))]
           (try
-            (analyze-entity! entity)
+            (upsert-analysis! entity)
             (dependencies.db/clear-analysis-finding-status!
              entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*)
             (catch Throwable e
+              (dependencies.db/throw-unless-app-db-reachable! e)
+              (log/errorf "Analyzing %s %s failed: %s" (name entity-type) (:id entity) (ex-message e))
+              (record-failed-finding! entity-type (:id entity) e)
               (record-analysis-failure! entity-type (:id entity))
               (when-not (instance? Exception e)
                 (throw e)))))

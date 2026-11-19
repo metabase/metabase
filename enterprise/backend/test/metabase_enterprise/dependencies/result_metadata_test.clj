@@ -757,6 +757,28 @@
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
         (is (pending? failing-id))))))
 
+(deftest failure-while-app-db-unreachable-test
+  (testing "a re-derive failing while the app DB is unreachable fails the batch, counting against no card"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {failing-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {other-id :id}   {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! failing-id other-id)
+        (let [rederive-failing! #(do-with-inference (fn [infer query card]
+                                                      (if (= failing-id (:id card))
+                                                        (throw (ex-info "connection lost" {}))
+                                                        (rename-column (infer query card) "NAME" "Changed")))
+                                                    rederive!)
+              status            #(t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id failing-id)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
+            (is (thrown-with-msg? Exception #"connection lost" (rederive-failing!))))
+          (is (=? {:fail_count 0 :terminal false} (status)))
+          (is (pending? failing-id))
+          (testing "and counts against the card while the app DB answers, without blocking the rest"
+            (rederive-failing!)
+            (is (= "Changed" (:display_name (column other-id "NAME"))))
+            (is (=? {:fail_count 1 :terminal false} (status)))))))))
+
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"
     (with-dependencies-feature

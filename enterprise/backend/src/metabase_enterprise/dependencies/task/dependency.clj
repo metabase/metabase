@@ -91,7 +91,7 @@
   (log/errorf "Computing the dependencies of %s %s failed: %s" (name entity-type) entity-id (ex-message e))
   (when (dependencies.db/record-dependency-failure! entity-type entity-id (deps.settings/dependency-max-failures))
     (log/warnf "Giving up on the dependencies of %s %s until it changes" (name entity-type) entity-id)
-    (when (contains? deps.analysis-finding/analyzable-entities entity-type)
+    (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
       (dependencies.db/mark-analysis-finding-statuses-stale! {entity-type #{entity-id}})
       (deps.analysis-finding/record-failed-finding! entity-type entity-id e)))
   nil)
@@ -115,6 +115,7 @@
           (compute-deps-for-entity! entity-type entity)
           (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
           (catch Throwable e ;; catch OOMs
+            (dependencies.db/throw-unless-app-db-reachable! e)
             (record-failure! entity-type (:id entity) e)
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))

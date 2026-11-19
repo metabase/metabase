@@ -6,7 +6,6 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -17,9 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql SQLException)))
+   [toucan2.core :as t2]))
 
 (def ^:private Column
   "A Honey SQL column keyword, or a string literal standing in for one."
@@ -407,30 +404,39 @@
   (let [model (dependencies/entity-model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
-(defn- database-failure? [e]
-  (and (some #(instance? SQLException %) (u/full-exception-chain e))
-       (not (sql-errors/row-rejected? e))))
+(mu/defn app-db-reachable? :- :boolean
+  "Whether the app DB answers a query on a connection of its own, outside any transaction of this thread."
+  []
+  (try
+    (boolean (mdb/can-connect-to-data-source? (mdb/data-source)))
+    (catch Exception _
+      false)))
+
+(mu/defn throw-unless-app-db-reachable! :- :nil
+  "Rethrows `e` while the app DB is unreachable. A failure then says nothing about the entity it happened on, so it
+  mustn't count against it."
+  [e :- (ms/InstanceOfClass Throwable)]
+  (when-not (app-db-reachable?)
+    (throw e)))
 
 (mu/defn readable-entities :- [:sequential :any]
-  "The entities `read-entities` returns for `ids`. When that fails on a row's content, reads each id alone, calling
-  `on-unreadable` with the id and exception of each that fails, so one unreadable row doesn't block the rest. A
-  database failure is rethrown: it isn't about any one row."
+  "The entities `read-entities` returns for `ids`. When that fails, reads each id alone, calling `on-unreadable` with
+  the id and exception of each that fails, so one unreadable row doesn't block the rest. Rethrows instead while the
+  app DB is unreachable: that failure isn't about any row."
   [read-entities :- [:fn {:error/message "a function"} ifn?]
    ids           :- [:set ::deps.dependency-types/entity-id]
    on-unreadable :- [:fn {:error/message "a function"} ifn?]]
   (try
     (vec (read-entities ids))
     (catch Exception e
-      (when (database-failure? e)
-        (throw e))
+      (throw-unless-app-db-reachable! e)
       (log/warnf "Reading %s entities together failed, reading each on its own: %s" (count ids) (ex-message e))
       (into []
             (mapcat (fn [id]
                       (try
                         (vec (read-entities #{id}))
                         (catch Exception e
-                          (when (database-failure? e)
-                            (throw e))
+                          (throw-unless-app-db-reachable! e)
                           (on-unreadable id e)
                           nil))))
             ids))))
@@ -909,7 +915,7 @@
   "The entities of `entity-type` whose analysis failed or whose dependencies the dependency job gave up computing, with
   `given_up` true for the latter, excluding archived and Metabase-managed content."
   [entity-type :- (into [:enum] (keys failed-entity-columns))]
-  (let [model                           (deps.dependency-types/dependency-type->model entity-type)
+  (let [model                           (dependencies/entity-model entity-type)
         {:keys [archived? collection?]} (failed-entity-columns entity-type)]
     (t2/query {:select    (cond-> [:entity.id :entity.entity_id :entity.name [:dependency_status.terminal :given_up]]
                             collection? (conj :entity.collection_id))
@@ -924,7 +930,7 @@
                                    [:or
                                     [:= :analysis_finding.result false]
                                     [:= :dependency_status.terminal true]]
-                                   (mi/exclude-internal-content-hsql model :table-alias :entity)]
+                                   (mi/non-internal-filter-clause model :entity)]
                             archived? (conj [:= :entity.archived false]))
                :order-by  [[:entity.id :asc]]})))
 

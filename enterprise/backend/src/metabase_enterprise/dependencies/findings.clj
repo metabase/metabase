@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
@@ -56,7 +57,9 @@
 
 (mr/def ::analyzed-type
   "A type of entity the analysis checks."
-  (into [:enum] (sort deps.analysis-finding/analyzable-entities)))
+  [:and
+   ::deps.dependency-types/dependency-types
+   [:fn {:error/message "a type the analysis checks"} #(some #{%} (deps.analysis-finding/analyzed-types))]])
 
 (mr/def ::cause
   "The entity an error is traced to. `entity_id` and `name` are nil once the entity is deleted; `entity_id` is always
@@ -160,4 +163,4 @@
   "Every entity whose stored analysis failed or whose dependencies could not be computed, with its errors, excluding
   archived and Metabase-managed content. Call [[drain-pending!]] first for current results."
   []
-  (into [] (mapcat failed-entities-of-type) (sort deps.analysis-finding/analyzable-entities)))
+  (into [] (mapcat failed-entities-of-type) (deps.analysis-finding/analyzed-types)))
