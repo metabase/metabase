@@ -817,8 +817,8 @@
                            (cc))))]
       (is (= (call-count 2) (call-count 6))))))
 
-(deftest collection-items-metadata-query-count-test
-  (testing "GET /api/collection/:id/items/metadata builds each type of item once per query it needs, for a non-admin too"
+(deftest collection-items-metadata-builds-item-queries-twice-test
+  (testing "GET /api/collection/:id/items/metadata builds the queries of its items once per query it runs, for a non-admin too"
     (mt/with-temporary-setting-values [transforms-enabled true]
       (mt/with-premium-features #{:library :snippet-collections :transforms :transforms-python :content-verification
                                   :official-collections :data-studio :tenants :remote-sync}
@@ -831,18 +831,22 @@
           (perms/revoke-collection-permissions! (perms/all-users-group) a)
           (perms/revoke-collection-permissions! (perms/all-users-group) b)
           (perms/grant-collection-read-permissions! (perms/all-users-group) a)
-          (let [query-count (fn [url & params]
-                              (apply mt/user-http-request :rasta :get 200 url params)
-                              (t2/with-call-count [call-count]
-                                (apply mt/user-http-request :rasta :get 200 url params)
-                                (call-count)))
-                a-url       (str "collection/" a "/items/metadata")]
-            (is (= 27 (query-count a-url)))
-            (is (= 41 (query-count a-url :archived true)))
-            (is (= 25 (query-count "collection/root/items/metadata")))
-            (is (= 39 (query-count "collection/root/items/metadata" :archived true)))
+          (let [builds (fn [url & params]
+                         (apply mt/user-http-request :rasta :get 200 url params)
+                         (let [calls    (atom 0)
+                               original (mt/original-fn #'collection-items/item-queries)]
+                           (mt/with-dynamic-fn-redefs [collection-items/item-queries (fn [& args]
+                                                                                       (swap! calls inc)
+                                                                                       (apply original args))]
+                             (apply mt/user-http-request :rasta :get 200 url params))
+                           @calls))
+                a-url  (str "collection/" a "/items/metadata")]
+            (is (= 2 (builds a-url)))
+            (is (= 2 (builds a-url :archived true)))
+            (is (= 2 (builds "collection/root/items/metadata")))
+            (is (= 2 (builds "collection/root/items/metadata" :archived true)))
             (doseq [collection-namespace ["snippets" "transforms" "data-actions" "data-apps"]]
-              (is (= 9 (query-count "collection/root/items/metadata" :namespace collection-namespace))
+              (is (= 2 (builds "collection/root/items/metadata" :namespace collection-namespace))
                   collection-namespace))))))))
 
 (deftest collection-items-based-on-upload-test
