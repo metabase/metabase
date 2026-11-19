@@ -126,17 +126,25 @@ describe("TransformTestRunPage", () => {
       name: "revenue per customer",
     });
     expect(equals).toHaveTextContent("Failed");
-    const unexpected = within(equals).getByLabelText("Unexpected rows");
-    expect(within(unexpected).getByText("1 row")).toBeInTheDocument();
-    expect(within(unexpected).getByText("customer")).toBeInTheDocument();
+    expect(
+      within(equals).getByText("Returned 1 row, expected 1"),
+    ).toBeInTheDocument();
+    expect(within(equals).getByText("customer")).toBeInTheDocument();
+    const unexpected = within(equals).getByRole("row", { name: /Unexpected/ });
+    expect(unexpected).toHaveAttribute("data-row-kind", "unexpected");
     expect(within(unexpected).getByText("Ada")).toBeInTheDocument();
     expect(within(unexpected).getByText("120")).toBeInTheDocument();
-    const missing = within(equals).getByLabelText("Missing rows");
+    const missing = within(equals).getByRole("row", { name: /Missing/ });
+    expect(missing).toHaveAttribute("data-row-kind", "missing");
     expect(within(missing).getByText("150")).toBeInTheDocument();
 
     const empty = within(result).getByRole("group", { name: "no refunds" });
-    const returned = within(empty).getByLabelText("Rows the query returned");
-    expect(within(returned).getByText("31")).toBeInTheDocument();
+    expect(within(empty).getByText("Expected no rows")).toBeInTheDocument();
+    expect(
+      within(within(empty).getByRole("row", { name: /Unexpected/ })).getByText(
+        "31",
+      ),
+    ).toBeInTheDocument();
     expect(
       within(empty).getByText("4 more rows are not shown."),
     ).toBeInTheDocument();
@@ -149,9 +157,7 @@ describe("TransformTestRunPage", () => {
 
     const passed = within(result).getByRole("group", { name: "no nulls" });
     expect(passed).toHaveTextContent("Passed");
-    expect(
-      within(passed).queryByLabelText("Rows the query returned"),
-    ).not.toBeInTheDocument();
+    expect(within(passed).queryByRole("row")).not.toBeInTheDocument();
 
     const info = screen.getByRole("region", { name: "Info" });
     expect(

@@ -137,7 +137,7 @@ describe("SegmentTestRunPage", () => {
     expect(expectation).toHaveTextContent("Failed");
     expect(
       within(
-        within(expectation).getByLabelText("Rows the query returned"),
+        within(expectation).getByRole("row", { name: /Unexpected/ }),
       ).getByText("31"),
     ).toBeInTheDocument();
   });

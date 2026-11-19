@@ -1,9 +1,21 @@
+import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { Box, Group, Stack, Text, Title } from "metabase/ui";
+import type { TreeTableColumnDef } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Ellipsified,
+  Group,
+  Stack,
+  Text,
+  Title,
+  TreeTable,
+  useTreeTableInstance,
+} from "metabase/ui";
 import type {
+  DataTestResultColumn,
   DataTestRow,
-  DataTestRowsData,
   DataTestRunStoredResult,
   TransformTestExpectationResult,
 } from "metabase-types/api";
@@ -12,7 +24,8 @@ import {
   formatDataTestRunStatus,
   isFailedDataTestRunStatus,
 } from "../../utils";
-import { DataTestDataCard } from "../DataTestDataCard";
+
+import S from "./DataTestRunResult.module.css";
 
 type DataTestRunResultProps = {
   result: DataTestRunStoredResult;
@@ -38,11 +51,9 @@ type ExpectationResultProps = {
 };
 
 function ExpectationResult({ expectation }: ExpectationResultProps) {
-  const { name, status, error, truncated = 0 } = expectation;
-  const columns = (expectation.columns ?? []).map((column) => ({
-    name: column.name,
-    cast_type: column.database_type,
-  }));
+  const { name, status, error, columns = [], truncated = 0 } = expectation;
+  const rows = useMemo(() => getDiffRows(expectation), [expectation]);
+  const rowCountLabel = getRowCountLabel(expectation);
 
   return (
     <Stack role="group" aria-label={name} gap="sm">
@@ -57,15 +68,14 @@ function ExpectationResult({ expectation }: ExpectationResultProps) {
         </Box>
       </Group>
       {error != null && <Text c="feedback-negative">{error.message}</Text>}
-      {getRowLists(expectation).map(({ label, rows }) => (
-        <DataTestDataCard
-          key={label}
-          name={label}
-          icon="table2"
-          description={getRowCountLabel(rows.length)}
-          data={{ format: "rows", columns, rows } satisfies DataTestRowsData}
-        />
-      ))}
+      {rows.length > 0 && (
+        <>
+          {rowCountLabel != null && (
+            <Text c="text-secondary">{rowCountLabel}</Text>
+          )}
+          <DiffTable name={name} columns={columns} rows={rows} />
+        </>
+      )}
       {truncated > 0 && (
         <Text c="text-secondary">
           {ngettext(
@@ -79,25 +89,118 @@ function ExpectationResult({ expectation }: ExpectationResultProps) {
   );
 }
 
-type RowList = {
-  label: string;
-  rows: DataTestRow[];
+type DiffRowKind = "unexpected" | "missing";
+
+type DiffRow = {
+  id: string;
+  kind: DiffRowKind;
+  row: DataTestRow;
 };
 
-function getRowLists(expectation: TransformTestExpectationResult): RowList[] {
-  const rowLists =
+function getDiffRows(expectation: TransformTestExpectationResult): DiffRow[] {
+  const unexpected =
     expectation.type === "empty"
-      ? [{ label: t`Rows the query returned`, rows: expectation.sample ?? [] }]
-      : [
-          {
-            label: t`Unexpected rows`,
-            rows: expectation["extra-rows"] ?? [],
-          },
-          { label: t`Missing rows`, rows: expectation["missing-rows"] ?? [] },
-        ];
-  return rowLists.filter(({ rows }) => rows.length > 0);
+      ? (expectation.sample ?? [])
+      : (expectation["extra-rows"] ?? []);
+  const missing =
+    expectation.type === "empty" ? [] : (expectation["missing-rows"] ?? []);
+
+  return [
+    ...unexpected.map((row, index) => ({
+      id: `unexpected-${index}`,
+      kind: "unexpected" as const,
+      row,
+    })),
+    ...missing.map((row, index) => ({
+      id: `missing-${index}`,
+      kind: "missing" as const,
+      row,
+    })),
+  ];
 }
 
-function getRowCountLabel(count: number) {
-  return ngettext(msgid`${count} row`, `${count} rows`, count);
+function getRowCountLabel(expectation: TransformTestExpectationResult) {
+  if (expectation.type === "empty") {
+    return t`Expected no rows`;
+  }
+  const rowCounts = expectation["row-counts"];
+  if (rowCounts == null) {
+    return null;
+  }
+  const { actual, expected } = rowCounts;
+  const returnedLabel = ngettext(
+    msgid`Returned ${actual} row`,
+    `Returned ${actual} rows`,
+    actual,
+  );
+  return t`${returnedLabel}, expected ${expected}`;
+}
+
+function getKindLabel(kind: DiffRowKind) {
+  return kind === "unexpected" ? t`+ Unexpected` : t`− Missing`;
+}
+
+type DiffTableProps = {
+  name: string;
+  columns: DataTestResultColumn[];
+  rows: DiffRow[];
+};
+
+function DiffTable({ name, columns, rows }: DiffTableProps) {
+  const tableColumns = useMemo(
+    (): TreeTableColumnDef<DiffRow>[] => [
+      {
+        id: "kind",
+        header: "",
+        accessorFn: (entry) => getKindLabel(entry.kind),
+        width: "auto",
+        cell: ({ row, getValue }) => (
+          <Box
+            fw="bold"
+            fz="sm"
+            c={
+              row.original.kind === "unexpected"
+                ? "feedback-negative"
+                : "feedback-warning"
+            }
+          >
+            {String(getValue())}
+          </Box>
+        ),
+      },
+      ...columns.map(
+        (column): TreeTableColumnDef<DiffRow> => ({
+          id: column.name,
+          header: column.name,
+          accessorFn: (entry) => formatValue(entry.row[column.name]),
+          minWidth: 80,
+          cell: ({ getValue }) => (
+            <Ellipsified data-row-value>{String(getValue())}</Ellipsified>
+          ),
+        }),
+      ),
+    ],
+    [columns],
+  );
+
+  const instance = useTreeTableInstance({
+    data: rows,
+    columns: tableColumns,
+    getNodeId: (entry) => entry.id,
+  });
+
+  return (
+    <Card className={S.rows} withBorder p={0}>
+      <TreeTable
+        instance={instance}
+        static
+        ariaLabel={t`Differences of ${name}`}
+        getRowProps={(row) => ({ "data-row-kind": row.original.kind })}
+      />
+    </Card>
+  );
+}
+
+function formatValue(value: DataTestRow[string] | undefined): string {
+  return value === undefined ? "" : String(value);
 }
