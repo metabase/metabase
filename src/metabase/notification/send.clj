@@ -491,10 +491,13 @@
                    (doto (BasicThreadFactory/builder)
                      (.namingPattern "send-notification-thread-pool-%d"))))
         shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
+        ;; set when the drain runs out; a send can swallow the interrupt, so workers check this before taking more
+        abandon-flag  (java.util.concurrent.atomic.AtomicBoolean. false)
         start-worker! (fn []
                         (.submit ^ThreadPoolExecutor executor
                                  ^Callable (fn []
-                                             (while (and (not (Thread/interrupted))
+                                             (while (and (not (.get abandon-flag))
+                                                         (not (Thread/interrupted))
                                                          (or (not (.get shutdown-flag))
                                                              ;; Continue processing if shutdown flag is set but queue is not empty
                                                              (pos? (queue-size queue))))
@@ -542,6 +545,7 @@
                             true)
                         (do (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
                                        (queue-size queue))
+                            (.set abandon-flag true)
                             (.shutdownNow ^ThreadPoolExecutor executor)
                             false)))]
     (log/infof "Starting notification thread pool with %d threads" pool-size)
@@ -621,11 +625,10 @@
             (send-notification-async! notification)))))))
 
 (defn shutdown!
-  "Stop every notification dispatcher that has started, letting each send what it has queued.
+  "Stop both notification dispatchers, letting each send what it has queued.
    Waits up to [[notification.settings/notification-shutdown-timeout-seconds]] in all, then abandons what is left."
   []
-  ;; a dispatcher that never started has nothing to send, and starting it here would only create its threads
-  (let [workers  (into [] (comp (filter realized?) (map deref)) [dedup-priority-dispatcher simple-blocking-dispatcher])
+  (let [workers  [@dedup-priority-dispatcher @simple-blocking-dispatcher]
         deadline (+ (System/currentTimeMillis) (* 1000 (notification.settings/notification-shutdown-timeout-seconds)))]
     (log/with-context {:dispatcher-count (count workers)}
       (log/info "Shutting down notification dispatchers...")

@@ -964,28 +964,33 @@
               (is (= 0 (notification.send/queue-size queue))))))))))
 
 (deftest notification-dispatcher-shutdown-timeout-test
-  (testing "a dispatcher that cannot empty its queue in time interrupts its workers and returns false"
+  (testing "a dispatcher that cannot empty its queue in time stops sending, even when a send swallows the interrupt"
     (let [sending     (java.util.concurrent.CountDownLatch. 1)
           interrupted (promise)
+          sent-later  (promise)
           queue       (#'notification.send/create-dedup-priority-queue)
           dispatcher  (#'notification.send/create-notification-dispatcher 1 queue)
           dispatch-fn (:dispatch-fn dispatcher)]
       ;; dispatcher spawns worker threads without our dynamic binding
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync!
-                    (fn [_notification]
-                      (.countDown sending)
-                      (try
-                        (Thread/sleep 60000)
-                        (catch InterruptedException e
-                          (deliver interrupted true)
-                          (throw e))))]
+                    (fn [{:keys [id]}]
+                      (if (= 1 id)
+                        (do (.countDown sending)
+                            ;; like `channel-send-retrying!`, which catches every Throwable and returns
+                            (try
+                              (Thread/sleep 60000)
+                              (catch InterruptedException _
+                                (deliver interrupted true))))
+                        (deliver sent-later id)))]
         (dispatch-fn {:id 1 :payload_type :notification/testing})
         (dispatch-fn {:id 2 :payload_type :notification/testing})
         (.await sending)
         (is (= {:drained?     false
                 :interrupted? true
+                :sent-later   nil
                 :refused      ::notification.send/shutdown}
                {:drained?     ((:shutdown-fn dispatcher) 100)
                 :interrupted? (deref interrupted 5000 false)
+                :sent-later   (deref sent-later 1000 nil)
                 :refused      (dispatch-fn {:id 3 :payload_type :notification/testing})}))))))
