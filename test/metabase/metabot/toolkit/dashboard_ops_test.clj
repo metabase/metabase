@@ -1562,6 +1562,33 @@
                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
                                  {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}])))))
 
+(def ^:private another-dashcard
+  "A second dashcard below [[a-dashcard]], its card 12 connected to `p1`."
+  {:id                 8
+   :card_id            12
+   :row                10
+   :col                0
+   :size_x             4
+   :size_y             4
+   :dashboard_tab_id   nil
+   :parameter_mappings [(p1-mapping 12)]})
+
+(deftest dropped-connections-asked-elsewhere-test
+  (testing "an op that asks to drop another dashcard's connections doesn't hide an earlier loss on this one"
+    (doseq [op [{:op "unwire_parameter", :parameter_id "p1", :dashcard_id 8}
+                {:op "patch_dashcard", :dashcard_id 8, :patch {:parameter_mappings []}}]]
+      (testing (pr-str op)
+        (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+               (dropped-connections (assoc (p1-dash a-dashcard) :dashcards [a-dashcard another-dashcard])
+                                    [{:op "replace_card", :dashcard_id 7, :card_id 99} op]))))))
+  (testing "a patch that doesn't set the mappings doesn't hide an earlier loss"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "replace_card", :dashcard_id 7, :card_id 99}
+                                 {:op          "patch_dashcard"
+                                  :dashcard_id 7
+                                  :patch       {:visualization_settings {:card.title "New"}}}])))))
+
 (deftest dropped-connections-stored-mappings-test
   (testing "a mapping stored without a card id never filtered anything, so losing it is not reported"
     (is (= []
