@@ -17,6 +17,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement.spec]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search.core]
    [metabase.serialization.core :as serialization]
@@ -28,6 +29,7 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.dependencies :as transforms.dependencies]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.replacement :as transforms.replacement]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.search :as transforms.search]
    [metabase.transforms.serialization :as transforms.serialization]
@@ -588,3 +590,8 @@
 
    :dependency-columns #{:source :target}
    :analysis-columns   #{:source :target}})
+
+(defmethod replacement.spec/spec :model/Transform [_model]
+  {:upgrade-field-refs transforms.replacement/upgrade-field-refs
+   :swap-source        transforms.replacement/swap-source
+   :swap-dependency?   true})

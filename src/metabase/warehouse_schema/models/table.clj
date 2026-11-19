@@ -14,6 +14,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement.spec]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -643,3 +644,6 @@
    :items warehouse-schema.db/dependency-table-items
 
    :output-columns #{:name :schema :display_name :active :visibility_type}})
+
+(defmethod replacement.spec/spec :model/Table [_model]
+  {:source-database-id :db_id})

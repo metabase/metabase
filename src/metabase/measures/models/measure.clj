@@ -14,12 +14,14 @@
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
    [metabase.measures.dependencies :as measures.dependencies]
+   [metabase.measures.replacement :as measures.replacement]
    [metabase.measures.schema :as measures.schema]
    [metabase.measures.serialization :as measures.serialization]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement.spec]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -229,3 +231,8 @@
 
    :dependency-columns #{:definition :table_id}
    :output-columns     #{:definition :table_id}})
+
+(defmethod replacement.spec/spec :model/Measure [_model]
+  {:upgrade-field-refs measures.replacement/upgrade-field-refs
+   :swap-source        measures.replacement/swap-source
+   :swap-dependency?   true})

@@ -834,6 +834,7 @@
            events
            lib
            lib.be
+           lib.replacement
            lib.schema
            models
            parameters
@@ -1585,11 +1586,13 @@
            events
            lib
            lib.be
+           lib.replacement
            lib.schema
            measures.schema
            metrics
            models
            premium-features
+           queries
            remote-sync
            revisions
            search
@@ -2728,9 +2731,11 @@
            events
            lib
            lib.be
+           lib.replacement
            lib.schema
            models
            premium-features
+           queries
            remote-sync
            revisions
            search
@@ -3228,6 +3233,7 @@
            events
            lib
            lib.be
+           lib.replacement
            lib.schema
            models
            permissions
@@ -3631,6 +3637,7 @@
            lib
            lib.be
            lib.metadata
+           lib.replacement
            lib.schema
            lib.types
            models
@@ -4259,7 +4266,6 @@
    :uses #{analytics
            api
            app-db
-           dashboards
            dependencies
            events
            lib
@@ -4267,11 +4273,9 @@
            lib.metadata
            lib.replacement
            lib.schema
-           measures.schema
            model-persistence
            models
            queries
-           segments.schema
            task
            transforms
            transforms.schema
@@ -4279,13 +4283,9 @@
            warehouses.schema
            enterprise/dependencies}
    :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
                     :model/Field
-                    :model/Measure
                     :model/PersistedInfo
                     :model/Sandbox
-                    :model/Segment
                     :model/Table
                     :model/Transform}}
 

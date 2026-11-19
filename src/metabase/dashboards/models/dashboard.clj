@@ -14,6 +14,7 @@
    [metabase.dashboards.dependencies :as dashboards.dependencies]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.replacement :as dashboards.replacement]
    [metabase.dashboards.revisions :as dashboards.revisions]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
@@ -34,6 +35,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement.spec]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
@@ -597,3 +599,8 @@
    :dependencies dashboards.dependencies/dependencies
 
    :dependency-columns #{:parameters}})
+
+(defmethod replacement.spec/spec :model/Dashboard [_model]
+  {:hydrate            dashboards.replacement/hydrate
+   :upgrade-field-refs dashboards.replacement/upgrade-field-refs
+   :swap-source        dashboards.replacement/swap-source})

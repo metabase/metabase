@@ -14,11 +14,13 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement.spec]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.segments.audit :as segments.audit]
    [metabase.segments.db :as segments.db]
    [metabase.segments.dependencies :as segments.dependencies]
+   [metabase.segments.replacement :as segments.replacement]
    [metabase.segments.schema :as segments.schema]
    [metabase.segments.serialization :as segments.serialization]
    [metabase.segments.xrays :as segments.xrays]
@@ -240,3 +242,8 @@
    :dependency-columns #{:definition :table_id}
    :analysis-columns   #{:definition :table_id}
    :output-columns     #{:definition :table_id}})
+
+(defmethod replacement.spec/spec :model/Segment [_model]
+  {:upgrade-field-refs segments.replacement/upgrade-field-refs
+   :swap-source        segments.replacement/swap-source
+   :swap-dependency?   true})

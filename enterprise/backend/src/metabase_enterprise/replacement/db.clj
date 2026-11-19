@@ -4,12 +4,8 @@
   (:require
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase.app-db.core :as mdb]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.measures.schema :as measures.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.segments.schema :as segments.schema]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -85,45 +81,10 @@
    changes :- :map]
   (t2/update! model :id id changes))
 
-(mu/defn cards-with-ids
-  "The Cards with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Card :id [:in ids]))
-
-(mu/defn tables-with-ids
-  "The Tables with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Table :id [:in ids]))
-
-(mu/defn dashboards-with-ids
-  "The Dashboards with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Dashboard :id [:in ids]))
-
-(mu/defn transforms-with-ids
-  "The Transforms with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Transform :id [:in ids]))
-
-(mu/defn segments-with-ids
-  "The Segments with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Segment :id [:in ids]))
-
-(mu/defn measures-with-ids
-  "The Measures with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Measure :id [:in ids]))
-
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
-
-(mu/defn cards-by-id
-  "A map of Card ID to Card for `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
 (mu/defn card-database-id
   "The Database ID of the Card with `card-id`."
@@ -146,56 +107,6 @@
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
-
-(mu/defn update-transform!
-  "Apply `changes` to the Transform with `transform-id`, returning the number updated."
-  [transform-id :- ::lib.schema.id/transform
-   changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform :id transform-id changes))
-
-(mu/defn segment
-  "The Segment with `segment-id`, or nil."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id segment-id))
-
-(mu/defn update-segment!
-  "Apply `changes` to the Segment with `segment-id`, returning the number updated."
-  [segment-id :- ::lib.schema.id/segment
-   changes    :- ::segments.schema/segment.update]
-  (t2/update! :model/Segment :id segment-id changes))
-
-(mu/defn measure
-  "The Measure with `measure-id`, or nil."
-  [measure-id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id measure-id))
-
-(mu/defn update-measure!
-  "Apply `changes` to the Measure with `measure-id`, returning the number updated."
-  [measure-id :- ::lib.schema.id/measure
-   changes    :- ::measures.schema/measure.update]
-  (t2/update! :model/Measure :id measure-id changes))
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
-
-(mu/defn dashboard-cards
-  "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn update-dashboard-card!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
