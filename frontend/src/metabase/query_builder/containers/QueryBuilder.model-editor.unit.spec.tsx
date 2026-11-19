@@ -240,6 +240,35 @@ function withModelMetadata(
 }
 
 /**
+ * Keeps the rows that match the `=` filters of an outer query on a model, as
+ * an object detail lookup does. A filter on a column the result doesn't have
+ * matches no rows.
+ */
+function applyEqualsFilters(dataset: Dataset, filters: unknown): Dataset {
+  if (!Array.isArray(filters) || filters.length === 0) {
+    return dataset;
+  }
+  const { cols, rows } = dataset.data;
+  const matchers = filters.map((filter) => {
+    const [operator, , column, value] = Array.isArray(filter) ? filter : [];
+    const [, , columnKey] = Array.isArray(column) ? column : [];
+    const columnIndex = cols.findIndex(
+      (col) => col.name === columnKey || col.id === columnKey,
+    );
+    return (row: RowValue[]) =>
+      operator === "=" && columnIndex >= 0 && row[columnIndex] === value;
+  });
+  const matchingRows = rows.filter((row) =>
+    matchers.every((matches) => matches(row)),
+  );
+  return {
+    ...dataset,
+    row_count: matchingRows.length,
+    data: { ...dataset.data, rows: matchingRows },
+  };
+}
+
+/**
  * Stands in for the backend of one saved model: PUT stores the card, and both
  * the card query and an ad-hoc query on top of the model (`source-card`) run
  * the query of the card as it is stored at that moment.
@@ -281,8 +310,11 @@ function setupModelServer({
   fetchMock.post(`path:/api/card/${card.id}/query`, runSavedQuery);
   setupAdhocQueryEndpoint((call) => {
     const query = parseBody(call);
-    const isQueryOnModel = getFirstStage(query)["source-card"] === card.id;
-    return isQueryOnModel ? runSavedQuery() : runQuery(query);
+    const stage = getFirstStage(query);
+    const isQueryOnModel = stage["source-card"] === card.id;
+    return isQueryOnModel
+      ? applyEqualsFilters(runSavedQuery(), stage.filters)
+      : runQuery(query);
   });
 }
 
@@ -1252,13 +1284,17 @@ describe("QueryBuilder - model editor", () => {
       await waitForHeaderCell("User ID");
       expect(getHeaderNames()).not.toContain("ID");
 
-      const [firstRow] = screen.getAllByTestId("row-id-cell");
-      await userEvent.click(within(firstRow).getByTestId("detail-shortcut"));
+      const [, secondRow] = screen.getAllByTestId("row-id-cell");
+      await userEvent.click(within(secondRow).getByTestId("detail-shortcut"));
       const objectDetail = await screen.findByRole("dialog");
       expect(within(objectDetail).getByText("Quantity")).toBeInTheDocument();
+      // the second row, whose PK is 2, and not the row at index 1
       expect(
-        within(objectDetail).getByRole("heading", { name: "1" }),
+        within(objectDetail).getByRole("heading", { name: "2" }),
       ).toBeInTheDocument();
+      expect(
+        within(objectDetail).getByRole("link", { name: "Open in full page" }),
+      ).toHaveAttribute("href", expect.stringMatching(/\/2$/));
       await userEvent.click(within(objectDetail).getByLabelText("Close"));
       await waitFor(() =>
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
