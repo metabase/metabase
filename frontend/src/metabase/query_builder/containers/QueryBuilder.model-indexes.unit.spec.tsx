@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import type { State } from "metabase/redux/store";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -18,7 +19,7 @@ import {
 } from "metabase-types/api/mocks";
 import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
-import { setup } from "./test-utils";
+import { setup, waitForQueryToFinish } from "./test-utils";
 
 const CREATED_INDEX_ID = 7;
 
@@ -167,9 +168,9 @@ describe("QueryBuilder > model indexes", () => {
         modelId: MODEL_ID,
         nextIndexId: CREATED_INDEX_ID,
       });
-      await setupModelPage();
+      const { store } = await setupModelPage();
 
-      await editTitleMetadata();
+      await editTitleMetadata(store);
       expect(getIndexToggle()).not.toBeChecked();
       await userEvent.click(getIndexToggle());
       await saveChanges();
@@ -181,7 +182,7 @@ describe("QueryBuilder > model indexes", () => {
         value_ref: TITLE_COLUMN.field_ref,
       });
 
-      await editTitleMetadata();
+      await editTitleMetadata(store);
       expect(await findIndexToggle()).toBeChecked();
       await userEvent.click(getIndexToggle());
       await saveChanges();
@@ -191,7 +192,7 @@ describe("QueryBuilder > model indexes", () => {
         `/api/model-index/${CREATED_INDEX_ID}`,
       ]);
 
-      await editTitleMetadata();
+      await editTitleMetadata(store);
       expect(getIndexToggle()).not.toBeChecked();
       await userEvent.click(getIndexToggle());
       await saveChanges();
@@ -203,6 +204,7 @@ describe("QueryBuilder > model indexes", () => {
         pk_ref: ID_COLUMN.field_ref,
         value_ref: TITLE_COLUMN.field_ref,
       });
+      await waitForQueryToFinish(store);
     });
 
     it("does not create an index when the primary key is unassigned in the same save", async () => {
@@ -210,9 +212,9 @@ describe("QueryBuilder > model indexes", () => {
         modelId: MODEL_ID,
         nextIndexId: CREATED_INDEX_ID,
       });
-      await setupModelPage();
+      const { store } = await setupModelPage();
 
-      await editTitleMetadata();
+      await editTitleMetadata(store);
       await userEvent.click(getIndexToggle());
       expect(getIndexToggle()).toBeChecked();
 
@@ -233,13 +235,16 @@ describe("QueryBuilder > model indexes", () => {
         await screen.findByRole("gridcell", { name: "Rustic Paper Wallet" }),
       ).toBeInTheDocument();
       expect(getCreateIndexBodies()).toHaveLength(0);
+      await waitForQueryToFinish(store);
     });
   });
 });
 
+type Store = { getState: () => State };
+
 async function setupModelPage() {
   setupActionsEndpoints([]);
-  await setup({
+  return setup({
     card: PRODUCTS_MODEL,
     dataset: PRODUCTS_MODEL_DATASET,
     initialRoute: `/model/${MODEL_SLUG}`,
@@ -254,11 +259,21 @@ async function selectColumn(name: string) {
   await userEvent.click(within(header).getByText(name));
 }
 
-async function editTitleMetadata() {
+async function editTitleMetadata(store: Store) {
   await userEvent.click(
     await screen.findByRole("button", { name: "Move, trash, and more…" }),
   );
+  const queryRunsBefore = countQueryRuns();
   await userEvent.click(await screen.findByText("Edit metadata"));
+  // The editor reruns the query as it opens and focuses the first column when
+  // the result arrives, which would undo a column chosen before that.
+  await waitFor(() => expect(countQueryRuns()).toBe(queryRunsBefore + 1));
+  await waitForQueryToFinish(store);
+  // Responses that land later re-render the grid and can swallow the click.
+  await act(() => fetchMock.callHistory.flush(true));
+  await waitFor(() =>
+    expect(screen.getByLabelText("Display name")).toHaveValue("ID"),
+  );
   await selectColumn("Title");
   await waitFor(() =>
     expect(screen.getByLabelText("Display name")).toHaveValue("Title"),
@@ -299,4 +314,12 @@ function getDeleteIndexUrls() {
   return fetchMock.callHistory
     .calls("stateful-model-index-delete")
     .map((call) => new URL(call.url).pathname);
+}
+
+const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
+
+function countQueryRuns() {
+  return fetchMock.callHistory
+    .calls()
+    .filter((call) => QUERY_RUN_PATH.test(new URL(call.url).pathname)).length;
 }

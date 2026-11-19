@@ -374,7 +374,9 @@ const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
  * the question is even loaded, so this waits for the run's request and then for
  * the run to end, and the result cannot update the page after the test.
  */
-const waitForQueryToFinish = async (store: { getState: () => State }) => {
+export const waitForQueryToFinish = async (store: {
+  getState: () => State;
+}) => {
   await waitFor(() =>
     expect(
       fetchMock.callHistory
