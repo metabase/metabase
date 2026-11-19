@@ -140,7 +140,8 @@
         (or (empty? names) (apply distinct? names))))]])
 
 (mr/def ::parameters
-  "The value of each parameter of the subject, by the parameter's id or slug."
+  "The value of each parameter of the subject, by the parameter's id or slug. No subject type takes parameters yet:
+  each refuses a test that sets a value."
   (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (mr/def ::test.definition
