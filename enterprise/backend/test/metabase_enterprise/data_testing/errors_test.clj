@@ -46,6 +46,7 @@
    ::errors/no-output                  400
    ::errors/invalid-parameters         400
    ::errors/write-returns-rows         400
+   ::errors/parameters-not-taken       400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
@@ -86,7 +87,8 @@
              ::errors/not-a-single-write
              ::errors/no-output
              ::errors/invalid-parameters
-             ::errors/write-returns-rows}
+             ::errors/write-returns-rows
+             ::errors/parameters-not-taken}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
@@ -134,6 +136,7 @@
    ::errors/not-a-single-write         "transform-test.not-a-single-write"
    ::errors/no-output                  "transform-test.no-output"
    ::errors/write-returns-rows         "transform-test.write-returns-rows"
+   ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
    ::errors/uncheckable-write          "transform-test.uncheckable-write"
    ::errors/invalid-parameters         "transform-test.invalid-parameters"
    ::errors/unsupported-action         "transform-test.unsupported-action"

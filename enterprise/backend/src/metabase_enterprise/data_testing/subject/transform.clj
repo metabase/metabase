@@ -12,9 +12,10 @@
 (set! *warn-on-reflection* true)
 
 (mu/defmethod data-testing.subject/subject-plan :transform :- ::data-testing.subject/subject-plan
-  [_subject-type
-   transform   :- ::transforms.schema/transform
-   _definition :- ::data-testing.subject/definition-without-parameters]
+  [subject-type
+   transform  :- ::transforms.schema/transform
+   definition :- ::data-testing.subject/definition]
+  (data-testing.subject/ensure-no-parameters subject-type definition)
   (when-not (transforms-base.u/query-transform? transform)
     (throw (data-testing.errors/ex
             ::data-testing.errors/unsupported-transform

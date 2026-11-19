@@ -18,12 +18,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as the transform's compiled SQL will reference it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
-
 (defn- with-people-transform
   "Call `f` with the schema and name of the people table and a transform selecting `id, name` from it into
   `people_summary` in the same schema."
@@ -66,13 +60,50 @@
       (testing (str schema " admits the inputs, expectations and parameters of a test")
         (is (mr/validate schema definition)))
       (testing (str schema " refuses a key a run does not read")
-        (is (not (mr/validate schema (assoc definition :name "a test")))))))
-  (testing "a definition for a subject without parameters is closed too"
-    (is (not (mr/validate ::data-testing.subject/definition-without-parameters
-                          {:inputs [] :expectations [] :name "a test"})))
-    (is (not (mr/validate ::data-testing.subject/definition-without-parameters
-                          {:inputs [] :expectations [] :parameters {"id" 1}})))
-    (is (mr/validate ::data-testing.subject/definition-without-parameters {:inputs [] :expectations []}))))
+        (is (not (mr/validate schema (assoc definition :name "a test"))))))))
+
+(deftest validate-test-takes-the-test-as-a-caller-holds-it-test
+  (mt/with-temp [:model/Transform {transform-id :id} (data-testing.test-util/id-transform :people)]
+    (let [transform  (t2/select-one :model/Transform :id transform-id)
+          definition {:inputs       [(data-testing.test-util/people-rows-input "ID")]
+                      :expectations [{:type :empty :name "none" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY"}]}]
+      (testing "control: the inputs and expectations alone validate"
+        (is (nil? (data-testing.runner/validate-test :transform transform definition))))
+      (testing "the body of a request to create the test validates the same, its other keys ignored"
+        (is (nil? (data-testing.runner/validate-test
+                   :transform transform
+                   (assoc definition :name "a test" :description nil :transform_id transform-id)))))
+      (testing "so does the saved test"
+        (is (nil? (data-testing.runner/validate-test
+                   :transform transform
+                   (assoc definition
+                          :id 1 :name "a test" :transform_id transform-id :creator_id (mt/user->id :crowberto)))))))))
+
+(deftest parameter-values-for-a-subject-without-parameters-are-refused-test
+  (mt/with-temp [:model/Card      {card-id :id}      {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                       "SELECT ID FROM PUBLIC.PEOPLE")}
+                 :model/Transform {transform-id :id} (data-testing.test-util/id-transform :people)
+                 :model/Segment   {segment-id :id}   (data-testing.test-util/from-google-segment)]
+    (doseq [[subject-type subject] [[:card (t2/select-one :model/Card :id card-id)]
+                                    [:transform (t2/select-one :model/Transform :id transform-id)]
+                                    [:segment (t2/select-one :model/Segment :id segment-id)]]
+            :let [refusal (fn [parameters]
+                            (data-testing.test-util/refusal
+                             #(data-testing.runner/validate-test
+                               subject-type subject
+                               (cond-> {:inputs [] :expectations []}
+                                 parameters (assoc :parameters parameters)))
+                             :parameters))]]
+      (testing (str "a " (name subject-type) " test")
+        (testing "control: without parameter values, any refusal is for another reason"
+          (is (not= ::data-testing.errors/parameters-not-taken (:error-type (refusal nil))))
+          (is (not= ::data-testing.errors/parameters-not-taken (:error-type (refusal {})))))
+        (testing "with parameter values is refused, as a 400 naming them"
+          (let [{:keys [error-type message parameters]} (refusal {"status" "paid" "id" 1})]
+            (is (= ::data-testing.errors/parameters-not-taken error-type))
+            (is (= 400 (data-testing.errors/status-code error-type)))
+            (is (= ["id" "status"] parameters))
+            (is (re-find #"id, status" (str message)))))))))
 
 (deftest run-transform-test-rows-input-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -99,13 +130,6 @@
             (is (= :failed (run two-rows (str "SELECT * FROM " output " WHERE id = 2")))))
           (testing "no rows stand in for an empty table"
             (is (= :passed (run [] (str "SELECT * FROM " output))))))))))
-
-(defn- id+name
-  "The `id` and `name` columns of the output, typed as the current driver spells those types."
-  []
-  (let [[int-type text-type] (data-testing.test-util/cast-types)]
-    [{:name "id" :cast_type int-type}
-     {:name "name" :cast_type text-type}]))
 
 (defn- check-empty-expectation!
   [schema table transform description where expected]
@@ -210,7 +234,7 @@
         (testing "passes when the output matches the expected rows"
           (let [result (run-test! schema table transform one-row
                                   [{:type :equals :name "output" :format :rows
-                                    :columns (id+name)
+                                    :columns (data-testing.test-util/id+name)
                                     :rows    [{"id" 1 "name" "abc"}]}])]
             (is (= :passed (:status result)))
             (is (= [:passed] (mapv :status (:expectations result))))))))))
@@ -222,7 +246,7 @@
         (testing "a single differing cell is reported by column name"
           (let [result   (run-test! schema table transform one-row
                                     [{:type :equals :name "output" :format :rows
-                                      :columns (id+name)
+                                      :columns (data-testing.test-util/id+name)
                                       :rows    [{"id" 1 "name" "xyz"}]}])
                 [expect] (:expectations result)]
             (is (= :failed (:status result)))
@@ -251,7 +275,7 @@
           (let [result   (run-test! schema table transform
                                     (str "SELECT id, name FROM (" one-row " UNION ALL " one-row ") AS t")
                                     [{:type :equals :name "output" :format :rows
-                                      :columns (id+name)
+                                      :columns (data-testing.test-util/id+name)
                                       :rows    [{"id" 1 "name" "abc"}]}])
                 [expect] (:expectations result)]
             (is (= :failed (:status result)))
@@ -269,7 +293,7 @@
           (let [result (run-test! schema table transform
                                   (str "SELECT 1 AS id, CAST(NULL AS " (second (data-testing.test-util/cast-types)) ") AS name")
                                   [{:type :equals :name "output" :format :rows
-                                    :columns (id+name)
+                                    :columns (data-testing.test-util/id+name)
                                     :rows    [{"id" 1 "name" nil}]}])]
             (is (= :passed (:status result)))))))))
 
@@ -306,8 +330,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       ;; reads orders and people; declares only orders → people would fall through to the real table.
       (let [mp                              (mt/metadata-provider)
-            {pschema :schema, people :name} (table-ref :people)
-            {oschema :schema, orders :name} (table-ref :orders)]
+            {pschema :schema, people :name} (data-testing.test-util/table-ref :people)
+            {oschema :schema, orders :name} (data-testing.test-util/table-ref :orders)]
         (mt/with-temp [:model/Transform transform
                        {:source {:type  :query
                                  :query (lib/native-query
@@ -341,9 +365,9 @@
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}
-                                       {:table (table-ref :orders) :format :sql
+                                       {:table (data-testing.test-util/table-ref :orders) :format :sql
                                         :sql "SELECT 1 AS id"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
           (let [ex (try (data-testing.runner/run-test! :transform transform transform-test)
@@ -367,8 +391,8 @@
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
-                                       {:table (table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
+                                       {:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
           (let [ex (try (data-testing.runner/run-test! :transform transform transform-test)
                         nil
@@ -408,7 +432,7 @@
                         :target {:type "table" :schema schema :name "people_qualified" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}]
                         :expectations [{:type :empty :name "only the input row"
                                         :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]

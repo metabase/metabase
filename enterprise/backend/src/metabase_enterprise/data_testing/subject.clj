@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.subject
   "What a test run needs from the entity it tests, its subject: [[subject-plan]], one method per subject type."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
@@ -80,18 +81,25 @@
    [:expectations ::data-testing.schema/expectations]
    [:parameters   {:optional true} [:maybe ::data-testing.schema/parameters]]])
 
-(mr/def ::definition-without-parameters
-  "A [[::definition]] of a test of a subject that takes no parameters."
-  [:merge
-   ::definition
-   [:map [:parameters {:optional true} [:maybe [:map {:closed true}]]]]])
-
 (defmulti subject-plan
   "The [[::subject-plan]] of `subject`, a `subject-type`, for a test with `definition`, a [[::definition]]. Throws a typed
   refusal when `subject` cannot be tested."
   {:arglists '([subject-type subject definition])}
   (fn [subject-type _subject _definition]
     subject-type))
+
+(mu/defn ensure-no-parameters :- :nil
+  "Throw `::data-testing.errors/parameters-not-taken` when `definition` sets a parameter value. A `subject-type` whose
+  [[subject-plan]] calls this takes no parameters."
+  [subject-type         :- ::subject-type
+   {:keys [parameters]} :- ::definition]
+  (when (seq parameters)
+    (let [names (vec (sort (keys parameters)))]
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/parameters-not-taken
+              (tru "A {0} test cannot set parameter values. This one sets: {1}."
+                   (name subject-type) (str/join ", " names))
+              {:parameters names})))))
 
 (def output-token
   "The token that expectation SQL writes for the output of a subject that has no table of its own."

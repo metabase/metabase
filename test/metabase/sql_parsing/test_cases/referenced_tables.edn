@@ -24,6 +24,31 @@
    :sql     "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders, people"
    :tables  [[nil nil "people"]]}
 
+  {:name    "an unquoted CTE name shadows a table name in another case: Postgres folds both"
+   :dialect "postgres"
+   :sql     "WITH ORDERS AS (SELECT 1 AS id) SELECT * FROM orders, people"
+   :tables  [[nil nil "people"]]}
+
+  {:name    "a quoted CTE name in another case does not shadow an unquoted table name in Postgres"
+   :dialect "postgres"
+   :sql     "WITH \"VICTIM\" AS (SELECT 1 AS id) SELECT * FROM victim"
+   :tables  [[nil nil "victim"]]}
+
+  {:name    "nor does an unquoted CTE name shadow a quoted table name in another case"
+   :dialect "postgres"
+   :sql     "WITH victim AS (SELECT 1 AS id) SELECT * FROM \"VICTIM\""
+   :tables  [[nil nil "VICTIM"]]}
+
+  {:name    "in Snowflake an unquoted table name folds up, so a quoted lower-case CTE name does not shadow it"
+   :dialect "snowflake"
+   :sql     "WITH \"orders\" AS (SELECT 1 AS id) SELECT * FROM orders"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "in T-SQL names ignore case, so a bracketed CTE name shadows a table name in another case"
+   :dialect "tsql"
+   :sql     "WITH [Orders] AS (SELECT 1 AS id) SELECT * FROM orders, people"
+   :tables  [[nil nil "people"]]}
+
   {:name    "a CTE reading a CTE"
    :dialect "postgres"
    :sql     "WITH a AS (SELECT id FROM people), b AS (SELECT id FROM a) SELECT * FROM b"

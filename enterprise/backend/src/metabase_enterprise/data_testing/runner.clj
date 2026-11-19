@@ -24,6 +24,7 @@
   temp table exists."
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
@@ -84,6 +85,20 @@
 (mr/def ::definition
   "What a run reads of a test."
   ::data-testing.subject/definition)
+
+(mr/def ::test
+  "A test as a caller holds it: saved, as the body of a request to create one, or as a [[::definition]]. A run reads
+  only the keys of a definition."
+  [:or
+   ::definition
+   ::data-testing.schema/saved-test
+   ::data-testing.schema/transform-test.create
+   ::data-testing.schema/card-test.create
+   ::data-testing.schema/segment-test.create])
+
+(def ^:private definition-keys
+  "The keys of a [[::definition]]."
+  (mc/explicit-keys (mr/resolve-schema ::definition)))
 
 (mr/def ::built-expectation
   "An expectation built by [[expectations.protocol/build]]."
@@ -358,15 +373,15 @@
      :writes?      writes?}))
 
 (mu/defn validate-test :- :nil
-  "Refuse a test of `subject`, a `subject-type`, with the inputs, expectations and parameter values of `definition`
-  unless it could run: the same checks a run makes, up to but not including the connection.
+  "Refuse `test` of `subject`, a `subject-type`, unless it could run: the same checks a run makes, up to but not
+  including the connection. Only the keys of a [[::definition]] are read.
 
   Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
   is turned away as it is authored rather than only when somebody runs it."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
-   definition   :- ::definition]
-  (validated-plan subject-type subject definition)
+   test         :- ::test]
+  (validated-plan subject-type subject (select-keys test definition-keys))
   nil)
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
@@ -379,7 +394,7 @@
    subject                                                  :- ::data-testing.subject/subject
    {test-id :id :keys [expectations] :as saved-test}        :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled writes?]}
-        (validated-plan subject-type subject (select-keys saved-test [:inputs :expectations :parameters]))
+        (validated-plan subject-type subject (select-keys saved-test definition-keys))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
     (try

@@ -11,8 +11,13 @@ logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
+from sqlglot.dialects.dialect import Dialect
+from sqlglot.dialects.postgres import Postgres
 from sqlglot.errors import ParseError
+from sqlglot.generators.postgres import PostgresGenerator
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
+from sqlglot.parsers.postgres import PostgresParser
+from sqlglot.tokens import TokenType
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
 # syntax `{name: Type}`, so a positional JDBC placeholder `?` (a nameless Placeholder)
@@ -30,6 +35,39 @@ def _placeholder_sql_keep_positional(self, expression: exp.Placeholder) -> str:
 
 
 ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
+
+
+# sqlglot (as of 30.20.0) reads a Postgres E'' string into its value only in part: `\\` becomes one backslash and
+# `\n` a newline, while `\x41` and `\101` stay as written. It writes that value back without doubling a backslash, so
+# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. Neither
+# reading can be undone from the value, so the parser keeps the text between the quotes as written, and the Postgres
+# generator writes that text back while the node still holds the value it was parsed with.
+_E_STRING_AS_WRITTEN = "metabase_e_string_as_written"
+
+
+def _parse_e_string(self, token):
+    node = self.expression(
+        exp.ByteString(this=token.text, is_bytes=self.dialect.BYTE_STRING_IS_BYTES_TYPE or None), token
+    )
+    if type(self.dialect) is Postgres:
+        # The token spans the `E'` or `e'` prefix and the closing quote.
+        node.meta[_E_STRING_AS_WRITTEN] = (token.text, self.sql[token.start + 2 : token.end])
+    return node
+
+
+PostgresParser.NUMERIC_PARSERS = {**PostgresParser.NUMERIC_PARSERS, TokenType.BYTE_STRING: _parse_e_string}
+PostgresParser.PRIMARY_PARSERS = {**PostgresParser.PRIMARY_PARSERS, TokenType.BYTE_STRING: _parse_e_string}
+_postgres_bytestring_sql = PostgresGenerator.bytestring_sql
+
+
+def _bytestring_sql_as_written(self, expression: exp.ByteString) -> str:
+    written = expression.meta.get(_E_STRING_AS_WRITTEN)
+    if type(self.dialect) is Postgres and written is not None and written[0] == expression.this:
+        return f"e'{written[1]}'"
+    return _postgres_bytestring_sql(self, expression)
+
+
+PostgresGenerator.bytestring_sql = _bytestring_sql_as_written
 
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
@@ -112,8 +150,19 @@ def write_target(node):
     return isinstance(parent, (exp.Insert, exp.Update, exp.Delete, exp.Merge)) and parent.this is node
 
 
+def resolved_name(node, dialect=None):
+    """The name the table or CTE `node` declares or refers to, as `dialect` resolves an identifier: in Postgres an
+    unquoted name is folded to lower case and a quoted one is kept as written, in Snowflake an unquoted name is folded
+    to upper case, and in T-SQL case is ignored. Two nodes name the same thing iff their resolved names are equal."""
+    identifier = node.args.get("alias").this if isinstance(node, exp.CTE) else node.this
+    if not isinstance(identifier, exp.Identifier):
+        identifier = exp.to_identifier(node.alias if isinstance(node, exp.CTE) else node.name)
+    return Dialect.get_or_raise(dialect).normalize_identifier(identifier.copy()).name
+
+
 def shadowing_cte_names(node, dialect=None):
-    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside.
+    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside, each as
+    `resolved_name` gives it.
 
     No CTE name shadows the table an INSERT, UPDATE, DELETE or MERGE writes, except in T-SQL: Postgres, MySQL and the
     rest write the real table of that name, and T-SQL writes through the CTE to the table it reads."""
@@ -128,12 +177,12 @@ def shadowing_cte_names(node, dialect=None):
         if isinstance(current, exp.CTE) and current.alias:
             declaration = current.parent
             if not (isinstance(declaration, exp.With) and declaration.args.get("recursive")):
-                own.add(current.alias.lower())
+                own.add(resolved_name(current, dialect))
         # Found by type rather than by arg name, which sqlglot spells `with_` in some versions and `with` in
         # others.
         for value in current.args.values():
             if isinstance(value, exp.With):
-                names.update(cte.alias.lower() for cte in value.expressions if cte.alias)
+                names.update(resolved_name(cte, dialect) for cte in value.expressions if cte.alias)
         current = current.parent
     return names - own
 
@@ -164,7 +213,7 @@ def table_references(ast, dialect=None):
     for table in ast.find_all(exp.Table):
         if table_parts(table) is None:
             continue
-        if not table.db and not table.catalog and table.name.lower() in shadowing_cte_names(table, dialect):
+        if not table.db and not table.catalog and resolved_name(table, dialect) in shadowing_cte_names(table, dialect):
             continue
         yield table
 
@@ -605,7 +654,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 # A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
                 # enclosing query names the CTE and must be left alone — renaming it would point the query at the
                 # replacement table and silently skip the CTE.
-                if not db and not schema and table.lower() in shadowing_cte_names(node, dialect):
+                if not db and not schema and resolved_name(node, dialect) in shadowing_cte_names(node, dialect):
                     return node
                 replacement = find_table_replacement(db, schema, table, quoted_parts(node, "this"))
                 if replacement:
@@ -1909,18 +1958,25 @@ _LOCKING_TABLE_HINTS = frozenset(
 )
 
 
+def _write_function_name(node: exp.Expression):
+    """The name of the function `node` calls when it is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
+    spelling (`NEXT VALUE FOR s`, `s.nextval`), else None."""
+    if isinstance(node, exp.NextValueFor):
+        return "next value for"
+    if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
+        return "nextval"
+    name = _function_name(node)
+    return name if name in _WRITE_FUNCTIONS else None
+
+
 def _writes_or_locks(node: exp.Expression) -> bool:
-    if isinstance(node, _NOT_READ_ONLY_NODES):
+    if isinstance(node, _NOT_READ_ONLY_NODES) or _write_function_name(node) is not None:
         return True
-    if isinstance(node, exp.Anonymous):
-        return node.name.lower() in _WRITE_FUNCTIONS
     # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
     # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
     # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
     if isinstance(node, exp.PropertyEQ):
         return node.this.find(exp.Parameter) is not None
-    if isinstance(node, exp.Column):
-        return bool(node.table) and node.name.lower() == "nextval"
     if isinstance(node, exp.WithTableHint):
         return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
     # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
@@ -1947,18 +2003,58 @@ def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
 
 
-def _write_function(stmt: exp.Expression):
-    """The name of the first function in `stmt` that is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
-    spelling (`NEXT VALUE FOR s`, `s.nextval`), or None."""
+# Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
+# a string, which the table check never sees, reads or writes the database server's files, or changes state that the
+# run's rollback leaves changed (the random seed, the statistics, replication slots and origins). Most need privileges
+# a connection user rarely has.
+_UNCONFINED_FUNCTIONS = frozenset(
+    {
+        # Postgres: a table, a schema or the database as XML, read by the name passed in
+        "table_to_xml", "table_to_xmlschema", "table_to_xml_and_xmlschema", "schema_to_xml", "schema_to_xmlschema",
+        "schema_to_xml_and_xmlschema", "database_to_xml", "database_to_xmlschema", "database_to_xml_and_xmlschema",
+        # Postgres: the server's files and directories, and the adminpack extension's file functions
+        "pg_read_file", "pg_read_binary_file", "pg_stat_file", "pg_ls_dir", "pg_ls_logdir", "pg_ls_waldir",
+        "pg_ls_logicalmapdir", "pg_ls_logicalsnapdir", "pg_ls_replslotdir", "pg_ls_archive_statusdir", "pg_ls_tmpdir",
+        "pg_ls_summariesdir", "pg_current_logfile", "pg_file_write", "pg_file_rename", "pg_file_unlink",
+        "pg_file_sync", "pg_logdir_ls",
+        # Postgres: the session's random seed
+        "setseed",
+        # Postgres: statistics resets, and the planner statistics a function can set or clear
+        "pg_stat_reset", "pg_stat_reset_shared", "pg_stat_reset_single_table_counters",
+        "pg_stat_reset_single_function_counters", "pg_stat_reset_slru", "pg_stat_reset_replication_slot",
+        "pg_stat_reset_subscription_stats", "pg_stat_reset_backend_stats", "pg_stat_statements_reset",
+        "pg_restore_relation_stats", "pg_restore_attribute_stats", "pg_clear_relation_stats",
+        "pg_clear_attribute_stats",
+        # Postgres: replication slots and origins
+        "pg_copy_physical_replication_slot", "pg_copy_logical_replication_slot", "pg_replication_slot_advance",
+        "pg_logical_slot_get_changes", "pg_logical_slot_peek_changes", "pg_logical_slot_get_binary_changes",
+        "pg_logical_slot_peek_binary_changes", "pg_sync_replication_slots", "pg_log_standby_snapshot",
+        "pg_replication_origin_create", "pg_replication_origin_drop", "pg_replication_origin_oid",
+        "pg_replication_origin_session_setup", "pg_replication_origin_session_reset",
+        "pg_replication_origin_session_is_setup", "pg_replication_origin_session_progress",
+        "pg_replication_origin_xact_setup", "pg_replication_origin_xact_reset", "pg_replication_origin_advance",
+        "pg_replication_origin_progress",
+    }
+)
+
+
+def _unconfined_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_UNCONFINED_FUNCTIONS`, or None."""
     for node in stmt.walk():
-        if isinstance(node, exp.NextValueFor):
-            return "next value for"
-        if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
-            return "nextval"
         name = _function_name(node)
-        if name in _WRITE_FUNCTIONS:
+        if name in _UNCONFINED_FUNCTIONS:
             return name
     return None
+
+
+def _assigns_user_variable(stmt: exp.Expression) -> bool:
+    """Whether `stmt` assigns a MySQL user variable, `@x := ...`, whose value outlives the run on its connection."""
+    return any(node.this.find(exp.Parameter) is not None for node in stmt.find_all(exp.PropertyEQ))
+
+
+def _write_function(stmt: exp.Expression):
+    """The `_write_function_name` of the first node in `stmt` that has one, or None."""
+    return next((name for name in map(_write_function_name, stmt.walk()) if name is not None), None)
 
 
 # Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
@@ -2114,8 +2210,8 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
 
 def _hidden_by_string_setting(sql: str) -> bool:
     """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
-    reads it as one, lexing as the setting's default (on) does, and writes an E'' literal's backslash undoubled, so a
-    rebuilt E'' literal can run past its end under either setting."""
+    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote in a
+    standard literal, written so or made by rebuilding a dollar-quoted string as one, moves the end of that literal."""
     return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
@@ -2162,12 +2258,14 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
     its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
     stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
-    statement names (a sequence, a large object), must return no rows (no RETURNING or OUTPUT clause), and its
-    reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
+    statement names (a sequence, a large object), and none of `_UNCONFINED_FUNCTIONS` (reason "unconfined-function"),
+    must assign no MySQL user variable (reason "user-variable"), must return no rows (no RETURNING or OUTPUT clause),
+    and its reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
     statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    For "postgres", every mode also refuses, as "backslash-quote", a statement whose reconstruction Postgres would read
-    as more than one statement with `standard_conforming_strings` on or off.
+    For "postgres", "confined-write" also refuses, as "backslash-quote", a statement whose reconstruction Postgres would
+    read as more than one statement with `standard_conforming_strings` on or off. The other modes take the setting to
+    be on, its default, as the parser does.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2183,8 +2281,13 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _statement_reason(stmts[0], sql, dialect)
             if problem is None and stmt_type == "confined-write":
                 function = _write_function(stmts[0])
+                unconfined = _unconfined_function(stmts[0])
                 if function is not None:
                     problem = ("write-function", function)
+                elif unconfined is not None:
+                    problem = ("unconfined-function", unconfined)
+                elif _assigns_user_variable(stmts[0]):
+                    problem = ("user-variable", None)
                 elif stmts[0].args.get("returning") is not None:
                     problem = ("returning", None)
         else:
@@ -2192,11 +2295,16 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
         rebuilt = None
         if len(stmts) == 1:
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-            if problem is None and dialect == "postgres" and _hidden_by_string_setting(rebuilt):
+            if (
+                problem is None
+                and stmt_type == "confined-write"
+                and dialect == "postgres"
+                and _hidden_by_string_setting(rebuilt)
+            ):
                 problem = ("backslash-quote", None)
             # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
-            # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
-            # its quote moves. The rebuild must pass the same checks and rebuild to itself.
+            # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
+            # the rebuild must pass the same checks and rebuild to itself.
             if problem is None and stmt_type == "confined-write" and recheck:
                 again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect, recheck=False))
                 if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:

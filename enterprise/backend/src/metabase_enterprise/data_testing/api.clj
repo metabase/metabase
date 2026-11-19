@@ -50,7 +50,7 @@
   (api/create-check :model/TransformTest body)
   (refusing #(data-testing.runner/validate-test :transform
                                                 (data-testing.db/transform transform_id)
-                                                (select-keys body [:inputs :expectations])))
+                                                body))
   (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/transform-test
@@ -65,7 +65,7 @@
       (let [{:keys [transform_id] :as merged} (merge transform-test body)]
         (refusing #(data-testing.runner/validate-test :transform
                                                       (data-testing.db/transform transform_id)
-                                                      (select-keys merged [:inputs :expectations])))))
+                                                      merged))))
     (when (seq body)
       (data-testing.db/update-transform-test! id body)))
   (data-testing.db/transform-test id))
