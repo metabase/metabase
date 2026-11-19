@@ -135,6 +135,7 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SqlParsingShadowDifference
     :model/SsoRelayState
     :model/SupportAccessGrantLog
     :model/TableIndex
