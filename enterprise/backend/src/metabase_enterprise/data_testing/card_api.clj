@@ -22,10 +22,10 @@
   (data-testing.errors/refusing "card-test" thunk))
 
 (mu/defn- validate-test! :- :nil
-  "Refuse a test of the Card `card-id` with the inputs and expectations of `definition` unless it could run."
-  [card-id    :- ms/PositiveInt
-   definition :- ::data-testing.runner/definition]
-  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) definition)))
+  "Refuse `test` of the Card `card-id` unless it could run."
+  [card-id :- ms/PositiveInt
+   test    :- ::data-testing.runner/test]
+  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) test)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
@@ -66,7 +66,7 @@
    _query-params
    {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
-  (validate-test! card_id (select-keys body [:inputs :expectations]))
+  (validate-test! card_id body)
   (data-testing.db/insert-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
@@ -83,7 +83,7 @@
     (api/update-check card-test body)
     (when (some #(contains? body %) [:card_id :inputs :expectations])
       (let [{:keys [card_id] :as merged} (merge card-test body)]
-        (validate-test! card_id (select-keys merged [:inputs :expectations]))))
+        (validate-test! card_id merged)))
     (when (seq body)
       (data-testing.db/update-card-test! id body)))
   (data-testing.db/card-test id))

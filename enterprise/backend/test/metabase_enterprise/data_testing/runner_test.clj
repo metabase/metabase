@@ -68,6 +68,23 @@
       (testing (str schema " refuses a key a run does not read")
         (is (not (mr/validate schema (assoc definition :name "a test"))))))))
 
+(deftest validate-test-takes-the-test-as-a-caller-holds-it-test
+  (mt/with-temp [:model/Transform {transform-id :id} (data-testing.test-util/id-transform :people)]
+    (let [transform  (t2/select-one :model/Transform :id transform-id)
+          definition {:inputs       [(data-testing.test-util/people-rows-input "ID")]
+                      :expectations [{:type :empty :name "none" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY"}]}]
+      (testing "control: the inputs and expectations alone validate"
+        (is (nil? (data-testing.runner/validate-test :transform transform definition))))
+      (testing "the body of a request to create the test validates the same, its other keys ignored"
+        (is (nil? (data-testing.runner/validate-test
+                   :transform transform
+                   (assoc definition :name "a test" :description nil :transform_id transform-id)))))
+      (testing "so does the saved test"
+        (is (nil? (data-testing.runner/validate-test
+                   :transform transform
+                   (assoc definition
+                          :id 1 :name "a test" :transform_id transform-id :creator_id (mt/user->id :crowberto)))))))))
+
 (deftest parameter-values-for-a-subject-without-parameters-are-refused-test
   (mt/with-temp [:model/Card      {card-id :id}      {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                        "SELECT ID FROM PUBLIC.PEOPLE")}
