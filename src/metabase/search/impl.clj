@@ -72,6 +72,8 @@
   [search-ctx instance]
   (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
+;; Read off the metadata `hydrate-checks` sets, so the answer comes once per batch, not once per row. An instance that
+;; skipped `hydrate-checks` is denied.
 (defmethod check-permissions-for-model :indexed-entity
   [_search-ctx instance]
   (boolean (::queryable-database? (meta instance))))
@@ -416,7 +418,7 @@
    :model/Database    [:can_read]})
 
 (def ^:private page-checks
-  "The checks to hydrate on the page of search results, which [[add-can-write]] returns."
+  "The checks to hydrate on the page of search results, the ones [[add-can-write]] returns."
   {:model/Card      [:can_write]
    :model/Dashboard [:can_write]
    :model/Table     [:can_write]})
@@ -440,8 +442,9 @@
           (t2/hydrate (search.db/collection-permission-rows collection-ids) :can_write))))
 
 (defn- model-check-answers
-  "The check answers of `results`, keyed by model and id, for `phase`: `:read` leaves `:can_write` out, `:page` takes
-  the [[hydrated-checks]], and `:archived` the [[archived-checks]] too."
+  "The check answers of `results`, keyed by model and id, for `phase`: `:read` takes the [[hydrated-checks]] without
+  `:can_write`, `:page` takes the [[page-checks]], and `:archived` takes the [[hydrated-checks]] and the
+  [[archived-checks]]."
   [phase results]
   (into {}
         (mapcat (fn [[model rows]]
@@ -458,8 +461,8 @@
         (group-by t2/model results)))
 
 (defn- queryable-database-ids
-  "The ids of the Databases of the indexed-entity `results` on whose every Table the user of `search-ctx` has unrestricted
-  data access and native query creation, from two permission queries."
+  "The ids of the Databases of the indexed-entity `results` on whose every Table the user of `search-ctx` has
+  unrestricted data access and native query creation."
   [search-ctx results]
   (let [db-ids (into [] (comp (filter #(= "indexed-entity" (:model %))) (keep :database_id) (distinct)) results)]
     (when (seq db-ids)
@@ -470,26 +473,28 @@
 
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
-  per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`."
+  per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`.
+  Outside `:page`, tags indexed entities with whether their Database is queryable, for their permission check."
   [search-ctx phase results]
   (let [results        (vec results)
         collection-ids (when (not= phase :read)
                          (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
         answers        (with-search-user search-ctx
                          (merge (collection-check-answers collection-ids) (model-check-answers phase results)))
-        queryable-dbs  (queryable-database-ids search-ctx results)]
+        queryable-dbs  (when (not= phase :page) (queryable-database-ids search-ctx results))]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))
           (vary-meta merge (select-keys answer [:can_read]))
-          (cond-> (= "indexed-entity" (:model result))
+          (cond-> (and queryable-dbs (= "indexed-entity" (:model result)))
             (vary-meta assoc ::queryable-database? (contains? queryable-dbs (:database_id result))))))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
   [search-ctx result]
-  (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx (if (:archived? search-ctx) :archived :read) [(normalize-result result)]))))
+  (let [phase (if (:archived? search-ctx) :archived :read)]
+    (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx phase [(normalize-result result)])))))
 
 (defn- add-can-write
   "Leaves `:can_write` on the results that carry it in the response, and takes the hydrated checks off the others."
