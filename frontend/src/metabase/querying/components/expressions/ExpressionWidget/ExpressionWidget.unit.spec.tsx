@@ -4,7 +4,8 @@ import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { DatabaseFeature } from "metabase-types/api";
+import type { Database, DatabaseFeature } from "metabase-types/api";
+import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
   createSampleDatabase,
@@ -217,6 +218,17 @@ describe("ExpressionWidget", () => {
       });
     });
 
+    it("should show a formula with an escaped character again (metabase#56596)", async () => {
+      await expectFormulaRoundTrip({
+        query: literalQuery,
+        expressionMode: "expression",
+        formula: String.raw`regexExtract([Vendor], "\s.*")`,
+        database: createSampleDatabase({
+          features: [...COMMON_DATABASE_FEATURES, "regex"],
+        }),
+      });
+    });
+
     it.each([
       "False",
       "True",
@@ -320,6 +332,7 @@ type RoundTripOpts = {
   query: Lib.Query;
   expressionMode: Lib.ExpressionMode;
   formula: string;
+  database?: Database;
 };
 
 async function renderEditableWidget({
@@ -360,8 +373,9 @@ async function expectFormulaRoundTrip({
   query,
   expressionMode,
   formula,
+  database = createSampleDatabase(),
 }: RoundTripOpts) {
-  setupDatabaseEndpoints(createSampleDatabase());
+  setupDatabaseEndpoints(database);
 
   const onChangeClause = jest.fn<void, [string, Lib.ExpressionClause]>();
   const { unmount } = await renderEditableWidget({
