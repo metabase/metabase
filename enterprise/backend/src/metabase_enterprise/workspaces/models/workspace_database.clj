@@ -23,6 +23,20 @@
    :input_schemas    mi/transform-json
    :status           mi/transform-keyword})
 
+;;; ----------------------------------------------- Hooks -----------------------------------------------
+
+(def ^:private statuses-without-warehouse-objects
+  "The statuses of a WorkspaceDatabase that has nothing in the warehouse."
+  #{:unprovisioned :never_started})
+
+(t2/define-before-delete :model/WorkspaceDatabase
+  [{:keys [id status] :as workspace-database}]
+  (when-not (contains? statuses-without-warehouse-objects status)
+    (throw (ex-info "Cannot delete a workspace_database that may have warehouse objects; it must be torn down first"
+                    {:status-code           409
+                     :workspace_database_id id})))
+  workspace-database)
+
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
 ;;; WorkspaceDatabases are superuser-only: read, write, and create all require admin.

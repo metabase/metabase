@@ -528,6 +528,17 @@
   (locking dimension-lock
     (next-method model explicit-attributes f)))
 
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/WorkspaceDatabase
+  "Marks a temporary WorkspaceDatabase `:unprovisioned` before its delete, which its model refuses for a row that may
+  have warehouse objects, since a temporary row has none whatever status a test gave it."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes
+               (fn [workspace-database]
+                 (try
+                   (f workspace-database)
+                   (finally
+                     (t2/update! :model/WorkspaceDatabase :id (:id workspace-database) {:status :unprovisioned}))))))
+
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
     (methodical/add-primary-method! #'t2.with-temp/with-temp-defaults

@@ -179,3 +179,24 @@
         (with-data-analyst (is (false? (mi/can-write? (t2/hydrate wsd :can_write))))))
       (testing "superuser — true"
         (with-admin (is (true? (mi/can-write? (t2/hydrate wsd :can_write)))))))))
+
+(deftest delete-of-workspace-database-with-warehouse-objects-is-refused-test
+  (doseq [status [:provisioning :provisioned :deprovisioning :teardown_failed]]
+    (testing status
+      (mt/with-temp [:model/Workspace {workspace-id :id} {}
+                     :model/WorkspaceDatabase {workspace-database-id :id} {:workspace_id workspace-id
+                                                                           :status       status}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot delete a workspace_database that may have warehouse objects"
+             (t2/delete! :model/WorkspaceDatabase :id workspace-database-id)))
+        (is (t2/exists? :model/WorkspaceDatabase :id workspace-database-id))))))
+
+(deftest delete-of-workspace-database-without-warehouse-objects-is-allowed-test
+  (doseq [status [:unprovisioned :never_started]]
+    (testing status
+      (mt/with-temp [:model/Workspace {workspace-id :id} {}
+                     :model/WorkspaceDatabase {workspace-database-id :id} {:workspace_id workspace-id
+                                                                           :status       status}]
+        (t2/delete! :model/WorkspaceDatabase :id workspace-database-id)
+        (is (not (t2/exists? :model/WorkspaceDatabase :id workspace-database-id)))))))

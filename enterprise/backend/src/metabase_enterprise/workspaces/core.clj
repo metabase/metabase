@@ -429,7 +429,7 @@
   parent may own."
   [wsd-id]
   (provisioning/with-workspace-database-lock wsd-id
-    (ws.db/delete-workspace-database! wsd-id)))
+    (provisioning/release-and-delete-workspace-database! wsd-id)))
 
 (defn- restore-workspace-database-status!
   "Set the WorkspaceDatabase `wsd` back to the status and `updated_at` it has in `wsd`, if it is `:deprovisioning`.
@@ -675,7 +675,7 @@
                                 (catch Throwable cleanup-t cleanup-t))
                 delete-error  (when-not cleanup-error
                                 (try
-                                  (workspace/delete-workspace! (:id ws))
+                                  (ws.db/delete-workspace! (:id ws))
                                   nil
                                   ;; a fixed message: a raw app-DB error can name tables
                                   (catch Throwable delete-t
@@ -723,5 +723,5 @@
   [id]
   (assert-workspace-exists id)
   (teardown-workspace-databases! id)
-  (workspace/delete-workspace! id)
+  (ws.db/delete-workspace! id)
   nil)

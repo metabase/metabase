@@ -423,7 +423,7 @@
                      (into {} (map (juxt :database_id :status)) (t2/select :model/WorkspaceDatabase :workspace_id ws-id)))
                   "each row keeps the status it had, and the second database's row is gone")
               (finally
-                (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)))))))))
+                (t2/delete! :workspace_database :workspace_id ws-id)))))))))
 
 (deftest delete-skips-the-warehouse-teardown-of-a-never-started-row-test
   ;; Committed `with-temp`: the bookkeeping writes on a fresh autocommit connection.
@@ -820,7 +820,7 @@
       (mt/with-model-cleanup [:model/Workspace]
         (apply f db-ids))
       (finally
-        (t2/delete! :model/WorkspaceDatabase :database_id [:in db-ids])
+        (t2/delete! :workspace_database :database_id [:in db-ids])
         (t2/delete! :model/Database :id [:in db-ids])))))
 
 (defn- recording-provisioner

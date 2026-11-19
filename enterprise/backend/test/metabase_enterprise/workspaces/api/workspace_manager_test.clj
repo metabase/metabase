@@ -9,7 +9,6 @@
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -275,7 +274,7 @@
                       "a 409 changes nothing: the record of the leftover warehouse objects stays")
                   (is (zero? @destroys))))
               (finally
-                (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)))))))))
+                (t2/delete! :workspace_database :workspace_id ws-id)))))))))
 
 (deftest never-started-database-test
   (testing "a never_started database is shown, refuses the config download, and a plain DELETE removes it without a warehouse call"
@@ -385,7 +384,7 @@
                         (grant!   [_ _ _ _ _] nil)
                         (destroy! [_ _ _ _]   nil))]
           (with-redefs [provisioning/dispatching-provisioner failing
-                        workspace/delete-workspace!          (fn [_id] (throw (ex-info "app db down" {})))]
+                        ws.db/delete-workspace!              (fn [_id] (throw (ex-info "app db down" {})))]
             (is (=? {:message "refused; Could not delete the workspace row." :cleanup_required true}
                     (mt/user-http-request :crowberto :post 500 "ee/workspace-manager/"
                                           {:name "Row kept" :database_ids [db-id]}))))
@@ -981,7 +980,7 @@
                                                           :status           :provisioned}]
       (testing "with a provisioned database, the config downloads"
         (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))
-      (t2/delete! :model/WorkspaceDatabase :id wsd-id)
+      (t2/delete! :workspace_database :id wsd-id)
       (testing "with no databases left, the config is a 422: waiting does not help"
         (is (= (str "Workspace \"Emptied WS\" has no databases, so it has no config to download. Delete the "
                     "workspace and create a new one.")
@@ -998,7 +997,7 @@
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Half deleted" :database_ids [db-id]})]
             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config"))
-            (mt/with-dynamic-fn-redefs [workspace/delete-workspace! (fn [_id] (throw (ex-info "app DB is down" {})))]
+            (mt/with-dynamic-fn-redefs [ws.db/delete-workspace! (fn [_id] (throw (ex-info "app DB is down" {})))]
               (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))
             (is (=? {:databases []}
                     (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))

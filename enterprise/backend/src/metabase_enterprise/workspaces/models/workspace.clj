@@ -17,6 +17,16 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+;;; ----------------------------------------------- Hooks -----------------------------------------------
+
+(t2/define-before-delete :model/Workspace
+  [{:keys [id] :as workspace}]
+  (when (ws.db/workspace-has-active-databases? id)
+    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; they must be torn down first"
+                    {:status-code 409
+                     :workspace_id id})))
+  workspace)
+
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
 ;;; Workspaces are superuser-only: read, write, and create all require admin.
@@ -111,20 +121,6 @@
         (throw (ex-info "Cannot modify a workspace_database that is not :unprovisioned"
                         {:status-code 409
                          :database_id database_id}))))))
-
-(defn delete-workspace!
-  "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows is in
-  a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, `:deprovisioning`,
-  `:teardown_failed`, or `:never_started`).
-  Those rows point at live warehouse resources and must be torn down first, except a
-  `:never_started` row, which has none and must be deleted first.
-  Cascade-deletes `:unprovisioned` children via the FK."
-  [id]
-  (when (ws.db/workspace-has-active-databases? id)
-    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; they must be torn down first"
-                    {:status-code 409
-                     :workspace_id id})))
-  (ws.db/delete-workspace! id))
 
 (defn update-workspace!
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided

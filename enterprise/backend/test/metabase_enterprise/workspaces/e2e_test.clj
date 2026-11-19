@@ -705,7 +705,7 @@
                                                            ws-id)
                                                 false))]
                             (when-not deleted?
-                              (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+                              (t2/delete! :workspace_database :workspace_id ws-id)
                               (t2/delete! :model/Workspace :id ws-id)))))))
                   (finally
                     (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name output-table-name)
@@ -932,7 +932,7 @@
                                                      ws-id)
                                           false))]
                       (when-not deleted?
-                        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+                        (t2/delete! :workspace_database :workspace_id ws-id)
                         (t2/delete! :model/Workspace :id ws-id)))))))
             (finally
               (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-name)

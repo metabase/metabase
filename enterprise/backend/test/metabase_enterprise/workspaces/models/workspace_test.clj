@@ -275,3 +275,12 @@
                    :model/WorkspaceDatabase _                  {:workspace_id ws-id, :database_id db2-id}]
       (testing "superuser with attached databases — true"
         (with-admin (is (true? (mi/can-write? (t2/hydrate ws :can_write)))))))))
+
+(deftest delete-of-workspace-with-provisioned-database-is-refused-test
+  (mt/with-temp [:model/Workspace {workspace-id :id} {}
+                 :model/WorkspaceDatabase _ {:workspace_id workspace-id :status :provisioned}]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot delete a workspace with databases that are not :unprovisioned"
+         (t2/delete! :model/Workspace :id workspace-id)))
+    (is (t2/exists? :model/Workspace :id workspace-id))))

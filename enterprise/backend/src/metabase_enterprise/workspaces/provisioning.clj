@@ -10,7 +10,8 @@
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [potemkin.types :as p]
-   [toucan2.connection :as t2.connection]))
+   [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
@@ -94,6 +95,14 @@
 
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
+(defn release-and-delete-workspace-database!
+  "Marks the WorkspaceDatabase with `workspace-database-id` `:unprovisioned`, as a row whose warehouse objects are gone,
+  never existed or are given up, and deletes it, in one transaction."
+  [workspace-database-id]
+  (t2/with-transaction [_conn]
+    (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned})
+    (ws.db/delete-workspace-database! workspace-database-id)))
+
 (defn- nothing-to-tear-down?
   "Whether `t`, from init, says that nothing in the warehouse is this workspace's to tear down: see
   [[driver/init-workspace-isolation!]]. A teardown could drop a user of the same name that another parent owns."
@@ -135,7 +144,7 @@
       (if refusal
         ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
         ;; would drop the user init refused
-        (do (ws.db/delete-workspace-database! workspace-database-id)
+        (do (release-and-delete-workspace-database! workspace-database-id)
             refusal)
         (do (try
               (grant! provisioner driver db ws-details schemas)
@@ -322,7 +331,7 @@
               ;; (mirrors `deprovision-workspace-database!`).
               (binding [t2.connection/*current-connectable* nil]
                 (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
-          (ws.db/delete-workspace-database! (:id wsd))
+          (release-and-delete-workspace-database! (:id wsd))
           nil)))))
 
 (defn mark-workspace-database-teardown-failed!
@@ -358,7 +367,7 @@
                    (:id wsd) (:database_id wsd) (pr-str (:output_namespace wsd))
                    (pr-str (get-in wsd [:database_details :user]))
                    (pr-str (get-in wsd [:database_details :role])))
-        (ws.db/delete-workspace-database! (:id wsd))))
+        (release-and-delete-workspace-database! (:id wsd))))
     nil))
 
 (defn deprovision-workspace!
