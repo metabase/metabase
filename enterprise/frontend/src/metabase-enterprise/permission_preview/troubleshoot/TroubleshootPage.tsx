@@ -21,6 +21,7 @@ import {
   getPrincipalWhoName,
   useIsNarrowPreview,
 } from "../PreviewBand";
+import S from "../PreviewBand.module.css";
 import {
   type PreviewSessionResponse,
   type Principal,
@@ -211,6 +212,7 @@ export function TroubleshootPage() {
             />
             <Tooltip label={t`Open in new tab`}>
               <Button
+                className={S.bandButton}
                 style={{ flexShrink: 0 }}
                 aria-label={t`Open in new tab`}
                 leftSection={<Icon name="external" />}

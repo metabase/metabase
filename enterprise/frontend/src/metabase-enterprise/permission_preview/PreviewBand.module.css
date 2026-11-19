@@ -31,6 +31,21 @@
   margin-inline-start: auto;
 }
 
+/* The buttons' hover and open tints are see-through and replace their white, so the band's yellow shows through: lay each tint over the button's own white */
+.bandButton[data-variant]:enabled:not([data-loading]):hover,
+.bandButton[data-variant]:enabled:not([data-loading])[aria-pressed="true"] {
+  background-color: var(--mb-color-button-default-neutral-default);
+  background-image: linear-gradient(var(--button-hover), var(--button-hover));
+}
+
+/* open and not hovered: the light variant's own tint, not its hover tint */
+.bandButton[data-variant="light"][aria-pressed="true"]:enabled:not(
+    [data-loading],
+    :hover
+  ) {
+  background-image: linear-gradient(var(--button-bg), var(--button-bg));
+}
+
 /* takes the row's free space: on a shared row nearly all of it goes here, so the address stays wide */
 .controls {
   display: flex;

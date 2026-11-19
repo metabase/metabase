@@ -16,6 +16,8 @@ import type { PreviewSessionResponse } from "../api";
 
 import { TroubleshootPage } from "./TroubleshootPage";
 
+jest.mock("../PreviewBand.module.css", () => ({ bandButton: "bandButton" }));
+
 const SANDY_SESSION: PreviewSessionResponse = {
   preview_id: "preview-1",
   user_id: 3,
@@ -126,6 +128,14 @@ describe("TroubleshootPage", () => {
     expect(
       screen.getByRole("status", { name: "Previewing as" }),
     ).toHaveTextContent("Previewing as Sandy Sales");
+  });
+
+  it("keeps Open in new tab white under its hover tint, like Explain access", async () => {
+    setup({});
+
+    expect(
+      await screen.findByRole("button", { name: "Open in new tab" }),
+    ).toHaveClass("bandButton");
   });
 
   it("offers Open in new tab as one button, with no more-options menu", async () => {

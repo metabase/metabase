@@ -151,9 +151,12 @@ export function ExplainAccessButton({
   disabled,
   onClick,
 }: ExplainAccessButtonProps) {
+  const variant = isOpen ? "light" : "default";
   if (!isCompact) {
     return (
       <Button
+        className={S.bandButton}
+        variant={variant}
         style={{ flexShrink: 0 }}
         disabled={disabled}
         aria-pressed={isOpen}
@@ -166,6 +169,8 @@ export function ExplainAccessButton({
   return (
     <Tooltip label={t`Explain access`}>
       <Button
+        className={S.bandButton}
+        variant={variant}
         style={{ flexShrink: 0 }}
         disabled={disabled}
         aria-label={t`Explain access`}
