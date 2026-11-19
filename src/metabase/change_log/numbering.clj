@@ -35,12 +35,14 @@
   position if that is higher, and the rest rise with their ids."
   []
   (when (seq (change-log.db/unnumbered-ids 1))
-    (cluster-lock/with-cluster-lock ::number-entries
-      (when-let [ids (seq (change-log.db/unnumbered-ids batch-size))]
-        (let [start (max (* 1000 (System/currentTimeMillis))
-                         (inc (or (change-log.db/highest-position) 0)))]
-          (doseq [statement-ids (partition-all (statement-size) ids)]
-            (change-log.db/set-positions! statement-ids start (first ids))))))))
+    ;; Before the lock: the first call on a node can take a connection of its own to read the product name.
+    (let [size (statement-size)]
+      (cluster-lock/with-cluster-lock ::number-entries
+        (when-let [ids (seq (change-log.db/unnumbered-ids batch-size))]
+          (let [start (max (* 1000 (System/currentTimeMillis))
+                           (inc (or (change-log.db/highest-position) 0)))]
+            (doseq [statement-ids (partition-all size ids)]
+              (change-log.db/set-positions! statement-ids start (first ids)))))))))
 
 ;; The numbering of this node: `{:executor ..., :awake-until ...}`. `:awake-until` is an atom that holds when the
 ;; numbering goes to sleep, in milliseconds since the epoch.
