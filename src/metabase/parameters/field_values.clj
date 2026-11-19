@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (declare get-or-create-field-values! get-or-create-field-values-with-hash-input!)
@@ -51,6 +52,7 @@
     - impersonation context.
     - linked-filter constraints (optionally provided).
     - database routing context.
+    - the workspace that the request names, whose copies the values are read from.
     - `extra`, if any — a caller-supplied map whose entries affect query shape but aren't part of
       constraints (e.g. chain-filter's `:via-path`/`:fk-pairs` hints from the card's joins).
 
@@ -66,6 +68,8 @@
                     (field-values/hash-input-for-impersonation field)
                     (field-values/hash-input-for-linked-filters field constraints)
                     (field-values/hash-input-for-database-routing field)
+                    (when-let [workspace-id (workspaces/current-workspace-id)]
+                      {:workspace-id workspace-id})
                     (when (seq extra) {:extra extra}))]
     (when (every? some? (vals hash-input))
       hash-input)))

@@ -16,6 +16,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
@@ -123,7 +124,8 @@
 
 (defn record-copy!
   "Record, for the workspace with `workspace-id`, how the copy of the shared `table` that its transform wrote differs
-  from the shared metadata of `table`. `database` is the Lib metadata of the Database; the request's table remapping
+  from the shared metadata of `table`, and drop the advanced FieldValues of its Fields, which may hold the old copy's
+  values. `database` is the Lib metadata of the Database; the request's table remapping
   redirects a describe of `table` to the copy."
   [workspace-id database table]
   (workspaces/with-workspace-id workspace-id
@@ -135,6 +137,10 @@
         (write-field-copies! workspace-id shared-fields (desired-field-copies shared-fields owned-by-name columns))
         (write-owned-fields! workspace-id (:id table) shared-fields owned-by-name columns))
       (ws.db/hide-shared-twins! workspace-id)
+      ;; Values that a workspace reads are advanced FieldValues keyed by the workspace. A new copy has new values, so
+      ;; the old ones go; production's cached values of the same Fields are rebuilt when next read.
+      (doseq [{field-id :id} fields]
+        (field-values/clear-advanced-field-values-for-field! field-id))
       (log/infof "Recorded the copy of table %d in workspace %d: %d columns" (:id table) workspace-id (count columns))
       nil)))
 

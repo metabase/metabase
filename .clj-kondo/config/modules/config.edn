@@ -2064,7 +2064,8 @@
            query-processor
            util
            util.classloader
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -4951,6 +4952,7 @@
            sync
            util
            warehouses
+           warehouses.schema
            warehouses.secrets
            workspaces}
    :model-exports #{:model/Workspace}

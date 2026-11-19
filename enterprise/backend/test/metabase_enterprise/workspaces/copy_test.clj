@@ -115,6 +115,15 @@
        (is (= {} (field-copies workspace-id)))
        (is (= {} (owned-fields workspace-id table-id)))))))
 
+(deftest recording-a-copy-drops-old-field-values-test
+  (do-with-orders
+   (fn [{:keys [workspace-id db-id table-id field-ids]}]
+     (t2/insert! :model/FieldValues {:field_id (field-ids "id") :type :advanced :hash_key "workspace-values"
+                                     :values [1 2]})
+     (testing "a new copy has new values, so the values read from the old copy go"
+       (record! workspace-id db-id table-id changed-columns)
+       (is (not (t2/exists? :model/FieldValues :field_id (field-ids "id") :type :advanced)))))))
+
 (deftest a-shared-twin-of-a-workspace-field-is-hidden-test
   (do-with-orders
    (fn [{:keys [workspace-id db-id table-id]}]
