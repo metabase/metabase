@@ -35,6 +35,7 @@
     "../src/types/underscore.d.ts"
   ],
   "exclude": [
+    "src/**/*.unit.spec.*",
     "../src/metabase/ui/**/*.spec.*",
     "../src/metabase/ui/**/*.stories.*",
     "../src/metabase/ui/stories/**",
