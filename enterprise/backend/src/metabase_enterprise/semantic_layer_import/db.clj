@@ -6,7 +6,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-tables :- [:sequential [:map
@@ -14,23 +13,19 @@
                                         [:name   :string]]]
   "The schema and name of every active Table of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :schema :name] :db_id database-id :active true
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :schema :name] :db_id database-id :active true))
 
 (mu/defn active-table-schemas :- [:set [:maybe :string]]
   "The distinct schemas of the active Tables of the Database with `database-id`, nil for a Table with none."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                    {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :schema :model/Table :db_id database-id :active true))
 
 (mu/defn field-names :- [:sequential :string]
   "The names of the Fields of the Table with `table-id`, active or not."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-vec :name :model/Field :table_id table-id
-                    {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-vec :name :model/Field :table_id table-id))
 
 (mu/defn field-active? :- [:maybe :boolean]
   "Whether the Field with `field-id` is active; nil when there is no such Field."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :active :model/Field :id field-id
-                    {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :active :model/Field :id field-id))
