@@ -116,16 +116,25 @@
   "Drop the conjuncts that accept anything, keeping their annotations on the node, and the alternatives that accept
   nothing, and unwrap a branching node that has one branch left, if it [[merges-cleanly?]] (see [[merge-one-branch]])."
   [schema k]
-  (let [schema (cond-> schema
-                 (= k :allOf)
-                 (-> (lift-annotations k)
-                     (update k (partial remove empty-schema?)))
+  (let [branches            (k schema)
+        ;; conjuncts that all accept anything leave a node that does too, declared only if each of them was
+        declared-conjuncts? (and (= k :allOf)
+                                 (seq branches)
+                                 (mp/every? #(and (empty-schema? %) (declared? %)) branches))
+        schema              (cond-> schema
+                              (= k :allOf)
+                              (-> (lift-annotations k)
+                                  (update k (partial remove empty-schema?)))
 
-                 (and (= k :anyOf) (mp/some (complement never-schema?) (k schema)))
-                 (update k (partial remove never-schema?)))]
+                              (and (= k :anyOf) (mp/some (complement never-schema?) branches))
+                              (update k (partial remove never-schema?)))]
     (cond
-      (mp/some #(and (empty-schema? %) (declared? %)) (k schema))
+      declared-conjuncts?
       (vary-meta (dissoc schema k) assoc ::declared true)
+
+      ;; an alternative that accepts anything makes the node accept anything, and its annotations describe the node
+      (mp/some #(and (empty-schema? %) (declared? %)) (k schema))
+      (vary-meta (dissoc (lift-annotations schema k) k) assoc ::declared true)
 
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
       (dissoc schema k)

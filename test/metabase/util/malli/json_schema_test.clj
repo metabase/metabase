@@ -121,7 +121,17 @@
 (deftest ^:parallel collapse-branches-annotation-test
   (testing "a conjunct that constrains nothing goes, but its annotation stays on the node"
     (is (= {:type "integer", :deprecated true}
-           (mu.json-schema/transform [:and :int [:any {:json-schema {:deprecated true}}]])))))
+           (mu.json-schema/transform [:and :int [:any {:json-schema {:deprecated true}}]]))))
+  (testing "conjuncts that each say they accept anything leave a node that says so too"
+    (is (= {:deprecated true, :readOnly true}
+           (mu.json-schema/transform [:and
+                                      [:any {:json-schema {:deprecated true}}]
+                                      [:any {:json-schema {:readOnly true}}]])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"accepts anything"
+                          (mu.json-schema/transform [:and [:fn odd?] [:any {:json-schema {:deprecated true}}]]))))
+  (testing "an alternative that accepts anything keeps its annotations on the node it widens"
+    (is (= {:deprecated true}
+           (mu.json-schema/transform [:or [:any {:json-schema {:deprecated true}}] :int])))))
 
 (deftest ^:parallel tuple-test
   (testing "every tuple item is required"
