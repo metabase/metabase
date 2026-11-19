@@ -532,7 +532,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               ),
 
               // DATA STUDIO
-              ...toRouteObjects(getDataStudioRoutes(IsAdmin)),
+              ...toRouteObjects(
+                getDataStudioRoutes(IsAdmin, browsePage("BrowseModels")),
+              ),
 
               // MONITOR
               ...toRouteObjects(getMonitorRoutes()),

@@ -8,7 +8,6 @@ import {
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -82,10 +81,6 @@ function MainNavbarContainer({
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const [reorderBookmarksMutation] = useReorderBookmarksMutation();
 
-  const { data: rootCollection } = useGetCollectionQuery({
-    id: ROOT_COLLECTION.id,
-  });
-
   const {
     data: trashCollection,
     isLoading,
@@ -134,17 +129,10 @@ function MainNavbarContainer({
       tree.push(trash);
     }
 
-    if (rootCollection) {
-      const root: CollectionTreeItem = {
-        ...rootCollection,
-        icon: getCollectionIcon(rootCollection, { isTenantUser }),
-        children: [],
-      };
-      return [root, ...tree];
-    } else {
-      return tree;
-    }
-  }, [rootCollection, trashCollection, collections, currentUser, isTenantUser]);
+    // PROTOTYPE: "Our analytics" isn't shown; its child folders are listed
+    // directly.
+    return tree;
+  }, [trashCollection, collections, currentUser, isTenantUser]);
 
   const reorderBookmarks = useCallback(
     async ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {

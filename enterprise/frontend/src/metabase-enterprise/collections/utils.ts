@@ -19,7 +19,6 @@ import {
   INSTANCE_ANALYTICS_COLLECTION,
   OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
-  REMOTE_SYNC_COLLECTION,
 } from "./constants";
 
 export function isRegularCollection({
@@ -62,10 +61,7 @@ export const useGetIcon = () => {
   const getIconBase = useGetIconBase();
 
   return useCallback(
-    (
-      item: ObjectWithModel,
-      { isTenantUser = false }: { isTenantUser?: boolean } = {},
-    ): IconData => {
+    (item: ObjectWithModel, _opts?: { isTenantUser?: boolean }): IconData => {
       const collectionType = getCollectionType({
         // Unjustified type cast. FIXME
         type: (item.type as CollectionType) || item.collection_type,
@@ -80,13 +76,6 @@ export const useGetIcon = () => {
         // Library collections keep their special icon regardless of sync status
         if (PLUGIN_LIBRARY.isLibraryCollectionType(item.type)) {
           return getIconBase(item);
-        }
-
-        // tenant users see the normal icon, they don't know what a synced collection is
-        if (item.is_remote_synced && !isTenantUser) {
-          return {
-            name: REMOTE_SYNC_COLLECTION.icon,
-          };
         }
 
         if (

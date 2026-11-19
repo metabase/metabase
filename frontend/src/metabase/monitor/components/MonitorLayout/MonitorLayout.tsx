@@ -1,6 +1,8 @@
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   type MonitorSection,
@@ -115,11 +117,22 @@ export function MonitorLayout() {
 
   const activeSection = getActiveSection(pathname);
 
+  // Same args as the main nav's tree, so this reuses its cached response.
+  const { data: collections = [] } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+    "include-library": true,
+  });
+  const usageAnalyticsCollection = collections.find(
+    isInstanceAnalyticsCollection,
+  );
+
   const hasContentManagement =
     canAccessDependencyDiagnosticsPage ||
     canAccessContentDiagnosticsPage ||
     canAccessTools ||
-    canAccessAlerts;
+    canAccessAlerts ||
+    usageAnalyticsCollection != null;
   const hasLogsAndActivity = canAccessTools;
 
   const upperNav = (
@@ -171,6 +184,14 @@ export function MonitorLayout() {
               isSelected={activeSection === "alerts"}
               showLabel={isNavbarOpened}
               onClick={() => trackMonitorSectionClicked("alerts")}
+            />
+          )}
+          {usageAnalyticsCollection && (
+            <AreaTab
+              label={usageAnalyticsCollection.name}
+              icon="audit"
+              to={Urls.collection(usageAnalyticsCollection)}
+              showLabel={isNavbarOpened}
             />
           )}
         </AreaTabGroup>

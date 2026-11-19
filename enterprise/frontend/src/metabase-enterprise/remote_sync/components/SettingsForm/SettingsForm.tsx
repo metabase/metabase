@@ -40,8 +40,8 @@ import {
   trackRemoteSyncSettingsChanged,
 } from "../../analytics";
 import type { SettingsFormValues, SyncableCollection } from "../../types";
-import { SyncTaskModal } from "../SyncTaskModal";
 import { SyncActions } from "../SyncActions";
+import { SyncTaskModal } from "../SyncTaskModal";
 
 import { CollectionsField } from "./CollectionsField";
 import { UnsyncedDependenciesModal } from "./UnsyncedDependenciesModal";
@@ -140,7 +140,7 @@ function LoadedSettingsForm({
     if (initialValues.url !== "" && values.branch !== initialValues.branch) {
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
     }
-    sendToast({ message: t`Remote sync settings saved`, icon: "check" });
+    sendToast({ message: t`Git integration settings saved`, icon: "check" });
     if (task_id != null) {
       setTaskId(task_id);
     } else {
@@ -252,13 +252,15 @@ function SettingsFormBody({
           description={
             hasUnpushedChanges
               ? t`Push your changes first: switching discards changes that aren't pushed yet.`
-              : t`Content from your synced git repo will appear in Metabase’s navigation, and won’t be editable.`
+              : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Git integration settings are admin-only.
+                t`Content from your synced git repo will appear in Metabase’s navigation, and won’t be editable.`
           }
           disabled={isReadOnlyBlocked}
         />
         <Radio
           value="read-write"
           label={t`Use git-backed version control`}
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Git integration settings are admin-only.
           description={t`Metabase acts as a git client, allowing both pushing and pulling to the git repo.`}
         />
       </Stack>
@@ -303,7 +305,7 @@ function SettingsFormBody({
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
         )}
         <FormSubmitButton
-          label={isEnabled ? t`Save changes` : t`Set up remote sync`}
+          label={isEnabled ? t`Save changes` : t`Set up git integration`}
           variant="filled"
           disabled={!dirty || values.url.length === 0}
         />

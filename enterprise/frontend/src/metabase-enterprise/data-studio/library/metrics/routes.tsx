@@ -65,9 +65,15 @@ const metricHistoryPage = () =>
     Component: DataStudioMetricHistoryPage,
   }));
 
+const metricListPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
+  ).then(({ LibraryMetricsPage }) => ({ Component: LibraryMetricsPage }));
+
 export function getDataStudioMetricRoutes() {
   return (
     <Route path="metrics">
+      <Route index lazy={metricListPage} />
       <Route path="new" lazy={newMetricPage} />
       <Route path=":cardId" lazy={metricAboutPage} />
       <Route path=":cardId/overview" lazy={metricOverviewPage} />

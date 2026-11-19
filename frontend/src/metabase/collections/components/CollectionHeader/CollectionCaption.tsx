@@ -9,7 +9,7 @@ import {
 } from "metabase/common/collections/utils";
 import { EditableDescription } from "metabase/common/components/EditableDescription";
 import { EditableText } from "metabase/common/components/EditableText";
-import { getIsTenantUser, getUser } from "metabase/current-user";
+import { getUser } from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -90,8 +90,6 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  const isTenantUser = useSelector(getIsTenantUser);
-
   if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
@@ -101,11 +99,6 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
         entity="collection"
       />
     );
-  }
-
-  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
-    // external users should see the normal icon, they should not know about what synced collections are
-    return <Icon name="synced_collection" size={24} c="core-brand" />;
   }
 
   if (isRootTrashCollection(collection)) {

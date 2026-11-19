@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import { isLibraryCollection } from "metabase/common/collections/utils";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
@@ -15,9 +15,33 @@ import type { CollectionId, CollectionType } from "metabase-types/api";
 
 import { SidebarHeading, SidebarSection } from "../Sidebar";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import type { SelectedItem } from "../types";
+
+const BROWSE_DATABASES_URL = "/browse/databases";
+
+/** The "Databases" browse link, shared by the Official and non-git navs. */
+export function DatabasesNavLink({
+  nonEntityItem,
+  onItemSelect,
+}: {
+  nonEntityItem?: SelectedItem;
+  onItemSelect: () => void;
+}) {
+  return (
+    <SidebarLink
+      icon="database"
+      url={BROWSE_DATABASES_URL}
+      isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATABASES_URL)}
+      onClick={onItemSelect}
+      aria-label={t`Browse databases`}
+    >
+      {t`Databases`}
+    </SidebarLink>
+  );
+}
 
 // Top-most collections synced from the git repository (with their subtrees).
-// The Library syncs too, but it's listed under "Official data" instead.
+// The Library syncs too, but it's listed under "Data" instead.
 function getSyncedRoots(items: CollectionTreeItem[]): CollectionTreeItem[] {
   return items.flatMap((item) => {
     if (isLibraryCollection(item)) {
@@ -27,17 +51,17 @@ function getSyncedRoots(items: CollectionTreeItem[]): CollectionTreeItem[] {
   });
 }
 
-function findCollectionId(
+function findCollection(
   items: CollectionTreeItem[],
   type: CollectionType,
-): CollectionId | undefined {
+): CollectionTreeItem | undefined {
   for (const item of items) {
     if (item.type === type) {
-      return item.id;
+      return item;
     }
-    const id = findCollectionId(item.children, type);
-    if (id != null) {
-      return id;
+    const found = findCollection(item.children, type);
+    if (found != null) {
+      return found;
     }
   }
   return undefined;
@@ -46,6 +70,8 @@ function findCollectionId(
 type Props = {
   collections: CollectionTreeItem[];
   selectedCollectionId?: CollectionId;
+  nonEntityItem?: SelectedItem;
+  hasDataAccess: boolean;
   onItemSelect: () => void;
 };
 
@@ -56,6 +82,8 @@ type Props = {
 export function OfficialNavSection({
   collections,
   selectedCollectionId,
+  nonEntityItem,
+  hasDataAccess,
   onItemSelect,
 }: Props) {
   // Data apps and Data Studio pages hide this nav, so those links never need a
@@ -67,14 +95,15 @@ export function OfficialNavSection({
   });
   const dataApps = allDataApps.filter((app) => app.enabled && !app.outdated);
 
-  const tablesCollectionId = findCollectionId(collections, "library-data");
-  const metricsCollectionId = findCollectionId(collections, "library-metrics");
+  // The Library's Data and Metrics collection pages list every published
+  // table and metric.
+  const tablesCollection = findCollection(collections, "library-data");
+  const metricsCollection = findCollection(collections, "library-metrics");
 
   return (
     <>
       <SidebarSection>
         <ErrorBoundary>
-          <SidebarHeading>{t`Official content`}</SidebarHeading>
           {syncedRoots.length === 0 && dataApps.length === 0 ? (
             <Stack gap="sm" align="flex-start" ps="lg" pt="sm">
               <Text c="text-secondary" fz="sm">
@@ -126,26 +155,35 @@ export function OfficialNavSection({
       </SidebarSection>
 
       <SidebarSection>
-        <SidebarHeading>{t`Official data`}</SidebarHeading>
-        <SidebarLink
-          icon="table"
-          url={Urls.dataStudioLibrary({
-            expandedIds: tablesCollectionId != null ? [tablesCollectionId] : [],
-          })}
-          onClick={onItemSelect}
-        >
-          {t`Tables`}
-        </SidebarLink>
-        <SidebarLink
-          icon="metric"
-          url={Urls.dataStudioLibrary({
-            expandedIds:
-              metricsCollectionId != null ? [metricsCollectionId] : [],
-          })}
-          onClick={onItemSelect}
-        >
-          {t`Metrics`}
-        </SidebarLink>
+        <SidebarHeading>
+          {c("A noun, shown in the sidebar as a navigation link").t`Data`}
+        </SidebarHeading>
+        {metricsCollection && (
+          <SidebarLink
+            icon="metric"
+            url={Urls.collection(metricsCollection)}
+            isSelected={selectedCollectionId === metricsCollection.id}
+            onClick={onItemSelect}
+          >
+            {t`Metrics`}
+          </SidebarLink>
+        )}
+        {tablesCollection && (
+          <SidebarLink
+            icon="table"
+            url={Urls.collection(tablesCollection)}
+            isSelected={selectedCollectionId === tablesCollection.id}
+            onClick={onItemSelect}
+          >
+            {t`Tables`}
+          </SidebarLink>
+        )}
+        {hasDataAccess && (
+          <DatabasesNavLink
+            nonEntityItem={nonEntityItem}
+            onItemSelect={onItemSelect}
+          />
+        )}
       </SidebarSection>
     </>
   );

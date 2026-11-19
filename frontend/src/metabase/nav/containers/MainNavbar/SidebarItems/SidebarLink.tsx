@@ -94,7 +94,9 @@ export function SidebarLink({
       isSelected={isSelected}
       className={cx(S.nodeRoot, { [S.selected]: isSelected }, className)}
       bdrs="xxs"
-      pl="md"
+      // Matches the expand toggle in collection rows (2px padding + 12px
+      // chevron), so link icons line up with collection icons.
+      pl="0.875rem"
       aria-label={children}
       aria-selected={isSelected}
       onMouseDown={disableImageDragging}

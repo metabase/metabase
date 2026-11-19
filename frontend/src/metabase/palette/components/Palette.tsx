@@ -1,11 +1,22 @@
 import { KBarPortal, VisualState, useKBar } from "kbar";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { getUser } from "metabase/current-user";
+import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
 import { useSelector } from "metabase/redux";
 import { useLocation, useParams } from "metabase/router";
-import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Center,
+  Checkbox,
+  Icon,
+  Overlay,
+  Stack,
+  rem,
+} from "metabase/ui";
 import { type SearchQuery, parseSearchQuery } from "metabase/utils/browser";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -62,6 +73,10 @@ export const PaletteContainer = ({
   const { query } = useKBar();
   const ref = useRef<HTMLDivElement>(null);
   const searchText = typeof locationQuery.q === "string" ? locationQuery.q : "";
+  // With git integration on, search covers synced ("Official") content unless
+  // the user opts into Explorations too.
+  const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
+  const [includeExplorations, setIncludeExplorations] = useState(false);
 
   const {
     searchRequestId,
@@ -71,6 +86,7 @@ export const PaletteContainer = ({
   } = useCommandPalette({
     locationQuery,
     disabled,
+    includeExplorations,
   });
 
   useOnClickOutside(ref, () => {
@@ -99,6 +115,18 @@ export const PaletteContainer = ({
             <Icon c="text-primary" name="search" />
           </Stack>
         </Box>
+
+        {isGitIntegrationEnabled && (
+          <Box px="xl" pt="sm">
+            <Checkbox
+              label={t`Also search Explorations`}
+              checked={includeExplorations}
+              onChange={(event) =>
+                setIncludeExplorations(event.currentTarget.checked)
+              }
+            />
+          </Box>
+        )}
 
         <PaletteResults
           align="stretch"

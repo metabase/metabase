@@ -33,6 +33,7 @@ import {
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { FormField } from "metabase/forms";
+import { useRootCollectionName } from "metabase/nav/prototype/use-root-collection-name";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -45,6 +46,7 @@ function ItemName({
   dashboardId: DashboardId;
   type?: "collections" | "snippet-collections";
 }) {
+  const rootCollectionName = useRootCollectionName();
   const { data: collection } = useGetCollectionQuery(
     { id: collectionId },
     { skip: !collectionId || dashboardId != null },
@@ -68,6 +70,9 @@ function ItemName({
       <Icon name={collectionIcon.name} c="core-brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
+      ) : collectionId === null || collectionId === "root" ? (
+        // PROTOTYPE: never "Our analytics"; see useRootCollectionName.
+        <span>{rootCollectionName}</span>
       ) : (
         <CollectionName id={collectionId} />
       )}

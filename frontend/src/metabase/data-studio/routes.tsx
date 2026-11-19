@@ -93,7 +93,15 @@ const schemaViewerUpsellPage = () =>
     Component: SchemaViewerUpsellPage,
   }));
 
-export function getDataStudioRoutes(IsAdmin: RouteComponent) {
+/**
+ * `modelsPage` loads the browse page for Data Studio's Models section; the
+ * section is left out without it. The app routes pass it in, since Data
+ * Studio can't import the browse feature.
+ */
+export function getDataStudioRoutes(
+  IsAdmin: RouteComponent,
+  modelsPage?: () => Promise<{ Component: RouteComponent }>,
+) {
   return (
     <>
       {/* These redirects sit
@@ -120,6 +128,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSnippetRoutes()}
           {getDataStudioActionRoutes(IsAdmin)}
+          {modelsPage && <Route path="models" lazy={modelsPage} />}
           {PLUGIN_DATA_APPS.isEnabled ? (
             PLUGIN_DATA_APPS.getDataStudioRoutes(IsAdmin)
           ) : (

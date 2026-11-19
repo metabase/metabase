@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { t } from "ttag";
+import { type ReactNode, useMemo } from "react";
+import { c, t } from "ttag";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -23,6 +23,8 @@ type LibraryCollectionSectionProps = {
   collections: Collection[];
   selectedId?: string | number;
   onItemSelect: () => void;
+  /** Extra links listed below the Library's collections. */
+  children?: ReactNode;
 };
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
@@ -40,9 +42,10 @@ function buildSectionTree(
   );
 
   if (rootCollection) {
-    // User has access to the root — build its subtree normally
+    // User has access to the root — build its subtree normally, labeled with
+    // the section's nav name rather than the collection's own name.
     const [tree] = buildCollectionTree([rootCollection]);
-    return tree ?? null;
+    return tree ? { ...tree, name: sectionName } : null;
   }
 
   // User doesn't have access to the root collection. Find any promoted
@@ -89,6 +92,7 @@ export function NavbarLibrarySection({
   collections,
   selectedId,
   onItemSelect,
+  children,
 }: LibraryCollectionSectionProps) {
   const [expandLibrary = true, setExpandLibrary] = useUserSetting(
     "expand-library-in-nav",
@@ -104,7 +108,7 @@ export function NavbarLibrarySection({
       libraryCollection,
       collections,
       "library-data",
-      t`Data`,
+      t`Tables`,
     );
     const metricsTree = buildSectionTree(
       libraryCollection,
@@ -124,7 +128,7 @@ export function NavbarLibrarySection({
     );
   }, [collections]);
 
-  if (libraryTree.length === 0) {
+  if (libraryTree.length === 0 && !children) {
     return null;
   }
 
@@ -132,12 +136,16 @@ export function NavbarLibrarySection({
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
+          header={
+            <SidebarHeading>
+              {c("A noun, shown in the sidebar as a navigation link").t`Data`}
+            </SidebarHeading>
+          }
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
           role="section"
-          aria-label={t`Library`}
+          aria-label={t`Data`}
           onToggle={setExpandLibrary}
         >
           <Tree
@@ -155,6 +163,7 @@ export function NavbarLibrarySection({
               )
             }
           />
+          {children}
         </CollapseSection>
       </ErrorBoundary>
     </SidebarSection>
