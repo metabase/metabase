@@ -12,6 +12,7 @@ Try it: `bun run dev-prototype`, then a new question in the notebook on Prototyp
 | A | One code editor for everything; templates and functions in the side panel | see below | — | active |
 | B | Separate AI mode and code mode, switched by `=` and the `f` button | `notebook/components/InlineExpressionEditorB/`, `components/expressions/EditorB/` | A | active |
 | C | B with a `+` menu at the start of the input: the modes and code conversions | `notebook/components/InlineExpressionEditorC/`, `components/expressions/EditorC/` | B | active |
+| D | B with the prompt and the code one above the other, both on screen | `notebook/components/InlineExpressionEditorD/`, `components/expressions/EditorD/` | B | active |
 
 Version A is the code as it was when the switcher was added (2026-11-19). It was not moved: Oleh also commits to this branch, and moving files would conflict with his work. Later versions copy the folders they change.
 
@@ -27,6 +28,8 @@ Version B copies the notebook editor (host only; it imports A's `ExpressionPrevi
 
 Version C copies B's two folders. Figma: frames 337:19006 to 337:19623.
 
+Version D copies B's two folders. Figma: frames 337:19670, 337:19712, 337:20070, 337:20227.
+
 ## Constraints
 - Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves and keeps the editor open.
 - A: Cmd+Enter behaves like Enter (since Oleh's d1054a7e59f).
@@ -41,6 +44,9 @@ Version C copies B's two folders. Figma: frames 337:19006 to 337:19623.
 - C: everything in B, except: the round button left of the input (`+` for AI, `=` for code) opens a menu (Ask AI, Custom expression, Convert: SQL, Python, Excel); the `=` is on that button, not before the code; the context is a full-width strip below the input, not a pill.
 - C: Convert modes take code in a code font, with the placeholder "Convert SQL to custom expression"; there, a typed `=` is part of the code (Excel formulas), and the context strip doesn't show.
 - C: while the AI works, the dots replace the round button and Done becomes Cancel.
+- D: the AI prompt is always on screen; `f` or `=` opens the code in a grey row below it (no `=` before the code), and opens the docs side panel.
+- D: there's no context pill; the code below is what a prompt asks the AI to change, also while its row is hidden.
+- D: Backspace on empty code hides the code row and goes back to the prompt.
 - B: the "Open the docs" row is always the last row of the suggestions and never shows on its own.
 
 ## Decisions
@@ -57,6 +63,9 @@ Version C copies B's two folders. Figma: frames 337:19006 to 337:19623.
 - 2026-11-19 — C: a conversion starts fresh: the current code isn't sent to the AI, and the context strip hides in the Convert modes.
 - 2026-11-19 — C: Backspace on empty code goes back to Ask AI, like in B.
 - 2026-11-19 — C: Python converts like SQL and Excel, but isn't tuned; it needn't work well in this prototype.
+- 2026-11-19 — D: `f` with code hides only the code row; the code stays saved and is still sent to the AI.
+- 2026-11-19 — D: the docs side panel opens when the user opens the code (`f` or `=`), and closes when `f` hides it; not for an existing clause or the AI's answer.
+- 2026-11-19 — D: after the AI answers, the cursor stays in the prompt (cleared), and the new code shows below with the preview.
 
 ## Settings
 - `expression-editor-version` — which version shows.
