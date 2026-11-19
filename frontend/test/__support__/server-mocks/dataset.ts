@@ -18,6 +18,12 @@ export function setupAdhocQueryEndpoint(
   fetchMock.post("path:/api/dataset", response, options);
 }
 
+export function setupNativeDatasetEndpoint(
+  response: MockResponse<NativeDatasetResponse | Response>,
+) {
+  fetchMock.post("path:/api/dataset/native", response);
+}
+
 export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
   fetchMock.post(`path:/api/dataset/query_metadata`, metadata, {
     name: "dataset-query-metadata",

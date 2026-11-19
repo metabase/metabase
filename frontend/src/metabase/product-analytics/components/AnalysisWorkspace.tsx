@@ -4,10 +4,14 @@ import { isEventTableSetUp } from "metabase/product-analytics-core";
 import { Group, Paper, Stack } from "metabase/ui";
 import type { ProductAnalyticsKind, TableId } from "metabase-types/api";
 
+import { useAnalysis } from "../use-analysis";
+
+import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisTitle } from "./AnalysisTitle";
 import S from "./AnalysisWorkspace.module.css";
 import { EventTablePicker } from "./EventTablePicker";
 import { TableNotSetUp } from "./TableNotSetUp";
+import { ViewSqlButton } from "./ViewSqlButton";
 
 type AnalysisWorkspaceProps = {
   kind: ProductAnalyticsKind;
@@ -18,6 +22,7 @@ type AnalysisWorkspaceProps = {
 /**
  * A new analysis: the title and toolbar across the top, and the result below.
  * Without a table, the toolbar's table picker opens and nothing shows below.
+ * Picking a table runs the analysis with its default settings.
  */
 export const AnalysisWorkspace = ({
   kind,
@@ -35,6 +40,14 @@ export const AnalysisWorkspace = ({
       ? { id: tableId, include_sensitive_fields: true }
       : skipToken,
   );
+  const isTableSetUp = table !== undefined && isEventTableSetUp(table);
+  const {
+    analysis,
+    query,
+    rawSeries,
+    isRunning,
+    error: analysisError,
+  } = useAnalysis({ kind, table: isTableSetUp ? table : undefined });
 
   return (
     <Stack flex={1} h="100%" gap={0} bg="background_page-secondary">
@@ -48,13 +61,14 @@ export const AnalysisWorkspace = ({
         bg="background_page-primary"
       >
         <AnalysisTitle kind={kind} tableName={table?.display_name} />
-        <Group gap="sm">
+        <Group justify="space-between" gap="sm">
           <EventTablePicker
             table={table}
             isLoading={isLoading}
             isInitiallyOpened={tableId === undefined}
             onChange={onTableChange}
           />
+          {query !== undefined && <ViewSqlButton query={query} />}
         </Group>
       </Stack>
       {tableId !== undefined && (
@@ -65,9 +79,18 @@ export const AnalysisWorkspace = ({
               loading={isLoading}
               error={error}
             >
-              {table !== undefined && !isEventTableSetUp(table) && (
-                <TableNotSetUp table={table} />
-              )}
+              {table !== undefined &&
+                (isTableSetUp ? (
+                  <AnalysisResult
+                    title={analysis?.title}
+                    display={analysis?.display}
+                    rawSeries={rawSeries}
+                    isRunning={isRunning}
+                    error={analysisError}
+                  />
+                ) : (
+                  <TableNotSetUp table={table} />
+                ))}
             </LoadingAndErrorWrapper>
           </Paper>
         </Stack>

@@ -14,7 +14,7 @@ const ANALYSIS_CONFIGS: {
   habit: HABIT_CONFIG,
 };
 
-const getAnalysisConfig = <K extends ProductAnalyticsKind>(
+export const getAnalysisConfig = <K extends ProductAnalyticsKind>(
   kind: K,
 ): AnalysisConfig<K> => ANALYSIS_CONFIGS[kind];
 

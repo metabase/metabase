@@ -1,7 +1,11 @@
 (ns metabase.lib.analysis
   (:require
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.column :as column]))
+   [metabase.lib.metadata.column :as column]
+   [metabase.lib.options :as lib.options]))
+
+(defn- named [aggregation column-name]
+  (lib.options/update-options aggregation assoc :name column-name))
 
 (defn ->mbql
   "Convert the given analysis stage into MBQL."
@@ -13,15 +17,17 @@
   (let [timestamp-column (column/column-with-unique-key query timestamp-column-key)
         person-column (column/column-with-unique-key query person-column-key)
         query (-> query
-                  (lib/aggregate (lib/distinct
-                                  (lib/with-temporal-bucket timestamp-column
-                                    (keyword granularity))))
+                  (lib/aggregate (named (lib/distinct
+                                         (lib/with-temporal-bucket timestamp-column
+                                           (keyword granularity)))
+                                        "periods"))
                   (lib/breakout person-column)
                   lib/append-stage
-                  (lib/aggregate (case habit-values
-                                   "count" (lib/count)
-                                   ;; TODO: come back once we have window functions
-                                   "percent" (lib/count))))
-        [count-col] (filter #(= "count" (:lib/original-name %))
-                            (lib/breakoutable-columns query -1))]
-    (lib/breakout query count-col)))
+                  (lib/aggregate (named (case habit-values
+                                          "count" (lib/count)
+                                          ;; TODO: come back once we have window functions
+                                          "percent" (lib/count))
+                                        "people")))
+        [periods-col] (filter #(= "periods" (:lib/original-name %))
+                              (lib/breakoutable-columns query -1))]
+    (lib/breakout query periods-col)))

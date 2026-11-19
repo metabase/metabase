@@ -1,3 +1,4 @@
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { useLocation, useNavigate, useSearchParams } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -25,13 +26,16 @@ export const NewAnalysisPage = () => {
   };
 
   return (
-    <AnalysisWorkspace
+    <ErrorBoundary
       // Each table gets a fresh workspace. Without a table, navigating to this
       // page again keeps the same URL, so the location's key starts it over.
       key={tableId ?? location.key}
-      kind={kind}
-      tableId={tableId}
-      onTableChange={handleTableChange}
-    />
+    >
+      <AnalysisWorkspace
+        kind={kind}
+        tableId={tableId}
+        onTableChange={handleTableChange}
+      />
+    </ErrorBoundary>
   );
 };

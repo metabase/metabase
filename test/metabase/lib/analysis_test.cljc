@@ -27,7 +27,7 @@
                :stages [{:lib/type :mbql.stage/mbql
                          :source-table (:id table)
                          :aggregation
-                         [[:distinct {}
+                         [[:distinct {:name "periods"}
                            [:field {:effective-type :type/DateTimeWithLocalTZ
                                     :base-type :type/DateTimeWithLocalTZ
                                     :temporal-unit :day}
@@ -36,10 +36,10 @@
                                              :base-type :type/Integer}
                                      (:id (columns "User ID"))]]}
                         {:lib/type :mbql.stage/mbql
-                         :aggregation [[:count {}]]
+                         :aggregation [[:count {:name "people"}]]
                          :breakout [[:field {:effective-type :type/Integer
                                              :base-type :type/Integer}
-                                     "count"]]}]}
+                                     "periods"]]}]}
               (analysis/->mbql analysis))))
     ;; TODO: blocked on window functions
     #_(testing "habit with percent"
