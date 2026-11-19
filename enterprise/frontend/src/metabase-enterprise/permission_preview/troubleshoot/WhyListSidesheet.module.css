@@ -39,6 +39,16 @@
 
 .status {
   flex-shrink: 0;
+  color: var(--mb-color-text-primary);
+}
+
+.statusChevron {
+  color: var(--mb-color-text-secondary);
+}
+
+.status:hover,
+.status:hover .statusChevron {
+  color: var(--mb-color-text-brand);
 }
 
 .toggle:focus-visible,

@@ -267,7 +267,7 @@ function InPagePanel({
       component="aside"
       className={S.panel}
       direction="column"
-      w="20rem"
+      w="30rem"
       aria-labelledby={titleId}
     >
       <Flex align="center" justify="space-between" px="xl" pt="xl" pb="lg">
@@ -772,7 +772,7 @@ function ToggleRow({
         {status}
       </div>
       <Collapse in={isOpen}>
-        <Box pl="lg" pb="sm">
+        <Box pl="lg" pt="xs" pb="sm">
           {children}
         </Box>
       </Collapse>
@@ -933,7 +933,9 @@ function SummaryCard({
   summary: SummaryWhyPage;
   onOpen: (target: WhyTarget) => void;
 }) {
-  const { collections, tables, blockedCollections } = summary;
+  const { tables } = summary;
+  // the ones they can't open come last, in the same section
+  const collections = [...summary.collections, ...summary.blockedCollections];
   return (
     <SidesheetCard>
       <Verdict verdict={summary.verdict} hasIcon={false} />
@@ -961,28 +963,15 @@ function SummaryCard({
               <SummaryTables tables={tables} onOpen={onOpen} />
             </Disclosure>
           )}
-          {blockedCollections.length > 0 && (
-            <Disclosure
-              rowKey="summary-blocked"
-              label={t`Can't access (${blockedCollections.length})`}
-              breakdown={ngettext(
-                msgid`${blockedCollections.length} collection`,
-                `${blockedCollections.length} collections`,
-                blockedCollections.length,
-              )}
-            >
-              <AccessRows targets={blockedCollections} onOpen={onOpen} />
-            </Disclosure>
-          )}
         </Stack>
       </SidesheetCardSection>
     </SidesheetCard>
   );
 }
 
-/** "2 Curate · 4 View": the collections per status, Curate first. */
+/** "2 Curate · 4 View · 1 No access": the collections per status, Curate first. */
 function getCollectionsBreakdown(collections: WhyTarget[]) {
-  return ["write", "read"]
+  return ["write", "read", "none"]
     .map((value) => ({
       count: collections.filter((target) => target.cell.value === value).length,
       label: getWhyValueLabel("collection", value),
@@ -1302,8 +1291,8 @@ function StatusButton({
     <UnstyledButton className={S.status} onClick={onClick}>
       <Flex align="center" gap="xs">
         {option != null && <Icon name={option.icon} c={option.iconColor} />}
-        <Text>{label}</Text>
-        <Icon name="chevronright" c="text-secondary" />
+        <Text c="inherit">{label}</Text>
+        <Icon name="chevronright" className={S.statusChevron} />
       </Flex>
     </UnstyledButton>
   );
@@ -1358,8 +1347,16 @@ function SummaryLink({
 }) {
   return (
     <UnstyledButton onClick={onClick}>
-      <Flex align="center" gap="xs">
-        <Icon name="arrow_right" c="core-brand" />
+      <Flex align="flex-start" gap="xs">
+        {/* one text line tall, so the arrow stays beside the first line when the words wrap */}
+        <Text
+          component="span"
+          display="flex"
+          h="1lh"
+          style={{ alignItems: "center" }}
+        >
+          <Icon name="arrow_right" c="core-brand" />
+        </Text>
         <Text c="core-brand">{t`See everything ${whoName} can access`}</Text>
       </Flex>
     </UnstyledButton>

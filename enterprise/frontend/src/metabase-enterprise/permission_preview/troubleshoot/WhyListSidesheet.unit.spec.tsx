@@ -492,16 +492,13 @@ describe("WhyListSidesheet", () => {
     });
     await openSeeEverything();
 
-    const folds = [
-      getFold("Collections (2)"),
-      getFold("Tables (4)"),
-      getFold("Can't access (2)"),
-    ];
-    expect(within(folds[0]).getByText("1 Curate · 1 View")).toBeInTheDocument();
+    const folds = [getFold("Collections (4)"), getFold("Tables (4)")];
+    expect(
+      within(folds[0]).getByText("1 Curate · 1 View · 2 No access"),
+    ).toBeInTheDocument();
     expect(
       within(folds[1]).getByText("1 Rows filtered · 1 Blocked · 2 Can view"),
     ).toBeInTheDocument();
-    expect(within(folds[2]).getByText("2 collections")).toBeInTheDocument();
     for (const fold of folds) {
       expect(fold).toHaveAttribute("aria-expanded", "false");
     }
@@ -509,29 +506,35 @@ describe("WhyListSidesheet", () => {
     expect(screen.queryByText("Filtered rows")).not.toBeInTheDocument();
   });
 
-  it("says one collection in the Can't access count", async () => {
+  it("lists the collections they can't open in Collections, after the ones they can", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
       mainCollections: {
         ...COLLECTIONS,
         collections: [
-          ...COLLECTIONS.collections,
           getCollection(17, "Product templates", 1, "none"),
+          ...COLLECTIONS.collections,
         ],
       },
     });
     await openSeeEverything();
+    await userEvent.click(getFold("Collections (3)"));
 
+    const blocked = await screen.findByText("Product templates");
+    const open = screen.getByText("Sales reports");
     expect(
-      within(getFold("Can't access (1)")).getByText("1 collection"),
-    ).toBeInTheDocument();
+      open.compareDocumentPosition(blocked) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByText(/^Can't access/)).not.toBeInTheDocument();
   });
 
-  it("leaves Can't access out when no collection is blocked, though a table is", async () => {
+  it("leaves No access out of the Collections counts when no collection is blocked, though a table is", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
     await openSeeEverything();
 
-    expect(screen.queryByText(/^Can't access/)).not.toBeInTheDocument();
+    expect(
+      within(getFold("Collections (2)")).getByText("1 Curate · 1 View"),
+    ).toBeInTheDocument();
     expect(
       within(getFold("Tables (4)")).getByText(/1 Blocked/),
     ).toBeInTheDocument();
@@ -1014,6 +1017,48 @@ describe("WhyListSidesheet", () => {
     });
   });
 
+  it("makes the panel 30rem wide, as wide as the side sheet below 1280px", async () => {
+    setup({
+      openedItem: { type: "collection", id: SALES_REPORTS_ID },
+      isInPage: true,
+    });
+
+    expect(
+      await screen.findByRole("complementary", { name: "Explain access" }),
+    ).toHaveStyle({ width: "30rem" });
+  });
+
+  it("keeps the See everything arrow beside the link's first line, in a box one text line tall", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+
+    const text = await screen.findByText(
+      "See everything Sandy Sales can access",
+    );
+    // the link is an arrow box then the words; neither has a role or label to find it by
+    // eslint-disable-next-line testing-library/no-node-access
+    const link = text.parentElement as HTMLElement;
+    expect(link).toHaveStyle({ alignItems: "flex-start" });
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(link.firstElementChild).toHaveStyle({ height: "1lh" });
+  });
+
+  it("pads an opened row's content by the xs step, so the first attribute doesn't touch the row's hover band", async () => {
+    setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
+
+    const toggle = await findToggle("Orders · Sample Database");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    // the opened content is the row's last box, inside its Collapse
+    /* eslint-disable testing-library/no-node-access */
+    const row = toggle.parentElement?.parentElement as HTMLElement;
+    // the row always has its Collapse and the box inside it; the cast drops the null from the chain
+    const content = row.lastElementChild?.firstElementChild as HTMLElement;
+    /* eslint-enable testing-library/no-node-access */
+    expect(content).toHaveTextContent("Rules set by Sales");
+    expect(content).toHaveStyle({
+      paddingTop: "var(--mantine-spacing-xs)",
+    });
+  });
+
   it("pulls a card's rows up by their hover band, so the rows sit 8px under the title and 24px above the card's edge", async () => {
     setup({ openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID } });
 
@@ -1085,12 +1130,9 @@ describe("WhyListSidesheet", () => {
       screen.getByText("See everything Sandy Sales can access"),
     );
 
+    // Product templates, which they can't open, too; the Reviews table is in Tables
     expect(
-      await screen.findByRole("button", { name: /Collections \(5\)/ }),
-    ).toHaveAttribute("aria-expanded", "false");
-    // Product templates; the Reviews table is in Tables
-    expect(
-      screen.getByRole("button", { name: /Can't access \(1\)/ }),
+      await screen.findByRole("button", { name: /Collections \(6\)/ }),
     ).toHaveAttribute("aria-expanded", "false");
   });
 
