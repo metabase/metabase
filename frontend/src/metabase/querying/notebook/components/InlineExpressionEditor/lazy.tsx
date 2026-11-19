@@ -33,9 +33,20 @@ const importInlineEditor = () =>
       /* webpackChunkName: "expression-editor" */
       "../InlineExpressionEditorE"
     ),
-  ]).then(([module, moduleB, moduleC, moduleD, moduleE]) => {
+    import(
+      /* webpackChunkName: "expression-editor" */
+      "../InlineExpressionEditorF"
+    ),
+  ]).then(([module, moduleB, moduleC, moduleD, moduleE, moduleF]) => {
     isInlineEditorLoaded = true;
-    return { ...module, ...moduleB, ...moduleC, ...moduleD, ...moduleE };
+    return {
+      ...module,
+      ...moduleB,
+      ...moduleC,
+      ...moduleD,
+      ...moduleE,
+      ...moduleF,
+    };
   });
 
 export const prefetchInlineExpressionEditor = () => {
@@ -95,6 +106,12 @@ const LazyInlineExpressionEditorE = lazy(() =>
   })),
 );
 
+const LazyInlineExpressionEditorF = lazy(() =>
+  importInlineEditor().then(({ InlineExpressionEditorF }) => ({
+    default: InlineExpressionEditorF,
+  })),
+);
+
 export const InlineExpressionEditor = (props: InlineExpressionEditorProps) => {
   const [version] = usePrototypeSetting(EXPRESSION_EDITOR_VERSION_SETTING);
   return (
@@ -103,7 +120,8 @@ export const InlineExpressionEditor = (props: InlineExpressionEditorProps) => {
       {version === "c" && <LazyInlineExpressionEditorC {...props} />}
       {version === "d" && <LazyInlineExpressionEditorD {...props} />}
       {version === "e" && <LazyInlineExpressionEditorE {...props} />}
-      {!["b", "c", "d", "e"].includes(version) && (
+      {version === "f" && <LazyInlineExpressionEditorF {...props} />}
+      {!["b", "c", "d", "e", "f"].includes(version) && (
         <LazyInlineExpressionEditor {...props} />
       )}
     </Suspense>

@@ -14,6 +14,7 @@ Try it: `bun run dev-prototype`, then a new question in the notebook on Prototyp
 | C | B with a `+` menu at the start of the input: the modes and code conversions | `notebook/components/InlineExpressionEditorC/`, `components/expressions/EditorC/` | B | active |
 | D | B with the prompt and the code one above the other, both on screen | `notebook/components/InlineExpressionEditorD/`, `components/expressions/EditorD/` | B | active |
 | E | B with a sparkle/f switch at the start of the input instead of the f button | `notebook/components/InlineExpressionEditorE/`, `components/expressions/EditorE/` | B | active |
+| F | E with the switch as a grey strip on the left edge of the input | `notebook/components/InlineExpressionEditorF/`, `components/expressions/EditorF/` | E | active |
 
 Version A is the code as it was when the switcher was added (2026-11-19). It was not moved: Oleh also commits to this branch, and moving files would conflict with his work. Later versions copy the folders they change.
 
@@ -32,6 +33,8 @@ Version C copies B's two folders. Figma: frames 337:19006 to 337:19623.
 Version D copies B's two folders. Figma: frames 337:19670, 337:19712, 337:20070, 337:20227.
 
 Version E copies B's two folders (without B's unit spec). Figma: frame 304:15005, with the switch moved from the right of the input to the left.
+
+Version F copies E's two folders. Figma: frame 304:14982.
 
 ## Constraints
 - Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves and keeps the editor open.
@@ -54,6 +57,7 @@ Version E copies B's two folders (without B's unit spec). Figma: frame 304:15005
 - D: the code row has a preview button only while no preview shows, and a docs button while the docs side panel is closed.
 - D: the preview is a separate card below the editor, 16px apart.
 - E: everything in B, except: a segmented switch (sparkle for Ask AI, f for the code) at the start of the input replaces the f button; no "=" before the code; the prompt's placeholder is "Ask AI".
+- F: everything in E, except: the switch is a 32px grey strip on the left edge, as tall as the input, with the sparkle above the f; the current mode is a white cell with a brand-colored icon (a filled sparkle for Ask AI).
 - B: the "Open the docs" row is always the last row of the suggestions and never shows on its own.
 
 ## Decisions
