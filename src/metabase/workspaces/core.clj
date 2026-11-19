@@ -42,6 +42,7 @@
    `metabase-enterprise.workspaces.core` reads the `workspaces-enabled` setting and
    the workspace that the request names."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]))
 
@@ -88,24 +89,21 @@
   tables)
 
 ;;; ---------------------------------------- The workspace a request names -----------------------------------------
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *workspace-id*
-  "The id of the workspace the current request names with its `X-Metabase-Workspace-Id` header
-   ([[metabase.server.middleware.workspace]]), or nil. Threads that `bound-fn` starts, such as a transform run's,
-   keep it."
-  nil)
+;;;
+;;; The binding is the app DB's ([[mdb/with-workspace-id]]): on Postgres, it puts the thread's app DB connections in the
+;;; workspace too, so row-level security shows them the workspace's rows.
 
 (defn current-workspace-id
-  "The id of the workspace the current request names, or nil when it names none."
+  "The id of the workspace the current request names with its `X-Metabase-Workspace-Id` header
+  ([[metabase.server.middleware.workspace]]), or nil when it names none. Threads that `bound-fn` starts, such as a
+  transform run's, keep it."
   []
-  *workspace-id*)
+  (mdb/workspace-id))
 
 (defn do-with-workspace-id
   "Impl for [[with-workspace-id]] and [[without-workspace]]."
   [workspace-id thunk]
-  (binding [*workspace-id* workspace-id]
-    (thunk)))
+  (mdb/do-with-workspace-id workspace-id thunk))
 
 (defmacro with-workspace-id
   "Run `body` in the workspace with `workspace-id`, or in none when it is nil."

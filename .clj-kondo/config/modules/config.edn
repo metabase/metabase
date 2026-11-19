@@ -3682,7 +3682,7 @@
   workspaces
   {:team "Graphy"
    :api #{metabase.workspaces.core metabase.workspaces.table-remapping}
-   :uses #{premium-features util}}
+   :uses #{app-db premium-features util}}
 
   xrays
   {:team "Graphy"
