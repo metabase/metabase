@@ -12,7 +12,8 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -94,6 +95,14 @@
   "`expectation` with its SQL reading the people table."
   [expectation]
   (update expectation :sql format (data-testing.test-util/qualified :people)))
+
+(deftest write-plan-is-a-subject-plan-test
+  (mt/test-drivers (drivers-that-write)
+    (let [plan (write-plan (mt/id) (refund-1) ["refunded" 1])]
+      (testing "the plan these tests use in place of a subject's passes the write branch of the subject-plan schema"
+        (is (mr/validate ::data-testing.subject/subject-plan plan)))
+      (testing "control: the write branch refuses a write plan with an output label, which only a read plan has"
+        (is (not (mr/validate ::data-testing.subject/subject-plan (assoc plan :output-label "people"))))))))
 
 (deftest write-runs-on-the-inputs-test
   (mt/test-drivers (drivers-that-write)
