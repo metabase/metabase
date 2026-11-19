@@ -25,9 +25,9 @@
 (def ^:private batch-size 10000)
 
 (defn- statement-size
-  "How many entries one UPDATE numbers: 1,000, or one on MariaDB. There an update of many rows can wait for rows that
-  open transactions inserted (`ids-out-of-order-test`)."
+  "How many entries one UPDATE numbers: 1,000, or one on MariaDB."
   []
+  ;; On MariaDB an update of many rows can wait for rows that open transactions inserted (`ids-out-of-order-test`).
   (if (mdb/mariadb?) 1 1000))
 
 (defn- number-entries!
