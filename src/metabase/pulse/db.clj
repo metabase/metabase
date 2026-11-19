@@ -4,8 +4,10 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
+   [metabase.collections.listing :as collections.listing]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -463,3 +465,26 @@
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
   [dashboard-id]
   (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))
+
+(mu/defn collection-pulse-items :- [:maybe :map]
+  "The query of the Pulses, but the alerts and the dashboard subscriptions, in `collection` that the collection items
+  listing of `opts` holds, nil when the namespace of `collection` holds no Pulse or `opts` restrict the items to those
+  created by a user, which Pulses do not record."
+  [collection                                        :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (and (collections.listing/holds-model? :model/Pulse collection)
+             (nil? created-by-id))
+    {:select-distinct [:p.id
+                       :p.name
+                       :p.entity_id
+                       :p.collection_position
+                       :p.collection_id
+                       [(h2x/literal "pulse") :model]]
+     :from            [[:pulse :p]]
+     :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+     :where           [:and
+                       [:= :p.collection_id      (:id collection)]
+                       [:= :p.archived           (boolean archived?)]
+                       [:= :p.alert_condition    nil]
+                       [:= :p.dashboard_id nil]
+                       (collections.listing/pinned-state->clause pinned-state :p.collection_position)]}))

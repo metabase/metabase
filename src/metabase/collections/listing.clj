@@ -1,9 +1,13 @@
 (ns metabase.collections.listing
   "HoneySQL helpers for the queries that list collection content and table content readable by a user: the content of
   the collections they read, the content of the tables they query, the location of an item in its collection, and the
-  items outside personal collections."
+  items outside personal collections, and the ones that list the items of one collection: the Collections whose items
+  the user sees, the items of the pinned state a listing asks for, and the namespaces of the collections that hold a
+  model."
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -76,3 +80,52 @@
       (into [:and]
             (for [pid personal-ids]
               [:not-like (u/qualified-key collection-alias :location) (str "/" pid "/%")]))]]))
+
+(def ^:private always-true-hsql-expr
+  "A Honey SQL expression that is always true.
+
+    1 = 1"
+  [:= [:inline 1] [:inline 1]])
+
+(defn pinned-state->clause
+  "The clause keeping the rows whose `col`, their `:collection_position` by default, is that of `pinned-state`, `:all`,
+  `:is_pinned` or `:is_not_pinned`, all of them for another one."
+  ([pinned-state]
+   (pinned-state->clause pinned-state :collection_position))
+  ([pinned-state col]
+   (case pinned-state
+     :all           always-true-hsql-expr
+     :is_pinned     [:<> col nil]
+     :is_not_pinned [:= col nil]
+     always-true-hsql-expr)))
+
+(defn visible-items-options
+  "The `perms/visible-collections-filter-clause` options of a listing of Collection items, of the trash when
+  `archived?`, a nil collection id standing for the root Collection of the `:root-namespace` option."
+  [archived? {:keys [root-namespace]}]
+  {:include-archived-items    :all
+   :permission-level          (if archived? :write :read)
+   :include-trash-collection? (boolean archived?)
+   :root-namespace            root-namespace})
+
+(defn visible-items-clause
+  "The where-clause keeping the items whose Collection, by `collection-id-field`, the current user sees in this listing:
+  the Collections they can read, or write when listing the trash, the trash then included, a nil collection id standing
+  for the root Collection of the `:root-namespace` option, which they only have to read in either listing."
+  [collection-id-field archived? options]
+  (let [clause (fn [permission-level]
+                 (perms/visible-collections-filter-clause collection-id-field
+                                                          (api/current-user-info)
+                                                          (assoc (visible-items-options archived? options)
+                                                                 :permission-level permission-level)))]
+    (if archived?
+      [:or
+       [:and [:= collection-id-field nil] (clause :read)]
+       [:and [:not= collection-id-field nil] (clause :write)]]
+      (clause :read))))
+
+(defn holds-model?
+  "Whether the namespace of `collection`, the Root Collection of a namespace included, is one that Collections hold the
+  items of `model` in."
+  [model collection]
+  (contains? (collection/allowed-namespaces model) (keyword (:namespace collection))))

@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -149,3 +150,16 @@
     (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn collection-timeline-items :- [:maybe :map]
+  "The query of the Timelines in `collection` that the collection items listing of `opts` holds, nil when the namespace of
+  `collection` holds no Timeline or `opts` ask for the pinned items only, which no Timeline is."
+  [collection                      :- :map
+   {:keys [archived? pinned-state]} :- :map]
+  (when (and (collections.listing/holds-model? :model/Timeline collection)
+             (not= pinned-state :is_pinned))
+    {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+     :from   [[:timeline :timeline]]
+     :where  [:and
+              [:= :collection_id (:id collection)]
+              [:= :archived (boolean archived?)]]}))

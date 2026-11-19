@@ -651,7 +651,7 @@
 
   collection-items
   {:team "UX West"
-   :api  #{metabase.collection-items.core}
+   :api  #{metabase.collection-items.core metabase.collection-items.spec}
    :uses #{api
            app-db
            collections
@@ -2277,6 +2277,7 @@
            audit-app
            change-log
            channel
+           collection-items
            collections
            driver
            embedding
@@ -3214,6 +3215,7 @@
            api
            api.eid-translation
            app-db
+           collection-items
            collections
            events
            lib.schema

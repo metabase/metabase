@@ -14,17 +14,20 @@
   the cache keeps that to once per document. The binding can't live here -- `documents` already
   depends on `collections`, so requiring it back would be circular."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collection-items.spec :as collection-items.spec]
    [metabase.collections.children :as collections.children]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.util :as collections.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
+   [metabase.models.resolution :as models.resolution]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
@@ -349,32 +352,6 @@
                [:= :exploration.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :exploration.collection_position))))
 
-(defmethod collection-children-query :pulse
-  [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select-distinct [:p.id
-                         :p.name
-                         :p.entity_id
-                         :p.collection_position
-                         :p.collection_id
-                         [(h2x/literal "pulse") :model]]
-       :from            [[:pulse :p]]
-       :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-       :where           [:and
-                         [:= :p.collection_id      (:id collection)]
-                         [:= :p.archived           (boolean archived?)]
-                         ;; exclude alerts
-                         [:= :p.alert_condition    nil]
-                         ;; exclude dashboard subscriptions
-                         [:= :p.dashboard_id nil]]}
-      (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
-
-(defmethod post-process-collection-children :pulse
-  [_ _ _ rows]
-  (for [row rows]
-    (dissoc row
-            :description :display :authority_level :moderated_status :icon :personal_owner_id :namespace
-            :dataset_query :table_id :query_type :is_upload :collection_namespace)))
-
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
   collections are an EE feature."
@@ -387,15 +364,6 @@
 (defmethod collection-children-query :snippet
   [_model collection options]
   (snippets-collection-children-query collection options))
-
-(defmethod collection-children-query :timeline
-  [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
-   :from   [[:timeline :timeline]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
@@ -431,13 +399,6 @@
         (update :archived api/bit->boolean)
         (update :archived_directly api/bit->boolean)
         (assoc :collection_namespace (some-> (:namespace collection) name)))))
-
-(defmethod post-process-collection-children :timeline
-  [_ _options _collection rows]
-  (for [row rows]
-    (dissoc row
-            :description :display :collection_position :authority_level :moderated_status
-            :dataset_query :table_id :query_type :is_upload :namespace)))
 
 (defmethod post-process-collection-children :snippet
   [_ _options _collection rows]
@@ -868,15 +829,63 @@
     :timeline    :model/Timeline
     :transform   :model/Transform))
 
+(def ^:private legacy-rankings
+  {:dashboard  1
+   :pulse      2
+   :dataset    3
+   :metric     4
+   :card       5
+   :snippet    6
+   :collection 7
+   :timeline   8})
+
+(defn- legacy-holds?
+  [model-kw collection]
+  (let [collection-namespace (:namespace collection)]
+    (and (case model-kw
+           :table  (premium-features/has-feature? :library)
+           :action (contains? #{"data-actions" "data-apps"} (some-> collection-namespace name))
+           true)
+         (or (= model-kw :collection)
+             (contains? (collection/allowed-namespaces (model-name->toucan-model model-kw)) (keyword collection-namespace))))))
+
+(defn- legacy-item-spec
+  [model-kw]
+  (cond-> {:items   (fn [collection {:keys [created-by-id] :as options}]
+                      (when (and (legacy-holds? model-kw collection)
+                                 (or (nil? created-by-id) (contains? creator-filterable-models model-kw)))
+                        (collection-children-query model-kw collection options)))
+           :hydrate (fn [collection options rows]
+                      (post-process-collection-children model-kw options collection rows))}
+    (contains? legacy-rankings model-kw) (assoc :rank (legacy-rankings model-kw))))
+
+(def ^:private item-specs*
+  (memoize/fifo
+   (fn [_spec-methods]
+     (let [declared (update-vals (models.resolution/spec-entries-by-name collection-items.spec/spec) second)]
+       (into declared
+             (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document
+                             :exploration :transform :table :action]
+                   :when    (not (contains? declared (name model-kw)))]
+               [(name model-kw) (legacy-item-spec model-kw)]))))
+   :fifo/threshold 1))
+
+(defn- item-specs
+  "The collection items spec of each type of item, by the name of the type."
+  []
+  (item-specs* (methods collection-items.spec/spec)))
+
 (defn post-process-rows
-  "Post process any data. Have a chance to process all of the same type at once using
-  `post-process-collection-children`. Must respect the order passed in."
+  "Post process any data. Have a chance to process all of the same type at once using the `:hydrate` of its spec. Must
+  respect the order passed in."
   [options collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
-                          (post-process-collection-children (keyword model) options collection rows)))
+                          (if-let [hydrate (:hydrate (get (item-specs) model))]
+                            (hydrate collection options rows)
+                            rows)))
                    cat
                    (map (fn [row]
                           (merge (apply dissoc row (keys last-edit-key-mapping))
@@ -924,18 +933,13 @@
                                      [nil col-name]))))
          necessary-columns)))
 
+(def ^:private default-rank
+  "The rank of a type of item, when sorting by type, that has no `:rank` in its spec."
+  100)
+
 (defn- add-model-ranking
-  [select-clause model]
-  (let [rankings {:dashboard  1
-                  :pulse      2
-                  :dataset    3
-                  :metric     4
-                  :card       5
-                  :snippet    6
-                  :collection 7
-                  :timeline   8}]
-    (conj select-clause [[:inline (get rankings model 100)]
-                         :model_ranking])))
+  [select-clause rank]
+  (conj select-clause [[:inline rank] :model_ranking]))
 
 (comment
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
@@ -1015,20 +1019,19 @@
       0))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info search-text] :as options}]
+  [collection queries {:keys [sort-info search-text] :as options}]
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
-        models        (sort (map keyword models))
-        queries       (for [model models
-                            :let  [query              (-> (collection-children-query model collection options)
-                                                          (vary-meta assoc :allow-subquery true))
-                                   select-clause-type (some
+        models        (keys queries)
+        specs         (item-specs)
+        queries       (for [[model query] queries
+                            :let  [select-clause-type (some
                                                        (fn [k]
                                                          (when (get query k)
                                                            k))
                                                        [:select :select-distinct])]]
                         (-> query
                             (update select-clause-type add-missing-columns all-select-columns)
-                            (update select-clause-type add-model-ranking model)))
+                            (update select-clause-type add-model-ranking (:rank (get specs (name model)) default-rank))))
         search-clause (search-text-clause search-text)
         rows-query    (cond-> {:select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
@@ -1067,43 +1070,45 @@
       res
       limit-res)))
 
-(defn- valid-collection-models
-  "Return every item model that can appear in `collection-namespace`."
-  [collection-namespace]
-  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
-                   ;; Tables in collections are an EE feature (library)
-                   (premium-features/has-feature? :library) (conj :table)
-                   (contains? #{"data-actions" "data-apps"} (some-> collection-namespace name)) (conj :action))
-        :let     [toucan-model       (model-name->toucan-model model-kw)
-                  allowed-namespaces (collection/allowed-namespaces toucan-model)]
-        :when    (or (= model-kw :collection)
-                     (contains? allowed-namespaces (keyword collection-namespace)))]
-    model-kw))
+(defn- item-queries
+  "The query of each type of item of `models`, every type when `models` is empty, that lists some items in `collection`
+  under `options`, by the keyword of the name of the type, in name order."
+  [collection models options]
+  (into (sorted-map)
+        (keep (fn [[item-name {:keys [items]}]]
+                (let [item (keyword item-name)]
+                  (when (or (empty? models) (contains? models item))
+                    (when-let [query (items collection options)]
+                      [item (vary-meta query assoc :allow-subquery true)])))))
+        (item-specs)))
 
 (mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (valid-collection-models collection-namespace)
-                           ;; only fetch models that are specified by the `model` param; or everything if it's empty
-                           :when    (or (empty? models) (contains? models model-kw))
-                           ;; a creator filter drops models that don't index a creator
-                           :when    (or (nil? created-by-id) (contains? creator-filterable-models model-kw))]
-                       model-kw)]
-    (if (seq valid-models)
-      (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
+   {:keys [models], :as options}                     :- CollectionChildrenOptions]
+  (let [options (assoc options :collection-namespace collection-namespace)
+        queries (item-queries collection models options)]
+    (if (seq queries)
+      (collection-children* collection queries options)
       {:total  0
        :data   []
        :limit  (request/limit)
        :offset (request/offset)
-       :models valid-models})))
+       :models []})))
+
+(defn- filterable-queries
+  "The queries of the types of items that can be a filterable item of `collection`, by the keyword of their name. Snippets
+  are never included: they are not a filterable type. When present, `restrict-models` limits the set."
+  [collection restrict-models options]
+  (into (sorted-map)
+        (remove (comp #{:snippet} key))
+        (item-queries collection restrict-models options)))
 
 (defn filterable-models
-  "The models that can appear as a filterable item of `collection`. Snippets are never included: they are not a
-  filterable type. When present, `restrict-models` limits the set."
-  [collection restrict-models]
-  (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
-    (seq restrict-models) (filter restrict-models)))
+  "The models that can appear as a filterable item of `collection` under `options`. Snippets are never included: they
+  are not a filterable type. When present, `restrict-models` limits the set."
+  [collection restrict-models options]
+  (vec (keys (filterable-queries collection restrict-models options))))
 
 (mu/defn collection-filter-metadata :- [:map
                                         [:available_models [:sequential :string]]]
@@ -1113,23 +1118,21 @@
   [collection                      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models                 :- [:maybe [:set :keyword]]
    options                         :- CollectionChildrenOptions]
-  (let [candidates (filterable-models collection restrict-models)
-        options    (-> options
-                       (dissoc :models :search-text)
-                       (assoc :collection-namespace (:namespace collection)))]
+  (let [options (-> options
+                    (dissoc :models :search-text)
+                    (assoc :collection-namespace (:namespace collection)))
+        queries (filterable-queries collection restrict-models options)]
     ;; This result is independent of search and model filters. Requesting it with every filter update
     ;; repeats the same EXISTS probes; a separately cached request could avoid that work.
-    (if (empty? candidates)
+    (if (empty? queries)
       {:available_models []}
-      (let [row        (first
-                        (collections.db/collection-filter-metadata-rows
-                         {:select (vec
-                                   (for [model candidates]
-                                     [[:exists (-> (collection-children-query model collection options)
-                                                   (vary-meta assoc :allow-subquery true))]
-                                      model]))}))]
+      (let [row (first
+                 (collections.db/collection-filter-metadata-rows
+                  {:select (vec
+                            (for [[model query] queries]
+                              [[:exists query] model]))}))]
         {:available_models
-         (->> candidates
+         (->> (keys queries)
               (keep (fn [model]
                       (when (api/bit->boolean (get row model))
                         (name model))))

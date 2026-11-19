@@ -25,6 +25,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -35,6 +36,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.audit :as pulse.audit]
+   [metabase.pulse.collection-items :as pulse.collection-items]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
@@ -84,6 +86,11 @@
 
 (defmethod app-db-copy/spec :model/Pulse [_model]
   {:skip? false})
+
+(defmethod collection-items/spec :model/Pulse [_model]
+  {"pulse" {:rank    2
+            :items   pulse.db/collection-pulse-items
+            :hydrate pulse.collection-items/hydrate}})
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."

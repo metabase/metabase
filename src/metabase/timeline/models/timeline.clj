@@ -1,6 +1,7 @@
 (ns metabase.timeline.models.timeline
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.spec :as eid-translation]
@@ -8,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.timeline.collection-items :as timeline.collection-items]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
@@ -141,3 +143,8 @@
   [_model]
   {:synced-items         timeline.db/synced-timeline-items
    :synced-filter-clause timeline.db/synced-timelines-clause})
+
+(defmethod collection-items/spec :model/Timeline [_model]
+  {"timeline" {:rank    8
+               :items   timeline.db/collection-timeline-items
+               :hydrate timeline.collection-items/hydrate}})
