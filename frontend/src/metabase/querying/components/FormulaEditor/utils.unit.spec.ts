@@ -17,9 +17,8 @@ describe("getDefaultFormulaName", () => {
 describe("isDefaultFormulaName", () => {
   it.each([
     ["Total * 2", "[Total] * 2", true],
-    ["total*2", "[Total] * 2", true],
     [
-      "datetimeAdd(Created At, 1, 'day')",
+      'datetimeAdd(Created At, 1, "day")',
       'datetimeAdd([Created At], 1, "day")',
       true,
     ],
@@ -29,8 +28,19 @@ describe("isDefaultFormulaName", () => {
       "[A long column name that exceeds forty characters] + 2",
       true,
     ],
+    [
+      "A long column name that exceeds forty c… (2)",
+      "[A long column name that exceeds forty characters] + 2",
+      true,
+    ],
     ["Revenue", "Sum([Total])", false],
-  ])("tells whether %s is the default name of %s", (name, source, expected) => {
-    expect(isDefaultFormulaName(name, source)).toBe(expected);
-  });
+    ["total*2", "[Total] * 2", false],
+    ["Total * 2 (copy)", "[Total] * 2", false],
+    ["Total", "[Total] * 2", false],
+  ])(
+    "tells whether %s is the default name of %s",
+    (name, formula, expected) => {
+      expect(isDefaultFormulaName(name, formula)).toBe(expected);
+    },
+  );
 });

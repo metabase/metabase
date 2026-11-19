@@ -107,7 +107,7 @@ describe("SummaryWells", () => {
   });
 
   it("shows the full formula in the tooltip without changing its shortened name", async () => {
-    const name = "Sum(Total) + 100 + 100 + 100 + 100 +…";
+    const name = "Sum(Total) + 100 + 100 + 100 + 100 + 10…";
     setup({
       spec: {
         stages: [
@@ -146,7 +146,7 @@ describe("SummaryWells", () => {
   });
 
   it("shows full grouping formulas in tooltips and keeps their bucket menus", async () => {
-    const name = "Total + 100 + 100 + 100 + 100 +…";
+    const name = "Total + 100 + 100 + 100 + 100 + 100 + 1…";
     const dateName = "coalesce(Created At, Created At)";
     const { getLastChange } = setup({
       spec: {

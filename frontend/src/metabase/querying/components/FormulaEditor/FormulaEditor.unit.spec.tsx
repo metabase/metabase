@@ -114,7 +114,22 @@ describe("FormulaEditor", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
     await userEvent.keyboard("{Enter}");
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
+  it.each([
+    ["total*2", "Total * 2"],
+    ["([Total] + 1) + 2", "Total + 1 + 2"],
+    ["[Total] * (2)", "Total * 2"],
+    ["1e3 + [Total]", "1000 + Total"],
+    ["[Product.Category]", "Product → Category"],
+  ])("names the formula %s after its formatted text", async (source, name) => {
+    const { onSubmit } = await setup({ initialSource: source });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0].name).toBe(name);
   });
 
   it("lets a new formula refer to an existing custom column", async () => {
@@ -125,7 +140,7 @@ describe("FormulaEditor", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add column" }));
 
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   });
 
   it("does not let the edited custom column refer to itself", async () => {
@@ -178,7 +193,7 @@ describe("FormulaEditor", () => {
     await userEvent.paste("coalesce(\r\n[Total],\r0\n)");
     expect(view.state.doc.toString()).toBe("coalesce( [Total], 0 )");
     await userEvent.click(screen.getByRole("button", { name: "Add column" }));
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
 
     await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
     const source = view.state.doc.toString();
@@ -247,7 +262,7 @@ describe("FormulaEditor", () => {
       const { view, onSubmit } = await setup({ initialSource: "[Total]" });
       await openCompletion(view, 3);
       await user.keyboard("{Control>}{Enter}{/Control}");
-      expect(onSubmit).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     });
   });
 });

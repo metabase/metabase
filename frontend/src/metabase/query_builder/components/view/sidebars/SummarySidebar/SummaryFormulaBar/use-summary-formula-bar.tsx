@@ -84,6 +84,12 @@ export function useSummaryFormulaBar({
   const openDraft =
     activeDraft?.kind === "new" || editedFormula ? activeDraft : null;
 
+  const handleDraftNameChange = useCallback(
+    (name: string, source: string) =>
+      draftChipRef.current?.setFormula(name, source),
+    [],
+  );
+
   const dropPendingSource = useCallback(() => {
     const pending = pendingSource.current;
     pendingSource.current = null;
@@ -254,10 +260,7 @@ export function useSummaryFormulaBar({
             submitLabel={openDraft.kind === "edit" ? t`Update` : t`Add`}
             onEditorCreate={handleEditorCreate}
             onNameChange={
-              openDraft.kind === "new"
-                ? (name, source) =>
-                    draftChipRef.current?.setFormula(name, source)
-                : undefined
+              openDraft.kind === "new" ? handleDraftNameChange : undefined
             }
             onSubmit={handleSubmit}
             onCancel={close}
