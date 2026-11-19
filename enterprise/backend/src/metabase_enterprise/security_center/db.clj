@@ -87,14 +87,15 @@
   (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
 (mu/defn group-queryable-databases :- [:sequential [:map [:id ms/PositiveInt] [:name :string]]]
-  "The id and name, in name order, of the databases the group with `group-id` can query in any way: a create-queries
-  permission other than `:no` on the database or on one of its tables."
+  "The id and name, in name order, of the databases other than the Sample Database that the group with `group-id` can
+  query in any way: a create-queries permission other than `:no` on the database or on one of its tables."
   [group-id :- ms/PositiveInt]
   (if-let [db-ids (not-empty (t2/select-fn-set :db_id :model/DataPermissions
                                                :group_id   group-id
                                                :perm_type  :perms/create-queries
                                                :perm_value [:not= :no]))]
-    (t2/select [:model/Database :id :name] :id [:in db-ids] {:order-by [:name]})
+    ;; every group can query the Sample Database by default, and it holds only sample data
+    (t2/select [:model/Database :id :name] :id [:in db-ids] :is_sample false {:order-by [:name]})
     []))
 
 (mu/defn databases-with-details :- [:sequential [:map

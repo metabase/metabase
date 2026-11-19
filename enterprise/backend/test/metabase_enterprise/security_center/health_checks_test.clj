@@ -319,6 +319,14 @@
                             :entity_name "Warehouse"}))
             (is (= (count database-items) (count (set (map :entity_id database-items))))
                 "one item per database")))
+        (testing "not for the Sample Database"
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-temp [:model/Database {sample-id :id} {:name "Sample Database", :engine :h2, :details {}, :is_sample true}]
+              (perms/set-database-permission! group-id sample-id :perms/create-queries :query-builder)
+              (is (=? {:status :pass
+                       :items  [{:status :pass}
+                                {:status :pass, :message "All Users can't query any database"}]}
+                      (run-check-by-id :all-users-permissions))))))
         (testing "also for query access on one table only"
           (mt/with-no-data-perms-for-all-users!
             (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
