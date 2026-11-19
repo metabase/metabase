@@ -10,9 +10,9 @@ container=mb-static-viz-check
 port=${PORT:-3000}
 base=http://localhost:$port
 
-# Older releases are built with this script from master but from their own Dockerfile, which has no isolate
-if ! docker run --rm --entrypoint sh "$image" -c 'test -e /app/js-isolate/libpolyglotisolate.so'; then
-  echo "::notice::$image doesn't ship /app/js-isolate, skipping the static-viz check"
+# EXPECT_ISOLATE=false (set by containerize-jar.yml for images built from a Dockerfile without the isolate) skips the check
+if [ "${EXPECT_ISOLATE:-true}" = false ]; then
+  echo "::notice::$image is built from a Dockerfile without the JS isolate, skipping the static-viz check"
   exit 0
 fi
 
