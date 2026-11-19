@@ -33,7 +33,8 @@
   :model/Card)
 
 (t2/deftransforms :model/CardTest
-  {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
+  {:now          data-testing.models/now-column
+   :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
@@ -125,12 +126,13 @@
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
-  [:card_id :name :description :inputs :expectations])
+  [:card_id :name :description :now :inputs :expectations])
 
 (defn- revert-card-test!
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
-  (update-card-test! id (select-keys snapshot revision-columns)))
+  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
+  (update-card-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -147,7 +149,8 @@
   {:schema              ::data-testing.schema/external-card-test
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:card_id    (serialization/fk-transform :model/Card)
-                         :creator_id serialization/user-transform}
+                         :creator_id serialization/user-transform
+                         :now        data-testing.models/now-transform}
    :storage-paths       data-testing.serialization/card-test-storage-paths
    :import-dependencies data-testing.serialization/card-test-import-dependencies})
 
@@ -163,6 +166,6 @@
    :revert!   revert-card-test!})
 
 (defmethod audit/spec :model/CardTest [_model]
-  {:track          [:card_id :name :description]
+  {:track          [:card_id :name :description :now]
    :track-redacted [:creator_id :expectations :inputs]
    :skip           [:entity_id]})

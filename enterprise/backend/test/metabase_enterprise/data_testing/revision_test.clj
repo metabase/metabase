@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.revision-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
@@ -95,6 +96,24 @@
                   (is (= "Original" (get-in reversion [:object :name])))
                   (is (= "Renamed" (get-in update [:object :name])))
                   (is (true? (:is_creation creation))))))))))))
+
+(deftest transform-test-revision-revert-restores-now-test
+  (mt/with-premium-features #{:transforms-basic :transforms-testing}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Transform     {transform-id :id}      {}
+                       :model/TransformTest {transform-test-id :id} {:transform_id transform-id
+                                                                     :now          (t/offset-date-time "2026-10-13T00:00:00Z")}]
+          (t2/update! :model/TransformTest :id transform-test-id {:now nil})
+          (testing "an update of `now` is recorded"
+            (is (= 2 (count (revisions/revisions :model/TransformTest transform-test-id)))))
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity      "transform-test"
+                                 :id          transform-test-id
+                                 :revision_id (:id (last (revisions/revisions :model/TransformTest transform-test-id)))})
+          (testing "a revert restores the moment"
+            (is (= (t/instant "2026-10-13T00:00:00Z")
+                   (some-> (t2/select-one-fn :now :model/TransformTest :id transform-test-id) t/instant)))))))))
 
 (deftest transform-test-runs-are-not-revisioned-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -204,6 +223,24 @@
                 (is (=? {:is_reversion true :object {:name "Original"}} reversion))
                 (is (=? {:object {:name "Renamed"}} update))
                 (is (=? {:is_creation true} creation))))))))))
+
+(deftest card-test-revision-revert-restores-now-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card     {card-id :id}      {}
+                     :model/CardTest {card-test-id :id} {:card_id card-id
+                                                         :now     (t/offset-date-time "2026-10-13T00:00:00Z")}]
+        (t2/update! :model/CardTest :id card-test-id {:now nil})
+        (testing "an update of `now` is recorded"
+          (is (= 2 (count (revisions/revisions :model/CardTest card-test-id))))
+          (is (=? {:object {:now nil}} (first (revisions/revisions :model/CardTest card-test-id)))))
+        (mt/user-http-request :crowberto :post 200 "revision/revert"
+                              {:entity      "card-test"
+                               :id          card-test-id
+                               :revision_id (:id (last (revisions/revisions :model/CardTest card-test-id)))})
+        (testing "a revert restores the moment"
+          (is (= (t/instant "2026-10-13T00:00:00Z")
+                 (t/instant (t2/select-one-fn :now :model/CardTest :id card-test-id)))))))))
 
 (deftest card-test-revert-checks-the-reverted-state-test
   (mt/with-premium-features #{:transforms-testing}
@@ -521,6 +558,10 @@
                 (is (= ["changed the inputs"] (strings {:inputs one-input}))))
               (testing "a change of the expectations"
                 (is (= ["changed the expectations"] (strings {:expectations one-expectation}))))
+              (when-not (= "SegmentTest" model)
+                (testing "a change of `now`"
+                  (is (= ["changed the time the test reads as now"]
+                         (strings {:now (t/offset-date-time "2026-10-13T00:00:00Z")})))))
               (testing "a change of the subject names both subjects"
                 (is (= [(str "moved this " (#'revision.diff/model-str->i18n-str model) " from " from-name " to " to-name)]
                        (strings {subject-key to}))))
@@ -623,6 +664,34 @@
               (is (=? [{:is_creation false}] history))
               (is (= 1 (count history)))
               (is (not (re-find #"On the old segment" (pr-str history)))))))))))
+
+(deftest revert-to-a-revision-without-now-clears-now-test
+  (testing "a revision written before tests had `now` has no `:now`; reverting to it returns the test to the real clock"
+    (mt/with-premium-features #{:transforms-basic :transforms-testing}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/Card          {card-id :id}           {}
+                         :model/CardTest      {card-test-id :id}      {:card_id card-id :name "Before"}
+                         :model/Transform     {transform-id :id}      {}
+                         :model/TransformTest {transform-test-id :id} {:transform_id transform-id :name "Before"}]
+            (doseq [[model model-name entity id subject] [[:model/CardTest "CardTest" "card-test" card-test-id
+                                                           {:card_id card-id}]
+                                                          [:model/TransformTest "TransformTest" "transform-test"
+                                                           transform-test-id {:transform_id transform-id}]]]
+              (testing model
+                (let [;; A revision as a release before `now` wrote it.
+                      revision-id (t2/insert-returning-pk! :model/Revision
+                                                           {:model    model-name
+                                                            :model_id id
+                                                            :user_id  (mt/user->id :crowberto)
+                                                            :object   (merge subject {:name         "Before"
+                                                                                      :description  nil
+                                                                                      :inputs       []
+                                                                                      :expectations []})})]
+                  (t2/update! model :id id {:name "After" :now (t/offset-date-time "2026-10-13T00:00:00Z")})
+                  (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                        {:entity entity :id id :revision_id revision-id})
+                  (is (=? {:name "Before" :now nil} (t2/select-one [model :name :now] :id id))))))))))))
 
 (deftest card-test-history-permission-check-is-one-lookup-test
   (mt/with-premium-features #{:transforms-testing}

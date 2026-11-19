@@ -115,7 +115,7 @@
                                                       :inputs       inputs
                                                       :expectations expectations}]
     (let [segment (t2/select-one :model/Segment :id segment-id)]
-      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment inputs expectations))]
+      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment {:inputs inputs :expectations expectations}))]
         {:refused error-type}
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (let [result (atom nil)]

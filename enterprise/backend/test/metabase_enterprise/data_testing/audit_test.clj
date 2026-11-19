@@ -37,7 +37,8 @@
                   :user_id  (mt/user->id :crowberto)
                   :details  {:transform_id transform-id
                              :name         "Original"
-                             :description  "Checks output"}
+                             :description  "Checks output"
+                             :now          nil}
                   :topic    :transform-test-create
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-create transform-test-id))))
@@ -56,7 +57,8 @@
                   :user_id  (mt/user->id :crowberto)
                   :details  {:transform_id transform-id
                              :name         "Renamed"
-                             :description  "Checks output"}
+                             :description  "Checks output"
+                             :now          nil}
                   :topic    :transform-test-delete
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-delete transform-test-id))))))))
@@ -146,7 +148,8 @@
                   :user_id  (mt/user->id :crowberto)
                   :details  {:card_id     card-id
                              :name        "Original"
-                             :description "Checks output"}
+                             :description "Checks output"
+                             :now         nil}
                   :topic    :card-test-create
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-create card-test-id))))
@@ -165,7 +168,8 @@
                   :user_id  (mt/user->id :crowberto)
                   :details  {:card_id     card-id
                              :name        "Renamed"
-                             :description "Checks output"}
+                             :description "Checks output"
+                             :now         nil}
                   :topic    :card-test-delete
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
