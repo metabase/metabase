@@ -11,6 +11,7 @@ logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
+from sqlglot.dialects.dialect import Dialect
 from sqlglot.dialects.postgres import Postgres
 from sqlglot.errors import ParseError
 from sqlglot.generators.postgres import PostgresGenerator
@@ -149,8 +150,19 @@ def write_target(node):
     return isinstance(parent, (exp.Insert, exp.Update, exp.Delete, exp.Merge)) and parent.this is node
 
 
+def resolved_name(node, dialect=None):
+    """The name the table or CTE `node` declares or refers to, as `dialect` resolves an identifier: in Postgres an
+    unquoted name is folded to lower case and a quoted one is kept as written, in Snowflake an unquoted name is folded
+    to upper case, and in T-SQL case is ignored. Two nodes name the same thing iff their resolved names are equal."""
+    identifier = node.args.get("alias").this if isinstance(node, exp.CTE) else node.this
+    if not isinstance(identifier, exp.Identifier):
+        identifier = exp.to_identifier(node.alias if isinstance(node, exp.CTE) else node.name)
+    return Dialect.get_or_raise(dialect).normalize_identifier(identifier.copy()).name
+
+
 def shadowing_cte_names(node, dialect=None):
-    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside.
+    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside, each as
+    `resolved_name` gives it.
 
     No CTE name shadows the table an INSERT, UPDATE, DELETE or MERGE writes, except in T-SQL: Postgres, MySQL and the
     rest write the real table of that name, and T-SQL writes through the CTE to the table it reads."""
@@ -165,12 +177,12 @@ def shadowing_cte_names(node, dialect=None):
         if isinstance(current, exp.CTE) and current.alias:
             declaration = current.parent
             if not (isinstance(declaration, exp.With) and declaration.args.get("recursive")):
-                own.add(current.alias.lower())
+                own.add(resolved_name(current, dialect))
         # Found by type rather than by arg name, which sqlglot spells `with_` in some versions and `with` in
         # others.
         for value in current.args.values():
             if isinstance(value, exp.With):
-                names.update(cte.alias.lower() for cte in value.expressions if cte.alias)
+                names.update(resolved_name(cte, dialect) for cte in value.expressions if cte.alias)
         current = current.parent
     return names - own
 
@@ -201,7 +213,7 @@ def table_references(ast, dialect=None):
     for table in ast.find_all(exp.Table):
         if table_parts(table) is None:
             continue
-        if not table.db and not table.catalog and table.name.lower() in shadowing_cte_names(table, dialect):
+        if not table.db and not table.catalog and resolved_name(table, dialect) in shadowing_cte_names(table, dialect):
             continue
         yield table
 
@@ -642,7 +654,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 # A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
                 # enclosing query names the CTE and must be left alone — renaming it would point the query at the
                 # replacement table and silently skip the CTE.
-                if not db and not schema and table.lower() in shadowing_cte_names(node, dialect):
+                if not db and not schema and resolved_name(node, dialect) in shadowing_cte_names(node, dialect):
                     return node
                 replacement = find_table_replacement(db, schema, table, quoted_parts(node, "this"))
                 if replacement:

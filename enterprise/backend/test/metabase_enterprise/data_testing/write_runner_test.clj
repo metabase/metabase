@@ -160,6 +160,21 @@
         (is (= ::data-testing.errors/missing-inputs
                (refuse (str "DELETE FROM " orders " WHERE id = ?") [-1])))))))
 
+(deftest read-of-a-table-named-like-a-cte-in-another-case-test
+  (mt/test-driver :postgres
+    (let [orders (:name (table-ref :orders))
+          update (str " UPDATE " (qualified :people) " SET name = ? WHERE id IN (SELECT id FROM " orders ")")
+          refuse (fn [cte]
+                   (refusal! (str "WITH " cte " AS (SELECT 1 AS id)" update) ["refunded"]
+                             [(people-rows)] [(reading refunded-only-1)]))]
+      (testing "premise: the orders table's name is lower case, as Postgres folds an unquoted name"
+        (is (= "orders" orders)))
+      (testing "control: a CTE named in upper case, unquoted, is the CTE the subquery reads, so the write runs"
+        (is (nil? (refuse (u/upper-case-en orders)))))
+      (testing "a CTE named in upper case and quoted is another name, so the subquery reads the real table, which has no input"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "\"" (u/upper-case-en orders) "\""))))))))
+
 (deftest write-to-a-table-named-like-a-cte-runs-on-its-input-test
   (mt/test-drivers (drivers-that-write)
     (let [people (:name (table-ref :people))]

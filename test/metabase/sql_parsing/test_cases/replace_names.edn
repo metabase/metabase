@@ -31,6 +31,12 @@
                            [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
    :expected     "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders, tmp_people"}
 
+  {:name         "a table is replaced though a CTE has its name in another case and quoted, which Postgres does not fold"
+   :dialect      "postgres"
+   :sql          "WITH \"ORDERS\" AS (SELECT 1 AS id) SELECT * FROM orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
+   :expected     "WITH \"ORDERS\" AS (SELECT 1 AS id) SELECT * FROM tmp_orders"}
+
   {:name         "the table an UPDATE writes is replaced, though a CTE has its name"
    :dialect      "postgres"
    :sql          "WITH orders AS (SELECT 1 AS id) UPDATE orders SET total = 0 WHERE id IN (SELECT id FROM orders)"
