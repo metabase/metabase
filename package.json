@@ -433,6 +433,8 @@
     "build-stats": "bun install && rspack --json > stats.json",
     "build-storybook": "NODE_OPTIONS=--max-old-space-size=8192 storybook build",
     "build-storybook:test": "bun run build-storybook --test",
+    "build-ui-package": "cd frontend/ui-package && bun run build",
+    "smoke-ui-package": "cd frontend/ui-package && bun run smoke",
     "build-watch": "bun run concurrently -n 'cljs,js' 'bun run build-watch:cljs' 'bun run build-watch:js'",
     "build-watch:cljs": "bun install && shadow-cljs watch app",
     "build-watch:js": "bun install && NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch",
