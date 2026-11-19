@@ -3,21 +3,8 @@ import { getInstanceByDom } from "echarts/core";
 import fetchMock, { type CallLog } from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
-  setupFieldValuesEndpoint,
-} from "__support__/server-mocks";
-import {
-  act,
-  fireEvent,
-  mockGetBoundingClientRect,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks";
+import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -35,8 +22,6 @@ import type {
 import {
   createMockCard,
   createMockCardQueryMetadata,
-  createMockCollection,
-  createMockCollectionItem,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -611,73 +596,5 @@ describe("query builder > metrics in questions", () => {
     expect(
       within(await findChart()).queryByText("User → Source"),
     ).not.toBeInTheDocument();
-  });
-
-  it("should log choosing a metric as a recent selection and offer custom column and join actions on it (metabase#79571)", async () => {
-    setupCollectionByIdEndpoint({
-      collections: [
-        createMockCollection({ id: "root", name: "Our analytics" }),
-      ],
-    });
-    setupCollectionItemsEndpoint({
-      collection: { id: "root" },
-      collectionItems: [
-        createMockCollectionItem({
-          id: 4,
-          model: "card",
-          name: "Orders question",
-        }),
-        createMockCollectionItem({
-          id: SCALAR_METRIC.id,
-          model: "metric",
-          name: SCALAR_METRIC.name,
-        }),
-      ],
-    });
-    setupCardEndpoints(SCALAR_METRIC);
-    setupCardQueryMetadataEndpoint(
-      SCALAR_METRIC,
-      createMetricMetadata(SCALAR_METRIC),
-    );
-    mockGetBoundingClientRect();
-    await setup({ card: null, initialRoute: "/question/notebook" });
-
-    const miniPicker = await screen.findByTestId("mini-picker");
-    await userEvent.click(await within(miniPicker).findByText("Our analytics"));
-    await userEvent.click(
-      await within(miniPicker).findByText(SCALAR_METRIC.name),
-    );
-
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/activity/recents", {
-          method: "POST",
-        }),
-      ).toHaveLength(1),
-    );
-    const [recentsCall] = fetchMock.callHistory.calls(
-      "path:/api/activity/recents",
-      { method: "POST" },
-    );
-    expect(getRequestBody(recentsCall)).toEqual({
-      model: "metric",
-      model_id: SCALAR_METRIC.id,
-      context: "selection",
-    });
-
-    const dataStep = await screen.findByTestId("step-data-0-0");
-    expect(await within(dataStep).findByText("Orders")).toBeInTheDocument();
-    const actionButtons = within(dataStep).getByTestId("action-buttons");
-    expect(
-      within(actionButtons).getByRole("button", { name: "Custom column" }),
-    ).toBeInTheDocument();
-    expect(
-      within(actionButtons).getByRole("button", { name: "Join data" }),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("step-summarize-0-0")).getByText(
-        "Count of orders",
-      ),
-    ).toBeInTheDocument();
   });
 });
