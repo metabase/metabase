@@ -211,6 +211,8 @@
                        ;; the id qwen/qwen3.8-max resolves to on OpenRouter today
                        "qwen/qwen3.8-max-0902"            32000
                        ;; unlike on OpenAI direct and Azure, GPT models get the default here
+                       "openai/gpt-6.2-astra"             32000
+                       "openai/gpt-6.2-sol"               32000
                        "openai/gpt-5.6-sol"               32000
                        "openai/gpt-5.6-terra"             32000
                        "openai/gpt-5.6-luna"              32000

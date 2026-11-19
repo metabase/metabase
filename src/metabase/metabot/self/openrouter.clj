@@ -91,6 +91,10 @@
    ;; disable reports 0 reasoning_tokens in usage and completes within 48 completion tokens, so the
    ;; structured path needs neither a low effort nor the mandatory max_tokens floor
    "moonshotai/kimi-k3"              {:display-name "Kimi K3"                 :context-window 1048576 :reasoning :renderable}
+   ;; classified 2026-11-19 from the catalog, not a live probe: reasoning on by default at medium effort, like
+   ;; gpt-5.6, but `mandatory` with no `none` effort, like gpt-5.5-pro
+   "openai/gpt-6.2-astra"            {:display-name "GPT-6.2 Astra"           :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
+   "openai/gpt-6.2-sol"              {:display-name "GPT-6.2 Sol"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
    "openai/gpt-5.6-sol"              {:display-name "GPT-5.6 Sol"             :context-window  922000 :reasoning :renderable-default}
    "openai/gpt-5.6-terra"            {:display-name "GPT-5.6 Terra"           :context-window  922000 :reasoning :renderable-default}
    "openai/gpt-5.6-luna"             {:display-name "GPT-5.6 Luna"            :context-window  922000 :reasoning :renderable-default}
