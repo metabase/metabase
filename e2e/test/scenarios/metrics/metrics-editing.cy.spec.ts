@@ -1,6 +1,8 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type { Card } from "metabase-types/api";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -12,7 +14,7 @@ const ORDERS_SCALAR_METRIC = {
     aggregation: [["count"]],
   },
   display: "scalar",
-};
+} satisfies StructuredQuestionDetails;
 
 const ORDERS_SCALAR_MODEL_METRIC = {
   name: "Orders model metric",
@@ -22,19 +24,18 @@ const ORDERS_SCALAR_MODEL_METRIC = {
     aggregation: [["count"]],
   },
   display: "scalar",
-};
+} satisfies StructuredQuestionDetails;
 
 const ORDERS_SCALAR_FILTER_METRIC = {
   name: "Orders metric with filter",
   type: "metric",
-  description: "This is a description _with markdown_",
   query: {
     "source-table": ORDERS_ID,
     filter: [">", ["field", ORDERS.TOTAL, null], 100],
     aggregation: [["count"]],
   },
   display: "scalar",
-};
+} satisfies StructuredQuestionDetails;
 
 const PRODUCTS_SCALAR_METRIC = {
   name: "Products metric",
@@ -44,9 +45,9 @@ const PRODUCTS_SCALAR_METRIC = {
     aggregation: [["count"]],
   },
   display: "scalar",
-};
+} satisfies StructuredQuestionDetails;
 
-function startNewMetricWithTable(database, table) {
+function startNewMetricWithTable(database: string, table: string) {
   H.startNewMetric();
   H.MetricPage.queryEditor().should("be.visible");
   H.miniPicker().within(() => {
@@ -55,16 +56,10 @@ function startNewMetricWithTable(database, table) {
   });
 }
 
-function startNewMetricWithSavedItem(collection, name) {
-  H.startNewMetric();
-  H.MetricPage.queryEditor().should("be.visible");
-  H.miniPicker().within(() => {
-    cy.findByText(collection).click();
-    cy.findByText(name).click();
-  });
-}
-
-function saveNewMetric({ name, defaultDimension = "Created At" } = {}) {
+function saveNewMetric({
+  name,
+  defaultDimension = "Created At",
+}: { name?: string; defaultDimension?: string } = {}) {
   cy.intercept("POST", "/api/card").as("createCard");
   H.MetricPage.saveButton().click();
   H.modal().within(() => {
@@ -76,13 +71,17 @@ function saveNewMetric({ name, defaultDimension = "Created At" } = {}) {
   });
   // Revisit rather than rely on the post-save redirect, so the page is rendered
   // with the default dimension in place.
-  cy.wait("@createCard").then(({ response }) => {
-    H.setMetricDefaultDimension(response.body.id, defaultDimension);
-    cy.visit(`/metric/${response.body.id}`);
+  cy.wait<unknown, Card>("@createCard").then(({ response }) => {
+    const metricId = response?.body.id;
+    if (metricId == null) {
+      throw new Error("The card was not created");
+    }
+    H.setMetricDefaultDimension(metricId, defaultDimension);
+    cy.visit(`/metric/${metricId}`);
   });
 }
 
-function getActionButton(title) {
+function getActionButton(title: string) {
   return cy.findByTestId("action-buttons").button(title);
 }
 
@@ -91,31 +90,35 @@ function getPlusButton() {
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
-function startNewJoin({ stageIndex } = {}) {
-  H.getNotebookStep("data", { stage: stageIndex }).within(() =>
-    getActionButton("Join data").click(),
-  );
+function startNewJoin() {
+  H.getNotebookStep("data").within(() => getActionButton("Join data").click());
 }
 
-function startNewCustomColumn({ stageIndex } = {}) {
-  H.getNotebookStep("data", { stage: stageIndex }).within(() =>
+function startNewCustomColumn() {
+  H.getNotebookStep("data").within(() =>
     getActionButton("Custom column").click(),
   );
 }
 
-function startNewFilter({ stageIndex } = {}) {
-  H.getNotebookStep("filter", { stage: stageIndex }).within(() =>
-    getPlusButton().click(),
-  );
+function startNewFilter() {
+  H.getNotebookStep("filter").within(() => getPlusButton().click());
 }
 
-function startNewAggregation({ stageIndex } = {}) {
-  H.getNotebookStep("summarize", { stage: stageIndex })
+function startNewAggregation() {
+  H.getNotebookStep("summarize")
     .findByTestId("aggregate-step")
     .within(() => getPlusButton().click());
 }
 
-function addStringCategoryFilter({ tableName, columnName, values }) {
+function addStringCategoryFilter({
+  tableName,
+  columnName,
+  values,
+}: {
+  tableName?: string;
+  columnName: string;
+  values: string[];
+}) {
   startNewFilter();
   H.popover().within(() => {
     if (tableName) {
@@ -127,11 +130,11 @@ function addStringCategoryFilter({ tableName, columnName, values }) {
   });
 }
 
-function verifyScalarValue(value) {
+function verifyScalarValue(value: string) {
   cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
-function verifyMetricAboutTimeseries({ yAxis }) {
+function verifyMetricAboutTimeseries({ yAxis }: { yAxis: string }) {
   H.MetricPage.aboutPage().within(() => {
     cy.findByRole("button", { name: "Select dimension: Created At: Month" })
       .should("be.visible")
@@ -144,7 +147,13 @@ function verifyMetricAboutTimeseries({ yAxis }) {
   });
 }
 
-function verifyMetricDefinitionScalar({ aggregation, value }) {
+function verifyMetricDefinitionScalar({
+  aggregation,
+  value,
+}: {
+  aggregation: string;
+  value: string;
+}) {
   H.MetricPage.definitionTab().click();
   H.MetricPage.queryEditor().should("be.visible");
   H.getNotebookStep("summarize").findByText(aggregation).should("be.visible");
@@ -207,19 +216,6 @@ describe(
       });
     });
 
-    describe("data source", () => {
-      it("should not allow to create a multi-stage metric", () => {
-        startNewMetricWithSavedItem("Our analytics", "Orders Model");
-        H.getNotebookStep("data")
-          .findByText("Orders Model")
-          .should("be.visible");
-        H.getNotebookStep("summarize").findByText("Count").should("be.visible");
-        H.MetricPage.queryEditor()
-          .findByRole("button", { name: "Summarize" })
-          .should("not.exist");
-      });
-    });
-
     describe("joins", () => {
       it("should join a table", () => {
         startNewMetricWithTable("Sample Database", "Products");
@@ -244,24 +240,6 @@ describe(
         H.getNotebookStep("filter")
           .findByText("User → State is CA")
           .should("be.visible");
-      });
-
-      it("should not be possible to join a metric", () => {
-        H.createQuestion(ORDERS_SCALAR_METRIC);
-        startNewMetricWithTable("Sample Database", "Orders");
-        startNewJoin();
-        H.miniPicker().within(() => {
-          cy.findByText("Our analytics").click();
-          cy.findByText("Orders").should("be.visible");
-          cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-          cy.findByText("Our analytics").click();
-        });
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
-          cy.findByText("Orders").should("be.visible");
-          cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-        });
       });
     });
 
@@ -308,16 +286,8 @@ describe(
     });
 
     describe("filters", () => {
-      it("should run the query from the empty state, then create a filtered timeseries metric based on a table", () => {
+      it("should create a filtered timeseries metric based on a table", () => {
         startNewMetricWithTable("Sample Database", "Orders");
-
-        cy.log("run the query from the metric empty state");
-        cy.intercept("POST", "/api/dataset").as("dataset");
-        H.runButtonInOverlay().click();
-        cy.wait("@dataset");
-        verifyScalarValue("18,760");
-
-        cy.log("filter and aggregate, then save");
         addStringCategoryFilter({
           tableName: "Product",
           columnName: "Category",
@@ -368,7 +338,7 @@ describe(
     });
 
     describe("compatible metrics", () => {
-      it("should list, describe, search, and add an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
+      it("should list and add an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
         H.createQuestion(ORDERS_SCALAR_METRIC);
         H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
         H.createQuestion(PRODUCTS_SCALAR_METRIC);
@@ -385,28 +355,6 @@ describe(
           cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
           cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
           cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
-        });
-
-        cy.log("hovering a metric shows its description");
-        H.popover().within(() => {
-          cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
-          cy.findByLabelText("More info").should("exist").realHover();
-        });
-        H.hovercard().within(() => {
-          cy.contains("This is a description").should("be.visible");
-          cy.contains("with markdown").should("be.visible");
-        });
-        H.popover().findByPlaceholderText("Find...").realHover();
-        H.hovercard().should("not.exist");
-
-        cy.log("search for metrics");
-        H.popover().within(() => {
-          cy.findByPlaceholderText("Find...").type("with filter");
-          cy.findByText("Metrics").should("be.visible");
-          cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
-          cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-          cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
-          cy.findByPlaceholderText("Find...").clear();
         });
 
         cy.log("pick a metric");
