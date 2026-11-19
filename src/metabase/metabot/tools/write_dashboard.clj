@@ -795,7 +795,7 @@
                                    (str " by " (str/join " and " labels) " to " recipient-count
                                         (if (= 1 recipient-count) " recipient" " recipients"))
                                    " with no recipients")
-                                 ", which used " (str/join ", " (map #(pr-str (or (:name %) (:id %))) parameters))))
+                                 ", which used " (str/join ", " (map #(pr-str (if (str/blank? (:name %)) (:id %) (:name %))) parameters))))
         lines             (fn [group]
                             (let [{readable true unreadable false} (group-by (comp boolean :readable?) group)]
                               (concat (map describe readable)
