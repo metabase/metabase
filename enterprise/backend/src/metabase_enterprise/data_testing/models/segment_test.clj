@@ -61,8 +61,8 @@
   "Whether `segment-check` holds for the Segment `segment-id`, hydrated with `k`, and the current user may run the
   segment's definition and write the native SQL of a test against its Database."
   [segment-check k segment-id]
-  (let [segment (data-testing.db/segment segment-id)]
-    (data-testing.models/query-subject-allows? segment-check k segment (:definition segment))))
+  (let [segment (some-> (data-testing.db/segment segment-id) (t2/hydrate k))]
+    (data-testing.models/query-subject-allows? segment-check segment (:definition segment))))
 
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Segment `segment-id`: they may edit the segment and run
@@ -77,6 +77,11 @@
   ;; Input SQL can read any table of the Database, and the guards do not check what it reads, so reading the
   ;; segment is not enough.
   (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
+
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_run]
+  "Add whether the current user may run each segment test, as [[can-run?]] says, loading their segments at once."
+  [_model _k segment-tests]
+  (data-testing.models/with-can-run segment-tests :segment_id data-testing.db/segments-by-ids :definition))
 
 (methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_read]
   [_model k instance]

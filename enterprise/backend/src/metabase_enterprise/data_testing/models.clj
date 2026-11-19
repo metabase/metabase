@@ -87,18 +87,33 @@
   (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
 
 (defn query-subject-allows?
-  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
-  `query`, the subject's query, and write the native SQL of a test against the Database of `query`. False when
-  `subject` is nil."
-  [subject-check k subject query]
+  "Whether `subject-check` holds for `subject`, a card or a segment hydrated with the key `subject-check` reads, and the
+  current user may run `query`, the subject's query, and write the native SQL of a test against the Database of
+  `query`. False when `subject` is nil."
+  [subject-check subject query]
   (boolean
    (when subject
-     (and (subject-check (t2/hydrate subject k))
+     (and (subject-check subject)
           ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
           ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
           (query-perms/can-run-query? query)
           (or (mi/superuser?)
               (some-> (not-empty query) lib/database-id can-run-native-query?))))))
+
+(defn with-can-run
+  "`tests`, saved tests of cards or of segments, each with whether the current user may run it under `:can_run`, as
+  [[query-subject-allows?]] says of its subject, loading the subjects at once and checking each one once.
+  `subject-key` is the column of a test naming its subject, `subjects` returns the subjects with the given ids, and
+  `query-key` is the column of a subject holding its query."
+  [tests subject-key subjects query-key]
+  (mi/instances-with-hydrated-data
+   tests :can_run
+   #(into {}
+          (map (fn [subject]
+                 [(:id subject) (query-subject-allows? mi/can-read? subject (query-key subject))]))
+          (t2/hydrate (subjects (into [] (comp (keep subject-key) (distinct)) tests)) :can_read))
+   subject-key
+   {:default false}))
 
 (defn- can-save-for-transform?
   "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,

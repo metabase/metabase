@@ -65,8 +65,8 @@
   "Whether `card-check` holds for the Card `card-id`, hydrated with `k`, and the current user may run the card's query
   and write the native SQL of a test against the Database of that query."
   [card-check k card-id]
-  (let [card (data-testing.db/card card-id)]
-    (data-testing.models/query-subject-allows? card-check k card (:dataset_query card))))
+  (let [card (some-> (data-testing.db/card card-id) (t2/hydrate k))]
+    (data-testing.models/query-subject-allows? card-check card (:dataset_query card))))
 
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card and run its query,
@@ -80,6 +80,11 @@
   [card-test :- ::data-testing.schema/card-test]
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
   (card-allows? mi/can-read? :can_read (:card_id card-test)))
+
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_run]
+  "Add whether the current user may run each card test, as [[can-run?]] says, loading their cards at once."
+  [_model _k card-tests]
+  (data-testing.models/with-can-run card-tests :card_id data-testing.db/cards-by-ids :dataset_query))
 
 (methodical/defmethod t2/simple-hydrate [:model/CardTest :can_read]
   [_model k instance]

@@ -99,6 +99,7 @@ export type CardTest = {
   created_at: string;
   updated_at: string;
   last_run: DataTestRun | null;
+  can_run: boolean;
   card?: Card;
 };
 
@@ -122,6 +123,7 @@ export type SegmentTest = {
   created_at: string;
   updated_at: string;
   last_run: DataTestRun | null;
+  can_run: boolean;
   segment?: Segment;
 };
 

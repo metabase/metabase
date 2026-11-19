@@ -98,6 +98,7 @@ export function createMockCardTest(opts?: Partial<CardTest>): CardTest {
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     last_run: null,
+    can_run: true,
     ...opts,
   };
 }
@@ -122,6 +123,7 @@ export function createMockSegmentTest(
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     last_run: null,
+    can_run: true,
     ...opts,
   };
 }

@@ -38,7 +38,7 @@
                             [:segment-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
   (-> (mi/readable (data-testing.db/segment-tests {:segment-id segment-id}))
-      (t2/hydrate :last_run)))
+      (t2/hydrate :last_run :can_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/segment-test.response
   "Get a segment test with its newest run.
@@ -47,7 +47,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (api/read-check :model/SegmentTest id)
-      (t2/hydrate :last_run)))
+      (t2/hydrate :last_run :can_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/segment-test
   "Create a segment test. Its expectations read the output: the rows of the segment's table that match the segment's

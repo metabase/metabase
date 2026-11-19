@@ -286,18 +286,20 @@
     [:last_run [:maybe ::data-test-run]]]])
 
 (mr/def ::card-test.response
-  "A card test as the read endpoints return it, with its newest run."
+  "A card test as the read endpoints return it, with its newest run and whether the current user may run it."
   [:merge
    ::card-test
    [:map {:closed true}
-    [:last_run [:maybe ::data-test-run]]]])
+    [:last_run [:maybe ::data-test-run]]
+    [:can_run  :boolean]]])
 
 (mr/def ::segment-test.response
-  "A segment test as the read endpoints return it, with its newest run."
+  "A segment test as the read endpoints return it, with its newest run and whether the current user may run it."
   [:merge
    ::segment-test
    [:map {:closed true}
-    [:last_run [:maybe ::data-test-run]]]])
+    [:last_run [:maybe ::data-test-run]]
+    [:can_run  :boolean]]])
 
 (mr/def ::status
   "The outcome of a test run, or of one of its expectations.
