@@ -535,6 +535,8 @@
                                                java.util.concurrent.TimeUnit/MILLISECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate")
+                              ;; keep the interrupt, so the waits after this one end at once too
+                              (.interrupt (Thread/currentThread))
                               false))
                         (do (log/info "Notification worker shut down successfully")
                             true)
@@ -623,15 +625,20 @@
   "Stop both notification dispatchers, letting each send what it has queued.
    Waits up to [[notification.settings/notification-shutdown-timeout-seconds]] in all, then abandons what is left."
   []
-  (let [workers  [@dedup-priority-dispatcher @simple-blocking-dispatcher]
-        deadline (+ (System/nanoTime) (* 1000000000 (notification.settings/notification-shutdown-timeout-seconds)))]
+  ;; a dispatcher that cannot be created takes no work, so the others still drain
+  (let [workers (into [] (keep #(try @%
+                                     (catch Exception e
+                                       (log/errorf "Could not create a notification dispatcher: %s" (ex-message e)))))
+                      [dedup-priority-dispatcher simple-blocking-dispatcher])]
     (log/with-context {:dispatcher-count (count workers)}
       (log/info "Shutting down notification dispatchers...")
       (try
         ;; all of them refuse new notifications before any wait begins, so no dispatcher takes work while another drains
         (run! #((:close-fn %)) workers)
-        ;; every dispatcher gets its wait, even after one ran out, so each one left over is interrupted
-        (when (every? true? (mapv #((:shutdown-fn %) (max 0 (quot (- deadline (System/nanoTime)) 1000000))) workers))
-          (log/info "All notification workers shut down successfully"))
+        (let [timeout-s (notification.settings/notification-shutdown-timeout-seconds)
+              deadline  (+ (System/nanoTime) (* 1000000000 timeout-s))]
+          ;; every dispatcher gets its wait, even after one ran out, so each one left over is interrupted
+          (when (every? true? (mapv #((:shutdown-fn %) (max 0 (quot (- deadline (System/nanoTime)) 1000000))) workers))
+            (log/info "All notification workers shut down successfully")))
         (catch Exception e
           (log/errorf "Error shutting down notification workers: %s" (ex-message e)))))))

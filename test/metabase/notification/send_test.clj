@@ -979,6 +979,21 @@
                      (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
               (is (= 0 (notification.send/queue-size queue))))))))))
 
+(deftest shutdown-timeout-that-does-not-parse-test
+  (testing "a shutdown timeout that does not parse falls back to 20 seconds instead of throwing"
+    (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" "30s"]
+      (is (= 20 (notification.settings/notification-shutdown-timeout-seconds))))))
+
+(deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
+  (testing "a dispatcher that cannot be created does not keep the other from closing"
+    (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
+      (with-redefs-fn {#'notification.send/dedup-priority-dispatcher  (delay dispatcher)
+                       #'notification.send/simple-blocking-dispatcher (delay (throw (ex-info "No pool" {})))}
+        (fn []
+          (notification.send/shutdown!)
+          (is (= ::notification.send/shutdown
+                 ((:dispatch-fn dispatcher) {:id 1 :payload_type :notification/testing}))))))))
+
 (deftest notification-dispatcher-shutdown-timeout-test
   (testing "a dispatcher that cannot empty its queue in time stops sending, even when a send swallows the interrupt"
     (let [sending     (java.util.concurrent.CountDownLatch. 1)
@@ -1000,8 +1015,9 @@
                                 (deliver interrupted true))))
                         (deliver sent-later id)))]
         (dispatch-fn {:id 1 :payload_type :notification/testing})
-        (dispatch-fn {:id 2 :payload_type :notification/testing})
+        ;; queued only once 1 is being sent, so the worker cannot take 2 first
         (.await sending)
+        (dispatch-fn {:id 2 :payload_type :notification/testing})
         (is (= {:drained?     false
                 :interrupted? true
                 :sent-later   nil
