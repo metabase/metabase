@@ -445,6 +445,12 @@
                        :already-broken? true
                        :readable?       true}]))))))
 
+(deftest ^:parallel archived-subscriptions-text-only-unreadable-test
+  (testing "a group with only unreadable subscriptions counts them without saying \"more\""
+    (is (= "  - 2 subscriptions the user can't see"
+           (second (flatten (#'write-dashboard/archived-subscriptions-text
+                             (repeat 2 {:id 1, :parameters [{:id "r"}], :already-broken? false, :readable? false}))))))))
+
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
    (fn [{:keys [card-id dash-id dashcard-id other-id]}]

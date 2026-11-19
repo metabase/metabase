@@ -805,7 +805,7 @@
                                n                                (count unreadable)]
                            (concat (map describe readable)
                                    (when (pos? n)
-                                     [(str "  - " n " more " (u/format-plural n "subscription")
+                                     [(str "  - " n (if (seq readable) " more " " ") (u/format-plural n "subscription")
                                            " the user can't see")]))))
         {broken true
          caused false} (group-by (comp boolean :already-broken?) subscriptions)]
