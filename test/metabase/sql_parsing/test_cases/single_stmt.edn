@@ -117,11 +117,37 @@
    :expected   {:verdict :allowed    :single-stmt? true
                 :sql     "UPDATE orders SET note = e'a\\\\' || '; DELETE FROM orders; --'"}}
 
-  {:name       "a read is refused for the same reason"
+  ;; Only a data-test write is checked for the setting. Postgres runs every other caller's SQL with the setting as
+  ;; the connection has it, on by default, and reads each case below as one statement.
+  {:name       "a confined write with a literal ending in a backslash and a later semicolon is refused"
+   :dialect    "postgres"
+   :sql        "UPDATE files SET p = replace(path, '\\', '/'), sep = ';'"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name       "a read of the same kind is not checked for the setting"
+   :dialect    "postgres"
+   :sql        "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "nor is a write"
+   :dialect    "postgres"
+   :sql        "UPDATE files SET p = replace(path, '\\', '/'), sep = ';'"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "nor a read-only select"
+   :dialect    "postgres"
+   :sql        "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "nor a read whose rebuild has a backslash before a quote though the text had none"
    :dialect    "postgres"
    :sql        "SELECT $q$a\\$q$ || $q$; RESET ROLE; DELETE FROM orders; --$q$"
    :stmt-type  "read"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+   :expected   {:verdict :allowed    :single-stmt? true}}
 
   ;; SQLGlot as shipped reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres would
   ;; read the rebuilt literal as ending one quote later. `sql_tools` writes an E'' string back as it was written.

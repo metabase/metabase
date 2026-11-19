@@ -2203,8 +2203,9 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
     statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    For "postgres", every mode also refuses, as "backslash-quote", a statement whose reconstruction Postgres would read
-    as more than one statement with `standard_conforming_strings` on or off.
+    For "postgres", "confined-write" also refuses, as "backslash-quote", a statement whose reconstruction Postgres would
+    read as more than one statement with `standard_conforming_strings` on or off. The other modes take the setting to
+    be on, its default, as the parser does.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2229,7 +2230,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
         rebuilt = None
         if len(stmts) == 1:
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-            if problem is None and dialect == "postgres" and _hidden_by_string_setting(rebuilt):
+            if (
+                problem is None
+                and stmt_type == "confined-write"
+                and dialect == "postgres"
+                and _hidden_by_string_setting(rebuilt)
+            ):
                 problem = ("backslash-quote", None)
             # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
             # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
