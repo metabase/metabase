@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.test-util
   "Helpers shared by the data-testing tests."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -34,6 +35,18 @@
   [table-key]
   (let [{:keys [schema name]} (table-ref table-key)]
     (if schema (str schema "." name) name)))
+
+(defn table-query
+  "An MBQL query of the test-data table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(defn column
+  "The column of `query` for the field `table-key`.`field-key`, through an implicit join when it is on another table."
+  [query table-key field-key]
+  (let [field-id (mt/id table-key field-key)]
+    (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
 
 (defn id+name
   "An `id` and a `name` column, typed as the current driver spells an integer and a text type."
