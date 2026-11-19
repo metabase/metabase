@@ -131,7 +131,10 @@
                           (mu.json-schema/transform [:and [:fn odd?] [:any {:json-schema {:deprecated true}}]]))))
   (testing "an alternative that accepts anything keeps its annotations on the node it widens"
     (is (= {:deprecated true}
-           (mu.json-schema/transform [:or [:any {:json-schema {:deprecated true}}] :int])))))
+           (mu.json-schema/transform [:or [:any {:json-schema {:deprecated true}}] :int])))
+    ;; also where the alternatives sit inside a hand-written `:json-schema`, which marks none of them declared
+    (is (= {:deprecated true}
+           (mu.json-schema/transform [:any {:json-schema {:anyOf [{:deprecated true}]}}])))))
 
 (deftest ^:parallel tuple-test
   (testing "every tuple item is required"

@@ -108,7 +108,7 @@
 (defn- lift-annotations
   "The JSON Schema `schema` with the annotations of its `k` branches that constrain nothing merged in, its own winning."
   [schema k]
-  ;; a conjunct such as `{deprecated: true}` constrains nothing, but its annotation still describes the node
+  ;; a branch such as `{deprecated: true}` constrains nothing, but its annotation still describes the node
   (with-meta (merge (apply merge {} (filter empty-schema? (k schema))) schema)
              (meta schema)))
 
@@ -137,7 +137,7 @@
       (vary-meta (dissoc (lift-annotations schema k) k) assoc ::declared true)
 
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
-      (dissoc schema k)
+      (dissoc (lift-annotations schema k) k)
 
       :else
       (or (merge-one-branch schema k)
