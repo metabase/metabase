@@ -22,6 +22,7 @@ import type {
   PreviewCollectionsResponse,
   PreviewDataResponse,
   PreviewPrincipal,
+  PreviewSecurity,
   PreviewTableAccess,
 } from "../api";
 
@@ -47,6 +48,7 @@ const ORDERS_ID = 2;
 const REVIEWS_ID = 3;
 const ACCOUNTS_ID = 4;
 const INVOICES_ID = 5;
+const PRODUCTS_ID = 6;
 const PERSONAL_COLLECTION_ID = 10;
 
 const COLLECTIONS: PreviewCollectionsResponse = {
@@ -81,6 +83,24 @@ const NO_COLLECTIONS: PreviewCollectionsResponse = {
 const ALLOW: PermissionDebugResponse = { decision: "allow", data: {} };
 const DENIED: PermissionDebugResponse = { decision: "denied", data: {} };
 
+const ORDERS_SECURITY: PreviewSecurity = {
+  kind: "sandbox",
+  group_id: 5,
+  group_name: "Sales",
+  database_name: "Sample Database",
+  table_name: "Orders",
+  rows: null,
+  filters: [
+    {
+      attribute: "state",
+      value: "TX",
+      each_member: false,
+      column: "People.State",
+    },
+  ],
+  columns: "All columns.",
+};
+
 const ORDERS: PreviewTableAccess = {
   id: ORDERS_ID,
   schema: "PUBLIC",
@@ -96,23 +116,37 @@ const ORDERS: PreviewTableAccess = {
   },
   download_results: getCell("one-million-rows"),
   manage_table_metadata: getCell("no"),
-  security: {
-    kind: "sandbox",
-    group_id: 5,
-    group_name: "Sales",
-    database_name: "Sample Database",
-    table_name: "Orders",
-    rows: null,
-    filters: [
-      {
-        attribute: "state",
-        value: "TX",
-        each_member: false,
-        column: "People.State",
-      },
-    ],
-    columns: "All columns.",
-  },
+  security: ORDERS_SECURITY,
+  policies: [ORDERS_SECURITY],
+};
+
+const SALES_PRODUCTS_POLICY: PreviewSecurity = {
+  ...ORDERS_SECURITY,
+  table_name: "Products",
+  filters: [
+    {
+      attribute: "category",
+      value: "Widget",
+      each_member: false,
+      column: "Products.Category",
+    },
+  ],
+};
+
+const FINANCE_PRODUCTS_POLICY: PreviewSecurity = {
+  ...SALES_PRODUCTS_POLICY,
+  group_id: 8,
+  group_name: "Finance readers",
+};
+
+/** Two groups of the person set row security here, and Orders filters through it. */
+const PRODUCTS: PreviewTableAccess = {
+  ...ORDERS,
+  id: PRODUCTS_ID,
+  name: "PRODUCTS",
+  display_name: "Products",
+  security: SALES_PRODUCTS_POLICY,
+  policies: [SALES_PRODUCTS_POLICY, FINANCE_PRODUCTS_POLICY],
 };
 
 const REVIEWS: PreviewTableAccess = {
@@ -123,6 +157,7 @@ const REVIEWS: PreviewTableAccess = {
   view_data: getCell("blocked"),
   create_queries: getCell("no"),
   security: null,
+  policies: [],
 };
 
 const ACCOUNTS: PreviewTableAccess = {
@@ -132,6 +167,7 @@ const ACCOUNTS: PreviewTableAccess = {
   display_name: "Accounts",
   view_data: getCell("unrestricted"),
   security: null,
+  policies: [],
 };
 
 const INVOICES: PreviewTableAccess = {
@@ -325,6 +361,102 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("says Orders-only cards can't load when two groups set row security on Products, which Orders filters through", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, PRODUCTS],
+      dashboardQuery: {
+        decision: "denied",
+        data: {
+          "card-count": 1,
+          "blocked-card-count": 1,
+          "conflicting-tables": [PRODUCTS_ID],
+          "blocked-cards": [
+            {
+              id: 134,
+              name: "Revenue by month",
+              tables: [],
+              "conflicting-tables": [PRODUCTS_ID],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "Sandy Sales can open this dashboard but can't see any of its cards.",
+    );
+    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
+    expect(
+      screen.getByText("Conflicting policies on Products"),
+    ).toBeInTheDocument();
+    // the failing card's status, and the table's
+    expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
+      2,
+    );
+    expect(
+      screen.getByText(
+        "Sales and Finance readers both set row and column security on Products. Keep one policy, or give one of the groups Can view on Products.",
+      ),
+    ).toBeInTheDocument();
+    expect(getVisibleTexts("Rules set by Finance readers")).toHaveLength(1);
+    // Orders has one rule and still reads Rows filtered; its rule is the other "Sales" line
+    expect(getVisibleTexts("Rules set by Sales")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /Rows filtered/ })).toBeVisible();
+  });
+
+  it("opens the table's detail from its Can't load status, with each group's rule", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, PRODUCTS],
+      dashboardQuery: {
+        decision: "denied",
+        data: {
+          "card-count": 1,
+          "blocked-card-count": 1,
+          "conflicting-tables": [PRODUCTS_ID],
+          "blocked-cards": [
+            {
+              id: 134,
+              name: "Revenue by month",
+              tables: [],
+              "conflicting-tables": [PRODUCTS_ID],
+            },
+          ],
+        },
+      },
+    });
+
+    const [, tableStatus] = await screen.findAllByRole("button", {
+      name: /Can't load/,
+    });
+    await userEvent.click(tableStatus);
+
+    expect(
+      screen.getByText(
+        "Sales and Finance readers both set row and column security on Products.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Set by")).toHaveLength(2);
+  });
+
+  it("keeps Rows filtered for a table with one group's rule that the dashboard reaches", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, { ...PRODUCTS, policies: [SALES_PRODUCTS_POLICY] }],
+      tableIds: [ORDERS_ID, PRODUCTS_ID],
+    });
+
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "Sandy Sales can see this dashboard.",
+    );
+    expect(
+      screen.getAllByRole("button", { name: /Rows filtered/ }),
+    ).toHaveLength(2);
+    expect(screen.queryByText("Cards that can't load")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Can't load/)).not.toBeInTheDocument();
+  });
+
   it("starts open only the rows that limit: row security open, blocked shown, two full-access tables folded", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
@@ -476,6 +608,18 @@ describe("WhyListSidesheet", () => {
     expect(
       await findRowStatus("Accounts · Sample Database from Sales"),
     ).toHaveTextContent("Can view");
+  });
+
+  it("counts a table with two groups' row security as Can't load in See everything, not Rows filtered", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, PRODUCTS],
+    });
+    await openSeeEverything();
+
+    expect(
+      within(getFold("Tables (2)")).getByText("1 Rows filtered · 1 Can't load"),
+    ).toBeInTheDocument();
   });
 
   it("starts every See everything section folded, with its counts per status under its name", async () => {

@@ -91,6 +91,8 @@ export type PreviewTableAccess = {
   download_results: PreviewCell;
   manage_table_metadata: PreviewCell;
   security: PreviewSecurity | null;
+  /** Every group's rule that applies here, `security` being the first; two row and column security rules fail every query that reaches the table. */
+  policies: PreviewSecurity[];
 };
 
 export type PreviewDatabase = {
@@ -253,11 +255,18 @@ export type PermissionDebugRequest = {
 export type PermissionDebugResponse = {
   decision: "allow" | "denied" | "limited";
   data: {
-    /** A dashboard's cards, and how many of them have a blocked table. */
+    /** A dashboard's cards, and how many of them can't load: a blocked table, or a conflicting one. */
     "card-count"?: number;
     "blocked-card-count"?: number;
-    /** Each such card, with the names of its blocked tables. */
-    "blocked-cards"?: { id: number; name: string; tables: string[] }[];
+    /** The tables the queries reach that more than one group's row and column security applies to. */
+    "conflicting-tables"?: TableId[];
+    /** Each card that can't load, with the names of its blocked tables and the ids of its conflicting ones. */
+    "blocked-cards"?: {
+      id: number;
+      name: string;
+      tables: string[];
+      "conflicting-tables"?: TableId[];
+    }[];
   };
 };
 

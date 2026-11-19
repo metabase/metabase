@@ -20,7 +20,11 @@ import {
   useGetItemDependenciesQuery,
 } from "../api";
 
-import { type WhyTarget, getSourceGroupName } from "./WhySidesheet";
+import {
+  type WhyTarget,
+  getSourceGroupName,
+  isConflicting,
+} from "./WhySidesheet";
 import type { OpenedItem } from "./item-path";
 import type { PreviewColumn } from "./preview-options";
 
@@ -60,6 +64,8 @@ export type BlockedCard = {
   name: string;
   /** Its blocked tables, as View data rows of the item's tables. */
   tables: WhyTarget[];
+  /** The tables it reaches that more than one group's row and column security applies to. */
+  conflictingTables: WhyTarget[];
 };
 
 /** A collection: whether the person can open it, and from which group; on Our analytics, also the collections in it. */
@@ -440,12 +446,15 @@ function getItemPage(
     dependencies.collection_id,
   );
   const collectionTargets = collectionTarget != null ? [collectionTarget] : [];
+  // a table only its policies' filters reach, like Products for a rule on Orders that filters by its category, fails the item too
+  const conflictingTableIds = queryCheck.data["conflicting-tables"] ?? [];
   const tables = dataPreview.databases.flatMap((database) =>
     database.tables
       .filter(
         (table) =>
           dependencies.table_ids.includes(table.id) ||
-          dependencies.whole_database_ids.includes(database.id),
+          dependencies.whole_database_ids.includes(database.id) ||
+          conflictingTableIds.includes(table.id),
       )
       .map((table) => ({ database, table })),
   );
@@ -476,6 +485,11 @@ function getItemPage(
             card.tables.includes(table.name) && isBlocking(view),
         )
         .map(({ view }) => view),
+      conflictingTables: tablesInOrder
+        .filter(({ table }) =>
+          (card["conflicting-tables"] ?? []).includes(table.id),
+        )
+        .map(({ view }) => view),
     })),
     filtered,
     collection: collectionTarget,
@@ -493,9 +507,13 @@ function getItemPage(
   };
 }
 
-/** The tables that limit the person come first: blocked, then under row security, then the rest. */
+/** The tables that limit the person come first: blocked or failing, then under row security, then the rest. */
 function getTableRank(target: WhyTarget) {
-  return isBlocking(target) ? 0 : target.security != null ? 1 : 2;
+  return isBlocking(target) || isConflicting(target)
+    ? 0
+    : target.security != null
+      ? 1
+      : 2;
 }
 
 /**
@@ -640,5 +658,6 @@ function getTableWhyTarget(
     column,
     cell: table[column],
     security: column === "view_data" ? table.security : null,
+    policies: column === "view_data" ? table.policies : [],
   };
 }

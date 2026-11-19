@@ -73,6 +73,25 @@ const ORDERS_SANDBOX: PreviewSecurity = {
   columns: "All columns.",
 };
 
+const SALES_PRODUCTS_POLICY: PreviewSecurity = {
+  ...ORDERS_SANDBOX,
+  table_name: "Products",
+  filters: [
+    {
+      attribute: "category",
+      value: "Widget",
+      each_member: false,
+      column: "Products.Category",
+    },
+  ],
+};
+
+const FINANCE_PRODUCTS_POLICY: PreviewSecurity = {
+  ...SALES_PRODUCTS_POLICY,
+  group_id: 8,
+  group_name: "Finance readers",
+};
+
 const DEPENDENCIES: ItemDependencies = {
   name: "Orders by state",
   collection_id: SALES_COLLECTION_ID,
@@ -234,6 +253,70 @@ describe("useWhyList", () => {
           text: "Sandy Sales can open this question but can't see its results.",
         }),
       );
+    });
+
+    it("says a dashboard's cards can't load when two groups set row security on a table they reach, and lists that table first", async () => {
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        orders: { view_data: "sandboxed", security: ORDERS_SANDBOX },
+        productsPolicies: [SALES_PRODUCTS_POLICY, FINANCE_PRODUCTS_POLICY],
+        query: {
+          decision: "denied",
+          data: {
+            "card-count": 1,
+            "blocked-card-count": 1,
+            "conflicting-tables": [3],
+            "blocked-cards": [
+              {
+                id: 134,
+                name: "Revenue by month",
+                tables: [],
+                "conflicting-tables": [3],
+              },
+            ],
+          },
+        },
+      });
+
+      await waitFor(() =>
+        expect(getVerdict(result.current)).toEqual({
+          kind: "partial",
+          text: "Sandy Sales can open this dashboard but can't see any of its cards.",
+        }),
+      );
+      expect(result.current?.page).toMatchObject({
+        blockedCards: [
+          {
+            name: "Revenue by month",
+            tables: [],
+            conflictingTables: [{ title: "Products" }],
+          },
+        ],
+        tables: [{ title: "Products" }, { title: "Orders" }],
+      });
+    });
+
+    it("keeps a table with one group's row security out of the failing cards", async () => {
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        orders: { view_data: "sandboxed", security: ORDERS_SANDBOX },
+        productsPolicies: [SALES_PRODUCTS_POLICY],
+        query: {
+          decision: "allow",
+          data: { "card-count": 1, "blocked-card-count": 0 },
+        },
+      });
+
+      await waitFor(() =>
+        expect(getVerdict(result.current)).toEqual({
+          kind: "filtered",
+          text: "Sandy Sales can see this dashboard.",
+        }),
+      );
+      expect(result.current?.page).toMatchObject({
+        blockedCards: [],
+        tables: [{ title: "Orders" }],
+      });
     });
 
     it("says the person can see a question in a shared collection, which the main tab doesn't hold", async () => {
@@ -593,6 +676,8 @@ type SetupOpts = {
   collectionNamespace?: CollectionNamespace;
   collectionName?: string;
   orders?: { view_data?: string; security?: PreviewSecurity };
+  /** The rules on a Products table the item doesn't query itself; given, the table is in the data. */
+  productsPolicies?: PreviewSecurity[];
   read?: PermissionDebugResponse;
   query?: PermissionDebugResponse;
   /** Each tab's collections in place of the one Sales collection; `null` for a tab that doesn't apply. */
@@ -611,6 +696,7 @@ function setup({
   collectionNamespace = "default",
   collectionName = "Sales",
   orders = {},
+  productsPolicies = [],
   read = ALLOW,
   query = ALLOW,
   collections,
@@ -647,6 +733,16 @@ function setup({
     download_results: getCell("one-million-rows"),
     manage_table_metadata: getCell("no"),
     security: orders.security ?? null,
+    policies: orders.security != null ? [orders.security] : [],
+  };
+  const productsTable: PreviewTableAccess = {
+    ...ordersTable,
+    id: 3,
+    name: "PRODUCTS",
+    display_name: "Products",
+    view_data: getCell("sandboxed"),
+    security: productsPolicies[0] ?? null,
+    policies: productsPolicies,
   };
   const data: PreviewDataResponse = {
     principal: SANDY,
@@ -657,7 +753,10 @@ function setup({
         reasons: [],
         manage_database: getCell("no"),
         transforms: getCell("no"),
-        tables: [ordersTable],
+        tables:
+          productsPolicies.length > 0
+            ? [ordersTable, productsTable]
+            : [ordersTable],
       },
     ],
   };

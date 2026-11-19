@@ -5,6 +5,7 @@ import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import type { PreviewCell, PreviewSecurity } from "../api";
+import { formatList } from "../format-list";
 
 import { AttributeTag } from "./AttributeBar";
 import {
@@ -24,12 +25,56 @@ export type WhyTarget = {
   column: PreviewColumn;
   cell: PreviewCell;
   security: PreviewSecurity | null;
+  /** Every group's rule that applies to a table; `security` alone when a table's rules aren't listed. */
+  policies?: PreviewSecurity[];
 };
 
+/** Every row and column security rule or impersonation that applies to a table's View data, one per group. */
+export function getPolicies({
+  column,
+  security,
+  policies,
+}: WhyTarget): PreviewSecurity[] {
+  if (column !== "view_data") {
+    return [];
+  }
+  return policies ?? (security != null ? [security] : []);
+}
+
+/** A table that more than one group's row and column security applies to: every query that reaches it fails. */
+export function isConflicting(target: WhyTarget) {
+  return getConflictingGroupNames(target).length > 1;
+}
+
+function getConflictingGroupNames(target: WhyTarget) {
+  return getPolicies(target)
+    .filter((policy) => policy.kind === "sandbox")
+    .map((policy) => policy.group_name);
+}
+
+/** "Sales and Finance readers both set row and column security on Products." */
+export function getConflictSentence(target: WhyTarget) {
+  const groupNames = getConflictingGroupNames(target);
+  const groups = formatList(groupNames);
+  const table = target.title;
+  return groupNames.length === 2
+    ? t`${groups} both set row and column security on ${table}.`
+    : t`${groups} all set row and column security on ${table}.`;
+}
+
+/** What fixes it: the groups' rules can't both stay. */
+export function getConflictFix(target: WhyTarget) {
+  const table = target.title;
+  return t`Keep one policy, or give one of the groups Can view on ${table}.`;
+}
+
 export function WhyContent({ target }: { target: WhyTarget }) {
-  const { column, cell, security } = target;
-  const hasSecurity = column === "view_data" && security != null;
-  const option = getPreviewOption(column, cell.value);
+  const { column, cell } = target;
+  const policies = getPolicies(target);
+  const isFailing = isConflicting(target);
+  const option = isFailing
+    ? getPreviewOption("view_data", "blocked")
+    : getPreviewOption(column, cell.value);
   const sameValue = getSameValueInEveryGroup(
     cell.groups.map((group) => group.value),
   );
@@ -44,13 +89,19 @@ export function WhyContent({ target }: { target: WhyTarget }) {
             mt="xxs"
             style={{ flexShrink: 0 }}
           />
-          <Text>{getResultSentence(target)}</Text>
+          <Text>
+            {isFailing
+              ? getConflictSentence(target)
+              : getResultSentence(target)}
+          </Text>
         </Flex>
+        {isFailing && <Text>{getConflictFix(target)}</Text>}
         {cell.note && <Text>{cell.note}</Text>}
       </SidesheetCard>
 
-      {hasSecurity && (
+      {policies.map((security) => (
         <SidesheetCard
+          key={security.group_id}
           title={
             security.kind === "sandbox"
               ? t`Row and column security`
@@ -67,7 +118,7 @@ export function WhyContent({ target }: { target: WhyTarget }) {
             <KeyValue label={t`Columns`}>{security.columns}</KeyValue>
           </KeyValues>
         </SidesheetCard>
-      )}
+      ))}
 
       {cell.groups.length > 0 && (
         <SidesheetCard title={t`Groups`}>

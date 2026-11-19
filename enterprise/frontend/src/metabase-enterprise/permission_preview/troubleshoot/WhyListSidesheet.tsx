@@ -38,8 +38,12 @@ import {
   SecurityRows,
   WhyContent,
   type WhyTarget,
+  getConflictFix,
+  getConflictSentence,
+  getPolicies,
   getSourceGroupName,
   getWhyValueLabel,
+  isConflicting,
 } from "./WhySidesheet";
 import type { OpenedItem } from "./item-path";
 import { getPreviewColumnName, getPreviewOption } from "./preview-options";
@@ -530,7 +534,10 @@ function CardRows({ children }: { children: ReactNode }) {
   );
 }
 
-/** A dashboard card that can't load: its name, the blocked tables that stop it, and a status that opens the first. */
+/**
+ * A dashboard card that can't load: its name, the blocked tables and the ones with conflicting policies that stop it,
+ * and a status that opens the first.
+ */
 function BlockedCardRow({
   card,
   onOpen,
@@ -538,24 +545,31 @@ function BlockedCardRow({
   card: BlockedCard;
   onOpen: (target: WhyTarget) => void;
 }) {
-  const [table] = card.tables;
-  const tableNames = card.tables.map((target) => target.title).join(", ");
+  const [table] = [...card.tables, ...card.conflictingTables];
+  const blockedNames = card.tables.map((target) => target.title).join(", ");
+  const conflictingNames = card.conflictingTables
+    .map((target) => target.title)
+    .join(", ");
+  const causes = [
+    card.tables.length > 0
+      ? ngettext(
+          msgid`${blockedNames} table blocked`,
+          `${blockedNames} tables blocked`,
+          card.tables.length,
+        )
+      : null,
+    card.conflictingTables.length > 0
+      ? t`Conflicting policies on ${conflictingNames}`
+      : null,
+  ].filter((cause) => cause != null);
   return (
     <Row
       name={<RowName name={card.name} />}
-      detail={
-        table != null
-          ? ngettext(
-              msgid`${tableNames} table blocked`,
-              `${tableNames} tables blocked`,
-              card.tables.length,
-            )
-          : undefined
-      }
+      detail={causes.length > 0 ? causes.join(" · ") : undefined}
       status={
         table != null ? (
           <StatusButton
-            option={getPreviewOption(table.column, table.cell.value)}
+            option={getTargetOption(table)}
             label={t`Can't load`}
             onClick={() => onOpen(table)}
           />
@@ -565,6 +579,13 @@ function BlockedCardRow({
       }
     />
   );
+}
+
+/** The option a target's status shows: a table with conflicting policies fails like a blocked one. */
+function getTargetOption(target: WhyTarget) {
+  return isConflicting(target)
+    ? getPreviewOption("view_data", "blocked")
+    : getPreviewOption(target.column, target.cell.value);
 }
 
 /**
@@ -674,14 +695,7 @@ function DataRows({
                 <StatusLink target={target} onClick={() => onOpen(target)} />
               }
             >
-              <Stack gap="xs">
-                <Text component="div" c="text-secondary">
-                  <SecurityRows security={target.security} />
-                </Text>
-                <Text size="sm" c="text-secondary">
-                  {t`Rules set by ${target.security.group_name}`}
-                </Text>
-              </Stack>
+              <PolicyRules target={target} />
             </ToggleRow>
           ) : (
             <AccessRow
@@ -724,12 +738,38 @@ function DataRows({
   );
 }
 
+/**
+ * A table's rules, each with its group. A table with conflicting policies says so first, and what fixes it.
+ */
+function PolicyRules({ target }: { target: WhyTarget }) {
+  return (
+    <Stack gap="sm">
+      {isConflicting(target) && (
+        <Text>{`${getConflictSentence(target)} ${getConflictFix(target)}`}</Text>
+      )}
+      {getPolicies(target).map((policy) => (
+        <Stack key={policy.group_id} gap="xs">
+          <Text component="div" c="text-secondary">
+            <SecurityRows security={policy} />
+          </Text>
+          <Text size="sm" c="text-secondary">
+            {t`Rules set by ${policy.group_name}`}
+          </Text>
+        </Stack>
+      ))}
+    </Stack>
+  );
+}
+
 function isFullAccess(target: WhyTarget) {
   return target.cell.value === "unrestricted" && target.security == null;
 }
 
 /** A table's View data in the words of "Data in this dashboard": "Rows filtered", "Blocked", "Full access". */
 function getDataStatusLabel(target: WhyTarget) {
+  if (isConflicting(target)) {
+    return t`Can't load`;
+  }
   switch (target.cell.value) {
     case "sandboxed":
       return t`Rows filtered`;
@@ -792,7 +832,7 @@ function StatusLink({
 }) {
   return (
     <StatusButton
-      option={getPreviewOption(target.column, target.cell.value)}
+      option={getTargetOption(target)}
       label={getDataStatusLabel(target)}
       onClick={onClick}
     />
@@ -984,23 +1024,27 @@ function getCollectionsBreakdown(collections: WhyTarget[]) {
     .join(" · ");
 }
 
-type TableStatus = "filtered" | "blocked" | "view";
+type TableStatus = "filtered" | "failing" | "blocked" | "view";
 
 function getTableStatus(target: WhyTarget): TableStatus {
   if (isBlocking(target)) {
     return "blocked";
   }
+  if (isConflicting(target)) {
+    return "failing";
+  }
   return isFiltered(target) ? "filtered" : "view";
 }
 
-/** "2 Rows filtered · 6 Can view": the tables per status, Rows filtered first, then Blocked, then Can view. */
+/** "2 Rows filtered · 6 Can view": the tables per status, Rows filtered first, then Can't load, Blocked, then Can view. */
 function getTablesBreakdown(tables: WhyTarget[]) {
   const labels: Record<TableStatus, string> = {
     filtered: t`Rows filtered`,
+    failing: t`Can't load`,
     blocked: t`Blocked`,
     view: t`Can view`,
   };
-  return (["filtered", "blocked", "view"] as const)
+  return (["filtered", "failing", "blocked", "view"] as const)
     .map((status) => ({
       count: tables.filter((target) => getTableStatus(target) === status)
         .length,
@@ -1022,8 +1066,9 @@ function SummaryTables({
   tables: WhyTarget[];
   onOpen: (target: WhyTarget) => void;
 }) {
-  const filtered = tables.filter(
-    (target) => getTableStatus(target) === "filtered",
+  // a table with conflicting policies opens to its rules too, with what's wrong first
+  const filtered = tables.filter((target) =>
+    ["filtered", "failing"].includes(getTableStatus(target)),
   );
   const blocked = tables.filter(
     (target) => getTableStatus(target) === "blocked",
@@ -1041,16 +1086,7 @@ function SummaryTables({
           initiallyOpen={false}
           status={<StatusLink target={target} onClick={() => onOpen(target)} />}
         >
-          {target.security != null && (
-            <Stack gap="xs">
-              <Text component="div" c="text-secondary">
-                <SecurityRows security={target.security} />
-              </Text>
-              <Text size="sm" c="text-secondary">
-                {t`Rules set by ${target.security.group_name}`}
-              </Text>
-            </Stack>
-          )}
+          <PolicyRules target={target} />
         </ToggleRow>
       ))}
       <AccessRows
@@ -1195,7 +1231,7 @@ function AccessRow({
   hasChevronSlot?: boolean;
   onOpen: () => void;
 }) {
-  const option = getPreviewOption(target.column, target.cell.value);
+  const option = getTargetOption(target);
   const group = getSourceGroupName(target.cell);
   const isBlocking = option.iconColor === "feedback-negative";
 
@@ -1238,7 +1274,7 @@ function PermissionRow({
       detail={getPreviewColumnName(target.column)}
       status={
         <StatusButton
-          option={getPreviewOption(target.column, target.cell.value)}
+          option={getTargetOption(target)}
           label={
             target.cell.value === "sandboxed"
               ? getDataStatusLabel(target)
