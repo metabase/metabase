@@ -1958,18 +1958,25 @@ _LOCKING_TABLE_HINTS = frozenset(
 )
 
 
+def _write_function_name(node: exp.Expression):
+    """The name of the function `node` calls when it is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
+    spelling (`NEXT VALUE FOR s`, `s.nextval`), else None."""
+    if isinstance(node, exp.NextValueFor):
+        return "next value for"
+    if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
+        return "nextval"
+    name = _function_name(node)
+    return name if name in _WRITE_FUNCTIONS else None
+
+
 def _writes_or_locks(node: exp.Expression) -> bool:
-    if isinstance(node, _NOT_READ_ONLY_NODES):
+    if isinstance(node, _NOT_READ_ONLY_NODES) or _write_function_name(node) is not None:
         return True
-    if isinstance(node, exp.Anonymous):
-        return node.name.lower() in _WRITE_FUNCTIONS
     # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
     # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
     # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
     if isinstance(node, exp.PropertyEQ):
         return node.this.find(exp.Parameter) is not None
-    if isinstance(node, exp.Column):
-        return bool(node.table) and node.name.lower() == "nextval"
     if isinstance(node, exp.WithTableHint):
         return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
     # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
@@ -2046,17 +2053,8 @@ def _assigns_user_variable(stmt: exp.Expression) -> bool:
 
 
 def _write_function(stmt: exp.Expression):
-    """The name of the first function in `stmt` that is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
-    spelling (`NEXT VALUE FOR s`, `s.nextval`), or None."""
-    for node in stmt.walk():
-        if isinstance(node, exp.NextValueFor):
-            return "next value for"
-        if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
-            return "nextval"
-        name = _function_name(node)
-        if name in _WRITE_FUNCTIONS:
-            return name
-    return None
+    """The `_write_function_name` of the first node in `stmt` that has one, or None."""
+    return next((name for name in map(_write_function_name, stmt.walk()) if name is not None), None)
 
 
 # Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
