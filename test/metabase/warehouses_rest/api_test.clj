@@ -3215,3 +3215,9 @@
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
                                        {:admin_details {:host             "admin-host"
                                                         :admin-connection true}}))))))))
+
+(deftest sync-schema-request-runs-for-database-test
+  (let [database-ids (atom [])]
+    (mt/with-dynamic-fn-redefs [sync/schedule-database-sync! #(swap! database-ids conj %)]
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)))
+      (is (= [(mt/id)] @database-ids)))))
