@@ -2,20 +2,19 @@ import type * as Lib from "metabase-lib";
 
 import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
 
-/**
- * The formula behind a well's chip. An unnamed one takes its name from the edited source.
- * Chip keys are result column names, which a rename changes or another clause takes over,
- * so the name-independent signature tells the clauses apart.
- */
+/** A formula chip in a `Summarize by` or `Group by` well. */
 export type SummaryFormula = {
   wellId: SummaryWellId;
+  /** The chip's result column name. A rename changes it. */
   key: string;
+  /** The formula without its name. It finds the chip again when its key changes. */
   signature: string;
   clause: Lib.AggregationClause | Lib.ExpressionClause;
   /** Position among the stage's aggregations, or its custom columns. */
   index: number;
   /** Position of the chip in its well. */
   position: number;
+  /** Absent for an unnamed aggregation, which takes its name from the formula. */
   name?: string;
 };
 
