@@ -34,7 +34,7 @@
 /* takes the row's free space: on a shared row nearly all of it goes here, so the address stays wide */
 .controls {
   display: flex;
-  flex: 1000 1 22rem;
+  flex: 1000 1 26rem;
   align-items: center;
   gap: var(--mantine-spacing-md);
   min-width: 0;
