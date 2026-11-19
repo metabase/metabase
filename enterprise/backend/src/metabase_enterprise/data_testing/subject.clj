@@ -84,8 +84,8 @@
     subject-type))
 
 (mu/defn ensure-no-parameters :- :nil
-  "Throw `::data-testing.errors/parameters-not-taken` when `definition` sets a parameter value. A `subject-type` whose
-  [[subject-plan]] calls this takes no parameters."
+  "Throw `::data-testing.errors/parameters-not-taken`, naming `subject-type` and the parameters, when `definition`
+  sets a parameter value."
   [subject-type         :- ::subject-type
    {:keys [parameters]} :- ::definition]
   (when (seq parameters)

@@ -85,8 +85,7 @@
   ::data-testing.subject/definition)
 
 (mr/def ::test
-  "A test as a caller holds it: saved, as the body of a request to create one, or as a [[::definition]]. A run reads
-  only the keys of a definition."
+  "A test as a caller holds it: saved, as the body of a request to create one, or as a [[::definition]]."
   [:or
    ::definition
    ::data-testing.schema/saved-test
