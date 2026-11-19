@@ -28,6 +28,11 @@ rows break it, a data migration fixes them first (rename duplicates, rewrite a l
 check on the write path. If a sanctioned writer must be exempt (remote-sync pull on a read-only instance, the audit
 loader), the rule is a permission check.
 
+The same column change can mean two things, and only what holds for both is an invariant. An admin who deactivates a
+Tenant retires it, and its collection goes to the trash; switching the Tenants feature off deactivates every Tenant
+and leaves their collections alone. So deactivating the users of a Tenant is in its hook, and archiving its collection
+is what the tenant endpoint does, like sending a mail.
+
 ## Hooks
 
 Stock Toucan hooks, one per model and operation (a second definition replaces the first): `t2/define-before-insert`,
