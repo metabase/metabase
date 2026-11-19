@@ -963,10 +963,14 @@
                      (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
               (is (= 0 (notification.send/queue-size queue))))))))))
 
-(deftest shutdown-timeout-that-does-not-parse-test
-  (testing "a shutdown timeout that does not parse falls back to 20 seconds instead of throwing"
-    (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" "30s"]
-      (is (= 20 (notification.settings/notification-shutdown-timeout-seconds))))))
+(deftest shutdown-timeout-setting-test
+  (testing "a shutdown timeout that does not parse, or is out of range, still gives a deadline shutdown can use"
+    (is (= {"30s"         20
+            "-5"          0
+            "99999999999" 86400}
+           (into {} (for [value ["30s" "-5" "99999999999"]]
+                      (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" value]
+                        [value (notification.settings/notification-shutdown-timeout-seconds)])))))))
 
 (deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
   (testing "a dispatcher that cannot be created does not keep the other from closing"

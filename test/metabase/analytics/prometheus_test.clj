@@ -268,8 +268,8 @@
 
 (deftest metrics-after-shutdown-test
   (testing "metric calls after shutdown do nothing, so work still draining during shutdown does not throw"
-    (mt/with-prometheus-system! [_ _system]
-      (prometheus/shutdown!)
+    ;; shutdown leaves no system; calling the real `shutdown!` would also stop the process-wide JVM meters
+    (with-redefs [prometheus/system nil]
       (is (= {:inc     nil
               :dec     nil
               :observe nil

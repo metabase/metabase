@@ -20,12 +20,16 @@
   :type       :integer
   :setter     :none
   :visibility :internal
-  ;; read during shutdown, where a value that does not parse must not stop the drain
+  ;; read during shutdown, where a value that does not parse must not stop the drain; a day at most, so the
+  ;; deadline in nanoseconds cannot overflow
   :getter     (fn []
                 (try
-                  (setting/get-value-of-type :integer :notification-shutdown-timeout-seconds)
-                  (catch Exception _
-                    (log/warn "MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS is not a whole number; waiting 20 seconds")
+                  (-> (setting/get-value-of-type :integer :notification-shutdown-timeout-seconds)
+                      (max 0)
+                      (min 86400))
+                  (catch Exception e
+                    (log/warnf "Could not read the notification shutdown timeout, so shutdown waits 20 seconds: %s"
+                               (ex-message e))
                     20)))
   :doc "Metabase stops sending notifications when it shuts down. It sends what is already queued for up to this many
   seconds, then abandons the rest and logs how many were left. The default leaves room for the other shutdown steps
