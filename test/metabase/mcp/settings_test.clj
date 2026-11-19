@@ -149,6 +149,11 @@
         (is (= [(str "Could not parse MB_MCP_APPS_CORS_ENABLED_CLIENTS as comma-separated MCP clients, "
                      "so all MCP clients are disabled.")]
                (warnings)))))
+    (testing "says that only the first line is used, which the setter would reject"
+      (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude\nchatgpt"]
+        (is (= [(str "Only the first line of MB_MCP_APPS_CORS_ENABLED_CLIENTS is used. "
+                     "List MCP clients on one line, separated by commas.")]
+               (warnings)))))
     (testing "says nothing when every entry names a client"
       (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude,vscode"]
         (is (= [] (warnings)))))))

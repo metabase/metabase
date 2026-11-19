@@ -180,6 +180,9 @@
   (let [source (or (first (setting/env-var-source :mcp-apps-cors-enabled-clients))
                    "mcp-apps-cors-enabled-clients")]
     (try
+      ;; The :csv type reads only the first line, so the getter never sees the others.
+      (when (next (doall (csv/read-csv (or (setting/get-value-of-type :string :mcp-apps-cors-enabled-clients) ""))))
+        (log/warnf "Only the first line of %s is used. List MCP clients on one line, separated by commas." source))
       (when-let [unknown (not-empty (:unknown (parse-enabled-clients (raw-enabled-client-entries))))]
         (log/warnf "Ignoring unknown MCP clients in %s: %s. Accepted values: %s."
                    source
