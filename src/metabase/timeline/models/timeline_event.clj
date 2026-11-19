@@ -1,6 +1,7 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -23,12 +24,6 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(defmethod events/spec :model/TimelineEvent
-  [_model]
-  {:create :event/timeline-event-create
-   :update :event/timeline-event-update
-   :delete :event/timeline-event-delete})
 
 (def default-icon
   "The default icon for Timeline and TimelineEvents."
@@ -158,7 +153,16 @@
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
-;;; -------------------------------------------------- Serialization ---------------------------------------------------
+;;; ------------------------------------------------------ Specs -------------------------------------------------------
+
+(defmethod events/spec :model/TimelineEvent
+  [_model]
+  {:create :event/timeline-event-create
+   :update :event/timeline-event-update
+   :delete :event/timeline-event-delete})
+
+(defmethod app-db-copy/spec :model/TimelineEvent [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TimelineEvent [_]
   {:schema    ::timeline.schema/external-timeline-event
@@ -168,8 +172,6 @@
                :creator_id serialization/user-transform
                :timestamp  serialization/date-transform}
    :defaults  {:archived false}})
-
-;;; --------------------------------------------------- Remote sync ----------------------------------------------------
 
 (defmethod remote-sync/spec :model/TimelineEvent
   [_model]

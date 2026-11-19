@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -31,3 +32,8 @@
     (catch Exception e
       (analytics/inc! :metabase-search/semantic-token-tracking-failures {:model model})
       (log/warnf e "Failed to record %s tokens for embedding model %s" total-tokens model))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SemanticSearchTokenTracking [_model]
+  {:skip? true})

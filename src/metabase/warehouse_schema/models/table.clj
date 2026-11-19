@@ -1,10 +1,14 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [medley.core :as m]
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -12,18 +16,25 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.search.spec :as search.spec]
+   [metabase.replacement.spec :as replacement]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
+   [metabase.warehouse-schema.audit :as warehouse-schema.audit]
+   [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
@@ -100,15 +111,6 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
-
-(defmethod events/spec :model/Table
-  [_model]
-  {:create :event/table-create
-   :update :event/table-update
-   :delete :event/table-delete})
-
-(methodical/defmethod change-log/ignored-columns :model/Table [_model]
-  #{:initial_sync_status :view_count})
 
 (def transform-data-authority
   "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
@@ -522,78 +524,138 @@
         values
         (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
-(defmethod serialization/spec :model/Table [_]
-  {:schema    ::warehouse-schema.schema/external-table
-   :identity  [:db_id :schema :name]
-   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-               :database_require_filter :is_writable :data_authority :data_source :data_layer
-               :owner_email :is_published]
-   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target :is_defective_duplicate
-               :unique_table_helper]
-   :transform {:archived_at    serialization/date-transform
-               :deactivated_at serialization/date-transform
-               :db_id          serialization/database-transform
-               :collection_id  (serialization/fk-transform :model/Collection)
-               :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
-               :transform_id   (serialization/fk-transform :model/Transform)}
-   :defaults  {:is_published            false
-               :is_upload               false
-               :show_in_getting_started false}})
-
-(defmethod serialization/storage-paths :model/Table [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the Table `entities`, in the directory of its Database and schema."
+  [entities _ctx]
   (mapv (fn [{:keys [db_id schema name]}]
           (conj (serialization/storage-path-prefixes [db_id schema name])
                 {:label name :key name}))
         entities))
 
-(defmethod serialization/import-dependencies :model/Table [_ entities]
+(defn- import-dependencies
+  "The Collection and Transform each of the Table `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [collection_id transform_id]}]
           (cond-> []
             collection_id (conj [:model/Collection collection_id])
             transform_id  (conj [:model/Transform transform_id])))
         entities))
 
-;;; ----------------------------------------------------- Search -----------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(search.spec/define-spec "table"
-  {:model        :model/Table
-   :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
-                  ;; so we moved that to the where clause
-                  :archived        false
-                  ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id   true
-                  :creator-id      false
-                  :database-id     :db_id
-                  :view-count      true
-                  :created-at      true
-                  :updated-at      true
-                  :is-published        :is_published
-                  :collection-type     :collection.type
-                  :collection-location :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}
-                  :data-layer          :data_layer
-                  :data-authority      :data_authority}
-   :search-terms {:name         search.spec/explode-camel-case
-                  :display_name true
-                  :description  true}
-   :render-terms {:initial-sync-status        true
-                  :table-id                   :id
-                  :table-description          :description
-                  :table-name                 :name
-                  :table-schema               :schema
-                  :database-name              :db.name
-                  :collection-authority_level :collection.authority_level
-                  ;; For published tables with no collection, show "Our analytics" as the collection name
-                  :collection-name            [:coalesce :collection.name
-                                               [:case
-                                                [:and :this.is_published
-                                                 [:= :this.collection_id nil]] "Our analytics"
-                                                :else nil]]}
-   :where        [:and
-                  :this.active
-                  [:= :this.visibility_type nil]
-                  [:= :db.router_database_id nil]
-                  [:not= :this.db_id [:inline audit/audit-db-id]]]
-   :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
+(defmethod events/spec :model/Table
+  [_model]
+  {:create :event/table-create
+   :update :event/table-update
+   :delete :event/table-delete})
+
+(defmethod app-db-copy/spec :model/Table [_model]
+  {:skip?     false
+   :transform warehouse-schema.app-db-copy/transform-table})
+
+(defmethod change-log/spec :model/Table [_model]
+  {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
+           :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
+           :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
+           :owner_user_id :collection_id :is_published :transform_id :transform_target]
+   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
+
+(defmethod serialization/spec :model/Table [_]
+  {:schema              ::warehouse-schema.schema/external-table
+   :identity            [:db_id :schema :name]
+   :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
+                         :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
+                         :database_require_filter :is_writable :data_authority :data_source :data_layer
+                         :owner_email :is_published]
+   :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
+                         :is_defective_duplicate :unique_table_helper]
+   :transform           {:archived_at    serialization/date-transform
+                         :deactivated_at serialization/date-transform
+                         :db_id          serialization/database-transform
+                         :collection_id  (serialization/fk-transform :model/Collection)
+                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
+                         :transform_id   (serialization/fk-transform :model/Transform)}
+   :defaults            {:is_published            false
+                         :is_upload               false
+                         :show_in_getting_started false}
+   :storage-paths       storage-paths
+   :import-dependencies import-dependencies
+   :rows-by-refs        serialization/table-rows-by-refs})
+
+(defmethod audit/spec :model/Table [_model]
+  {:track          [:id :name :db_id]
+   :track-redacted [:active :archived_at :caveats :collection_id :data_authority :data_layer :data_source
+                    :database_require_filter :deactivated_at :description :display_name :entity_type
+                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate :is_published
+                    :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
+                    :show_in_getting_started :transform_id :transform_target :unique_table_helper
+                    :visibility_type]
+   :skip           [:view_count]
+   :topics         {}
+   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
+                     :details warehouse-schema.audit/moment-details}
+                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
+                     :details warehouse-schema.audit/moment-details}]})
+
+(defmethod search/spec :model/Table
+  [_model]
+  {"table"
+   {:attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
+                   ;; so we moved that to the where clause
+                   :archived        false
+                   ;; For published tables with no collection, we want to show "root" as the collection id
+                   :collection-id   true
+                   :creator-id      false
+                   :database-id     :db_id
+                   :view-count      true
+                   :created-at      true
+                   :updated-at      true
+                   :is-published        :is_published
+                   :collection-type     :collection.type
+                   :collection-location :collection.location
+                   :root-collection-type {:fn collection/root-collection-type}
+                   :data-layer          :data_layer
+                   :data-authority      :data_authority}
+    :search-terms {:name         search/explode-camel-case
+                   :display_name true
+                   :description  true}
+    :render-terms {:initial-sync-status        true
+                   :table-id                   :id
+                   :table-description          :description
+                   :table-name                 :name
+                   :table-schema               :schema
+                   :database-name              :db.name
+                   :collection-authority_level :collection.authority_level
+                   ;; For published tables with no collection, show "Our analytics" as the collection name
+                   :collection-name            [:coalesce :collection.name
+                                                [:case
+                                                 [:and :this.is_published
+                                                  [:= :this.collection_id nil]] "Our analytics"
+                                                 :else nil]]}
+    :where        [:and
+                   :this.active
+                   [:= :this.visibility_type nil]
+                   [:= :db.router_database_id nil]
+                   [:not= :this.db_id [:inline audit/audit-db-id]]]
+    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
+                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}}})
+
+(defmethod dependencies/spec :model/Table [_model]
+  {:type  :table
+   :items warehouse-schema.db/dependency-table-items
+
+   :output-columns #{:name :schema :display_name :active :visibility_type}})
+
+(defmethod replacement/spec :model/Table [_model]
+  {:source-database-id :db_id})
+
+(defmethod collection-items/spec :model/Table [_model]
+  {"table" {:items   warehouse-schema.db/collection-table-items
+            :hydrate warehouse-schema.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Table [_model]
+  {"table" {:load   warehouse-schema.db/recent-view-tables
+            :render warehouse-schema.recent-views/render}})
+
+(defmethod xrays/spec :model/Table [_model]
+  {:related warehouse-schema.xrays/table-related})

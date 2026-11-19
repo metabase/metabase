@@ -1,5 +1,6 @@
 (ns metabase.mcp.models.mcp-tool-call-log
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -7,3 +8,8 @@
 
 (doto :model/McpToolCallLog
   (derive :metabase/model))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/McpToolCallLog [_model]
+  {:skip? true})

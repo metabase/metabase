@@ -45,9 +45,8 @@
           (data-testing.models/update-transform-test! transform-test-id {:name "Renamed"})
           (is (= {:model_id transform-test-id
                   :user_id  (mt/user->id :crowberto)
-                  :details  {:transform_id transform-id
-                             :name         "Renamed"
-                             :description  "Checks output"}
+                  :details  {:previous {:name "Original"}
+                             :new      {:name "Renamed"}}
                   :topic    :transform-test-update
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-update transform-test-id))))
@@ -155,9 +154,8 @@
           (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})
           (is (= {:model_id card-test-id
                   :user_id  (mt/user->id :crowberto)
-                  :details  {:card_id     card-id
-                             :name        "Renamed"
-                             :description "Checks output"}
+                  :details  {:previous {:name "Original"}
+                             :new      {:name "Renamed"}}
                   :topic    :card-test-update
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-update card-test-id))))
@@ -181,17 +179,17 @@
         (t2/delete! :model/CardTest :id card-test-id)
         (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
 
-(deftest card-test-audit-events-name-the-creator-then-the-acting-user-test
-  (testing "The create row names the test's creator; the update and delete rows name the user who acts"
+(deftest card-test-audit-events-name-the-acting-user-test
+  (testing "The rows of the create, update and delete of a card test name the user who acts, who is its creator"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Card {card-id :id} {}]
         (let [{card-test-id :id} (data-testing.models.card-test/create-card-test! {:card_id      card-id
-                                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                                   :creator_id   (mt/user->id :rasta)
                                                                                    :name         "Original"
                                                                                    :inputs       []
                                                                                    :expectations []})]
           (testing "create"
-            (is (=? {:user_id (mt/user->id :crowberto)}
+            (is (=? {:user_id (mt/user->id :rasta)}
                     (mt/latest-audit-log-entry :card-test-create card-test-id))))
           (testing "update"
             (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})
@@ -209,22 +207,23 @@
                                                              :creator_id  (mt/user->id :crowberto)
                                                              :name        "Original"
                                                              :description "Checks output"}]
-      (let [entry (fn [topic test-name]
+      (let [entry (fn [topic details]
                     {:model_id segment-test-id
                      :user_id  (mt/user->id :crowberto)
-                     :details  {:segment_id segment-id :name test-name :description "Checks output"}
+                     :details  details
                      :topic    topic
-                     :model    "SegmentTest"})]
+                     :model    "SegmentTest"})
+            full  (fn [test-name] {:segment_id segment-id :name test-name :description "Checks output"})]
         (testing "create"
-          (is (= (entry :segment-test-create "Original")
+          (is (= (entry :segment-test-create (full "Original"))
                  (mt/latest-audit-log-entry :segment-test-create segment-test-id))))
         (testing "update"
           (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
-          (is (= (entry :segment-test-update "Renamed")
+          (is (= (entry :segment-test-update {:previous {:name "Original"} :new {:name "Renamed"}})
                  (mt/latest-audit-log-entry :segment-test-update segment-test-id))))
         (testing "delete"
           (t2/delete! :model/SegmentTest :id segment-test-id)
-          (is (= (entry :segment-test-delete "Renamed")
+          (is (= (entry :segment-test-delete (full "Renamed"))
                  (mt/latest-audit-log-entry :segment-test-delete segment-test-id))))))))
 
 (deftest segment-test-run-audit-events-test

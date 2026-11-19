@@ -260,3 +260,48 @@
         (testing "the readers' runs stored the metadata"
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id model-id)))
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))
+
+(defn- user-qbnewb-call-count!
+  "The number of app DB queries that the user `user-id` runs to clear their own new-user flag."
+  [user-id]
+  (t2/update! :model/User :id user-id {:is_qbnewb true})
+  (t2/with-call-count [call-count]
+    (mt/user-http-request :rasta :put 200 (str "user/" user-id "/modal/qbnewb"))
+    (call-count)))
+
+(deftest skipped-column-update-of-user-runs-no-details-query-test
+  (let [user-id   (mt/user->id :rasta)
+        before    (max-id)
+        audit-off (mt/with-premium-features #{}
+                    (user-qbnewb-call-count! user-id))
+        audit-on  (mt/with-premium-features #{:audit-app}
+                    (user-qbnewb-call-count! user-id))]
+    (testing "clearing the new-user flag runs no query for the audit log"
+      (is (= audit-off audit-on))
+      (is (= [] (rows-since before)))))
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [before (max-id)]
+        (testing "deactivating a user runs one query to hydrate their groups, and one to insert the row"
+          (t2/with-call-count [call-count]
+            (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
+            (is (= 13 (call-count)))))
+        (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
+
+(defn- update-segment-entity-id-call-count!
+  "The number of app DB queries that a user's update of only the skipped `entity_id` of the Segment `segment-id` runs."
+  [segment-id entity-id]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (t2/with-call-count [call-count]
+      (t2/update! :model/Segment :id segment-id {:entity_id entity-id})
+      (call-count))))
+
+(deftest skipped-column-update-of-segment-runs-no-details-query-test
+  (mt/with-temp [:model/Segment {segment-id :id} {}]
+    (let [before    (max-id)
+          audit-off (mt/with-premium-features #{}
+                      (update-segment-entity-id-call-count! segment-id "abcdefghijklmnopqrstu"))
+          audit-on  (mt/with-premium-features #{:audit-app}
+                      (update-segment-entity-id-call-count! segment-id "vwxyzabcdefghijklmnop"))]
+      (is (= audit-off audit-on))
+      (is (= [] (rows-since before))))))

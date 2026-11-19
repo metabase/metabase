@@ -3,7 +3,11 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -12,6 +16,7 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.users.audit :as users.audit]
    [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -25,7 +30,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
@@ -39,12 +44,6 @@
   (derive :hook/entity-id)
   (derive :hook/events)
   (derive ::mi/create-policy.superuser))
-
-(defmethod events/spec :model/User
-  [_model]
-  {:create :event/user-create
-   :update :event/user-update
-   :delete :event/user-delete})
 
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
@@ -77,9 +76,9 @@
 
 (t2.default-fields/define-default-fields :model/User default-user-columns)
 
-(defmethod mi/exclude-internal-content-hsql :model/User
-  [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
+(defmethod mi/non-internal-filter-clause :model/User
+  [_model alias]
+  [:not= (h2x/identifier :field alias :type) "internal"])
 
 (defn settings-map
   "Returns the user's `settings` as a map, defaulting to an empty map.
@@ -492,3 +491,34 @@
 (def filter-clauses
   "Honeysql clauses for filtering on users. See [[users.db/filter-clauses]] for the options."
   users.db/filter-clauses)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/User
+  [_model]
+  {:create :event/user-create
+   :update :event/user-update
+   :delete :event/user-delete})
+
+(defmethod app-db-copy/spec :model/User [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/User [_model]
+  {:track [:email :first_name :last_name :password :password_salt :date_joined :last_login :is_superuser :is_active
+           :reset_token :reset_triggered :is_qbnewb :login_attributes :sso_source :locale :is_datasetnewb :settings
+           :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
+   :skip  []})
+
+(defmethod audit/spec :model/User [_model]
+  {:track          [:first_name :last_name :email :sso_source :tenant_id]
+   :track-redacted [:date_joined :deactivated_with_tenant :is_data_analyst :is_datasetnewb :is_superuser
+                    :jwt_attributes :locale :login_attributes :type]
+   :skip           [:deactivated_at :entity_id :is_active :is_qbnewb :last_login :password :password_salt
+                    :reset_token :reset_triggered :settings]
+   :details        users.audit/details
+   :topics         {:update users.audit/update-topic}
+   :moments        [{:topic :user-reactivated, :when users.audit/reactivated?}
+                    {:topic :user-deactivated, :when users.audit/deactivated?}]})
+
+(defmethod eid-translation/spec :model/User [_model]
+  {:names [:user]})

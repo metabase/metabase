@@ -4,13 +4,15 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.audit-app.core :as audit-app]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,12 +28,6 @@
   (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
-(defmethod events/spec :model/CardTest
-  [_model]
-  {:create :event/card-test-create
-   :update :event/card-test-update
-   :delete :event/card-test-delete})
-
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
   :model/Card)
@@ -44,10 +40,6 @@
   "Add the newest run, or nil, to each card test."
   [_model _k card-tests]
   (data-testing.models/with-last-runs :card card-tests))
-
-(defmethod audit-app/model-details :model/CardTest
-  [card-test _event-type]
-  (select-keys card-test [:card_id :name :description]))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
@@ -81,9 +73,11 @@
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
   (card-allows? mi/can-read? :can_read (:card_id card-test)))
 
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/card (:card_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_read]
+  "Add whether the current user can read the card of each card test, loading the cards at once."
+  [_model k card-tests]
+  (data-testing.models/with-readable-subjects k card-tests :card_id
+    (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
 
 (methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
   [_model k instance]
@@ -133,44 +127,42 @@
 (def ^:private revision-columns
   [:card_id :name :description :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/CardTest
-  [_model _id card-test]
-  (select-keys card-test revision-columns))
+(defn- revert-card-test!
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (update-card-test! id (select-keys snapshot revision-columns)))
 
-(defmethod revision/revisions-readable? :model/CardTest
-  [_model objects]
-  ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
-  (let [readable-ids (into #{}
-                           (map :id)
-                           (mi/readable (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) objects))))]
-    (mapv #(contains? readable-ids (:card_id %)) objects)))
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-(defmethod revision/revert-to-revision! :model/CardTest
-  [_model id _user-id serialized-instance]
-  (update-card-test! id (select-keys serialized-instance revision-columns)))
+(defmethod events/spec :model/CardTest
+  [_model]
+  {:create :event/card-test-create
+   :update :event/card-test-update
+   :delete :event/card-test-delete})
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod app-db-copy/spec :model/CardTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/CardTest [_]
-  {:schema    ::data-testing.schema/external-card-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:card_id    (serialization/fk-transform :model/Card)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/CardTest [_ entities _ctx]
-  ;; A card's file can sit in a collection, a dashboard or a document, so its path reads all three.
-  (data-testing.models/subject-storage-paths entities :model/Card :card_id {:collection_id :model/Collection
-                                                                            :dashboard_id  :model/Dashboard
-                                                                            :document_id   :model/Document}))
-
-(defmethod serialization/import-dependencies :model/CardTest [_ entities]
-  (mapv (fn [{:keys [card_id]}]
-          #{[:model/Card card_id]})
-        entities))
-
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
+  {:schema              ::data-testing.schema/external-card-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:card_id    (serialization/fk-transform :model/Card)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/card-test-storage-paths
+   :import-dependencies data-testing.serialization/card-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/CardTest
   [_model]
   {:synced-items         data-testing.db/synced-card-test-items
    :synced-filter-clause data-testing.db/synced-card-tests-clause})
+
+(defmethod revisions/spec :model/CardTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-card-test!})
+
+(defmethod audit/spec :model/CardTest [_model]
+  {:track          [:card_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

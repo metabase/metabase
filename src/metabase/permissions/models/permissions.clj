@@ -158,6 +158,7 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -428,3 +429,8 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Permissions [_model]
+  {:skip? false})

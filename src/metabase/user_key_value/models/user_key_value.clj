@@ -34,6 +34,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
@@ -99,3 +100,8 @@
                                  (mtx/default-value-transformer)
                                  {:name :database}))]
       (into {} (map (juxt :key :value) parsed-kvs)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/UserKeyValue [_model]
+  {:skip? true})

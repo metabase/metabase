@@ -23,9 +23,9 @@ listed has a `db.clj` except `events` and `source_swap`.
 | Cards | `metabase.queries.models.card`, `.models.card.metadata` (result metadata), `.models.parameter-card`, `.models.query-field`, `.models.query-table`, `metabase.queries.card-write-checks`, `metabase.queries.events.*`; API `metabase.queries-rest.api.card`, `.api.cards` |
 | Metrics | cards with `:type :metric`; `metabase.metrics.*`; QP expansion in `metabase.query-processor.middleware.metrics` |
 | Dashboards | `metabase.dashboards.models.dashboard`, `.dashboard-card`, `.dashboard-card-series`, `.dashboard-tab`, `metabase.dashboards.write`, `.autoplace`; API `metabase.dashboards-rest.api`; param logic in `metabase.parameters.dashboard`, `metabase.parameters.params` |
-| Documents | `metabase.documents.models.document`, `.prose-mirror`, `.markdown`, `.revisions.impl`, `.view-log`, `.recent-views`; API `metabase.documents.api.document` |
+| Documents | `metabase.documents.models.document`, `.prose-mirror`, `.markdown`, `.view-log`, `.recent-views`; API `metabase.documents.api.document` |
 | Comments | `metabase.comments.*` (ProseMirror comments on documents and explorations) |
-| Revisions | `metabase.revisions.models.revision`, `.models.revision.diff`, `.models.revision.last-edit`, `metabase.revisions.events`, `metabase.revisions.impl.{card,dashboard,segment,measure,transform,exploration}` |
+| Revisions | `metabase.revisions.models.revision`, `.models.revision.diff`, `.models.revision.last-edit`, `metabase.revisions.events`, `metabase.revisions.spec` (each model's `revisions/spec`, its code in `<module>/revisions.clj`) |
 | Segments / measures | `metabase.segments.models.segment`, `metabase.segments.rest.api`; `metabase.measures.models.measure`, `metabase.measures.api` |
 | Other content | `metabase.bookmarks.*`, `metabase.timeline.*`, `metabase.native-query-snippets.*`, `metabase.glossary.*`, `metabase.content-verification.*` (moderation reviews) |
 | Events / views | `metabase.events.core` (bus), `metabase.events.impl`, `metabase.view-log.events.view-log` |
@@ -73,7 +73,8 @@ read it when a collection-wide change must cover every item type.
    consumers live in `<module>/events.clj`, and `rg "derive! :event/<topic>"` finds the subscribers.
 4. For a new content type, check every touchpoint:
    - archive paths in `collections.models.collection`
-   - `revisions.impl.*`, and `:hook/events` plus `events/spec` on the model
+   - the model's `<feature>/spec` methods (the Specs table of the backend-model-rules skill), and `:hook/events` plus
+     `events/spec` on the model
    - bookmarks
    - the search spec (search-backend-expert)
    - serdes in `metabase.models.serialization` (enterprise-backend-expert)
@@ -82,7 +83,7 @@ read it when a collection-wide change must cover every item type.
    - Cards: `metabase.queries.models.card-test`, `metabase.queries.models.card.metadata-test`,
      `metabase.queries-rest.api.card-test`.
    - Dashboards: `metabase.dashboards.models.dashboard-card-test`, `metabase.dashboards-rest.api-test`.
-   - Revisions: `metabase.revisions.models.revision-test`, `metabase.revisions.impl.*-test`.
+   - Revisions: `metabase.revisions.models.revision-test`, `metabase.revisions.spec-test`, `metabase.revisions.specs.*-test`.
    - Documents: `metabase.documents.*`.
    - Helpers: `metabase.collections.test-utils`, `metabase.documents.test-util`.
 

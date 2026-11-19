@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot.models.metabot-group-limit
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -40,3 +41,8 @@
       (metabot.db/update-group-limit! (:id existing) max-usage)
       (metabot.db/insert-group-limit! {:group_id group-id :max_usage max-usage})))
   (group-limit group-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotGroupLimit [_model]
+  {:skip? false})

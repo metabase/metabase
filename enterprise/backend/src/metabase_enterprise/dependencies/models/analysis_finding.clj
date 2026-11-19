@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -75,3 +76,8 @@
      entity-type
      entity-id
      (map error->finding-error-row finding-details))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AnalysisFinding [_model]
+  {:skip? true})
