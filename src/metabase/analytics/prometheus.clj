@@ -831,6 +831,12 @@
    (prometheus/counter :metabase-metabot/turn-started
                        {:description "A metabot turn was started (user row + assistant placeholder inserted)"
                         :labels [:profile-id]})
+   (prometheus/counter :metabase-metabot/summary-formula-requests
+                       {:description "Summary formula requests"
+                        :labels [:mode]})
+   (prometheus/counter :metabase-metabot/summary-formula-errors
+                       {:description "Summary formula requests that returned an error"
+                        :labels [:mode :reason]})
    (prometheus/counter :metabase-metabot/used-tables-extraction-total
                        {:description "Number of used-tables extractions attempted."})
    (prometheus/counter :metabase-metabot/used-tables-extraction-errors

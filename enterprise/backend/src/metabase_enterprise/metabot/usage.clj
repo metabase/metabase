@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 ;; Keep these in sync with the CASE branches in the LATEST version of:
-;;   resources/migrations/instance_analytics_views/ai_usage_log/v6/{h2,mysql,postgres}-ai_usage_log.sql
+;;   resources/migrations/instance_analytics_views/ai_usage_log/v7/{h2,mysql,postgres}-ai_usage_log.sql
 ;;   resources/migrations/instance_analytics_views/metabot_conversations/v8/{h2,mysql,postgres}-metabot_conversations.sql
 ;; When adding a value here, create a new view version (vN+1) with the extra CASE branches plus a migration
 ;; that reinstalls the views, so users see a nicer name in ai analytics. Parity is enforced by
@@ -32,14 +32,15 @@
     "slackbot"
     "oss-sql-gen"
     "sql-gen"
+    "summary_formula"
     "unknown"
     "user-intent-classification"})
 
 (def ^:private message-sources
-  "The sources whose agent loops count as messages under a message limit: a chat turn, a Slack turn and a document
-  generation, each a prompt the user sent. Every other source runs through the limit check but never adds to the
-  count."
-  #{"metabot_agent" "slackbot" "document_generate_content"})
+  "The sources whose agent loops count as messages under a message limit: a chat turn, a Slack turn, a document
+  generation and a summary formula, each a prompt the user sent. Every other source runs through the limit check but
+  never adds to the count."
+  #{"metabot_agent" "slackbot" "document_generate_content" "summary_formula"})
 
 (def ^:private known-profile-ids
   #{"internal"

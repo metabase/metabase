@@ -22661,6 +22661,163 @@
         "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query",
         "description" : "value must be a valid MBQL query with a source table."
       },
+      "metabase.metabot.api.custom-expression.request-schema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "columns" : {
+            "items" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "name" : {
+                  "allOf" : [ {
+                    "allOf" : [ {
+                      "description" : "value must be a non-blank string.",
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "maxLength" : 255,
+                      "type" : "string"
+                    } ]
+                  }, {
+                    "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
+                    "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
+                    "type" : "string"
+                  } ]
+                },
+                "type" : {
+                  "anyOf" : [ {
+                    "allOf" : [ {
+                      "allOf" : [ {
+                        "description" : "value must be a non-blank string.",
+                        "minLength" : 1,
+                        "type" : "string"
+                      }, {
+                        "maxLength" : 255,
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "description" : "Column types can only have letters, digits, spaces and _ . / -",
+                      "pattern" : "\\A[A-Za-z0-9 _./-]+\\z",
+                      "type" : "string"
+                    } ]
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "name" ],
+              "type" : "object"
+            },
+            "maxItems" : 200,
+            "type" : "array"
+          },
+          "database_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "measures" : {
+            "anyOf" : [ {
+              "items" : {
+                "allOf" : [ {
+                  "allOf" : [ {
+                    "description" : "value must be a non-blank string.",
+                    "minLength" : 1,
+                    "type" : "string"
+                  }, {
+                    "maxLength" : 255,
+                    "type" : "string"
+                  } ]
+                }, {
+                  "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
+                  "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
+                  "type" : "string"
+                } ]
+              },
+              "maxItems" : 200,
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "metrics" : {
+            "anyOf" : [ {
+              "items" : {
+                "allOf" : [ {
+                  "allOf" : [ {
+                    "description" : "value must be a non-blank string.",
+                    "minLength" : 1,
+                    "type" : "string"
+                  }, {
+                    "maxLength" : 255,
+                    "type" : "string"
+                  } ]
+                }, {
+                  "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
+                  "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
+                  "type" : "string"
+                } ]
+              },
+              "maxItems" : 200,
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "mode" : {
+            "enum" : [ "aggregation", "expression" ],
+            "type" : "string"
+          },
+          "prompt" : {
+            "allOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "maxLength" : 500,
+              "type" : "string"
+            } ]
+          },
+          "table_name" : {
+            "anyOf" : [ {
+              "allOf" : [ {
+                "description" : "value must be a non-blank string.",
+                "minLength" : 1,
+                "type" : "string"
+              }, {
+                "maxLength" : 255,
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "mode", "prompt", "columns", "database_id" ],
+        "type" : "object"
+      },
+      "metabase.metabot.api.custom-expression.response-schema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "expression" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "name" : {
+            "allOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "maxLength" : 60,
+              "type" : "string"
+            } ]
+          }
+        },
+        "required" : [ "expression", "name" ],
+        "type" : "object"
+      },
       "metabase.metabot.context.context" : {
         "additionalProperties" : false,
         "description" : "The context a Metabot request carries. Besides what the client sends, [[create-context]] adds the user's recent\n  views, the current time and the caller's capabilities before the agent reads it.",
@@ -62671,6 +62828,42 @@
         },
         "summary" : "GET /api/metabot/conversations/{id}/title",
         "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/custom-expression/summary-formula" : {
+      "post" : {
+        "description" : "Draft a custom expression from the summary sidebar's natural-language request in `body`.",
+        "operationId" : "post-api-metabot-custom-expression-summary-formula",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.metabot.api.custom-expression.request-schema"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metabot.api.custom-expression.response-schema"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/custom-expression/summary-formula",
+        "tags" : [ "/api/metabot/custom-expression" ]
       }
     },
     "/api/metabot/document/generate-content" : {
