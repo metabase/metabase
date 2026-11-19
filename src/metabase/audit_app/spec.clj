@@ -15,6 +15,8 @@
 
   - `:details`, a fn of a row and the lifecycle event returning the details to store beside the tracked columns, which
     it overrides, for what the columns alone do not say.
+  - `:state`, a fn of a row and the lifecycle event returning what the row of an update stores whole, beside the changes,
+    for what cannot be compared before and after; the row of any other write stores it with the details.
   - `:same?`, a map from a column to a fn of the row before and the row after, true when the column is unchanged, `=`
     of the two values by default.
   - `:topics`, a map from an operation (`:create`, `:update`, `:delete`) to the topic to store for it, a keyword or a
@@ -47,6 +49,7 @@
    [:track-redacted  [:sequential :keyword]]
    [:skip            [:sequential :keyword]]
    [:details         {:optional true} fn?]
+   [:state           {:optional true} fn?]
    [:same?           {:optional true} [:map-of :keyword fn?]]
    [:topics          {:optional true} [:map-of Operation [:or :keyword fn?]]]
    [:parent          {:optional true} [:map {:closed true}

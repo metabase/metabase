@@ -44,27 +44,34 @@
                       :details {:archived false :name "Subscription" :dashboard_id dashboard-id :parameters []
                                 :channel ["email"] :schedule ["daily"] :recipients [[]]}}]
                     (rows-since before))))
-          (testing "changing the pulse, its channels and their recipients stores one row"
+          (testing "changing the name and the recipients stores one row with both"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
                                     {:name "Renamed"
-                                     :channels [(assoc email-channel :schedule_hour 8
-                                                       :recipients [{:id (mt/user->id :crowberto)}])]})
+                                     :channels [(assoc email-channel :recipients [{:id (mt/user->id :crowberto)}])]})
               (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id rasta
-                        :details {:previous {:name "Subscription"} :new {:name "Renamed"}}}]
+                        :details {:previous   {:name "Subscription"}
+                                  :new        {:name "Renamed"}
+                                  :channel    ["email"]
+                                  :schedule   ["daily"]
+                                  :recipients [[{:id (mt/user->id :crowberto)}]]}}]
                       (rows-since before)))))
-          (testing "changing only the channels stores one row"
+          (testing "changing only the schedule of a channel stores one row that shows it"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
-                                    {:channels [(assoc email-channel :schedule_hour 9
+                                    {:channels [(assoc email-channel :schedule_type "hourly"
                                                        :recipients [{:id (mt/user->id :crowberto)}])]})
-              (is (= [:subscription-update] (map :topic (rows-since before))))))
-          (testing "changing only the recipients stores one row"
+              (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id
+                        :details {:channel ["email"] :schedule ["hourly"]}}]
+                      (rows-since before)))))
+          (testing "changing only the recipients stores one row that shows them"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
-                                    {:channels [(assoc email-channel :schedule_hour 9
+                                    {:channels [(assoc email-channel :schedule_type "hourly"
                                                        :recipients [{:id (mt/user->id :rasta)}])]})
-              (is (= [:subscription-update] (map :topic (rows-since before))))))
+              (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id
+                        :details {:recipients [[{:id (mt/user->id :rasta)}]]}}]
+                      (rows-since before)))))
           (testing "archiving stores one row"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id) {:archived true})

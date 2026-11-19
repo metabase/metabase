@@ -275,8 +275,16 @@
               :user_id  (mt/user->id :rasta)
               :model    "Pulse"
               :model_id (u/the-id pulse)
-              :details  {:previous {:name (:name pulse)}
-                         :new      {:name "We like to party"}}}
+              :details  {:previous   {:name (:name pulse)}
+                         :new        {:name "We like to party"}
+                         :channel    ["email"]
+                         :schedule   ["daily"]
+                         :recipients [[{:email "foo@bar.com"}
+                                       {:first_name  "Crowberto"
+                                        :last_name   "Corv"
+                                        :email       "crowberto@metabase.com"
+                                        :common_name "Crowberto Corv"
+                                        :id          (mt/user->id :crowberto)}]]}}
              (mt/latest-audit-log-entry :subscription-update (u/the-id pulse)))))))
 
 (deftest dashboard-subscription-update-test

@@ -60,12 +60,21 @@
         (when topic (topic event))))
     (default-topic model operation)))
 
+(defn- state-of
+  "The state that the spec of `model` stores whole for `row`, as the lifecycle `event` leaves it."
+  [model row event]
+  (when-let [state (:state (audit.spec/spec model))]
+    (state row event)))
+
 (defn- event-details
-  "The details of the row that the lifecycle `event` records: the changes of an update, or the details of the row."
+  "The details of the row that the lifecycle `event` records: the changes of an update, or the details of the row, and
+  the state of the row."
   [{:keys [model object previous-object] :as event}]
   (if (and object (not-empty previous-object))
-    (audit-log/update-details (details-of model object event) (details-of model previous-object event))
-    (details-of model (row-of event) event)))
+    (merge (audit-log/update-details (details-of model object event) (details-of model previous-object event))
+           (state-of model object event))
+    (let [row (row-of event)]
+      (merge (details-of model row event) (state-of model row event)))))
 
 (defn- context-details
   "The details that the context of the lifecycle `event` of a write adds to its row."

@@ -73,6 +73,7 @@
                     :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
    :skip           [:collection_position :entity_id]
    :details        pulse.audit/details
+   :state          pulse.audit/state
    :topics         {:create pulse.audit/create-topic
                     :update :subscription-update}})
 
