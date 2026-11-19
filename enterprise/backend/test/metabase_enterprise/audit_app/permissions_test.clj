@@ -25,6 +25,10 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
+(def ^:private non-audit-view-names
+  "The views prefixed with `v_` that are not audit views: the Table and Field overlays."
+  #{(name (t2/table-name :model/TableOverlay)) (name (t2/table-name :model/FieldOverlay))})
+
 (deftest audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`, except the Table and Field overlays"
     (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
@@ -32,7 +36,7 @@
            audit-app.permissions/audit-db-view-names
            (into #{}
                  (comp (map :table_name)
-                       (remove #{(name (t2/table-name :model/TableOverlay)) (name (t2/table-name :model/FieldOverlay))}))
+                       (remove non-audit-view-names))
                  (t2/query view-query)))))))
 
 (deftest audit-db-basic-query-test

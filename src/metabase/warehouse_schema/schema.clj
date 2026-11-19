@@ -138,6 +138,7 @@
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:custom_position    {:optional true} [:maybe :int]]
+   [:position           {:optional true} [:maybe :int]]
    [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]

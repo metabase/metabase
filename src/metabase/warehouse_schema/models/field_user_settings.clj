@@ -162,7 +162,7 @@
   {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
            :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
            :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
-   :skip  []})
+   :skip  [:position]})
 
 (defmethod serialization/spec :model/FieldUserSettings [_]
   {:schema        ::warehouse-schema.schema/external-field-user-settings
@@ -171,7 +171,7 @@
                    :has_field_values :effective_type :coercion_strategy :caveats
                    :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
                    :description_set :semantic_type_set :fk_target_field_id_set]
-   :skip          [:nfc_path]
+   :skip          [:nfc_path :position]
    :defaults      {:description_set        false
                    :semantic_type_set      false
                    :fk_target_field_id_set false}
@@ -189,4 +189,4 @@
 
 (defmethod dependencies/spec :model/FieldUserSettings [_model]
   {:part-of      {:type :table :key :field_id :via [:model/Field :table_id]}
-   :part-columns (conj warehouse-schema.dependencies/field-columns :custom_position :json_unfolding)})
+   :part-columns (conj warehouse-schema.dependencies/field-columns :custom_position :position :json_unfolding)})

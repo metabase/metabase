@@ -3,6 +3,18 @@
 
 databaseChangeLog:
   - changeSet:
+      id: tfo0ps
+      author: ranquild
+      comment: Add metabase_field_user_settings.position, the position of a Field in the field order a user set for its Table
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: position
+                  type: integer
+                  remarks: The position of the Field in the field order a user set for its Table, or null without one
+  - changeSet:
       id: tfo1vw
       author: ranquild
       comment: Add v_field_overlay, metabase_field with the values users set in metabase_field_user_settings

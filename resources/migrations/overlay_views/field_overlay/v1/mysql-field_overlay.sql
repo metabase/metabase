@@ -35,7 +35,7 @@ select
     b.nfc_path,
     b.parent_id,
     coalesce(u.points_of_interest, b.points_of_interest) as points_of_interest,
-    b.position,
+    coalesce(u.position, b.position) as position,
     b.preview_display,
     case when u.semantic_type_set then u.semantic_type else b.semantic_type end as semantic_type,
     coalesce(u.settings, b.settings) as settings,
