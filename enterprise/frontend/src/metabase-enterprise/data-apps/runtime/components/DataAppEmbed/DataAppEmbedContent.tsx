@@ -17,7 +17,7 @@ type Props = {
   path: string;
 
   onProviderPropsLoaded: (props: DataAppMetabaseProviderProps) => void;
-  onPathChange: (path: string) => void;
+  onPathChange: (path: string, navigationId: number | undefined) => void;
   navigationRequest: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
 };
 

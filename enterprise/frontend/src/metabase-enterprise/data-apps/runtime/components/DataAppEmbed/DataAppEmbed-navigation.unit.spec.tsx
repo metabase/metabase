@@ -107,7 +107,7 @@ describe("DataAppEmbed - router navigation", () => {
   });
 
   it("does not report navigation when host explicitly changes the path", () => {
-    const onPathChange = jest.fn<void, [string]>();
+    const onPathChange = jest.fn<void, [string, number | undefined]>();
 
     const { rerender } = renderHook(
       ({ path }) =>
@@ -185,13 +185,45 @@ describe("DataAppEmbed - router navigation", () => {
     expect(pushState).not.toHaveBeenCalled();
   });
 
+  it("reports the ID of the last navigation request it handled", () => {
+    const onPathChange = jest.fn<void, [string, number | undefined]>();
+    const initialProps: {
+      navigationRequest: { path: string; navigationId?: number } | null;
+    } = { navigationRequest: null };
+
+    const { rerender } = renderHook(
+      ({ navigationRequest }) =>
+        useDataAppPathNavigation({
+          slug: "sales",
+          path: "sales",
+          navigationRequest,
+          onPathChange,
+        }),
+      { initialProps },
+    );
+
+    act(() => navigate("/orders"));
+    expect(onPathChange).toHaveBeenLastCalledWith("sales/orders", undefined);
+
+    rerender({
+      navigationRequest: { path: "sales/products", navigationId: 3 },
+    });
+    expect(window.location.pathname).toBe(
+      "/embed/embedded-apps/sales/products",
+    );
+    expect(onPathChange).toHaveBeenCalledTimes(1);
+
+    act(() => navigate("/customers"));
+    expect(onPathChange).toHaveBeenLastCalledWith("sales/customers", 3);
+  });
+
   it("reports the app root as the bare slug", () => {
     window.history.replaceState(null, "", "/embed/embedded-apps/sales/orders");
     const { onPathChange } = setupPathNavigation({ path: "sales/orders" });
 
     act(() => navigate("/"));
 
-    expect(onPathChange).toHaveBeenCalledWith("sales");
+    expect(onPathChange).toHaveBeenCalledWith("sales", undefined);
   });
 
   it("does not report navigation that leaves the app", () => {
@@ -205,7 +237,7 @@ describe("DataAppEmbed - router navigation", () => {
 });
 
 function setupPathNavigation({ path }: { path: string }) {
-  const onPathChange = jest.fn<void, [string]>();
+  const onPathChange = jest.fn<void, [string, number | undefined]>();
 
   const view = renderHook(
     ({ path }) =>

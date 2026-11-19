@@ -101,7 +101,12 @@ export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
 };
 export type SdkIframeEmbedNavigateToDataAppPathMessage = {
   type: "metabase.embed.navigateToDataAppPath";
-  data: { path: string };
+  data: {
+    path: string;
+
+    /** Set by the React SDK `DataApp`, which counts its navigation requests to match them with path reports. */
+    navigationId?: number;
+  };
 };
 
 export type SdkIframeEmbedComponentTagMessage =
@@ -122,7 +127,12 @@ export type SdkIframeEmbedComponentTagMessage =
 /** Sent when the page of a data app changes, except for navigation that the host requested. */
 type SdkIframeEmbedTagDataAppPathChangeMessage = {
   type: "metabase.embed.dataAppPathChange";
-  data: { path: string };
+  data: {
+    path: string;
+
+    /** The `navigationId` of the last `navigateToDataAppPath` request the iframe handled. */
+    navigationId?: number;
+  };
 };
 
 // --- Embed Option Interfaces ---

@@ -24,6 +24,10 @@ const DEFAULT_HEIGHT = 600;
 interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
   path: string;
   slug: string;
+
+  /** Whether the host passed `path`, so it can navigate the app. */
+  isPathControlled: boolean;
+
   origin: string;
 
   /**
@@ -31,7 +35,7 @@ interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
    *
    * Later values are ignored, so a route change does not reload the app.
    * `DataApp` keys this component by the app slug and instance URL, so it remounts when either changes.
-   * When only the route or query changes, the new `path` is sent to the iframe, which navigates client-side.
+   * When only the route or query changes, the iframe is asked to navigate client-side.
    */
   initialSrc: string;
 
@@ -43,6 +47,7 @@ interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
 export function DataAppFrame({
   path,
   slug,
+  isPathControlled,
   origin,
   initialSrc,
   onPathChange,
@@ -60,20 +65,36 @@ export function DataAppFrame({
   const currentAuthRef = useRef({ authConfig, store });
   const pathRef = useRef(path);
 
-  // The path the iframe was last asked to show, sent with every settings message.
-  const requestedPathRef = useRef(path);
+  // The path in `initialSrc`. Settings always carry it, so resending them never moves the app.
+  const initialPathRef = useRef(path);
 
   // The page the iframe is on, as far as the host knows: the last path it reported or was asked to show.
   const iframePathRef = useRef(path);
 
-  // A ref so an inline callback does not re-send the settings on every render.
-  const onPathChangeRef = useLatest(onPathChange);
+  // Paths reported to `onPathChange` that have not come back as `path` yet. A host may apply them late,
+  // after the user has moved on, so they are echoes to skip rather than pages to navigate to.
+  const reportedPathsRef = useRef<string[]>([]);
 
-  // An error belongs to the path it happened on, so a route change loads the iframe again.
+  // Navigation requests are numbered, and the iframe reports the last one it handled.
+  // A report with an older number was sent before the iframe handled the latest request, which moves it away.
+  const navigationCountRef = useRef(0);
+  const navigationIdRef = useRef<number | undefined>(undefined);
+
+  const navigateIframeRef = useRef<(nextPath: string) => void>(() => {});
+
+  // Refs so an inline callback does not re-send the settings on every render.
+  const onPathChangeRef = useLatest(onPathChange);
+  const isPathControlledRef = useLatest(isPathControlled);
+
   const [failure, setFailure] = useState<{
     path: string;
     message: string;
   } | null>(null);
+
+  // An error belongs to the path it happened on, so a route change loads the iframe again.
+  if (failure && failure.path !== path) {
+    setFailure(null);
+  }
 
   const error = failure?.path === path ? failure.message : null;
 
@@ -116,7 +137,7 @@ export function DataAppFrame({
         type: "metabase.embed.setSettings",
         data: {
           componentName: "metabase-data-app",
-          path: requestedPathRef.current,
+          path: initialPathRef.current,
           instanceUrl: authConfig.metabaseInstanceUrl,
           locale,
           ...(authConfig.apiKey && { apiKey: authConfig.apiKey }),
@@ -125,19 +146,22 @@ export function DataAppFrame({
       });
 
     const navigateIframe = (nextPath: string) => {
-      requestedPathRef.current = nextPath;
       iframePathRef.current = nextPath;
+      reportedPathsRef.current = [];
 
+      // Before the iframe is ready, it navigates to the host's path once it is.
       if (readyRef.current) {
-        sendSettings();
+        navigationCountRef.current += 1;
+        navigationIdRef.current = navigationCountRef.current;
 
-        // The iframe may already have `nextPath` in its settings, so ask it to navigate as well.
         send({
           type: "metabase.embed.navigateToDataAppPath",
-          data: { path: nextPath },
+          data: { path: nextPath, navigationId: navigationIdRef.current },
         });
       }
     };
+
+    navigateIframeRef.current = navigateIframe;
 
     const authenticate = async () => {
       if (authConfig.apiKey) {
@@ -184,7 +208,17 @@ export function DataAppFrame({
         match(message)
           .with({ type: "metabase.embed.iframeReady" }, () => {
             readyRef.current = true;
+
+            // A new iframe opens `initialSrc` and has handled no navigation requests yet.
+            iframePathRef.current = initialPathRef.current;
+            navigationIdRef.current = undefined;
+            reportedPathsRef.current = [];
+
             sendSettings();
+
+            if (pathRef.current !== iframePathRef.current) {
+              navigateIframe(pathRef.current);
+            }
           })
           .with({ type: "metabase.embed.requestSessionToken" }, () => {
             authenticate();
@@ -195,15 +229,30 @@ export function DataAppFrame({
               data: { path: P.string },
             },
             ({ data }) => {
+              // The iframe handles the latest request next, so this page is already left behind.
+              if (data.navigationId !== navigationIdRef.current) {
+                return;
+              }
+
               // `path` cannot name this page, so `onPathChange={setPath}` would break the embed. Send the app
               // back to the host's path instead, or the host could not navigate to that path again.
               if (getEmbeddedAppSlugFromPath(data.path) !== slug) {
-                navigateIframe(pathRef.current);
+                if (isPathControlledRef.current) {
+                  navigateIframe(pathRef.current);
+                }
+
                 return;
               }
 
               iframePathRef.current = data.path;
-              onPathChangeRef.current?.(data.path);
+
+              if (onPathChangeRef.current) {
+                if (isPathControlledRef.current) {
+                  reportedPathsRef.current.push(data.path);
+                }
+
+                onPathChangeRef.current(data.path);
+              }
             },
           )
           .with({ type: "metabase.embed.handleLink" }, ({ data }) => {
@@ -215,16 +264,34 @@ export function DataAppFrame({
           .otherwise(() => undefined),
     });
 
-    // Echoes of reported paths are not sent. The user may have moved on before the echo arrives,
-    // and sending it would pull them back.
-    if (path !== iframePathRef.current) {
-      navigateIframe(path);
-    } else if (readyRef.current) {
+    // Resend the settings when the locale or auth changes.
+    if (readyRef.current) {
       sendSettings();
     }
 
     return removeMessageListener;
-  }, [origin, path, slug, authConfig, store, locale, error, onPathChangeRef]);
+  }, [
+    origin,
+    slug,
+    authConfig,
+    store,
+    locale,
+    error,
+    onPathChangeRef,
+    isPathControlledRef,
+  ]);
+
+  useLayoutEffect(() => {
+    const reportedIndex = reportedPathsRef.current.indexOf(path);
+
+    if (path === iframePathRef.current) {
+      reportedPathsRef.current = [];
+    } else if (reportedIndex !== -1) {
+      reportedPathsRef.current.splice(0, reportedIndex + 1);
+    } else {
+      navigateIframeRef.current(path);
+    }
+  }, [path]);
 
   if (error) {
     return <SdkError message={error} />;

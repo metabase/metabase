@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   getBasename,
@@ -17,7 +17,8 @@ import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedd
  * Keeps the data app router and the host's `path` in sync.
  *
  * Navigates the router when `path` or `navigationRequest` changes, and calls
- * `onPathChange` for every other change of the app's page.
+ * `onPathChange` for every other change of the app's page, with the ID of the
+ * last navigation request it handled.
  **/
 export function useDataAppPathNavigation({
   slug,
@@ -28,10 +29,13 @@ export function useDataAppPathNavigation({
   slug: string;
   path: string;
   navigationRequest?: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
-  onPathChange?: (path: string) => void;
+  onPathChange?: (path: string, navigationId: number | undefined) => void;
 }) {
   // True while navigating to the host's `path`, so that navigation is not reported back through `onPathChange`.
   const isNavigatingToHostPathRef = useRef(false);
+
+  // Lets the host drop a report sent before the iframe handled its latest navigation request.
+  const navigationIdRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!onPathChange) {
@@ -42,21 +46,24 @@ export function useDataAppPathNavigation({
       const currentPath = getCurrentDataAppPath(slug);
 
       if (!isNavigatingToHostPathRef.current && currentPath !== null) {
-        onPathChange(currentPath);
+        onPathChange(currentPath, navigationIdRef.current);
       }
     });
   }, [slug, onPathChange]);
 
-  useEffect(() => {
-    const currentUrl = getCurrentUrl();
-    const normalizedPath = normalizeDataAppPath(path);
+  const navigateToHostPath = useCallback(
+    (hostPath: string) => {
+      const normalizedPath = normalizeDataAppPath(hostPath);
 
-    const targetUrl = getDataAppEmbedUrl(
-      getCurrentMetabaseInstanceUrl(),
-      normalizedPath,
-    );
+      const targetUrl = getDataAppEmbedUrl(
+        getCurrentMetabaseInstanceUrl(),
+        normalizedPath,
+      );
 
-    if (currentUrl.href !== targetUrl.href) {
+      if (getCurrentUrl().href === targetUrl.href) {
+        return;
+      }
+
       const route = normalizedPath.slice(slug.length);
 
       isNavigatingToHostPathRef.current = true;
@@ -68,8 +75,20 @@ export function useDataAppPathNavigation({
       } finally {
         isNavigatingToHostPathRef.current = false;
       }
+    },
+    [slug],
+  );
+
+  useEffect(() => {
+    navigateToHostPath(path);
+  }, [path, navigateToHostPath]);
+
+  useEffect(() => {
+    if (navigationRequest) {
+      navigationIdRef.current = navigationRequest.navigationId;
+      navigateToHostPath(navigationRequest.path);
     }
-  }, [slug, path, navigationRequest]);
+  }, [navigationRequest, navigateToHostPath]);
 }
 
 function getCurrentUrl(): URL {

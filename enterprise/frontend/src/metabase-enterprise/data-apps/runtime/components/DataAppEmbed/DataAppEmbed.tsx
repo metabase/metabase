@@ -42,8 +42,11 @@ export function DataAppEmbed({ store }: DataAppEmbedProps) {
   });
 
   const reportPathChange = useCallback(
-    (path: string) =>
-      sendMessage({ type: "metabase.embed.dataAppPathChange", data: { path } }),
+    (path: string, navigationId: number | undefined) =>
+      sendMessage({
+        type: "metabase.embed.dataAppPathChange",
+        data: { path, ...(navigationId !== undefined && { navigationId }) },
+      }),
     [sendMessage],
   );
 
