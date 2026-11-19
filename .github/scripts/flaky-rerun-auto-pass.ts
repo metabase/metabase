@@ -1,15 +1,16 @@
-// When someone re-runs a PR's "Run tests", asks ci-conductor whether every
-// failure on the PR's head commit is a flake. When it is sure, and a person has
-// confirmed it, cancels the re-run and posts a passing check for each job that
-// failed on the previous attempt or was left unpassed by the cancel, which
-// includes the required `*-result` checks.
-// It also records the auto-pass in eng-stats and says so on the PR.
+// CI Conductor dispatches this, in place of re-running a PR's failed "Run tests"
+// run. It asks ci-conductor whether every failure on the PR's head commit is a
+// flake. When it is sure, and a person has confirmed it, it posts a passing
+// check for each job that failed, which includes the required `*-result`
+// checks. It also records the auto-pass in eng-stats and says so on the PR.
+//
+// Anything short of a clear yes (auto-pass turned off, an unreachable server, an
+// answer about another commit) re-runs the failed jobs instead, which is what
+// the dispatch stood in for.
 //
 // Runs from flaky-rerun-auto-pass.yml, so no test suite needs to know about it.
-//
-// Anything short of a clear yes (a missing secret, an unreachable server, an
-// answer about another commit) leaves the re-run alone, so it goes ahead as it
-// always has.
+// GitHub sends no `workflow_run: requested` event for a re-run, which is why a
+// dispatch starts this, not the re-run itself.
 //
 // Never logs the ci-conductor host or the secret: metabase/metabase is public.
 
@@ -19,13 +20,12 @@ import { importStats } from "./stats-import";
 
 export const STATS_TABLE = "flaky_rerun_auto_passes";
 
+// The only workflow whose jobs this may pass.
+export const RUN_TESTS_PATH = ".github/workflows/run-tests.yml";
+
 // Asking may mean a model call on ci-conductor's side, so allow for a slow answer.
 const REQUEST_TIMEOUT_MS = 60_000;
 const MAX_ATTEMPTS = 3;
-// The passing checks must be newer than the cancelled ones, so wait for the
-// cancel to land before posting them.
-const CANCEL_POLL_MS = 5_000;
-const CANCEL_TIMEOUT_MS = 5 * 60_000;
 
 /** The fields of ci-conductor's `GET /api/flake-probability` answer this script reads. */
 export type FlakeProbabilityAnswer = {
@@ -90,7 +90,7 @@ export function autoPassComment(opts: {
   return (
     `All job failures on \`${headSha.slice(0, 7)}\` are likely flaky ` +
     `(${formatPercent(flakeProbability)} flake probability, confirmed in CI Conductor), ` +
-    `so we are auto-passing the failed jobs on this [re-run](${runUrl}) instead of running them again.`
+    `so we auto-passed the failed jobs of [this run](${runUrl}) instead of running them again.`
   );
 }
 
@@ -126,49 +126,16 @@ export function unfinishedJobNames(jobs: Job[]): string[] {
   ];
 }
 
-/**
- * The names to post passing checks for, once the re-run is cancelled: every job
- * that failed on the previous attempt, plus every job of the cancelled attempt
- * that isn't passing. The cancel also hits jobs that passed or were skipped
- * before ("Re-run all jobs" runs them again, and "Re-run failed jobs" runs their
- * dependents), and their newest check is now a cancelled one. The previous
- * attempt has no unfinished jobs (main checks), so each of these either failed
- * as a flake or passed before.
- */
-export function jobNamesToPass(previous: Job[], cancelled: Job[]): string[] {
-  return [
-    ...new Set([
-      ...failedJobNames(previous),
-      ...cancelled
-        .filter((job) => !PASSING_CONCLUSIONS.has(job.conclusion ?? ""))
-        .map((job) => job.name),
-    ]),
-  ];
-}
-
 type Context = {
   runId: number;
-  runAttempt: number;
   prNumber: number;
   headSha: string;
-  author: string;
-  baseUrl: string;
-  secret: string;
 };
 
-/** The re-run's identity from env, or the reason there's nothing to check. */
+/** The dispatch inputs from env, or the reason they can't be used. */
 export function readContext(
   env: NodeJS.ProcessEnv,
 ): Context | { skip: string } {
-  // Belt and braces: the job's `if:` already limits this to PR re-runs, and it
-  // must never act on a master or release branch push.
-  if (env.RUN_EVENT !== "pull_request") {
-    return { skip: `event is ${env.RUN_EVENT}, not pull_request` };
-  }
-  const runAttempt = Number(env.RUN_ATTEMPT);
-  if (!Number.isInteger(runAttempt) || runAttempt < 2) {
-    return { skip: "first attempt, not a re-run" };
-  }
   const runId = Number(env.RUN_ID);
   if (!Number.isInteger(runId) || runId <= 0) {
     return { skip: "no run id" };
@@ -177,23 +144,72 @@ export function readContext(
   if (!Number.isInteger(prNumber) || prNumber <= 0) {
     return { skip: "no PR number" };
   }
-  if (!env.HEAD_SHA) {
+  const headSha = env.HEAD_SHA ?? "";
+  if (!/^[0-9a-f]{40}$/i.test(headSha)) {
     return { skip: "no head sha" };
   }
-  if (!env.CI_CONDUCTOR_BASE_URL || !env.CI_CONDUCTOR_WEBHOOK_SECRET) {
-    return {
-      skip: "CI_CONDUCTOR_BASE_URL or CI_CONDUCTOR_WEBHOOK_SECRET is not set",
-    };
+  return { runId, prNumber, headSha };
+}
+
+/** The fields of `GET /actions/runs/{id}` this script reads. */
+export type WorkflowRun = {
+  path: string;
+  event: string;
+  status: string;
+  head_sha: string;
+  head_branch: string | null;
+  run_attempt: number;
+  head_repository: { full_name: string } | null;
+};
+
+/** The fields of `GET /pulls/{number}` this script reads. */
+export type PullRequest = {
+  state: string;
+  user: { login: string } | null;
+  head: { sha: string; ref: string; repo: { full_name: string } | null };
+};
+
+/**
+ * Why the dispatched run is not one to act on, or null when it is: a finished
+ * "Run tests" run of a PR from this repo, for the commit the PR is at now.
+ * Acting on anything else, by passing or re-running, would be wrong, so none of
+ * these fall back to a re-run.
+ */
+export function runMismatch(opts: {
+  run: WorkflowRun;
+  pr: PullRequest;
+  headSha: string;
+  repository: string;
+}): string | null {
+  const { run, pr, headSha, repository } = opts;
+  const sha = headSha.toLowerCase();
+  if (run.path !== RUN_TESTS_PATH) {
+    return `the run is of ${run.path}, not ${RUN_TESTS_PATH}`;
   }
-  return {
-    runId,
-    runAttempt,
-    prNumber,
-    headSha: env.HEAD_SHA,
-    author: env.PR_AUTHOR ?? "",
-    baseUrl: env.CI_CONDUCTOR_BASE_URL,
-    secret: env.CI_CONDUCTOR_WEBHOOK_SECRET,
-  };
+  // It must never act on a master or release branch push.
+  if (run.event !== "pull_request") {
+    return `the run's event is ${run.event}, not pull_request`;
+  }
+  if (run.head_repository?.full_name !== repository) {
+    return "the run is of a fork";
+  }
+  if (run.head_sha.toLowerCase() !== sha) {
+    return `the run tested ${run.head_sha}, not ${headSha}`;
+  }
+  if (pr.state !== "open") {
+    return `the PR is ${pr.state}`;
+  }
+  if (
+    pr.head.sha.toLowerCase() !== sha ||
+    pr.head.ref !== run.head_branch ||
+    pr.head.repo?.full_name !== repository
+  ) {
+    return `the PR is at ${pr.head.sha}, not the run's commit`;
+  }
+  if (run.status !== "completed") {
+    return `the run is ${run.status}, not completed`;
+  }
+  return null;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -241,6 +257,46 @@ export async function fetchFlakeProbability(opts: {
   }
 }
 
+/**
+ * Why the failures must be run again rather than passed, or the flake
+ * probability to pass them with. Each step only runs when the ones before it
+ * allow an auto-pass, so a turned-off auto-pass never calls ci-conductor.
+ */
+async function decide(
+  env: NodeJS.ProcessEnv,
+  ctx: Context,
+  jobs: Job[],
+): Promise<AutoPassDecision> {
+  if (env.ENABLE_AUTO_PASS !== "true") {
+    return { autoPass: false, reason: "ENABLE_AUTO_PASS is not 'true'" };
+  }
+  const unfinished = unfinishedJobNames(jobs);
+  if (unfinished.length > 0) {
+    return {
+      autoPass: false,
+      reason: `jobs didn't finish (${unfinished.join(", ")}), so no flake verdict covers them`,
+    };
+  }
+  if (!env.CI_CONDUCTOR_BASE_URL || !env.CI_CONDUCTOR_WEBHOOK_SECRET) {
+    return {
+      autoPass: false,
+      reason: "CI_CONDUCTOR_BASE_URL or CI_CONDUCTOR_WEBHOOK_SECRET is not set",
+    };
+  }
+  const answer = await fetchFlakeProbability({
+    baseUrl: env.CI_CONDUCTOR_BASE_URL,
+    secret: env.CI_CONDUCTOR_WEBHOOK_SECRET,
+    prNumber: ctx.prNumber,
+  });
+  if (!answer) {
+    return {
+      autoPass: false,
+      reason: "couldn't get a flake verdict from ci-conductor",
+    };
+  }
+  return decideAutoPass(answer, ctx.headSha);
+}
+
 async function github(
   path: string,
   init: { method?: string; body?: unknown } = {},
@@ -271,28 +327,12 @@ async function github(
   return response;
 }
 
-async function cancelRun(ctx: Context): Promise<void> {
-  await github(`/actions/runs/${ctx.runId}/cancel`, { method: "POST" });
-  const deadline = Date.now() + CANCEL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const run: { status: string } = await (
-      await github(`/actions/runs/${ctx.runId}`)
-    ).json();
-    if (run.status === "completed") {
-      console.log("Cancelled the re-run.");
-      return;
-    }
-    await sleep(CANCEL_POLL_MS);
-  }
-  throw new Error("the re-run did not finish cancelling in time");
-}
-
-async function attemptJobs(ctx: Context, attempt: number): Promise<Job[]> {
+async function attemptJobs(runId: number, attempt: number): Promise<Job[]> {
   const jobs: Job[] = [];
   for (let page = 1; ; page++) {
     const data: { jobs: Job[] } = await (
       await github(
-        `/actions/runs/${ctx.runId}/attempts/${attempt}/jobs?per_page=100&page=${page}`,
+        `/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100&page=${page}`,
       )
     ).json();
     jobs.push(...data.jobs);
@@ -300,6 +340,14 @@ async function attemptJobs(ctx: Context, attempt: number): Promise<Job[]> {
       return jobs;
     }
   }
+}
+
+async function rerunFailedJobs(ctx: Context, reason: string): Promise<void> {
+  console.log(`Not auto-passing: ${reason}. Re-running the failed jobs.`);
+  await github(`/actions/runs/${ctx.runId}/rerun-failed-jobs`, {
+    method: "POST",
+  });
+  summarize(`### Re-ran the failed jobs\n\nNot auto-passing: ${reason}.`);
 }
 
 /** A check from the GitHub Actions app with the same name as a job counts for branch protection. */
@@ -323,6 +371,7 @@ async function postPassingCheck(
 
 async function recordAutoPass(
   ctx: Context,
+  author: string,
   flakeProbability: number,
 ): Promise<void> {
   await importStats({
@@ -331,7 +380,7 @@ async function recordAutoPass(
       {
         pr_number: ctx.prNumber,
         sha: ctx.headSha,
-        author: ctx.author,
+        author,
         flake_probability: flakeProbability,
         skipped_at: new Date().toISOString(),
       },
@@ -357,38 +406,35 @@ function summarize(markdown: string): void {
 async function main(): Promise<void> {
   const ctx = readContext(process.env);
   if ("skip" in ctx) {
-    console.log(`Not checking for flakes: ${ctx.skip}. Re-running as usual.`);
+    console.log(`Doing nothing: ${ctx.skip}.`);
     return;
   }
 
-  const answer = await fetchFlakeProbability(ctx);
-  if (!answer) {
-    console.log(
-      "Couldn't get a flake verdict from ci-conductor. Re-running as usual.",
-    );
+  const [run, pr]: [WorkflowRun, PullRequest] = await Promise.all([
+    github(`/actions/runs/${ctx.runId}`).then((r) => r.json()),
+    github(`/pulls/${ctx.prNumber}`).then((r) => r.json()),
+  ]);
+  const mismatch = runMismatch({
+    run,
+    pr,
+    headSha: ctx.headSha,
+    repository: process.env.GITHUB_REPOSITORY ?? "",
+  });
+  if (mismatch) {
+    console.log(`Doing nothing: ${mismatch}.`);
     return;
   }
 
-  const decision = decideAutoPass(answer, ctx.headSha);
+  const jobs = await attemptJobs(ctx.runId, run.run_attempt);
+  const failed = failedJobNames(jobs);
+  if (failed.length === 0) {
+    console.log("Doing nothing: the run has no failed jobs.");
+    return;
+  }
+
+  const decision = await decide(process.env, ctx, jobs);
   if (!decision.autoPass) {
-    console.log(`Not auto-passing: ${decision.reason}. Re-running as usual.`);
-    return;
-  }
-
-  // Read the failures before cancelling, so a failure here leaves the re-run running.
-  const previous = await attemptJobs(ctx, ctx.runAttempt - 1);
-  if (failedJobNames(previous).length === 0) {
-    console.log(
-      "The previous attempt has no failed jobs. Re-running as usual.",
-    );
-    return;
-  }
-  const unfinished = unfinishedJobNames(previous);
-  if (unfinished.length > 0) {
-    console.log(
-      `The previous attempt has jobs that didn't finish (${unfinished.join(", ")}), ` +
-        "so no flake verdict covers them. Re-running as usual.",
-    );
+    await rerunFailedJobs(ctx, decision.reason);
     return;
   }
 
@@ -396,24 +442,18 @@ async function main(): Promise<void> {
   console.log(
     `Auto-passing: every failure is likely flaky (${percent}) and confirmed.`,
   );
-  await cancelRun(ctx);
-  const toPass = jobNamesToPass(
-    previous,
-    await attemptJobs(ctx, ctx.runAttempt),
-  );
-
   const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${ctx.runId}`;
   const summary =
     `Every failure on \`${ctx.headSha}\` is likely flaky (${percent} flake probability) ` +
-    `and was confirmed in CI Conductor, so [this re-run](${runUrl}) was cancelled and the jobs it left unpassed were passed.`;
-  for (const name of toPass) {
+    `and was confirmed in CI Conductor, so the failed jobs of [this run](${runUrl}) were passed.`;
+  for (const name of failed) {
     await postPassingCheck(ctx, name, summary);
   }
-  summarize(`### Auto-passed a confirmed-flaky re-run\n\n${summary}`);
+  summarize(`### Auto-passed a confirmed-flaky run\n\n${summary}`);
 
   // Best-effort: the checks are what matter, and they are already in place.
   const results = await Promise.allSettled([
-    recordAutoPass(ctx, decision.flakeProbability),
+    recordAutoPass(ctx, pr.user?.login ?? "", decision.flakeProbability),
     commentOnPr(
       ctx,
       autoPassComment({
@@ -434,7 +474,7 @@ async function main(): Promise<void> {
 // running the script.
 if ((import.meta as ImportMeta & { main?: boolean }).main) {
   main().catch((error) => {
-    console.warn("::warning::Flaky re-run check failed:", error);
+    console.warn("::warning::Flaky auto-pass failed:", error);
     process.exitCode = 1;
   });
 }
