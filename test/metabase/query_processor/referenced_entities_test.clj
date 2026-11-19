@@ -1143,6 +1143,13 @@
             (is (=? {:status "failed" :error_type "has-parameters"}
                     (ref-entity response :card source-id)))))))))
 
+(defn- write-query-skipping-hooks!
+  "Store the query of a new card made from `card-attrs` as the query of card `card-id`, skipping the hooks that refuse
+  a save cycle."
+  [card-id card-attrs]
+  (mt/with-temp [:model/Card {source-id :id} card-attrs]
+    (t2/update! :report_card :id card-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id source-id)})))
+
 (deftest referenced-card-reference-cycle-test
   (testing "a reference cycle between saved cards, which only writes that skip the API can make, still returns"
     (mt/with-temp [:model/Card {a :id} (native-card "SELECT 1 AS \"count\"")
@@ -1152,17 +1159,18 @@
                    :model/Card {variable :id} (native-card venues-by-tenant {:default 2})
                    :model/Card {with-variable :id} (card-on variable)]
       ;; a -> c -> b -> a, self -> self, and with-variable -> a cycle through a card with a variable
-      (t2/update! :model/Card :id a {:dataset_query (:dataset_query (card-on c))})
-      (t2/update! :model/Card :id self {:dataset_query (:dataset_query (card-referencing self))})
+      (write-query-skipping-hooks! a (card-on c))
+      (write-query-skipping-hooks! self (card-referencing self))
       (let [tag (str "#" with-variable "-x")]
-        (t2/update! :model/Card :id variable
-                    {:dataset_query
-                     (mt/native-query
-                      {:query         (str "SELECT COUNT(*) AS \"count\" FROM {{" tag "}} x WHERE {{tenant}} = 2")
-                       :template-tags {"tenant" {:id "_TENANT_" :name "tenant" :display-name "Tenant"
-                                                 :type :number :default 2}
-                                       tag      {:id (str "x" with-variable) :name tag :display-name "X"
-                                                 :type :card :card-id with-variable}}})}))
+        (write-query-skipping-hooks!
+         variable
+         {:dataset_query
+          (mt/native-query
+           {:query         (str "SELECT COUNT(*) AS \"count\" FROM {{" tag "}} x WHERE {{tenant}} = 2")
+            :template-tags {"tenant" {:id "_TENANT_" :name "tenant" :display-name "Tenant"
+                                      :type :number :default 2}
+                            tag      {:id (str "x" with-variable) :name tag :display-name "X"
+                                      :type :card :card-id with-variable}}})}))
       (let [result (deref (future (dataset-referenced-entities [a self with-variable])) 60000 ::timed-out)]
         (is (not= ::timed-out result))
         (when (map? result)
