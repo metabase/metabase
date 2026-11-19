@@ -99,6 +99,40 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
       },
     );
   });
+
+  it("reports the data app in the modular embedding setup event", () => {
+    H.resetSnowplow();
+    H.enableTracking();
+
+    cy.visit("/");
+    loadDataApp("/orders?customer=42", {
+      origin: "http://different-than-metabase-instance.com",
+    });
+
+    H.getSimpleEmbedIframeContent()
+      .findByLabelText("Order count", { timeout: 30_000 })
+      .should("have.text", "18760");
+
+    cy.log("the event omits the app slug, route, query string and host page");
+    H.expectSnowplowEvent({
+      event: {
+        page_urlpath: "/embed/embedded-apps",
+        page_urlquery: (query: string | null) => !query,
+        refr_urlhost: (host: string | null) => !host,
+        unstruct_event: {
+          data: {
+            data: {
+              event: "setup",
+              global: { auth_method: "sso", locale_used: false },
+              components: [{ name: "data_app", properties: [] }],
+            },
+          },
+        },
+      },
+    });
+
+    H.expectNoBadSnowplowEvents();
+  });
 });
 
 describe("scenarios > embedding > metabase-data-app web component > local API key (DAT-18)", () => {

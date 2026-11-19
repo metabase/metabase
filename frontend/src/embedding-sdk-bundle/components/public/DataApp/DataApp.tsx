@@ -53,8 +53,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
 
     try {
-      validateDataAppPath(path);
-
+      const slug = validateDataAppPath(path);
       const url = getDataAppEmbedUrl(instanceUrl, path);
 
       // Enable parallel loading of multiple data app embeds on the same page
@@ -64,6 +63,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
         src: url.href,
         origin: url.origin,
         path: normalizeDataAppPath(path),
+        slug,
       };
     } catch (error) {
       return { error: getErrorMessage(error, String(error)) };
