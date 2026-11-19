@@ -1,8 +1,11 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
+  Anchor,
+  Badge,
   Box,
   Card,
   Ellipsified,
@@ -22,6 +25,7 @@ import type {
 
 import {
   formatDataTestRunStatus,
+  getExpectationAnchor,
   isFailedDataTestRunStatus,
 } from "../../utils";
 
@@ -29,15 +33,20 @@ import S from "./DataTestRunResult.module.css";
 
 type DataTestRunResultProps = {
   result: DataTestRunStoredResult;
+  testUrl: string;
 };
 
-export function DataTestRunResult({ result }: DataTestRunResultProps) {
+export function DataTestRunResult({ result, testUrl }: DataTestRunResultProps) {
   return (
     <Stack component="section" aria-label={t`Result`} gap="lg">
       <Title order={4}>{t`Result`}</Title>
       {"expectations" in result ? (
         result.expectations.map((expectation) => (
-          <ExpectationResult key={expectation.name} expectation={expectation} />
+          <ExpectationResult
+            key={expectation.name}
+            expectation={expectation}
+            testUrl={testUrl}
+          />
         ))
       ) : (
         <Text c="feedback-negative">{result.message}</Text>
@@ -48,9 +57,10 @@ export function DataTestRunResult({ result }: DataTestRunResultProps) {
 
 type ExpectationResultProps = {
   expectation: TransformTestExpectationResult;
+  testUrl: string;
 };
 
-function ExpectationResult({ expectation }: ExpectationResultProps) {
+function ExpectationResult({ expectation, testUrl }: ExpectationResultProps) {
   const { name, status, error, columns = [], truncated = 0 } = expectation;
   const rows = useMemo(() => getDiffRows(expectation), [expectation]);
   const rowCountLabel = getRowCountLabel(expectation);
@@ -58,14 +68,20 @@ function ExpectationResult({ expectation }: ExpectationResultProps) {
   return (
     <Stack role="group" aria-label={name} gap="sm">
       <Group justify="space-between" align="start" wrap="nowrap" gap="md">
-        <Text fw="bold">{name}</Text>
-        <Box
-          c={
-            isFailedDataTestRunStatus(status) ? "feedback-negative" : undefined
-          }
+        <Anchor
+          component={Link}
+          to={`${testUrl}#${getExpectationAnchor(name)}`}
+          fw="bold"
+        >
+          {name}
+        </Anchor>
+        <Badge
+          color={isFailedDataTestRunStatus(status) ? "negative" : "positive"}
+          size="sm"
+          flex="none"
         >
           {formatDataTestRunStatus(status)}
-        </Box>
+        </Badge>
       </Group>
       {error != null && <Text c="feedback-negative">{error.message}</Text>}
       {rows.length > 0 && (

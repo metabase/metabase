@@ -127,6 +127,12 @@ describe("TransformTestRunPage", () => {
     });
     expect(equals).toHaveTextContent("Failed");
     expect(
+      within(equals).getByRole("link", { name: "revenue per customer" }),
+    ).toHaveAttribute(
+      "href",
+      `${Urls.transformTest(1, 2)}#expectation-revenue%20per%20customer`,
+    );
+    expect(
       within(equals).getByText("Returned 1 row, expected 1"),
     ).toBeInTheDocument();
     expect(within(equals).getByText("customer")).toBeInTheDocument();

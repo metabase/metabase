@@ -33,6 +33,7 @@ export function DataTestRun<K extends DataTestType>({
     isLoading: isLoadingTest,
     error: testError,
   } = definition.useGetTestQuery(testId);
+  const { getTestUrl } = definition.useTestUrls();
   const [isPolling, setIsPolling] = useState(false);
   const {
     data: run,
@@ -71,7 +72,7 @@ export function DataTestRun<K extends DataTestType>({
     >
       <Box flex="1 1 30rem" miw={0}>
         {run.result != null ? (
-          <DataTestRunResult result={run.result} />
+          <DataTestRunResult result={run.result} testUrl={getTestUrl(test)} />
         ) : (
           <Stack component="section" aria-label={t`Result`} gap="lg">
             <Title order={4}>{t`Result`}</Title>

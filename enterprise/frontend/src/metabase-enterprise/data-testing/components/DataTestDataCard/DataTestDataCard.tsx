@@ -23,6 +23,7 @@ import type {
 } from "metabase-types/api";
 
 type DataTestDataCardProps = {
+  id?: string;
   name: string;
   icon: IconName;
   description: string;
@@ -30,13 +31,14 @@ type DataTestDataCardProps = {
 };
 
 export function DataTestDataCard({
+  id,
   name,
   icon,
   description,
   data,
 }: DataTestDataCardProps) {
   return (
-    <Card withBorder p={0} aria-label={name}>
+    <Card id={id} withBorder p={0} aria-label={name}>
       <Group gap="sm" px="lg" py="md" wrap="nowrap">
         <Icon name={icon} c="core-brand" />
         <Text fw="bold">{name}</Text>
