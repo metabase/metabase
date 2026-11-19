@@ -1122,14 +1122,46 @@
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
 
+(defn- drop-database! [admin-spec db-name]
+  ;; Redshift's DROP DATABASE has no IF EXISTS, and it cannot run in a transaction block
+  (try (jdbc/execute! admin-spec [(format "DROP DATABASE \"%s\"" db-name)] {:transaction? false})
+       (catch Throwable t
+         (log/warnf t "Test cleanup failed: DROP DATABASE %s" db-name))))
+
+(defn- public-create-database-name
+  "A name for the database that [[workspace-public-create-other-database-live-test]] creates. It carries the creation
+  time in epoch seconds, so a later run can tell a leaked database from one a concurrent CI job is still using.
+  Redshift database names are at most 64 characters."
+  []
+  (format "ws_pcdb_%d_%s" (.getEpochSecond (java.time.Instant/now)) (u/lower-case-en (mt/random-name))))
+
+(defn- leaked-public-create-database?
+  "Is `db-name` a database that an earlier run of [[workspace-public-create-other-database-live-test]] left behind?
+  A `ws_pc_db_` name comes from a run whose cleanup always failed; a `ws_pcdb_` name counts once it is 3 hours old."
+  [db-name]
+  (or (str/starts-with? db-name "ws_pc_db_")
+      (when-let [[_ created] (re-matches #"ws_pcdb_(\d+)_[a-z]+" db-name)]
+        (< (parse-long created)
+           (- (.getEpochSecond (java.time.Instant/now)) (* 3 60 60))))))
+
+(defn- drop-leaked-public-create-databases!
+  "Drop every database on the cluster that [[leaked-public-create-database?]] matches. The cluster allows 64
+  databases, and leaked ones fill it until CREATE DATABASE fails."
+  [admin-spec]
+  (doseq [{db-name :datname} (jdbc/query admin-spec ["SELECT datname FROM pg_database"])
+          :when (leaked-public-create-database? db-name)]
+    (log/infof "Dropping leaked test database %s" db-name)
+    (drop-database! admin-spec db-name)))
+
 (deftest ^:synchronized workspace-public-create-other-database-live-test
   ;; a new database's `public` grants CREATE to PUBLIC by default, and every user may connect to it: init must find
   ;; it from a connection to another database
   (mt/test-driver :redshift
     (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
-          db2        (str "ws_pc_db_" (u/lower-case-en (mt/random-name)))]
+          db2        (public-create-database-name)]
+      (drop-leaked-public-create-databases! admin-spec)
       (try
-        ;; CREATE DATABASE and DROP DATABASE cannot run in a transaction block
+        ;; CREATE DATABASE cannot run in a transaction block
         (jdbc/execute! admin-spec [(format "CREATE DATABASE \"%s\"" db2)] {:transaction? false})
         (let [error (try
                       (jdbc/with-db-transaction [conn admin-spec]
@@ -1146,9 +1178,7 @@
             (is (str/includes? (ex-message error)
                                (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2)))))
         (finally
-          (try (jdbc/execute! admin-spec [(format "DROP DATABASE IF EXISTS \"%s\"" db2)] {:transaction? false})
-               (catch Throwable t
-                 (log/warnf t "Test cleanup failed: DROP DATABASE %s" db2))))))))
+          (drop-database! admin-spec db2))))))
 
 (deftest ^:synchronized workspace-grant-refuses-public-writes-live-test
   (mt/test-driver :redshift
