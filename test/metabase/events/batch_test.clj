@@ -75,6 +75,21 @@
     (is (= [:event/events-test-timeline-create] (topics)) (pr-str @received))
     (is (= "b" (:name (:object (:event (first @received))))))))
 
+(deftest update-collected-after-delete-is-deletion-test
+  (testing "a row whose delete hooks write it again before it goes is still deleted"
+    (let [event (#'events.batch/merge-events
+                 [{:operation :delete :topic :event/x-delete :model :model/X :id 1 :previous-object {:id 1 :name "a"}}
+                  {:operation       :update
+                   :topic           :event/x-update
+                   :model           :model/X
+                   :id              1
+                   :previous-object {:id 1 :name "a"}
+                   :object          {:id 1 :name "a" :archived true}}])]
+      (is (= :delete (:operation event)))
+      (is (= :event/x-delete (:topic event)))
+      (is (= {:id 1 :name "a"} (:previous-object event)))
+      (is (not (contains? event :object))))))
+
 (deftest create-collected-after-update-test
   (testing "a creation whose own hooks write the row again is still a creation"
     (let [creator (mt/user->id :rasta)]

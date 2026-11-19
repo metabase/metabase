@@ -938,12 +938,13 @@
 
 (defn- product-data-source
   "A data source whose connections report `product`, counting its `getConnection` calls in `calls`.
-  The first call throws when `fail-first?` is set."
-  [product calls fail-first?]
+  Calls `on-connect`, when given, with the call's number before connecting."
+  [product calls on-connect]
   (reify DataSource
     (getConnection [_]
-      (when (and (= 1 (swap! calls inc)) fail-first?)
-        (throw (SQLException. "unreachable")))
+      (let [n (swap! calls inc)]
+        (when on-connect
+          (on-connect n)))
       (reify Connection
         (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] product)))
         (close [_])))))
@@ -951,53 +952,62 @@
 (defn- do-with-product-app-db
   "Bind an application DB of `db-type` whose connections report `product`, and call `f` with a function returning
   how many connections it has opened.
-  The first connection throws when `fail-first?` is set."
-  [db-type product fail-first? f]
+  Calls `on-connect`, when given, with the call's number before connecting."
+  [db-type product on-connect f]
   (let [calls (atom 0)]
     (mdb.connection/with-application-db
-      (mdb.connection/application-db db-type (product-data-source product calls fail-first?))
+      (mdb.connection/application-db db-type (product-data-source product calls on-connect))
       (f #(deref calls)))))
 
 (deftest mariadb?-test
   (testing "a :mysql application DB reads the product name once"
     (doseq [[product expected] {"MariaDB" true, "MySQL" false}]
       (do-with-product-app-db
-       :mysql product false
+       :mysql product nil
        (fn [calls]
          (is (= {:answers [expected expected], :calls 1}
                 {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls (calls)}))))))
   (testing "a failed read is not cached, so the next call tries again"
     (do-with-product-app-db
-     :mysql "MariaDB" true
+     :mysql "MariaDB" #(when (= 1 %) (throw (SQLException. "unreachable")))
      (fn [calls]
        (is (thrown? SQLException (mdb.connection/mariadb?)))
        (is (true? (mdb.connection/mariadb?)))
        (is (= 2 (calls))))))
   (testing "other application DB types are never MariaDB, and never connect"
     (do-with-product-app-db
-     :h2 "MariaDB" false
+     :h2 "MariaDB" nil
      (fn [calls]
        (is (= {:answer false, :calls 0}
-              {:answer (mdb.connection/mariadb?), :calls (calls)}))))))
+              {:answer (mdb.connection/mariadb?), :calls (calls)})))))
+  (testing "reads the product name under the lock, so concurrent first callers share one read"
+    (let [held?             (atom nil)
+          record-lock-held! (fn [_]
+                              (reset! held? (Thread/holdsLock (:mariadb? (mdb.connection/current-application-db)))))]
+      (do-with-product-app-db
+       :mysql "MariaDB" record-lock-held!
+       (fn [_]
+         (mdb.connection/mariadb?)
+         (is (true? @held?)))))))
 
 (deftest record-mariadb!-test
   (testing "a recorded answer is used without connecting"
     (do-with-product-app-db
-     :mysql "MySQL" false
+     :mysql "MySQL" nil
      (fn [calls]
        (mdb.connection/record-mariadb! true)
        (is (= {:answer true, :calls 0}
               {:answer (mdb.connection/mariadb?), :calls (calls)})))))
   (testing "an answer already read is kept"
     (do-with-product-app-db
-     :mysql "MySQL" false
+     :mysql "MySQL" nil
      (fn [_calls]
        (mdb.connection/mariadb?)
        (mdb.connection/record-mariadb! true)
        (is (false? (mdb.connection/mariadb?))))))
   (testing "a recorded answer is ignored for types other than :mysql"
     (do-with-product-app-db
-     :h2 "MariaDB" false
+     :h2 "MariaDB" nil
      (fn [_calls]
        (mdb.connection/record-mariadb! true)
        (is (false? (mdb.connection/mariadb?)))))))

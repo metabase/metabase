@@ -61,7 +61,7 @@
               {:where (into [:and
                              [:= :archived false]
                              (perms/visible-collections-filter-clause :report_card.collection_id user-info {:root-namespace nil})
-                             (mi/exclude-internal-content-hsql :model/Card)]
+                             (mi/non-internal-filter-clause :model/Card :report_card)]
                             (when card-type [[:= :type card-type]]))}))
 
 (mu/defn has-visible-dashboard?
@@ -71,7 +71,7 @@
               {:where [:and
                        [:= :archived false]
                        (perms/visible-collections-filter-clause :report_dashboard.collection_id user-info {:root-namespace nil})
-                       (mi/exclude-internal-content-hsql :model/Dashboard)]}))
+                       (mi/non-internal-filter-clause :model/Dashboard :report_dashboard)]}))
 
 (mu/defn first-login
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."

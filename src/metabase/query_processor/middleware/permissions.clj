@@ -68,7 +68,8 @@
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [query :- ::qp.schema/any-query]
   (if (:lib/type query)
-    (recur (lib/->legacy-MBQL query))
+    ;; existing usage -- do not use going forward
+    (recur #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL query))
     (let [{database-id :database :as outer-query} query]
       (when (and (= audit/audit-db-id database-id)
                  (or (qp.util/userland-query? outer-query)

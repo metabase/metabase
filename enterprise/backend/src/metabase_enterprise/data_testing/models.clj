@@ -3,7 +3,9 @@
    [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.audit-app.core :as audit-app]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -12,7 +14,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
@@ -31,12 +33,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events)
   (derive ::saved-test))
-
-(defmethod events/spec :model/TransformTest
-  [_model]
-  {:create :event/transform-test-create
-   :update :event/transform-test-update
-   :delete :event/transform-test-delete})
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
@@ -84,10 +80,6 @@
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
   (with-last-runs :transform transform-tests))
-
-(defmethod audit-app/model-details :model/TransformTest
-  [transform-test _event-type]
-  (select-keys transform-test [:transform_id :name :description]))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
@@ -144,9 +136,21 @@
           (or (mi/superuser?)
               (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TransformTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/transform (:transform_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(defn with-readable-subjects
+  "Add to each of the saved `tests` whether the current user can read its subject, as `:can_read` in its metadata, the
+  `subjects` of all the tests loaded together, the subject of a test being the one whose id its `subject-key` holds,
+  and none, which no one can read, when it has been deleted."
+  [k tests subject-key subjects]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects :can_read))]
+    (for [saved-test tests]
+      (when saved-test
+        (vary-meta saved-test assoc k (boolean (some-> (get id->subject (subject-key saved-test)) mi/can-read?)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_read]
+  "Add whether the current user can read the transform of each transform test, loading the transforms at once."
+  [_model k transform-tests]
+  (with-readable-subjects k transform-tests :transform_id
+    (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
   "Add whether the current user can write each transform test, loading their transforms at once and checking each
@@ -219,67 +223,49 @@
 (def ^:private revision-columns
   [:transform_id :name :description :now :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/TransformTest
-  [_model _id transform-test]
-  (select-keys transform-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/TransformTest
-  [_model objects]
-  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/TransformTest %) objects) :can_read)))
-
-(defmethod revision/check-revert-available ::saved-test
-  [_model]
+(defn check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of a saved test needs."
+  []
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
-(defmethod revision/revert-to-revision! :model/TransformTest
-  [_model id _user-id serialized-instance]
+(defn- revert-transform-test!
+  [id _user-id snapshot]
+  (check-revert-available)
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (update-transform-test! id (merge {:now nil} (select-keys serialized-instance revision-columns))))
+  (update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/TransformTest
+  [_model]
+  {:create :event/transform-test-create
+   :update :event/transform-test-update
+   :delete :event/transform-test-delete})
+
+(defmethod app-db-copy/spec :model/TransformTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformTest [_]
-  {:schema    ::data-testing.schema/external-transform-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:transform_id (serialization/fk-transform :model/Transform)
-               :creator_id   serialization/user-transform
-               :now          now-transform}})
-
-(defn subject-storage-paths
-  "The storage path of each of `tests`, saved tests whose `subject-key` holds the entity id of a row of
-  `subject-model`: the path of the subject's file, as a directory, then the test's name. `fk-models` maps each column of
-  the subject that the subject's storage path reads to the model the column references."
-  [tests subject-model subject-key fk-models]
-  (let [rows     (vals (serialization/rows-by-refs subject-model
-                                                   (into #{} (keep subject-key) tests)
-                                                   (into [:entity_id :name] (keys fk-models))))
-        fk-refs  (into {}
-                       (map (fn [[k model]]
-                              [k (zipmap (map :entity_id rows)
-                                         (serialization/column-refs serialization/app-db-store model (map k rows)))]))
-                       fk-models)
-        subjects (into {}
-                       (map (fn [{eid :entity_id subject-name :name}]
-                              [eid (into {:serdes/meta [{:model (name subject-model)}]
-                                          :name        subject-name
-                                          :entity_id   eid}
-                                         (map (fn [[k refs]] [k (get refs eid)]))
-                                         fk-refs)]))
-                       rows)
-        paths    (serialization/batch-storage-paths (mapv #(get subjects (subject-key %)) tests))]
-    (mapv (fn [saved-test path]
-            (conj path {:label (:name saved-test) :key (:entity_id saved-test)}))
-          tests paths)))
-
-(defmethod serialization/storage-paths :model/TransformTest [_ entities _ctx]
-  (subject-storage-paths entities :model/Transform :transform_id {:collection_id :model/Collection}))
-
-(defmethod serialization/import-dependencies :model/TransformTest [_ entities]
-  (mapv (fn [{:keys [transform_id]}]
-          #{[:model/Transform transform_id]})
-        entities))
+  {:schema              ::data-testing.schema/external-transform-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:transform_id (serialization/fk-transform :model/Transform)
+                         :creator_id   serialization/user-transform
+                         :now          now-transform}
+   :storage-paths       data-testing.serialization/transform-test-storage-paths
+   :import-dependencies data-testing.serialization/transform-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/TransformTest
   [_model]
   {:synced-items         data-testing.db/synced-transform-test-items
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
+
+(defmethod revisions/spec :model/TransformTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-transform-test!})
+
+(defmethod audit/spec :model/TransformTest [_model]
+  {:track          [:transform_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

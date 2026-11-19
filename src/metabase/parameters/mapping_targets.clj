@@ -138,7 +138,7 @@
                  (let [query (card-query card)]
                    (when (and query (lib/native-only-query? query))
                      (lib/all-template-tags-map query))))
-        ;; a legacy native query keys tags by name; a pMBQL stage stores them as a vector of tag maps
+        ;; a legacy native query keys tags by name; a MBQL 5 stage stores them as a vector of tag maps
         tags (if (map? tags) (vals tags) tags)]
     (into {}
           (map (fn [tag] [(u/qualified-name (:name tag)) (keyword (:type tag))]))

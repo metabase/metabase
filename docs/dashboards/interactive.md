@@ -7,8 +7,6 @@ redirect_from:
 
 # Dashboard interactivity
 
-You can customize what happens when people click on questions in your dashboard.
-
 By default, when you create charts using Metabase's graphical query builder, your charts automatically come with [drill-through capabilities](../questions/visualizations/drill-through.md), which let folks click on a chart to explore further. But if you have a more customized click path in mind, Metabase allows you to customize what happens when a user clicks on a chart or table in your dashboard.
 
 You can set up a dashboard card to:

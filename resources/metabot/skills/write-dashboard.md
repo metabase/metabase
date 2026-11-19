@@ -69,3 +69,4 @@ A filter is a parameter connected to cards. `add_parameter` adds it, and it filt
 
 **After a call**
 Tell the user what changed and where the dashboard is saved, and link it as the result shows. If a call fails, tell the user why.
+- After a change that removes or replaces cards, tabs or filters, say in one sentence that they can restore the previous version from the dashboard's History, under More info.

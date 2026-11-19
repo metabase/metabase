@@ -95,7 +95,7 @@
                            :stages             [native-stage]
                            :qp/original-stages (:stages query))))
                 ;; convert to legacy (drop this code branch in 69)
-                (let [legacy-query (lib/->legacy-MBQL query)]
+                (let [legacy-query #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL query)]
                   (cond-> legacy-query
                     (not (:native legacy-query)) (assoc :native (:qp/compiled legacy-query)))))]
     (qp.pipeline/*run* query rff)))

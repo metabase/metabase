@@ -106,7 +106,7 @@
               template_tags)))))
 
 (defn- ensure-pmbql-type
-  "Fill in the pMBQL `:lib/type` discriminators a hand-written JSON `query` can't be expected to
+  "Fill in the MBQL 5 `:lib/type` discriminators a hand-written JSON `query` can't be expected to
    supply: `:mbql/query` at the top level (unless the query is already legacy MBQL 4, carrying
    `:type`), and `:mbql.stage/native` or `:mbql.stage/mbql` on each stage. A query that already
    carries `:lib/type` throughout — e.g. one round-tripped through a lib helper — passes through
@@ -147,7 +147,7 @@
    save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL
    once `token-scopes` clears [[check-native-source-gates!]].
 
-   Every branch returns genuine normalized pMBQL: the save path feeds `dataset_query` into
+   Every branch returns genuine normalized MBQL 5: the save path feeds `dataset_query` into
    strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
    the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
    by the JSON round-trip — must be restored first."

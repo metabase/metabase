@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -359,7 +360,7 @@
 
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
-    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform transform

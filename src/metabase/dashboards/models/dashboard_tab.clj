@@ -2,12 +2,16 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -26,12 +30,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/DashboardTab
-  [_model]
-  {:create :event/dashboard-tab-create
-   :update :event/dashboard-tab-update
-   :delete :event/dashboard-tab-delete})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -161,7 +159,16 @@
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/DashboardTab
+  [_model]
+  {:create :event/dashboard-tab-create
+   :update :event/dashboard-tab-update
+   :delete :event/dashboard-tab-delete})
+
+(defmethod app-db-copy/spec :model/DashboardTab [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/DashboardTab [_]
   {:schema    ::dashboards.schema/external-dashboard-tab
@@ -169,8 +176,18 @@
    :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
    :transform {:dashboard_id serialization/import-only-transform}})
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
 (defmethod remote-sync/spec :model/DashboardTab
   [_model]
   {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})
+
+(defmethod revisions/spec :model/DashboardTab [_model]
+  {:track  [:name :position :dashboard_id]
+   :skip   [:entity_id]
+   :parent {:model :model/Dashboard :key :dashboard_id}})
+
+(defmethod dependencies/spec :model/DashboardTab [_model]
+  {:part-of      {:type :dashboard :key :dashboard_id}
+   :part-columns #{}})
+
+(defmethod eid-translation/spec :model/DashboardTab [_model]
+  {:names [:dashboard-tab]})

@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -15,7 +17,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------- Model setup --------------------------------------------------
+;;; -------------------------------------------------- Definition --------------------------------------------------
 
 (def ^:private available-sort-columns
   "Valid columns for sorting cache configs."
@@ -31,12 +33,6 @@
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))
-
-(defmethod events/spec :model/CacheConfig
-  [_model]
-  {:create :event/cache-config-create
-   :update :event/cache-config-update
-   :delete :event/cache-config-delete})
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
 
@@ -298,3 +294,23 @@
   (if with-overrides?
     (invalidate-cards databases dashboards questions)
     (invalidate-cache-configs databases dashboards questions)))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/CacheConfig
+  [_model]
+  {:create :event/cache-config-create
+   :update :event/cache-config-update
+   :delete :event/cache-config-delete})
+
+(defmethod app-db-copy/spec :model/CacheConfig [_model]
+  {:skip? true})
+
+(defmethod audit/spec :model/CacheConfig [_model]
+  {:track            []
+   :track-redacted   [:config :invalidated_at :model :model_id :next_run_at :refresh_automatically :state :strategy]
+   :skip             []
+   :context-details? true
+   :topics           {:create :cache-config-update
+                      :update :cache-config-update
+                      :delete :cache-config-update}})

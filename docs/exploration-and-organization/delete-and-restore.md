@@ -1,6 +1,6 @@
 ---
 title: Delete and restore
-summary: You can move questions, dashboards, models, and metrics to Trash where they can be restored or permanently deleted. Deleting items affects related content like dashboards and subscriptions. Other entities in Metabase can be deleted or archived, but won't show up in Trash.
+summary: Move questions, dashboards, models, and metrics to Trash, then restore them or delete them permanently. Other items, like snippets and timelines, don't go to Trash.
 ---
 
 # Delete and restore

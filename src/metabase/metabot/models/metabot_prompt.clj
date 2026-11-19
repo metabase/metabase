@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
@@ -41,14 +42,22 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/MetabotPrompt [_]
-  {:schema    ::metabot.schema/external-metabot-prompt
-   :copy      [:entity_id :model :prompt]
-   :parent    {:model :model/Metabot :key :metabot_id :order (juxt :prompt :entity_id)}
-   :transform {:metabot_id serialization/import-only-transform
-               :card_id (serialization/fk-transform :model/Card)}})
-
-(defmethod serialization/import-dependencies :model/MetabotPrompt [_ entities]
+(defn- import-dependencies
+  "The Card each of the MetabotPrompt `entities` depends on."
+  [entities]
   (mapv (fn [prompt]
           #{[:model/Card (:card_id prompt)]})
         entities))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotPrompt [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/MetabotPrompt [_]
+  {:schema              ::metabot.schema/external-metabot-prompt
+   :copy                [:entity_id :model :prompt]
+   :parent              {:model :model/Metabot :key :metabot_id :order (juxt :prompt :entity_id)}
+   :transform           {:metabot_id serialization/import-only-transform
+                         :card_id (serialization/fk-transform :model/Card)}
+   :import-dependencies import-dependencies})

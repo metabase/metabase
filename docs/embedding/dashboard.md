@@ -511,7 +511,7 @@ Dashboard components fill the height of their container (`min-height: 100%`). Ov
 
 ### Theme an embedded dashboard
 
-Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. Web components take the theme in [`defineMetabaseConfig`](./appearance.md#add-an-advanced-theme-to-your-embed); the SDK takes it from [`defineMetabaseTheme`](./appearance.md#reuse-a-saved-theme-in-the-sdk) on `MetabaseProvider`. The theme object itself is the same either way.
+Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. Web components take the theme in `defineMetabaseConfig`, and the SDK takes it from `defineMetabaseTheme` on `MetabaseProvider`. The theme object itself is the same either way. See [Add a theme to your embeds](./appearance.md#add-a-theme-to-your-embeds).
 
 The `dashboard` component in the theme has its own overrides:
 

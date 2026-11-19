@@ -53,7 +53,7 @@
             :description  "Checks the output"
             :inputs       []
             :expectations []}
-           (revisions/serialize-instance :model/TransformTest 1 transform-test)))))
+           (revisions/snapshot :model/TransformTest transform-test)))))
 
 (deftest transform-test-create-and-update-revisions-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -88,14 +88,12 @@
                                      :revision_id (:id creation)})
               (testing "the saved test is restored"
                 (is (= "Original" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))
-              (testing "the reversion is recorded after the model update revision"
-                (let [[reversion reverted-update update creation]
+              (testing "the reversion is the one revision that the revert records"
+                (let [[reversion update creation]
                       (revisions/revisions :model/TransformTest transform-test-id)]
-                  (is (= 4 (count (revisions/revisions :model/TransformTest transform-test-id))))
+                  (is (= 3 (count (revisions/revisions :model/TransformTest transform-test-id))))
                   (is (true? (:is_reversion reversion)))
                   (is (= "Original" (get-in reversion [:object :name])))
-                  (is (false? (:is_reversion reverted-update)))
-                  (is (= "Original" (get-in reverted-update [:object :name])))
                   (is (= "Renamed" (get-in update [:object :name])))
                   (is (true? (:is_creation creation))))))))))))
 
@@ -183,7 +181,7 @@
             :description  "Checks the output"
             :inputs       []
             :expectations []}
-           (revisions/serialize-instance :model/CardTest 1 card-test)))))
+           (revisions/snapshot :model/CardTest card-test)))))
 
 (deftest card-test-create-and-update-revisions-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -218,12 +216,11 @@
                                    :revision_id (:id creation)})
             (testing "the saved test is restored"
               (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))
-            (testing "the reversion is recorded after the model update revision"
-              (let [[reversion reverted-update update creation :as all]
+            (testing "the reversion is the one revision that the revert records"
+              (let [[reversion update creation :as all]
                     (revisions/revisions :model/CardTest card-test-id)]
-                (is (= 4 (count all)))
+                (is (= 3 (count all)))
                 (is (=? {:is_reversion true :object {:name "Original"}} reversion))
-                (is (=? {:is_reversion false :object {:name "Original"}} reverted-update))
                 (is (=? {:object {:name "Renamed"}} update))
                 (is (=? {:is_creation true} creation))))))))))
 
@@ -454,8 +451,8 @@
                   (mt/user-http-request :crowberto :post 200 "revision/revert" body)
                   (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))))
 
-(deftest card-test-revert-without-the-feature-answers-402-before-the-write-check-test
-  (testing "Without :transforms-testing, a non-admin who cannot read the card gets 402 for a revert, also of a missing id"
+(deftest card-test-revert-without-the-feature-answers-402-and-writes-nothing-test
+  (testing "Without :transforms-testing, a revert that passes the checks gets 402 and changes nothing"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll :id}    {}
                      :model/Card       {card-id :id} {:collection_id coll}]
@@ -477,20 +474,19 @@
                 (mt/with-current-user (mt/user->id :rasta)
                   (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/CardTest :id card-test-id) :can_read))))))
                 (is (not (t2/exists? :model/CardTest :id missing-id))))
-              (testing "control: with the feature, the read and write checks refuse rasta"
+              (testing "with the feature, the read and write checks refuse rasta"
                 (mt/with-premium-features #{:transforms-testing}
                   (refusals #(conj (history %) (revert %)))))
               (mt/with-premium-features #{}
-                (testing "without the feature, the history endpoints give their usual refusals"
-                  (refusals history))
-                (testing "without the feature, a revert gets 402 before any check of the test"
-                  (doseq [id [card-test-id missing-id]]
-                    (let [[method & args] (revert id)]
-                      (testing (str method " " (first args) " " id)
-                        (mt/assert-has-premium-feature-error
-                         "Transforms Testing"
-                         (apply mt/user-http-request :rasta method 402 args)))))))
-              (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))
+                (testing "without the feature, the checks of the test still refuse rasta"
+                  (refusals #(conj (history %) (revert %))))
+                (testing "without the feature, a revert that passes the checks gets 402"
+                  (let [[method & args] (revert card-test-id)]
+                    (mt/assert-has-premium-feature-error
+                     "Transforms Testing"
+                     (apply mt/user-http-request :crowberto method 402 args)))))
+              (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id)))
+              (is (= 2 (count (revisions/revisions :model/CardTest card-test-id)))))))))))
 
 (deftest card-test-revert-to-a-revision-about-a-deleted-card-test
   (mt/with-premium-features #{:transforms-testing}
@@ -608,18 +604,17 @@
 
 (deftest segment-test-revision-serialization-test
   (is (= {:segment_id 2 :name "No nulls" :description "Checks the output" :inputs [] :expectations []}
-         (revisions/serialize-instance :model/SegmentTest 1
-                                       (t2/instance :model/SegmentTest
-                                                    {:id           1
-                                                     :entity_id    "test-entity-id"
-                                                     :segment_id   2
-                                                     :creator_id   3
-                                                     :name         "No nulls"
-                                                     :description  "Checks the output"
-                                                     :inputs       []
-                                                     :expectations []
-                                                     :created_at   :not-revisioned
-                                                     :updated_at   :not-revisioned})))))
+         (revisions/snapshot :model/SegmentTest (t2/instance :model/SegmentTest
+                                                             {:id           1
+                                                              :entity_id    "test-entity-id"
+                                                              :segment_id   2
+                                                              :creator_id   3
+                                                              :name         "No nulls"
+                                                              :description  "Checks the output"
+                                                              :inputs       []
+                                                              :expectations []
+                                                              :created_at   :not-revisioned
+                                                              :updated_at   :not-revisioned})))))
 
 (deftest segment-test-create-update-and-revert-test
   (mt/with-premium-features #{:transforms-testing}
@@ -697,3 +692,23 @@
                   (mt/user-http-request :crowberto :post 200 "revision/revert"
                                         {:entity entity :id id :revision_id revision-id})
                   (is (=? {:name "Before" :now nil} (t2/select-one [model :name :now] :id id))))))))))))
+
+(deftest card-test-history-permission-check-is-one-lookup-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {card-id :id}  {}
+                   :model/Card {other-id :id} {}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [{card-test-id :id} (card-test! {:card_id card-id :name "Original"})]
+          (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})
+          (data-testing.models.card-test/update-card-test! card-test-id {:card_id other-id})
+          (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed again"})
+          (let [objects (mapv :object (revisions/revisions :model/CardTest card-test-id))
+                queries (fn [objects]
+                          (t2/with-call-count [call-count]
+                            (revision/revisions-readable? :model/CardTest objects)
+                            (call-count)))]
+            (is (= 4 (count objects)))
+            (is (= (queries (take 1 objects)) (queries objects)))
+            (testing "a revision about a deleted card is not readable"
+              (t2/delete! :model/Card :id card-id)
+              (is (= [true true false false] (revision/revisions-readable? :model/CardTest objects))))))))))

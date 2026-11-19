@@ -85,6 +85,18 @@ export interface QueryBuilderUIControls {
   nativeEditorSelectedRange: Range[];
 }
 
+/** The saveable parts of a native question, as `getMetabotCardBaseline` reads them. */
+export type MetabotCardBaseline = Pick<
+  Card,
+  "dataset_query" | "display" | "visualization_settings" | "parameters"
+>;
+
+/** A question Metabot is opening, read and cleared by the next query builder init. */
+export type PendingMetabotCard = {
+  /** `pathname + hash` of the location the init must match. */
+  url: string;
+};
+
 export interface QueryBuilderLoadingControls {
   showLoadCompleteFavicon: boolean;
   documentTitle: string;
@@ -100,6 +112,12 @@ export interface QueryBuilderParentEntityState {
 
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
+  pendingMetabotCard: PendingMetabotCard | null;
+  /**
+   * The native questions Metabot opened, as loaded and as the query builder has
+   * adjusted them since. A question that still matches one is not unsaved work.
+   */
+  metabotCardBaselines: MetabotCardBaseline[];
   loadingControls: QueryBuilderLoadingControls;
   parentEntity: QueryBuilderParentEntityState;
   queryStatus: QueryBuilderQueryStatus;

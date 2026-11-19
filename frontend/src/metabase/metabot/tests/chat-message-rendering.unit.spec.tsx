@@ -199,6 +199,37 @@ describe("AgentMessage", () => {
     });
   });
 
+  describe("generated chart", () => {
+    const generatedChartPart: MetabotMessage["parts"][number] = {
+      id: "g1",
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "data-generated_entity",
+        data: {
+          type: "card",
+          id: "chart-1",
+          title: "Orders by month",
+          query: {
+            id: "query-1",
+            query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+          },
+        },
+      },
+    };
+
+    it("shows a link to open the chart when charts show as links", () => {
+      setup({ parts: [generatedChartPart] }, { chartsAsLinks: true });
+
+      expect(
+        screen.getByTestId("metabot-inline-chart-link"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-inline-chart"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("entity_saved", () => {
     it("renders a 'Chart X saved to Y' block with the container's current name", async () => {
       setupCollectionByIdEndpoint({

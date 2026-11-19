@@ -196,23 +196,21 @@
   [settings]
   (visualization-settings-deps settings import-opts))
 
-(defmulti export-dependencies
+(defn export-dependencies
   "For each of `rows`, database rows of `model`, the set of `[model id]` of the entities it depends on, which an export
-  must contain or find."
-  {:arglists '([model rows])}
-  (fn [model _rows] model))
+  must contain or find, by the `:export-dependencies` of the spec of `model`, none by default."
+  [model rows]
+  (if-let [f (:export-dependencies (serialization.spec/spec model))]
+    (f rows)
+    (mapv (constantly #{}) rows)))
 
-(defmethod export-dependencies :default [_ rows]
-  (mapv (constantly #{}) rows))
-
-(defmulti import-dependencies
+(defn import-dependencies
   "For each of `entities`, entities of `model`, the set of `[model ref]` of the entities it depends on, which an import
-  loads first."
-  {:arglists '([model entities])}
-  (fn [model _entities] model))
-
-(defmethod import-dependencies :default [_ entities]
-  (mapv (constantly #{}) entities))
+  loads first, by the `:import-dependencies` of the spec of `model`, none by default."
+  [model entities]
+  (if-let [f (:import-dependencies (serialization.spec/spec model))]
+    (f entities)
+    (mapv (constantly #{}) entities)))
 
 (defn child-entities
   "The `[child-model entity]` of each child entity that `entity`, an entity of `model`, nests (see

@@ -1,5 +1,6 @@
 (ns metabase.permissions.models.application-permissions-revision
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.util.i18n :refer [tru]]
@@ -28,3 +29,8 @@
   []
   (or (permissions.db/latest-application-permissions-revision-id)
       0))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ApplicationPermissionsRevision [_model]
+  {:skip? false})

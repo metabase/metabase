@@ -1,5 +1,7 @@
 import type { EmbeddedDataApp } from "e2e/support/helpers";
 
+import { visitNewEmbedPage } from "../embedding/sdk-iframe-embedding-setup/helpers";
+
 const { H } = cy;
 
 describe("scenarios > embedding > data app embed wizard", () => {
@@ -11,27 +13,8 @@ describe("scenarios > embedding > data app embed wizard", () => {
     H.createEmbeddedDataApp().as("app");
   });
 
-  it("opens the selected app from data studio and shows the preview and embed code", () => {
+  it("opens the selected app from data studio on the code step", () => {
     openDataAppEmbedWizard();
-
-    cy.log("select data app embed experience by default");
-    H.modal()
-      .findByRole("radio", { name: /Data Apps/ })
-      .should("be.checked");
-
-    cy.log("auto-select the data app that was chosen in data studio");
-    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
-      H.modal()
-        .findByRole("textbox", { name: "Data app" })
-        .should("have.value", name);
-    });
-
-    cy.log("data app preview should load");
-    H.getIframeBody('iframe[title="Data app preview"]')
-      .findByLabelText("Order count", { timeout: 30_000 })
-      .should("have.text", "18760");
-
-    H.modal().findByRole("button", { name: "Get code" }).click();
 
     cy.get<EmbeddedDataApp>("@app").then(({ slug }) => {
       cy.log("embed code snippet must not contain guest or session auth flags");
@@ -42,22 +25,25 @@ describe("scenarios > embedding > data app embed wizard", () => {
         .and("not.contain", '"isGuest": true');
     });
 
-    H.modal().findByRole("button", { name: "Back" }).click();
+    cy.log("data app preview should load");
+    H.getIframeBody('iframe[title="Data app preview"]')
+      .findByLabelText("Order count", { timeout: 30_000 })
+      .should("have.text", "18760");
 
-    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
-      cy.log("same app should remain selected after navigation");
-      H.modal()
-        .findByRole("textbox", { name: "Data app" })
-        .should("have.value", name);
-    });
+    cy.log("admins cannot go back to pick another embed experience");
+    H.modal().findByRole("button", { name: /Done/ }).should("be.enabled");
+    H.modal().findByText("Select your embed experience").should("not.exist");
+    H.modal().findByRole("button", { name: "Back" }).should("not.exist");
   });
 
   it("lets admins switch away from SSO-only experiences before accepting terms (DAT-16)", () => {
     H.updateSetting("enable-embedding-modular", false);
     H.updateSetting("show-modular-embed-terms", true);
 
-    openDataAppEmbedWizard();
+    visitNewEmbedPage({ waitForResource: false });
 
+    cy.log("data apps show their own enable embedding card");
+    selectEmbedExperience("Data Apps");
     H.modal()
       .findByRole("button", { name: "Agree and enable" })
       .should("be.visible");
