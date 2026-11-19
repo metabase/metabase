@@ -85,6 +85,29 @@ jest.mock("@floating-ui/dom", () => ({
   },
 }));
 
+// The detached measurement roots of TreeTable and the data grid sit outside
+// renderWithProviders' ThemeProviderContext, so Mantine would emit its full
+// CSS-variables <style> for every root. jsdom has no layout to measure anyway.
+jest.mock("metabase/ui/components/theme/MeasurementProviders", () => {
+  const React = jest.requireActual("react");
+  const { ThemeProviderContext } = jest.requireActual(
+    "metabase/ui/components/theme/ThemeProvider/context",
+  );
+  const actual = jest.requireActual(
+    "metabase/ui/components/theme/MeasurementProviders",
+  );
+
+  return {
+    ...actual,
+    MeasurementProviders: (props) =>
+      React.createElement(
+        ThemeProviderContext.Provider,
+        { value: { withCssVariables: false } },
+        React.createElement(actual.MeasurementProviders, props),
+      ),
+  };
+});
+
 // Mock clipboard API for tests
 Object.assign(navigator, {
   clipboard: {

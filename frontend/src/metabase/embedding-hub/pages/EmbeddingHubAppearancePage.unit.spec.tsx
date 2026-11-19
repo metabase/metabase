@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -46,7 +46,7 @@ function setup({
   // Settings before plugins: PLUGIN_WHITELABEL.EmbeddedAppearanceSettings is
   // registered only when `hasPremiumFeature("whitelabel")` is true.
   const storeSettings = mockSettings(settings);
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("whitelabel");
 
   renderWithProviders(
     <Route path="/" element={<EmbeddingHubAppearancePage />} />,

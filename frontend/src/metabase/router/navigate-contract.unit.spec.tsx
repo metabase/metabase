@@ -1,4 +1,6 @@
-import { act, renderWithProviders, waitFor } from "__support__/ui";
+import { act, waitFor } from "@testing-library/react";
+
+import { renderWithRouter } from "__support__/router";
 import { Route, navigate } from "metabase/router";
 
 // Characterization test for the module-level `navigate`, the escape hatch that
@@ -11,8 +13,7 @@ import { Route, navigate } from "metabase/router";
 // mirrored into redux.
 
 const setup = () => {
-  const { router } = renderWithProviders(<Route path="*" element={null} />, {
-    withRouter: true,
+  const { router } = renderWithRouter(<Route path="*" element={null} />, {
     initialRoute: "/",
   });
 

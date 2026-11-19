@@ -1,6 +1,7 @@
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import { Route, useLocation } from "metabase/router";
 
 function LocationProbe() {
@@ -18,8 +19,7 @@ function LocationProbe() {
 
 describe("router/useLocation", () => {
   it("exposes the current location in v7 shape", () => {
-    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
-      withRouter: true,
+    renderWithRouter(<Route path="foo/bar" element={<LocationProbe />} />, {
       initialRoute: "/foo/bar?x=1&y=2#section",
     });
 
@@ -29,8 +29,7 @@ describe("router/useLocation", () => {
   });
 
   it("does not carry v3's `query` and `action` fields", () => {
-    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
-      withRouter: true,
+    renderWithRouter(<Route path="foo/bar" element={<LocationProbe />} />, {
       initialRoute: "/foo/bar?x=1",
     });
 
@@ -43,8 +42,7 @@ describe("router/useLocation", () => {
   });
 
   it("defaults state to null like v7 (not v3's undefined)", () => {
-    renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
-      withRouter: true,
+    renderWithRouter(<Route path="foo/bar" element={<LocationProbe />} />, {
       initialRoute: "/foo/bar",
     });
 
@@ -52,7 +50,7 @@ describe("router/useLocation", () => {
   });
 
   it("works above the route tree, where the facade context is not published", () => {
-    renderWithProviders(
+    render(
       <MemoryRouter initialEntries={["/foo/bar?x=1"]}>
         <LocationProbe />
       </MemoryRouter>,

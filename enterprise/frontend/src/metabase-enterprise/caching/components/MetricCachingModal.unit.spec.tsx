@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -33,7 +33,7 @@ function setup({ cardId = 19, cardName = "Number of Orders" }: SetupOpts = {}) {
     }),
   );
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("caching");
   setupPerformanceEndpoints([]);
   fetchMock.post("glob:*/api/cache/invalidate*", {});
 

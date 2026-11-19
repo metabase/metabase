@@ -21,8 +21,9 @@ const getChipCenterX = (chip: HTMLElement) => {
 const createChartInstance = (
   pixelByDate: Record<string, number>,
 ): EChartsType =>
-  // the band only calls convertToPixel and the event methods, so a stub suffices
+  // The band only needs positioning, lifecycle checks, and event methods.
   ({
+    isDisposed: () => false,
     convertToPixel: (_finder: unknown, value: string) =>
       pixelByDate[value] ?? NaN,
     on: jest.fn(),
@@ -110,6 +111,20 @@ const setup = (opts: SetupOpts = {}) => {
 };
 
 describe("TimelineEventsBand", () => {
+  it("does not position events or subscribe on a disposed chart", () => {
+    const chartInstance = createChartInstance({});
+    jest.spyOn(chartInstance, "isDisposed").mockReturnValue(true);
+    const convertToPixel = jest.spyOn(chartInstance, "convertToPixel");
+
+    setup({ chartInstance });
+
+    expect(
+      screen.queryByTestId("timeline-events-band"),
+    ).not.toBeInTheDocument();
+    expect(convertToPixel).not.toHaveBeenCalled();
+    expect(chartInstance.on).not.toHaveBeenCalled();
+  });
+
   it("renders a chip per visible event cluster", () => {
     setup();
     expect(screen.getByTestId("timeline-events-band")).toBeInTheDocument();

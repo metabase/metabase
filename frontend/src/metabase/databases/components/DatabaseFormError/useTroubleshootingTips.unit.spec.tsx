@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
@@ -91,7 +91,7 @@ describe("useTroubleshootingTips", () => {
         }),
       });
 
-      setupEnterprisePlugins();
+      setupEnterpriseOnlyPlugin("whitelabel");
 
       // This time we render inside a Route component to more easily assert links presence
       renderWithProviders(

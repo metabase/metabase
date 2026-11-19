@@ -2,7 +2,7 @@ import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -54,7 +54,7 @@ const setup = (opts: SetupOptions) => {
     }),
   });
   setupEnginesEndpoint(createMockEngines());
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("whitelabel");
 
   renderWithProviders(
     <Route

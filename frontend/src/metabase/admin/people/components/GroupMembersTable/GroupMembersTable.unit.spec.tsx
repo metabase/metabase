@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -40,7 +40,8 @@ const setup = ({ group }: { group: Group }) => {
     "use-tenants": true,
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("group_managers");
+  setupEnterpriseOnlyPlugin("tenants");
 
   renderWithProviders(
     <GroupMembersTable

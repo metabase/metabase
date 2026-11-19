@@ -276,6 +276,11 @@ const clickWhenEnabled = async (element: HTMLElement) => {
   await userEvent.click(element);
 };
 
+const pasteInto = async (element: HTMLElement, value: string) => {
+  await userEvent.click(element);
+  await userEvent.paste(value);
+};
+
 const expandUserAttributeSection = async () => {
   await userEvent.click(
     await screen.findByRole("button", { name: /User attribute configuration/ }),
@@ -326,11 +331,15 @@ describe("SettingsJWTForm", () => {
     "jwt-group-sync": true,
   };
 
-  const fillServerSettings = async () => {
-    await userEvent.type(
-      await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
-      ATTRS["jwt-identity-provider-uri"],
-    );
+  const fillServerSettings = async ({ pasteUri = false } = {}) => {
+    const uriInput = await screen.findByRole("textbox", {
+      name: /JWT Identity Provider URI/,
+    });
+    if (pasteUri) {
+      await pasteInto(uriInput, ATTRS["jwt-identity-provider-uri"]);
+    } else {
+      await userEvent.type(uriInput, ATTRS["jwt-identity-provider-uri"]);
+    }
     await userEvent.click(
       await screen.findByRole("button", { name: /Set up key/ }),
     );
@@ -416,7 +425,7 @@ describe("SettingsJWTForm", () => {
   it("saves without a key when the key comes from an env var", async () => {
     await setup({ sharedSecretEnvConfigured: true });
 
-    await userEvent.type(
+    await pasteInto(
       screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
     );
@@ -435,19 +444,19 @@ describe("SettingsJWTForm", () => {
     await setup({ jwtEnabled: true, configured: true });
 
     await expandUserAttributeSection();
-    await userEvent.type(
+    await pasteInto(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["jwt-attribute-email"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByRole("textbox", { name: /First name attribute/ }),
       ATTRS["jwt-attribute-firstname"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["jwt-attribute-lastname"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByRole("textbox", {
         name: /Group assignment attribute/,
       }),
@@ -533,7 +542,7 @@ describe("SettingsJWTForm", () => {
       screen.getByText("Using MB_JWT_ATTRIBUTE_EMAIL"),
     ).toBeInTheDocument();
 
-    await userEvent.type(
+    await pasteInto(
       screen.getByLabelText("First name attribute key"),
       "given_name",
     );
@@ -639,7 +648,7 @@ describe("SettingsJWTForm", () => {
     it("keeps existing mappings on the first save", async () => {
       await setup({ groupSync: true, groupMappings: { devs: [3] } });
 
-      await fillServerSettings();
+      await fillServerSettings({ pasteUri: true });
       await userEvent.click(
         screen.getByRole("button", { name: /Save and enable/ }),
       );
@@ -1542,7 +1551,7 @@ describe("SettingsJWTForm", () => {
         screen.queryByText("Save the settings above to set up group mapping."),
       ).not.toBeInTheDocument();
 
-      await fillServerSettings();
+      await fillServerSettings({ pasteUri: true });
       await userEvent.click(
         await screen.findByRole("button", { name: /Save/ }),
       );

@@ -142,6 +142,8 @@ type SetupOpts = {
   refetchDelay?: number;
 };
 
+let user: ReturnType<typeof userEvent.setup>;
+
 const setup = ({
   notifications = [notification1],
   total = notifications.length,
@@ -157,6 +159,10 @@ const setup = ({
   allCountError = false,
   refetchDelay,
 }: SetupOpts = {}) => {
+  user = userEvent.setup({
+    advanceTimers: jest.advanceTimersByTimeAsync,
+    writeToClipboard: false,
+  });
   let listCallCount = 0;
 
   fetchMock.get("path:/api/notification/admin", (call) => {
@@ -330,7 +336,7 @@ describe("NotificationsAdminPage", () => {
       expect(within(row).getByText("1")).toBeInTheDocument();
       expect(within(row).queryByText("0")).not.toBeInTheDocument();
 
-      await userEvent.click(row);
+      await user.click(row);
 
       expect(await screen.findByText("1 webhook")).toBeInTheDocument();
       expect(screen.queryByText("No channels")).not.toBeInTheDocument();
@@ -344,7 +350,7 @@ describe("NotificationsAdminPage", () => {
       expect(within(row).getByText("Multi Channel Alert")).toBeInTheDocument();
       expect(within(row).getByText("2")).toBeInTheDocument();
 
-      await userEvent.click(row);
+      await user.click(row);
 
       expect(
         await screen.findByText(
@@ -413,9 +419,7 @@ describe("NotificationsAdminPage", () => {
       const allTab = screen.getByTestId("notifications-admin-tab-all");
       expect(within(allTab).getByText("137")).toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByTestId("notifications-admin-tab-failing"),
-      );
+      await user.click(screen.getByTestId("notifications-admin-tab-failing"));
       await waitForTableToLoad();
 
       expect(within(allTab).getByText("137")).toBeInTheDocument();
@@ -425,9 +429,7 @@ describe("NotificationsAdminPage", () => {
       const { router } = setup({ failingCount: 2 });
       await waitForTableToLoad();
 
-      await userEvent.click(
-        screen.getByTestId("notifications-admin-tab-failing"),
-      );
+      await user.click(screen.getByTestId("notifications-admin-tab-failing"));
 
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -512,7 +514,7 @@ describe("NotificationsAdminPage", () => {
       const { router } = setup();
       await waitForTableToLoad();
 
-      await userEvent.type(
+      await user.type(
         screen.getByPlaceholderText(/Search by question or owner/),
         "sales",
       );
@@ -538,7 +540,7 @@ describe("NotificationsAdminPage", () => {
       const { router } = setup();
       await waitForTableToLoad();
 
-      await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
+      await user.click(screen.getByRole("columnheader", { name: "ID" }));
 
       await waitFor(() => {
         expect(
@@ -568,7 +570,7 @@ describe("NotificationsAdminPage", () => {
       const nextPage = screen.getByRole("button", { name: "Next page" });
       expect(nextPage).toBeEnabled();
 
-      await userEvent.click(nextPage);
+      await user.click(nextPage);
 
       await waitFor(() => {
         expect(
@@ -596,7 +598,7 @@ describe("NotificationsAdminPage", () => {
         within(table).queryByTestId("loading-overlay"),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
+      await user.click(screen.getByRole("columnheader", { name: "ID" }));
 
       expect(
         await within(table).findByTestId("loading-overlay"),
@@ -625,7 +627,7 @@ describe("NotificationsAdminPage", () => {
         /Search by question or owner/,
       );
 
-      await userEvent.type(searchInput, "sales");
+      await user.type(searchInput, "sales");
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
       act(() => {
@@ -662,7 +664,7 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
-      await userEvent.click(within(row1).getByRole("checkbox"));
+      await user.click(within(row1).getByRole("checkbox"));
 
       const bar = screen.getByTestId("toast-card");
       expect(within(bar).getByText("1 alert selected")).toBeInTheDocument();
@@ -678,9 +680,7 @@ describe("NotificationsAdminPage", () => {
       setup({ notifications: [notification1, notification2] });
       await waitForTableToLoad();
 
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: "Select all" }),
-      );
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
 
       expect(
         within(screen.getByTestId("toast-card")).getByText("2 alerts selected"),
@@ -692,7 +692,7 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
 
       screen.getByRole("treegrid", { name: "Notifications" }).focus();
-      await userEvent.keyboard("{ArrowDown} ");
+      await user.keyboard("{ArrowDown} ");
 
       const bar = await screen.findByTestId("toast-card");
       expect(within(bar).getByText("1 alert selected")).toBeInTheDocument();
@@ -705,8 +705,8 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
-      await userEvent.click(within(row1).getByRole("checkbox"));
-      await userEvent.click(
+      await user.click(within(row1).getByRole("checkbox"));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Clear",
         }),
@@ -725,10 +725,10 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
-      await userEvent.click(within(row1).getByRole("checkbox"));
+      await user.click(within(row1).getByRole("checkbox"));
       expect(screen.getByTestId("toast-card")).toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      await user.click(screen.getByRole("button", { name: "Next page" }));
 
       await waitFor(() => {
         expect(screen.queryByTestId("toast-card")).not.toBeInTheDocument();
@@ -739,17 +739,15 @@ describe("NotificationsAdminPage", () => {
       setup({ notifications: [notification1, notification2] });
       await waitForTableToLoad();
 
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: "Select all" }),
-      );
-      await userEvent.click(
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Delete",
         }),
       );
 
       const confirmModal = await screen.findByTestId("confirm-modal");
-      await userEvent.click(
+      await user.click(
         within(confirmModal).getByRole("button", { name: "Delete" }),
       );
 
@@ -778,10 +776,8 @@ describe("NotificationsAdminPage", () => {
       });
       await waitForTableToLoad();
 
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: "Select all" }),
-      );
-      await userEvent.click(
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Change owner",
         }),
@@ -792,14 +788,12 @@ describe("NotificationsAdminPage", () => {
         within(dialog).getByText("Select new owner of 2 alerts"),
       ).toBeInTheDocument();
 
-      await userEvent.click(
-        within(dialog).getByPlaceholderText("Select a user"),
-      );
-      await userEvent.click(
+      await user.click(within(dialog).getByPlaceholderText("Select a user"));
+      await user.click(
         await screen.findByRole("option", { name: "New Owner" }),
       );
 
-      await userEvent.click(
+      await user.click(
         within(dialog).getByRole("button", { name: "Change owner" }),
       );
 
@@ -820,7 +814,7 @@ describe("NotificationsAdminPage", () => {
       const { router } = setup({ notifications: [notification1] });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
 
       expect(router?.location.pathname).toBe(`${PATHNAME}/1`);
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
@@ -833,7 +827,7 @@ describe("NotificationsAdminPage", () => {
         sidebarRegion,
       );
 
-      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await user.click(screen.getByRole("button", { name: "Close" }));
 
       await waitFor(() => {
         expect(router?.location.pathname).toBe(PATHNAME);
@@ -849,20 +843,20 @@ describe("NotificationsAdminPage", () => {
       });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
       expect(router?.location.pathname).toBe(`${PATHNAME}/1`);
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
       const row1 = await screen.findByTestId("notification-row-1");
-      await userEvent.click(within(row1).getByRole("checkbox"));
-      await userEvent.click(
+      await user.click(within(row1).getByRole("checkbox"));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Delete",
         }),
       );
 
       const confirmModal = await screen.findByTestId("confirm-modal");
-      await userEvent.click(
+      await user.click(
         within(confirmModal).getByRole("button", { name: "Delete" }),
       );
 
@@ -878,18 +872,16 @@ describe("NotificationsAdminPage", () => {
       const { router } = setup({ notifications: [notification1] });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "More actions" }),
-      );
-      await userEvent.click(
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(
         await screen.findByRole("menuitem", { name: /Delete alert/ }),
       );
 
       const confirmModal = await screen.findByTestId("confirm-modal");
-      await userEvent.click(
+      await user.click(
         within(confirmModal).getByRole("button", { name: "Delete" }),
       );
 
@@ -911,15 +903,13 @@ describe("NotificationsAdminPage", () => {
       setup({ notifications: [notification1] });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
-      jest.mocked(navigator.clipboard.writeText).mockClear();
+      jest.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "More actions" }),
-      );
-      await userEvent.click(
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(
         await screen.findByRole("menuitem", {
           name: /Copy link to clipboard/,
         }),
@@ -934,7 +924,7 @@ describe("NotificationsAdminPage", () => {
       setup({ notifications: [notification1], cardDelay: 10_000 });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
       expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
@@ -971,7 +961,7 @@ describe("NotificationsAdminPage", () => {
       setup({ notifications: [notification1] });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
 
       const [viewAll] = screen.getAllByRole("link", { name: "View all" });
@@ -989,7 +979,7 @@ describe("NotificationsAdminPage", () => {
       setup({ notifications: [notification1], detailDelay: 10_000 });
       await waitForTableToLoad();
 
-      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      await user.click(await screen.findByTestId("notification-row-1"));
 
       expect(await screen.findByText("Check history")).toBeInTheDocument();
       expect(screen.getByText("Send history")).toBeInTheDocument();
@@ -1027,8 +1017,8 @@ describe("NotificationsAdminPage", () => {
       await waitForTableToLoad();
 
       const row1 = await screen.findByTestId("notification-row-1");
-      await userEvent.click(within(row1).getByRole("checkbox"));
-      await userEvent.click(
+      await user.click(within(row1).getByRole("checkbox"));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Change owner",
         }),
@@ -1042,9 +1032,7 @@ describe("NotificationsAdminPage", () => {
         within(dialog).getByRole("button", { name: "Change owner" }),
       ).toBeEnabled();
 
-      await userEvent.click(
-        within(dialog).getByPlaceholderText("Select a user"),
-      );
+      await user.click(within(dialog).getByPlaceholderText("Select a user"));
       expect(
         await screen.findByRole("option", { name: "Ann Admin" }),
       ).toHaveAttribute("aria-selected", "true");
@@ -1061,10 +1049,8 @@ describe("NotificationsAdminPage", () => {
       });
       await waitForTableToLoad();
 
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: "Select all" }),
-      );
-      await userEvent.click(
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Change owner",
         }),
@@ -1075,24 +1061,20 @@ describe("NotificationsAdminPage", () => {
         within(dialog).getByRole("button", { name: "Change owner" }),
       ).toBeDisabled();
 
-      await userEvent.click(
-        within(dialog).getByPlaceholderText("Select a user"),
-      );
-      await userEvent.click(
+      await user.click(within(dialog).getByPlaceholderText("Select a user"));
+      await user.click(
         await screen.findByRole("option", { name: "New Owner" }),
       );
       expect(
         within(dialog).getByRole("button", { name: "Change owner" }),
       ).toBeEnabled();
 
-      await userEvent.click(
-        within(dialog).getByRole("button", { name: "Cancel" }),
-      );
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       });
 
-      await userEvent.click(
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Change owner",
         }),
@@ -1115,26 +1097,20 @@ describe("NotificationsAdminPage", () => {
       });
       await waitForTableToLoad();
 
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: "Select all" }),
-      );
-      await userEvent.click(
+      await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+      await user.click(
         within(screen.getByTestId("toast-card")).getByRole("button", {
           name: "Change owner",
         }),
       );
 
       const dialog = await screen.findByRole("dialog");
-      await userEvent.click(
-        within(dialog).getByPlaceholderText("Select a user"),
-      );
-      await userEvent.click(
+      await user.click(within(dialog).getByPlaceholderText("Select a user"));
+      await user.click(
         await screen.findByRole("option", { name: "New Owner" }),
       );
 
-      await userEvent.click(
-        within(dialog).getByPlaceholderText("Select a user"),
-      );
+      await user.click(within(dialog).getByPlaceholderText("Select a user"));
       expect(
         await screen.findByRole("option", { name: "New Owner" }),
       ).toHaveAttribute("aria-selected", "true");

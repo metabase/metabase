@@ -1,3 +1,11 @@
+import {
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
+
+import { databaseFetched, fieldFetched } from "./actions";
+
 import { entitiesReducer as reducer } from "./index";
 
 const UPDATE = "metabase/entities/UPDATE";
@@ -20,6 +28,60 @@ describe("entities reducer", () => {
   });
 
   describe(UPDATE, () => {
+    it("preserves entities when a separately parsed response contains unchanged nested values", () => {
+      const database = createMockDatabase({
+        id: 1,
+        tables: [
+          createMockTable({
+            id: 2,
+            db_id: 1,
+            fields: [createMockField({ id: 3, table_id: 2 })],
+          }),
+        ],
+      });
+      const initial = reducer(undefined, databaseFetched(database));
+
+      const next = reducer(
+        initial,
+        databaseFetched(JSON.parse(JSON.stringify(database))),
+      );
+
+      expect(next).toBe(initial);
+    });
+
+    it("replaces changed nested values without discarding omitted top-level properties", () => {
+      const initial = reducer(
+        undefined,
+        fieldFetched(
+          createMockField({
+            id: 3,
+            name: "Total",
+            table_id: 2,
+            settings: { currency: "USD", number_separators: ".," },
+          }),
+        ),
+      );
+
+      const next = reducer(initial, {
+        type: UPDATE,
+        payload: {
+          entities: { fields: { 3: { id: 3, settings: { currency: "EUR" } } } },
+        },
+      });
+
+      expect(next.fields[3]).toMatchObject({
+        id: 3,
+        name: "Total",
+        settings: { currency: "EUR" },
+      });
+      expect(next.fields[3].settings).not.toHaveProperty("number_separators");
+      expect(next.fields[3]).not.toBe(initial.fields[3]);
+      expect(initial.fields[3].settings).toEqual({
+        currency: "USD",
+        number_separators: ".,",
+      });
+    });
+
     it("writes new entries into the matching slice", () => {
       const state = reducer(undefined, {
         type: UPDATE,

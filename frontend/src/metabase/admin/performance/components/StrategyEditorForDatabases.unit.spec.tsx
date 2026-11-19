@@ -26,6 +26,7 @@ describe("StrategyEditorForDatabases (OSS)", () => {
   });
 
   it("lets user change the default policy to 'Adaptive', then 'No caching'", async () => {
+    const consoleError = jest.spyOn(console, "error");
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
@@ -49,7 +50,10 @@ describe("StrategyEditorForDatabases (OSS)", () => {
     await selectCacheStrategy(/Don.t cache/i);
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
 
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("does not regard form as dirty when a default value is entered into an input (metabase#42974)", async () => {

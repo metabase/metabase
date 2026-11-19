@@ -11,36 +11,41 @@ function escapeRegExp(value: string) {
 export function setupTableEndpoints(
   table: Table,
   foreignKeys: ForeignKey[] = [],
+  { readOnly = false } = {},
 ) {
   fetchMock.get(`path:/api/table/${table.id}`, table);
   fetchMock.get(`path:/api/table/${table.id}/fks`, foreignKeys);
-  fetchMock.put(
-    `path:/api/table/${table.id}`,
-    {},
-    { name: `table-${table.id}-put` },
-  );
-  fetchMock.put(
-    `path:/api/table/${table.id}/fields/order`,
-    {},
-    { name: `table-${table.id}-fields-order` },
-  );
-  fetchMock.post(
-    `path:/api/table/${table.id}/rescan_values`,
-    {},
-    { name: `table-${table.id}-rescan-values` },
-  );
-  fetchMock.post(
-    `path:/api/table/${table.id}/discard_values`,
-    {},
-    { name: `table-${table.id}-discard-values` },
-  );
-  fetchMock.post(
-    `path:/api/table/${table.id}/sync_schema`,
-    {},
-    { name: `table-${table.id}-sync-schema` },
-  );
+  if (!readOnly) {
+    fetchMock.put(
+      `path:/api/table/${table.id}`,
+      {},
+      { name: `table-${table.id}-put` },
+    );
+    fetchMock.put(
+      `path:/api/table/${table.id}/fields/order`,
+      {},
+      { name: `table-${table.id}-fields-order` },
+    );
+    fetchMock.post(
+      `path:/api/table/${table.id}/rescan_values`,
+      {},
+      { name: `table-${table.id}-rescan-values` },
+    );
+    fetchMock.post(
+      `path:/api/table/${table.id}/discard_values`,
+      {},
+      { name: `table-${table.id}-discard-values` },
+    );
+    fetchMock.post(
+      `path:/api/table/${table.id}/sync_schema`,
+      {},
+      { name: `table-${table.id}-sync-schema` },
+    );
+  }
   setupTableQueryMetadataEndpoint(table);
-  table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
+  table.fields?.forEach((field) =>
+    setupFieldEndpoints({ ...field, table }, { readOnly }),
+  );
 }
 
 export function setupTableQueryMetadataEndpoint(table: Table) {

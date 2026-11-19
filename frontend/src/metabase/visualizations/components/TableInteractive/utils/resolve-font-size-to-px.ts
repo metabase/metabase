@@ -16,6 +16,10 @@ export function resolveFontSizeToPx(
   fontSize: string,
   baseFontSize?: string,
 ): string {
+  if (/^\+?(?:\d*\.)?\d+(?:e[+-]?\d+)?(?:px|rem)$/i.test(fontSize)) {
+    return fontSize;
+  }
+
   const isRem = fontSize.endsWith("rem");
   const isEm = fontSize.endsWith("em") && !isRem;
 

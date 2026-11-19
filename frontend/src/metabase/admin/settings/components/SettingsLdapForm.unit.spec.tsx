@@ -7,7 +7,14 @@ import {
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { defer } from "metabase/utils/promise";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -125,6 +132,11 @@ const clickWhenEnabled = async (element: HTMLElement) => {
   await userEvent.click(element);
 };
 
+const pasteInto = async (element: HTMLElement, value: string) => {
+  await userEvent.click(element);
+  await userEvent.paste(value);
+};
+
 const addMapping = async (name: string, groupName: string) => {
   await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
   await userEvent.type(
@@ -155,7 +167,7 @@ describe("SettingsLdapForm", () => {
   it("should submit the correct payload", async () => {
     await setupConfigured({ settingValues: { "ldap-group-sync": true } });
 
-    await userEvent.type(
+    await pasteInto(
       await screen.findByLabelText(/LDAP host/),
       ATTRS["ldap-host"],
     );
@@ -164,36 +176,33 @@ describe("SettingsLdapForm", () => {
     await userEvent.clear(portInput);
     await userEvent.type(portInput, ATTRS["ldap-port"].toString());
     await userEvent.click(screen.getByRole("radio", { name: /SSL/ }));
-    await userEvent.type(
+    await pasteInto(
       await screen.findByLabelText(/Username or DN/),
       ATTRS["ldap-bind-dn"],
     );
-    await userEvent.type(
-      screen.getByLabelText(/Password/),
-      ATTRS["ldap-password"],
-    );
-    await userEvent.type(
+    await pasteInto(screen.getByLabelText(/Password/), ATTRS["ldap-password"]);
+    await pasteInto(
       await screen.findByLabelText(/User search base/),
       ATTRS["ldap-user-base"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByLabelText(/User filter/),
       ATTRS["ldap-user-filter"],
     );
     await expandAttributes();
-    await userEvent.type(
+    await pasteInto(
       await screen.findByLabelText(/Email attribute key/),
       ATTRS["ldap-attribute-email"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByLabelText(/First name attribute key/),
       ATTRS["ldap-attribute-firstname"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByLabelText(/Last name attribute key/),
       ATTRS["ldap-attribute-lastname"],
     );
-    await userEvent.type(
+    await pasteInto(
       await screen.findByRole("textbox", { name: /Group search base/ }),
       ATTRS["ldap-group-base"],
     );
@@ -607,18 +616,20 @@ describe("SettingsLdapForm", () => {
     });
 
     it("keeps the row editor busy and open while the mapping write is in flight", async () => {
+      const gate = defer<void>();
       const { settingsStore } = await setupConfigured({
         settingValues: { "ldap-group-sync": true },
       });
-      // the properties mock answers the write late, so the busy state can be seen
+      // Hold the response until the pending editor state has been checked.
       fetchMock.removeRoute("update-settings");
       fetchMock.put(
         "path:/api/setting",
-        ({ options }) => {
+        async ({ options }) => {
+          await gate.promise;
           Object.assign(settingsStore, JSON.parse(String(options.body)));
           return { status: 204 };
         },
-        { name: "update-settings", delay: 200 },
+        { name: "update-settings" },
       );
 
       await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
@@ -630,13 +641,21 @@ describe("SettingsLdapForm", () => {
       await userEvent.click(await screen.findByRole("option", { name: "bar" }));
       // Enter keeps the focus in the field, so the Escape that follows reaches the editor
       await userEvent.click(nameInput);
-      await userEvent.keyboard("{Enter}");
-
-      const addButton = screen.getByRole("button", { name: "Add mapping" });
-      expect(addButton).toHaveAttribute("data-loading", "true");
-      expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
-      await userEvent.keyboard("{Escape}");
-      expect(nameInput).toBeInTheDocument();
+      try {
+        await userEvent.keyboard("{Enter}");
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls("path:/api/setting", { method: "PUT" }),
+          ).toHaveLength(1),
+        );
+        const addButton = screen.getByRole("button", { name: "Add mapping" });
+        expect(addButton).toHaveAttribute("data-loading", "true");
+        expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+        await userEvent.keyboard("{Escape}");
+        expect(nameInput).toBeInTheDocument();
+      } finally {
+        await act(async () => gate.resolve());
+      }
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
       expect(findMappingRow(DEVS_DN)).toBeDefined();
       expect(screen.getByRole("button", { name: "New" })).toBeEnabled();

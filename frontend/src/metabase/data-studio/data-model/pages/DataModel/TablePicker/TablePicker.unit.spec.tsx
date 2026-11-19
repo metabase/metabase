@@ -11,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -997,32 +998,65 @@ describe("TablePicker", () => {
 
   describe("Analytics", () => {
     // This test is about keystrokes collapsing into one tracked search, so it
-    // needs the real debounce.
+    // keeps the real debounce duration, advanced with a controlled clock.
     withRealSearchDebounce();
 
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it("tracks a table search request", async () => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTimeAsync,
+      });
       const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       trackSimpleEvent.mockClear();
       setup();
       await waitLoading();
 
-      await userEvent.type(searchInput(), "foo");
+      await user.type(searchInput(), "f");
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(100);
+      });
+      await user.keyboard("oo");
 
-      await waitFor(() => {
-        expect(trackSimpleEvent).toHaveBeenCalledWith({
-          event: "data_studio_table_picker_search_performed",
-        });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(searchDebounceDuration - 1);
+      });
+      expect(trackSimpleEvent).not.toHaveBeenCalledWith({
+        event: "data_studio_table_picker_search_performed",
       });
 
-      await userEvent.type(searchInput(), "d");
-      expect(await screen.findByText("No tables found")).toBeInTheDocument();
-      await waitFor(() => {
-        const searchEvents = trackSimpleEvent.mock.calls.filter(
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1);
+      });
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "data_studio_table_picker_search_performed",
+      });
+
+      const searchEvents = () =>
+        trackSimpleEvent.mock.calls.filter(
           ([event]) =>
             event.event === "data_studio_table_picker_search_performed",
         );
-        expect(searchEvents).toHaveLength(2);
+      expect(searchEvents()).toHaveLength(1);
+
+      await user.type(searchInput(), "d");
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(searchDebounceDuration - 1);
       });
+      expect(searchEvents()).toHaveLength(1);
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1);
+      });
+      expect(searchEvents()).toHaveLength(2);
+      expect(await screen.findByText("No tables found")).toBeInTheDocument();
     });
   });
 });

@@ -1,4 +1,3 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupPropertiesEndpoints,
@@ -72,8 +71,6 @@ const setup = ({
   collections = [],
   dirty = [],
 }: SetupOptions) => {
-  setupEnterprisePlugins();
-
   const tokenFeatures = createMockTokenFeatures({ library: true });
   const settings = createMockSettings({
     "remote-sync-enabled": isGitSyncVisible,

@@ -64,6 +64,7 @@ export const TimelineEventsBand = ({
   const updatePositionedClusters = useCallback(() => {
     const canPosition =
       chartInstance != null &&
+      !chartInstance.isDisposed() &&
       timelineEventsModel != null &&
       timelineEventsModel.length > 0 &&
       chartSize.width > 0;
@@ -94,12 +95,15 @@ export const TimelineEventsBand = ({
   }, [updatePositionedClusters]);
 
   useEffect(() => {
-    if (!chartInstance) {
+    if (!chartInstance || chartInstance.isDisposed()) {
       return;
     }
     chartInstance.on("finished", updatePositionedClusters);
     return () => {
-      chartInstance.off("finished", updatePositionedClusters);
+      // Disposal already removes listeners and can precede sibling cleanup.
+      if (!chartInstance.isDisposed()) {
+        chartInstance.off("finished", updatePositionedClusters);
+      }
     };
   }, [chartInstance, updatePositionedClusters]);
 

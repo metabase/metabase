@@ -1,14 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { createMockState } from "__support__/state";
-import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
-import {
-  createMockCollection,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   filterOutItemsFromInstanceAnalytics,
@@ -143,22 +136,7 @@ describe("Collections plugin utils", () => {
   });
 
   describe("filterOutItemsFromInstanceAnalytics", () => {
-    const state = createMockState({
-      settings: mockSettings({
-        "token-features": createMockTokenFeatures({
-          audit_app: true,
-        }),
-      }),
-    });
-
-    beforeEach(() => {
-      setupEnterprisePlugins();
-    });
-
     it("should filter out items directly in an instance analytics collection", () => {
-      renderWithProviders(<></>, {
-        storeInitialState: state,
-      });
       // Ids must be distinct because we cache based on id
       const items = [
         createMockModelResult({
@@ -206,9 +184,6 @@ describe("Collections plugin utils", () => {
     });
 
     it("should handle empty input array", () => {
-      renderWithProviders(<></>, {
-        storeInitialState: state,
-      });
       const result = filterOutItemsFromInstanceAnalytics([]);
       expect(result).toEqual([]);
     });

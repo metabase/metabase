@@ -246,7 +246,9 @@ export const setup = async ({
   timelinesResponse,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabasesEndpoints([TEST_DB]);
+  // QueryBuilder reads database metadata; question edits use the card mocks
+  // below, not database/table/field maintenance endpoints.
+  setupDatabasesEndpoints([TEST_DB], { readOnly: true });
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());

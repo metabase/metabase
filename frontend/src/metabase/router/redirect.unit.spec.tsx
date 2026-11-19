@@ -1,4 +1,6 @@
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "@testing-library/react";
+
+import { renderWithRouter } from "__support__/router";
 import { Outlet, Route } from "metabase/router";
 
 import { redirect } from "./redirect";
@@ -17,8 +19,7 @@ const DataLayout = () => (
 const GroupPage = () => <div>group page</div>;
 
 function mountRoutes(tree: JSX.Element, initialRoute: string) {
-  const { router } = renderWithProviders(tree, {
-    withRouter: true,
+  const { router } = renderWithRouter(tree, {
     initialRoute,
   });
   return router;

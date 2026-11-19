@@ -1,3 +1,4 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { assoc } from "icepick";
 
 import {
@@ -41,6 +42,8 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
+  getEmbeddedParameterVisibility,
+  getEmbeddedParameterVisibilityGetter,
   getIsResultDirty,
   getIsVisualized,
   getNativeEditorCursorOffset,
@@ -49,9 +52,29 @@ import {
   getQuestionDetailsTimelineDrawerState,
   getShouldShowUnsavedChangesWarning,
   getSubmittableQuestion,
+  getVisualizationSettings,
 } from "./selectors";
 
 registerVisualizations();
+
+describe("getVisualizationSettings", () => {
+  it("returns no settings without series and does not warn during Reselect's identity check", () => {
+    const warn = jest.spyOn(console, "warn");
+    try {
+      // A fresh selector runs the development probe even if the exported
+      // selector has already been used by another test.
+      const selectSettings = createSelector(
+        [() => undefined],
+        getVisualizationSettings.resultFunc,
+      );
+
+      expect(selectSettings(undefined)).toBeUndefined();
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
 
 function getBaseState({
   uiControls = {},
@@ -73,6 +96,61 @@ function getBaseState({
     }),
   });
 }
+
+describe("embedded parameter visibility", () => {
+  it("returns no embedding visibility for a question with embedding disabled", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: false,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibility(state, "category")).toBeNull();
+  });
+
+  it("disables parameters that have not been published", () => {
+    const state = getBaseState({
+      card: createMockCard({ enable_embedding: true }),
+    });
+
+    expect(getEmbeddedParameterVisibility(state, "category")).toBe("disabled");
+  });
+
+  it("keeps the visibility callback stable when unrelated card properties change", () => {
+    const card = createMockCard({
+      enable_embedding: true,
+      embedding_params: { category: "enabled" },
+    });
+    const first = getEmbeddedParameterVisibilityGetter(getBaseState({ card }));
+    const renamed = getEmbeddedParameterVisibilityGetter(
+      getBaseState({ card: { ...card, name: "Renamed question" } }),
+    );
+
+    expect(renamed).toBe(first);
+    expect(renamed("category")).toBe("enabled");
+  });
+
+  it("reflects updated visibility and embedding being turned off", () => {
+    const card = createMockCard({
+      enable_embedding: true,
+      embedding_params: { category: "enabled" },
+    });
+    const first = getEmbeddedParameterVisibilityGetter(getBaseState({ card }));
+    const locked = getEmbeddedParameterVisibilityGetter(
+      getBaseState({
+        card: { ...card, embedding_params: { category: "locked" } },
+      }),
+    );
+    const disabled = getEmbeddedParameterVisibilityGetter(
+      getBaseState({ card: { ...card, enable_embedding: false } }),
+    );
+
+    expect(first("category")).toBe("enabled");
+    expect(locked("category")).toBe("locked");
+    expect(disabled("category")).toBeNull();
+  });
+});
 
 describe("getQuestion", () => {
   it("should be nothing if card data is missing", () => {

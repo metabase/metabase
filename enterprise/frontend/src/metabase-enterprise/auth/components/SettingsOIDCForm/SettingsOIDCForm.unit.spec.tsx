@@ -65,8 +65,7 @@ const setup = async ({
   configured = providers.length > 0,
   providersEnvName,
   groupDeleteGate,
-  writeDelay,
-  readDelay,
+  refetchGate,
   readStatus,
   writeStatus,
   writeMessage,
@@ -81,8 +80,7 @@ const setup = async ({
   configured?: boolean;
   providersEnvName?: string;
   groupDeleteGate?: Promise<void>;
-  writeDelay?: number;
-  readDelay?: number;
+  refetchGate?: Promise<void>;
   readStatus?: number;
   writeStatus?: number;
   writeMessage?: string;
@@ -109,36 +107,35 @@ const setup = async ({
     return 204;
   });
   const stored = providers.map((provider) => ({ ...provider }));
-  fetchMock.get(
-    "path:/api/ee/sso/oidc",
-    () =>
-      readStatus != null
-        ? { status: readStatus }
-        : stored.map((provider) => ({ ...provider })),
-    { delay: readDelay },
-  );
+  const readProviders = () =>
+    readStatus != null
+      ? { status: readStatus }
+      : stored.map((provider) => ({ ...provider }));
+  let providerReads = 0;
+  fetchMock.get("path:/api/ee/sso/oidc", () => {
+    if (providerReads++ > 0 && refetchGate) {
+      return refetchGate.then(readProviders);
+    }
+    return readProviders();
+  });
   fetchMock.post("path:/api/ee/sso/oidc", ({ options }) => {
     const provider = JSON.parse(String(options.body));
     stored.push(provider);
     return provider;
   });
-  fetchMock.put(
-    "express:/api/ee/sso/oidc/:key",
-    async ({ url, options }) => {
-      await writeGate;
-      if (writeStatus != null) {
-        return { status: writeStatus, body: writeMessage };
-      }
-      const key = url.split("/api/ee/sso/oidc/")[1];
-      const index = stored.findIndex((provider) => provider.key === key);
-      stored[index] = {
-        ...stored[index],
-        ...JSON.parse(String(options.body)),
-      };
-      return stored[index];
-    },
-    { delay: writeDelay },
-  );
+  fetchMock.put("express:/api/ee/sso/oidc/:key", async ({ url, options }) => {
+    await writeGate;
+    if (writeStatus != null) {
+      return { status: writeStatus, body: writeMessage };
+    }
+    const key = url.split("/api/ee/sso/oidc/")[1];
+    const index = stored.findIndex((provider) => provider.key === key);
+    stored[index] = {
+      ...stored[index],
+      ...JSON.parse(String(options.body)),
+    };
+    return stored[index];
+  });
   fetchMock.post("path:/api/ee/sso/oidc/check", checkResponse);
 
   renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
@@ -167,18 +164,22 @@ const expandAttributes = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Attributes" }));
 };
 
-const fillRequiredFields = async () => {
-  await userEvent.type(screen.getByLabelText(/^Key/), "okta");
-  await userEvent.type(screen.getByLabelText(/^Login prompt/), "Sign in");
-  await userEvent.type(
-    screen.getByLabelText(/^Issuer URI/),
-    "https://idp.example.test",
-  );
-  await userEvent.type(screen.getByLabelText(/^Client ID/), "client-123");
-  await userEvent.type(
-    screen.getByLabelText(/^Client secret/),
-    "client-secret-123",
-  );
+const fillRequiredFields = async ({ typing = false } = {}) => {
+  for (const [label, value] of [
+    [/^Key/, "okta"],
+    [/^Login prompt/, "Sign in"],
+    [/^Issuer URI/, "https://idp.example.test"],
+    [/^Client ID/, "client-123"],
+    [/^Client secret/, "client-secret-123"],
+  ] as const) {
+    const input = screen.getByLabelText(label);
+    if (typing) {
+      await userEvent.type(input, value);
+    } else {
+      await userEvent.click(input);
+      await userEvent.paste(value);
+    }
+  }
 };
 
 const clickWhenEnabled = async (element: HTMLElement) => {
@@ -270,7 +271,7 @@ describe("SettingsOIDCForm", () => {
   describe("client secret", () => {
     it("is required for a new provider", async () => {
       await setup();
-      await fillRequiredFields();
+      await fillRequiredFields({ typing: true });
       const saveButton = screen.getByRole("button", {
         name: "Save and enable",
       });
@@ -692,17 +693,28 @@ describe("SettingsOIDCForm", () => {
     });
 
     it("holds the card while the page form saves the provider", async () => {
-      await setup({ providers: [MAPPED_PROVIDER], writeDelay: 200 });
+      const gate = defer<void>();
+      await setup({ providers: [MAPPED_PROVIDER], writeGate: gate.promise });
       await userEvent.type(screen.getByLabelText(/^Login prompt/), "!");
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Save changes" }),
-      );
-
-      await waitFor(() =>
-        expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true"),
-      );
-      expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
+      try {
+        await userEvent.click(
+          screen.getByRole("button", { name: "Save changes" }),
+        );
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls("path:/api/ee/sso/oidc/okta", {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        await waitFor(() =>
+          expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true"),
+        );
+        expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
+      } finally {
+        await act(async () => gate.resolve());
+      }
       await waitFor(() =>
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
@@ -710,18 +722,29 @@ describe("SettingsOIDCForm", () => {
     });
 
     it("shows the new value and holds the card and the page save while the write is in flight", async () => {
-      await setup({ providers: [EXISTING_PROVIDER], writeDelay: 200 });
+      const gate = defer<void>();
+      await setup({ providers: [EXISTING_PROVIDER], writeGate: gate.promise });
       await userEvent.type(screen.getByLabelText(/^Login prompt/), "!");
       const saveButton = screen.getByRole("button", { name: "Save changes" });
       expect(saveButton).toBeEnabled();
 
-      await userEvent.click(groupMappingSwitch());
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
-      expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
-      expect(saveButton).toBeDisabled();
+      try {
+        await userEvent.click(groupMappingSwitch());
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls("path:/api/ee/sso/oidc/okta", {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        expect(groupMappingSwitch()).toBeChecked();
+        expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+        expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
+        expect(saveButton).toBeDisabled();
+      } finally {
+        await act(async () => gate.resolve());
+      }
       await waitFor(() =>
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
@@ -732,13 +755,26 @@ describe("SettingsOIDCForm", () => {
     });
 
     it("holds the switch until the providers refetch after the write lands", async () => {
-      await setup({ providers: [EXISTING_PROVIDER], readDelay: 200 });
-
-      await userEvent.click(groupMappingSwitch());
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+      const gate = defer<void>();
+      try {
+        await setup({
+          providers: [EXISTING_PROVIDER],
+          refetchGate: gate.promise,
+        });
+        await userEvent.click(groupMappingSwitch());
+        expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls("path:/api/ee/sso/oidc", {
+              method: "GET",
+            }),
+          ).toHaveLength(2),
+        );
+        expect(groupMappingSwitch()).toBeChecked();
+        expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+      } finally {
+        await act(async () => gate.resolve());
+      }
       await waitFor(() =>
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );

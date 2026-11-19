@@ -382,7 +382,7 @@ describe('questionId: "new"', () => {
     ).toBeVisible();
 
     expect(
-      within(await findDataPickerPopover()).getByRole("link", {
+      await within(await findDataPickerPopover()).findByRole("link", {
         name: "Orders model",
       }),
     ).toBeVisible();

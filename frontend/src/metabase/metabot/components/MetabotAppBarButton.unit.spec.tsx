@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -33,7 +32,6 @@ function setup({
     "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": isMetabotEnabled,
   });
-  setupEnterprisePlugins();
 
   const TestComponent = () => (
     <MetabotProvider>

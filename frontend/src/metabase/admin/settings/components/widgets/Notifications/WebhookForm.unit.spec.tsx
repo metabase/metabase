@@ -197,8 +197,14 @@ describe("WebhookForm", () => {
   });
 
   it("should allow you to test a connection", async () => {
-    jest.useFakeTimers({
-      advanceTimers: true,
+    jest.useFakeTimers();
+    const user = userEvent.setup({
+      advanceTimers: async (delay) => {
+        await act(async () => {
+          await jest.advanceTimersByTimeAsync(delay);
+        });
+      },
+      writeToClipboard: false,
     });
 
     fetchMock.post("path:/api/channel/test", async (call) => {
@@ -209,12 +215,12 @@ describe("WebhookForm", () => {
 
     await setup();
 
-    await userEvent.type(
+    await user.type(
       screen.getByLabelText("Webhook URL"),
       "http://my-awesome-hook.com/bad",
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Send a test" }));
+    await user.click(screen.getByRole("button", { name: "Send a test" }));
 
     act(() => {
       jest.advanceTimersByTime(1000);
@@ -226,13 +232,13 @@ describe("WebhookForm", () => {
 
     expect(screen.getByText("Send a test")).toBeInTheDocument();
 
-    await userEvent.clear(screen.getByLabelText("Webhook URL"));
-    await userEvent.type(
+    await user.clear(screen.getByLabelText("Webhook URL"));
+    await user.type(
       screen.getByLabelText("Webhook URL"),
       "http://my-awesome-hook.com/good",
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Send a test" }));
+    await user.click(screen.getByRole("button", { name: "Send a test" }));
     act(() => {
       jest.advanceTimersByTime(1000);
     });

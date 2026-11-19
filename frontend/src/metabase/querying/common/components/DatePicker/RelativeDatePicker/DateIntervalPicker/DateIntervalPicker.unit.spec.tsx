@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -31,6 +31,8 @@ interface SetupOpts {
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
+let user: ReturnType<typeof userEvent.setup>;
+
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
@@ -38,6 +40,14 @@ function setup({
   maxDate,
   renderSubmitButton,
 }: SetupOpts) {
+  user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
@@ -58,7 +68,7 @@ function setup({
 
 describe("DateIntervalPicker", () => {
   beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
@@ -73,8 +83,8 @@ describe("DateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "20");
+        await user.clear(input);
+        await user.type(input, "20");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -82,7 +92,7 @@ describe("DateIntervalPicker", () => {
         });
         expect(onSubmit).not.toHaveBeenCalled();
 
-        await userEvent.type(input, "{enter}");
+        await user.type(input, "{enter}");
         expect(onSubmit).toHaveBeenCalled();
       });
 
@@ -92,8 +102,8 @@ describe("DateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "-10");
+        await user.clear(input);
+        await user.type(input, "-10");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -108,9 +118,9 @@ describe("DateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "0");
-        await userEvent.tab();
+        await user.clear(input);
+        await user.type(input, "0");
+        await user.tab();
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -125,8 +135,8 @@ describe("DateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.tab();
+        await user.clear(input);
+        await user.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
@@ -139,9 +149,9 @@ describe("DateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "abc");
-        await userEvent.tab();
+        await user.clear(input);
+        await user.type(input, "abc");
+        await user.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
@@ -153,8 +163,8 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
-        await userEvent.click(screen.getByText("years"));
+        await user.click(screen.getByRole("textbox", { name: "Unit" }));
+        await user.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -168,7 +178,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
           availableUnits: ["day", "month"],
         });
-        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
+        await user.click(screen.getByRole("textbox", { name: "Unit" }));
         expect(screen.getByText("days")).toBeInTheDocument();
         expect(screen.getByText("months")).toBeInTheDocument();
         expect(screen.queryByText("years")).not.toBeInTheDocument();
@@ -179,7 +189,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(await screen.findByText("Include today"));
+        await user.click(await screen.findByText("Include today"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -195,7 +205,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(await screen.findByLabelText("Starting from…"));
+        await user.click(await screen.findByLabelText("Starting from…"));
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -258,7 +268,7 @@ describe("DateIntervalPicker", () => {
           minDate: direction === "past" ? new Date(2020, 0, 1) : undefined,
           maxDate: direction === "future" ? new Date(2020, 0, 2) : undefined,
         });
-        await userEvent.type(screen.getByLabelText("Interval"), "{enter}");
+        await user.type(screen.getByLabelText("Interval"), "{enter}");
         expect(onSubmit).not.toHaveBeenCalled();
       });
     },

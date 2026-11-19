@@ -4,6 +4,8 @@ import { MEASUREMENT_ROOT_CLASSNAME } from "metabase/utils/measure-container";
 
 import { MeasurementProviders } from "./MeasurementProviders";
 
+jest.unmock("./MeasurementProviders");
+
 const SCHEME_ATTR = "data-mantine-color-scheme";
 
 function getMantineStyleText(): string {

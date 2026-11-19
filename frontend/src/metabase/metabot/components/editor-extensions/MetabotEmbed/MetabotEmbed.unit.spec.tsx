@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -39,7 +38,6 @@ describe("MetabotEmbed", () => {
     mockSettings({
       "token-features": createMockTokenFeatures({ ai_controls: true }),
     });
-    setupEnterprisePlugins();
   });
 
   describe("when metabot is disabled", () => {

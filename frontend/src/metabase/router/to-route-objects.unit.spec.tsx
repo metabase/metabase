@@ -1,4 +1,6 @@
-import { renderRoutes, screen } from "__support__/ui";
+import { screen } from "@testing-library/react";
+
+import { renderRoutesWithRouter } from "__support__/router";
 import { Outlet, Route } from "metabase/router";
 
 import { toRouteObjects } from "./to-route-objects";
@@ -35,7 +37,7 @@ describe("router/toRouteObjects", () => {
 
     // Both subtrees start numbering at "0", so keeping the ids they were given
     // fails the router's global uniqueness check before anything renders.
-    renderRoutes(routes, { initialRoute: "/two" });
+    renderRoutesWithRouter(routes, { initialRoute: "/two" });
 
     expect(await screen.findByText("page two")).toBeInTheDocument();
     expect(screen.getByText("parent chrome")).toBeInTheDocument();

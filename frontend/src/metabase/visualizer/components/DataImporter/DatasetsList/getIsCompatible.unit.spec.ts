@@ -1,4 +1,7 @@
-import { registerVisualizations } from "metabase/visualizations/register";
+import { BAR_CHART_DEFINITION } from "metabase/visualizations/visualizations/BarChart/definition";
+import { FUNNEL_CHART_DEFINITION } from "metabase/visualizations/visualizations/Funnel/definition";
+import { LINE_CHART_DEFINITION } from "metabase/visualizations/visualizations/LineChart/definition";
+import { registerVisualization } from "metabase/viz-core";
 import type { Field } from "metabase-types/api";
 import {
   createMockCategoryColumn,
@@ -10,7 +13,9 @@ import {
 
 import { getIsCompatible } from "./getIsCompatible";
 
-registerVisualizations();
+registerVisualization(LINE_CHART_DEFINITION);
+registerVisualization(BAR_CHART_DEFINITION);
+registerVisualization(FUNNEL_CHART_DEFINITION);
 
 describe("getIsCompatible", () => {
   it("should return false if a target data source doesn't have columns", () => {

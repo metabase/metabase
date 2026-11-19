@@ -34,7 +34,17 @@ const Wrapper = () => {
   return <UserPicker value={value} onChange={setValue} />;
 };
 
+let user: ReturnType<typeof userEvent.setup>;
+
 const setup = ({ users = [JANE, BOB] }: SetupOpts = {}) => {
+  user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   setupUsersEndpoints(users);
   return renderWithProviders(<Wrapper />);
 };
@@ -52,7 +62,7 @@ const flushDebounce = () => {
 
 describe("UserPicker", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
   });
 
   afterEach(() => {
@@ -76,8 +86,8 @@ describe("UserPicker", () => {
       expect(getUserQueries().length).toBeGreaterThan(0);
     });
 
-    await userEvent.click(screen.getByPlaceholderText("Select a user"));
-    await userEvent.type(screen.getByPlaceholderText("Select a user"), "ja");
+    await user.click(screen.getByPlaceholderText("Select a user"));
+    await user.type(screen.getByPlaceholderText("Select a user"), "ja");
     flushDebounce();
 
     await waitFor(() => {
@@ -91,10 +101,8 @@ describe("UserPicker", () => {
       expect(getUserQueries().length).toBeGreaterThan(0);
     });
 
-    await userEvent.click(screen.getByPlaceholderText("Select a user"));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Jane Doe" }),
-    );
+    await user.click(screen.getByPlaceholderText("Select a user"));
+    await user.click(await screen.findByRole("option", { name: "Jane Doe" }));
     flushDebounce();
 
     await waitFor(() => {
@@ -110,13 +118,11 @@ describe("UserPicker", () => {
     });
 
     const input = screen.getByPlaceholderText("Select a user");
-    await userEvent.click(input);
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Jane Doe" }),
-    );
+    await user.click(input);
+    await user.click(await screen.findByRole("option", { name: "Jane Doe" }));
     flushDebounce();
 
-    await userEvent.type(input, " ");
+    await user.type(input, " ");
     flushDebounce();
 
     await waitFor(() => {
@@ -133,8 +139,8 @@ describe("UserPicker", () => {
     });
 
     const input = screen.getByPlaceholderText("Select a user");
-    await userEvent.click(input);
-    await userEvent.type(input, "Bo ");
+    await user.click(input);
+    await user.type(input, "Bo ");
     flushDebounce();
 
     await waitFor(() => {
@@ -150,14 +156,12 @@ describe("UserPicker", () => {
     });
 
     const input = screen.getByPlaceholderText("Select a user");
-    await userEvent.click(input);
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Jane Doe" }),
-    );
+    await user.click(input);
+    await user.click(await screen.findByRole("option", { name: "Jane Doe" }));
     flushDebounce();
 
-    await userEvent.clear(input);
-    await userEvent.type(input, "Bo");
+    await user.clear(input);
+    await user.type(input, "Bo");
     flushDebounce();
 
     await waitFor(() => {

@@ -1,5 +1,6 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { tablesReducer } from "./tables-reducer";
 
@@ -100,7 +101,12 @@ function makeSliceReducer(
     if (ACTION_PATTERN.test(action.type) && entities) {
       nextState = mergeEntities(nextState, entities);
     }
-    return customReducer ? customReducer(nextState, action) : nextState;
+    const result = customReducer ? customReducer(nextState, action) : nextState;
+    // Separately parsed responses have fresh nested arrays/objects, and the
+    // custom reducer may also reconstruct original_fields. Preserve the slice
+    // when the final merged values are unchanged so metadata consumers do not
+    // rebuild their providers and queries for a duplicate response.
+    return _.isEqual(state, result) ? state : result;
   };
 }
 

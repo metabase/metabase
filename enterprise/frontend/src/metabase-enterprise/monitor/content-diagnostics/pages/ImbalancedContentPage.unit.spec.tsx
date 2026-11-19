@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -20,6 +21,7 @@ import { MonitorContent } from "metabase/monitor/components/MonitorLayout/Monito
 import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   ContentDiagnosticsImbalancedFinding,
   ContentDiagnosticsImbalancedFindingType,
@@ -322,13 +324,41 @@ describe("ImbalancedContentPage", () => {
     await waitForListToLoad();
 
     const input = screen.getByLabelText("Search");
-    await userEvent.type(input, "busy");
+    expect(await screen.findByText("Crowded collection")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.queryByText("Crowded collection")).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Busy dashboard")).toBeInTheDocument();
-    expect(getLastRequestUrl().searchParams.get("query")).toBe("busy");
+    jest.useFakeTimers();
+    try {
+      const user = userEvent.setup({
+        advanceTimers: async (delay) => {
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(delay);
+          });
+        },
+        writeToClipboard: false,
+      });
+      await user.type(input, "busy");
+
+      expect(input).toHaveValue("busy");
+      expect(getLastRequestUrl().searchParams.get("query")).toBeNull();
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_DURATION - 1);
+      });
+      expect(getLastRequestUrl().searchParams.get("query")).toBeNull();
+      expect(screen.getByText("Crowded collection")).toBeInTheDocument();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1);
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Crowded collection"),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Busy dashboard")).toBeInTheDocument();
+      expect(getLastRequestUrl().searchParams.get("query")).toBe("busy");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("shows the error state and doesn't render the table when the request fails", async () => {

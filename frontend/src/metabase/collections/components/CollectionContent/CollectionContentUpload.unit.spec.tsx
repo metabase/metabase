@@ -109,6 +109,18 @@ async function setupCollectionContent({
   }
 }
 
+const setupUser = () => {
+  jest.useFakeTimers();
+  return userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
+};
+
 describe("CollectionContent file uploads", () => {
   beforeEach(() => {
     setupCollectionByIdEndpoint({
@@ -155,12 +167,12 @@ describe("CollectionContent file uploads", () => {
   });
 
   it("Should show a start exploring link on completion", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
+    const user = setupUser();
     fetchMock.post("path:/api/upload/csv", "3", { delay: 1000 });
 
     await setupCollectionContent();
 
-    await userEvent.upload(
+    await user.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -183,12 +195,12 @@ describe("CollectionContent file uploads", () => {
   });
 
   it("Should allow new model creation when an appendable model exists", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
+    const user = setupUser();
     fetchMock.post("path:/api/upload/csv", "3", { delay: 1000 });
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
-    await userEvent.upload(
+    await user.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -197,7 +209,7 @@ describe("CollectionContent file uploads", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Create model" }));
+    await user.click(screen.getByRole("button", { name: "Create model" }));
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -217,12 +229,12 @@ describe("CollectionContent file uploads", () => {
   });
 
   it("Should default to appending to a single selectable model", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
+    const user = setupUser();
     fetchMock.post("path:/api/table/123/append-csv", "3", { delay: 1000 });
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
-    await userEvent.upload(
+    await user.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -231,7 +243,7 @@ describe("CollectionContent file uploads", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Append to a model"));
+    await user.click(screen.getByText("Append to a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Append to model",
     });
@@ -242,7 +254,7 @@ describe("CollectionContent file uploads", () => {
     ).toHaveValue("my uploaded model");
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    await userEvent.click(submitButton);
+    await user.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -262,12 +274,12 @@ describe("CollectionContent file uploads", () => {
   });
 
   it("Should allow selecting from appendable models", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
+    const user = setupUser();
     fetchMock.post("path:/api/table/123/append-csv", "3", { delay: 1000 });
 
     await setupCollectionContent({ collectionId: thirdCollection.id });
 
-    await userEvent.upload(
+    await user.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -276,20 +288,20 @@ describe("CollectionContent file uploads", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Append to a model"));
+    await user.click(screen.getByText("Append to a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Append to model",
     });
 
-    await userEvent.click(await screen.findByPlaceholderText("Select a model"));
-    await userEvent.click(
+    await user.click(await screen.findByPlaceholderText("Select a model"));
+    await user.click(
       await within(await screen.findByRole("listbox")).findByText(
         "my uploaded model",
       ),
     );
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    await userEvent.click(submitButton);
+    await user.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -310,12 +322,12 @@ describe("CollectionContent file uploads", () => {
   });
 
   it("Should allow replacing data in a model", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
+    const user = setupUser();
     fetchMock.post("path:/api/table/123/replace-csv", "3", { delay: 1000 });
 
     await setupCollectionContent({ collectionId: thirdCollection.id });
 
-    await userEvent.upload(
+    await user.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -323,20 +335,20 @@ describe("CollectionContent file uploads", () => {
     expect(
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Replace data in a model"));
+    await user.click(screen.getByText("Replace data in a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Replace model data",
     });
 
-    await userEvent.click(await screen.findByPlaceholderText("Select a model"));
-    await userEvent.click(
+    await user.click(await screen.findByPlaceholderText("Select a model"));
+    await user.click(
       await within(await screen.findByRole("listbox")).findByText(
         "my uploaded model",
       ),
     );
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    await userEvent.click(submitButton);
+    await user.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -357,7 +369,7 @@ describe("CollectionContent file uploads", () => {
   });
 
   it("Should show an error message on error", async () => {
-    jest.useFakeTimers({ advanceTimers: true });
+    const user = setupUser();
     fetchMock.post(
       "path:/api/upload/csv",
       {
@@ -371,7 +383,7 @@ describe("CollectionContent file uploads", () => {
 
     await setupCollectionContent();
 
-    await userEvent.upload(
+    await user.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -392,7 +404,7 @@ describe("CollectionContent file uploads", () => {
       await screen.findByText("Error uploading your file"),
     ).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByText("Show error details"));
+    await user.click(await screen.findByText("Show error details"));
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
@@ -401,12 +413,12 @@ describe("CollectionContent file uploads", () => {
 
   describe("loading state", () => {
     it("should rotate loading messages after 30 seconds", async () => {
-      jest.useFakeTimers({ advanceTimers: true });
+      const user = setupUser();
       fetchMock.post("path:/api/upload/csv", "3", { delay: 90 * 1000 });
 
       await setupCollectionContent();
 
-      await userEvent.upload(
+      await user.upload(
         screen.getByTestId("upload-input"),
         new File(["foo, bar"], "test.csv", { type: "text/csv" }),
       );

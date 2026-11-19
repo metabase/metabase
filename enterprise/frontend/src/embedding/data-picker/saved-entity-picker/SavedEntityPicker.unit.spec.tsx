@@ -97,7 +97,9 @@ describe("SavedEntityPicker", () => {
     await setup();
 
     expect(
-      screen.getAllByTestId("option-text").map((node) => node.textContent),
+      (await screen.findAllByTestId("option-text")).map(
+        (node) => node.textContent,
+      ),
     ).toEqual(["a", "A", "B"]);
   });
 });

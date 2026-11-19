@@ -34,6 +34,8 @@ interface SetupOpts {
 
 const PATHNAME = Urls.monitorTasksList();
 
+let user: ReturnType<typeof userEvent.setup>;
+
 const setup = ({
   error,
   location = createMockLocation({
@@ -41,6 +43,14 @@ const setup = ({
   }),
   tasksResponse = createMockTasksResponse(),
 }: SetupOpts = {}) => {
+  user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -69,7 +79,7 @@ const getLastTaskCallUrl = () => {
 
 describe("TaskListPage", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
   });
 
   afterEach(() => {
@@ -138,7 +148,7 @@ describe("TaskListPage", () => {
     expect(nextPage).toBeEnabled();
     expect(router?.location.search).toEqual("");
 
-    await userEvent.click(nextPage);
+    await user.click(nextPage);
     await waitFor(() => {
       expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(2);
     });
@@ -153,7 +163,7 @@ describe("TaskListPage", () => {
     expect(nextPage).toBeDisabled();
     expect(router?.location.search).toEqual("?page=1");
 
-    await userEvent.click(previousPage);
+    await user.click(previousPage);
 
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -211,7 +221,7 @@ describe("TaskListPage", () => {
     const nextPage = screen.getByRole("button", { name: "Next page" });
     const taskPicker = screen.getByPlaceholderText("Filter by task");
 
-    await userEvent.click(nextPage);
+    await user.click(nextPage);
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
@@ -223,9 +233,9 @@ describe("TaskListPage", () => {
     });
     expect(router?.location.search).toEqual("?page=1");
 
-    await userEvent.click(taskPicker);
+    await user.click(taskPicker);
     const taskPopover = screen.getByRole("listbox");
-    await userEvent.click(within(taskPopover).getByText("task-b"));
+    await user.click(within(taskPopover).getByText("task-b"));
 
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -266,7 +276,7 @@ describe("TaskListPage", () => {
     const nextPage = screen.getByRole("button", { name: "Next page" });
     const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
 
-    await userEvent.click(nextPage);
+    await user.click(nextPage);
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
@@ -278,9 +288,9 @@ describe("TaskListPage", () => {
     });
     expect(router?.location.search).toEqual("?page=1");
 
-    await userEvent.click(taskStatusPicker);
+    await user.click(taskStatusPicker);
     const taskStatusPopover = screen.getByRole("listbox");
-    await userEvent.click(within(taskStatusPopover).getByText("Success"));
+    await user.click(within(taskStatusPopover).getByText("Success"));
 
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -324,7 +334,7 @@ describe("TaskListPage", () => {
       name: /Started at/,
     });
 
-    await userEvent.click(nextPage);
+    await user.click(nextPage);
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
@@ -336,7 +346,7 @@ describe("TaskListPage", () => {
     });
     expect(router?.location.search).toEqual("?page=1");
 
-    await userEvent.click(startedAtHeader);
+    await user.click(startedAtHeader);
 
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -375,7 +385,7 @@ describe("TaskListPage", () => {
     expect(taskStatusPicker).toBeInTheDocument();
     expect(taskStatusPicker).toHaveValue("");
 
-    await userEvent.click(taskPicker);
+    await user.click(taskPicker);
 
     const taskPopover = screen.getByRole("listbox");
 
@@ -383,7 +393,7 @@ describe("TaskListPage", () => {
     expect(within(taskPopover).getByText("task-a")).toBeInTheDocument();
     expect(within(taskPopover).getByText("task-b")).toBeInTheDocument();
 
-    await userEvent.click(within(taskPopover).getByText("task-b"));
+    await user.click(within(taskPopover).getByText("task-b"));
 
     expect(taskPicker).toHaveValue("task-b");
     expect(
@@ -399,7 +409,7 @@ describe("TaskListPage", () => {
     });
     expect(router?.location.search).toEqual("?task=task-b");
 
-    await userEvent.click(taskStatusPicker);
+    await user.click(taskStatusPicker);
 
     const taskStatusPopover = screen.getByRole("listbox");
 
@@ -409,7 +419,7 @@ describe("TaskListPage", () => {
     expect(within(taskStatusPopover).getByText("Success")).toBeInTheDocument();
     expect(within(taskStatusPopover).getByText("Unknown")).toBeInTheDocument();
 
-    await userEvent.click(within(taskStatusPopover).getByText("Success"));
+    await user.click(within(taskStatusPopover).getByText("Success"));
 
     expect(taskStatusPicker).toHaveValue("Success");
     expect(
@@ -427,7 +437,7 @@ describe("TaskListPage", () => {
     expect(router?.location.search).toEqual("?status=success&task=task-b");
 
     const clearTaskButton = screen.getAllByLabelText("Clear")[0];
-    await userEvent.click(clearTaskButton);
+    await user.click(clearTaskButton);
 
     expect(taskPicker).toHaveValue("");
     expect(
@@ -445,7 +455,7 @@ describe("TaskListPage", () => {
     expect(router?.location.search).toEqual("?status=success");
     const clearTaskStatusButton = screen.getByLabelText("Clear");
 
-    await userEvent.click(clearTaskStatusButton);
+    await user.click(clearTaskStatusButton);
 
     expect(taskStatusPicker).toHaveValue("");
     expect(
@@ -485,7 +495,7 @@ describe("TaskListPage", () => {
     ).toBeInTheDocument();
     expect(router?.location.search).toEqual("");
 
-    await userEvent.click(startedAtHeader);
+    await user.click(startedAtHeader);
     await waitFor(() => {
       expect(
         screen.getByRole("columnheader", { name: /Started at/ }),
@@ -504,9 +514,7 @@ describe("TaskListPage", () => {
     });
     expect(router?.location.search).toEqual("?sort_direction=asc");
 
-    await userEvent.click(
-      screen.getByRole("columnheader", { name: /Started at/ }),
-    );
+    await user.click(screen.getByRole("columnheader", { name: /Started at/ }));
     await waitFor(() => {
       expect(
         screen.getByRole("columnheader", { name: /Started at/ }),
@@ -531,7 +539,7 @@ describe("TaskListPage", () => {
     ];
 
     for (const { header, column } of cases) {
-      await userEvent.click(screen.getByRole("columnheader", { name: header }));
+      await user.click(screen.getByRole("columnheader", { name: header }));
 
       await waitFor(() => {
         expect(
@@ -564,7 +572,7 @@ describe("TaskListPage", () => {
     });
 
     const row = await screen.findByTestId("task");
-    await userEvent.click(row);
+    await user.click(row);
 
     expect(router?.location.pathname).toBe(Urls.monitorTaskDetails(123));
   });
@@ -674,7 +682,7 @@ describe("TaskListPage", () => {
 
     const row = await screen.findByTestId("task");
     const startedAtElement = within(row).getByTestId("started-at");
-    await userEvent.hover(startedAtElement);
+    await user.hover(startedAtElement);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
   });

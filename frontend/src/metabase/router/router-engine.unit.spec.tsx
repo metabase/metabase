@@ -1,6 +1,7 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import {
   Outlet,
   Route,
@@ -47,7 +48,7 @@ const tree = (
 );
 
 function setup(initialRoute: string) {
-  return renderWithProviders(tree, { withRouter: true, initialRoute });
+  return renderWithRouter(tree, { initialRoute });
 }
 
 describe("v7 engine (facade over real react-router v7)", () => {

@@ -2,8 +2,7 @@
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { createMockState } from "__support__/state";
-import { renderWithProviders } from "__support__/ui";
+import { createMockState, seedApiQueryCache } from "__support__/state";
 import type { LoadingMessage, TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -35,9 +34,12 @@ export function setup({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  const {
-    store: { getState },
-  } = renderWithProviders(<></>, { storeInitialState: state });
+  // These are pure selector tests. Seed the same fulfilled session-properties
+  // cache the app reads, without mounting an otherwise empty app tree. Each
+  // fixture must own its settings rather than read the latest global bootstrap.
+  state["metabase-api"] = seedApiQueryCache(state["metabase-api"], [
+    { endpointName: "getSessionProperties", value: state.settings.values },
+  ]);
 
-  return { getState };
+  return { getState: () => state };
 }

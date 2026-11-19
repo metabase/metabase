@@ -124,7 +124,7 @@ export const changeInput = async (
     name: new RegExp(label),
   });
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
-  act(() => {
+  await act(async () => {
     fireEvent.change(input, { target: { value } });
   });
   expect(input).toHaveValue(value);

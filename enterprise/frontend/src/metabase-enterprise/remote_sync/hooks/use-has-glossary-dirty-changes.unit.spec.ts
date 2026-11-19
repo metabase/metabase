@@ -1,4 +1,3 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupRemoteSyncDirtyEndpoint,
@@ -23,8 +22,6 @@ interface SetupOptions {
 }
 
 const setup = ({ isGitSyncVisible = true, dirty = [] }: SetupOptions = {}) => {
-  setupEnterprisePlugins();
-
   const tokenFeatures = createMockTokenFeatures({ library: true });
   const settingsValues = {
     "remote-sync-enabled": isGitSyncVisible,

@@ -2,44 +2,66 @@
 // eslint-disable-next-line import/no-commonjs
 const esmPackages = require("./jest.esm-packages.js");
 
-const swcJestTransform = [
+const swcTransformOptions = {
+  jsc: {
+    // Jest runs on Node so we can target a modern engine and skip a bunch
+    // of polyfills/transforms that `env.targets: ["defaults"]` would emit.
+    target: "es2022",
+    loose: true,
+    parser: {
+      syntax: "typescript",
+      tsx: true,
+    },
+    transform: {
+      react: {
+        runtime: "automatic",
+      },
+    },
+    experimental: {
+      plugins: [
+        ["@swc-contrib/mut-cjs-exports", {}],
+        ["@swc/plugin-emotion", { sourceMap: false }],
+      ],
+    },
+  },
+  module: {
+    type: "commonjs",
+    // Preserve relative-import initialization order outside application
+    // source, including tests, the test harness, and third-party packages.
+    lazy: true,
+  },
+  sourceMaps: "inline",
+  minify: false,
+};
+
+const swcJestTransform = ["@swc/jest", swcTransformOptions];
+const swcSourceTransform = [
   "@swc/jest",
   {
-    jsc: {
-      // Jest runs on Node so we can target a modern engine and skip a bunch
-      // of polyfills/transforms that `env.targets: ["defaults"]` would emit.
-      target: "es2022",
-      loose: true,
-      parser: {
-        syntax: "typescript",
-        tsx: true,
-      },
-      transform: {
-        react: {
-          runtime: "automatic",
-        },
-      },
-      experimental: {
-        plugins: [
-          ["@swc-contrib/mut-cjs-exports", {}],
-          ["@swc/plugin-emotion", { sourceMap: false }],
-        ],
-      },
-    },
+    ...swcTransformOptions,
     module: {
-      type: "commonjs",
-      // A test file loads only the modules its tests touch, not its full import
-      // graph. Modules that must run before the tests start are listed in
-      // frontend/test/jest-setup-eager.js.
-      lazy: true,
+      ...swcTransformOptions.module,
+      // `lazy: true` excludes relative imports. Application barrels otherwise
+      // evaluate their entire dependency graph, even for unused re-exports.
+      lazy: { patterns: [".*"] },
     },
-    sourceMaps: "inline",
-    minify: false,
   },
 ];
 
 const baseConfig = {
   transform: {
+    // These public barrels register endpoints as a side effect. State fixtures
+    // import them before seeding the shared API cache, without reading exports.
+    "^.+[/\\\\]metabase[/\\\\](current-user|settings)[/\\\\]index\\.ts$":
+      swcJestTransform,
+    // Test helpers also rely on import/mock initialization order.
+    "\\.spec\\.m?[jt]sx?$": swcJestTransform,
+    "[/\\\\](__mocks__|__support__|shared-tests|tests?)[/\\\\].+\\.m?[jt]sx?$":
+      swcJestTransform,
+    "[/\\\\]([^/\\\\]*[.-])?test-utils\\.m?[jt]sx?$": swcJestTransform,
+    // Do not change initialization in SDK bootstrap code or custom-viz tools.
+    "^.+[/\\\\]frontend[/\\\\]src[/\\\\](metabase(?:-enterprise)?|metabase-lib|metabase-types)[/\\\\].+\\.m?[jt]sx?$":
+      swcSourceTransform,
     "^.+\\.m?[jt]sx?$": swcJestTransform,
   },
   moduleNameMapper: {
@@ -55,7 +77,8 @@ const baseConfig = {
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     // The real catalogues are a build artifact, so tests resolve a small fixture
     // per locale instead.
-    "^locales/(.*)\\.json$": "<rootDir>/frontend/test/__mocks__/locales/$1.json",
+    "^locales/(.*)\\.json$":
+      "<rootDir>/frontend/test/__mocks__/locales/$1.json",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":

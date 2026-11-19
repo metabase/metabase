@@ -12,6 +12,7 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import {
   type NavigateOptions,
@@ -156,6 +157,44 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       card: question.card(),
       cardId: question.id(),
       objectId: undefined,
+    });
+  });
+
+  it("preserves encoded query values alongside the serialized card hash", async () => {
+    const question = buildSavedQuestion(
+      createSavedStructuredCard({ id: 123, name: "Orders" }),
+    );
+    window.history.replaceState(
+      {},
+      "",
+      "/question?filter=%3F%23%2B%252F&label=two%20words",
+    );
+
+    await setup({ question, options: { dirty: true } });
+
+    const descriptor = checkNotNull(getDispatchedNavigation()).descriptor;
+    expect(descriptor.pathname).toBe("/question/123-orders");
+    expect(descriptor.search).toBe("?filter=%3F%23%2B%252F&label=two%20words");
+    expect(descriptor.hash).toMatch(/^#/);
+    expect(deserializeCardFromUrl(checkNotNull(descriptor.hash))).toMatchObject(
+      {
+        name: "Orders",
+        display: "table",
+      },
+    );
+  });
+
+  it("leaves search and hash absent for a clean saved question", async () => {
+    const question = buildSavedQuestion(
+      createSavedStructuredCard({ id: 123, name: "Orders" }),
+    );
+
+    await setup({ question, options: { dirty: false } });
+
+    expect(getDispatchedNavigation()?.descriptor).toMatchObject({
+      pathname: "/question/123-orders",
+      search: undefined,
+      hash: undefined,
     });
   });
 

@@ -21,7 +21,7 @@ const useRenderedDataVisibility = (chartInstance: EChartsType | undefined) => {
   );
 
   useEffect(() => {
-    if (!chartInstance) {
+    if (!chartInstance || chartInstance.isDisposed()) {
       return;
     }
 
@@ -43,6 +43,10 @@ const useRenderedDataVisibility = (chartInstance: EChartsType | undefined) => {
     requestResult();
 
     return () => {
+      // Disposal already removes listeners and can precede sibling cleanup.
+      if (chartInstance.isDisposed()) {
+        return;
+      }
       chartInstance.off(DATA_VISIBILITY_EVENT, handleResult);
       chartInstance.off("rendered", requestResult);
     };

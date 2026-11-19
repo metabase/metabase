@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -18,6 +19,7 @@ import { MonitorContent } from "metabase/monitor/components/MonitorLayout/Monito
 import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   ContentDiagnosticsSlowFinding,
   ContentDiagnosticsSlowUserParams,
@@ -210,13 +212,39 @@ describe("SlowContentPage", () => {
     await waitForListToLoad();
 
     const input = screen.getByLabelText("Search");
-    await userEvent.type(input, "sales");
+    expect(await screen.findByText("Marketing funnel")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.queryByText("Marketing funnel")).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Sales overview")).toBeInTheDocument();
-    expect(getLastRequestUrl().searchParams.get("query")).toBe("sales");
+    jest.useFakeTimers();
+    try {
+      const user = userEvent.setup({
+        advanceTimers: async (delay) => {
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(delay);
+          });
+        },
+        writeToClipboard: false,
+      });
+      await user.type(input, "sales");
+
+      expect(input).toHaveValue("sales");
+      expect(getLastRequestUrl().searchParams.get("query")).toBeNull();
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_DURATION - 1);
+      });
+      expect(getLastRequestUrl().searchParams.get("query")).toBeNull();
+      expect(screen.getByText("Marketing funnel")).toBeInTheDocument();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1);
+      });
+      await waitFor(() => {
+        expect(screen.queryByText("Marketing funnel")).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Sales overview")).toBeInTheDocument();
+      expect(getLastRequestUrl().searchParams.get("query")).toBe("sales");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("sends the selected entity types to the server via the Filter popover", async () => {

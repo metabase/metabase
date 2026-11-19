@@ -1,10 +1,8 @@
-import { parse as parseUrl } from "url";
-
 import { isEqualCard } from "metabase/common/utils/card";
 import { selectQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import type { Path } from "metabase/router";
-import { getIsNavigationPending, navigate } from "metabase/router";
+import { getIsNavigationPending, navigate, parsePath } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -111,7 +109,7 @@ export const updateUrl = createThunkAction(
       const url =
         tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
 
-      const urlParsed = parseUrl(url);
+      const urlParsed = parsePath(url);
       const to: Partial<Path> = {
         pathname: getPathNameFromQueryBuilderMode({
           pathname: urlParsed.pathname || "",

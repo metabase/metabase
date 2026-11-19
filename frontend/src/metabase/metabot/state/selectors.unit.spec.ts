@@ -1,6 +1,5 @@
 import { assocIn } from "icepick";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetabotMessage } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import type { State } from "metabase/redux/store";
@@ -28,8 +27,6 @@ function setup(
     Pick<MetabotConversationState, "conversationId" | "profileOverride">
   >,
 ): State {
-  setupEnterprisePlugins();
-
   const conversationId = convoState?.conversationId ?? "omnibot";
   const state = getMetabotInitialState();
   const visibleState = assocIn(state, ["agents", "omnibot", "visible"], true);

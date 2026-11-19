@@ -506,6 +506,11 @@ describe("CollectionItemsTable", () => {
       event_detail: "search",
       target_id: collection.id,
     });
+    // Analytics fires when the request starts; also await its rendered result.
+    await waitFor(() => {
+      expect(screen.getByText("Customer 360")).toBeInTheDocument();
+      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    });
   });
 
   it("clears the search and restores the unfiltered list", async () => {

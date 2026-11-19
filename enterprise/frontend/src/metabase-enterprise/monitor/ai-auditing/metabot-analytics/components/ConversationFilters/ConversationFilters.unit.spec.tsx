@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -14,7 +13,6 @@ function setup({
   retentionDays: number | null;
   date?: string | null;
 }) {
-  setupEnterprisePlugins();
   renderWithProviders(
     <ConversationFilters
       date={date}

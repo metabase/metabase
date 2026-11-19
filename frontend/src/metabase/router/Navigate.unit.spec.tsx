@@ -1,7 +1,8 @@
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import { Navigate, Route } from "metabase/router";
 
 // Stable references: `<Navigate>` keeps `state` raw in its effect deps, so a
@@ -12,13 +13,9 @@ const RICH_STATE = { when: new Date(0), n: NaN };
 describe("router/Navigate", () => {
   it("pushes to the destination on mount, and stays put when the location moves back", async () => {
     const Host = () => <Navigate to="/dest" />;
-    const { router } = renderWithProviders(
-      <Route path="*" element={<Host />} />,
-      {
-        withRouter: true,
-        initialRoute: "/home",
-      },
-    );
+    const { router } = renderWithRouter(<Route path="*" element={<Host />} />, {
+      initialRoute: "/home",
+    });
 
     await waitFor(() => expect(router?.location.pathname).toBe("/dest"));
 
@@ -31,13 +28,9 @@ describe("router/Navigate", () => {
 
   it("replaces the current entry and carries state when asked", async () => {
     const Host = () => <Navigate to="/dest" replace state={HOME_STATE} />;
-    const { router } = renderWithProviders(
-      <Route path="*" element={<Host />} />,
-      {
-        withRouter: true,
-        initialRoute: "/home",
-      },
-    );
+    const { router } = renderWithRouter(<Route path="*" element={<Host />} />, {
+      initialRoute: "/home",
+    });
 
     await waitFor(() => {
       const location = router?.location;
@@ -60,13 +53,9 @@ describe("router/Navigate", () => {
         </>
       );
     };
-    const { router } = renderWithProviders(
-      <Route path="*" element={<Host />} />,
-      {
-        withRouter: true,
-        initialRoute: "/home",
-      },
-    );
+    const { router } = renderWithRouter(<Route path="*" element={<Host />} />, {
+      initialRoute: "/home",
+    });
 
     await waitFor(() => expect(router?.location.pathname).toBe("/first"));
 
@@ -77,13 +66,9 @@ describe("router/Navigate", () => {
 
   it("passes state through by reference without serializing it", async () => {
     const Host = () => <Navigate to="/dest" state={RICH_STATE} />;
-    const { router } = renderWithProviders(
-      <Route path="*" element={<Host />} />,
-      {
-        withRouter: true,
-        initialRoute: "/home",
-      },
-    );
+    const { router } = renderWithRouter(<Route path="*" element={<Host />} />, {
+      initialRoute: "/home",
+    });
 
     await waitFor(() => expect(router?.location.pathname).toBe("/dest"));
 

@@ -36,9 +36,12 @@ import {
   createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
@@ -171,6 +174,44 @@ function getJoinedQueryWithMultipleConditions() {
         ],
       },
     ],
+  });
+}
+
+function getJoinedQueryWithTemporalBucket(
+  unit: NonNullable<TestColumnWithBinningSpec["unit"]> | "default",
+) {
+  // Include the explicit "default" unit stored by the UI for "Don't bin".
+  return Lib.fromJsQuery(provider, {
+    database: SAMPLE_DATABASE.id,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          "source-table": REVIEWS_ID,
+          alias: "Reviews - Created At",
+          strategy: "left-join",
+          fields: "all",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": unit },
+            ],
+            [
+              "field",
+              REVIEWS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+                "join-alias": "Reviews - Created At",
+                "temporal-unit": unit,
+              },
+            ],
+          ],
+        },
+      ],
+    },
   });
 }
 
@@ -1222,6 +1263,12 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("temporal bucket sync", () => {
+    const bucketUnits = {
+      "Don't bin": "default",
+      Month: "month",
+      Year: "year",
+    } as const;
+
     async function selectColumnWithBucket(bucketName: string) {
       await userEvent.click(screen.getByLabelText("Temporal bucket"));
       await userEvent.click(screen.getByText("More…"));
@@ -1327,7 +1374,7 @@ describe("Notebook Editor > Join Step", () => {
         newRhsBucketName: "Quarter",
         expectedColumnName: "Created At: Quarter",
       },
-    ])(
+    ] as const)(
       "should set the temporal bucket for all columns in an existing join condition to the temporal bucket of the last selected column",
       async ({
         oldBucketName,
@@ -1335,18 +1382,43 @@ describe("Notebook Editor > Join Step", () => {
         newRhsBucketName,
         expectedColumnName,
       }) => {
-        const { getRecentJoin } = setup({ step: createMockNotebookStep() });
+        // Keep the two-sided edit as a create-then-edit transition check.
+        const createViaUi = Boolean(newLhsBucketName && newRhsBucketName);
+        const { getRecentJoin } = setup({
+          step: createViaUi
+            ? createMockNotebookStep()
+            : createMockNotebookStep({
+                query: getJoinedQueryWithTemporalBucket(
+                  bucketUnits[oldBucketName],
+                ),
+              }),
+        });
 
-        await userEvent.click(await screen.findByText("Browse all"));
+        if (createViaUi) {
+          await userEvent.click(await screen.findByText("Browse all"));
 
-        const pickerModal = await screen.findByTestId("entity-picker-modal");
-        await userEvent.click(
-          await within(pickerModal).findByText("Databases"),
+          const pickerModal = await screen.findByTestId("entity-picker-modal");
+          await userEvent.click(
+            await within(pickerModal).findByText("Databases"),
+          );
+          await userEvent.click(await screen.findByText(/Sample Database/));
+          await userEvent.click(
+            await within(pickerModal).findByText("Reviews"),
+          );
+          await selectColumnWithBucket(oldBucketName);
+          await selectColumnWithBucket(oldBucketName);
+        }
+
+        const oldColumnName =
+          oldBucketName === "Don't bin"
+            ? "Created At"
+            : `Created At: ${oldBucketName}`;
+        expect(screen.getByLabelText("Left column")).toHaveTextContent(
+          oldColumnName,
         );
-        await userEvent.click(await screen.findByText(/Sample Database/));
-        await userEvent.click(await within(pickerModal).findByText("Reviews"));
-        await selectColumnWithBucket(oldBucketName);
-        await selectColumnWithBucket(oldBucketName);
+        expect(screen.getByLabelText("Right column")).toHaveTextContent(
+          oldColumnName,
+        );
 
         if (newLhsBucketName) {
           await userEvent.click(screen.getByLabelText("Left column"));

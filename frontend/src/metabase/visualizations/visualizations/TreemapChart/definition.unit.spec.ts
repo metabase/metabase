@@ -1,9 +1,10 @@
 import { checkNotNull } from "metabase/utils/types";
-import { registerVisualizations } from "metabase/visualizations/register";
+import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import {
   ChartSettingsError,
   getComputedSettings,
   getSettingsWidgets,
+  registerSettingWidgets,
 } from "metabase/viz-core";
 import type { RowValues } from "metabase-types/api/dataset";
 import { createMockCard } from "metabase-types/api/mocks/card";
@@ -62,7 +63,7 @@ const makeSeries = (
   },
 ];
 
-registerVisualizations();
+registerSettingWidgets({ field: ChartSettingFieldPicker });
 describe("TREEMAP_CHART_DEFINITION", () => {
   describe("isSensible", () => {
     it("returns true with at least one row, one dimension, and one metric", () => {

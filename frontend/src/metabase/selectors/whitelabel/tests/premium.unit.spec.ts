@@ -67,6 +67,14 @@ describe("getIsWhiteLabeling (EE with token)", () => {
 });
 
 describe("getApplicationName (EE with token)", () => {
+  it("reads each state's settings independently of the latest bootstrap", () => {
+    const first = setup({ applicationName: "First application" });
+    const second = setup({ applicationName: "Second application" });
+
+    expect(getApplicationName(first.getState())).toBe("First application");
+    expect(getApplicationName(second.getState())).toBe("Second application");
+  });
+
   it("should return Metabase when application-name is unchanged", () => {
     const { getState } = setup();
 

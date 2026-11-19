@@ -1,11 +1,12 @@
-import { registerVisualizations } from "metabase/visualizations/register";
+import { ChartSettingInput } from "metabase/visualizations/components/settings/ChartSettingInput";
 import {
   getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
+  registerSettingWidgets,
 } from "metabase/viz-core";
 
-registerVisualizations();
+registerSettingWidgets({ input: ChartSettingInput });
 
 describe("settings framework", () => {
   const mockObject = "[mockObject]";

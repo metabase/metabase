@@ -21,11 +21,10 @@ describe("resolveFontSizeToPx", () => {
     expect(resolveFontSizeToPx("0.933em", "15px")).toBe("14px");
   });
 
-  it("warns and returns px values unchanged", () => {
+  it("returns px values unchanged without warning", () => {
     expect(resolveFontSizeToPx("12.5px", "14px")).toBe("12.5px");
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("is not in em"),
-    );
+    expect(resolveFontSizeToPx("12.5px")).toBe("12.5px");
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
   it("warns and returns the original value when no base font size is provided", () => {
@@ -35,19 +34,21 @@ describe("resolveFontSizeToPx", () => {
     );
   });
 
-  it("warns and returns rem values unchanged", () => {
+  it("returns rem values unchanged without warning", () => {
     expect(resolveFontSizeToPx("1rem", "14px")).toBe("1rem");
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("is not in em"),
-    );
+    expect(resolveFontSizeToPx("1rem")).toBe("1rem");
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns for unrecognized font-size units", () => {
-    expect(resolveFontSizeToPx("inherit", "14px")).toBe("inherit");
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("is not in em"),
-    );
-  });
+  it.each(["inherit", "12vw", "invalidpx", "invalidrem"])(
+    "warns for unsupported or invalid font-size values: %s",
+    (fontSize) => {
+      expect(resolveFontSizeToPx(fontSize, "14px")).toBe(fontSize);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("is not in em"),
+      );
+    },
+  );
 
   it("warns and does not convert when baseFontSize is in em", () => {
     expect(resolveFontSizeToPx("0.893em", "0.875em")).toBe("0.893em");
@@ -62,4 +63,17 @@ describe("resolveFontSizeToPx", () => {
       expect.stringContaining("is not in px"),
     );
   });
+
+  it.each([
+    ["invalidem", "14px"],
+    ["0.893em", "invalidpx"],
+  ])(
+    "warns when a font size cannot be parsed: %s, %s",
+    (fontSize, baseFontSize) => {
+      expect(resolveFontSizeToPx(fontSize, baseFontSize)).toBe(fontSize);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("cannot parse"),
+      );
+    },
+  );
 });

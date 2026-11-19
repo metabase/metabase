@@ -1,4 +1,6 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen } from "@testing-library/react";
+
+import { renderWithRouter } from "__support__/router";
 import {
   Outlet,
   Route,
@@ -40,8 +42,7 @@ const tree = (
 // under the guarded layout is allowed, and only leaving the layout is blocked.
 describe("route-scoped leave hook", () => {
   it("allows navigation that stays within the guarded route", async () => {
-    renderWithProviders(tree, {
-      withRouter: true,
+    renderWithRouter(tree, {
       initialRoute: "/section/a",
     });
     expect(await screen.findByTestId("a")).toBeInTheDocument();
@@ -53,8 +54,7 @@ describe("route-scoped leave hook", () => {
   });
 
   it("blocks navigation that leaves the guarded route", async () => {
-    renderWithProviders(tree, {
-      withRouter: true,
+    renderWithRouter(tree, {
       initialRoute: "/section/a",
     });
     expect(await screen.findByTestId("a")).toBeInTheDocument();

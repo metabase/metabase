@@ -1,5 +1,7 @@
-import { renderWithProviders } from "__support__/ui";
+import { configureStore } from "@reduxjs/toolkit";
+
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
+import { documentsReducer } from "metabase/documents/documents.slice";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { materializePastedChart } from "./chart-paste-extension";
@@ -16,9 +18,14 @@ const chartText = serializeChartClipboard(
   "https://metabase.example",
 );
 
+function setup() {
+  // Materialization writes document state; no editor or app UI is involved.
+  return configureStore({ reducer: { documents: documentsReducer } });
+}
+
 describe("materializePastedChart", () => {
   it("registers a draft card and returns a cardEmbed node for a pasted chart", () => {
-    const { store } = renderWithProviders(<div />);
+    const store = setup();
 
     const node = materializePastedChart(chartText, store.dispatch);
     const draftId = node?.content?.[0]?.attrs?.id;
@@ -40,7 +47,7 @@ describe("materializePastedChart", () => {
   });
 
   it("returns null and registers no draft card for non-chart content", () => {
-    const { store } = renderWithProviders(<div />);
+    const store = setup();
 
     expect(materializePastedChart("just some text", store.dispatch)).toBeNull();
     expect(materializePastedChart(undefined, store.dispatch)).toBeNull();

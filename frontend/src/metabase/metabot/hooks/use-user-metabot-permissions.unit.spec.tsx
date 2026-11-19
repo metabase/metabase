@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -44,7 +43,6 @@ function setup({
     "metabot-enabled?": isMetabotEnabled,
     "token-features": createMockTokenFeatures({ ai_controls: true }),
   });
-  setupEnterprisePlugins();
 
   renderWithProviders(<TestComponent />, {
     storeInitialState: createMockState({

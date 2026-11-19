@@ -2,7 +2,6 @@ jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
@@ -89,7 +88,6 @@ function TestEditor({ question }: { question: Question }) {
 }
 
 function setup({ isMetabotEnabled = true } = {}) {
-  setupEnterprisePlugins();
   setupDatabasesEndpoints([TEST_DB]);
   setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({ collections: [] });

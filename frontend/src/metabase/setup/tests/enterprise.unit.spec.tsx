@@ -56,7 +56,7 @@ describe("setup (EE build, but no token)", () => {
     async function setupForLicenseStep() {
       await setupEnterprise();
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
       await selectUsageReason("embedding"); // to skip the db connection step
       await clickNextStep();
 
@@ -176,7 +176,7 @@ describe("setup (EE build, but no token)", () => {
       setupMetabaseManagedAiEndpoints();
 
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(

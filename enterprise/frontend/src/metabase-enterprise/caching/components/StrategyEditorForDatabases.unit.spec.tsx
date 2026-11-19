@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, screen, waitFor, within } from "__support__/ui";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -31,28 +33,36 @@ jest.mock("metabase/utils/constants", () => ({
 
 function setup(opts: SetupOpts = {}) {
   baseSetup({
-    enterprisePlugins: "*", // TODO be more granular about this
+    enterprisePlugins: ["caching"],
     tokenFeatures: createMockTokenFeatures({ cache_granular_controls: true }),
     ...opts,
   });
 }
 
-describe("StrategyEditorForDatabases", () => {
-  beforeEach(() => {
-    setup();
+function setupCachingPlugin() {
+  mockSettings({
+    "token-features": createMockTokenFeatures({
+      cache_granular_controls: true,
+    }),
   });
+  setupEnterpriseOnlyPlugin("caching");
+}
 
+describe("StrategyEditorForDatabases", () => {
   it("lets user override root strategy on enterprise instance", async () => {
+    setupCachingPlugin();
     expect(PLUGIN_CACHING.canOverrideRootStrategy).toBe(true);
   });
 
   it("shows four policy options for the default policy", async () => {
+    setup();
     await userEvent.click(await screen.findByLabelText(/Edit default policy/));
     await userEvent.click(getCacheStrategySelect());
     expect(await screen.findAllByRole("option")).toHaveLength(4);
   });
 
   it("shows five policy options for a database (adds 'Default')", async () => {
+    setup();
     await userEvent.click(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
     );
@@ -64,6 +74,7 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("should show the default policy and database rows", async () => {
+    setup();
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();
     expect(
@@ -97,6 +108,7 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("lets user change the default policy from 'Duration' to 'Adaptive' to 'Don't cache results'", async () => {
+    setup();
     const editButton = await screen.findByLabelText(
       `Edit default policy (currently: Duration: 1h)`,
     );
@@ -153,6 +165,8 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("lets user change policy for Database 1 from 'Adaptive' to 'Duration' to 'Don't cache to 'Default'", async () => {
+    setup();
+    const consoleError = jest.spyOn(console, "error");
     const editButton = await screen.findByLabelText(
       `Edit policy for database 'Database 1' (currently: Adaptive)`,
     );
@@ -202,10 +216,8 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
 
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
@@ -216,6 +228,7 @@ describe("StrategyEditorForDatabases", () => {
         `Edit policy for database 'Database 1' (currently: Adaptive)`,
       ),
     ).toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   // The Schedule UI -> cron mapping is exhaustively unit-tested in
@@ -224,6 +237,7 @@ describe("StrategyEditorForDatabases", () => {
   // `setFieldValue("schedule", ...)` and end up in the saved strategy, which
   // the row label then reads back.
   it("saves a weekly Monday 8 AM schedule and round-trips it through the row label", async () => {
+    setup();
     await userEvent.click(
       await screen.findByLabelText(
         `Edit policy for database 'Database 1' (currently: Adaptive)`,
@@ -256,6 +270,7 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("can abbreviate a 'Schedule' strategy", () => {
+    setupCachingPlugin();
     const strategy: ScheduleStrategy = {
       type: "schedule",
       schedule: "0 0 * * * ?",
@@ -271,6 +286,7 @@ describe("StrategyEditorForDatabases", () => {
     [CacheDurationUnit.Seconds, "Duration: 5s"],
     [CacheDurationUnit.Days, "Duration: 5d"],
   ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
+    setupCachingPlugin();
     const strategy: DurationStrategy = {
       type: "duration",
       duration: 5,
@@ -281,6 +297,7 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("does not silently save default values when saving right after switching strategies", async () => {
+    setup();
     // Database 4 inherits the default policy
     await userEvent.click(
       await screen.findByLabelText(/Edit policy for database 'Database 4'/),
@@ -307,6 +324,7 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("does not allow saving an empty cache duration", async () => {
+    setup();
     await userEvent.click(
       await screen.findByLabelText(
         "Edit default policy (currently: Duration: 1h)",
@@ -330,6 +348,8 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   it("pluralizes the unit options with the entered duration", async () => {
+    setup();
+    const consoleError = jest.spyOn(console, "error");
     await userEvent.click(
       await screen.findByLabelText(
         "Edit default policy (currently: Duration: 1h)",
@@ -345,9 +365,11 @@ describe("StrategyEditorForDatabases", () => {
     expect(await screen.findByTestId("duration-unit-select")).toHaveValue(
       "hours",
     );
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("lets user change the duration unit", async () => {
+    setup();
     await userEvent.click(
       await screen.findByLabelText(
         "Edit default policy (currently: Duration: 1h)",

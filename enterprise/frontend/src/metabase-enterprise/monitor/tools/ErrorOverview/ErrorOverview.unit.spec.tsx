@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   act,
+  cleanup,
   fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -252,40 +253,71 @@ describe("ErrorOverview", () => {
   });
 
   it("passes filter values to the query and resets to the first page", async () => {
-    const { router } = await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
-        id: index + 1,
-      })),
-      total: 120,
-      initialRoute: "/?page=2",
-    });
+    jest.useFakeTimers();
+    try {
+      const user = userEvent.setup({
+        advanceTimers: async (duration) => {
+          await act(async () => {
+            await jest.advanceTimersByTimeAsync(duration);
+          });
+        },
+        writeToClipboard: false,
+      });
+      const { router } = await setup({
+        cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+          id: index + 1,
+        })),
+        total: 120,
+        initialRoute: "/?page=2",
+      });
 
-    await waitFor(async () => {
-      const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE * 2);
-    });
+      await waitFor(async () => {
+        const query = await getLastDatasetQuery();
+        expect(query.offset).toBe(PAGE_SIZE * 2);
+      });
 
-    const rows = await screen.findAllByTestId("erroring-question");
-    await userEvent.click(within(rows[0]).getByLabelText("Select row"));
-    expect(await screen.findByText("1 question selected")).toBeInTheDocument();
+      const rows = await screen.findAllByTestId("erroring-question");
+      await user.click(within(rows[0]).getByLabelText("Select row"));
+      expect(
+        await screen.findByText("1 question selected"),
+      ).toBeInTheDocument();
 
-    await userEvent.type(
-      await screen.findByPlaceholderText(SEARCH_PLACEHOLDER),
-      "timeout",
-    );
-    await waitFor(async () => {
-      const query = await getLastDatasetQuery();
-      expect(query.args).toEqual(["timeout", "last_run_at", "desc"]);
-    });
+      await user.type(
+        await screen.findByPlaceholderText(SEARCH_PLACEHOLDER),
+        "timeout",
+      );
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_DURATION - 1);
+      });
+      expect((await getLastDatasetQuery()).args).toEqual([
+        "",
+        "last_run_at",
+        "desc",
+      ]);
+      expect(screen.getByText("1 question selected")).toBeInTheDocument();
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1);
+      });
+      await waitFor(async () => {
+        const query = await getLastDatasetQuery();
+        expect(query.args).toEqual(["timeout", "last_run_at", "desc"]);
+      });
 
-    await waitFor(async () => {
-      const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(0);
-    });
-    await waitFor(() => {
-      expect(router?.location.search).toBe("");
-    });
-    expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
+      await waitFor(async () => {
+        const query = await getLastDatasetQuery();
+        expect(query.offset).toBe(0);
+      });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(URL_UPDATE_DEBOUNCE_DELAY);
+      });
+      await waitFor(() => {
+        expect(router?.location.search).toBe("");
+      });
+      expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
+    } finally {
+      cleanup();
+      jest.useRealTimers();
+    }
   });
 
   it("sorts by column with asc/desc toggle, reverting to the default sort on the 3rd click", async () => {

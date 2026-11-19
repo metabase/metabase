@@ -1,8 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { defer } from "metabase/utils/promise";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
@@ -161,21 +168,28 @@ describe("MetabotAgentDataSourcePills", () => {
   });
 
   it("sends a feedback request when changing an already selected source", async () => {
-    fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
+    const feedbackResponse = defer<number>();
+    fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, () => feedbackResponse.promise);
     renderCodeEditPills("message-2");
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Source is correct" }),
-    );
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT),
-      ).toHaveLength(1),
-    );
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Source is wrong" }),
-    );
+    const dislikeButton = await screen.findByRole("button", {
+      name: "Source is wrong",
+    });
+    try {
+      await userEvent.click(
+        screen.getByRole("button", { name: "Source is correct" }),
+      );
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT),
+        ).toHaveLength(1),
+      );
+      expect(dislikeButton).toBeDisabled();
+    } finally {
+      await act(async () => feedbackResponse.resolve(204));
+    }
+    await waitFor(() => expect(dislikeButton).toBeEnabled());
+    await userEvent.click(dislikeButton);
 
     await waitFor(() =>
       expect(
@@ -215,6 +229,7 @@ describe("MetabotAgentDataSourcePills", () => {
       ).toHaveLength(1),
     );
 
+    await waitFor(() => expect(dislikeButton).toBeEnabled());
     await userEvent.click(dislikeButton);
 
     expect(fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT)).toHaveLength(

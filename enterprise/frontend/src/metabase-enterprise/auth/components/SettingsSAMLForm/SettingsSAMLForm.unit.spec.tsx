@@ -149,17 +149,25 @@ describe("SettingsSAMLForm", () => {
 
     const urlInput = screen.getByLabelText(/SAML identity provider URL/);
     await userEvent.clear(urlInput);
-    await userEvent.type(urlInput, "https://sso.example.org/saml");
+    await userEvent.click(urlInput);
+    await userEvent.paste("https://sso.example.org/saml");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: /Success|Save/ }),
       ).toBeDisabled(),
     );
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.lastCall("get-session-properties")?.response
+          ?.status,
+      ).toBe(500),
+    );
 
     const issuerInput = screen.getByLabelText(/SAML identity provider issuer/);
     await userEvent.clear(issuerInput);
-    await userEvent.type(issuerInput, "https://sso.example.org/entity");
+    await userEvent.click(issuerInput);
+    await userEvent.paste("https://sso.example.org/entity");
     await userEvent.click(screen.getByRole("button", { name: /Success|Save/ }));
 
     await waitFor(async () =>
@@ -440,7 +448,8 @@ describe("SettingsSAMLForm", () => {
       expect(groupMappingSwitch()).toBeDisabled();
 
       for (const { label, value } of fields) {
-        await userEvent.type(screen.getByLabelText(label), value);
+        await userEvent.click(screen.getByLabelText(label));
+        await userEvent.paste(value);
       }
       await userEvent.click(
         screen.getByRole("button", { name: "Save and enable" }),

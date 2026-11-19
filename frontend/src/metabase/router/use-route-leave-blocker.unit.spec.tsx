@@ -1,7 +1,8 @@
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type PropsWithChildren, useLayoutEffect } from "react";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import { Navigate, Route, useNavigate } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -29,12 +30,12 @@ function Guard() {
 }
 
 const setup = (initialRoute = "/a") => {
-  const { router } = renderWithProviders(
+  const { router } = renderWithRouter(
     <Route path="/">
       <Route path="a" element={<Guard />} />
       <Route path="b" element={<span>page b</span>} />
     </Route>,
-    { withRouter: true, initialRoute },
+    { initialRoute },
   );
 
   return { router: checkNotNull(router) };
@@ -149,7 +150,7 @@ function OuterGuard({ children }: PropsWithChildren) {
 }
 
 const setupNestedGuards = () => {
-  const { router } = renderWithProviders(
+  const { router } = renderWithRouter(
     <Route path="/">
       <Route
         path="a"
@@ -161,7 +162,7 @@ const setupNestedGuards = () => {
       />
       <Route path="b" element={<span>page b</span>} />
     </Route>,
-    { withRouter: true, initialRoute: "/a" },
+    { initialRoute: "/a" },
   );
 
   return { router: checkNotNull(router) };
@@ -272,13 +273,13 @@ function RedirectInLayoutEffect() {
 }
 
 const setupRedirectingDestination = (destination: JSX.Element) => {
-  const { router } = renderWithProviders(
+  const { router } = renderWithRouter(
     <Route path="/">
       <Route path="a" element={<Guard />} />
       <Route path="b" element={destination} />
       <Route path="c" element={<span>page c</span>} />
     </Route>,
-    { withRouter: true, initialRoute: "/a" },
+    { initialRoute: "/a" },
   );
 
   return { router: checkNotNull(router) };
@@ -322,7 +323,7 @@ describe("useRouteLeaveBlocker outside a router", () => {
     shouldBlock.mockReturnValue(true);
     shouldBlock.mockClear();
 
-    renderWithProviders(<Guard />, { withRouter: false });
+    render(<Guard />);
 
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
     expect(shouldBlock).not.toHaveBeenCalled();

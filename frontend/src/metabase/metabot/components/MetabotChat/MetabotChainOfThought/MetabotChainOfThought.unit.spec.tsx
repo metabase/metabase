@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -25,7 +24,6 @@ const setup = (
   message: MetabotAgentChainOfThoughtMessage,
   isStreaming: boolean,
 ) => {
-  setupEnterprisePlugins();
   const settings = mockSettings({ "site-url": "http://localhost:3000" });
   fetchMock.get(
     "path:/api/dashboard/123",

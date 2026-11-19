@@ -175,10 +175,10 @@ describe("DatabaseForm with provider name", () => {
 
     const connectionString =
       "jdbc:postgresql://user:pass@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
-    await userEvent.type(
+    await userEvent.click(
       screen.getByLabelText("Connection string (optional)"),
-      connectionString,
     );
+    await userEvent.paste(connectionString);
 
     const saveButton = screen.getByRole("button", { name: "Save" });
     await waitFor(() => expect(saveButton).toBeEnabled());
@@ -200,10 +200,10 @@ describe("DatabaseForm with provider name", () => {
     });
 
     const connectionString = "jdbc:postgresql://user:pass@localhost:5432/mydb";
-    await userEvent.type(
+    await userEvent.click(
       screen.getByLabelText("Connection string (optional)"),
-      connectionString,
     );
+    await userEvent.paste(connectionString);
 
     const saveButton = screen.getByRole("button", { name: "Save" });
     await waitFor(() => expect(saveButton).toBeEnabled());

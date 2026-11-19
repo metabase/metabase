@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -25,7 +25,17 @@ interface SetupOpts {
   availableUnits?: DatePickerUnit[];
 }
 
+let user: ReturnType<typeof userEvent.setup>;
+
 function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
+  user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   const onChange = jest.fn();
 
   renderWithProviders(
@@ -41,7 +51,7 @@ function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts) {
 
 describe("SimpleDateIntervalPicker", () => {
   beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
@@ -56,8 +66,8 @@ describe("SimpleDateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "20");
+        await user.clear(input);
+        await user.type(input, "20");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -71,8 +81,8 @@ describe("SimpleDateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "-10");
+        await user.clear(input);
+        await user.type(input, "-10");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -86,9 +96,9 @@ describe("SimpleDateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "0");
-        await userEvent.tab();
+        await user.clear(input);
+        await user.type(input, "0");
+        await user.tab();
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -102,8 +112,8 @@ describe("SimpleDateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.tab();
+        await user.clear(input);
+        await user.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
@@ -115,9 +125,9 @@ describe("SimpleDateIntervalPicker", () => {
         });
 
         const input = screen.getByLabelText("Interval");
-        await userEvent.clear(input);
-        await userEvent.type(input, "abc");
-        await userEvent.tab();
+        await user.clear(input);
+        await user.type(input, "abc");
+        await user.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
@@ -128,8 +138,8 @@ describe("SimpleDateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
-        await userEvent.click(screen.getByText("years"));
+        await user.click(screen.getByRole("textbox", { name: "Unit" }));
+        await user.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -149,7 +159,7 @@ describe("SimpleDateIntervalPicker", () => {
         },
       });
 
-      await userEvent.click(screen.getByLabelText("Include this month"));
+      await user.click(screen.getByLabelText("Include this month"));
 
       expect(onChange).toHaveBeenCalledWith({
         options: {
@@ -173,7 +183,7 @@ describe("SimpleDateIntervalPicker", () => {
         },
       });
 
-      await userEvent.click(screen.getByLabelText("Include this month"));
+      await user.click(screen.getByLabelText("Include this month"));
 
       expect(onChange).toHaveBeenCalledWith({
         options: {

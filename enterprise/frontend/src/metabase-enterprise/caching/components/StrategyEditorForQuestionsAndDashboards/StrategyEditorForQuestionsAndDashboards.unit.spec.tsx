@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTokenStatusEndpoint } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
@@ -108,7 +108,7 @@ const setup = ({
   configs = getDefaultConfigs(),
 }: { configs?: CacheConfig[] } = {}) => {
   mockGetBoundingClientRect({ height: 800, width: 1000 });
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("caching");
   setupTokenStatusEndpoint({ valid: true });
   setupPerformanceEndpoints(configs);
 

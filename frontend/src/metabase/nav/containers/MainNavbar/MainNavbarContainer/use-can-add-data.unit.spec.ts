@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
   setupTokenStatusEndpoint,
@@ -36,8 +36,6 @@ function setup({
       can_access_monitoring: false,
       can_access_subscription: false,
     };
-    // enterprise plugin is needed for advanced permissions to be returned
-    setupEnterprisePlugins();
   }
 
   setupTokenStatusEndpoint({ valid: true });
@@ -51,6 +49,10 @@ function setup({
       "token-features": createMockTokenFeatures({ advanced_permissions: true }),
     }),
   });
+
+  if (canAccessSettings) {
+    setupEnterpriseOnlyPlugin("application_permissions");
+  }
 
   setupDatabaseListEndpoint([database]);
 

@@ -18,6 +18,14 @@ import { createMockTable } from "metabase-types/api/mocks";
 import { RescanTableFieldsButton } from "./RescanTableFieldsButton";
 
 function setup() {
+  const user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   const table = createMockTable();
 
   setupTableEndpoints(table);
@@ -30,21 +38,21 @@ function setup() {
     </>,
   );
 
-  return { table };
+  return { table, user };
 }
 
 describe("RescanTableFieldsButton", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
   });
 
   it("should show success message for 2 seconds", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan table");
 
-    await userEvent.click(button);
+    await user.click(button);
     const calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/rescan-values`,
       {
@@ -67,12 +75,12 @@ describe("RescanTableFieldsButton", () => {
   });
 
   it("resets success message timer after next click", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan table");
 
-    await userEvent.click(button);
+    await user.click(button);
     let calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/rescan-values`,
       {
@@ -93,7 +101,7 @@ describe("RescanTableFieldsButton", () => {
     });
 
     expect(button).toHaveTextContent("Scan triggered!");
-    await userEvent.click(button);
+    await user.click(button);
     calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/rescan-values`,
       {
@@ -120,7 +128,7 @@ describe("RescanTableFieldsButton", () => {
   });
 
   it("should show error message toast", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     fetchMock.modifyRoute("tables-rescan-values", {
       response: { status: 500 },
@@ -129,7 +137,7 @@ describe("RescanTableFieldsButton", () => {
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan table");
 
-    await userEvent.click(button);
+    await user.click(button);
     const calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/rescan-values`,
       {

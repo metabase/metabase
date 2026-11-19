@@ -15,19 +15,24 @@ import type {
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
 
-export function setupDatabaseEndpoints(db: Database) {
+export function setupDatabaseEndpoints(
+  db: Database,
+  { readOnly = false } = {},
+) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
-  fetchMock.post(
-    `path:/api/database/${db.id}/sync_schema`,
-    {},
-    { name: `database-${db.id}-sync-schema` },
-  );
-  fetchMock.post(
-    `path:/api/database/${db.id}/rescan_values`,
-    {},
-    { name: `database-${db.id}-rescan-values` },
-  );
-  fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
+  if (!readOnly) {
+    fetchMock.post(
+      `path:/api/database/${db.id}/sync_schema`,
+      {},
+      { name: `database-${db.id}-sync-schema` },
+    );
+    fetchMock.post(
+      `path:/api/database/${db.id}/rescan_values`,
+      {},
+      { name: `database-${db.id}-rescan-values` },
+    );
+    fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
+  }
   fetchMock.get(
     `path:/api/database/${db.id}/healthcheck`,
     {
@@ -37,8 +42,12 @@ export function setupDatabaseEndpoints(db: Database) {
   );
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints({ database: db });
-  db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
-  setupUpdateDatabaseEndpoint(db);
+  db.tables?.forEach((table) =>
+    setupTableEndpoints({ ...table, db }, [], { readOnly }),
+  );
+  if (!readOnly) {
+    setupUpdateDatabaseEndpoint(db);
+  }
 }
 
 export function setupUpdateDatabaseEndpoint(db: Database) {
@@ -79,7 +88,7 @@ export function setupDatabaseListEndpoint(databases: Database[]) {
 
 export function setupDatabasesEndpoints(
   databases: Database[],
-  { hasSavedQuestions = true } = {},
+  { hasSavedQuestions = true, readOnly = false } = {},
   query: object = { saved: true },
 ) {
   const databasesWithSavedQuestions = hasSavedQuestions
@@ -95,15 +104,17 @@ export function setupDatabasesEndpoints(
     name: "database-list-with-query",
   });
   setupDatabaseListEndpoint(databases);
-  fetchMock.post(
-    "path:/api/database",
-    async (call) => {
-      return await call?.request?.json();
-    },
-    { name: "database-post" },
-  );
+  if (!readOnly) {
+    fetchMock.post(
+      "path:/api/database",
+      async (call) => {
+        return await call?.request?.json();
+      },
+      { name: "database-post" },
+    );
+  }
 
-  databases.forEach((db) => setupDatabaseEndpoints(db));
+  databases.forEach((db) => setupDatabaseEndpoints(db, { readOnly }));
 }
 
 export const setupSchemaEndpoints = (db: Database) => {

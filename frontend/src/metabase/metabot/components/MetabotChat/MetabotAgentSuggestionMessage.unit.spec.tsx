@@ -2,7 +2,6 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
@@ -54,7 +53,6 @@ const setupTransformEndpoint = (transform: Transform) => {
 };
 
 const setup = (message: SuggestionMessage) => {
-  setupEnterprisePlugins();
   return renderWithProviders(<AgentSuggestionMessage message={message} />, {
     storeInitialState: createMockState({
       settings: mockSettings(),

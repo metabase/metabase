@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { getInstanceByDom } from "echarts/core";
 import fetchMock from "fetch-mock";
 
 import {
@@ -6,7 +7,7 @@ import {
   setupCardEndpoints,
 } from "__support__/server-mocks";
 import { getTimelineEventCheckbox } from "__support__/timelines";
-import { act, waitFor } from "__support__/ui";
+import { act, cleanup, screen, waitFor } from "__support__/ui";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import {
@@ -25,10 +26,13 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockColumn,
+  createMockDataset,
   createMockTimeline,
   createMockTimelineEvent,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
+import { ORDERS, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import { apiCreateQuestion, updateQuestion } from "../actions";
 import {
@@ -47,7 +51,7 @@ import {
 import {
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   saveQuestion,
-  setup,
+  setup as setupQueryBuilder,
   triggerVisualizationQueryChange,
 } from "./test-utils";
 
@@ -60,6 +64,42 @@ const CARD = createMockCard({
   display: "line",
   visualization_settings: { "graph.show_values": true },
 });
+
+// The real line renderer needs the date/count result described by CARD's query,
+// not the shared setup's empty, single-NAME-column default.
+const DATASET = createMockDataset({
+  database_id: SAMPLE_DB_ID,
+  status: "completed",
+  row_count: 2,
+  data: {
+    cols: [
+      createMockColumn({
+        id: ORDERS.CREATED_AT,
+        name: "CREATED_AT",
+        display_name: "Created At",
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+        source: "breakout",
+        field_ref: ["field", ORDERS.CREATED_AT, null],
+      }),
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        source: "aggregation",
+        field_ref: ["aggregation", 0],
+      }),
+    ],
+    rows: [
+      ["2025-06-01T00:00:00Z", 1],
+      ["2025-06-02T00:00:00Z", 2],
+    ],
+  },
+});
+
+const setup = (options: Parameters<typeof setupQueryBuilder>[0]) =>
+  setupQueryBuilder({ dataset: DATASET, ...options });
 
 const RC1 = createMockTimelineEvent({
   id: 99,
@@ -182,8 +222,23 @@ const saveNewQuestion = async (
 };
 
 describe("QueryBuilder > timeline events", () => {
+  let consoleError: jest.SpyInstance;
+
   beforeEach(() => {
+    // A spy calls through by default: keep the error visible and fail below.
+    consoleError = jest.spyOn(console, "error");
     trackSimpleEvent.mockClear();
+  });
+
+  afterEach(() => {
+    try {
+      cleanup();
+      if (consoleError.mock.calls.length > 0) {
+        throw new Error("Timeline rendering or cleanup logged console errors");
+      }
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("shows no events for a saved question that never recorded any", async () => {
@@ -527,8 +582,22 @@ describe("QueryBuilder > timeline events", () => {
   it("saving unrelated changes does not record collection-default events or track an event change", async () => {
     await setupWithTimelines();
 
+    await waitFor(() => {
+      const chart = getInstanceByDom(screen.getByTestId("chart-container"));
+      expect(
+        decodeURIComponent(chart?.getDataURL({ type: "svg" }) ?? ""),
+      ).toContain("<path");
+    });
+
     await triggerVisualizationQueryChange();
     await saveQuestion();
+
+    await waitFor(() => {
+      const chart = getInstanceByDom(screen.getByTestId("chart-container"));
+      expect(
+        decodeURIComponent(chart?.getDataURL({ type: "svg" }) ?? ""),
+      ).toContain("<path");
+    });
 
     const settings = await getSavedSettings();
     expect(settings).not.toHaveProperty(["timeline.selected_timeline_ids"]);

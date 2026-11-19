@@ -1,7 +1,8 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import { Route, useNavigate } from "metabase/router";
 
 function NavigateProbe() {
@@ -40,8 +41,7 @@ function IdentityProbe() {
 }
 
 function setup(initialRoute = "/") {
-  return renderWithProviders(<Route path="*" element={<NavigateProbe />} />, {
-    withRouter: true,
+  return renderWithRouter(<Route path="*" element={<NavigateProbe />} />, {
     initialRoute,
   });
 }
@@ -101,8 +101,7 @@ describe("router/useNavigate", () => {
     // v3 rebuilds the matched `routes` on every transition, so anything derived
     // from them must not leak into `navigate`'s identity: a mounted <Navigate>
     // re-runs its effect on a new identity and would push its target forever.
-    renderWithProviders(<Route path="*" element={<IdentityProbe />} />, {
-      withRouter: true,
+    renderWithRouter(<Route path="*" element={<IdentityProbe />} />, {
       initialRoute: "/same",
     });
 

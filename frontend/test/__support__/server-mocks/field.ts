@@ -10,8 +10,11 @@ import { createMockFieldValues } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 
-export function setupFieldEndpoints(field: Field) {
+export function setupFieldEndpoints(field: Field, { readOnly = false } = {}) {
   fetchMock.get(`path:/api/field/${field.id}`, field);
+  if (readOnly) {
+    return;
+  }
   fetchMock.put(`path:/api/field/${field.id}`, field, {
     name: `field-${field.id}-put`,
   });

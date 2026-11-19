@@ -131,19 +131,24 @@ export const submitUserInfoStep = async ({
   email = "john@example.org",
   companyName = "Acme",
   password = "Monkeyabc123",
+  pasteFields = false,
 } = {}) => {
-  await userEvent.type(screen.getByLabelText("First name"), firstName);
-  await userEvent.type(screen.getByLabelText("Last name"), lastName);
-  await userEvent.type(screen.getByLabelText("Email"), email);
-  await userEvent.type(
-    screen.getByLabelText("Company or team name"),
-    companyName,
-  );
-  await userEvent.type(screen.getByLabelText("Create a password"), password);
-  await userEvent.type(
-    screen.getByLabelText("Confirm your password"),
-    password,
-  );
+  const enterText = async (label: string, value: string) => {
+    const input = screen.getByLabelText(label);
+    if (pasteFields) {
+      await userEvent.click(input);
+      await userEvent.paste(value);
+    } else {
+      await userEvent.type(input, value);
+    }
+  };
+
+  await enterText("First name", firstName);
+  await enterText("Last name", lastName);
+  await enterText("Email", email);
+  await enterText("Company or team name", companyName);
+  await enterText("Create a password", password);
+  await enterText("Confirm your password", password);
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
   );

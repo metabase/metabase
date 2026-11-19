@@ -15,6 +15,14 @@ import { createMockTable } from "metabase-types/api/mocks";
 import { SyncTableSchemaButton } from "./SyncTableSchemaButton";
 
 function setup() {
+  const user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   const table = createMockTable();
 
   setupTableEndpoints(table);
@@ -26,21 +34,21 @@ function setup() {
     </>,
   );
 
-  return { table };
+  return { table, user };
 }
 
 describe("SyncTableSchemaButton", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
   });
 
   it("should show success message for 2 seconds", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Sync table schema");
 
-    await userEvent.click(button);
+    await user.click(button);
     expect(
       fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
@@ -57,12 +65,12 @@ describe("SyncTableSchemaButton", () => {
   });
 
   it("resets success message timer after next click", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Sync table schema");
 
-    await userEvent.click(button);
+    await user.click(button);
     expect(
       fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
@@ -77,7 +85,7 @@ describe("SyncTableSchemaButton", () => {
     });
 
     expect(button).toHaveTextContent("Sync triggered!");
-    await userEvent.click(button);
+    await user.click(button);
     expect(
       fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",
@@ -98,7 +106,7 @@ describe("SyncTableSchemaButton", () => {
   });
 
   it("should show error message toast", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     fetchMock.modifyRoute(`table-${table.id}-sync-schema`, {
       response: { status: 500 },
@@ -107,7 +115,7 @@ describe("SyncTableSchemaButton", () => {
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Sync table schema");
 
-    await userEvent.click(button);
+    await user.click(button);
     expect(
       fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
         method: "POST",

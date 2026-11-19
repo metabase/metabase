@@ -630,7 +630,14 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       const urlInput = screen.getByLabelText(/Repository URL/i);
-      await userEvent.type(urlInput, "https://github.com/foo/bar.git");
+      await waitFor(() => {
+        expect(
+          screen.getByRole("textbox", { name: "Sync branch" }),
+        ).toHaveValue("main");
+      });
+      const user = userEvent.setup({ writeToClipboard: false });
+      await user.click(urlInput);
+      await user.paste("https://github.com/foo/bar.git");
 
       const submitButton = screen.getByRole("button", {
         name: /Set up remote sync/i,
@@ -672,7 +679,9 @@ describe("RemoteSyncSettingsForm", () => {
       // Change the URL to make the form dirty (but don't change collections)
       const urlInput = screen.getByLabelText(/Repository URL/i);
       await userEvent.clear(urlInput);
-      await userEvent.type(urlInput, "https://github.com/test/other-repo.git");
+      const user = userEvent.setup({ writeToClipboard: false });
+      await user.click(urlInput);
+      await user.paste("https://github.com/test/other-repo.git");
 
       const submitButton = screen.getByRole("button", {
         name: /Save changes/i,

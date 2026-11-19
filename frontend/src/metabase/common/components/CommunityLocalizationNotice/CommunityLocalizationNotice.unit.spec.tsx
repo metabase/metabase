@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -24,7 +24,7 @@ function setup({
   });
 
   if (isWhiteLabeling) {
-    setupEnterprisePlugins();
+    setupEnterpriseOnlyPlugin("whitelabel");
   }
 
   renderWithProviders(

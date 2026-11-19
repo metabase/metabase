@@ -32,10 +32,12 @@ type Status = Settings["gsheets"]["status"];
 
 const openMenu = async () => {
   const menu = await screen.findByText("Google Sheets");
-  await userEvent.click(menu);
+  await user.click(menu);
 };
 
 const closeMenu = openMenu;
+
+let user: ReturnType<typeof userEvent.setup>;
 
 const setup = ({
   status,
@@ -48,6 +50,14 @@ const setup = ({
   last_sync_at?: number;
   next_sync_at?: number;
 }) => {
+  user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   setupGdriveGetFolderEndpoint({
     status,
     sync_started_at,
@@ -82,7 +92,7 @@ const setup = ({
 
 describe("Google Drive > DB Menu", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
   });
 
   it("shows a connect button when not connected", async () => {
@@ -246,7 +256,7 @@ describe("Google Drive > DB Menu", () => {
       sync_started_at: dayjs().subtract(3, "minute").unix(),
     });
 
-    await userEvent.click(syncButton);
+    await user.click(syncButton);
     // sync should cause a refetch
     expect(await screen.findByText("Syncing")).toBeInTheDocument();
 
@@ -275,7 +285,7 @@ describe("Google Drive > DB Menu", () => {
       name: /close icon disconnect/i,
     });
     expect(disconnectButton).toBeEnabled();
-    await userEvent.click(disconnectButton);
+    await user.click(disconnectButton);
     expect(
       screen.getByText(
         /To add a new Google Drive folder, the existing one needs to be disconnected first/i,

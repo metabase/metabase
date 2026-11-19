@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
@@ -28,7 +28,7 @@ const setup = ({
     "remote-sync-type": "read-write",
     "remote-sync-branch": "main",
   });
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("remote_sync");
   fetchMock.get(CURRENT_TASK, task ? { status: 200, body: task } : 204);
 
   return renderHookWithProviders(() => useSyncStatus(), {

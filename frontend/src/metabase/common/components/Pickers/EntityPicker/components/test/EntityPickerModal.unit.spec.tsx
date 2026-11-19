@@ -20,26 +20,39 @@ jest.mock("metabase/common/components/Pickers/EntityPicker/constants", () => ({
   SEARCH_DEBOUNCE_MS: 0,
 }));
 
+const getPickerItem = (itemName: string) => {
+  const name = new RegExp(itemName);
+  const labels = screen.queryAllByText(name);
+  const row =
+    labels.length === 1
+      ? screen
+          .queryAllByTestId(/^(picker-item|result-item)$/)
+          .find((row) => within(row).queryByText(name))
+      : null;
+
+  // Only narrow unambiguous text-labelled rows. Keep the original query for
+  // split labels, duplicate text, and links named independently by ARIA.
+  const ariaNamedLinks = screen.queryAllByLabelText(name, {
+    selector: 'a, [role="link"]',
+  });
+  return (row && ariaNamedLinks.length === 0 ? within(row) : screen).getByRole(
+    "link",
+    { name },
+  );
+};
+
 const expectActiveItem = async (itemName: string) =>
   waitFor(() =>
-    expect(
-      screen.getByRole("link", { name: new RegExp(itemName) }),
-    ).toHaveAttribute("data-active", "true"),
+    expect(getPickerItem(itemName)).toHaveAttribute("data-active", "true"),
   );
 
 const expectInactiveItem = async (itemName: string) =>
   waitFor(() =>
-    expect(
-      screen.getByRole("link", { name: new RegExp(itemName) }),
-    ).not.toHaveAttribute("data-active", "true"),
+    expect(getPickerItem(itemName)).not.toHaveAttribute("data-active", "true"),
   );
 
 const expectVisibleItem = async (itemName: string) =>
-  waitFor(() =>
-    expect(
-      screen.getByRole("link", { name: new RegExp(itemName) }),
-    ).toBeVisible(),
-  );
+  waitFor(() => expect(getPickerItem(itemName)).toBeVisible());
 
 const libraryCollection = createMockCollection({
   id: 9,
@@ -727,11 +740,7 @@ describe("EntityPickerModal", () => {
     it("should show a search nav item with a search query", async () => {
       await setup();
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       await expectActiveItem('Search results for "My"');
     });
@@ -752,11 +761,7 @@ describe("EntityPickerModal", () => {
         await screen.findByText("Question in Collection 1"),
       );
       await expectActiveItem("Question in Collection 1");
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       // search is open
       await expectActiveItem('Search results for "My"');
@@ -774,11 +779,7 @@ describe("EntityPickerModal", () => {
     it("should show search results", async () => {
       await setup();
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       await expectVisibleItem("Search Result Card 3");
       await expectVisibleItem("Search Result Dashboard 5");
@@ -791,11 +792,7 @@ describe("EntityPickerModal", () => {
         isHiddenItem: (item) => item.name.includes("Dash"),
       });
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       await expectVisibleItem("Search Result Card 3");
       expect(
@@ -810,11 +807,7 @@ describe("EntityPickerModal", () => {
         isDisabledItem: (item) => item.name.includes("Dash"),
       });
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       await expectVisibleItem("Search Result Card 3");
       expect(
@@ -829,11 +822,7 @@ describe("EntityPickerModal", () => {
         isSelectableItem: (item) => !item.name.includes("Dash"),
       });
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       await expectVisibleItem("Search Result Card 3");
       expect(
@@ -848,11 +837,7 @@ describe("EntityPickerModal", () => {
         models: ["table", "card"],
       });
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My",
-        { delay: 50 },
-      );
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "My");
       await waitForSearchResults();
       await expectVisibleItem("Search Result Card 3");
       await expectVisibleItem("Search Result Card 4");
@@ -878,7 +863,6 @@ describe("EntityPickerModal", () => {
         await userEvent.type(
           await screen.findByPlaceholderText("Search…"),
           "My",
-          { delay: 50 },
         );
         await waitForSearchResults();
         await expectActiveItem('Search results for "My"');
@@ -903,7 +887,6 @@ describe("EntityPickerModal", () => {
         await userEvent.type(
           await screen.findByPlaceholderText("Search…"),
           "My",
-          { delay: 50 },
         );
         await waitForSearchResults();
         await expectActiveItem('Search results for "My"');
@@ -928,7 +911,6 @@ describe("EntityPickerModal", () => {
         await userEvent.type(
           await screen.findByPlaceholderText("Search…"),
           "My",
-          { delay: 50 },
         );
         await waitForSearchResults();
         await expectActiveItem('Search results for "My"');
@@ -960,7 +942,6 @@ describe("EntityPickerModal", () => {
         await userEvent.type(
           await screen.findByPlaceholderText("Search…"),
           "My",
-          { delay: 50 },
         );
         await waitForSearchResults();
         await expectActiveItem('Search results for "My"');

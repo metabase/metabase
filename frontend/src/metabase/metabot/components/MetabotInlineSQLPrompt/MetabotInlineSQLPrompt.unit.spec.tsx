@@ -1,6 +1,5 @@
 import type { ComponentProps } from "react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -40,7 +39,6 @@ function setup({
   });
 
   setupUserMetabotPermissionsEndpoint();
-  setupEnterprisePlugins();
 
   const { rerender } = renderWithProviders(
     <MetabotInlineSQLPrompt {...defaultProps} {...props} />,

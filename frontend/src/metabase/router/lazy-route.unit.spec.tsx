@@ -1,4 +1,6 @@
-import { render, renderRoutes, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
+
+import { renderRoutesWithRouter } from "__support__/router";
 import {
   type NavigateFunction,
   type RouteObject,
@@ -30,7 +32,9 @@ function makeRoutes(): RouteObject[] {
  */
 describe("a lazy route", () => {
   it("defers the location until the module resolves", async () => {
-    const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
+    const { router } = renderRoutesWithRouter(makeRoutes(), {
+      initialRoute: "/",
+    });
 
     const seen: string[] = [];
     const unsubscribe = router?.onLocationChange(({ pathname }) =>
@@ -50,7 +54,9 @@ describe("a lazy route", () => {
   });
 
   it("keeps the previous page mounted while the module loads", async () => {
-    const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
+    const { router } = renderRoutesWithRouter(makeRoutes(), {
+      initialRoute: "/",
+    });
 
     router?.navigate("/split");
 
@@ -82,7 +88,9 @@ describe("a lazy route", () => {
   // `useDashboardUrlQuery` skips its URL sync on `useIsNavigating` for exactly
   // this reason.
   it("drops a pending navigation if another one lands first", async () => {
-    const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
+    const { router } = renderRoutesWithRouter(makeRoutes(), {
+      initialRoute: "/",
+    });
 
     router?.navigate("/split");
     router?.navigate("/");
@@ -127,7 +135,7 @@ describe("a lazy route", () => {
   // awaits `lazy` and still commits the location late.
   it("defers the location even when the module is already loaded", async () => {
     const load = jest.fn().mockResolvedValue({ Component: Split });
-    const { router } = renderRoutes(
+    const { router } = renderRoutesWithRouter(
       [
         { path: "/", element: <Home /> },
         {
@@ -150,7 +158,9 @@ describe("a lazy route", () => {
   // react-router resolves `lazy` onto the route object itself, so the cost is
   // paid once per chunk rather than on every navigation into the subtree.
   it("is synchronous again on the second visit", async () => {
-    const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
+    const { router } = renderRoutesWithRouter(makeRoutes(), {
+      initialRoute: "/",
+    });
 
     router?.navigate("/split");
     expect(await screen.findByTestId("split")).toBeInTheDocument();
@@ -176,7 +186,7 @@ function setupCapturingNavigate() {
     return <span data-testid="home">home</span>;
   }
 
-  renderRoutes(
+  renderRoutesWithRouter(
     [
       { path: "/", element: <CaptureNavigate /> },
       { path: "/plain", element: <Split /> },

@@ -84,8 +84,19 @@ const config = {
         "<rootDir>/enterprise/frontend/src/custom-viz",
         "<rootDir>/frontend/lint/tests",
         "<rootDir>/.github",
+        "<rootDir>/frontend/src/metabase/utils/number\\.unit\\.spec\\.ts$",
         MEMORY_TEST_PATTERN,
       ],
+    },
+    {
+      ...nodeProject,
+      displayName: "pure-utils",
+      // Explicit opt-in: these specs and their imports must not need browser
+      // APIs or the application's DOM/bootstrap setup. Keep UI tests in core.
+      roots: ["<rootDir>/frontend/src/metabase/utils"],
+      testMatch: ["<rootDir>/frontend/src/metabase/utils/number.unit.spec.ts"],
+      testRunner: baseConfig.testRunner,
+      collectCoverageFrom: ["frontend/src/metabase/utils/number.ts"],
     },
     {
       ...nodeProject,

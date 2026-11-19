@@ -1,10 +1,11 @@
+import { render, screen } from "@testing-library/react";
 import {
   MemoryRouter,
   Route as ReactRouterRoute,
   Routes as ReactRouterRoutes,
 } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import { Route, useParams } from "metabase/router";
 
 function ParamsProbe() {
@@ -29,13 +30,12 @@ function SplatProbe() {
 
 describe("router/useParams", () => {
   it("returns the params matched by the v3 route", () => {
-    renderWithProviders(
+    renderWithRouter(
       <Route
         path="reference/segments/:segmentId/fields/:fieldId"
         element={<ParamsProbe />}
       />,
       {
-        withRouter: true,
         initialRoute: "/reference/segments/42/fields/7",
       },
     );
@@ -45,8 +45,7 @@ describe("router/useParams", () => {
   });
 
   it("exposes the splat under v7's `*` key, not v3's `splat`", () => {
-    renderWithProviders(<Route path="files/*" element={<SplatProbe />} />, {
-      withRouter: true,
+    renderWithRouter(<Route path="files/*" element={<SplatProbe />} />, {
       initialRoute: "/files/a/b",
     });
 
@@ -55,7 +54,7 @@ describe("router/useParams", () => {
   });
 
   it("works outside the facade route tree, reading the host's own match", () => {
-    renderWithProviders(
+    render(
       <MemoryRouter initialEntries={["/files/a/b"]}>
         <ReactRouterRoutes>
           <ReactRouterRoute path="files/*" element={<SplatProbe />} />

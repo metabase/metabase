@@ -52,7 +52,7 @@ describe("setup (OSS)", () => {
     async function setupForUsageQuestion() {
       await setup();
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
     }
 
     describe("when selecting 'Self service'", () => {
@@ -131,7 +131,7 @@ describe("setup (OSS)", () => {
     const completeSetup = async (opts?: SetupOpts) => {
       await setup(opts);
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(
@@ -186,7 +186,7 @@ describe("setup (OSS)", () => {
     it("should set the correct flags when interested in embedding", async () => {
       await setup();
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
 
       await selectUsageReason("embedding");
       await clickNextStep();
@@ -203,7 +203,7 @@ describe("setup (OSS)", () => {
     it("should not set 'embedding-homepage' when not interested in embedding", async () => {
       await setup();
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
 
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
@@ -233,7 +233,7 @@ describe("setup (OSS)", () => {
         ],
       });
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
 
       await selectUsageReason("embedding");
       await clickNextStep();
@@ -266,7 +266,7 @@ describe("setup (OSS)", () => {
     it("should call navigator.sendBeacon if the user checked the box", async () => {
       await setup();
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(
@@ -295,7 +295,7 @@ describe("setup (OSS)", () => {
     it("should *NOT* call navigator.sendBeacon if the user has not checked the box", async () => {
       await setup();
       await skipWelcomeScreen();
-      await submitUserInfoStep();
+      await submitUserInfoStep({ pasteFields: true });
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(

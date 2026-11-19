@@ -1,4 +1,3 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import {
   createMockAdminState,
@@ -46,10 +45,6 @@ const createMockStateWithPermissions = ({
 };
 
 describe("TenantCollectionPermissionsPage selectors", () => {
-  beforeEach(() => {
-    setupEnterprisePlugins();
-  });
-
   describe("tenantCollectionsQuery", () => {
     it("should have correct query parameters", () => {
       expect(tenantCollectionsQuery).toEqual({

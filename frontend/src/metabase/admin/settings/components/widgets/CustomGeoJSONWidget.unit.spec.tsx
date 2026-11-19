@@ -276,14 +276,18 @@ describe("CustomGeoJSONWIdget", () => {
   });
 
   describe("load errors", () => {
-    const loadMap = async (url: string) => {
+    const loadMap = async (url: string, { pasteUrl = false } = {}) => {
       await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
-      await userEvent.type(
-        screen.getByPlaceholderText(
-          "Like https://my-mb-server.com/maps/my-map.json",
-        ),
-        url,
+      const input = screen.getByPlaceholderText(
+        "Like https://my-mb-server.com/maps/my-map.json",
       );
+      if (pasteUrl) {
+        const user = userEvent.setup({ writeToClipboard: false });
+        await user.click(input);
+        await user.paste(url);
+      } else {
+        await userEvent.type(input, url);
+      }
       await userEvent.click(screen.getByRole("button", { name: /Load/i }));
     };
 
@@ -309,7 +313,7 @@ describe("CustomGeoJSONWIdget", () => {
       await setup({});
       setupMalformedGeoJSONEndpoint({ url, payload: { type: "Topology" } });
 
-      await loadMap(url);
+      await loadMap(url, { pasteUrl: true });
 
       expect(
         await screen.findByText(
@@ -326,7 +330,7 @@ describe("CustomGeoJSONWIdget", () => {
         payload: createMockProjectedGeoJSONFeatureCollection(),
       });
 
-      await loadMap(url);
+      await loadMap(url, { pasteUrl: true });
 
       expect(
         await screen.findByText(

@@ -1,9 +1,11 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
+
 import { Outlet } from "metabase/router";
 
 describe("router/Outlet", () => {
   it("renders nothing when there is no matched child", () => {
-    renderWithProviders(<Outlet />);
+    const { container } = render(<Outlet />);
     expect(screen.queryByText("child content")).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });

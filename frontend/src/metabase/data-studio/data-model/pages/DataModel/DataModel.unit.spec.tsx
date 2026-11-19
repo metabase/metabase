@@ -121,6 +121,16 @@ const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
+// Settings/action tests start at the relevant route; navigation tests below
+// still exercise selecting tables, tabs, and fields through the UI.
+const ORDERS_TABLE_ROUTE_PARAMS: ParsedRouteParams = {
+  databaseId: SAMPLE_DB.id,
+  schemaName: ORDERS_TABLE.schema,
+  tableId: ORDERS_TABLE.id,
+  tab: "details",
+  fieldId: undefined,
+};
+
 const PEOPLE_TABLE_MULTI_SCHEMA = createPeopleTable({
   db_id: 2,
 });
@@ -408,14 +418,13 @@ describe("DataModel", () => {
     });
 
     it("should not allow to enter an empty field name in field section", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
-      await clickFieldsTab();
-      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+      await setup({
+        params: {
+          ...ORDERS_TABLE_ROUTE_PARAMS,
+          tab: "field",
+          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+        },
+      });
       await userEvent.clear(getFieldNameInput());
       await userEvent.tab();
 
@@ -460,12 +469,7 @@ describe("DataModel", () => {
     });
 
     it("should display sort options", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
+      await setup({ params: ORDERS_TABLE_ROUTE_PARAMS });
       await clickFieldsTab();
       await userEvent.click(screen.getByRole("button", { name: /Sorting/ }));
 
@@ -476,14 +480,13 @@ describe("DataModel", () => {
     });
 
     it("should display field visibility options", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
-      await clickFieldsTab();
-      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+      await setup({
+        params: {
+          ...ORDERS_TABLE_ROUTE_PARAMS,
+          tab: "field",
+          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+        },
+      });
 
       await userEvent.click(getFieldVisibilityInput());
 
@@ -517,14 +520,13 @@ describe("DataModel", () => {
     });
 
     it("should show the foreign key target for foreign keys", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
-      await clickFieldsTab();
-      await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
+      await setup({
+        params: {
+          ...ORDERS_TABLE_ROUTE_PARAMS,
+          tab: "field",
+          fieldId: getRawTableFieldId(ORDERS_PRODUCT_ID_FIELD),
+        },
+      });
 
       const input = getFieldSemanticTypeFkTargetInput();
       expect(input).toHaveValue("Products → ID");
@@ -558,14 +560,13 @@ describe("DataModel", () => {
     });
 
     it("should not show the foreign key target for non-foreign keys", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
-      await clickFieldsTab();
-      await clickTableSectionField(ORDERS_ID_FIELD.display_name);
+      await setup({
+        params: {
+          ...ORDERS_TABLE_ROUTE_PARAMS,
+          tab: "field",
+          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+        },
+      });
 
       expect(
         within(getFieldSection()).queryByLabelText("Foreign key target"),
@@ -573,14 +574,13 @@ describe("DataModel", () => {
     });
 
     it("should show currency settings for currency fields", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
-      await clickFieldsTab();
-      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+      await setup({
+        params: {
+          ...ORDERS_TABLE_ROUTE_PARAMS,
+          tab: "field",
+          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+        },
+      });
 
       const currencyInput = within(getFieldSection()).getByPlaceholderText(
         "Select a currency type",
@@ -600,14 +600,13 @@ describe("DataModel", () => {
     });
 
     it("should not show currency settings for non-currency fields", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
-      await clickFieldsTab();
-      await clickTableSectionField(ORDERS_ID_FIELD.display_name);
+      await setup({
+        params: {
+          ...ORDERS_TABLE_ROUTE_PARAMS,
+          tab: "field",
+          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+        },
+      });
 
       expect(
         within(getFieldSection()).queryByPlaceholderText(
@@ -803,12 +802,7 @@ describe("DataModel", () => {
 
   describe("table section", () => {
     it("should allow to rescan field values", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
+      await setup({ params: ORDERS_TABLE_ROUTE_PARAMS });
       await userEvent.click(
         screen.getByRole("button", { name: "More actions" }),
       );
@@ -835,12 +829,7 @@ describe("DataModel", () => {
     });
 
     it("should allow to discard field values", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
+      await setup({ params: ORDERS_TABLE_ROUTE_PARAMS });
       await userEvent.click(
         screen.getByRole("button", { name: "More actions" }),
       );
@@ -1080,12 +1069,7 @@ describe("DataModel", () => {
 
   describe("segments tab", () => {
     it("should show empty state when no segments exist", async () => {
-      await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
+      await setup({ params: ORDERS_TABLE_ROUTE_PARAMS });
 
       await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
 
@@ -1099,12 +1083,10 @@ describe("DataModel", () => {
     });
 
     it("should display segments when they exist", async () => {
-      await setup({ databases: [SAMPLE_DB_WITH_SEGMENTS] });
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE_WITH_SEGMENTS.display_name),
-      );
-      await waitForLoaderToBeRemoved();
+      await setup({
+        databases: [SAMPLE_DB_WITH_SEGMENTS],
+        params: ORDERS_TABLE_ROUTE_PARAMS,
+      });
 
       await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
 
@@ -1123,12 +1105,7 @@ describe("DataModel", () => {
     });
 
     it("should navigate to new segment page when clicking New segment", async () => {
-      const { router } = await setup();
-
-      await userEvent.click(
-        await findTablePickerTable(ORDERS_TABLE.display_name),
-      );
-      await waitForLoaderToBeRemoved();
+      const { router } = await setup({ params: ORDERS_TABLE_ROUTE_PARAMS });
 
       await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
       await userEvent.click(screen.getByRole("link", { name: /New segment/i }));

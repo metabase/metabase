@@ -18,6 +18,14 @@ import { createMockTable } from "metabase-types/api/mocks";
 import { DiscardTableFieldValuesButton } from "./DiscardTableFieldValuesButton";
 
 function setup() {
+  const user = userEvent.setup({
+    advanceTimers: async (delay) => {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(delay);
+      });
+    },
+    writeToClipboard: false,
+  });
   const table = createMockTable();
 
   setupTableEndpoints(table);
@@ -30,21 +38,21 @@ function setup() {
     </>,
   );
 
-  return { table };
+  return { table, user };
 }
 
 describe("DiscardTableFieldValuesButton", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
   });
 
   it("should show success message for 2 seconds", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Discard cached field values");
 
-    await userEvent.click(button);
+    await user.click(button);
     const calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/discard-values`,
       {
@@ -67,12 +75,12 @@ describe("DiscardTableFieldValuesButton", () => {
   });
 
   it("resets success message timer after next click", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Discard cached field values");
 
-    await userEvent.click(button);
+    await user.click(button);
     let calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/discard-values`,
       {
@@ -93,7 +101,7 @@ describe("DiscardTableFieldValuesButton", () => {
     });
 
     expect(button).toHaveTextContent("Discard triggered!");
-    await userEvent.click(button);
+    await user.click(button);
     calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/discard-values`,
       {
@@ -120,7 +128,7 @@ describe("DiscardTableFieldValuesButton", () => {
   });
 
   it("should show error message toast", async () => {
-    const { table } = setup();
+    const { table, user } = setup();
 
     fetchMock.modifyRoute("tables-discard-values", {
       response: { status: 500 },
@@ -129,7 +137,7 @@ describe("DiscardTableFieldValuesButton", () => {
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Discard cached field values");
 
-    await userEvent.click(button);
+    await user.click(button);
     const calls = fetchMock.callHistory.calls(
       `path:/api/data-studio/table/discard-values`,
       {

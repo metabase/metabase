@@ -2,7 +2,6 @@ import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupGroupsEndpoint,
   setupListMetabotAnalyticsConversationsEndpoint,
@@ -114,7 +113,6 @@ function setup({
   // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
   // for its virtualized rows to render.
   mockGetBoundingClientRect({ width: 2000, height: 100 });
-  setupEnterprisePlugins();
   setupListMetabotAnalyticsConversationsEndpoint(conversations, total);
   setupUsersEndpoints([BOBBY, ROBERT]);
   setupGroupsEndpoint([ALL_USERS_GROUP, DATA_GROUP]);

@@ -788,7 +788,10 @@ export const getTransformedVisualization = createSelector(
  */
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
-  (series) => series && getComputedSettingsForSeries(series),
+  // Reselect's development identity check can probe the result function with
+  // an empty object when both the real input and output are undefined.
+  (series) =>
+    Array.isArray(series) ? getComputedSettingsForSeries(series) : undefined,
 );
 
 /**
@@ -1043,17 +1046,22 @@ export const getEmbeddingParameters = createSelector([getCard], (card) => {
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
 // caution, assuming that an absent parameter is "disabled".
+// This callback is a View prop. Unrelated store updates must not replace it and
+// force the entire query view to render again.
+export const getEmbeddedParameterVisibilityGetter = createSelector(
+  [
+    (state: QueryBuilderStoreState) => getCard(state)?.enable_embedding,
+    (state: QueryBuilderStoreState) => getCard(state)?.embedding_params,
+  ],
+  (enabled, embeddingParams) => (slug: string) =>
+    enabled ? (embeddingParams?.[slug] ?? "disabled") : null,
+);
+
 export function getEmbeddedParameterVisibility(
   state: QueryBuilderStoreState,
   slug: string,
 ) {
-  const card = getCard(state);
-  if (!card?.enable_embedding) {
-    return null;
-  }
-
-  const embeddingParams = card.embedding_params ?? {};
-  return embeddingParams[slug] ?? "disabled";
+  return getEmbeddedParameterVisibilityGetter(state)(slug);
 }
 
 export const getSubmittableQuestion = (

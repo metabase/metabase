@@ -1,6 +1,7 @@
+import { act, screen } from "@testing-library/react";
 import { useEffect } from "react";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithRouter } from "__support__/router";
 import { Outlet, Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -28,12 +29,12 @@ function LeafPage() {
 }
 
 function setup(initialRoute: string) {
-  return renderWithProviders(
+  return renderWithRouter(
     <Route path="parent" element={<Parent />}>
       <Route index element={<IndexPage />} />
       <Route path="child" element={<ChildPage />} />
     </Route>,
-    { withRouter: true, initialRoute },
+    { initialRoute },
   );
 }
 
@@ -53,8 +54,7 @@ describe("router/Route", () => {
   });
 
   it("renders a plain (non-index) route like v3", async () => {
-    renderWithProviders(<Route path="solo" element={<ChildPage />} />, {
-      withRouter: true,
+    renderWithRouter(<Route path="solo" element={<ChildPage />} />, {
       initialRoute: "/solo",
     });
 
@@ -64,11 +64,11 @@ describe("router/Route", () => {
 
 describe("router/Route element", () => {
   function setupElement(initialRoute: string) {
-    return renderWithProviders(
+    return renderWithRouter(
       <Route path="/" element={<ParentPage />}>
         <Route path="leaf" element={<LeafPage />} />
       </Route>,
-      { withRouter: true, initialRoute },
+      { initialRoute },
     );
   }
 
@@ -101,11 +101,11 @@ function RoutePathProbe({ label }: { label: string }) {
 
 describe("router/useRoutePathname", () => {
   function setupNested(initialRoute: string) {
-    return renderWithProviders(
+    return renderWithRouter(
       <Route path="/" element={<RoutePathProbe label="parent" />}>
         <Route path="child" element={<RoutePathProbe label="child" />} />
       </Route>,
-      { withRouter: true, initialRoute },
+      { initialRoute },
     );
   }
 
@@ -123,13 +123,13 @@ describe("router/useRoutePathname", () => {
 
 describe("router/Route element={null}", () => {
   it("falls back to an <Outlet/>, so a child of a null-element route renders", async () => {
-    renderWithProviders(
+    renderWithRouter(
       <Route path="/" element={<ParentPage />}>
         <Route path="empty" element={null}>
           <Route index element={<LeafPage />} />
         </Route>
       </Route>,
-      { withRouter: true, initialRoute: "/empty" },
+      { initialRoute: "/empty" },
     );
 
     // v7 reads a nullish `element` as "this route supplies none" and renders an
@@ -140,13 +140,13 @@ describe("router/Route element={null}", () => {
   });
 
   it("renders nothing for an empty fragment, and provides no outlet", async () => {
-    renderWithProviders(
+    renderWithRouter(
       <Route path="/" element={<ParentPage />}>
         <Route path="empty" element={<></>}>
           <Route index element={<LeafPage />} />
         </Route>
       </Route>,
-      { withRouter: true, initialRoute: "/empty" },
+      { initialRoute: "/empty" },
     );
 
     expect(await screen.findByText("parent chrome")).toBeInTheDocument();
@@ -171,7 +171,7 @@ describe("router/Route element memoization", () => {
     const PageA = () => <div>page-a</div>;
     const PageB = () => <div>page-b</div>;
 
-    const { router } = renderWithProviders(
+    const { router } = renderWithRouter(
       <Route path="shared">
         <Route path=":a" element={<Shared />}>
           <Route index element={<PageA />} />
@@ -180,7 +180,7 @@ describe("router/Route element memoization", () => {
           <Route index element={<PageB />} />
         </Route>
       </Route>,
-      { withRouter: true, initialRoute: "/shared/1" },
+      { initialRoute: "/shared/1" },
     );
 
     expect(await screen.findByText("page-a")).toBeInTheDocument();
