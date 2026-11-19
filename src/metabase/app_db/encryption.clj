@@ -269,10 +269,10 @@
   rows so a large column does not have to be held in memory all at once.
 
   When `clear-undecryptable?` is true, a value that cannot be decrypted with the current key is reset to an empty
-  JSON object (with a warning) instead of aborting. Only pass true when the current key is known to be correct for
-  this database (see `encryption-check-status`) and the column can legitimately hold values written with some other
-  key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
-  nothing that was usable."
+  JSON object (with a warning) instead of aborting. Only pass true when no key but the current one is known to have
+  encrypted this database (see `encryption-check-status`) and the column can legitimately hold values written with
+  some other key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them
+  loses nothing that was usable."
   [table column encrypt-str-fn clear-undecryptable?]
   (run! (fn [{:keys [id value]}]
           (when (some? value)
@@ -391,7 +391,11 @@
                           {})))
         (doseq [[table column] encrypted-string-columns]
           (reencrypt-encrypted-column! table column encrypt-str-fn
-                                       (and (= check-status :valid)
+                                       ;; with no sentinel, encrypting turns a database not yet encrypted under any
+                                       ;; key into one encrypted under this key, so an undecryptable value in these
+                                       ;; columns is a leftover from some other instance's key
+                                       (and (or (= check-status :valid)
+                                                (and encrypting? (= check-status :absent)))
                                             (contains? clearable-when-undecryptable [table column])))))
       ;; Read the settings raw (via `:setting`, not `:model/Setting`) to bypass the model's strict decrypt-on-read:
       ;; a setting that is plaintext at rest while a key is configured (e.g. one newly designated encrypted but not yet
