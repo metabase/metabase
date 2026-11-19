@@ -534,9 +534,18 @@
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
-(def ^:private ^:dynamic *in-test-transaction?*
-  "True inside [[driver/do-with-test-connection]], where the data test's statements share one transaction."
-  false)
+(def ^:private ^java.util.Set test-connections
+  "The connections inside [[driver/do-with-test-connection]], where a data test's statements share one transaction,
+  compared by identity."
+  ;; Not autocommit: streamed Postgres queries turn it off too.
+  (java.util.Collections/synchronizedSet (java.util.Collections/newSetFromMap (java.util.IdentityHashMap.))))
+
+(defn- in-test-transaction?
+  "Whether the prepared statement `stmt` belongs to a connection in [[test-connections]]."
+  [^PreparedStatement stmt]
+  (try
+    (.contains test-connections (.getConnection stmt))
+    (catch Throwable _ false)))
 
 (defn set-parameters!
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
@@ -548,7 +557,7 @@
   ;; aborts the transaction, so the statement's own execution would report "current transaction is aborted" instead of
   ;; its error.
   (when (and (seq params)
-             (not *in-test-transaction?*)
+             (not (in-test-transaction? stmt))
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
                      (catch Throwable _ (count params)))
                 (count params)))
@@ -1059,10 +1068,12 @@
                        driver (cond-> database (integer? database) driver.u/lib-database))}
    (fn [^Connection conn]
      (.setAutoCommit conn false)
+     (.add test-connections conn)
      (try
-       (binding [*in-test-transaction?* true]
-         (f conn))
+       (f conn)
        (finally
+         ;; Before the connection goes back to the pool, where the next borrower is not running a data test.
+         (.remove test-connections conn)
          ;; Neither may throw past the body's own exception, and the connection goes back to the pool either way:
          ;; leaving it inside a transaction hands the next borrower a session that answers every statement with
          ;; "current transaction is aborted" on Postgres and Redshift.
