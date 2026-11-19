@@ -94,6 +94,7 @@
    ::data-testing.schema/saved-test
    ::data-testing.schema/transform-test.create
    ::data-testing.schema/card-test.create
+   ::data-testing.schema/action-test.create
    ::data-testing.schema/segment-test.create])
 
 (def ^:private definition-keys

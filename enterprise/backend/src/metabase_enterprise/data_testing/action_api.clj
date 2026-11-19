@@ -21,16 +21,11 @@
   [thunk :- ifn?]
   (data-testing.errors/refusing "action-test" thunk))
 
-(def ^:private definition-keys
-  "The keys of a saved action test that a run reads."
-  [:inputs :expectations :parameters])
-
 (mu/defn- validate-test! :- :nil
-  "Refuse a test of the Action `action-id` with the inputs, expectations and parameter values of `definition` unless it
-  could run."
-  [action-id  :- ms/PositiveInt
-   definition :- ::data-testing.runner/definition]
-  (refusing #(data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) definition)))
+  "Refuse `test` of the Action `action-id` unless it could run."
+  [action-id :- ms/PositiveInt
+   test      :- ::data-testing.runner/test]
+  (refusing #(data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) test)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/action-test.response]
   "List the action tests the caller can read, with their newest runs, optionally only those of one action. Needs Data
@@ -69,7 +64,7 @@
    _query-params
    {:keys [action_id] :as body} :- ::data-testing.schema/action-test.create]
   (api/create-check :model/ActionTest body)
-  (validate-test! action_id (select-keys body definition-keys))
+  (validate-test! action_id body)
   (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
@@ -81,9 +76,9 @@
    body :- ::data-testing.schema/action-test.update]
   (let [action-test (api/read-check :model/ActionTest id)]
     (api/update-check action-test body)
-    (when (some #(contains? body %) (conj definition-keys :action_id))
+    (when (some #(contains? body %) [:action_id :inputs :expectations :parameters])
       (let [{:keys [action_id] :as merged} (merge action-test body)]
-        (validate-test! action_id (select-keys merged definition-keys))))
+        (validate-test! action_id merged)))
     (when (seq body)
       (data-testing.db/update-action-test! id body)))
   (data-testing.db/action-test id))
