@@ -282,9 +282,9 @@
    [:message      {:optional true} [:maybe :string]]])
 
 (mu/defn insert-revisions!
-  "Insert the Revision `rows` in one statement, returning their ids in order."
+  "Insert the Revision `rows` in one statement, returning the number inserted."
   [rows :- [:sequential RevisionRow]]
-  (t2/insert-returning-pks! :model/Revision rows))
+  (t2/insert! :model/Revision rows))
 
 (mu/defn insert-revision-returning!
   "Insert the Revision `row` and return the inserted instance."

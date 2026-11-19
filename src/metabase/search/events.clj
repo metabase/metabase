@@ -19,6 +19,25 @@
       (isa? model :search/indexed)
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
 
+(def ^:private revisioned-search-models
+  "The models of the entities whose documents take their last editor and edit time from a Revision, by the `:model`
+  that a Revision names them with."
+  {"Card"      :model/Card
+   "Dashboard" :model/Dashboard})
+
+(defn- revised-model
+  "The model of the entity whose document the `event` of the creation of a Revision refreshes, or nil for any other
+  event."
+  [{:keys [model operation object]}]
+  (when (and (= :model/Revision model) (= :create operation))
+    (revisioned-search-models (:model object))))
+
+(defn- revised-entity
+  "The entity that the `event` of the creation of a Revision names, as the instance that the search hooks of its model
+  select by."
+  [{:keys [object] :as event}]
+  (t2/instance (revised-model event) {:id (:model_id object)}))
+
 (defn- capture-dependents
   "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable, skipping the
   enumeration on a search error, which must not fail the delete, and leaving those documents to the scheduled reindex."
@@ -64,10 +83,16 @@
 (defn- handle!
   [_owner events _all]
   (when-not search.ingestion/*disable-updates*
-    (let [by-op   (group-by :operation events)
+    (let [revised (filter revised-model events)
+          events  (filter #(feeds-index? (:model %) (:operation %)) events)
+          by-op   (group-by :operation events)
           created (map #(t2/instance (:model %) (:object %)) (:create by-op))
           updated (map updated-instance (:update by-op))
           deleted (:delete by-op)]
+      ;; A Revision is no row of a document: the entity it records is reindexed by its own id, whichever Revisions
+      ;; the batch inserted after it.
+      (when (seq revised)
+        (search/bulk-update! (into [] (comp (map revised-entity) (distinct)) revised)))
       (when (seq created)
         (search/bulk-update! created))
       (when (seq updated)
@@ -77,7 +102,7 @@
 
 (events/register-capture! :search capture-dependents)
 (events/register-owned-consumer! :search
-                                 (fn [{:keys [model operation]}]
-                                   (when (feeds-index? model operation) :search))
+                                 (fn [{:keys [model operation] :as event}]
+                                   (when (or (feeds-index? model operation) (revised-model event)) :search))
                                  handle!
                                  {:last? true})

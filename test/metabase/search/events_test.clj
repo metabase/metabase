@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.db :as qp.db]
+   [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -239,24 +240,40 @@
         (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))))))
 
 (deftest revision-create-reindexes-its-dashboard-test
-  (testing "an edit that writes no row of a dashboard still reindexes it, through the Revision that records the edit"
+  (testing "a series edit writes no row of a dashboard's document, which the Revision that records it reindexes"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {card-id :id} {}]
+      (mt/with-temp [:model/Card {card-id :id}   {}
+                     :model/Card {series-id :id} {}]
         (mt/with-model-cleanup [:model/Dashboard]
           (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
-                put!    (fn [dashcard-id size-x]
+                put!    (fn [dashcard-id series]
                           (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
                                                 {:dashcards [{:id      dashcard-id
                                                               :card_id card-id
                                                               :row     0
                                                               :col     0
-                                                              :size_x  size-x
+                                                              :size_x  4
                                                               :size_y  4
-                                                              :series  []}]}))]
-            (put! -1 4)
+                                                              :series  series}]}))]
+            (put! -1 [])
             (let [dashcard-id (t2/select-one-pk :model/DashboardCard :dashboard_id dash-id)]
               (is (= #{"dashboard"}
-                     (enqueued-search-models (capture-enqueues! #(put! dashcard-id 6))))))))))))
+                     (enqueued-search-models (capture-enqueues! #(put! dashcard-id [{:id series-id}]))))))))))))
+
+(deftest revision-create-reindexes-its-entity-by-id-test
+  (testing "the Revision of a dashboard reindexes it by its own id, whichever Revision the event is for"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Revised Dashboard"}]
+        (let [row  (fn [object] {:model "Dashboard" :model_id dash-id :user_id (mt/user->id :crowberto) :object object})
+              older (row {:name "older"})]
+          (t2/insert! :model/Revision [older (row {:name "newer"})])
+          (is (= [#{["dashboard" [:= dash-id :this.id]]}]
+                 (capture-enqueues! #(revision/publish-created! older))))
+          (revision/publish-created! older)
+          (is (= 1 (indexed-count "dashboard" dash-id))
+              "a newer Revision does not make the document of the older one's event unpurgeable")))))
+  (testing "a Revision of an entity that feeds no document reindexes nothing"
+    (is (= [] (capture-enqueues! #(revision/publish-created! {:model "Segment" :model_id 1 :user_id 1}))))))
 
 ;;; Purges
 

@@ -196,11 +196,7 @@
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
-(doto :model/Revision
-  (derive :metabase/model)
-  ;; Dashboards and Cards take their last editor and edit time from their latest Revision, so a Revision written
-  ;; reindexes them, whichever write of the entity or its parts it records.
-  (derive :search/indexed))
+(derive :model/Revision :metabase/model)
 
 ;; Not `:hook/events`: that trait would hook every Revision delete, which selects and deserializes each row it removes
 ;; when a Revision is pruned, and every update and insert. The create event is published by [[publish-created!]].
@@ -210,18 +206,16 @@
 
 (defn publish-created!
   "Publish the create event of a Revision, within the batch of the write that caused it.
-  Give it the Revision as inserted, with its `:id`, or the Revision `rows` and the `ids` that inserting them returned.
-  The event carries only what the search hooks read of a Revision, not its serialized `:object`."
-  ([{:keys [id user_id] :as revision}]
-   ;; The snapshot is a whole serialized entity, which the batch would hold until its delivery.
-   (events/collect! {:model     :model/Revision
-                     :operation :create
-                     :id        id
-                     :user-id   user_id
-                     :object    (select-keys revision [:id :model :model_id])}))
-  ([rows ids]
-   (doseq [[row id] (map vector rows ids)]
-     (publish-created! (assoc row :id id)))))
+  The event names the entity that the Revision records, by `:model` and `:model_id`, and nothing else: a Dashboard and
+  a Card take their last editor and edit time from their latest Revision, which no write of their own rows may have
+  changed. Its `:id` is that of the entity, so a batch delivers one event per entity, whichever the order or the number
+  of the Revisions inserted."
+  [{:keys [model model_id user_id]}]
+  (events/collect! {:model     :model/Revision
+                    :operation :create
+                    :id        (str model ":" model_id)
+                    :user-id   user_id
+                    :object    {:model model :model_id model_id}}))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
