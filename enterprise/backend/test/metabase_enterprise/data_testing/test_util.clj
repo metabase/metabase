@@ -64,8 +64,8 @@
     :rows    [{"ID" 1 "SOURCE" "Google"} {"ID" 2 "SOURCE" "Twitter"}]}])
 
 (def google-segment-expectations
-  "Expectations for a segment test of [[from-google-segment]], which pass when the segment keeps only the person from
-  Google."
+  "Expectations for a segment test of [[from-google-segment]], which pass when the segment keeps no person whose source
+  is not Google."
   [{:type "empty" :name "only people from Google" :sql "SELECT * FROM {{output}} WHERE SOURCE <> 'Google'"}])
 
 (defn segment-on
