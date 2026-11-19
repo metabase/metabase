@@ -1939,7 +1939,8 @@
    :output-columns     #{:type :result_metadata}})
 
 (defmethod replacement.spec/spec :model/Card [_model]
-  {:hydrate            queries.replacement/hydrate
+  {:source-database-id :database_id
+   :hydrate            queries.replacement/hydrate
    :upgrade-field-refs queries.replacement/upgrade-field-refs
    :swap-source        queries.replacement/swap-source
    :swap-dependency?   true})

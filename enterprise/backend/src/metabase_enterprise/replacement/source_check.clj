@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.source-check
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
+   [metabase-enterprise.replacement.entity :as replacement.entity]
    [metabase-enterprise.replacement.schema :as ee.replacement.schema]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.lib-be.core :as lib-be]
@@ -43,9 +44,7 @@
   "Fetch a database ID for a source."
   [entity-type :- ::ee.replacement.schema/source-entity-type
    entity-id   :- ::ee.replacement.schema/source-entity-id]
-  (case entity-type
-    :card  (replacement.db/card-database-id entity-id)
-    :table (replacement.db/table-database-id entity-id)))
+  (replacement.entity/source-database-id [entity-type entity-id]))
 
 (mu/defn- format-column-mappings :- [:sequential ::ee.replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."

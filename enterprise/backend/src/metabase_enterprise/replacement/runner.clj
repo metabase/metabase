@@ -96,9 +96,7 @@
                                     (+ (count all-transitive-dependents)  ;; phase 1: upgrade
                                        (count all-transitive-dependents))) ;; phase 2: swap
 
-  (let [db-id      (case (first old-source)
-                     :card  (replacement.db/card-database-id (second old-source))
-                     :table (replacement.db/table-database-id (second old-source)))
+  (let [db-id      (replacement.entity/source-database-id old-source)
         batch-size 500]
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]

@@ -26,6 +26,14 @@
   (when-let [model (entity-model entity-type)]
     (replacement.db/row model id)))
 
+(defn source-database-id
+  "The id of the database of the source `[entity-type id]`, through the `:source-database-id` of the replacement spec
+  of its model."
+  [[entity-type id :as source]]
+  (let [database-id (or (:source-database-id (entity-spec entity-type))
+                        (throw (ex-info (str "Not a replacement source: " entity-type) {:source source})))]
+    (database-id (replacement.db/row (entity-model entity-type) id))))
+
 (defn rows-by-entity
   "The rows of `entities`, each `[entity-type id]`, as `{[entity-type id] row}`, loaded in one query per entity type
   whose model has a replacement spec."

@@ -86,11 +86,6 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn card-database-id
-  "The Database ID of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :database_id :model/Card :id card-id))
-
 (mu/defn card-with-table-exists?
   "Whether one of the Cards with `card-ids` is on the Table with `table-id`."
   [card-ids :- [:set ::lib.schema.id/card]
@@ -107,11 +102,6 @@
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
-
-(mu/defn table-database-id
-  "The Database ID of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."
