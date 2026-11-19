@@ -366,3 +366,24 @@
           (mt/user-http-request :crowberto :get 404 (str "ee/data-test-run/" before-id)))
         (testing "the run of a deleted test is not found"
           (mt/user-http-request :crowberto :get 404 (str "ee/data-test-run/" orphan-id)))))))
+
+(deftest get-run-result-only-for-users-who-can-run-the-test-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (let [result {:message "The query under test failed to run." :error-code "transform-test.query-failed"}]
+      (mt/with-temp [:model/Transform     {transform-id :id} (data-testing.test-util/id-transform :people)
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :created_at   created-before-its-runs}
+                     :model/DataTestRun   {run-id :id}       {:test_type :transform
+                                                              :test_id   test-id
+                                                              :status    :error
+                                                              :result    result}]
+        (let [path (str "ee/data-test-run/" run-id)]
+          (testing "a user who can run the test gets the stored result"
+            (is (=? {:result result :can_read_result true}
+                    (mt/user-http-request :crowberto :get 200 path))))
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (testing "a user who can read the test but not run native SQL gets the run without its result"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                            :perms/create-queries :query-builder}
+                (is (=? {:id run-id :status "error" :result nil :can_read_result false}
+                        (mt/user-http-request :lucky :get 200 path)))))))))))

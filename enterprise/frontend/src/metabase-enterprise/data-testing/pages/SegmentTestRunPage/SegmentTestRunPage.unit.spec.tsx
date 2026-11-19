@@ -145,9 +145,11 @@ describe("SegmentTestRunPage", () => {
   it("links back to the runs and the segment of a published table", async () => {
     setup();
 
-    const page = await screen.findByTestId("data-test-run");
+    const breadcrumbs = within(
+      await screen.findByTestId("segment-test-header"),
+    ).getByTestId("data-studio-breadcrumbs");
     expect(
-      within(page).getByRole("link", { name: /All runs/ }),
+      await within(breadcrumbs).findByRole("link", { name: "Runs" }),
     ).toHaveAttribute(
       "href",
       Urls.dataStudioPublishedTableSegmentTestRuns(
@@ -156,6 +158,7 @@ describe("SegmentTestRunPage", () => {
         TEST_ID,
       ),
     );
+    const page = screen.getByTestId("data-test-run");
     expect(
       await within(page).findByRole("link", { name: "Paid orders" }),
     ).toHaveAttribute(
@@ -167,13 +170,16 @@ describe("SegmentTestRunPage", () => {
   it("links back to the runs and the segment of a data model table", async () => {
     setup({ location: "data-model" });
 
-    const page = await screen.findByTestId("data-test-run");
+    const breadcrumbs = within(
+      await screen.findByTestId("segment-test-header"),
+    ).getByTestId("data-studio-breadcrumbs");
     expect(
-      within(page).getByRole("link", { name: /All runs/ }),
+      await within(breadcrumbs).findByRole("link", { name: "Runs" }),
     ).toHaveAttribute(
       "href",
       Urls.dataStudioDataModelSegmentTestRuns(DATA_MODEL_PARAMS, TEST_ID),
     );
+    const page = screen.getByTestId("data-test-run");
     expect(
       await within(page).findByRole("link", { name: "Paid orders" }),
     ).toHaveAttribute(

@@ -226,6 +226,24 @@ describe("TransformTestRunPage", () => {
     ).toHaveTextContent("Failed");
   });
 
+  it("says who can see the result when the viewer cannot", async () => {
+    setup({
+      run: createMockDataTestRunDetail({
+        test_id: 2,
+        status: "failed",
+        result: null,
+        can_read_result: false,
+      }),
+    });
+
+    const result = await screen.findByRole("region", { name: "Result" });
+    expect(
+      within(result).getByText(
+        "Only people who can run this test can see its result.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("does not show the run of another test", async () => {
     setup({ run: createMockDataTestRunDetail({ test_id: 3 }) });
 

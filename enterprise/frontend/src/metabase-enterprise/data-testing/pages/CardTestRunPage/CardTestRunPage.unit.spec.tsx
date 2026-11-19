@@ -91,10 +91,13 @@ describe("CardTestRunPage", () => {
   it("links back to the runs of the test and to the metric", async () => {
     setup();
 
-    const page = await screen.findByTestId("data-test-run");
+    const breadcrumbs = within(
+      await screen.findByTestId("card-test-header"),
+    ).getByTestId("data-studio-breadcrumbs");
     expect(
-      within(page).getByRole("link", { name: /All runs/ }),
+      await within(breadcrumbs).findByRole("link", { name: "Runs" }),
     ).toHaveAttribute("href", Urls.dataStudioMetricTestRuns(1, 2));
+    const page = screen.getByTestId("data-test-run");
     expect(
       await within(page).findByRole("link", { name: "Revenue" }),
     ).toHaveAttribute("href", Urls.dataStudioMetric(1));

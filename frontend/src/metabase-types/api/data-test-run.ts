@@ -46,6 +46,7 @@ export type DataTestRunStoredResult =
 
 export type DataTestRunDetail = DataTestRunWithUser & {
   result: DataTestRunStoredResult | null;
+  can_read_result: boolean;
 };
 
 export type ListDataTestRunsRequest = {

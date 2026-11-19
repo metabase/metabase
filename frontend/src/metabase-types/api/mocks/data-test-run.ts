@@ -51,6 +51,7 @@ export function createMockDataTestRunDetail(
   return {
     ...createMockDataTestRunWithUser(),
     result: null,
+    can_read_result: true,
     ...opts,
   };
 }

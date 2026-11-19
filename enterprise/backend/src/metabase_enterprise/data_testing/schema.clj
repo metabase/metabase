@@ -350,13 +350,16 @@
   [:or ::run-result ::run-refusal])
 
 (mr/def ::data-test-run.detail
-  "One test run as the API returns it, with the user who started it and the result it stored. `:result` is nil for a
+  "One test run as the API returns it, with the user who started it and the result it stored. `:can_read_result` is
+  whether the caller may see the result, which is whether they may run the test. `:result` is nil for a caller who may
+  not, and for a
   run that is still started, that timed out, that ended in an error the endpoint gave no error code for, that
   finished before results were stored, or whose result was cleared after the retention period."
   [:merge
    ::data-test-run.response
    [:map {:closed true}
-    [:result [:maybe ::stored-run-result]]]])
+    [:result          [:maybe ::stored-run-result]]
+    [:can_read_result :boolean]]])
 
 (mr/def ::connection
   "A connection from `driver/do-with-test-connection`: a JDBC connection, or the BigQuery client and session that stand
