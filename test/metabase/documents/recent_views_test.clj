@@ -38,6 +38,11 @@
                                                  :context :question})
         (is (nil? (most-recent-view (mt/user->id :rasta) (:id card) "card")))))))
 
+(deftest select-documents-for-recents-empty-input-test
+  (testing "returns empty vector when given empty document-ids"
+    (is (= [] (documents.db/recent-view-documents [])))
+    (is (= [] (documents.db/recent-view-documents nil)))))
+
 (deftest select-documents-for-recents-with-collection-test
   (testing "returns documents with collection information"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
