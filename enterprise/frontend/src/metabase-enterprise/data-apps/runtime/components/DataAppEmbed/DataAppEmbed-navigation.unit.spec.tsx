@@ -94,7 +94,7 @@ describe("DataAppEmbed - router navigation", () => {
     });
 
     const { sendMessage } = setupSettings();
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Order 42" }));
 
