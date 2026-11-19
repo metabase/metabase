@@ -10,6 +10,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.db :as qp.db]
+   [metabase.revisions.db :as revisions.db]
+   [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -228,15 +230,29 @@
         (is (= [] (capture-enqueues! #(qp.db/set-card-result-metadata! card-id []))))
         (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
 
-(deftest revision-writes-enqueue-nothing-test
-  (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"
+(deftest revision-create-reindexes-its-entity-test
+  (testing "the create event of a Revision of a card reindexes the card, which takes its last editor from it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [row {:model        "Card"
+                   :model_id     card-id
+                   :user_id      (mt/user->id :crowberto)
+                   :object       {}
+                   :is_creation  false
+                   :is_reversion false}]
+          (is (= #{"card" "dataset" "metric"}
+                 (->> (capture-enqueues! #(let [ids (revisions.db/insert-revisions! [row])]
+                                            (revision/publish-created! (map (fn [id] (assoc row :id id)) ids))))
+                      (into #{} (comp cat (map first))))))))))
+  (testing "a Revision written or deleted by Toucan publishes no event, so the prune of old Revisions costs no read"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {}]
         (is (= [] (capture-enqueues! #(t2/insert! :model/Revision {:model    "Card"
                                                                    :model_id card-id
                                                                    :user_id  (mt/user->id :crowberto)
                                                                    :object   {}}))))
-        (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))))))
+        (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))
+        (is (not (isa? :model/Revision :hook/events)))))))
 
 ;;; Purges
 

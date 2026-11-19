@@ -196,7 +196,24 @@
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
-(derive :model/Revision :metabase/model)
+(doto :model/Revision
+  (derive :metabase/model)
+  ;; Dashboards and Cards take their last editor and edit time from their latest Revision, so a Revision written
+  ;; reindexes them, whichever write of the entity or its parts it records.
+  (derive :search/indexed))
+
+;; Not `:hook/events`: that trait would hook every Revision delete, which selects and deserializes each row it removes
+;; when a Revision is pruned, and every update and insert. The create event is published by [[publish-created!]].
+(defmethod events/spec :model/Revision
+  [_model]
+  {:create :event/revision-create})
+
+(defn publish-created!
+  "Publish the create event of each Revision of `rows`, the Revision rows as inserted with their `:id`s, within the
+  batch of the write that caused them."
+  [rows]
+  (doseq [{:keys [id user_id] :as row} rows]
+    (events/collect! {:model :model/Revision, :operation :create, :id id, :user-id user_id, :object row})))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
@@ -369,12 +386,14 @@
                                                     (recorded entity (revisions.db/latest-revision-object model-name id))
                                                     (recorded entity serialized-instance)))
             record-reversion!        #(when-not already-in-target-state?
-                                        (revisions.db/insert-revision-returning! {:model        model-name
-                                                                                  :model_id     id
-                                                                                  :user_id      user-id
-                                                                                  :object       serialized-instance
-                                                                                  :is_creation  false
-                                                                                  :is_reversion true}))
+                                        (u/prog1 (revisions.db/insert-revision-returning!
+                                                  {:model        model-name
+                                                   :model_id     id
+                                                   :user_id      user-id
+                                                   :object       serialized-instance
+                                                   :is_creation  false
+                                                   :is_reversion true})
+                                          (publish-created! [<>])))
             in-batch                 (events/with-event-context {:reverting? true}
                                        (events/with-batched-events
                                          (revert-to-revision! entity id user-id serialized-instance)
