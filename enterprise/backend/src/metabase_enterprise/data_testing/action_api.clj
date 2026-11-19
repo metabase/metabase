@@ -63,8 +63,8 @@
   their real names.
 
   Only query actions can be tested, on a database with actions enabled. The action's SQL must be one INSERT, UPDATE or
-  DELETE statement, with no RETURNING clause and no call of a function the write check refuses, such as `nextval`. An
-  `equals` expectation is refused: an action has no output to compare."
+  DELETE statement, with no RETURNING clause (OUTPUT in SQL Server) and no call of a function the write check refuses,
+  such as `nextval`. An `equals` expectation is refused: an action has no output to compare."
   [_route-params
    _query-params
    {:keys [action_id] :as body} :- ::data-testing.schema/action-test.create]
