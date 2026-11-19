@@ -10,7 +10,6 @@ import {
 } from "metabase-enterprise/api";
 import type { TransformId, TransformTest } from "metabase-types/api";
 
-import { trackTransformTestTriggerManualRun } from "../../analytics";
 import type {
   DataTestReadOnlyResult,
   DataTestTypeDefinition,
@@ -59,7 +58,7 @@ export const transformTestDefinition: DataTestTypeDefinition<TransformTest> = {
   useReadOnly: useTransformReadOnly,
   getSubjectId: (test) => test.transform_id,
   useTestUrls: () => TRANSFORM_TEST_URLS,
-  trackManualRun: trackTransformTestTriggerManualRun,
+  testType: "transform",
   getListLabel: () => t`Transform tests`,
   getRunDescription: () =>
     t`Runs the transform on the test data and checks its output. The real tables aren't touched.`,

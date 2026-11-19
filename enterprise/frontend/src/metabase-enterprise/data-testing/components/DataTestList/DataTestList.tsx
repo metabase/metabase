@@ -23,6 +23,7 @@ import {
 } from "metabase/ui";
 import type { DataTestRun, DataTestType } from "metabase-types/api";
 
+import { trackDataTestTriggerManualRun } from "../../analytics";
 import { MB_CLI_NAME } from "../../constants";
 import { getDataTestTypeDefinition } from "../../test-types";
 import type {
@@ -206,7 +207,8 @@ function DataTestMenu<T extends DataTest>({
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRun = async () => {
-    definition.trackManualRun({
+    trackDataTestTriggerManualRun({
+      testType: definition.testType,
       testId: test.id,
       triggeredFrom: "test_list",
     });

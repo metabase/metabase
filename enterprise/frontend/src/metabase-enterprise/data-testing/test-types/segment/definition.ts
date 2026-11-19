@@ -11,7 +11,6 @@ import {
 } from "metabase-enterprise/api";
 import type { SegmentId, SegmentTest } from "metabase-types/api";
 
-import { trackSegmentTestTriggerManualRun } from "../../analytics";
 import { useSegmentTestUrls } from "../../hooks/use-segment-test-urls";
 import type {
   DataTestReadOnlyResult,
@@ -86,7 +85,7 @@ export const segmentTestDefinition: DataTestTypeDefinition<SegmentTest> = {
   useReadOnly: useSegmentReadOnly,
   getSubjectId: (test) => test.segment_id,
   useTestUrls: useSegmentTestUrlsByTest,
-  trackManualRun: trackSegmentTestTriggerManualRun,
+  testType: "segment",
   getListLabel: () => t`Tests`,
   getRunDescription: () =>
     t`Runs the segment on the test data and checks the rows it matches. The real tables aren't touched.`,
