@@ -162,14 +162,15 @@
 
 (defenterprise apply-workspace-copy-metadata
   "**Workspace copy metadata — preprocess.** In a workspace that the request names, wrap the query's metadata
-   provider with the workspace's copy rows for the query's Database
+   provider with the workspace's type rows for the query's Database
    ([[ws.copy-metadata/copy-metadata-provider]]), in the QP store and on the query, so every later middleware, and
-   the remapping of [[apply-workspace-remapping]], reads the copy's columns.
+   the remapping of [[apply-workspace-remapping]], reads the types of the copy's columns. Row-level security already
+   gives the provider the copy's columns.
 
-   It runs before any middleware reads metadata: the add-implicit-clauses and remove-inactive-field-refs middleware
-   would otherwise list the shared columns, and drop a reference to a column only the copy has.
+   It runs before any middleware reads metadata, such as the coercion of a column.
 
-   A nested preprocess, as of a metric or a sandbox, gets the provider that this made, and leaves it as it is.
+   A nested preprocess, as of a metric or a sandbox, gets the provider that this made, and leaves it as it is. One
+   that gets a provider over it, as the remapping makes, wraps it again from the type rows that the first read cached.
 
    `:feature :none`, like [[apply-workspace-remapping]]: a workspace isolates its data whatever the token."
   :feature :none

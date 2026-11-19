@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -85,35 +86,52 @@
             (exec! (format "INSERT INTO \"%s\".\"%s\" VALUES (1, 'a'), (2, 'b')" main-schema src-name))
             (exec! (format "CREATE TABLE \"%s\".\"%s\" (id integer, v text)" main-schema out-name))
             (exec! (format "INSERT INTO \"%s\".\"%s\" VALUES (99, 'pre-existing')" main-schema out-name))
-            (mt/with-temp [:model/Database ws-db {:engine :postgres :details admin-details :name (str "ws-e2e-" run-id)}]
-              (let [workspaces (vec (for [n ["a" "b"]]
-                                      (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id "-" n)
-                                                                               :creator_id (mt/user->id :crowberto)})]
-                                        (assoc (provision-workspace-database! ws-id (:id ws-db) [main-schema])
-                                               :workspace-id ws-id))))]
-                (try
-                  (is (= [:provisioned :provisioned] (map :status workspaces)))
-                  (mt/with-db ws-db
-                    (sync/sync-database! (:id ws-db) {:scan :schema})
-                    (f {:admin-details admin-details
-                        :admin-spec    admin-spec
-                        :main-schema   main-schema
-                        :src-name      src-name
-                        :out-name      out-name
-                        :ws-db         ws-db
-                        :workspaces    workspaces
-                        :table         #(t2/select-one :model/Table :db_id (:id ws-db) :schema main-schema :name %)}))
-                  (finally
-                    (doseq [{:keys [workspace-id]} workspaces
-                            :when (t2/exists? :model/Workspace :id workspace-id)]
-                      (ws/delete-workspace! workspace-id))))))
+            ;; Not `mt/with-temp`, which runs its body in a transaction whose connection every thread shares. The
+            ;; requests and transform runs of different workspaces must get connections of their own, as in
+            ;; production: a connection is in one workspace at a time.
+            (let [ws-db (t2/insert-returning-instance! :model/Database {:engine  :postgres
+                                                                        :details admin-details
+                                                                        :name    (str "ws-e2e-" run-id)})]
+              (try
+                (let [workspaces (vec (for [n ["a" "b"]]
+                                        (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id "-" n)
+                                                                                 :creator_id (mt/user->id :crowberto)})]
+                                          (assoc (provision-workspace-database! ws-id (:id ws-db) [main-schema])
+                                                 :workspace-id ws-id))))]
+                  (try
+                    (is (= [:provisioned :provisioned] (map :status workspaces)))
+                    (mt/with-db ws-db
+                      (sync/sync-database! (:id ws-db) {:scan :schema})
+                      (f {:admin-details admin-details
+                          :admin-spec    admin-spec
+                          :main-schema   main-schema
+                          :src-name      src-name
+                          :out-name      out-name
+                          :ws-db         ws-db
+                          :workspaces    workspaces
+                          :table         #(t2/select-one :model/Table :db_id (:id ws-db) :schema main-schema :name %)}))
+                    (finally
+                      (doseq [{:keys [workspace-id]} workspaces
+                              :when (t2/exists? :model/Workspace :id workspace-id)]
+                        (ws/delete-workspace! workspace-id)))))
+                (finally
+                  (t2/delete! :model/Database :id (:id ws-db)))))
             (finally
               (exec! (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" main-schema)))))))))
 
 (defn- active-field-names
-  "The names of the active shared Fields of the Table with `table-id`."
-  [table-id]
-  (set (t2/select-fn-set :name :model/Field :table_id table-id :active true)))
+  "The names of the active Fields of the Table with `table-id` that the workspace with `workspace-id` sees, or no
+  workspace when it is nil."
+  [workspace-id table-id]
+  (workspaces/with-workspace-id workspace-id
+    (set (t2/select-fn-set :name :model/Field :table_id table-id :active true))))
+
+(defn- schema-table-names
+  "The names of the tables of `schema` of the Database with `db-id` that `GET /api/database/:id/schema/:schema` lists
+  in the workspace with `workspace-id`, or in none."
+  [workspace-id db-id schema]
+  (set (map :name (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/%s" db-id schema)
+                                        (headers workspace-id)))))
 
 (deftest ^:synchronized requests-work-in-the-workspace-they-name-e2e-test
   (do-with-two-workspaces!
@@ -149,17 +167,39 @@
        (testing "a request in no workspace reads the canonical table"
          (is (= [[99 "pre-existing"]] (run-query nil out-query))))
        (testing "the shared metadata does not change"
-         (is (= #{"id" "v"} (active-field-names (:id out-table))))
-         (is (=? {:active false} (t2/select-one :model/Field :table_id (:id out-table) :name "who"))))
+         (is (= #{"id" "v"} (active-field-names nil (:id out-table)))))
+       (testing "the column each copy adds is a Field that its workspace owns"
+         (doseq [{:keys [workspace-id]} workspaces]
+           (is (= #{"id" "v" "who"} (active-field-names workspace-id (:id out-table))))))
        (testing "each workspace's query_metadata lists the columns of its copy"
          (let [path (format "table/%d/query_metadata" (:id out-table))]
            (doseq [{:keys [workspace-id]} workspaces]
              (is (= ["id" "v" "who"]
                     (map :name (:fields (mt/user-http-request :crowberto :get 200 path (headers workspace-id)))))))
            (is (= ["id" "v"] (map :name (:fields (mt/user-http-request :crowberto :get 200 path)))))))
-       (testing "deleting a workspace deletes its remappings and copy rows, and leaves the other's"
+       (let [new-name      (str "x_new_table_" (subs (str (random-uuid)) 0 8))
+             new-transform (t2/insert-returning-instance! :model/Transform
+                                                          {:name   (str "transform-" new-name)
+                                                           :source {:type :query :query (lib/native-query (mt/metadata-provider) sql)}
+                                                           :target {:type :table :schema main-schema :name new-name}})]
+         (testing "a transform whose target production does not have makes a Table that only its workspace sees"
+           (run-transform! (:workspace-id ws-a) (:id new-transform))
+           (is (contains? (schema-table-names (:workspace-id ws-a) (:id ws-db) main-schema) new-name))
+           (is (not (contains? (schema-table-names (:workspace-id ws-b) (:id ws-db) main-schema) new-name)))
+           (is (not (contains? (schema-table-names nil (:id ws-db) main-schema) new-name))))
+         (testing "the workspace's sync gave it the copy's columns, and a query in the workspace reads the copy"
+           (let [new-table (workspaces/with-workspace-id (:workspace-id ws-a) (table new-name))]
+             (is (= #{"id" "v" "who"} (active-field-names (:workspace-id ws-a) (:id new-table))))
+             (is (= [[1 "a" (get-in ws-a [:database_details :user])] [2 "b" (get-in ws-a [:database_details :user])]]
+                    (run-query (:workspace-id ws-a)
+                               {:database (:id ws-db) :type :query :query {:source-table (:id new-table)}})))))
+         (testing "production's transform does not point at it"
+           (is (nil? (t2/select-one-fn :target_table_id :model/Transform :id (:id new-transform))))))
+       (testing "deleting a workspace deletes its remappings and the Tables and Fields it owns, and leaves the other's"
          (ws/delete-workspace! (:workspace-id ws-a))
          (is (= #{(:workspace-id ws-b)} (t2/select-fn-set :workspace_id :model/TableRemapping :database_id (:id ws-db))))
-         (is (= #{(:workspace-id ws-b)} (t2/select-fn-set :workspace_id :model/WorkspaceFieldCopy)))
+         (is (= #{(:workspace-id ws-b)}
+                (workspaces/with-workspace-id :all
+                  (t2/select-fn-set :workspace_id :model/Field :table_id (:id out-table) :workspace_id [:not= nil]))))
          (is (= [[1 "a" (get-in ws-b [:database_details :user])] [2 "b" (get-in ws-b [:database_details :user])]]
                 (run-query (:workspace-id ws-b) out-query))))))))

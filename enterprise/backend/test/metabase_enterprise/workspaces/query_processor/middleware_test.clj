@@ -871,16 +871,19 @@
 (deftest copy-metadata-middleware-test
   (copy-test/do-with-orders
    (fn [{:keys [workspace-id db-id table-id]}]
-     (copy-test/record! workspace-id db-id table-id [(copy-test/column "id" :type/Integer "int4" 0)])
+     ;; `created` changes type, so the workspace has a type row; `name` goes, which row-level security hides
+     (copy-test/record! workspace-id db-id table-id [(copy-test/column "id" :type/Integer "int4" 0)
+                                                     (copy-test/column "created" :type/DateTime "timestamp" 1)])
      (qp.store/with-metadata-provider db-id
        (let [query {:database db-id :lib/metadata (qp.store/metadata-provider)}]
          (testing "outside a workspace, the query is left as it is"
            (is (identical? query (ws.middleware/apply-workspace-copy-metadata query))))
          (workspaces/with-workspace-id workspace-id
            (let [query' (ws.middleware/apply-workspace-copy-metadata query)]
-             (testing "in the workspace, the query and the store read the copy rows"
+             (testing "in the workspace, the query and the store read the copy's columns and types"
                (is (not (identical? (:lib/metadata query) (:lib/metadata query'))))
                (is (identical? (:lib/metadata query') (qp.store/metadata-provider)))
-               (is (= #{"id"} (into #{} (map :name) (lib.metadata/fields (:lib/metadata query') table-id)))))
+               (is (= {"id" :type/Integer "created" :type/DateTime}
+                      (into {} (map (juxt :name :base-type)) (lib.metadata/fields (:lib/metadata query') table-id)))))
              (testing "a nested preprocess, which gets the same provider, leaves it as it is"
                (is (identical? query' (ws.middleware/apply-workspace-copy-metadata query')))))))))))

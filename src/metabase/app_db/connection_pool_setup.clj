@@ -43,7 +43,8 @@
 (defn- on-acquire [connection]
   (reset! latest-activity (t/offset-date-time))
   (when (postgres-connection? connection)
-    (execute! connection mdb.workspace/no-workspace-sql)))
+    (execute! connection mdb.workspace/no-workspace-sql)
+    (mdb.workspace/record-setting! connection mdb.workspace/no-workspace-sql)))
 
 (defn- on-check-in [^java.sql.Connection connection]
   (reset! latest-activity (t/offset-date-time))
@@ -54,7 +55,8 @@
   ;; rationale behind why we're doing it -- Cam
   ;; It also puts the connection in no workspace ([[mdb.workspace/check-in-sql]]).
   (when (postgres-connection? connection)
-    (execute! connection mdb.workspace/check-in-sql)))
+    (execute! connection mdb.workspace/check-in-sql)
+    (mdb.workspace/record-setting! connection mdb.workspace/no-workspace-sql)))
 
 (defn- on-check-out
   "Puts a Postgres `connection` in the workspace of the thread that checks it out ([[mdb.workspace/*workspace-id*]]).
@@ -62,7 +64,8 @@
   [connection]
   (reset! latest-activity (t/offset-date-time))
   (when-let [sql (and (postgres-connection? connection) (mdb.workspace/checkout-sql))]
-    (execute! connection sql)))
+    (execute! connection sql)
+    (mdb.workspace/record-setting! connection sql)))
 
 (defn- on-destroy [_connection]
   ;; no-op

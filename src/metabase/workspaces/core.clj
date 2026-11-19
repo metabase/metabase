@@ -110,6 +110,13 @@
   [workspace-id & body]
   `(do-with-workspace-id ~workspace-id (^:once fn* [] ~@body)))
 
+(defmacro in-workspace-of
+  "Run `body` in the workspace that owns the Table or Field `row` (its `:workspace_id`), or in none for a shared row.
+  Use it around work on a row whose results belong with the row, such as a sync of a Table: a Table that a workspace
+  owns holds the columns of the workspace's copy, which only that workspace reads."
+  [row & body]
+  `(with-workspace-id (:workspace_id ~row) ~@body))
+
 (defmacro without-workspace
   "Run `body` in no workspace that a request names: with the Databases' own logins, and the instance's own table
    remappings. Use it around work whose results everyone shares, such as a sync of a Database."

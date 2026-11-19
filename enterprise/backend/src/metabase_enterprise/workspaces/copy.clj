@@ -1,24 +1,38 @@
 (ns metabase-enterprise.workspaces.copy
   "How the copies that a workspace's transforms write differ from the Tables and Fields that every workspace shares.
-   The shared metadata stays as the instance's own sync leaves it. A workspace's copy rows hold only the differences,
-   so a copy with the shape of its canonical table has none:
+   The shared metadata stays as the instance's own sync leaves it. For a copy of a shared Table, the workspace holds
+   only the differences, so a copy with the shape of its canonical table has none:
 
-   - a column only the copy has: an inactive shared Field, and an active row with the copy's types;
-   - a column the copy gives another type or position: an active row with the copy's types;
-   - a column the copy lacks: an inactive row, for the column and every Field nested in it;
-   - a Table only the workspace has: an inactive shared Table, and an active table copy row."
+   - a column only the copy has: a Field the workspace owns (`metabase_field.workspace_id`);
+   - a column the copy gives another type or position: a type row in `workspace_field_copy`;
+   - a column the copy lacks: a hide row, for the column and every Field nested in it.
+
+   Row-level security shows a workspace its own Fields and hides the shared ones it has hide rows for, so every reader
+   of the app DB sees the copy's columns. Only the types of a type row need [[apply-to-tables]] and the query
+   processor's copy metadata.
+
+   A Table that only the workspace has is a Table it owns, which the standard sync fills in the workspace."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- Recording ------------------------------------------------
 
-(defn- copy-columns
-  "The columns of a workspace_field_copy row for the copy column `column`."
+(defn- same-shape?
+  "Whether the active Field `field` has the types and position of the copy column `column`."
+  [field {:keys [base-type database-type database-position]}]
+  (and (:active field)
+       (= (:base_type field) base-type)
+       (= (:database_type field) database-type)
+       (= (:database_position field) database-position)))
+
+(defn- type-row
+  "The columns of a workspace_field_copy row that gives a shared Field the types of the copy column `column`."
   [{:keys [base-type database-type database-position]}]
   {:active            true
    :base_type         base-type
@@ -26,24 +40,9 @@
    :database_type     database-type
    :database_position database-position})
 
-(defn- same-shape?
-  "Whether the active shared Field `field` has the types and position of the copy column `column`."
-  [field {:keys [base-type database-type database-position]}]
-  (and (:active field)
-       (= (:base_type field) base-type)
-       (= (:database_type field) database-type)
-       (= (:database_position field) database-position)))
-
-(defn- shared-field-id!
-  "The id of the top-level shared Field of the Table with `table-id` for the copy column `column`: the one named so,
-  or a new inactive one. A request in another workspace may insert the same Field meanwhile; then it is read back."
-  [table-id fields-by-name column]
-  (or (:id (get fields-by-name (:name column)))
-      (try
-        (ws.db/insert-inactive-field! table-id column)
-        (catch Exception e
-          (or (ws.db/top-level-field-id table-id (:name column))
-              (throw e))))))
+(def ^:private hide-row
+  "The columns of a workspace_field_copy row that hides a shared Field from the workspace."
+  {:active false})
 
 (defn- nested-field-ids
   "The ids of `fields` nested, at any depth, in the Fields with `parent-ids`."
@@ -55,25 +54,33 @@
           (recur (into ids child-ids) child-ids))
         ids))))
 
+(defn- by-name
+  "The top-level Fields of `fields`, by name."
+  [fields]
+  (into {} (comp (remove :parent_id) (map (juxt :name identity))) fields))
+
 (defn- desired-field-copies
-  "The workspace_field_copy rows, as a map of Field id to columns, that say how the copy with `columns` differs from
-  the shared `fields` of the Table with `table-id`."
-  [table-id fields columns]
-  (let [top-level      (remove :parent_id fields)
-        fields-by-name (into {} (map (juxt :name identity)) top-level)
-        column-names   (into #{} (map :name) columns)
-        present        (into {}
-                             (keep (fn [column]
-                                     (let [field (get fields-by-name (:name column))]
-                                       (when-not (some-> field (same-shape? column))
-                                         [(shared-field-id! table-id fields-by-name column) (copy-columns column)]))))
-                             columns)
-        dropped-ids    (into #{}
-                             (comp (filter :active) (remove #(column-names (:name %))) (map :id))
-                             top-level)]
-    (into present
-          (map (fn [field-id] [field-id {:active false}]))
-          (into dropped-ids (nested-field-ids fields dropped-ids)))))
+  "The workspace_field_copy rows, as a map of Field id to columns, that say how the copy with `columns` differs from the
+  shared `fields`. A shared Field that the workspace owns a twin of is hidden: the workspace sees its own."
+  [shared-fields owned-by-name columns]
+  (let [shared-by-name (by-name (filter :active shared-fields))
+        column-by-name (into {} (map (juxt :name identity)) columns)
+        hidden-ids     (into #{}
+                             (keep (fn [[field-name field]]
+                                     (when (or (not (column-by-name field-name)) (owned-by-name field-name))
+                                       (:id field))))
+                             shared-by-name)]
+    (merge (into {}
+                 (keep (fn [[field-name field]]
+                         (let [column (column-by-name field-name)]
+                           (when (and column
+                                      (not (owned-by-name field-name))
+                                      (not (same-shape? field column)))
+                             [(:id field) (type-row column)]))))
+                 shared-by-name)
+           (into {}
+                 (map (fn [field-id] [field-id hide-row]))
+                 (into hidden-ids (nested-field-ids shared-fields hidden-ids))))))
 
 (defn- row-columns
   "The columns of the workspace_field_copy row `row` that [[desired-field-copies]] sets."
@@ -82,9 +89,11 @@
     (:active row) (merge (select-keys row [:base_type :effective_type :database_type :database_position]))))
 
 (defn- write-field-copies!
-  "Make the workspace_field_copy rows of `workspace-id` of the Table with `table-id` those of `desired`."
-  [workspace-id table-id desired]
-  (let [existing (into {} (map (juxt :field_id identity)) (ws.db/field-copies-of-table workspace-id table-id))]
+  "Make the workspace_field_copy rows of `workspace-id` of the shared `fields` those of `desired`."
+  [workspace-id shared-fields desired]
+  (let [existing (into {}
+                       (map (juxt :field_id identity))
+                       (ws.db/field-copies-of-fields workspace-id (mapv :id shared-fields)))]
     (ws.db/delete-field-copies! (into [] (comp (remove (comp desired key)) (map (comp :id val))) existing))
     (ws.db/insert-field-copies! workspace-id (into {} (remove (comp existing key)) desired))
     (doseq [[field-id columns] desired
@@ -94,37 +103,53 @@
                                                   :database_position nil}
                                                  columns)))))
 
+(defn- write-owned-fields!
+  "Make the top-level Fields the workspace with `workspace-id` owns of the Table with `table-id` those of the copy
+  columns that no active shared Field without a twin has: insert, update or delete them."
+  [workspace-id table-id shared-fields owned-by-name columns]
+  (let [shared-by-name (by-name (filter :active shared-fields))
+        wanted         (into {}
+                             (comp (filter #(or (owned-by-name (:name %)) (not (shared-by-name (:name %)))))
+                                   (map (juxt :name identity)))
+                             columns)]
+    (ws.db/delete-owned-fields! workspace-id (into [] (keep (fn [[field-name field]]
+                                                              (when-not (wanted field-name) (:id field))))
+                                                   owned-by-name))
+    (doseq [[field-name column] wanted
+            :let [field (owned-by-name field-name)]]
+      (cond
+        (nil? field)                  (ws.db/insert-owned-field! table-id column)
+        (not (same-shape? field column)) (ws.db/update-owned-field! (:id field) column)))))
+
 (defn record-copy!
-  "Record, for the workspace with `workspace-id`, how the copy of `table` that its transform wrote differs from the
-  shared metadata of `table`. `database` is the Lib metadata of the Database; the request's table remapping
+  "Record, for the workspace with `workspace-id`, how the copy of the shared `table` that its transform wrote differs
+  from the shared metadata of `table`. `database` is the Lib metadata of the Database; the request's table remapping
   redirects a describe of `table` to the copy."
   [workspace-id database table]
-  (let [columns (sync/table-fields-metadata database table)]
-    (t2/with-transaction [_conn]
-      (write-field-copies! workspace-id (:id table) (desired-field-copies (:id table) (ws.db/table-fields (:id table)) columns))
-      (if (:active table)
-        (ws.db/delete-table-copy! workspace-id (:id table))
-        (ws.db/upsert-table-copy! workspace-id (:id table))))
-    (log/infof "Recorded the copy of table %d in workspace %d: %d columns" (:id table) workspace-id (count columns))
-    nil))
+  (workspaces/with-workspace-id workspace-id
+    (let [columns       (sync/table-fields-metadata database table)
+          fields        (ws.db/table-fields-of-workspace workspace-id (:id table))
+          shared-fields (filterv (comp nil? :workspace_id) fields)
+          owned-by-name (by-name (filter :workspace_id fields))]
+      (t2/with-transaction [_conn]
+        (write-field-copies! workspace-id shared-fields (desired-field-copies shared-fields owned-by-name columns))
+        (write-owned-fields! workspace-id (:id table) shared-fields owned-by-name columns))
+      (ws.db/hide-shared-twins! workspace-id)
+      (log/infof "Recorded the copy of table %d in workspace %d: %d columns" (:id table) workspace-id (count columns))
+      nil)))
 
 ;;; ------------------------------------------------ query_metadata -----------------------------------------------
 
 (defn apply-field-copy
-  "The Field `field`, with snake_case keys, with the types of its copy row `copy` over it. When the copy has another
+  "The Field `field`, with snake_case keys, with the types of its type row `copy` over it. When the copy has another
   base type, the shared coercion does not apply."
-  [field {:keys [active base_type effective_type database_type database_position]}]
-  (cond-> (assoc field :active active)
+  [field {:keys [base_type effective_type database_type database_position]}]
+  (cond-> field
     base_type                                           (assoc :base_type base_type)
     effective_type                                      (assoc :effective_type effective_type)
     (and base_type (not= base_type (:base_type field))) (assoc :coercion_strategy nil)
     database_type                                       (assoc :database_type database_type)
     database_position                                   (assoc :database_position database_position)))
-
-(defn- field-order
-  "The order of the Fields of a Table, as `metabase.warehouse-schema.db/field-order-rule` gives it."
-  [field]
-  [(:position field) (some-> ^String (:name field) .toLowerCase)])
 
 (defn- rehydrate-retyped
   "`fields`, with each Field whose id is in `retyped-ids` hydrated again with `hydrate-fields`: its `:has_field_values`
@@ -139,39 +164,23 @@
       (mapv #(get rehydrated (:id %) %) fields))))
 
 (defn apply-to-tables
-  "`tables`, each with its hydrated `:fields`, with the copy rows of the workspace with `workspace-id` over them: a
-  Table is active as its copy row says, a Field the copy lacks is left out, a Field only the copy has is added,
-  hydrated with `hydrate-fields`, and each Field has the copy's types."
+  "`tables`, each with its hydrated `:fields`, with the type rows of the workspace with `workspace-id` over their
+  Fields. A Field whose base type changes is hydrated again with `hydrate-fields`. Row-level security already gives
+  the workspace the copy's Fields."
   [workspace-id tables hydrate-fields]
-  (let [table-ids    (into [] (keep :id) tables)
-        field-copies (when (seq table-ids) (ws.db/field-copies-of-tables workspace-id table-ids))
-        table-copies (when (seq table-ids) (ws.db/table-copies-of-tables workspace-id table-ids))]
-    (if (and (empty? field-copies) (empty? table-copies))
+  (let [table-ids (into [] (keep :id) tables)
+        type-rows (when (seq table-ids) (ws.db/field-type-copies-of-tables workspace-id table-ids))]
+    (if (empty? type-rows)
       tables
-      (let [field-copy   (into {} (map (juxt :field_id identity)) field-copies)
-            table-copy   (into {} (map (juxt :table_id identity)) table-copies)
-            extra-fields (group-by :table_id
-                                   (some->> (seq (into [] (comp (filter :active) (map :field_id)) field-copies))
-                                            ws.db/inactive-fields
-                                            (map #(apply-field-copy % (field-copy (:id %))))
-                                            hydrate-fields))]
-        (for [{table-id :id :as table} tables]
-          (let [present     (into #{} (map :id) (:fields table))
-                retyped-ids (into #{}
-                                  (keep (fn [{:keys [id base_type]}]
-                                          (when-let [copy-type (:base_type (field-copy id))]
-                                            (when (not= copy-type base_type) id))))
-                                  (:fields table))
-                fields      (concat (:fields table) (remove #(present (:id %)) (get extra-fields table-id)))]
-            (cond-> table
-              (contains? table-copy table-id)
-              (assoc :active (:active (table-copy table-id)))
-
-              (some #(contains? field-copy (:id %)) fields)
-              (assoc :fields (-> (->> fields
-                                      (keep (fn [field]
-                                              (if-let [copy (field-copy (:id field))]
-                                                (when (:active copy) (apply-field-copy field copy))
-                                                field)))
-                                      (sort-by field-order))
-                                 (rehydrate-retyped retyped-ids hydrate-fields))))))))))
+      (let [type-row (into {} (map (juxt :field_id identity)) type-rows)]
+        (for [table tables]
+          (if-not (some #(type-row (:id %)) (:fields table))
+            table
+            (let [retyped-ids (into #{}
+                                    (keep (fn [{:keys [id base_type]}]
+                                            (when-let [copy-type (:base_type (type-row id))]
+                                              (when (not= copy-type base_type) id))))
+                                    (:fields table))]
+              (assoc table :fields (-> (mapv #(if-let [copy (type-row (:id %))] (apply-field-copy % copy) %)
+                                             (:fields table))
+                                       (rehydrate-retyped retyped-ids hydrate-fields))))))))))

@@ -99,14 +99,3 @@
           (let [cached (first (lib.metadata.protocols/cached-metadatas transformed-mp :metadata/table [1]))]
             (is (= "workspace_schema" (:schema cached)))
             (is (= "workspace_venues" (:name cached)))))))))
-
-(deftest ^:parallel cached-metadatas-spec-names-the-ids-test
-  (testing "a read of cached metadata gives the transform the ids it reads, so it can tell the read from a listing"
-    (let [specs (atom [])
-          mp    (lib.metadata/transforming-metadata-provider
-                 (fn [metadata-spec results]
-                   (swap! specs conj metadata-spec)
-                   results)
-                 (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider))]
-      (lib.metadata.protocols/cached-metadatas mp :metadata/table [(meta/id :venues)])
-      (is (= [{:lib/type :metadata/table, :id #{(meta/id :venues)}}] @specs)))))

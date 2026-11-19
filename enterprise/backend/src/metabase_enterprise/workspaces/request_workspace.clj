@@ -8,7 +8,9 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.login :as ws.login]
    [metabase.app-db.core :as app-db]
-   [metabase.driver :as driver]))
+   [metabase.driver :as driver]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,10 +35,24 @@
    :problem          (when-let [db (ws.db/database database_id)]
                        (or (engine-problem db) (ws.login/login-problem db)))})
 
+(defn- hide-shared-twins!
+  "Hide from the workspace with `workspace-id` the shared Tables and Fields that repeat ones it owns
+  ([[ws.db/hide-shared-twins!]]). A production sync can add a twin at any time, so this runs each time the workspace
+  is read. Only Postgres app DBs have rows that a workspace owns."
+  [workspace-id]
+  (when (= :postgres (app-db/db-type))
+    (try
+      ;; a nested transaction, so that a failure does not abort a transaction of the caller
+      (t2/with-transaction [_conn]
+        (ws.db/hide-shared-twins! workspace-id))
+      (catch Exception e
+        (log/warnf e "Could not hide the shared twins of the Tables and Fields of workspace %d" workspace-id)))))
+
 (defn- load-workspace
   "The workspace with `workspace-id` as [[request-workspace]] gives it, read from the app DB."
   [workspace-id]
   (when (ws.db/workspace-exists? workspace-id)
+    (hide-shared-twins! workspace-id)
     (let [{provisioned true, others false} (group-by #(= :provisioned (:status %))
                                                      (ws.db/workspace-databases workspace-id))]
       {:mode                       :bound

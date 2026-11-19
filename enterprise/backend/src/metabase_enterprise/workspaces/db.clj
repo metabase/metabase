@@ -393,8 +393,10 @@
 
 ;;; ---------------------------------------- Workspace copy metadata -------------------------------------------
 ;;;
-;;; How a workspace's copies differ from the Tables and Fields that every workspace shares. The rows belong to the
-;;; workspace that a request names.
+;;; How a workspace's copies differ from the Tables and Fields that every workspace shares. A Table or Field that only
+;;; the workspace has is a row it owns (`workspace_id`, which row-level security reads). `workspace_field_copy` and
+;;; `workspace_table_copy` hold a shared row the workspace does not see (`active` false), or the types the copy gives a
+;;; shared Field (`active` true).
 
 (mr/def ::copy-column
   "A column of a copy, as [[metabase.driver/describe-table]] describes it."
@@ -413,42 +415,58 @@
    [:database_type     {:optional true} [:maybe :string]]
    [:database_position {:optional true} [:maybe nat-int?]]])
 
-(mu/defn table-fields :- [:sequential :map]
-  "The Fields of the Table with `table-id`, active or not, nested or not, with the columns a copy compares."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name :parent_id :active :base_type :database_type :database_position]
-             :table_id [:auto/param table-id]))
+(mu/defn table-fields-of-workspace :- [:sequential :map]
+  "The Fields of the Table with `table-id` that are shared or that the workspace with `workspace-id` owns, active or
+  not, nested or not, hidden from the workspace or not, with the columns a copy compares."
+  [workspace-id :- ms/PositiveInt
+   table-id     :- ::lib.schema.id/table]
+  (app-db/with-workspace-id :all
+    (t2/select [:model/Field :id :name :parent_id :active :base_type :database_type :database_position :workspace_id]
+               {:where [:and
+                        [:= :table_id [:auto/param table-id]]
+                        [:or [:= :workspace_id nil] [:= :workspace_id [:auto/param workspace-id]]]]})))
 
-(mu/defn top-level-field-id :- [:maybe ::lib.schema.id/field]
-  "The id of the top-level Field named `field-name` of the Table with `table-id`, active or not, or nil."
-  [table-id   :- ::lib.schema.id/table
-   field-name :- :string]
-  (t2/select-one-pk :model/Field :table_id [:auto/param table-id] :name field-name :parent_id nil))
-
-(mu/defn insert-inactive-field! :- ::lib.schema.id/field
-  "Insert an inactive top-level Field of the Table with `table-id` for the copy column `column`, and return its id."
+(mu/defn insert-owned-field! :- ::lib.schema.id/field
+  "Insert a top-level Field of the Table with `table-id` for the copy column `column`, owned by the workspace the
+  current thread works in, and return its id."
   [table-id :- ::lib.schema.id/table
    {column-name :name :keys [base-type database-type database-position]} :- ::copy-column]
   (t2/insert-returning-pk! :model/Field {:table_id          table-id
                                          :name              column-name
                                          :display_name      column-name
                                          :base_type         base-type
+                                         :effective_type    base-type
                                          :database_type     (or database-type "NULL")
                                          :database_position database-position
                                          :position          database-position
-                                         :active            false}))
+                                         :active            true}))
 
-(mu/defn field-copies-of-table :- [:sequential :map]
-  "The workspace_field_copy rows of `workspace-id` of the Fields of the Table with `table-id`."
+(mu/defn update-owned-field!
+  "Set the types and position of the copy column `column` on the Field with `field-id`, which the workspace the current
+  thread works in owns."
+  [field-id :- ::lib.schema.id/field
+   {:keys [base-type database-type database-position]} :- ::copy-column]
+  (t2/update! :model/Field :id field-id {:base_type         base-type
+                                         :effective_type    base-type
+                                         :database_type     (or database-type "NULL")
+                                         :database_position database-position
+                                         :active            true}))
+
+(mu/defn delete-owned-fields!
+  "Delete the Fields with `field-ids`, which the workspace with `workspace-id` owns."
   [workspace-id :- ms/PositiveInt
-   table-id     :- ::lib.schema.id/table]
-  (t2/select :model/WorkspaceFieldCopy
-             {:select [:workspace_field_copy.*]
-              :from   [:workspace_field_copy]
-              :join   [:metabase_field [:= :metabase_field.id :workspace_field_copy.field_id]]
-              :where  [:and
-                       [:= :workspace_field_copy.workspace_id [:auto/param workspace-id]]
-                       [:= :metabase_field.table_id [:auto/param table-id]]]}))
+   field-ids    :- [:sequential ::lib.schema.id/field]]
+  (when (seq field-ids)
+    (app-db/with-workspace-id :all
+      (t2/delete! :model/Field :id [:in field-ids] :workspace_id [:auto/param workspace-id]))))
+
+(mu/defn field-copies-of-fields :- [:sequential :map]
+  "The workspace_field_copy rows of `workspace-id` of the Fields with `field-ids`."
+  [workspace-id :- ms/PositiveInt
+   field-ids    :- [:sequential ::lib.schema.id/field]]
+  (if (empty? field-ids)
+    []
+    (t2/select :model/WorkspaceFieldCopy :workspace_id [:auto/param workspace-id] :field_id [:in field-ids])))
 
 (mu/defn insert-field-copies!
   "Insert workspace_field_copy rows of `workspace-id`, from `field-id->columns`, a map of Field id to
@@ -472,83 +490,79 @@
   (when (seq ids)
     (t2/delete! :model/WorkspaceFieldCopy :id [:in ids])))
 
-(mu/defn upsert-table-copy!
-  "Make the Table with `table-id` active in `workspace-id`."
-  [workspace-id :- ms/PositiveInt
-   table-id     :- ::lib.schema.id/table]
-  (app-db/update-or-insert! :model/WorkspaceTableCopy
-                            {:workspace_id workspace-id :table_id table-id}
-                            (fn [existing] (when-not (:active existing) {:active true}))))
+(mu/defn hide-shared-twins! :- :nil
+  "Give the workspace with `workspace-id` a hide row for each shared Table or Field that repeats one it owns: production
+  synced the same table or column after the workspace's transform made it, and the workspace must see only its own.
+  PostgreSQL only, where workspaces own rows."
+  [workspace-id :- ms/PositiveInt]
+  (app-db/with-workspace-id :all
+    (t2/query ["INSERT INTO workspace_table_copy (workspace_id, table_id, active, created_at, updated_at)
+                SELECT ?, shared.id, false, now(), now()
+                FROM metabase_table shared
+                JOIN metabase_table owned
+                  ON owned.db_id = shared.db_id AND owned.name = shared.name
+                 AND COALESCE(owned.schema, '') = COALESCE(shared.schema, '') AND owned.workspace_id = ?
+                WHERE shared.workspace_id IS NULL
+                ON CONFLICT (workspace_id, table_id) DO UPDATE SET active = false, updated_at = now()"
+               workspace-id workspace-id])
+    (t2/query ["INSERT INTO workspace_field_copy (workspace_id, field_id, active, created_at, updated_at)
+                SELECT ?, shared.id, false, now(), now()
+                FROM metabase_field shared
+                JOIN metabase_field owned
+                  ON owned.table_id = shared.table_id AND owned.name = shared.name
+                 AND COALESCE(owned.parent_id, 0) = COALESCE(shared.parent_id, 0) AND owned.workspace_id = ?
+                WHERE shared.workspace_id IS NULL
+                ON CONFLICT (workspace_id, field_id)
+                DO UPDATE SET active = false, base_type = NULL, effective_type = NULL, database_type = NULL,
+                              database_position = NULL, updated_at = now()"
+               workspace-id workspace-id]))
+  nil)
 
-(mu/defn delete-table-copy!
-  "Delete the workspace_table_copy row of `workspace-id` of the Table with `table-id`."
-  [workspace-id :- ms/PositiveInt
-   table-id     :- ::lib.schema.id/table]
-  (t2/delete! :model/WorkspaceTableCopy :workspace_id [:auto/param workspace-id] :table_id [:auto/param table-id]))
-
-(mu/defn field-copies-of-database :- [:sequential :map]
-  "The workspace_field_copy rows of `workspace-id` of the Fields of the Database with `database-id`, each with the
-  `:table_id` of its Field, and whether that Field is active as `:field_active`."
+(mu/defn field-type-copies-of-database :- [:sequential :map]
+  "The workspace_field_copy rows of `workspace-id` that give a Field of the Database with `database-id` the copy's
+  types."
   [workspace-id :- ms/PositiveInt
    database-id  :- ::lib.schema.id/database]
   (t2/select :model/WorkspaceFieldCopy
-             {:select [:workspace_field_copy.* :metabase_field.table_id [:metabase_field.active :field_active]]
+             {:select [:workspace_field_copy.*]
               :from   [:workspace_field_copy]
               :join   [:metabase_field [:= :metabase_field.id :workspace_field_copy.field_id]
                        :metabase_table [:= :metabase_table.id :metabase_field.table_id]]
               :where  [:and
                        [:= :workspace_field_copy.workspace_id [:auto/param workspace-id]]
+                       [:= :workspace_field_copy.active true]
                        [:= :metabase_table.db_id [:auto/param database-id]]]}))
 
-(mu/defn table-copies-of-database :- [:sequential :map]
-  "The workspace_table_copy rows of `workspace-id` of the Tables of the Database with `database-id`."
-  [workspace-id :- ms/PositiveInt
-   database-id  :- ::lib.schema.id/database]
-  (t2/select :model/WorkspaceTableCopy
-             {:select [:workspace_table_copy.*]
-              :from   [:workspace_table_copy]
-              :join   [:metabase_table [:= :metabase_table.id :workspace_table_copy.table_id]]
-              :where  [:and
-                       [:= :workspace_table_copy.workspace_id [:auto/param workspace-id]]
-                       [:= :metabase_table.db_id [:auto/param database-id]]]}))
-
-(mu/defn field-copies-of-tables :- [:sequential :map]
-  "The workspace_field_copy rows of `workspace-id` of the Fields of the Tables with `table-ids`, each with the
-  `:table_id` of its Field."
+(mu/defn field-type-copies-of-tables :- [:sequential :map]
+  "The workspace_field_copy rows of `workspace-id` that give a Field of the Tables with `table-ids` the copy's types."
   [workspace-id :- ms/PositiveInt
    table-ids    :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/WorkspaceFieldCopy
-             {:select [:workspace_field_copy.* :metabase_field.table_id]
+             {:select [:workspace_field_copy.*]
               :from   [:workspace_field_copy]
               :join   [:metabase_field [:= :metabase_field.id :workspace_field_copy.field_id]]
               :where  [:and
                        [:= :workspace_field_copy.workspace_id [:auto/param workspace-id]]
+                       [:= :workspace_field_copy.active true]
                        [:in :metabase_field.table_id table-ids]]}))
 
-(mu/defn table-copies-of-tables :- [:sequential :map]
-  "The workspace_table_copy rows of `workspace-id` of the Tables with `table-ids`."
-  [workspace-id :- ms/PositiveInt
-   table-ids    :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/WorkspaceTableCopy :workspace_id [:auto/param workspace-id] :table_id [:in table-ids]))
-
-(mu/defn inactive-fields :- [:sequential :map]
-  "The inactive Fields with `field-ids` that are not retired."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] :active false :visibility_type [:not= "retired"]))
-
 (mu/defn delete-copies-of-database!
-  "Delete the copy rows of `workspace-id` of the Tables and Fields of the Database with `database-id`."
+  "Delete the copy rows of `workspace-id` of the Tables and Fields of the Database with `database-id`, and the Tables
+  and Fields it owns there."
   [workspace-id :- ms/PositiveInt
    database-id  :- ::lib.schema.id/database]
-  (let [table-ids ^:allow-subquery {:select [:id] :from [:metabase_table] :where [:= :db_id [:auto/param database-id]]}]
-    (t2/delete! :model/WorkspaceFieldCopy
-                :workspace_id [:auto/param workspace-id]
-                :field_id     [:in ^:allow-subquery {:select [:id]
-                                                     :from   [:metabase_field]
-                                                     :where  [:in :table_id table-ids]}])
-    (t2/delete! :model/WorkspaceTableCopy
-                :workspace_id [:auto/param workspace-id]
-                :table_id     [:in table-ids])))
+  (app-db/with-workspace-id :all
+    (let [table-ids ^:allow-subquery {:select [:id] :from [:metabase_table] :where [:= :db_id [:auto/param database-id]]}]
+      (t2/delete! :model/WorkspaceFieldCopy
+                  :workspace_id [:auto/param workspace-id]
+                  :field_id     [:in ^:allow-subquery {:select [:id]
+                                                       :from   [:metabase_field]
+                                                       :where  [:in :table_id table-ids]}])
+      (t2/delete! :model/WorkspaceTableCopy
+                  :workspace_id [:auto/param workspace-id]
+                  :table_id     [:in table-ids])
+      (t2/delete! :model/Field :workspace_id [:auto/param workspace-id] :table_id [:in table-ids])
+      (t2/delete! :model/Table :workspace_id [:auto/param workspace-id] :db_id [:auto/param database-id]))))
 
 ;;; ------------------------------------------ Row-level security -------------------------------------------------
 ;;;

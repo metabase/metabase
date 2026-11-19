@@ -24,7 +24,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]))
 
 (defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
   (if version
@@ -122,14 +123,15 @@
                                        (sync-db-metadata!* database))))
 
 (mu/defn sync-table-metadata!
-  "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date. Runs in no workspace that a
-  request names, like every sync."
+  "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date. Runs in the workspace that
+  owns `table`, or in none for a shared one."
   ([table :- i/TableInstance]
    (sync-table-metadata! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (database-routing/with-anonymous-router-access
-     (sync-fields/sync-fields-for-table! database table)
-     (sync-fks/sync-fks-for-table! database table)
-     (sync-indexes/maybe-sync-indexes-for-table! database table))))
+     (workspaces/in-workspace-of table
+                                 (sync-fields/sync-fields-for-table! database table)
+                                 (sync-fks/sync-fks-for-table! database table)
+                                 (sync-indexes/maybe-sync-indexes-for-table! database table)))))

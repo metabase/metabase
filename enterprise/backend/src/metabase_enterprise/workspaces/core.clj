@@ -383,11 +383,13 @@
   (= :bound (:mode (current-workspace))))
 
 (defenterprise sync-copy-of-table!
-  "EE impl: in a workspace that the request names, record how the copy of `table` differs from the shared metadata
-   ([[ws.copy/record-copy!]]) and return true; elsewhere return false. Ungated like [[workspace-mode?]]."
+  "EE impl: in a workspace that the request names, record how the copy of the shared `table` differs from the shared
+   metadata ([[ws.copy/record-copy!]]) and return true. Return false for a Table the workspace owns, which the standard
+   sync fills in the workspace, and outside a workspace. Ungated like [[workspace-mode?]]."
   :feature :none
   [database table]
-  (if-let [workspace-id (when (workspace-bound?) (workspaces/current-workspace-id))]
+  (if-let [workspace-id (when (and (workspace-bound?) (nil? (:workspace_id table)))
+                          (workspaces/current-workspace-id))]
     (do (ws.copy/record-copy! workspace-id database table)
         true)
     false))

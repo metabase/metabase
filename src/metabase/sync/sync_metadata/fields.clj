@@ -184,19 +184,19 @@
           (sync! (fetch-metadata/fields-metadata database)))))))
 
 (mu/defn sync-fields-for-table!
-  "Sync the Fields in the Metabase application database for a specific `table`. Runs in no workspace that a request
-  names, like every sync."
+  "Sync the Fields in the Metabase application database for a specific `table`. Runs in the workspace that owns
+  `table`, or in none for a shared one."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (workspaces/without-workspace
-     (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-       (let [db-metadata (fetch-metadata/table-fields-metadata database table)
-             ;; TODO: decouple nested field columns sync from field sync. This will allow
-             ;; describe-fields to be used for field sync for databases with nested field columns
-             ;; Also this should be a driver method, not a sql-jdbc.sync method
-             db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
-         {:total-fields   (count db-metadata)
-          :updated-fields (sync-and-update! database table db-metadata)})))))
+   (workspaces/in-workspace-of table
+                               (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
+                                 (let [db-metadata (fetch-metadata/table-fields-metadata database table)
+                                       ;; TODO: decouple nested field columns sync from field sync. This will allow
+                                       ;; describe-fields to be used for field sync for databases with nested field columns
+                                       ;; Also this should be a driver method, not a sql-jdbc.sync method
+                                       db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
+                                   {:total-fields   (count db-metadata)
+                                    :updated-fields (sync-and-update! database table db-metadata)})))))

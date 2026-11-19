@@ -46,3 +46,30 @@
         (testing "the values of a field that every workspace shares are read in no workspace"
           (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
           (is (= #{nil} @seen)))))))
+
+(deftest a-workspace-owned-table-syncs-in-its-workspace-test
+  (let [seen      (atom #{})
+        fields-of (mt/original-fn #'fetch-metadata/table-fields-metadata)
+        ;; as the app DB has a Table that only workspace 12 owns, and sees it
+        table     (assoc (t2/select-one :model/Table :id (mt/id :venues)) :workspace_id 12)]
+    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [database table]
+                                                                       (swap! seen conj (workspaces/current-workspace-id))
+                                                                       (fields-of database table))]
+      (testing "a Table that a workspace owns is synced in that workspace, whatever workspace starts the sync: its copy
+                is the workspace's, and only the workspace sees its rows"
+        (sync/sync-table! table)
+        (is (= #{12} @seen)))
+      (testing "so are its fields alone"
+        (reset! seen #{})
+        (sync/sync-fields-for-table! table)
+        (is (= #{12} @seen))))))
+
+(deftest the-values-of-a-workspace-owned-field-are-read-in-its-workspace-test
+  (let [seen   (atom #{})
+        values (mt/original-fn #'field-values/distinct-values)]
+    (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [field]
+                                                               (swap! seen conj (workspaces/current-workspace-id))
+                                                               (values field))]
+      (field-values/create-or-update-full-field-values!
+       (assoc (t2/select-one :model/Field :id (mt/id :venues :price)) :workspace_id 12))
+      (is (= #{12} @seen)))))

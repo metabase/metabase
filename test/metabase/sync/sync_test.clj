@@ -134,7 +134,8 @@
     :deactivated_at false
     :updated_at  true
     :owner_user_id false
-    :transform_id false}))
+    :transform_id false
+    :workspace_id false}))
 
 (defn- field-defaults []
   (merge
@@ -151,7 +152,8 @@
     :json_unfolding             false
     :table_id                   true
     :updated_at                 true
-    :dimension_interestingness  false}))
+    :dimension_interestingness  false
+    :workspace_id               false}))
 
 (defn- field-defaults-with-fingerprint []
   (assoc (field-defaults)

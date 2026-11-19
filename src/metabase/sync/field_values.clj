@@ -177,11 +177,11 @@
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
-  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries. The values are stored for every
-  workspace, so they are read in no workspace that a request names."
+  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries. They are read in the workspace
+  that owns `table`, or in none for a shared one ([[workspaces/in-workspace-of]])."
   ([table :- i/TableInstance]
-   (workspaces/without-workspace
-     (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table)))
+   (workspaces/in-workspace-of table
+                               (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table)))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
@@ -221,7 +221,8 @@
                                          true)))
                                    to-sync)
          sync-counts      (database-routing/with-anonymous-router-access
-                            (sync-fields-for-table! database table fields-to-sync fvs-map))]
+                            (workspaces/in-workspace-of table
+                                                        (sync-fields-for-table! database table fields-to-sync fvs-map)))]
      (merge-with + clear-counts (or sync-counts empty-counts)))))
 
 (mu/defn- update-field-values-for-database!

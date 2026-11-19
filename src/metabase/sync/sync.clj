@@ -28,7 +28,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouses.core :as warehouses])
+   [metabase.warehouses.core :as warehouses]
+   [metabase.workspaces.core :as workspaces])
   (:import
    (java.time.temporal Temporal)))
 
@@ -95,15 +96,17 @@
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
-  tables, caller should check if can connect. Runs in no workspace that a request names, like every sync."
+  tables, caller should check if can connect. Runs in the workspace that owns `table`, or in none for a shared one
+  ([[workspaces/in-workspace-of]])."
   [table :- i/TableInstance]
   (database-routing/with-anonymous-router-access
-    (let [database (driver.u/lib-database (:db_id table))]
-      (sync-metadata/sync-table-metadata! database table)
-      (analyze/analyze-table! table)
-      (sync.field-values/update-field-values-for-table! database table)
-      (sync-util/set-initial-table-sync-complete! table)
-      table)))
+    (workspaces/in-workspace-of table
+                                (let [database (driver.u/lib-database (:db_id table))]
+                                  (sync-metadata/sync-table-metadata! database table)
+                                  (analyze/analyze-table! table)
+                                  (sync.field-values/update-field-values-for-table! database table)
+                                  (sync-util/set-initial-table-sync-complete! table)
+                                  table))))
 
 (mu/defn start-initial-sync!
   "Start the first sync of `database`, which a user created through the API when `previous-database` is nil, or
@@ -144,7 +147,7 @@
 
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
-  `:sync/no-connection` if not. Runs in no workspace that a request names, like every sync."
+  `:sync/no-connection` if not. Runs in the workspace that owns `field`, or in none for a shared one."
   [field :- i/FieldInstance]
   (let [database (driver.u/lib-database (:db_id (field/table field)))]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
@@ -155,5 +158,6 @@
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
         (database-routing/with-anonymous-router-access
-          (sync.fingerprint/refingerprint-field! field)))
+          (workspaces/in-workspace-of field
+                                      (sync.fingerprint/refingerprint-field! field))))
       :sync/no-connection)))

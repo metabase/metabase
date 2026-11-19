@@ -5,9 +5,14 @@
 
   A connection is in no workspace from its check-in until a thread in a workspace checks it out, so a thread in no
   workspace checks out a connection with no extra statement. A thread that changes workspace while it holds a
-  connection, as in a transaction, sets the connection's setting, and sets it back after."
+  connection, as in a transaction, changes nothing at once: each statement that Toucan runs on a held connection first
+  puts the connection in the thread's workspace, when it is in another ([[apply-workspace!]]). So a block that runs no
+  statement costs nothing.
+
+  This process records the setting of each physical connection. A rollback, to the start of a transaction or to a
+  savepoint, undoes a `SET` made after it, so the record of a connection goes when one of its transactions ends."
   (:require
-   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.connection :as t2.conn]))
 
 (set! *warn-on-reflection* true)
@@ -59,33 +64,62 @@
   (with-open [stmt (.createStatement connection)]
     (.execute stmt sql)))
 
-(defn- held-postgres-connection
-  "The Postgres app DB connection that this thread holds, as in a transaction, or nil."
-  ^java.sql.Connection []
-  (let [connectable t2.conn/*current-connectable*]
-    (when (and (instance? java.sql.Connection connectable)
-               (postgres-connection? connectable))
-      connectable)))
+;; The setting statement each physical Postgres connection last ran, by connection. Weak, so a closed connection goes.
+(defonce ^:private ^java.util.Map applied-settings
+  (java.util.Collections/synchronizedMap (java.util.WeakHashMap.)))
+
+;; Whether a thread of this process ever worked in a workspace. Until one does, every connection is in none, and a
+;; connection whose setting this process has no record of needs no statement.
+(defonce ^:private ever-in-a-workspace? (atom false))
+
+(defn- physical-connection
+  "The physical Postgres connection under `connection`, which a pool may wrap."
+  [^java.sql.Connection connection]
+  (.unwrap connection org.postgresql.jdbc.PgConnection))
+
+(defn record-setting!
+  "Record that the physical Postgres `connection` ran the setting statement `sql`. For the connection pool's hooks."
+  [connection sql]
+  (.put applied-settings (physical-connection connection) sql))
+
+(defn forget-setting!
+  "Forget the setting of the Postgres `connection`, after a rollback may have undone it."
+  [connection]
+  (.remove applied-settings (physical-connection connection)))
+
+(defn apply-workspace!
+  "Put the Postgres `connection` in the workspace of this thread ([[*workspace-id*]]) when it is in another."
+  [^java.sql.Connection connection]
+  (when (postgres-connection? connection)
+    (let [wanted  (setting-sql *workspace-id*)
+          applied (.get applied-settings (physical-connection connection))]
+      (when (and (not= wanted applied)
+                 (or (some? applied) @ever-in-a-workspace? (not= wanted no-workspace-sql)))
+        (execute! connection wanted)
+        (record-setting! connection wanted)))))
+
+;; Each statement Toucan runs on a held connection: put the connection in this thread's workspace first.
+(methodical/defmethod t2.conn/do-with-connection :around java.sql.Connection
+  [connection f]
+  (apply-workspace! connection)
+  (next-method connection f))
+
+;; A rollback undoes a `SET`: forget the setting of a connection when one of its transactions, or savepoints, ends.
+(methodical/defmethod t2.conn/do-with-transaction :around java.sql.Connection
+  [connection options f]
+  (try
+    (next-method connection options f)
+    (finally
+      (when (postgres-connection? connection)
+        (forget-setting! connection)))))
 
 (defn do-with-workspace-id
   "Impl for [[with-workspace-id]]."
   [workspace-id thunk]
-  (let [previous *workspace-id*
-        held     (when (not= (setting-sql previous) (setting-sql workspace-id))
-                   (held-postgres-connection))]
-    (binding [*workspace-id* workspace-id]
-      (if-not held
-        (thunk)
-        (do
-          (execute! held (setting-sql workspace-id))
-          (try
-            (thunk)
-            (finally
-              ;; In a transaction that failed, Postgres refuses every statement, and the rollback undoes the setting.
-              (try
-                (execute! held (setting-sql previous))
-                (catch java.sql.SQLException e
-                  (log/debugf "Could not set the workspace of a held app DB connection back: %s" (ex-message e)))))))))))
+  (when (some? workspace-id)
+    (reset! ever-in-a-workspace? true))
+  (binding [*workspace-id* workspace-id]
+    (thunk)))
 
 (defmacro with-workspace-id
   "Runs `body` with the app DB connections of this thread in the workspace with `workspace-id`, in none when it is

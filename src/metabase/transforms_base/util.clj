@@ -633,6 +633,13 @@
       (assoc target :db db :schema schema :name name)
       target)))
 
+(defn- shared-table-in-workspace?
+  "Whether `table` is a shared Table that a run in a workspace that the request names wrote the workspace's copy of. A
+  run must not change such a Table; it may change a Table that the workspace owns."
+  [table]
+  (and (workspaces/workspace-bound?)
+       (nil? (:workspace_id table))))
+
 (mu/defn- sync-table!
   ([database :- ::lib.schema.metadata/database
     target   :- ::transforms-base.schema/synced-target]
@@ -642,11 +649,10 @@
     {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
    (let [target (canonicalize-target (:id database) target)]
      (when-let [table (or (target-table (:id database) target)
+                          ;; In a workspace that the request names, a new Table is the workspace's own: the app DB
+                          ;; puts it in the workspace of the connection that inserts it.
                           (when create?
-                            (u/prog1 (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))
-                              ;; In a workspace that the request names, a new Table is active only in that workspace.
-                              (when (workspaces/workspace-bound?)
-                                (transforms-base.db/update-table! (:id <>) {:active false})))))]
+                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
        ;; If the table has nil schema, check if the physical table actually lives under
        ;; the driver's default schema. If so, fix the Table record before syncing. Not in a workspace that the request
        ;; names: the Table is shared, and the copy is not the physical table.
@@ -657,8 +663,8 @@
                                (t2/hydrate :db)))
                        table)
                      table)]
-         ;; In a workspace that the request names, the copy is recorded for the workspace, and the shared Table and
-         ;; Fields are not synced from it.
+         ;; In a workspace that the request names, the copy of a shared Table is recorded for the workspace, and the
+         ;; shared Table and Fields are not synced from it. A Table the workspace owns syncs as usual, in the workspace.
          (when-not (workspaces/sync-copy-of-table! database table)
            (sync/sync-table! table))
          table)))))
@@ -672,8 +678,8 @@
                                                 :data_source :metabase-transform
                                                 :is_writable false)
                                 {:create? true})]
-    ;; In a workspace that the request names, the Table is active in that workspace only ([[sync-table!]]).
-    (when-not (or (:active table) (workspaces/workspace-bound?))
+    ;; A shared Table stays as production has it in a workspace that the request names.
+    (when-not (or (:active table) (shared-table-in-workspace? table))
       (transforms-base.db/update-table! (:id table) {:active true}))
     table))
 
@@ -944,9 +950,12 @@
         table (sync-target! (canonical-sync-target db-id transform) database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
-      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
-      ;; In a workspace that the request names, the Table is shared, and the run wrote the workspace's copy of it.
+      ;; In a workspace that the request names, the Transform is shared: production must not point at a Table that only
+      ;; the workspace sees.
       (when-not (workspaces/workspace-bound?)
+        (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)}))
+      ;; A shared Table stays as production has it; the run wrote the workspace's copy of it.
+      (when-not (shared-table-in-workspace? table)
         (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)})))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
