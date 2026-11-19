@@ -456,8 +456,9 @@
                                                                                 :type "category"}]}
                    :model/Pulse                 {pulse-id :id}   {:dashboard_id (:id dash)
                                                                   :creator_id   (mt/user->id :rasta)
+                                                                  ;; Saved before the filter was renamed "Gone".
                                                                   :parameters   [{:id    "gone"
-                                                                                  :name  "Gone"
+                                                                                  :name  "Old name"
                                                                                   :value ["a"]}]}
                    :model/PulseChannel          {channel-id :id} {:channel_type :email
                                                                   :pulse_id     pulse-id
@@ -479,7 +480,7 @@
                    :archived_subscriptions)))))))
 
 (deftest unreadable-archived-subscription-row-test
-  (testing "a subscription the caller can't read is reported by its id and missing filters only"
+  (testing "a subscription the caller can't read is reported by its id and missing filters' ids only"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard    dash           {:name       "Sales"
                                                          :parameters [{:id   "gone"
@@ -494,7 +495,7 @@
                                                          :details      {:channel "#private"}
                                                          :enabled      true}]
         (is (= [{:id             pulse-id
-                 :filters        [{:id "gone", :name "Gone"}]
+                 :filters        [{:id "gone"}]
                  :already_broken false}]
                (-> (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
                                (wire {:method "update"

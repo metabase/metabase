@@ -140,8 +140,9 @@
                      :model/Pulse                 {removed-id :id}    {:name         "Removed filter"
                                                                        :dashboard_id dash-id
                                                                        :creator_id   (mt/user->id :rasta)
+                                                                       ;; Saved before the filter was renamed "Gone".
                                                                        :parameters   [{:id    "gone"
-                                                                                       :name  "Gone"
+                                                                                       :name  "Old name"
                                                                                        :value ["secret"]}]}
                      :model/PulseChannel          {channel-id :id}    {:channel_type :email
                                                                        :pulse_id     removed-id
@@ -217,13 +218,13 @@
                  :already-broken? false
                  :readable?       true}
                 {:id              unreadable-id
-                 :parameters      [{:id "gone", :name "Gone"}]
+                 :parameters      [{:id "gone"}]
                  :already-broken? false
                  :readable?       false}]
                (mt/with-current-user (mt/user->id :rasta)
                  (pulse.broken-subscriptions/handle-broken-subscriptions!
                   dash-id
-                  {"kept" {:id "kept"}, "gone" {:id "gone"}}))))
+                  {"kept" {:id "kept", :name "Kept"}, "gone" {:id "gone", :name "Gone"}}))))
         (is (= #{removed-id stale-id mixed-id unreadable-id}
                (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))
 
