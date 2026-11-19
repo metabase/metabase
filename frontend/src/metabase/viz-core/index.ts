@@ -320,6 +320,7 @@ export {
 export {
   getClickBehaviorSettings,
   getComputedSettings,
+  getTypedComputedSettings,
   setComputedSettingsTransform,
   updateSettings,
 } from "./lib/settings";
@@ -469,6 +470,7 @@ export type {
 export type { ComputedVisualizationSettings } from "./types/computed-settings";
 export type {
   ColumnSettingDefinition,
+  CompleteSettingDefinitions,
   FormattableColumn,
   SettingsExtra,
   VisualizationDefinition,

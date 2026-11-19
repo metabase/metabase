@@ -10,6 +10,7 @@ import type {
 import { isObjectWithRaw } from "metabase-types/guards";
 
 import type {
+  CompleteSettingDefinitions,
   ComputedVisualizationSettings,
   SettingsExtra,
   VisualizationSettingDefinition,
@@ -54,6 +55,36 @@ export function getComputedSettings<T>(
   }
 
   return computedSettings;
+}
+
+/**
+ * `getComputedSettings` for settings over any object, typed by a settings
+ * type. Every key gets its stored value if it passes `isValid`, or else its
+ * default. Stored keys without a definition are ignored. Throws if a
+ * definition throws, rather than leaving its setting without a value.
+ */
+export function getTypedComputedSettings<TObject, TSettings>(
+  settingsDefs: CompleteSettingDefinitions<TObject, TSettings>,
+  object: TObject,
+  storedSettings: Record<string, unknown>,
+): TSettings {
+  const computedSettings = getComputedSettings(
+    settingsDefs,
+    object,
+    storedSettings,
+  );
+  const keyWithoutValue = Object.keys(settingsDefs).find(
+    (key) => computedSettings[key] === undefined,
+  );
+  if (keyWithoutValue !== undefined) {
+    throw new Error(
+      `Setting "${keyWithoutValue}" has no value because its definition threw an error`,
+    );
+  }
+  const completeSettings: unknown = computedSettings;
+  // Every key of TSettings has a definition that checks stored values and has
+  // a default, and the check above found a value for each.
+  return completeSettings as TSettings;
 }
 
 function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
