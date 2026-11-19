@@ -1456,7 +1456,7 @@
   "[[a-dashcard]] with its own card and its series card both connected to `p1`."
   (assoc a-dashcard :parameter_mappings [(p1-mapping 9) (p1-mapping 11)]))
 
-(deftest dropped-connections-replace-card-test
+(deftest ^:parallel dropped-connections-replace-card-test
   (testing "a replaced card that isn't connected again is reported under the card it shows now"
     (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
            (dropped-connections (p1-dash a-dashcard) [{:op "replace_card" :dashcard_id 7 :card_id 99}]))))
@@ -1479,62 +1479,42 @@
                                 [{:op "replace_card" :dashcard_id 7 :card_id 11}
                                  {:op "replace_card" :dashcard_id 7 :card_id 99}])))))
 
-(deftest dropped-connections-series-test
+(deftest ^:parallel dropped-connections-wire-parameter-test
   (testing "wiring a card replaces its series card's connection to the filter, which is reported"
     (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series true}]
            (dropped-connections (p1-dash series-connected-dashcard)
                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}])))))
 
-(deftest dropped-connections-removed-test
+(deftest ^:parallel dropped-connections-removed-test
   (testing "a call that removes the card, series card or filter, or unwires it, reports nothing"
     (doseq [ops [[{:op "remove" :dashcard_id 7}]
                  [{:op "remove_parameter" :parameter_id "p1"}]
                  [{:op "unwire_parameter" :parameter_id "p1"}]
                  [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}]
-                 [{:op "set_series" :dashcard_id 7 :card_ids []}]
-                 [{:op "resize" :dashcard_id 7 :size {:size_x 6 :size_y 6}}]]]
+                 [{:op "set_series" :dashcard_id 7 :card_ids []}]]]
       (testing (pr-str ops)
         (is (= [] (dropped-connections (p1-dash series-connected-dashcard) ops))))))
   (testing "removing a tab reports nothing for the cards on it"
     (is (= []
            (dropped-connections (assoc (p1-dash (assoc series-connected-dashcard :dashboard_tab_id 5))
                                        :tabs [{:id 5 :name "One"} {:id 6 :name "Two"}])
-                                [{:op "remove_tab" :tab_id 5}])))))
+                                [{:op "remove_tab" :tab_id 5}]))))
+  (testing "an op that touches no connection reports nothing"
+    (is (= []
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "resize", :dashcard_id 7, :size {:size_x 6, :size_y 6}}])))))
 
-(deftest dropped-connections-asked-for-test
+(deftest ^:parallel dropped-connections-asked-for-test
   (testing "a patch_dashcard that sets the mappings drops the filters it leaves out on purpose"
     (is (= []
            (dropped-connections (p1-dash series-connected-dashcard)
                                 [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}]))))
-  (testing "a filter a patch keeps is reported when a later op drops it"
-    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
-           (dropped-connections (p1-dash a-dashcard)
-                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 9)]}}
-                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
-  (testing "a connection an op drops on purpose and a later op restores is reported when a third op drops it"
-    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
-           (dropped-connections (p1-dash a-dashcard)
-                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}
-                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
-                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
   (testing "an unwire after a replace drops the replaced card's connection on purpose"
     (is (= []
            (dropped-connections (p1-dash a-dashcard)
                                 [{:op "replace_card" :dashcard_id 7 :card_id 99}
                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
                                  {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}]))))
-  (testing "an unwire doesn't hide a loss after the connection is restored on a replacement card"
-    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 98, :series false}]
-           (dropped-connections (p1-dash a-dashcard)
-                                [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}
-                                 {:op "replace_card" :dashcard_id 7 :card_id 99}
-                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
-                                 {:op "replace_card" :dashcard_id 7 :card_id 98}]))))
-  (testing "a patch that drops the card's own connection doesn't hide its series card's, once that is promoted"
-    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
-           (dropped-connections (p1-dash series-connected-dashcard)
-                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 11)]}}
-                                 {:op "replace_card" :dashcard_id 7 :card_id 11}]))))
   (testing "unwiring or patching away a connection a replace already cleared drops it on purpose"
     (doseq [op [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}
                 {:op "unwire_parameter" :parameter_id "p1"}
@@ -1562,6 +1542,31 @@
                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
                                  {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}])))))
 
+(deftest ^:parallel dropped-connections-asked-for-does-not-hide-later-losses-test
+  (testing "a filter a patch keeps is reported when a later op drops it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 9)]}}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "a connection an op drops on purpose and a later op restores is reported when a third op drops it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "an unwire doesn't hide a loss after the connection is restored on a replacement card"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 98, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 98}]))))
+  (testing "a patch that drops the card's own connection doesn't hide its series card's, once that is promoted"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 11)]}}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 11}])))))
+
 (def ^:private another-dashcard
   "A second dashcard below [[a-dashcard]], its card 12 connected to `p1`."
   {:id                 8
@@ -1573,7 +1578,7 @@
    :dashboard_tab_id   nil
    :parameter_mappings [(p1-mapping 12)]})
 
-(deftest dropped-connections-asked-elsewhere-test
+(deftest ^:parallel dropped-connections-asked-elsewhere-test
   (testing "an op that asks to drop another dashcard's connections doesn't hide an earlier loss on this one"
     (doseq [op [{:op "unwire_parameter", :parameter_id "p1", :dashcard_id 8}
                 {:op "patch_dashcard", :dashcard_id 8, :patch {:parameter_mappings []}}]]
@@ -1589,7 +1594,7 @@
                                   :dashcard_id 7
                                   :patch       {:visualization_settings {:card.title "New"}}}])))))
 
-(deftest dropped-connections-stored-mappings-test
+(deftest ^:parallel dropped-connections-stored-mappings-test
   (testing "a mapping stored without a card id never filtered anything, so losing it is not reported"
     (is (= []
            (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(dissoc (p1-mapping 9) :card_id)]))
