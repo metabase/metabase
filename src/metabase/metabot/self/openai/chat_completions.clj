@@ -259,14 +259,6 @@
         (not-empty arguments) (conj {:type :tool-input-delta :toolCallId id :inputTextDelta arguments})
         true                  (conj {:type :tool-input-available :toolCallId id :toolName name})))))
 
-(defn- error-chunk
-  "The AI SDK `:error` chunk for `error-text`, with the provider's `error` object when it sent one.
-
-  The object keeps fields that the text loses, such as OpenRouter's `metadata.error_type`."
-  [error error-text]
-  (cond-> {:type :error :errorText error-text}
-    (map? error) (assoc :error (assoc error :message error-text))))
-
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
@@ -429,7 +421,7 @@
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
               error-text                                       (-> (close!)
-                                                                   (rf (error-chunk error error-text)))))))))))
+                                                                   (rf (core/error-chunk error error-text)))))))))))
 
 ;;; Request body
 

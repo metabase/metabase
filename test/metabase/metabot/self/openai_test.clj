@@ -152,8 +152,31 @@
                                    :message "The server had an error while processing your request. Sorry about that!"}}}]]
       (is (=? [{:type :start}
                {:type      :error
-                :errorText "The server had an error while processing your request. Sorry about that!"}]
+                :errorText "The server had an error while processing your request. Sorry about that!"
+                :error     {:code    "server_error"
+                            :message "The server had an error while processing your request. Sorry about that!"}}]
               (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-error-event-keeps-error-object-test
+  (testing "a top-level error event keeps its code in the :error object, beside the text"
+    (is (= [{:type      :error
+             :errorText "Rate limit reached."
+             :error     {:code "rate_limit_exceeded" :message "Rate limit reached." :param nil}}]
+           (into [] (openai/openai->aisdk-chunks-xf)
+                 [{:type "error" :code "rate_limit_exceeded" :message "Rate limit reached." :param nil
+                   :sequence_number 3}]))))
+  (testing "a nested error object with no message takes the event's own message"
+    (is (=? [{:type      :error
+              :errorText "Rate limit reached."
+              :error     {:code "rate_limit_exceeded" :message "Rate limit reached."}}]
+            (into [] (openai/openai->aisdk-chunks-xf)
+                  [{:type "error" :message "Rate limit reached." :error {:code "rate_limit_exceeded"}}]))))
+  (testing "a string error is the text when the event has no message"
+    (is (= [{:type :error :errorText "Upstream timeout" :error {:message "Upstream timeout"}}]
+           (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :error "Upstream timeout"}])))
+    (is (= [{:type :error :errorText "Upstream timed out." :error {:message "Upstream timed out."}}]
+           (into [] (openai/openai->aisdk-chunks-xf)
+                 [{:type "error" :error "Upstream timeout" :message "Upstream timed out."}])))))
 
 (deftest ^:parallel openai-response-failed-without-message-test
   (testing "response.failed with no message falls back to the error code, then a generic message"
@@ -164,7 +187,10 @@
       (is (=? [{:type :start} {:type :error :errorText "server_error"}]
               (into [] (openai/openai->aisdk-chunks-xf) code-only)))
       (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
-              (into [] (openai/openai->aisdk-chunks-xf) bare))))))
+              (into [] (openai/openai->aisdk-chunks-xf) bare)))
+      (testing "the code-only error object gets the text as its message"
+        (is (=? [{:type :start} {:type :error :error {:code "server_error" :message "server_error"}}]
+                (into [] (openai/openai->aisdk-chunks-xf) code-only)))))))
 
 (deftest ^:parallel openai-response-failed-reaches-wire-and-persistence-test
   (testing "a response.failed error flows through to both the wire line and the persisted turn error"
