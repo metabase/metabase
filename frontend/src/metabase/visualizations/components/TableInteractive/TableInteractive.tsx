@@ -139,7 +139,7 @@ interface TableProps extends VisualizationProps {
   tableFooterExtraButtons?: React.ReactNode;
 }
 
-const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
+const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn?: boolean) => {
   const dataColumns = cols.map((col) => col.name);
   if (!hasIndexColumn) {
     return dataColumns;
