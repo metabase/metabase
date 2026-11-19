@@ -109,7 +109,9 @@
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
     (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
       (testing name
-        (is (=? expected (sql-parsing/validate-executable-stmt dialect sql stmt-type))
+        ;; A key that `expected` maps to nil is one the verdict must not hold.
+        (is (=? expected (merge (update-vals expected (constantly nil))
+                                (sql-parsing/validate-executable-stmt dialect sql stmt-type)))
             (pr-str sql))
         (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
                (sql-parsing/classify-stmt dialect sql stmt-type))

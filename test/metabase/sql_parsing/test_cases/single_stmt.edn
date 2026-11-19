@@ -47,6 +47,12 @@
    :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
+  {:name       "a select is not a confined write, for no reason beyond its type"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders"
+   :stmt-type  "confined-write"
+   :expected   {:verdict :disallowed :single-stmt? true :reason nil}}
+
   {:name       "a confined write advances no sequence"
    :dialect    "postgres"
    :sql        "INSERT INTO orders (id) VALUES (nextval('orders_id_seq'))"

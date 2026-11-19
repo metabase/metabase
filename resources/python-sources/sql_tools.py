@@ -2305,7 +2305,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
             # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
             # the rebuild must pass the same checks and rebuild to itself.
-            if problem is None and stmt_type == "confined-write" and recheck:
+            if (
+                problem is None
+                and stmt_type == "confined-write"
+                and recheck
+                and isinstance(_unbracketed(stmts[0]), allowed_types)
+            ):
                 again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect, recheck=False))
                 if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
                     problem = ("rebuild-differs", again.get("reason"))
