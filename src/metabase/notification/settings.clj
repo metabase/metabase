@@ -1,5 +1,6 @@
 (ns metabase.notification.settings
   (:require
+   [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.log :as log]))
 
@@ -22,18 +23,17 @@
   :type       :integer
   :setter     :none
   :visibility :internal
-  ;; read during shutdown, where a value that does not parse must not stop the drain; a day at most, so the
-  ;; deadline in nanoseconds cannot overflow
+  ;; read during shutdown, so only from the environment, never the app DB, and a value that does not parse must not
+  ;; stop the drain; a day at most, so the deadline in nanoseconds cannot overflow
   :getter     (fn []
-                (try
-                  (-> (setting/get-value-of-type :integer :notification-shutdown-timeout-seconds)
+                (let [value   (setting/env-var-value :notification-shutdown-timeout-seconds)
+                      seconds (some-> value str/trim parse-long)]
+                  (when (and value (nil? seconds))
+                    (log/warnf "MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS is not a whole number; waiting %d seconds"
+                               default-shutdown-timeout-seconds))
+                  (-> (or seconds default-shutdown-timeout-seconds)
                       (max 0)
-                      (min 86400))
-                  (catch Exception e
-                    (log/warnf "Could not read the notification shutdown timeout, so shutdown waits %d seconds: %s"
-                               default-shutdown-timeout-seconds
-                               (ex-message e))
-                    default-shutdown-timeout-seconds)))
+                      (min 86400))))
   :doc "Metabase stops sending notifications when it shuts down. It sends what is already queued for up to this many
   seconds, then abandons the rest and logs how many were left. The default leaves room for the other shutdown steps
   within the 30-second grace period Kubernetes gives a pod by default. Raise it if your deployment allows a longer

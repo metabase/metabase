@@ -1001,7 +1001,7 @@
                         (deliver sent-later id)))]
         (dispatch-fn {:id 1 :payload_type :notification/testing})
         ;; queued only once 1 is being sent, so the worker cannot take 2 first
-        (.await sending)
+        (is (.await sending 5 java.util.concurrent.TimeUnit/SECONDS))
         (dispatch-fn {:id 2 :payload_type :notification/testing})
         (is (= {:drained?     false
                 :interrupted? true
