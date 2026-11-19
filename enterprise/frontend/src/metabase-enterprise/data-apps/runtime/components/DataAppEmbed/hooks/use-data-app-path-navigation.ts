@@ -7,6 +7,7 @@ import {
 } from "embedding-sdk-package/data-apps/private/lib/data-app-routing";
 import {
   getDataAppEmbedUrl,
+  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
 } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
@@ -80,10 +81,18 @@ export function useDataAppPathNavigation({
   );
 
   // A request is cleared when a newer `path` arrives, so the latest of the two wins.
+  // embed.js does not validate the path of a repeated write, so a request for another app or an unsafe route
+  // only navigates to `path` again.
   useEffect(() => {
+    const requestedPath =
+      navigationRequest &&
+      getEmbeddedAppSlugFromPath(navigationRequest.path) === slug
+        ? navigationRequest.path
+        : path;
+
     navigationIdRef.current = navigationRequest?.navigationId;
-    navigateToHostPath(navigationRequest?.path ?? path);
-  }, [path, navigationRequest, navigateToHostPath]);
+    navigateToHostPath(requestedPath);
+  }, [slug, path, navigationRequest, navigateToHostPath]);
 }
 
 function getCurrentUrl(): URL {

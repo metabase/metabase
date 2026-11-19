@@ -185,6 +185,35 @@ describe("DataAppEmbed - router navigation", () => {
     expect(pushState).not.toHaveBeenCalled();
   });
 
+  it.each(["sales/../other-app/secret", "", "other-app"])(
+    "navigates to path again instead of a request that does not name this app: %j",
+    (requestedPath) => {
+      window.history.replaceState(null, "", "/embed/embedded-apps/sales");
+      const initialProps: { navigationRequest: { path: string } | null } = {
+        navigationRequest: null,
+      };
+
+      const { rerender } = renderHook(
+        ({ navigationRequest }) =>
+          useDataAppPathNavigation({
+            slug: "sales",
+            path: "sales/orders",
+            navigationRequest,
+          }),
+        { initialProps },
+      );
+
+      // simulates in-app navigation
+      act(() => navigate("/products"));
+
+      rerender({ navigationRequest: { path: requestedPath } });
+
+      expect(window.location.pathname).toBe(
+        "/embed/embedded-apps/sales/orders",
+      );
+    },
+  );
+
   it("reports the ID of the last navigation request it handled", () => {
     const onPathChange = jest.fn<void, [string, number | undefined]>();
     const initialProps: {
