@@ -39,9 +39,10 @@ ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
 
 # sqlglot (as of 30.20.0) reads a Postgres E'' string into its value only in part: `\\` becomes one backslash and
 # `\n` a newline, while `\x41` and `\101` stay as written. It writes that value back without doubling a backslash, so
-# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. Neither
-# reading can be undone from the value, so the parser keeps the text between the quotes as written, and the Postgres
-# generator writes that text back while the node still holds the value it was parsed with.
+# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. The
+# value cannot give back the text: `E'\\x41'` and `E'\x41'` both give `\x41`. So the parser keeps the text between
+# the quotes as written, and the Postgres generator writes that text back while the node still holds the value it was
+# parsed with.
 _E_STRING_AS_WRITTEN = "metabase_e_string_as_written"
 
 
@@ -2210,8 +2211,9 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
 
 def _hidden_by_string_setting(sql: str) -> bool:
     """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
-    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote in a
-    standard literal, written so or made by rebuilding a dollar-quoted string as one, moves the end of that literal."""
+    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote moves
+    the end of a standard literal, whether the author wrote the literal or the rebuild made it from a dollar-quoted
+    string."""
     return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
@@ -2302,10 +2304,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 and _hidden_by_string_setting(rebuilt)
             ):
                 problem = ("backslash-quote", None)
-            # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
-            # text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN` for one case it got wrong), so
-            # the rebuild must pass the same checks and rebuild to itself. No input known at sqlglot 30.20.0 reaches
-            # this refusal, so no test does either.
+            # The checks above, except the backslash check, read `sql`, and the caller runs `rebuilt`. SQLGlot's
+            # writer does not always produce text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN`
+            # for one case it got wrong), so the rebuild must pass the same checks and rebuild to itself. No input
+            # known at sqlglot 30.20.0 reaches this refusal, so no test does either.
             if (
                 problem is None
                 and stmt_type == "confined-write"
