@@ -1128,7 +1128,7 @@
        (catch Throwable t
          (log/warnf t "Test cleanup failed: DROP DATABASE %s" db-name))))
 
-(defn- public-create-database-name
+(defn- public-create-test-db-name
   "A name for the database that [[workspace-public-create-other-database-live-test]] creates. It carries the creation
   time in epoch seconds, so a later run can tell a leaked database from one a concurrent CI job is still using.
   Redshift database names are at most 64 characters."
@@ -1158,11 +1158,11 @@
   ;; it from a connection to another database
   (mt/test-driver :redshift
     (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
-          db2        (public-create-database-name)]
+          db2-name   (public-create-test-db-name)]
       (drop-leaked-public-create-databases! admin-spec)
       (try
         ;; CREATE DATABASE cannot run in a transaction block
-        (jdbc/execute! admin-spec [(format "CREATE DATABASE \"%s\"" db2)] {:transaction? false})
+        (jdbc/execute! admin-spec [(format "CREATE DATABASE \"%s\"" db2-name)] {:transaction? false})
         (let [error (try
                       (jdbc/with-db-transaction [conn admin-spec]
                         (#'redshift/start-workspace-transaction! conn)
@@ -1172,13 +1172,13 @@
                         e))]
           (testing "init's check refuses with a 412 naming the other database's `public`"
             (is (=? {:status-code 412} (ex-data error)))
-            (is (some #{(str db2 ".public")} (:schemas (ex-data error))))
-            (is (not (some #{db2} (:unverifiable (ex-data error)))))
+            (is (some #{(str db2-name ".public")} (:schemas (ex-data error))))
+            (is (not (some #{db2-name} (:unverifiable (ex-data error)))))
             (is (empty? (:unverifiable (ex-data error))))
             (is (str/includes? (ex-message error)
-                               (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2)))))
+                               (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2-name)))))
         (finally
-          (drop-database! admin-spec db2))))))
+          (drop-database! admin-spec db2-name))))))
 
 (deftest ^:synchronized workspace-grant-refuses-public-writes-live-test
   (mt/test-driver :redshift
