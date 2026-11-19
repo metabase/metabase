@@ -1627,3 +1627,46 @@
                         (is (not (check-table?))))
                       (finally
                         (jdbc/execute! spec [(format "DROP TABLE IF EXISTS %s" check-table)])))))))))))))
+
+(driver/register! ::stateless-impersonation-driver, :parent :sql, :abstract? true)
+
+(defmethod driver/database-supports? [::stateless-impersonation-driver :connection-impersonation]
+  [_ _ db]
+  (boolean (get-in db [:details :enabled?])))
+
+(defmethod driver.sql/default-database-role ::stateless-impersonation-driver
+  [_ _]
+  "DEFAULT_ROLE")
+
+(defmethod driver.sql/format-impersonation-role ::stateless-impersonation-driver
+  [_ _ role {:keys [user-email]}]
+  (str role ":" user-email))
+
+(defmethod driver/set-role! ::stateless-impersonation-driver
+  [_ builder role]
+  (swap! builder conj role))
+
+(deftest format-impersonation-role-and-stateless-builder-test
+  (let [mock-driver ::stateless-impersonation-driver]
+    (mt/with-temp [:model/Database db {:engine mock-driver :details {:enabled? true}}]
+      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (:id db) :attribute "imp_role"}]
+                                                     :attributes     {"imp_role" "analyst"}}
+        (let [lib-db (driver.u/lib-database (:id db))]
+          (testing "connection-impersonation-role delegates through driver.sql/format-impersonation-role"
+            (mt/with-premium-features #{:advanced-permissions}
+              (mt/with-test-user :rasta
+                (let [bldr (atom [])]
+                  (driver.conn/set-role-if-supported! mock-driver bldr lib-db)
+                  (is (= [(str "analyst:" (:email (mt/fetch-user :rasta)))] @bldr))))))
+
+          (testing "stateless non-JDBC builders do not apply default-database-role when unlicensed"
+            (mt/with-premium-features #{}
+              (request/as-admin
+                (let [bldr (atom [])]
+                  (driver.conn/set-role-if-supported! mock-driver bldr lib-db)
+                  (is (= [] @bldr))))
+              (mt/with-test-user :rasta
+                (is (thrown-with-msg?
+                     ExceptionInfo
+                     #"Advanced Permissions"
+                     (driver.conn/set-role-if-supported! mock-driver (atom []) lib-db)))))))))))

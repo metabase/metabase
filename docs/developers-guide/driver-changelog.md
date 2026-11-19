@@ -20,6 +20,11 @@ summary: Changes to the Metabase driver interface, listed by release.
   `:admin` connection type, `metabase.driver.common/admin-connection-option` and
   `metabase.driver.util/fields-hidden-for-admin-connection`, and a Database's `:admin_details`.
 
+- `metabase.driver.connection/set-role-if-supported!` `[driver conn database]` moves from
+  `metabase.driver.sql-jdbc.connection` (where a re-export remains) so non-JDBC drivers can participate in connection
+  impersonation, and `metabase.driver.sql/format-impersonation-role` `[driver database role user-info]` is added to
+  let a driver encode structured user context into the resolved role string used for caching and `driver/set-role!`.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
