@@ -619,6 +619,28 @@
                   "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
+(deftest ^:parallel multi-stage-join-source-stage-ctes-test
+  (testing "Stage CTEs of a multi-stage join source go in the top-level WITH, not inside the JOIN (#87571)"
+    (let [mp       (lib.tu/mock-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+                    {:cards [{:id            1
+                              :database-id   (meta/id)
+                              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                                                 (lib/aggregate (lib/count))
+                                                 (lib/breakout (meta/field-metadata :checkins :venue-id))
+                                                 lib/append-stage)}]})
+          card     (lib.metadata/card mp 1)
+          query    (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+          card-col (m/find-first #(= (:name %) "VENUE_ID")
+                                 (lib/join-condition-rhs-columns query card nil nil))
+          query    (lib/join query (lib/join-clause card [(lib/= (lib.metadata/field mp (meta/id :venues :id))
+                                                                 card-col)]))]
+      (qp.store/with-metadata-provider mp
+        (let [sql (:query (qp.compile/compile query))]
+          (is (str/starts-with? sql "WITH \"__mb_stage_0\" AS ("))
+          (is (= 1 (count (re-seq #"(?i)\bWITH\b" sql))))
+          (is (re-find #"LEFT JOIN \"__mb_stage_0\" AS \"__mb_source\"|FROM \"__mb_stage_0\" AS \"__mb_source\"" sql)))))))
+
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
     (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
