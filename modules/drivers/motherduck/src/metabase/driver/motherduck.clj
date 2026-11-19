@@ -34,7 +34,7 @@
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
    (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -519,6 +519,12 @@
 (defmethod sql.qp/current-datetime-honeysql-form :motherduck
   [_driver]
   (h2x/current-datetime-honeysql-form :postgres))
+
+;; DuckDB reads text after a space in a TIMESTAMPTZ literal as a time zone name, so the inherited
+;; `'2020-06-17 12:00:00.000 +00:00'` fails with "Unknown TimeZone '+00:00'". Write the offset without the space.
+(defmethod sql.qp/inline-value [:motherduck OffsetDateTime]
+  [_driver t]
+  (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSSxxx" t)))
 
 (defmethod sql.qp/add-interval-honeysql-form :motherduck
   [_driver hsql-form amount unit]
