@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -14,7 +15,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronTrigger JobDetail)))
+   (java.util.concurrent LinkedBlockingQueue TimeUnit)
+   (org.quartz CronTrigger JobDetail JobExecutionContext Scheduler SchedulerException)))
 
 (set! *warn-on-reflection* true)
 
@@ -161,3 +163,134 @@
         (if scheduler-initialized?
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
+
+(defmacro ^:private with-jdbc-scheduler!
+  "Runs `body` with a JDBC-backed scheduler, and stops it afterwards unless one was already running.
+  A scheduler that this starts stays in standby: it stores and loads jobs, and fires no trigger."
+  [& body]
+  `(let [running?# (some? (#'task/scheduler))]
+     (when-not running?#
+       ;; the tasks' initializers start threads that outlive the scheduler, so only the scheduler starts
+       (mt/with-dynamic-fn-redefs [task.impl/init-tasks! (constantly nil)]
+         (task/init-scheduler!)))
+     (try
+       ~@body
+       (finally
+         (when-not running?#
+           (task/stop-scheduler!))))))
+
+(def ^:private ^LinkedBlockingQueue blocking-job-started (LinkedBlockingQueue.))
+
+(def ^:private ^LinkedBlockingQueue blocking-job-release (LinkedBlockingQueue.))
+
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true} BlockingJob [job-context]
+  (.put blocking-job-started (.getName (.getKey (.getTrigger ^JobExecutionContext job-context))))
+  (.take blocking-job-release))
+
+(def ^:private blocking-job-key (jobs/key "metabase.task-test.blocking-job"))
+
+(defn- blocking-job ^JobDetail []
+  (jobs/build
+   (jobs/of-type BlockingJob)
+   (jobs/with-identity blocking-job-key)
+   (jobs/store-durably)))
+
+(defn- one-shot-trigger [trigger-name]
+  (triggers/build
+   (triggers/with-identity (triggers/key trigger-name))
+   (triggers/for-job blocking-job-key)
+   (triggers/start-now)))
+
+(defn- next-blocking-job-start []
+  (.poll blocking-job-started 5 TimeUnit/SECONDS))
+
+(defn- test-schedule-once! []
+  (.clear blocking-job-started)
+  (.clear blocking-job-release)
+  (testing "trigger with unused key runs"
+    (is (true? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
+    (is (= "first" (next-blocking-job-start))))
+  (dotimes [_ 3]
+    (task/schedule-once! (blocking-job) (one-shot-trigger "first"))
+    (task/schedule-once! (blocking-job) (one-shot-trigger "second")))
+  (testing "no trigger starts while first run blocks"
+    (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS))))
+  (testing "triggers scheduled many times during run each run once after it"
+    (dotimes [_ 3]
+      (.put blocking-job-release :go))
+    (is (= #{"first" "second"} (set [(next-blocking-job-start) (next-blocking-job-start)])))
+    (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS)))))
+
+(deftest schedule-once-test
+  (mt/with-temp-scheduler!
+    (test-schedule-once!)))
+
+(deftest schedule-once-with-jdbc-job-store-test
+  (with-jdbc-scheduler!
+    (let [standby? (.isInStandbyMode (task/scheduler))]
+      (try
+        (task/add-job! (blocking-job))
+        (qs/start (task/scheduler))
+        (test-schedule-once!)
+        (finally
+          (qs/delete-job (task/scheduler) blocking-job-key)
+          (when standby?
+            (qs/standby (task/scheduler))))))))
+
+(defn- blocking-job-of-its-own ^JobDetail [job-name]
+  (jobs/build
+   (jobs/of-type BlockingJob)
+   (jobs/with-identity (jobs/key job-name))))
+
+(defn- trigger-of-job [^JobDetail job trigger-name]
+  (triggers/build
+   (triggers/with-identity (triggers/key trigger-name))
+   (triggers/for-job (.getKey job))
+   (triggers/start-now)))
+
+(deftest schedule-once-with-job-per-trigger-test
+  (with-jdbc-scheduler!
+    (let [standby? (.isInStandbyMode (task/scheduler))
+          job-a    (blocking-job-of-its-own "metabase.task-test.blocking-job.a")
+          job-b    (blocking-job-of-its-own "metabase.task-test.blocking-job.b")]
+      (try
+        (task/add-job! (blocking-job))
+        (qs/start (task/scheduler))
+        (.clear blocking-job-started)
+        (.clear blocking-job-release)
+        (task/schedule-once! job-a (trigger-of-job job-a "a"))
+        (is (= "a" (next-blocking-job-start)))
+        (testing "other job runs during run"
+          (task/schedule-once! job-b (trigger-of-job job-b "b"))
+          (is (= "b" (next-blocking-job-start))))
+        (testing "same job scheduled during its run waits for it and runs once"
+          (dotimes [_ 3]
+            (task/schedule-once! job-a (trigger-of-job job-a "a")))
+          (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS)))
+          (dotimes [_ 2]
+            (.put blocking-job-release :go))
+          (is (= "a" (next-blocking-job-start)))
+          (.put blocking-job-release :go)
+          (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS))))
+        (testing "job is deleted after its last run"
+          (is (nil? (qs/get-job (task/scheduler) (.getKey job-a)))))
+        (finally
+          (dotimes [_ 3]
+            (.put blocking-job-release :go))
+          (qs/delete-jobs (task/scheduler) [blocking-job-key (.getKey job-a) (.getKey job-b)])
+          (when standby?
+            (qs/standby (task/scheduler))))))))
+
+(deftest schedule-once-without-running-scheduler-test
+  (tu/do-with-unstarted-temp-scheduler!
+   (fn []
+     (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
+     (is (not (task/job-exists? blocking-job-key))))))
+
+(deftest schedule-once-that-scheduler-refuses-test
+  (let [refusing-scheduler (reify Scheduler
+                             (isInStandbyMode [_] false)
+                             (^void scheduleJob [_ ^JobDetail _job ^java.util.Set _triggers ^boolean _replace]
+                               (throw (SchedulerException. "job store is down"))))]
+    (binding [task.impl/*quartz-scheduler* (atom refusing-scheduler)]
+      (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first")))))))
