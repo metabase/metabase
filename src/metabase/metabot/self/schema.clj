@@ -49,8 +49,8 @@
 
   Filters feature-gated properties from the parameter schema (see [[filter-schema-by-features]]), publishes it without
   `oneOf` (see [[mu.json-schema/without-one-of]]), and strips the `Inputs: ...` block that `mu/defn` appends to the
-  docstring. An entry carrying a `:declaration` delay, which the agent creates once per turn, returns its value
-  instead."
+  docstring.
+  An entry carrying a `:declaration` delay, which the agent creates once per turn, returns its value instead."
   [{:keys [tool-name doc schema declaration]}]
   (if declaration
     @declaration

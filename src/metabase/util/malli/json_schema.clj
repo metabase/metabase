@@ -205,8 +205,12 @@
     {:not {}}))
 
 (defn- any-of
-  "Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`."
+  "The JSON Schema `node` with its `oneOf` replaced by an `anyOf`, as [[replace-one-of]] does.
+  Unlike [[without-one-of]], it keeps the `null` branch of `[:maybe X]` in the `anyOf` rather than folding it into a
+  nullable type."
   [node]
+  ;; Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`.
+  ;; The nullable type exists for tool clients that coerce types, which the OpenAPI spec does not serve.
   (if-let [branches (:oneOf node)]
     (replace-one-of node (branches->any-of branches))
     node))
@@ -351,12 +355,13 @@
 
 (defn without-one-of
   "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]], keeping the keywords beside it as
-  [[replace-one-of]] does."
+  [[replace-one-of]] does.
+  The OpenAPI pass uses [[any-of]] instead, which leaves `[:maybe X]` as an `anyOf` with a `null` branch."
   [json-schema]
   ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so a falsy value valid for X matches
   ;; both branches of a nullable `oneOf` and fails it, where an `anyOf` or a type array passes it.
   ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
-  ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
+  ;; OpenAI rejects `oneOf` anywhere in a tool schema: in strict mode, and from GPT-6.2 without it too.
   ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
   (postwalk-schemas
    (fn [{branches :oneOf :as node}]

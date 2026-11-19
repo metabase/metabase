@@ -149,7 +149,8 @@
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`, `:multi`) into a single
   `:map`, applies tool-description preferences, and transforms to JSON Schema.
-  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf` (see [[mu.json-schema/without-one-of]]).
+  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf`
+  (see [[mu.json-schema/without-one-of]]).
   Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
