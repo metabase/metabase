@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 
 import type * as Urls from "metabase/urls";
 import type {
+  ActionTest,
   CardTest,
   DataTestId,
   DataTestRun,
@@ -26,6 +27,7 @@ export type DataTestSubjectId = number;
 export type DataTestByType = {
   transform: TransformTest;
   card: CardTest;
+  action: ActionTest;
 };
 
 export type DataTestQueryResult<T> = {

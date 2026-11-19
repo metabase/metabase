@@ -1,4 +1,5 @@
 import type {
+  ActionTest,
   CardTest,
   DataTestEmptyExpectation,
   DataTestEqualsExpectation,
@@ -94,6 +95,29 @@ export function createMockCardTest(opts?: Partial<CardTest>): CardTest {
       },
     ],
     expectations: [createMockDataTestEqualsExpectation()],
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    last_run: null,
+    ...opts,
+  };
+}
+
+export function createMockActionTest(opts?: Partial<ActionTest>): ActionTest {
+  return {
+    id: 1,
+    entity_id: "action-test-1",
+    action_id: 1,
+    creator_id: 1,
+    name: "Test",
+    description: null,
+    parameters: { id: 1 },
+    inputs: [
+      {
+        table: { schema: "public", name: "orders" },
+        ...createMockDataTestRowsData(),
+      },
+    ],
+    expectations: [createMockDataTestEmptyExpectation()],
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     last_run: null,

@@ -2,25 +2,22 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
-import { isRootCollection } from "metabase/common/collections/utils";
-import { Link } from "metabase/common/components/Link";
 import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { StackProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackAction, WritebackActionId } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 import { ACTION_NAME_MAX_LENGTH } from "../../constants";
+import { ActionBreadcrumbs } from "../ActionBreadcrumbs";
 
 import { ActionMoreMenu } from "./ActionMoreMenu";
 
@@ -36,13 +33,6 @@ export function ActionHeader({
   isEditMode = false,
   ...stackProps
 }: ActionHeaderProps) {
-  const { path, isLoadingPath } = useCollectionPath({
-    collectionId: action.collection_id,
-    namespace: "data-actions",
-  });
-  const folderPath =
-    path?.filter((collection) => !isRootCollection(collection)) ?? [];
-
   return (
     <PaneHeader
       title={<ActionNameInput action={action} />}
@@ -50,24 +40,11 @@ export function ActionHeader({
       menu={
         !isEditMode && action.can_write && <ActionMoreMenu action={action} />
       }
-      tabs={!isEditMode && <ActionTabs actionId={action.id} />}
+      tabs={!isEditMode && <ActionTabs action={action} />}
       actions={actions}
       data-testid="action-header"
       breadcrumbs={
-        <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
-          {folderPath.map((collection, index) => (
-            <Link
-              key={collection.id}
-              to={Urls.dataStudioActions({
-                expandedIds: folderPath.slice(0, index + 1).map(({ id }) => id),
-              })}
-            >
-              {collection.name}
-            </Link>
-          ))}
-          {action.name}
-        </DataStudioBreadcrumbs>
+        <ActionBreadcrumbs action={action}>{action.name}</ActionBreadcrumbs>
       }
       {...stackProps}
     />
@@ -102,10 +79,11 @@ function ActionNameInput({ action }: ActionNameInputProps) {
 }
 
 type ActionTabsProps = {
-  actionId: WritebackActionId;
+  action: WritebackAction;
 };
 
-function ActionTabs({ actionId }: ActionTabsProps) {
+function ActionTabs({ action }: ActionTabsProps) {
+  const actionId = action.id;
   const tabs: PillTab[] = [
     { label: t`Definition`, to: Urls.dataStudioAction(actionId) },
     {
@@ -116,6 +94,9 @@ function ActionTabs({ actionId }: ActionTabsProps) {
     },
     { label: t`Run`, to: Urls.dataStudioActionRun(actionId) },
     { label: t`Settings`, to: Urls.dataStudioActionSettings(actionId) },
+    ...(PLUGIN_DATA_TESTING.isEnabled && action.type === "query"
+      ? [{ label: t`Tests`, to: Urls.dataStudioActionTestList(actionId) }]
+      : []),
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {

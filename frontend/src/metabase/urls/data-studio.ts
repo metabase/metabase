@@ -1,4 +1,5 @@
 import type {
+  ActionTestId,
   CardId,
   CardTestId,
   CollectionId,
@@ -404,6 +405,25 @@ export function dataStudioActionRun(actionId: WritebackActionId) {
 
 export function dataStudioActionSettings(actionId: WritebackActionId) {
   return `${dataStudioAction(actionId)}/settings`;
+}
+
+export function dataStudioActionTestList(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/tests`;
+}
+
+export function dataStudioActionTest(
+  actionId: WritebackActionId,
+  testId: ActionTestId,
+) {
+  return `${dataStudioActionTestList(actionId)}/${testId}`;
+}
+
+export function dataStudioActionTestRuns(
+  actionId: WritebackActionId,
+  testId: ActionTestId,
+  params?: DataTestRunListParams,
+) {
+  return dataTestRuns(dataStudioActionTest(actionId, testId), params);
 }
 
 export function newDataStudioAction() {

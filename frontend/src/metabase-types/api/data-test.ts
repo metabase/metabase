@@ -1,3 +1,4 @@
+import type { WritebackAction, WritebackActionId } from "./actions";
 import type { Card, CardId } from "./card";
 import type { DataTestRun } from "./data-test-run";
 import type { Segment, SegmentId } from "./segment";
@@ -107,6 +108,32 @@ export type ListCardTestsRequest = {
 };
 
 export type RunCardTestResponse = RunTransformTestResponse;
+
+export type ActionTestId = number;
+
+export type ActionTestParameters = Record<string, DataTestRowValue>;
+
+export type ActionTest = {
+  id: ActionTestId;
+  entity_id: string;
+  action_id: WritebackActionId;
+  creator_id: UserId;
+  name: string;
+  description: string | null;
+  parameters: ActionTestParameters | null;
+  inputs: DataTestInput[];
+  expectations: DataTestExpectation[];
+  created_at: string;
+  updated_at: string;
+  last_run: DataTestRun | null;
+  action?: WritebackAction;
+};
+
+export type ListActionTestsRequest = {
+  "action-id"?: WritebackActionId;
+};
+
+export type RunActionTestResponse = RunTransformTestResponse;
 
 export type SegmentTestId = number;
 
