@@ -54,7 +54,11 @@ export const DashboardSelector = ({
 
   return (
     <Flex>
-      <SelectButton fullWidth={fullWidth} onClick={() => setIsOpen(true)}>
+      <SelectButton
+        fullWidth={fullWidth}
+        hasValue={dashboard !== undefined}
+        onClick={() => setIsOpen(true)}
+      >
         {dashboard?.name || t`Pick a dashboard`}
       </SelectButton>
       {isOpen && (

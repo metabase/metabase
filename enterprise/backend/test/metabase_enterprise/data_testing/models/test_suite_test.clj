@@ -61,28 +61,30 @@
 (deftest test-suite-audit-events-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/TestSuite {suite-id :id} {:creator_id  (mt/user->id :crowberto)
-                                                      :name        "Nightly"
-                                                      :description "abc"}]
-        (testing "create names the creator"
+      (mt/with-temp [:model/Card      {card-id :id}         {}
+                     :model/CardTest  {card-test-eid :entity_id} {:card_id card-id}
+                     :model/TestSuite {suite-id :id}         {:creator_id  (mt/user->id :crowberto)
+                                                              :name        "Nightly"
+                                                              :description "abc"}]
+        (testing "create names the acting user"
           (is (= {:model_id suite-id
-                  :user_id  (mt/user->id :crowberto)
+                  :user_id  (mt/user->id :rasta)
                   :details  {:name "Nightly" :description "abc"}
                   :topic    :test-suite-create
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-create suite-id))))
-        (testing "update names the acting user"
+        (testing "update names the acting user, and the changed columns"
           (t2/update! :model/TestSuite :id suite-id {:name "Renamed"})
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
-                  :details  {:name "Renamed" :description "abc"}
+                  :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
                   :topic    :test-suite-update
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-update suite-id))))
-        (testing "an update of the members alone is audited as an update"
+        (testing "a change of the members alone is audited as one update of the suite"
           (let [updates #(mt/all-entries-for :test-suite-update :model/TestSuite suite-id)
                 before  (count (updates))]
-            (data-testing.db/update-test-suite! suite-id {} [])
+            (data-testing.db/update-test-suite! suite-id {} [{:test_type :card :test_entity_id card-test-eid}])
             (is (= (inc before) (count (updates))))
             (is (= {:model_id suite-id
                     :user_id  (mt/user->id :rasta)

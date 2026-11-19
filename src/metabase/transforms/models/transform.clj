@@ -3,7 +3,12 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
@@ -13,22 +18,26 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.search.core :as search.core]
-   [metabase.search.spec :as search.spec]
+   [metabase.replacement.spec :as replacement]
+   [metabase.revisions.core :as revisions]
+   [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.audit :as transforms.audit]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.freshness :as freshness]
+   [metabase.transforms.dependencies :as transforms.dependencies]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.replacement :as transforms.replacement]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.search :as transforms.search]
+   [metabase.transforms.serialization :as transforms.serialization]
+   [metabase.transforms.staleness :as transforms.staleness]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -44,12 +53,6 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events]]
   (derive :model/Transform trait))
-
-(defmethod events/spec :model/Transform
-  [_model]
-  {:create :event/transform-create
-   :update :event/transform-update
-   :delete :event/transform-delete})
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
   "Deserialize a transform source map from JSON storage format, normalized to its schema."
@@ -500,169 +503,92 @@
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(defn- drop-merge-key-field-ids
-  "`target` without the `:field-id`s of its merge unique key. The merge reads only the column names, and
-  [[resolve-merge-key-field-ids]] fills the ids from the target table once it syncs, so a reference would only make
-  the import stub out a table the transform has yet to create."
-  [target]
-  (m/update-existing-in target [:target-incremental-strategy :unique-key]
-                        (fn [unique-key] (mapv #(dissoc % :field-id) unique-key))))
+(defmethod events/spec :model/Transform
+  [_model]
+  {:create :event/transform-create
+   :update :event/transform-update
+   :delete :event/transform-delete})
 
-(defn- walk-export-source
-  "The exported `source` of a transform, its ids replaced by the references `visit` resolves them to. A checkpoint
-  field that no longer exists is dropped, since a local id names nothing on another instance."
-  [visit source]
-  (let [database #(serialization/visit-some :model/Database % visit)]
-    (-> source
-        (m/update-existing :query #(serialization/walk-export visit %))
-        (m/update-existing :source-database database)
-        (m/update-existing :source-tables
-                           (fn [entries]
-                             (mapv #(-> %
-                                        (m/update-existing :table_id
-                                                           (fn [id] (serialization/visit-some :model/Table id visit)))
-                                        (m/update-existing :database_id database))
-                                   (transforms-base.u/normalize-source-tables entries))))
-        (m/update-existing :source-incremental-strategy
-                           (fn [{field-id :checkpoint-filter-field-id :as strategy}]
-                             (if-let [field-ref (when field-id
-                                                  (serialization/found-or-nil #(visit :model/Field field-id)))]
-                               (assoc strategy :checkpoint-filter-field-id field-ref)
-                               (dissoc strategy :checkpoint-filter-field-id)))))))
-
-(defn- walk-import-source
-  "The `source` of an exported transform with its references replaced by the ids `visit` resolves them to, keeping the
-  raw numeric ids of older exports."
-  [visit source]
-  (let [ref-or-id (fn [model] (fn [v] (if (or (nil? v) (pos-int? v)) v (visit model v))))
-        entry     #(-> %
-                       (m/update-existing :table_id (ref-or-id :model/Table))
-                       (m/update-existing :database_id (ref-or-id :model/Database)))]
-    (cond->> (-> source
-                 (m/update-existing :query #(serialization/walk-import visit %))
-                 (m/update-existing :source-database (ref-or-id :model/Database))
-                 (m/update-existing :source-tables
-                                    (fn [entries]
-                                      (if (map? entries)
-                                        (update-vals entries #(if (map? %) (entry %) ((ref-or-id :model/Table) %)))
-                                        (mapv entry entries))))
-                 (m/update-existing-in [:source-incremental-strategy :checkpoint-filter-field-id]
-                                       (ref-or-id :model/Field)))
-      (not (serialization/collecting? visit)) (lib/normalize ::transforms.schema/transform-source))))
+(defmethod app-db-copy/spec :model/Transform [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Transform [_]
-  {:schema    ::transforms.schema/external-transform
-   :copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
-   :transform {:creator_id         serialization/user-transform
-               :owner_user_id      serialization/user-transform
-               :collection_id      (serialization/fk-transform :model/Collection)
-               :source_database_id serialization/database-transform
-               :source             {:export (fn [store _ sources _]
-                                              (serialization/export-in-bulk store sources walk-export-source))
-                                    :import (fn [store _ sources opts]
-                                              (serialization/import-in-bulk
-                                               store
-                                               sources
-                                               opts
-                                               (fn [visit source]
-                                                 (cond->> source
-                                                   (not (:serdes/unresolved source)) (walk-import-source visit)))))}
-               :target             {:export (fn [store _ targets _]
-                                              (serialization/export-mbql
-                                               store (map #(drop-merge-key-field-ids (dissoc % :table_id)) targets)))
-                                    :import (fn [store _ targets opts]
-                                              (serialization/import-mbql store (map drop-merge-key-field-ids targets)
-                                                                         opts))}}
-   :children  {:tags    :model/TransformTransformTag
-               :indexes :model/TableIndex}})
-
-(defmethod serialization/storage-paths :model/Transform [_ entities ctx]
-  (mapv (fn [transform]
-          (serialization/storage-default-collection-path transform ctx "transforms"))
-        entities))
-
-(defmethod serialization/import-dependencies :model/Transform [_ entities]
-  (mapv (fn [{:keys [collection_id source tags]}]
-          (set (concat (when collection_id [[:model/Collection collection_id]])
-                       (for [{tag-id :tag_id} tags] [:model/TransformTag tag-id])
-                       (when-not (:serdes/unresolved source)
-                         (serialization/import-mbql-dependencies source)))))
-        entities))
-
-(defmethod serialization/loaded-entities :model/Transform [_ entities]
-  (let [{unresolved true resolved false} (group-by #(boolean (get-in % [:source :serdes/unresolved])) entities)]
-    (doseq [{:keys [entity_id]} unresolved]
-      (log/warnf "Skipping transform %s, since an export from before 66 left it without its deleted source database"
-                 entity_id))
-    (vec resolved)))
-
-;;; ------------------------------------------------- Remote sync ----------------------------------------------------
+  {:schema              ::transforms.schema/external-transform
+   :copy                [:name :description :entity_id :owner_email]
+   :skip                [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :transform           {:creator_id         serialization/user-transform
+                         :owner_user_id      serialization/user-transform
+                         :collection_id      (serialization/fk-transform :model/Collection)
+                         :source_database_id serialization/database-transform
+                         :source             transforms.serialization/source-transform
+                         :target             transforms.serialization/target-transform}
+   :children            {:tags    :model/TransformTransformTag
+                         :indexes :model/TableIndex}
+   :storage-paths       transforms.serialization/transform-storage-paths
+   :import-dependencies transforms.serialization/transform-import-dependencies
+   :loaded-entities     transforms.serialization/transform-loaded-entities})
 
 (defmethod remote-sync/spec :model/Transform
   [_model]
   {:synced-items transforms.db/synced-transform-items})
 
-;;; ---------------------------------------------------- Search ------------------------------------------------------
+(defmethod revisions/spec :model/Transform [_model]
+  {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
+               :target :target_db_id]
+   :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :authorize :snapshot})
 
-(mu/defn- maybe-extract-transform-query-text :- [:maybe :string]
-  "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
-  Extracts SQL from query-type transforms and Python code from python-type transforms."
-  [{transform-source-type :source_type source :source}
-   :- [:map {:closed true}
-       [:source_type [:maybe [:or :keyword :string]]]
-       [:source      [:or :string [:fn map?]]]]]
-  (let [source-data (transform-source-out source)
-        ;; Use the top-level :source_type field since it differentiates between MBQL vs native transforms
-        query-text (case (keyword transform-source-type)
-                     :native (lib/raw-native-query (:query source-data))
-                     :python (:body source-data)
-                     nil)]
-    (when query-text
-      (subs query-text 0 (min (count query-text) search.core/max-searchable-value-length)))))
+(defmethod audit/spec :model/Transform [_model]
+  {:track          [:name :description :target]
+   :track-redacted [:collection_id :creator_id :owner_email :owner_user_id :source :source_database_id :source_type
+                    :target_db_id]
+   :skip           [:entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :details        transforms.audit/details
+   :topics         {:create :transform-create
+                    :update :update-transform
+                    :delete :transform-delete}})
 
-(search.spec/define-spec "transform"
-  {:model        :model/Transform
-   :visibility   :superuser
-   :attrs        {:archived      false
-                  :collection-id false
-                  :creator-id    false
-                  :created-at    true
-                  :updated-at    true
-                  :view-count    false
-                  :native-query  {:fn maybe-extract-transform-query-text
-                                  :fields [:source :source_type]}
-                  :database-id   :source_database_id
-                  :source-type   true}
-   :search-terms [:name :description]
-   :render-terms {:transform-name :name
-                  :transform-id   :id}})
+(defmethod search/spec :model/Transform
+  [_model]
+  {"transform"
+   {:visibility   :superuser
+    :attrs        {:archived      false
+                   :collection-id false
+                   :creator-id    false
+                   :created-at    true
+                   :updated-at    true
+                   :view-count    false
+                   :native-query  {:fn transforms.search/maybe-extract-transform-query-text
+                                   :fields [:source :source_type]}
+                   :database-id   :source_database_id
+                   :source-type   true}
+    :search-terms [:name :description]
+    :render-terms {:transform-name :name
+                   :transform-id   :id}}})
 
-;;; ------------------------------------------------- Staleness ------------------------------------------------
+(defmethod dependencies/spec :model/Transform [_model]
+  {:type  :transform
+   :items transforms.db/dependency-transform-items
 
-(defmethod staleness/find-stale-query :model/Transform
-  [_model args]
-  ;; Run-based: a transform is stale when it has never run and was created on/before the cutoff,
-  ;; or when its most recent run started on/before the cutoff (failed runs still count). Transforms
-  ;; between fires of a slower-than-threshold schedule are not stale.
-  (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
-    ^:allow-subquery
-    {:select    [:transform.id
-                 [(h2x/literal "Transform") :model]
-                 [:transform.name :name]
-                 [:latest_run.last_start :last_used_at]
-                 :transform.collection_id]
-     :from      :transform
-     :left-join [[(transforms.db/latest-run-start-times-query) :latest_run]
-                 [:= :latest_run.transform_id :transform.id]]
-     :where     [:and
-                 [:or
-                  [:and
-                   [:= :latest_run.last_start nil]
-                   [:<= :transform.created_at (:cutoff-date args)]]
-                  [:<= :latest_run.last_start (:cutoff-date args)]]
-                 (when (seq schedule-fresh-ids)
-                   [:not [:in :transform.id schedule-fresh-ids]])
-                 (staleness/collection-filter :transform.collection_id args)]}))
+   :hydrate            transforms.dependencies/hydrate
+   :dependencies       transforms.dependencies/dependencies
+   :analysis           transforms.dependencies/analysis
+   :after-dependencies transforms.dependencies/after-dependencies
+
+   :dependency-columns #{:source :target}
+   :analysis-columns   #{:source :target}})
+
+(defmethod replacement/spec :model/Transform [_model]
+  {:upgrade-field-refs transforms.replacement/upgrade-field-refs
+   :swap-source        transforms.replacement/swap-source})
+
+(defmethod collection-items/spec :model/Transform [_model]
+  {"transform" {:items transforms.db/collection-transform-items}})
+
+(defmethod staleness/spec :model/Transform [_model]
+  {:candidates transforms.staleness/stale-transform-candidates})
+
+(defmethod eid-translation/spec :model/Transform [_model]
+  {:names [:transform]})

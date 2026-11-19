@@ -1,16 +1,18 @@
 (ns metabase.change-log.events-test
   (:require
-   [clojure.string :as str]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
    [metabase.change-log.log :as change-log.log]
    [metabase.change-log.numbering :as change-log.numbering]
+   [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.resolution :as models.resolution]
+   [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.core :as perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.pulse.db :as pulse.db]
@@ -207,7 +209,7 @@
               (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
                              ["tenant" (:id tenant) "update"])))))
         (testing "`log-rows!` on a model that is not tracked throws in dev and test"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in `metabase.change-log.log/tracked-models`"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no `metabase.change-log.core/spec`"
                                 (change-log/log-rows! :model/Collection :update :id 1)))
           (testing "and in production it warns instead of logging"
             (with-redefs [config/is-prod? true]
@@ -235,17 +237,9 @@
         (let [tracked (change-log.cascade/tracked-models)]
           (is (every? #(or (contains? tracked (:child %)) (contains? fks (:child %))) (mapcat val fks))))))))
 
-(defn- load-models!
-  "Loads the namespace of every model, and returns the models. A model derives the hook when its namespace loads, and
-  Metabase loads some only when they are first used. Without EE, it leaves out the EE models."
-  []
-  (vec (for [[model nspace] models.resolution/model->namespace
-             :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
-         (t2/resolve-model model))))
-
 (deftest tracked-model-keys-test
   (testing "each tracked model's key is one integer column"
-    (load-models!)
+    (spec-test-util/load-models!)
     (let [column-types (t2/with-connection [^Connection conn]
                          (with-open [rs (.getColumns (.getMetaData conn) (.getCatalog conn) (.getSchema conn) "%" "%")]
                            (into {}
@@ -262,13 +256,13 @@
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"
-    (load-models!)
+    (spec-test-util/load-models!)
     (doseq [model (vals (change-log.cascade/tracked-models))]
       (is (isa? model :hook/events) (str model " does not derive :hook/events")))))
 
 (deftest cascade-sources-derive-events-test
   (testing "a model whose delete cascades to a tracked table derives the events trait, so the delete is captured"
-    (let [models  (load-models!)
+    (let [models  (spec-test-util/load-models!)
           fks     (change-log.cascade/foreign-keys)
           sources (set (filter #(seq (change-log.cascade/referenced-columns fks (name (t2/table-name %)))) models))]
       (doseq [model sources]
@@ -290,14 +284,14 @@
 
 (deftest tracked-models-load-at-startup-test
   (testing "each tracked model's namespace loads at startup, so a delete that cascades to its rows logs them"
-    (load-models!)
+    (spec-test-util/load-models!)
     (let [startup (startup-namespaces)]
       (doseq [model (vals (change-log.cascade/tracked-models))]
         (is (contains? startup (models.resolution/model->namespace model))
             (str model "'s namespace does not load at startup: require it from a namespace that does"))))))
 
 (def ^:private tracked-models
-  "The models we want tracked. [[tracked-models-test]] checks that it is `metabase.change-log.log/tracked-models`."
+  "The models we want tracked. [[tracked-models-test]] checks that they are the models with a change-log spec."
   #{:model/Card
     :model/Dashboard
     :model/Database
@@ -320,7 +314,7 @@
     :model/User})
 
 (def ^:private untracked-models
-  "The models we do not want tracked. [[tracked-models-test]] checks that none is in `metabase.change-log.log/tracked-models`. A new model
+  "The models we do not want tracked. [[tracked-models-test]] checks that none has a change-log spec. A new model
   goes here, or in [[tracked-models]] when a reader of the change log needs its changes."
   #{:model/Action
     :model/AgentApiCallLog
@@ -434,6 +428,7 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SqlParsingShadowDifference
     :model/SsoRelayState
     :model/StoredResult
     :model/StoredResultUse
@@ -466,28 +461,32 @@
     :model/WorkspaceDatabase})
 
 (deftest tracked-models-test
-  (let [models (set (load-models!))]
+  (let [models (set (spec-test-util/load-models!))]
     (testing "each model is in `tracked-models` or `untracked-models`, and not in both"
       (is (= models (set (filter models (concat tracked-models untracked-models)))))
       (is (empty? (filter tracked-models untracked-models))))
     (testing "the models in `tracked-models` are the tracked models of the change log"
       (is (= (set (filter models tracked-models))
-             (set (filter models change-log.log/tracked-models)))))
+             (change-log.spec/tracked-models))))
     (testing "both name only models"
       (is (empty? (remove models.resolution/model->namespace (concat tracked-models untracked-models)))))))
 
-(deftest ignored-columns-test
-  (testing "ignored columns exist, and only tracked models have them"
-    (doseq [model (load-models!)
-            :let  [columns (change-log/ignored-columns model)]
-            :when (seq columns)]
-      (is (contains? change-log.log/tracked-models model) (str model " is not tracked"))
-      (is (some? (t2/query {:select (vec columns), :from [(t2/table-name model)], :limit 1}))))))
+(deftest spec-columns-test
+  (spec-test-util/load-models!)
+  (doseq [model (change-log.spec/tracked-models)
+          :let  [{:keys [track skip]} (change-log/spec model)]]
+    (testing (str model)
+      (testing "lists no column twice, and none of the columns that no spec lists"
+        (is (= (count (concat track skip)) (count (set (concat track skip)))))
+        (is (empty? (filter change-log.spec/implicit-columns (concat track skip)))))
+      (testing "lists each column of its table under `:track` or `:skip`: put a new column where it belongs"
+        (is (= (set/difference (spec-test-util/table-columns model) change-log.spec/implicit-columns)
+               (set (concat track skip))))))))
 
 (deftest lint-tables-test
   (testing "the `:metabase/change-log-raw-write` lint knows each tracked model and its table"
     (is (= tracked-models (set (keys toucan.db-ns/change-log-tables))))
-    (doseq [model (load-models!)
+    (doseq [model (spec-test-util/load-models!)
             :when (tracked-models model)]
       (is (= (t2/table-name model) (toucan.db-ns/change-log-tables model))))))
 
@@ -544,7 +543,7 @@
             (is (= (:queries one) (:queries three)))))))))
 
 (deftest cascade-from-untracked-model-test
-  (is (not (contains? change-log.log/tracked-models :model/DashboardCard)))
+  (is (not (change-log.spec/tracked? :model/DashboardCard)))
   (when config/ee-available?
     (mt/with-premium-features #{:change-log}
       (mt/with-temp [:model/Dashboard     dash  {}

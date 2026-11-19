@@ -3,6 +3,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -89,3 +90,8 @@
                     {:status-code 409
                      :database_id db-id})))
   (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))
+
+;;; ----------------------------------------------- Specs -----------------------------------------------
+
+(defmethod app-db-copy/spec :model/WorkspaceDatabase [_model]
+  {:skip? false})

@@ -8,12 +8,14 @@
    [clojure.string :as str]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -21,7 +23,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
-   [metabase.search.spec :as search.spec]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -334,12 +336,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod events/spec :model/Collection
-  [_model]
-  {:create :event/collection-create
-   :update :event/collection-update
-   :delete :event/collection-delete})
-
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
   (when-not (audit/analytics-dev-mode)
@@ -362,11 +358,6 @@
 (def ^:private remote-synced-namespaces
   "The namespaces whose Collections remote sync always syncs, whatever their `is_remote_synced`."
   #{data-apps-ns transforms-ns snippets-ns data-actions-ns})
-
-(defmethod remote-sync/spec :model/Collection
-  [_model]
-  {:synced-items         collections.db/synced-collection-items
-   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
 
 (defn- remote-sync-writable?
   "Whether remote sync leaves `collection` writable: any Collection unless the instance is read-only, and then one
@@ -2205,9 +2196,9 @@
   "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
   "instance-analytics")
 
-(defmethod mi/exclude-internal-content-hsql :model/Collection
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
+(defmethod mi/non-internal-filter-clause :model/Collection
+  [_model alias]
+  (let [maybe-alias #(h2x/identifier :field (name alias) %)]
     [:and
      [:or [:= (maybe-alias :type) nil]
       [:and
@@ -2217,7 +2208,9 @@
       [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
-(defmethod serialization/storage-paths :model/Collection [_ entities {:keys [collections]}]
+(defn- storage-paths
+  "The storage path of each of the Collection `entities`, under the folder of its namespace by its hierarchy."
+  [entities {:keys [collections]}]
   (mapv (fn [coll]
           (into [{:label "collections"} {:label (serialization/collection-namespace-folder (:namespace coll))}]
                 (get collections (:entity_id coll))))
@@ -2244,22 +2237,6 @@
                      (collections.db/collection-locations (vec (distinct ids))))]
     (mapv #(if % (str (get locations %) % "/") "/") parent-ids)))
 
-(defmethod serialization/spec :model/Collection [_]
-  {:schema    ::collections.schema/external-collection
-   :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
-               :is_remote_synced :is_sample :namespace :slug :type]
-   :transform {:name              {:export stored-names
-                                   :import stored-names}
-               :location          {:as     :parent_id
-                                   :export (fn [store _ locations _]
-                                             (serialization/column-refs store :model/Collection
-                                                                        (map location-path->parent-id locations)))
-                                   :import import-parent-locations}
-               :personal_owner_id serialization/user-transform}
-   :defaults  {:archived         false
-               :is_sample        false
-               :is_remote_synced false}})
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2285,6 +2262,21 @@
 (defmethod allowed-namespaces :default
   [_]
   default-allowed-namespaces)
+
+(defmulti namespace-allowed?
+  "Whether instances of `model` are allowed to go in a Collection of `collection-namespace`, a keyword or nil. By
+  default, when `collection-namespace` is one of the [[allowed-namespaces]] of the model."
+  {:arglists '([model collection-namespace])}
+  (fn [model _collection-namespace]
+    (t2.protocols/dispatch-value model)))
+
+(defmethod namespace-allowed? :default
+  [model collection-namespace]
+  (contains? (allowed-namespaces model) collection-namespace))
+
+(defmethod namespace-allowed? :model/Collection
+  [_ _]
+  true)
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
@@ -2506,39 +2498,6 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(search.spec/define-spec "collection"
-  {:model        :model/Collection
-   :attrs        {:collection-id        :id
-                  :collection-type      :type
-                  :collection-location  :location
-                  :root-collection-type {:fn root-collection-type}
-                  :creator-id           false
-                  :database-id          false
-                  :archived             true
-                  :created-at           true
-                  ;; intentionally not tracked
-                  :updated-at           false}
-   :search-terms [:name]
-   :render-terms {:archived-directly          true
-                  ;; Why not make this a search term? I suspect it was just overlooked before.
-                  :description                true
-                  :collection_authority_level :authority_level
-                  :collection_name            :name
-                  ;; `:location` is read by the toucan2 effective-location hydration when collection
-                  ;; results pass through `metabase.search.impl/add-collection-effective-location`.
-                  ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
-                  :location                   true}
-   :where [:or [:= :namespace nil]
-           [:= :namespace "analytics"]
-           [:= :namespace "shared-tenant-collection"]
-           [:= :namespace "tenant-specific"]]
-   ;; depends on the current user, used for rendering and ranking
-   ;; TODO not sure this is what it'll look like
-   :bookmark     [:model/CollectionBookmark [:and
-                                             [:= :bookmark.collection_id :this.id]
-                                             ;; a magical alias, or perhaps this clause can be implicit
-                                             [:= :bookmark.user_id :current_user/id]]]})
-
 (defn is-library-collection?
   "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
@@ -2552,13 +2511,17 @@
 
 ;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
 
-(defmethod serialization/import-dependencies :model/Collection [_ entities]
+(defn- import-dependencies
+  "The parent Collection each of the Collection `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [parent_id]}]
           (when parent_id
             #{[:model/Collection parent_id]}))
         entities))
 
-(defmethod serialization/export-dependencies :model/Collection [_ collections]
+(defn- export-dependencies
+  "The parent Collection each of the `collections` depends on, if any."
+  [collections]
   (mapv (fn [{:keys [location]}]
           (when-let [parent-id (some-> location location-path->parent-id)]
             #{[:model/Collection parent-id]}))
@@ -2566,7 +2529,9 @@
 
 ;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
-(defmethod serialization/before-load :model/Collection [_ items]
+(defn- before-load
+  "The Collection load `items`, refusing archived transforms folders and keeping the names of system collections."
+  [items]
   (mapv (fn [{:keys [local row] :as item}]
           ;; An import skips `update-collection!`, so an export from an older version can bring back an archived
           ;; transforms folder.
@@ -2579,3 +2544,79 @@
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))
+
+(defn- export-parent-ids
+  "Exports the `location` of each Collection as the entity id of its parent."
+  [store _collections locations _opts]
+  (serialization/column-refs store :model/Collection (map location-path->parent-id locations)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Collection
+  [_model]
+  {:create :event/collection-create
+   :update :event/collection-update
+   :delete :event/collection-delete})
+
+(defmethod app-db-copy/spec :model/Collection [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Collection [_]
+  {:schema              ::collections.schema/external-collection
+   :copy                [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
+                         :is_remote_synced :is_sample :namespace :slug :type]
+   :transform           {:name              {:export stored-names
+                                             :import stored-names}
+                         :location          {:as     :parent_id
+                                             :export export-parent-ids
+                                             :import import-parent-locations}
+                         :personal_owner_id serialization/user-transform}
+   :defaults            {:archived         false
+                         :is_sample        false
+                         :is_remote_synced false}
+   :storage-paths       storage-paths
+   :import-dependencies import-dependencies
+   :export-dependencies export-dependencies
+   :before-load         before-load})
+
+(defmethod remote-sync/spec :model/Collection
+  [_model]
+  {:synced-items         collections.db/synced-collection-items
+   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
+
+(defmethod search/spec :model/Collection
+  [_model]
+  {"collection"
+   {:attrs        {:collection-id        :id
+                   :collection-type      :type
+                   :collection-location  :location
+                   :root-collection-type {:fn root-collection-type}
+                   :creator-id           false
+                   :database-id          false
+                   :archived             true
+                   :created-at           true
+                   ;; intentionally not tracked
+                   :updated-at           false}
+    :search-terms [:name]
+    :render-terms {:archived-directly          true
+                   ;; Why not make this a search term? I suspect it was just overlooked before.
+                   :description                true
+                   :collection_authority_level :authority_level
+                   :collection_name            :name
+                   ;; `:location` is read by the toucan2 effective-location hydration when collection
+                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
+                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
+                   :location                   true}
+    :where [:or [:= :namespace nil]
+            [:= :namespace "analytics"]
+            [:= :namespace "shared-tenant-collection"]
+            [:= :namespace "tenant-specific"]]
+    ;; depends on the current user, used for rendering and ranking
+    ;; TODO not sure this is what it'll look like
+    :bookmark     [:model/CollectionBookmark [:and
+                                              [:= :bookmark.collection_id :this.id]
+                                              ;; a magical alias, or perhaps this clause can be implicit
+                                              [:= :bookmark.user_id :current_user/id]]]}})
+
+(defmethod eid-translation/spec :model/Collection [_model]
+  {:names [:collection]})

@@ -53,7 +53,7 @@
     (mt/with-test-user :rasta
       (testing "Test that `record-rows!` succesfully records basic card events"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
-          (record-event! :event/card-create {:object card})
+          (record-event! :event/card-create {:object card :details {:name "Test card"}})
           ;; Not an exhaustive match since we're mainly testing that the event is recorded
           (is (partial=
                {:topic    :card-create
@@ -68,7 +68,8 @@
                          {:object card
                           :user-id (mt/user->id :rasta)
                           :model :model/Card
-                          :model-id card-id})
+                          :model-id card-id
+                          :details {:name "Test card"}})
           (is (partial=
                {:topic    :card-create
                 :user_id  (mt/user->id :rasta)

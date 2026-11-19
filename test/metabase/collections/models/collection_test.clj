@@ -1908,8 +1908,8 @@
                       {:location (format "/%d/" (:id remote-synced-parent))})
           (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
 
-(deftest exclude-internal-content-hsql-test
-  (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
+(deftest non-internal-filter-clause-test
+  (testing "The non-internal-filter-clause multimethod returns correct HoneySQL expressions"
     (testing "filters exclude internal collections in practice"
       (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection"}
                      :model/Collection trash-collection {:name "Trash Collection" :type "trash"}
@@ -1919,17 +1919,17 @@
           (is (some #(= (:id regular-collection) (:id %))
                     (t2/select :model/Collection :id (:id regular-collection)))))
         (testing "trash collection would be excluded by filter"
-          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+          (let [hsql-clause (mi/non-internal-filter-clause :model/Collection :collection)
                 query (t2/select :model/Collection
                                  {:where [:and [:= :id (:id trash-collection)] hsql-clause]})]
             (is (empty? query))))
         (testing "analytics collection would be excluded by filter"
-          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+          (let [hsql-clause (mi/non-internal-filter-clause :model/Collection :collection)
                 query (t2/select :model/Collection
                                  {:where [:and [:= :id (:id analytics-collection)] hsql-clause]})]
             (is (empty? query))))
         (testing "sample collection would be excluded by filter"
-          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+          (let [hsql-clause (mi/non-internal-filter-clause :model/Collection :collection)
                 query (t2/select :model/Collection
                                  {:where [:and [:= :id (:id sample-collection)] hsql-clause]})]
             (is (empty? query))))))))

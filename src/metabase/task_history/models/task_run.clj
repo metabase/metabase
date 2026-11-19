@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -204,3 +205,8 @@
   {:style/indent 1}
   [run-info & body]
   `(do-with-task-run ~run-info (fn [] ~@body)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskRun [_model]
+  {:skip? true})

@@ -4,10 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]))
 
 (defn- ->references [query]
-  (sql-parsing/field-references "postgres" query))
+  (sql-parsing/field-references (sql-tools/sqlglot-parser) "postgres" query))
 
 (deftest ^:parallel garbage-test
   (is (= {:used-fields #{}
@@ -1630,7 +1631,7 @@ left join monthly_account_subscription_status mas
 ;"))))
 
 (deftest ^:parallel tsql-temp-table-qualifier-test
-  (let [errors #(:errors (sql-parsing/field-references "tsql" %))]
+  (let [errors #(:errors (sql-parsing/field-references (sql-tools/sqlglot-parser) "tsql" %))]
     (testing "a column qualified by a bracket-quoted temp table resolves to that table"
       (is (= #{} (errors "SELECT [#t].[ID] FROM [#t]")))
       (is (= #{} (errors "SELECT [#t].[ID] FROM #t"))))
@@ -1640,7 +1641,7 @@ left join monthly_account_subscription_status mas
     (testing "control: a qualifier naming no table of the query is still an error"
       (is (seq (errors "SELECT [#u].[ID] FROM [#t]"))))
     (testing "control: outside T-SQL, a quoted name starting with # is a plain name"
-      (is (seq (:errors (sql-parsing/field-references "postgres" "SELECT \"#t\".id FROM t")))))))
+      (is (seq (:errors (sql-parsing/field-references (sql-tools/sqlglot-parser) "postgres" "SELECT \"#t\".id FROM t")))))))
 
 (deftest ^:parallel computed-column-chain-test
   (testing "a column computed from computed columns of a CTE does not hold the fields that the CTE reads"

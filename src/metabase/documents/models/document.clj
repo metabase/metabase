@@ -1,10 +1,22 @@
 (ns metabase.documents.models.document
   (:require
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.documents.audit :as documents.audit]
+   [metabase.documents.collection-items :as documents.collection-items]
    [metabase.documents.db :as documents.db]
+   [metabase.documents.dependencies :as documents.dependencies]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.recent-views :as documents.recent-views]
    [metabase.documents.schema :as documents.schema]
+   [metabase.documents.search :as documents.search]
+   [metabase.documents.serialization :as documents.serialization]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
@@ -16,16 +28,12 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.search.config :as search.config]
-   [metabase.search.spec :as search.spec]
+   [metabase.revisions.core :as revisions]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -48,12 +56,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/Document
-  [_model]
-  {:create :event/document-create
-   :update :event/document-update
-   :delete :event/document-delete})
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
@@ -529,251 +531,93 @@
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
 
-;;; ---------- Serialization -------------------------------------------------------------------------------------
+;;; --------------------------------------------------- Specs ----------------------------------------------------
 
-(def ^:private model->serdes-model
-  {"card"      "Card"
-   "dataset"   "Card"
-   "dashboard" "Dashboard"
-   "table"     "Table"})
+(defmethod events/spec :model/Document
+  [_model]
+  {:create :event/document-create
+   :update :event/document-update
+   :delete :event/document-delete})
 
-(def ^:private local-id-card-embed-attrs
-  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a
-  reference, and so must not travel. `:stored_result_id` points at a `stored_result` row — an
-  ephemeral cached-snapshot record, not a first-class serdes entity — so exporting the integer
-  verbatim would, on import, either dangle or silently resolve to an unrelated instance's
-  snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
-  which travels and renders the same query."
-  [:stored_result_id])
-
-(defn- serdes-rewritable-node?
-  "The AST nodes whose ids serdes rewrites between database ids and entity ids.
-
-  Matches on node *type* only. The id itself cannot be part of this test, because the same predicate
-  runs in both directions and the two directions see different shapes: on export `:id` is a raw
-  database id, but on import it is a serdes path (a vector of `{:model :id}` maps). A guard that
-  expected a positive integer would therefore pass on export and silently skip every node on import,
-  leaving the path unresolved. The id-shape checks belong in the readers, `walk-export-node` and `walk-import-node`."
-  [node]
-  (contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type node)))
-
-(defn- table-path
-  "The path a document names the Table with the `[db-name schema table-name]` reference `table-ref` by."
-  [[db-name schema table-name]]
-  (filterv some? [{:model "Database" :id db-name}
-                  (when schema {:model "Schema" :id schema})
-                  {:model "Table" :id table-name}]))
-
-(defn- table-path->ref
-  "The `[db-name schema table-name]` reference of the Table a document names by `path`."
-  [path]
-  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) path))]
-    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
-
-(defn- walk-export-node
-  "`node`, a cardEmbed or smartLink, with its database id replaced by the path of the entity it names, which `visit`
-  resolves, or unchanged when that entity no longer exists."
-  [visit {{:keys [model] :or {model "card"}} :attrs type :type :as node}]
-  (let [id-key       (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id           (prose-mirror/node-entity-id node)
-        node         (cond-> node
-                       (= prose-mirror/card-embed-type type)
-                       (update :attrs #(apply dissoc % local-id-card-embed-attrs)))
-        serdes-model (model->serdes-model model)
-        path         (when (and id serdes-model)
-                       (if (= serdes-model "Table")
-                         (when-let [table-ref (serialization/found-or-nil #(visit :model/Table id))]
-                           (cond-> table-ref
-                             (not (serialization/collecting? visit)) table-path))
-                         (when-let [entity-id (serialization/found-or-nil
-                                               #(visit (keyword "model" serdes-model) id))]
-                           [{:model serdes-model :id entity-id}])))]
-    (if path
-      (assoc-in node [:attrs id-key] path)
-      (u/prog1 node
-        (log/warnf "entity_id not found for %s at id: %s" model id)))))
-
-(defn- walk-import-node
-  "`node`, a cardEmbed or smartLink, with the path it names replaced by the id `visit` resolves it to, or unchanged
-  when that entity is missing."
-  [visit {:keys [attrs type] :as node}]
-  (let [id-key                        (if (= prose-mirror/smart-link-type type) :entityId :id)
-        path                          (get attrs id-key)
-        {:keys [model] entity-id :id} (when (sequential? path) (last path))
-        id                            (cond
-                                        (= model "Table") (visit :model/Table (table-path->ref path))
-                                        (some? model)     (serialization/found-or-nil
-                                                           #(visit (keyword "model" model) entity-id)))]
-    (if id
-      (assoc-in node [:attrs id-key] id)
-      (u/prog1 node
-        (log/warn "Model not found at path" path)))))
-
-(defn- walk-export-document
-  "The exported `:document` of `document`, its node ids replaced by the entity paths `visit` resolves them to."
-  [visit document]
-  (:document
-   (cond-> document
-     (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast serdes-rewritable-node? (partial walk-export-node visit)))))
-
-(defn- walk-import-document
-  "The `:document` of `entity`, normalized, its entity paths replaced by the ids `visit` resolves them to."
-  [visit entity]
-  (:document
-   (cond-> entity
-     (= (:content_type entity) prose-mirror/prose-mirror-content-type)
-     (-> (update :document prose-mirror/normalize-document)
-         (prose-mirror/update-ast serdes-rewritable-node? (partial walk-import-node visit))))))
+(defmethod app-db-copy/spec :model/Document [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Document [_]
-  {:schema    ::documents.schema/external-document
-   :copy      [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip      [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id
-               :is_placeholder]
-   :transform {:document      {:export (fn [store documents _ _]
-                                         (serialization/export-in-bulk store documents walk-export-document))
-                               :import (fn [store entities _ opts]
-                                         (serialization/import-in-bulk store entities opts walk-import-document))}
-               :collection_id (serialization/fk-transform :model/Collection)
-               :creator_id    serialization/user-transform}
-   :defaults  {:archived          false
-               :archived_directly false}})
-
-(defn- document-deps
-  [{:keys [content_type] :as document}]
-  (when (= content_type prose-mirror/prose-mirror-content-type)
-    ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
-    ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
-    ;; with `node-entity-id` here.
-    (set (prose-mirror/collect-ast (update document :document prose-mirror/normalize-document)
-                                   (fn document-deps [{:keys [type attrs]}]
-                                     (cond
-                                       (and (= prose-mirror/smart-link-type type)
-                                            (contains? model->serdes-model (:model attrs)))
-                                       (:entityId attrs)
-
-                                       (= prose-mirror/card-embed-type type)
-                                       (:id attrs)
-
-                                       :else
-                                       nil))))))
-
-(defn- path-key
-  "The `[model ref]` of the entity a document names by `path`."
-  [path]
-  (let [{:keys [model id]} (last path)]
-    (if (= model "Table")
-      [:model/Table (table-path->ref path)]
-      [(keyword "model" model) id])))
-
-(defmethod serialization/import-dependencies :model/Document [_ entities]
-  (mapv (fn [{:keys [collection_id] :as document}]
-          (set (concat (map path-key (document-deps document))
-                       (when collection_id #{[:model/Collection collection_id]}))))
-        entities))
-
-(defn- linked-entities
-  "The `[model-name id]` of the cards `document` embeds and the entities it smart-links."
-  [document]
-  (when (= prose-mirror/prose-mirror-content-type (:content_type document))
-    (concat
-     (for [card-id (prose-mirror/card-ids document)]
-       ["Card" card-id])
-     (for [{{:keys [model]} :attrs :as node}
-           (prose-mirror/collect-ast document #(when (= prose-mirror/smart-link-type (:type %)) %))
-           :let  [link-id (prose-mirror/node-entity-id node)]
-           :when (and link-id (contains? model->serdes-model model))]
-       [(model->serdes-model model) link-id]))))
-
-(defmethod serialization/export-dependencies :model/Document [_ documents]
-  (mapv (fn [{:keys [collection_id] :as document}]
-          (set (concat (when collection_id [[:model/Collection collection_id]])
-                       (for [[model-name id] (linked-entities document)]
-                         [(keyword "model" model-name) id]))))
-        documents))
-
-;;; ---------- Remote sync ---------------------------------------------------------------------------------------
+  {:schema              ::documents.schema/external-document
+   :copy                [:archived :archived_directly :content_type :entity_id :name :collection_position]
+   :skip                [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id
+                         :exploration_id :is_placeholder]
+   :transform           {:document      documents.serialization/document-transform
+                         :collection_id (serialization/fk-transform :model/Collection)
+                         :creator_id    serialization/user-transform}
+   :defaults            {:archived          false
+                         :archived_directly false}
+   :import-dependencies documents.serialization/import-dependencies
+   :export-dependencies documents.serialization/export-dependencies})
 
 (defmethod remote-sync/spec :model/Document
   [_model]
   {:synced-items         documents.db/synced-document-items
    :synced-filter-clause documents.db/synced-documents-clause})
 
-;;; ---------- Search --------------------------------------------------------------------------------------------
+(defmethod revisions/spec :model/Document [_model]
+  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
+           :public_uuid :public_uuid_prefix :view_count]})
 
-(defn- document->search-text
-  "Extract the plain searchable text from a document's prose-mirror body for the search index.
+(defmethod audit/spec :model/Document [_model]
+  {:track          [:name :collection_id]
+   :track-redacted [:archived :archived_directly :content_type :creator_id :document :exploration_id :is_placeholder
+                    :made_public_by_id :public_uuid :public_uuid_prefix]
+   :skip           [:collection_position :entity_id :last_viewed_at :view_count]
+   :topics         {:create documents.audit/create-topic
+                    :update documents.audit/update-topic
+                    :delete documents.audit/delete-topic}})
 
-  Receives the raw `:document` value as it comes off the ingestion query (a JSON string), which it parses and
-  normalizes before `ast->text` reads it. Returns nil if it can't be parsed, so a
-  malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
-  [document]
-  (when document
-    (try
-      (-> (cond-> document (string? document) json/decode+kw)
-          prose-mirror/normalize-document
-          prose-mirror/ast->text
-          not-empty)
-      (catch Throwable _ nil))))
+(defmethod search/spec :model/Document
+  [_model]
+  {"document"
+   {:attrs {:archived true
+            :collection-id :collection_id
+            :creator-id :creator_id
+            :exploration-id :exploration_id
+            :view-count :view_count
+            :created-at :created_at
+            :updated-at :updated_at
+            :last-viewed-at :last_viewed_at
+            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+    :search-terms {:name true
+                   :document documents.search/document->search-text}
+    :embedding-exclude #{:document}
+    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
+    :render-terms {:document-name :name
+                   :document-id :id
+                   :collection-authority_level :collection.authority_level
+                   :collection-location        :collection.location
+                   :collection-name            :collection.name
+                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                   :collection-position        true
+                   :collection-type            :collection.type
+                   :archived-directly          true}}})
 
-;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
-;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
-;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
-(defmethod search.config/column->string [:document :document]
-  [value _model _column]
-  (or (document->search-text value) ""))
+(defmethod dependencies/spec :model/Document [_model]
+  {:type  :document
+   :items documents.db/dependency-document-items
 
-(search.spec/define-spec "document"
-  {:model :model/Document
-   :attrs {:archived true
-           :collection-id :collection_id
-           :creator-id :creator_id
-           :exploration-id :exploration_id
-           :view-count :view_count
-           :created-at :created_at
-           :updated-at :updated_at
-           :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms {:name true
-                  :document document->search-text}
-   :embedding-exclude #{:document}
-   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
-   :render-terms {:document-name :name
-                  :document-id :id
-                  :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :collection-type            :collection.type
-                  :archived-directly          true}})
+   :dependencies documents.dependencies/dependencies
 
-;;; ------------------------------------------------- Staleness ---------------------------------------------------
+   :dependency-columns #{:content_type :document}})
 
-(defmethod staleness/find-stale-query :model/Document
-  [_model args]
-  ^:allow-subquery
-  {:select [:document.id
-            [(h2x/literal "Document") :model]
-            [:document.name :name]
-            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
-            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
-            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
-            :document.collection_id]
-   :from :document
-   :left-join [:collection [:= :collection.id :document.collection_id]]
-   :where [:and
-           [:= :document.archived false]
-           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
-           [:or
-            [:<= :document.last_viewed_at (-> args :cutoff-date)]
-            [:and
-             [:= :document.view_count 0]
-             [:<= :document.created_at (-> args :cutoff-date)]]]
-           ;; only regular user collections (type nil), not system collections like
-           ;; `instance-analytics`, `trash`, or the `library` collections.
-           [:= :collection.type nil]
-           (when (setting/get :enable-public-sharing)
-             [:= :document.public_uuid nil])
-           (staleness/collection-filter :document.collection_id args)]})
+(defmethod collection-items/spec :model/Document [_model]
+  {"document" {:items   documents.db/collection-document-items
+               :hydrate documents.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Document [_model]
+  {"document" {:load   documents.db/recent-view-documents
+               :render documents.recent-views/render}})
+
+(defmethod staleness/spec :model/Document [_model]
+  {:candidates documents.db/stale-document-candidates})
+
+(defmethod eid-translation/spec :model/Document [_model]
+  {:names [:document]})

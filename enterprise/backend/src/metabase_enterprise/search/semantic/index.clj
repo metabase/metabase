@@ -978,7 +978,7 @@
   per model."
   [docs]
   (let [timer (u/start-timer)
-        doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
+        doc->t2-model (fn [doc] (:model (search/search-model-spec (:model doc))))
         {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
         readable (when (seq fast-docs)
                    (collection/content-readable-collection-ids (map :collection_id fast-docs) {:root-namespace nil, :audit-rules? true}))

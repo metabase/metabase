@@ -7,8 +7,10 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -26,15 +28,11 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod events/spec :model/TestSuite
-  [_model]
-  {:create :event/test-suite-create
-   :update :event/test-suite-update
-   :delete :event/test-suite-delete})
-
 (methodical/defmethod t2/table-name :model/TestSuiteRun [_model] :test_suite_run)
 
-(derive :model/TestSuiteMember :metabase/model)
+(doto :model/TestSuiteMember
+  (derive :metabase/model)
+  (derive :hook/events))
 
 (derive :model/TestSuiteRun :metabase/model)
 
@@ -45,18 +43,10 @@
   {:status  mi/transform-keyword
    :members (data-testing.models/json-column ::data-testing.schema/test-suite-run.stored-members)})
 
-(defmethod audit-app/model-details :model/TestSuiteRun
-  [run _event-type]
-  (select-keys run [:suite_id :status]))
-
 (methodical/defmethod t2/batched-hydrate [:model/TestSuiteRun :initiated_by_user]
   "Add the user who started each run, or nil."
   [_model _k runs]
   (data-testing.models.data-test-run/with-initiated-by-users runs))
-
-(defmethod audit-app/model-details :model/TestSuite
-  [suite _event-type]
-  (select-keys suite [:name :description]))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -89,13 +79,47 @@
   (let [answer (may-change-suites?)]
     (mapv #(assoc % k answer) suites)))
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/TestSuite
+  [_model]
+  {:create :event/test-suite-create
+   :update :event/test-suite-update
+   :delete :event/test-suite-delete})
+
+(defmethod events/spec :model/TestSuiteMember
+  [_model]
+  {:create :event/test-suite-member-create
+   :update :event/test-suite-member-update
+   :delete :event/test-suite-member-delete})
+
+(defmethod app-db-copy/spec :model/TestSuite [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/TestSuiteMember [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/TestSuiteRun [_model]
+  {:skip? false})
+
+(defmethod audit/spec :model/TestSuite [_model]
+  {:track          [:name :description]
+   :track-redacted [:creator_id]
+   :skip           [:entity_id]})
+
+(defmethod audit/spec :model/TestSuiteMember [_model]
+  ;; A change of the members is an update of their suite.
+  {:track          []
+   :track-redacted [:position :suite_id :test_entity_id :test_type]
+   :skip           []
+   :parent         {:model :model/TestSuite :key :suite_id}})
 
 (defmethod serialization/spec :model/TestSuite [_]
-  {:schema    ::data-testing.schema/external-test-suite
-   :copy      [:entity_id :name :description]
-   :transform {:creator_id serialization/user-transform}
-   :children  {:members :model/TestSuiteMember}})
+  {:schema        ::data-testing.schema/external-test-suite
+   :copy          [:entity_id :name :description]
+   :transform     {:creator_id serialization/user-transform}
+   :children      {:members :model/TestSuiteMember}
+   :storage-paths data-testing.serialization/test-suite-storage-paths})
 
 (defmethod serialization/spec :model/TestSuiteMember [_]
   ;; A member is found by its test, not its position, so that an import that reorders members never puts two rows of
@@ -109,13 +133,6 @@
    :transform {:suite_id  serialization/import-only-transform
                :test_type {:export (fn [_store _rows values _opts] (mapv name values))
                            :import (fn [_store _entities values _opts] (mapv keyword values))}}})
-
-(defmethod serialization/storage-paths :model/TestSuite [_ entities _ctx]
-  (mapv (fn [suite]
-          [{:label "test_suites"} {:label (:name suite) :key (:entity_id suite)}])
-        entities))
-
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
 
 (defmethod remote-sync/spec :model/TestSuite
   [_model]

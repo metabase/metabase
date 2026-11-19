@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.models.data-test-run
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -9,10 +9,6 @@
 (methodical/defmethod t2/table-name :model/DataTestRun [_model] :data_test_run)
 
 (derive :model/DataTestRun :metabase/model)
-
-(defmethod audit-app/model-details :model/DataTestRun
-  [data-test-run _event-type]
-  (select-keys data-test-run [:test_type :test_id :status]))
 
 (t2/deftransforms :model/DataTestRun
   {:status    mi/transform-keyword
@@ -30,3 +26,8 @@
   "Add the user who started each run, or nil."
   [_model _k runs]
   (with-initiated-by-users runs))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DataTestRun [_model]
+  {:skip? false})

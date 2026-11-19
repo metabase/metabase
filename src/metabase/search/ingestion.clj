@@ -44,7 +44,7 @@
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+  (let [search-terms (:search-terms (search.spec/search-model-spec (:model m)))
         getter       (if (map? search-terms)
                        (fn [[k tx]]
                          (let [tx (if (true? tx) identity tx)]
@@ -70,7 +70,7 @@
   Fields listed in the spec's `:embedding-exclude` set are kept out of the
   embedding text entirely (but remain in `searchable-text`)."
   [m]
-  (let [spec         (search.spec/spec (:model m))
+  (let [spec         (search.spec/search-model-spec (:model m))
         search-terms (:search-terms spec)
         excluded     (:embedding-exclude spec #{})
         field-keys   (->> (cond-> search-terms (map? search-terms) keys)
@@ -116,7 +116,7 @@
    (:attrs spec)))
 
 (defn- ->document [m]
-  (let [spec (search.spec/spec (:model m))
+  (let [spec (search.spec/search-model-spec (:model m))
         fn-results (execute-all-function-attrs spec m)
         sql-results (-> m
                         (perf/select-keys
@@ -158,7 +158,7 @@
   [search-model id]
   (if-not (contains? (set search.spec/search-models) search-model)
     :no-spec
-    (let [spec      (search.spec/spec search-model)
+    (let [spec      (search.spec/search-model-spec search-model)
           indexed?  (some? (search.db/spec-index-row search-model id))]
       (cond
         indexed?                              :indexable
