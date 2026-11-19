@@ -11,6 +11,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -54,7 +55,7 @@ function setup() {
     }),
   );
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="/data-studio/library/metrics/:cardId/tests/:testId/runs"
       element={<CardTestRunsPage />}
@@ -64,6 +65,7 @@ function setup() {
       initialRoute: Urls.dataStudioMetricTestRuns(1, 2),
     },
   );
+  return { router };
 }
 
 describe("CardTestRunsPage", () => {
@@ -81,16 +83,17 @@ describe("CardTestRunsPage", () => {
     expect(searchParams.get("test-id")).toBe("2");
   });
 
-  it("links the selected run back to the metric", async () => {
-    setup();
+  it("opens the page of a run", async () => {
+    const { router } = setup();
 
     await userEvent.click(
       await screen.findByRole("row", { name: /Ada Admin/ }),
     );
 
-    const sidebar = await screen.findByTestId("data-test-run-sidebar");
-    expect(
-      await within(sidebar).findByRole("link", { name: "Revenue" }),
-    ).toHaveAttribute("href", Urls.dataStudioMetric(1));
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(
+        Urls.dataTestRun(Urls.dataStudioMetricTest(1, 2), 1),
+      ),
+    );
   });
 });

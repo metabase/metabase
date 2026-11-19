@@ -175,6 +175,7 @@
     "metabase_enterprise.content_diagnostics.task.scan.ContentDiagnosticsScan"
     "metabase_enterprise.data_complexity_score.task.complexity_score.DataComplexityScoring"
     "metabase_enterprise.data_complexity_score.task.complexity_score_trimmer.DataComplexityScoreTrimmer"
+    "metabase_enterprise.data_testing.run_retention.PruneTestRuns"
     "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
     "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
     "metabase_enterprise.dependencies.task.result_metadata.UpdateResultMetadata"

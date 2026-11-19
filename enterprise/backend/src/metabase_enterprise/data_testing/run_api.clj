@@ -67,6 +67,18 @@
      :offset offset
      :total  (data-testing.db/test-run-count filters)}))
 
+(api.macros/defendpoint :get "/:id" :- ::data-testing.schema/data-test-run.detail
+  "Get a run with the user who started it and the result it stored: what each expectation found, or the refusal that
+  ended the run. The caller needs read access to the run's test. The run of a test that was deleted is not found."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (let [{:keys [test_type test_id]} (api/check-404 (data-testing.db/test-run id))
+        model                       (data-testing.db/test-type->model test_type)]
+    (api/check-404 (and model test_id))
+    (api/read-check model test_id)
+    (-> (api/check-404 (data-testing.db/test-run-with-result test_type test_id id))
+        (t2/hydrate :initiated_by_user))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-test-run` routes."
   (api.macros/ns-handler *ns* +auth))

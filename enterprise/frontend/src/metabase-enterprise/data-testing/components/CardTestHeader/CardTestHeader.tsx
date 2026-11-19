@@ -19,7 +19,7 @@ type CardTestHeaderProps = {
 };
 
 function isRunsPathname(pathname: string) {
-  return pathname.endsWith("/runs");
+  return /\/runs(\/\d+)?$/.test(pathname);
 }
 
 export function CardTestHeader({ card, test }: CardTestHeaderProps) {

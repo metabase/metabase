@@ -22,7 +22,7 @@ type SegmentTestHeaderProps = {
 };
 
 function isRunsPathname(pathname: string) {
-  return pathname.endsWith("/runs");
+  return /\/runs(\/\d+)?$/.test(pathname);
 }
 
 export function SegmentTestHeader({
