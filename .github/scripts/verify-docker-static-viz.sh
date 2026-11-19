@@ -80,7 +80,7 @@ logs=$(docker logs "$container" 2>&1)
 if echo "$logs" | grep -E 'Error processing query|Pulse card query error'; then
   fail "the chart's query failed, so nothing was rendered"
 fi
-if echo "$logs" | grep -E 'Pulse card render error|UnsatisfiedLinkError|libtruffleattach could not be loaded'; then
+if echo "$logs" | grep -E 'Pulse card render error|Error rendering dashboard PDF cell|UnsatisfiedLinkError|libtruffleattach could not be loaded'; then
   fail "chart rendering failed inside the image"
 fi
 
