@@ -1,3 +1,5 @@
+import { MetabaseError } from "embedding-sdk-shared/errors";
+
 import { getMetabaseRootPath } from "../lib/get-current-metabase-instance-url";
 
 export const EMBEDDED_DATA_APP_PREFIX = "/embed/embedded-apps";
@@ -49,15 +51,14 @@ const hasUnsafeCharacters = (value: string): boolean =>
 export const normalizeDataAppPath = (path: string): string =>
   path.replace(/^\/+/, "");
 
-/** Reject invalid app names and unsafe routes. Returns the app slug of a valid path. */
-export function validateDataAppPath(path: string): string {
-  const slug = getEmbeddedAppSlugFromPath(path);
-
-  if (!slug) {
-    throw new Error("A valid data app path must be provided.");
+/** Reject invalid app names and unsafe routes with an `EMBED_TAG_ERROR`. */
+export function validateDataAppPath(path: string): void {
+  if (!getEmbeddedAppSlugFromPath(path)) {
+    throw new MetabaseError(
+      "EMBED_TAG_ERROR",
+      `path must be a data app slug with an optional subpath, such as "my-store/orders". Received ${JSON.stringify(path)}.`,
+    );
   }
-
-  return slug;
 }
 
 /** Build the runtime URL from a validated path. */

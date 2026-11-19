@@ -22,9 +22,16 @@ const DEFAULT_HEIGHT = 600;
 interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
   path: string;
   slug: string;
-
-  src: string;
   origin: string;
+
+  /**
+   * The URL the iframe first loads.
+   *
+   * Later values are ignored, so a route change does not reload the app.
+   * `DataApp` keys this component by the app slug and instance URL, so it remounts when either changes.
+   * When only the route or query changes, the new `path` is sent to the iframe, which navigates client-side.
+   */
+  initialSrc: string;
 
   locale?: string;
   store: SdkStore;
@@ -34,8 +41,8 @@ interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
 export function DataAppFrame({
   path,
   slug,
-  src,
   origin,
+  initialSrc,
   locale,
   store,
   authConfig,
@@ -46,9 +53,17 @@ export function DataAppFrame({
 }: DataAppFrameProps) {
   const readyRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const srcRef = useRef(initialSrc);
   const currentAuthRef = useRef({ authConfig, store });
+  const pathRef = useRef(path);
 
-  const [error, setError] = useState<string | null>(null);
+  // An error belongs to the path it happened on, so a route change loads the iframe again.
+  const [failure, setFailure] = useState<{
+    path: string;
+    message: string;
+  } | null>(null);
+
+  const error = failure?.path === path ? failure.message : null;
 
   // The slug only dedupes events per app. It is not sent to analytics.
   useTrackSdkComponentMount("DataApp", slug, {});
@@ -57,6 +72,10 @@ export function DataAppFrame({
   useLayoutEffect(() => {
     currentAuthRef.current = { authConfig, store };
   }, [authConfig, store]);
+
+  useLayoutEffect(() => {
+    pathRef.current = path;
+  }, [path]);
 
   useLayoutEffect(() => {
     const iframe = iframeRef.current;
@@ -110,6 +129,9 @@ export function DataAppFrame({
         }
 
         if (isCurrentAuthRequest()) {
+          // an error from an earlier route must not come back after a retry works
+          setFailure(null);
+
           send({
             type: "metabase.embed.submitSessionToken",
             data: { authMethod: "provider-managed", sessionToken },
@@ -117,7 +139,13 @@ export function DataAppFrame({
         }
       } catch (error) {
         if (isCurrentAuthRequest()) {
-          setError(getErrorMessage(error, String(error)));
+          // the next iframe sends its own ready message
+          readyRef.current = false;
+
+          setFailure({
+            path: pathRef.current,
+            message: getErrorMessage(error, String(error)),
+          });
         }
       }
     };
@@ -157,7 +185,7 @@ export function DataAppFrame({
   return (
     <iframe
       ref={iframeRef}
-      src={src}
+      src={srcRef.current}
       className={className}
       allow="clipboard-write"
       data-testid="data-app-frame"
