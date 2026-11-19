@@ -311,6 +311,24 @@ describe("DataApp", () => {
     );
   });
 
+  it("calls onPathChange with initialPath and does not send the reported path back", () => {
+    const onPathChange = jest.fn<void, [string]>();
+    const { iframe, postMessage } = setup({
+      initialPath: "boba-hq",
+      onPathChange,
+    });
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/orders/42?tab=items");
+
+    expect(onPathChange).toHaveBeenCalledTimes(1);
+    expect(onPathChange).toHaveBeenCalledWith("boba-hq/orders/42?tab=items");
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
   it("keeps the iframe when initialPath changes to an invalid route of the same app", () => {
     const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
 
