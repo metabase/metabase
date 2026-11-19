@@ -261,6 +261,12 @@ describe("isAllowedIframeUrl", () => {
     ).toBe(true);
   });
 
+  it("should return false for domains that only end with an allowed domain but are not a subdomain", () => {
+    expect(_isAllowedIframeUrl("https://notyoutube.com")).toBe(false);
+    expect(_isAllowedIframeUrl("https://evildocs.google.com")).toBe(false);
+    expect(_isAllowedIframeUrl("http://evillocalhost:3000")).toBe(false);
+  });
+
   it("should accept both HTTP and HTTPS for allowed domains", () => {
     expect(_isAllowedIframeUrl("http://localhost:3000")).toBe(true);
     expect(_isAllowedIframeUrl("https://localhost:3000")).toBe(true);

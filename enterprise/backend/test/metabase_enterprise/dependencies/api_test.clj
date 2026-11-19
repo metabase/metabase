@@ -1339,6 +1339,30 @@
                              :data {:table {:name "PRODUCTS"}}}]}
                     response))))))))
 
+(deftest ^:synchronized unreferenced-sandboxes-search-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - a search applies to sandboxes, by their id"
+    (mt/with-premium-features #{:dependencies :sandboxes}
+      (let [mp       (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Sandbox Group - searchtest"}
+                       :model/Card {sandbox-card-id :id} {:name          "Sandbox Card - searchtest"
+                                                          :type          :question
+                                                          :dataset_query (lib/query mp products)}
+                       :model/Sandbox {sandbox-id :id} {:group_id group-id
+                                                        :table_id (mt/id :products)
+                                                        :card_id  sandbox-card-id}]
+          (deps.test/synchronously-run-dependency-job!)
+          (let [sandbox-ids (fn [query]
+                              (->> (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
+                                                         :types "sandbox" :query query)
+                                   :data
+                                   (map :id)
+                                   set))]
+            (testing "a search text that no sandbox matches returns no sandbox"
+              (is (empty? (sandbox-ids "nosuchsandbox"))))
+            (testing "a search text that the sandbox matches returns it"
+              (is (contains? (sandbox-ids (str sandbox-id)) sandbox-id)))))))))
+
 (deftest ^:synchronized unreferenced-card-types-test
   (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card-types and pagination"
     (mt/with-premium-features #{:dependencies}

@@ -4,6 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -12,7 +13,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
 
@@ -94,3 +95,8 @@
   (doseq [group-id (set (keys changes))]
     (delete-impersonations-for-group! {:group-id group-id} (get changes group-id)))
   (log/debug "Done deleting unneeded Connection Impersonations."))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ConnectionImpersonation [_model]
+  {:skip? false})

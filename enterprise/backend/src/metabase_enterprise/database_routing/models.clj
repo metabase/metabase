@@ -1,7 +1,10 @@
 (ns metabase-enterprise.database-routing.models
   (:require
+   [metabase-enterprise.database-routing.audit :as database-routing.audit]
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -18,12 +21,6 @@
 (doto :model/DatabaseRouter
   (derive :metabase/model)
   (derive :hook/events))
-
-(defmethod events/spec :model/DatabaseRouter
-  [_model]
-  {:create :event/database-router-create
-   :update :event/database-router-update
-   :delete :event/database-router-delete})
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
@@ -77,3 +74,25 @@
   (boolean (or (database-routing.db/router-exists? (:id db))
                (some->> (:router-database-id db)
                         database-routing.db/router-exists?))))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/DatabaseRouter
+  [_model]
+  {:create :event/database-router-create
+   :update :event/database-router-update
+   :delete :event/database-router-delete})
+
+(defmethod app-db-copy/spec :model/DatabaseRouter [_model]
+  {:skip? true})
+
+(defmethod audit/spec :model/DatabaseRouter [_model]
+  {:track          []
+   :track-redacted [:database_id :user_attribute]
+   :skip           []
+   :details        database-routing.audit/details
+   :state          database-routing.audit/state
+   :subject        database-routing.audit/subject
+   :topics         {:create :database-update
+                    :update :database-update
+                    :delete :database-update}})

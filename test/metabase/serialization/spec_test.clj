@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
@@ -60,6 +61,16 @@
               (is (every? ifn? (keep transform [:export :import])) (str k))))
           (testing "declares every serialized key in its schema"
             (is (empty? (remove (schema-keys (:schema spec)) serialized)))))))))
+
+(deftest specs-match-spec-schema-test
+  (testing "each spec is a closed map of the documented keys"
+    (doseq [[model-name _model spec] (model-specs)]
+      (testing model-name
+        (is (nil? (me/humanize (mr/explain ::serialization.spec/spec spec)))))))
+  (testing "spec with mistyped key fails"
+    (is (some? (mr/explain ::serialization.spec/spec {:schema :string :storage-path identity}))))
+  (testing "spec with fn key holding non-fn fails"
+    (is (some? (mr/explain ::serialization.spec/spec {:schema :string :before-load :items})))))
 
 (deftest schema-keys-match-external-keys-test
   (testing "the schema of each spec declares exactly the keys an import reads from its entities"

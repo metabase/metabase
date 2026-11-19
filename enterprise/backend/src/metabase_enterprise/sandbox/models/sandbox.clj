@@ -9,9 +9,12 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.sandbox.db :as sandbox.db]
+   [metabase-enterprise.sandbox.dependencies :as sandbox.dependencies]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -34,7 +37,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Sandbox [_model] :sandboxes)
 
@@ -44,12 +47,6 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
   (derive :hook/events))
-
-(defmethod events/spec :model/Sandbox
-  [_model]
-  {:create :event/sandbox-create
-   :update :event/sandbox-update
-   :delete :event/sandbox-delete})
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
@@ -324,3 +321,23 @@
            (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (sandbox.db/sandbox id))
        (sandbox.db/insert-sandbox! sandbox)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Sandbox
+  [_model]
+  {:create :event/sandbox-create
+   :update :event/sandbox-update
+   :delete :event/sandbox-delete})
+
+(defmethod app-db-copy/spec :model/Sandbox [_model]
+  {:skip?    false
+   :sequence "group_table_access_policy_id_seq"})
+
+(defmethod dependencies/spec :model/Sandbox [_model]
+  {:type  :sandbox
+   :items sandbox.db/dependency-sandbox-items
+
+   :dependencies sandbox.dependencies/dependencies
+
+   :dependency-columns #{:card_id}})

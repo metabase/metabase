@@ -221,7 +221,7 @@
      metabase.channel.render.pdf/draw-no-results!
      metabase.channel.render.pdf/render-card-cell!
      metabase.channel.render.pdf.font/load-fonts!
-     metabase.warehouses.models.database/assert-not-h2!
+     metabase.warehouses.serialization/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      ;; only inspects a details map and throws; the `!` is for the throw, not for a mutation
      metabase.driver/validate-db-details!

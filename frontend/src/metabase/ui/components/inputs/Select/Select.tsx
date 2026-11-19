@@ -29,11 +29,12 @@ export type SelectData<Value extends string | null> =
  */
 export interface SelectProps<Value extends string | null = string> extends Omit<
   MantineSelectProps,
-  "data" | "onChange" | "value" | "ref"
+  "data" | "onChange" | "value" | "ref" | "size"
 > {
   data: SelectData<Value>;
   value?: Value;
   onChange?: (newValue: Value) => void;
+  size?: "sm" | "md" | "lg";
 }
 
 function dropEmptyGroups(filter: OptionsFilter): OptionsFilter {

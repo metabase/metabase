@@ -1,7 +1,10 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -21,12 +24,6 @@
 
 (derive :model/PermissionsGroupMembership :metabase/model)
 (derive :model/PermissionsGroupMembership :hook/events)
-
-(defmethod events/spec :model/PermissionsGroupMembership
-  [_model]
-  {:create :event/group-membership-create
-   :update :event/group-membership-update
-   :delete :event/group-membership-delete})
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
@@ -307,3 +304,25 @@
   "Removes a user from all groups."
   [user-id]
   (permissions.db/delete-memberships-for-user! user-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/PermissionsGroupMembership
+  [_model]
+  {:create :event/group-membership-create
+   :update :event/group-membership-update
+   :delete :event/group-membership-delete})
+
+(defmethod app-db-copy/spec :model/PermissionsGroupMembership [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PermissionsGroupMembership [_model]
+  {:track [:user_id :group_id :is_group_manager]
+   :skip  []})
+
+(defmethod audit/spec :model/PermissionsGroupMembership [_model]
+  {:track          [:id :user_id :group_id :is_group_manager]
+   :track-redacted []
+   :skip           []
+   :topics         {:create :group-membership-create
+                    :delete :group-membership-delete}})

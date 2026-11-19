@@ -536,9 +536,7 @@
                      :model/Revision            _                  {:user_id  user-id
                                                                     :model    "Dashboard"
                                                                     :model_id dashboard-id
-                                                                    :object   (revision/serialize-instance dashboard
-                                                                                                           dashboard-id
-                                                                                                           dashboard)}]
+                                                                    :object   (revision/snapshot :model/Dashboard dashboard)}]
         (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection! [card-id]
             (is (=? {:name                       "Test Dashboard"

@@ -4,13 +4,15 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.audit-app.core :as audit-app]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,12 +28,6 @@
   (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
-(defmethod events/spec :model/SegmentTest
-  [_model]
-  {:create :event/segment-test-create
-   :update :event/segment-test-update
-   :delete :event/segment-test-delete})
-
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
   [_original-model _k]
   :model/Segment)
@@ -44,10 +40,6 @@
   "Add the newest run, or nil, to each segment test."
   [_model _k segment-tests]
   (data-testing.models/with-last-runs :segment segment-tests))
-
-(defmethod audit-app/model-details :model/SegmentTest
-  [segment-test _event-type]
-  (select-keys segment-test [:segment_id :name :description]))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
@@ -78,11 +70,11 @@
   ;; segment is not enough.
   (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
 
-(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/segment (:segment_id instance))
-                                               (t2/hydrate :can_read)
-                                               mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
+  "Add whether the current user can read the segment of each segment test, loading the segments at once."
+  [_model k segment-tests]
+  (data-testing.models/with-readable-subjects k segment-tests :segment_id
+    (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
 
 (methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_write]
   [_model k instance]
@@ -131,48 +123,42 @@
 (def ^:private revision-columns
   [:segment_id :name :description :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/SegmentTest
-  [_model _id segment-test]
-  (select-keys segment-test revision-columns))
+(defn- revert-segment-test!
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (update-segment-test! id (select-keys snapshot revision-columns)))
 
-(defmethod revision/revisions-readable? :model/SegmentTest
-  [_model objects]
-  ;; An older revision can name a segment that has since been deleted; nobody may read a revision about it.
-  (let [readable-ids (into #{}
-                           (map :id)
-                           (mi/readable (data-testing.db/segments-by-ids
-                                         (into [] (comp (keep :segment_id) (distinct)) objects))))]
-    (mapv #(contains? readable-ids (:segment_id %)) objects)))
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-(defmethod revision/revert-to-revision! :model/SegmentTest
-  [_model id _user-id serialized-instance]
-  (update-segment-test! id (select-keys serialized-instance revision-columns)))
+(defmethod events/spec :model/SegmentTest
+  [_model]
+  {:create :event/segment-test-create
+   :update :event/segment-test-update
+   :delete :event/segment-test-delete})
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod app-db-copy/spec :model/SegmentTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/SegmentTest [_]
-  {:schema    ::data-testing.schema/external-segment-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:segment_id (serialization/fk-transform :model/Segment)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/SegmentTest [_ entities _ctx]
-  ;; A segment's path comes from its table, and only the segment's exported definition names that table.
-  (let [segments (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities) nil))
-        exported (zipmap (map :entity_id segments) (serialization/export-batch :model/Segment segments))
-        paths    (serialization/batch-storage-paths (mapv #(get exported (:segment_id %)) entities))]
-    (mapv (fn [segment-test path]
-            (conj path {:label (:name segment-test) :key (:entity_id segment-test)}))
-          entities paths)))
-
-(defmethod serialization/import-dependencies :model/SegmentTest [_ entities]
-  (mapv (fn [{:keys [segment_id]}]
-          #{[:model/Segment segment_id]})
-        entities))
-
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
+  {:schema              ::data-testing.schema/external-segment-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:segment_id (serialization/fk-transform :model/Segment)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/segment-test-storage-paths
+   :import-dependencies data-testing.serialization/segment-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/SegmentTest
   [_model]
   {:synced-items         data-testing.db/synced-segment-test-items
    :synced-filter-clause data-testing.db/synced-segment-tests-clause})
+
+(defmethod revisions/spec :model/SegmentTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-segment-test!})
+
+(defmethod audit/spec :model/SegmentTest [_model]
+  {:track          [:segment_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

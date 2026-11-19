@@ -1,6 +1,7 @@
 (ns metabase.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
@@ -24,3 +25,8 @@
    (if locale
      (content-translation.db/translations-for-locale locale)
      (content-translation.db/all-translations))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ContentTranslation [_model]
+  {:skip? true})
