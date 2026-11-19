@@ -35,6 +35,7 @@
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :as t]
    [colorize.core :as colorize]
    [mb.hawk.init :as hawk.init]
@@ -302,8 +303,10 @@
       ;; setup-db! writes through the encrypting transforms, so with MB_ENCRYPTION_SECRET_KEY set the dump would
       ;; carry rows only that key can read. A test that binds a key of its own then sees rows it cannot decrypt.
       (mdb/decrypt-db :h2 (mdb/data-source))
-      (let [f (java.io.File/createTempFile "db-export" ".sql")]
-        (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
+      (let [f          (java.io.File/createTempFile "db-export" ".sql")
+            statements (map (comp val first) (next.jdbc/execute! conn ["SCRIPT"]))
+            view?      #(re-find #"(?i)^CREATE (FORCE )?VIEW " %)]
+        (spit f (str/join (map #(str % "\n") (concat (remove view? statements) (filter view? statements)))))
         f))))
 
 (def h2-app-db-script-empty
