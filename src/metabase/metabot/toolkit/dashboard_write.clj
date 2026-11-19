@@ -137,14 +137,6 @@
                   (dashboards.write/update-dashboard! (:id dash) payload)
                   dash)))))
 
-(defn- save-update!
-  "Saves `updates` to `dashboard` and returns `[saved archived]`: the saved dashboard hydrated, and the subscriptions
-   the save archived, as [[dashboards.write/archived-subscriptions]] reads them, or nil."
-  [dashboard updates]
-  (let [saved (dashboards.write/update-dashboard! (u/the-id dashboard) updates)]
-    [(hydrated saved)
-     (dashboards.write/archived-subscriptions saved)]))
-
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns `{:dashboard :effects}`.
    The dashboard is hydrated with `[:dashcards :series :card] :tabs` whether or not it saved.
@@ -185,7 +177,8 @@
         {:dashboard (create-dashboard! attrs payload), :effects effects}
 
         :else
-        (let [[saved archived] (save-update! dashboard (merge attrs payload))]
-          {:dashboard saved
+        (let [saved    (dashboards.write/update-dashboard! (u/the-id dashboard) (merge attrs payload))
+              archived (dashboards.write/archived-subscriptions saved)]
+          {:dashboard (hydrated saved)
            :effects   (cond-> effects
                         archived (assoc :archived-subscriptions archived))})))))

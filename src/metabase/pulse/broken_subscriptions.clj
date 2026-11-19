@@ -85,13 +85,13 @@
          :disable_links (:disable_links broken-pulse))))))
 
 (defn- channel-recipient-count
-  "How many destinations the PulseChannel `channel` reaches: its active user recipients, from `active-recipients`, a
-   map of channel id to count, and its email addresses for email, and one for a Slack channel or webhook with its
-   destination set."
-  [active-recipients {:keys [id channel_type details channel_id]}]
+  "The number of destinations the PulseChannel `channel`, hydrated with `:recipients`, reaches.
+   An email channel reaches its recipients: its active user recipients and its email addresses.
+   A Slack channel or webhook reaches one when its destination is set, and any other type reaches none."
+  [{:keys [channel_type details channel_id recipients]}]
   ;; The same destinations the send task delivers to, and checks before deleting a channel as having no recipients.
   (case channel_type
-    :email (+ (get active-recipients id 0) (count (:emails details)))
+    :email (count recipients)
     :slack (if (seq (:channel details)) 1 0)
     :http  (if channel_id 1 0)
     0))
@@ -101,16 +101,10 @@
    destinations [[channel-recipient-count]] counts.
    Only enabled channels with a destination count."
   [pulse-id]
-  (let [channels          (pulse.db/enabled-pulse-channels pulse-id)
-        email-channel-ids (into [] (comp (filter #(= :email (:channel_type %))) (map :id)) channels)
-        active-recipients (if (seq email-channel-ids)
-                            (frequencies (map :pulse_channel_id
-                                              (pulse.db/active-recipients-for-channels email-channel-ids)))
-                            {})
-        counts            (for [channel channels
-                                :let    [n (channel-recipient-count active-recipients channel)]
-                                :when   (pos? n)]
-                            [(:channel_type channel) n])]
+  (let [counts (for [channel (t2/hydrate (pulse.db/enabled-pulse-channels pulse-id) :recipients)
+                     :let    [n (channel-recipient-count channel)]
+                     :when   (pos? n)]
+                 [(:channel_type channel) n])]
     {:channels        (vec (distinct (map first counts)))
      :recipient-count (transduce (map second) + counts)}))
 

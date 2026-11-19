@@ -400,7 +400,7 @@
             counted, an unknown channel type isn't shown, and a filter with no name or a blank one shows by its id"
     (is (= ["The change removed filters that these subscriptions set values for, so they were archived:"
             "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
-            "  - 1 the user can't see"
+            "  - 1 more subscription the user can't see"
             "These subscriptions already used filters the dashboard no longer had, and were archived too:"
             "  - A subscription created by \"Lucky\" with no recipients, which used \"Old\", \"o2\", \"o3\""
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "

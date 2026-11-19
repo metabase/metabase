@@ -788,21 +788,25 @@
   A subscription the user can't read is counted, not described."
   [subscriptions]
   ;; Channel types and the creator's name are stored values, so a channel shows by a fixed label, and the name quoted.
-  (let [channel-label     {:email "email", :slack "Slack", :http "webhook"}
-        describe          (fn [{:keys [creator-name channels recipient-count parameters]}]
-                            (str "  - A subscription created by " (pr-str (str creator-name))
-                                 (if-let [labels (seq (keep channel-label channels))]
-                                   (str " by " (str/join " and " labels) " to " recipient-count
-                                        (if (= 1 recipient-count) " recipient" " recipients"))
-                                   " with no recipients")
-                                 ", which used " (str/join ", " (map #(pr-str (if (str/blank? (:name %)) (:id %) (:name %))) parameters))))
-        lines             (fn [group]
-                            (let [{readable true unreadable false} (group-by (comp boolean :readable?) group)]
-                              (concat (map describe readable)
-                                      (when (seq unreadable)
-                                        [(str "  - " (count unreadable) " the user can't see")]))))
+  (let [channel-label  {:email "email", :slack "Slack", :http "webhook"}
+        filter-label   (fn [{:keys [id name]}]
+                         (pr-str (if (str/blank? name) id name)))
+        describe       (fn [{:keys [creator-name channels recipient-count parameters]}]
+                         (str "  - A subscription created by " (pr-str (str creator-name))
+                              (if-let [labels (seq (keep channel-label channels))]
+                                (str " by " (str/join " and " labels) " to " recipient-count " "
+                                     (u/format-plural recipient-count "recipient"))
+                                " with no recipients")
+                              ", which used " (str/join ", " (map filter-label parameters))))
+        lines          (fn [group]
+                         (let [{readable true unreadable false} (group-by (comp boolean :readable?) group)
+                               n                                (count unreadable)]
+                           (concat (map describe readable)
+                                   (when (pos? n)
+                                     [(str "  - " n " more " (u/format-plural n "subscription")
+                                           " the user can't see")]))))
         {broken true
-         caused false}   (group-by (comp boolean :already-broken?) subscriptions)]
+         caused false} (group-by (comp boolean :already-broken?) subscriptions)]
     [(when (seq caused)
        (cons "The change removed filters that these subscriptions set values for, so they were archived:"
              (lines caused)))

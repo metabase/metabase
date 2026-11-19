@@ -205,15 +205,14 @@
         {dash :dashboard
          :keys [stored]
          {:keys [pushed-dashcard-ids dropped-connections archived-subscriptions]} :effects} written
-        dropped    (visible-connections stored dash dropped-connections)]
+        dropped    (visible-connections stored dash dropped-connections)
+        archived   (mapv archived-subscription-row archived-subscriptions)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
                           (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
-                          (seq dropped)                (assoc :dropped_connections dropped)
-                          (seq archived-subscriptions) (assoc :archived_subscriptions
-                                                              (mapv archived-subscription-row archived-subscriptions)
-                                                              :archived_subscription_count
-                                                              (count archived-subscriptions)))
+                          (seq dropped)             (assoc :dropped_connections dropped)
+                          (seq archived)            (assoc :archived_subscriptions      archived
+                                                           :archived_subscription_count (count archived)))
                         ;; A token that can't read the dashboard back still learns that subscriptions were archived.
                         [:archived_subscription_count]))))
