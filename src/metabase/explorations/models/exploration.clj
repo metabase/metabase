@@ -1,10 +1,17 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collection-items.spec :as collection-items]
+   [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
+   [metabase.events.core :as events]
+   [metabase.explorations.collection-items :as explorations.collection-items]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
-   [metabase.search.spec :as search.spec]
+   [metabase.revisions.core :as revisions]
+   [metabase.search.spec :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -43,9 +50,53 @@
 
 (doto :model/Exploration
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/events))
+
+(defmethod mi/after-archived-change :model/Exploration
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (events/with-event-context {:archived-with [:model/Exploration id]}
+      (if (:archived changes)
+        (explorations.db/archive-summary-documents! id)
+        (explorations.db/unarchive-summary-documents! id)))))
+
+(t2/define-before-insert :model/Exploration
+  [{:keys [archived collection_id] :as exploration}]
+  (collection/check-collection-not-archived archived collection_id)
+  exploration)
+
+(t2/define-before-update :model/Exploration
+  [{:keys [archived collection_id] :as exploration}]
+  (let [changes (t2/changes exploration)]
+    (when (contains? changes :collection_id)
+      (collection/check-collection-not-archived archived collection_id))
+    (cond-> exploration
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
+
+(mi/define-update-in-transaction :model/Exploration)
+
+(methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
+  "Whether the current user reads each of `explorations`, as the content of its Collection."
+  [_model _k explorations]
+  (collection/hydrate-content-can-read :model/Exploration explorations {:audit-rules? false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Exploration :can_write]
+  "Whether the current user writes each of `explorations`, as the content of its Collection."
+  [_model _k explorations]
+  (collection/hydrate-content-can-write :model/Exploration explorations {:audit-rules? false}))
+
+(defmethod mi/can-create? :model/Exploration
+  [_model {collection-id :collection_id}]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
+
+(defmethod mi/can-update? :model/Exploration
+  [exploration changes]
+  (boolean
+   (and (mi/can-write? exploration)
+        (mi/archive-followers-updatable? exploration changes :model/Document
+                                         (partial explorations.db/summary-documents-following (:id exploration))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
@@ -83,23 +134,44 @@
   [_model _k]
   nil)
 
-;;; ----------------------------------------------- Search ----------------------------------------------------------
+;;; ----------------------------------------------------- Specs -----------------------------------------------------
 
-(search.spec/define-spec "exploration"
-  {:model :model/Exploration
-   :attrs {:archived :archived
-           :collection-id :collection_id
-           :creator-id :creator_id
-           :created-at :created_at
-           :updated-at :updated_at
-           :exploration-id false
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name :description]
-   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
-   :render-terms {:exploration-name :name
-                  :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
-                  :collection-name            :collection.name
-                  :collection-position        true
-                  :collection-type            :collection.type
-                  :archived-directly          true}})
+(defmethod events/spec :model/Exploration
+  [_model]
+  {:create :event/exploration-create
+   :update :event/exploration-update
+   :delete :event/exploration-delete})
+
+(defmethod app-db-copy/spec :model/Exploration [_model]
+  {:skip? false})
+
+(defmethod revisions/spec :model/Exploration [_model]
+  {:track [:name :description :collection_id :archived]
+   :skip  [:archived_directly :collection_position :creator_id :entity_id]})
+
+(defmethod search/spec :model/Exploration
+  [_model]
+  {"exploration"
+   {:attrs {:archived :archived
+            :collection-id :collection_id
+            :creator-id :creator_id
+            :created-at :created_at
+            :updated-at :updated_at
+            :exploration-id false
+            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+    :search-terms [:name :description]
+    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
+    :render-terms {:exploration-name :name
+                   :collection-authority_level :collection.authority_level
+                   :collection-location        :collection.location
+                   :collection-name            :collection.name
+                   :collection-position        true
+                   :collection-type            :collection.type
+                   :archived-directly          true}}})
+
+(defmethod collection-items/spec :model/Exploration [_model]
+  {"exploration" {:items   explorations.db/collection-exploration-items
+                  :hydrate explorations.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Exploration [_model]
+  {:names [:exploration]})

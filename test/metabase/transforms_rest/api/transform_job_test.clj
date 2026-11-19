@@ -38,8 +38,7 @@
               (let [response (mt/user-http-request user :post 400 "transform-job"
                                                    {:name     "Bad Cron Job"
                                                     :schedule "invalid cron"})]
-                (is (string? response))
-                (is (re-find #"Invalid cron expression" response))))
+                (is (=? {:errors {:schedule some?}} response))))
             (testing "Validates tag IDs exist"
               (let [response (mt/user-http-request user :post 400 "transform-job"
                                                    {:name     "Job with bad tags"
@@ -171,8 +170,7 @@
               (testing "Validates cron expression"
                 (let [response (mt/user-http-request user :put 400 (str "transform-job/" (:id job))
                                                      {:schedule "invalid"})]
-                  (is (string? response))
-                  (is (re-find #"Invalid cron expression" response)))))))))))
+                  (is (=? {:errors {:schedule some?}} response)))))))))))
 
 (deftest update-job-active-test
   (testing "PUT /api/transform-job/:id can toggle the active flag"

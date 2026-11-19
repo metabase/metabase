@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -39,7 +40,7 @@
 
 (mr/def ::entity-with-id
   "Any map with an optional `:id`, whatever else it holds."
-  [:map {::mr/deliberately-open true, :description "a Toucan, metadata, or user-supplied entity"}
+  [:map {:description "a Toucan, metadata, or user-supplied entity"}
    [:id {:optional true} [:maybe ::deps.dependency-types/entity-id]]])
 
 (def ^:private EntitiesMap
@@ -54,7 +55,7 @@
 
 (def ^:private UncheckedEntityId
   "A dependency entity ID as a caller gives it, which [[ensure-entity-id]] checks."
-  [:schema {::mr/deliberately-open true, :description "an unchecked dependency entity id"} :any])
+  :metabase.util.malli/value)
 
 (def ^:private DependenciesByType
   "The dependencies of an entity as `{entity-type #{entity-id}}`, with the IDs not yet checked."
@@ -281,25 +282,7 @@
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
 
-(mu/defn swap-dependency! :- :int
-  "Efficiently swap a dependency from old-source to new-source during replacement operations.
-  This is more efficient than full dependency analysis since we know exactly what changed.
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-  If the new dependency already exists, we just delete the old one (to avoid duplicate key violation).  If the old
-  dependency doesn't exist, this is a no-op.
-
-  Parameters:
-  - entity-type: The type of the entity whose dependency is changing (e.g., :card)
-  - entity-id: The ID of the entity
-  - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
-  - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
-  [entity-type                     :- ::dependencies.schema/entity-type
-   entity-id                       :- ms/PositiveInt
-   [old-source-type old-source-id] :- [:tuple ::dependencies.schema/entity-type ms/PositiveInt]
-   [new-source-type new-source-id] :- [:tuple ::dependencies.schema/entity-type ms/PositiveInt]]
-  (let [already-present? (dependencies.db/dependency-exists? entity-type entity-id new-source-type new-source-id)]
-    (if already-present?
-      (dependencies.db/delete-dependency! entity-type entity-id old-source-type old-source-id)
-      (dependencies.db/retarget-dependency! entity-type entity-id
-                                            old-source-type old-source-id
-                                            new-source-type new-source-id))))
+(defmethod app-db-copy/spec :model/Dependency [_model]
+  {:skip? true})

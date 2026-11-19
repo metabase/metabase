@@ -124,6 +124,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.visualization :as lib.visualization]
    [metabase.lib.walk]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
@@ -1498,6 +1499,8 @@
 ;;; # IGNORE ME!
 ;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
 ;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+;; re-exported vars keep their deprecated status for callers
+#_{:clj-kondo/ignore [:deprecated-var]}
 (shared.ns/import-fns
  [lib.binning
   available-binning-strategies
@@ -1515,6 +1518,7 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
+  ->legacy-MBQL-ref
   ->mbql5
   legacy-default-join-alias
   without-cleaning]
@@ -1863,3 +1867,12 @@
 
   **Code Health:** Healthy."
   metabase.lib.parameters.parse.types/no-value)
+
+(shared.ns/import-fns
+ [lib.visualization
+  column-name->column-settings-key
+  column-settings-for-field-id
+  column-settings-for-name
+  field-id->column-settings-key
+  parse-column-settings-key
+  ref->column-settings-key])

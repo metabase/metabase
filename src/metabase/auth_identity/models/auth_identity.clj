@@ -3,6 +3,7 @@
   for a User - a User can have multiple AuthIdentities (e.g., password + SSO)."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
@@ -22,7 +23,7 @@
 (doto :model/AuthIdentity
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
 (defn- parse-credentials-timestamps-out
@@ -92,7 +93,7 @@
 
 (mi/define-batched-hydration-method add-has-used-password
   :has_used_password
-  "Adds `has_used_password`, whether each of `users` has a password that has been used to log in and has not expired."
+  "Adds `has_used_password`, whether each of `users` has a password that has been used to log in."
   [users]
   (let [user-ids (auth-identity.db/user-ids-with-used-password (set (map u/the-id users)))]
     (for [user users]
@@ -151,3 +152,8 @@
   [user-id :- ms/PositiveInt]
   (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
           [:credentials :token_hash]))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AuthIdentity [_model]
+  {:skip? false})

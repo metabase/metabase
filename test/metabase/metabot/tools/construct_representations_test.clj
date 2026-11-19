@@ -608,7 +608,7 @@
             (when-not (instance? clojure.lang.ExceptionInfo result)
               (let [q          (get-in result [:structured-output :query])
                     ;; Round-trip through legacy is the gate the production failure hit.
-                    legacy     (lib/->legacy-MBQL q)
+                    legacy     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL q)
                     rebuilt    (try (lib/query mp legacy)
                                     (catch clojure.lang.ExceptionInfo e e))]
                 (testing "order-by uses an aggregation reference, not an inline aggregation"
@@ -1917,13 +1917,12 @@
                {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
 
 (def ^:private metric-definition
-  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, for storage."
   (-> (lib/query mp-metric-base (lib.metadata/table mp-metric-base 10))
       (lib/join (lib/join-clause (lib.metadata/table mp-metric-base 30)
                                  [(lib/= (lib.metadata/field mp-metric-base 102)
                                          (lib.metadata/field mp-metric-base 300))]))
-      (lib/aggregate (lib/count))
-      lib.convert/->legacy-MBQL))
+      (lib/aggregate (lib/count))))
 
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
@@ -1945,6 +1944,9 @@
                 ;; permission-filtered is covered against real tables in entity-details-test.
                 mi/can-read?                             (constantly true)
                 mi/can-query?                            (constantly true)
+                metabot.db/table                         (fn [id]
+                                                           (-> (t2/instance :model/Table {:id id :can_query true})
+                                                               (vary-meta assoc :can_read true)))
                 entity-details/permission-filter-columns (fn [cols & _] cols)
                 entity-details/verified-review?          (constantly false)]
     (f)))
@@ -2085,7 +2087,8 @@
                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]}
                                                 stage-kvs)]}))
         before (get-in result [:structured-output :query])]
-    [before (-> before links/->legacy-mbql json/encode (json/decode true))]))
+    ;; existing usage -- do not use going forward
+    [before (-> before #_{:clj-kondo/ignore [:deprecated-var]} links/->legacy-mbql json/encode (json/decode true))]))
 
 (defn- stage-clause-counts
   "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."
@@ -4438,3 +4441,28 @@
               (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
               (is (str/includes? msg "SQL question"))
               (is (= table-field? (str/includes? msg "Table Metadata"))))))))))
+
+(deftest repairs-in-structured-output-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [query (fn [op]
+                    (query-data
+                     {"lib/type" "mbql/query"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "filters"      [[op {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 10]]}]}))]
+        (testing "the pipeline names the repair passes that changed the query"
+          (is (= ["rewrite-operator-name-aliases"]
+                 (get-in (construct/execute-representations-query (query "gte")) [:structured-output :repairs]))))
+        (testing "a query that follows the prompt contract has an empty list, not a missing key"
+          (is (= []
+                 (get-in (construct/execute-representations-query (query ">=")) [:structured-output :repairs]))))
+        (doseq [tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (testing (str (type tool))
+            (let [result (tools/handle tool {:query (query "gte") :reasoning "orders above 10"} {})]
+              (testing "the tool result holds the list for the agent_used_tool event"
+                (is (= ["rewrite-operator-name-aliases"]
+                       (get-in result [:structured-output :repairs]))))
+              (testing "the text the model reads does not hold it"
+                (is (not (str/includes? (tools/render-text (:output result)) "rewrite-operator-name-aliases")))))))))))

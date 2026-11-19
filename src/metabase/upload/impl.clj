@@ -16,21 +16,19 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.sync.core :as sync]
+   [metabase.upload.based-on-upload :as based-on-upload]
    [metabase.upload.db :as upload.db]
    [metabase.upload.parsing :as upload-parsing]
-   [metabase.upload.settings :as upload.settings]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
@@ -480,27 +478,6 @@
   (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))]
     (upload.db/set-field-display-names! table-id field->display-name)))
 
-(defn- uploads-enabled? []
-  (some? (:db_id (upload.settings/uploads-settings))))
-
-(defn- can-use-uploads-error
-  "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
-  entry points. Returns nil otherwise."
-  [db]
-  (let [driver (driver.u/database->driver db)]
-    (cond
-      (not (uploads-enabled?))
-      (ex-info (tru "Uploads are not enabled.")
-               {:status-code 422})
-
-      (perms/sandboxed-user?)
-      (ex-info (tru "Uploads are not permitted for sandboxed users.")
-               {:status-code 403})
-
-      (not (driver.u/supports? driver :uploads db))
-      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
-               {:status-code 422}))))
-
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
@@ -514,22 +491,16 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
-                                                                  :perms/view-data
-                                                                  (u/the-id db)
-                                                                  schema-name))
+          (= :unrestricted (perms/every-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/view-data (u/the-id db) schema-name))
           (contains? #{:query-builder :query-builder-and-native}
-                     (perms/full-schema-permission-for-user api/*current-user-id*
-                                                            :perms/create-queries
-                                                            (u/the-id db)
-                                                            schema-name))))
+                     (perms/every-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries (u/the-id db) schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
              (not (driver.s/include-schema? (driver.u/lib-database (:id db)) schema-name)))
         (ex-info (tru "The schema {0} is not syncable." schema-name)
                  {:status-code 422}))
-      (can-use-uploads-error db)))
+      (based-on-upload/can-use-uploads-error db)))
 
 (defn- check-can-create-upload
   "Throws an error if the user cannot upload to the given database and schema."
@@ -768,32 +739,12 @@
            (field->db-type driver field->new-type)
            args)))
 
-(defn- mbql? [model]
-  (= "query" (name (:query_type model "query"))))
-
-(defn- no-joins?
-  "Returns true if `query` has no explicit joins in it, otherwise false."
-  [query]
-  ;; TODO while it's unlikely (at the time of writing this) that uploaded tables have FKs, we should probably check
-  ;;      for implicit joins as well.
-  (->> (range (lib/stage-count query))
-       (not-any? (fn [stage-idx]
-                   (lib/joins query stage-idx)))))
-
-(defn- only-table-id
-  "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
-  [{query :dataset_query, :as model}]
-  ; dataset_query can be empty in tests
-  (when-let [query (not-empty query)]
-    (when (and (mbql? model) (no-joins? query))
-      (lib/primary-source-table-id query))))
-
 (defn- invalidate-cached-models!
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `models-based-on-upload`
   (when-let [model-ids (->> (upload.db/unarchived-models-for-table (:id table))
-                            (filter (comp #{(:id table)} only-table-id))
+                            (filter (comp #{(:id table)} based-on-upload/only-table-id))
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
@@ -894,29 +845,11 @@
                                                                 :event :csv-append-failed))
         (throw e)))))
 
-(defn- can-update-error
-  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
-  [db table]
-  (or (can-use-uploads-error db)
-      (cond
-        (not (:is_upload table))
-        (ex-info (tru "The table must be an uploaded table.")
-                 {:status-code 422})
-
-        (not (mi/can-query? table))
-        (ex-info (tru "You don''t have permissions to do that.")
-                 {:status-code 403}))))
-
 (defn- check-can-update
   "Throws an error if the user cannot upload to the given database and schema."
   [db table]
-  (when-let [error (can-update-error db table)]
+  (when-let [error (based-on-upload/can-update-error db table)]
     (throw error)))
-
-(defn- can-upload-to-table?
-  "Returns true if the user can upload to the given database and table, and false otherwise."
-  [db table]
-  (nil? (can-update-error db table)))
 
 (defn- can-delete-error
   "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
@@ -931,7 +864,7 @@
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (and (mi/can-query? table) (mi/can-write? table)))
+      (not (and (mi/can-query? (t2/hydrate table :can_query)) (mi/can-write? (t2/hydrate table :can_write))))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 
@@ -1002,51 +935,6 @@
 ;;; |  hydrate based_on_upload for FE
 ;;; +--------------------------------
 
-(defn- uploadable-table-ids
-  "Returns the subset of table ids where the user can upload to the table."
-  [table-ids]
-  (set (when (seq table-ids)
-         (->> (t2/hydrate (upload.db/tables table-ids) :db)
-              (filter #(can-upload-to-table? (:db %) %))
-              (map :id)))))
-
-(mr/def ::based-on-upload-input
-  "The columns of a model Card that decide its `:based_on_upload`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   ;; query_type and dataset_query can be null in tests, so we make them nullable here.
-   ;; they should never be null in production
-   [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:query_type    [:maybe [:or :string :keyword]]]
-   [:table_id      [:maybe ms/PositiveInt]]
-   ;; is_upload can be provided for an optional optimization
-   [:is_upload {:optional true} [:maybe :boolean]]])
-
-(def based-on-upload-input-keys
-  "The keys of a model that [[models-based-on-upload]] reads."
-  [:id :dataset_query :query_type :table_id :is_upload])
-
-(mu/defn models-based-on-upload
-  "The `:based_on_upload` table id of each of `models` that has one, keyed by model id. Assumes each item of `models`
-  represents a model."
-  [models :- [:sequential ::based-on-upload-input]]
-  (let [table-ids             (->> models
-                                   ;; as an optimization when listing collection items (GET /api/collection/items),
-                                   ;; we might already know that the table is not an upload if is_upload=false. We
-                                   ;; can skip making more queries if so
-                                   (remove #(false? (:is_upload %)))
-                                   (keep :table_id)
-                                   set)
-        has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
-    (into {}
-          (keep (fn [model]
-                  ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
-                  ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
-                  (when-let [table-id (when (has-uploadable-table? model)
-                                        (only-table-id model))]
-                    [(:id model) table-id])))
-          models)))
-
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
   "Add based_on_upload=<table-id> to a card if:
@@ -1060,8 +948,8 @@
   Excluding checking the users write permissions for the card, `:based_on_upload` reflects the user's
   ability to upload to the underlying table through the card."
   [cards]
-  (let [id->table-id (models-based-on-upload (into []
-                                                   (comp (filter #(= (:type %) :model))
-                                                         (map #(select-keys % based-on-upload-input-keys)))
-                                                   cards))]
+  (let [id->table-id (based-on-upload/models-based-on-upload (into []
+                                                                   (comp (filter #(= (:type %) :model))
+                                                                         (map #(select-keys % based-on-upload/based-on-upload-input-keys)))
+                                                                   cards))]
     (map #(m/assoc-some % :based_on_upload (id->table-id (:id %))) cards)))

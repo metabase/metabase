@@ -489,6 +489,17 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DEPRECATED_AGENT_API_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.66.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+
+Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
+
 ### `MB_DISABLE_AUTO_SYNC`
 
 - Type: boolean
@@ -679,6 +690,8 @@ Whether Metabot is enabled for embedding.
 
 Allow this origin to embed the full Metabase application.
 
+Use `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE` for the origins that can embed the full Metabase app, and `MB_EMBEDDING_APP_ORIGINS_SDK` for the origins that can use modular embedding and the modular embedding React SDK. If only `MB_EMBEDDING_APP_ORIGIN` is set, Metabase copies its value at every startup to the `embedding-app-origins-interactive` and `embedding-app-origins-sdk` settings, if your plan includes that kind of embedding. If you set `MB_EMBEDDING_APP_ORIGIN` together with either of these variables, Metabase stops at startup with an error.
+
 ### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -725,6 +738,8 @@ Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
 Allow admins to securely embed questions and dashboards within other applications?
 
+Use these variables instead: `MB_ENABLE_EMBEDDING_MODULAR` for modular embedding, guest embeds, and static embeds, `MB_ENABLE_EMBEDDING_SDK` for the modular embedding React SDK, and `MB_ENABLE_EMBEDDING_INTERACTIVE` for full-app embedding. If only `MB_ENABLE_EMBEDDING` is set, Metabase copies its value at every startup to the `enable-embedding-sdk`, `enable-embedding-interactive`, and `enable-embedding-static` settings. If the value is `true`, this also turns on modular embedding, guest embeds, and static embeds, unless you turn modular embedding off in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of these variables, Metabase stops at startup with an error.
+
 ### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
 - Type: boolean
@@ -767,6 +782,8 @@ Do admins link to Metabase from their own app? Only reported for analytics.
 
 Allow admins to embed Metabase via modular embedding?
 
+Use `MB_ENABLE_EMBEDDING_MODULAR` instead, which controls modular embedding, guest embeds, and static embeds. Unless you turn modular embedding on or off in the admin settings, Metabase still reads this variable, and `true` turns on all three. If you set this variable together with `MB_ENABLE_EMBEDDING_MODULAR`, Metabase stops at startup with an error.
+
 ### `MB_ENABLE_EMBEDDING_STATIC [DEPRECATED]`
 
 > DEPRECATED: 0.65.0
@@ -776,6 +793,8 @@ Allow admins to embed Metabase via modular embedding?
 - [Configuration file name](./config-file.md): `enable-embedding-static`
 
 Allow admins to embed Metabase via static embedding?
+
+Use `MB_ENABLE_EMBEDDING_MODULAR` instead, which controls modular embedding, guest embeds, and static embeds. Unless you turn modular embedding on or off in the admin settings, Metabase still reads this variable, and `true` turns on all three. If you set this variable together with `MB_ENABLE_EMBEDDING_MODULAR`, Metabase stops at startup with an error.
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -918,7 +937,7 @@ Options:
 - allow-all (no restrictions including localhost).
 .
 
-Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`
+Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`. Before Metabase 64, this variable was called `MB_HTTP_CHANNEL_HOST_STRATEGY`. Metabase still reads the old name and logs a warning at startup, so rename it to `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`.
 
 ### `MB_HUMANIZATION_STRATEGY`
 
@@ -2878,6 +2897,8 @@ When a user logs in via Slack Connect, create a Metabase account for them automa
 
 The name of the channel to which Metabase files should be initially uploaded.
 
+Since 0.54.0, Metabase doesn't use a files channel for Slack, so you can remove this variable, and no other variable replaces it.
+
 ### `MB_SMTP_OVERRIDE_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -3043,6 +3064,8 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 
 Database ID for uploads.
 
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
+
 ### `MB_UPLOADS_ENABLED [DEPRECATED]`
 
 > DEPRECATED: 0.50.0
@@ -3051,6 +3074,8 @@ Database ID for uploads.
 - Default: `false`
 
 Whether or not uploads are enabled.
+
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_UPLOADS_SCHEMA_NAME [DEPRECATED]`
 
@@ -3061,13 +3086,7 @@ Whether or not uploads are enabled.
 
 Schema name for uploads.
 
-### `MB_UPLOADS_SETTINGS`
-
-- Type: json
-- Default: `null`
-- [Configuration file name](./config-file.md): `uploads-settings`
-
-Upload settings.
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_UPLOADS_TABLE_PREFIX [DEPRECATED]`
 
@@ -3077,6 +3096,8 @@ Upload settings.
 - Default: `null`
 
 Prefix for upload table names.
+
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_USAGE_METADATA_ENABLED`
 
@@ -3138,6 +3159,14 @@ Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
 
 Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
+
+### `MB_WORKSPACES_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `workspaces-enabled`
+
+Whether this instance is a workspace. A transform on a database that has a `database-workspace-schema` writes to that schema instead of to its production table, and later reads of the production table read the workspace copy. A transform on a database that has no `database-workspace-schema` is refused. Not the per-database switch that a parent uses to offer workspaces (`database-enable-workspaces`). Turning this setting off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping (the record that sends reads to the workspace copy). Unsetting `MB_WORKSPACES_ENABLED` does not. While `MB_WORKSPACES_ENABLED` is set, a write of the other value is refused, a `config.yml` that sets the other value stops Metabase from starting, and `PUT /api/database/:id` and `POST /api/ee/workspace-instance/current` refuse to change a database's `database-workspace-schema`.
 
 ## Other environment variables
 

@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-query
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -23,19 +24,9 @@
    :data_access_token      perms/data-access-token-transform
    :resolved_source_ids    query-perms/resolved-source-ids-transform})
 
-(defmethod mi/can-read? :model/ExplorationQuery
-  ([instance]
-   (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
-  ([_model pk]
-   (when-let [q (explorations.db/query-thread-id-row pk)]
-     (mi/can-read? :model/ExplorationThread (:exploration_thread_id q)))))
-
-(defmethod mi/can-write? :model/ExplorationQuery
-  ([instance]
-   (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
-  ([_model pk]
-   (when-let [q (explorations.db/query-thread-id-row pk)]
-     (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
+(methodical/defmethod t2/simple-hydrate [:model/ExplorationQuery :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (explorations.db/thread-exploration-id-row (:exploration_thread_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :can_write]
   "Add whether the current user can write each ExplorationQuery, which is whether they can write its parent."
@@ -73,3 +64,8 @@
       (when (seq seg-ids)
         (explorations.db/segment-names seg-ids)))
    :segment_id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationQuery [_model]
+  {:skip? false})

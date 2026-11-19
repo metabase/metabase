@@ -49,7 +49,10 @@
            (:auto-cruft-columns settings
                                 (:auto_cruft_columns settings))]
           (remove nil?)
-          (every? valid-regex-patterns?)))))
+          (every? valid-regex-patterns?)))
+   ;; A schema name is a string; a number or boolean from YAML is not one.
+   (fn workspace-schema-is-a-string? [settings]
+     ((some-fn nil? string?) (:database-workspace-schema settings)))))
 
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
@@ -135,10 +138,18 @@
           (log/info (u/format-color :yellow "Database with ID %s already exists; ignoring stub entry" (:id existing)))
 
           existing
-          (do
+          (let [previous      (advanced-config.db/database (:id existing))
+                stored-schema (get-in previous [:settings :database-workspace-schema])]
             (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
             (advanced-config.db/update-database! (:id existing)
                                                  (cond-> (normalize-settings database)
+                                                   ;; The entry's `settings` replace the stored map. Keep the stored
+                                                   ;; `database-workspace-schema` when the entry does not name the key:
+                                                   ;; dropping it deletes the database's remap rows below.
+                                                   (and (some? stored-schema)
+                                                        (:settings database)
+                                                        (not (contains? (:settings database) :database-workspace-schema)))
+                                                   (assoc-in [:settings :database-workspace-schema] stored-schema)
                                                    (:is_attached_dwh database) strip-attached-dwh-update-ks
                                                    (:is_stub existing)         (assoc :is_stub             false
                                                                                       :initial_sync_status "incomplete")))

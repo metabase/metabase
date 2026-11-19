@@ -9,11 +9,13 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections-rest.db :as collections-rest.db]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
@@ -90,13 +92,14 @@
                                              :personal-only                  personal-only
                                              :include-library?               true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
-          (mi/can-read? root)
-          (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
+          (mi/can-read? (t2/hydrate root :can_read))
+          (cons (t2/hydrate root :can_write :is_personal :can_delete :is_remote_synced :parent_id)))))
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal/tenant collections we translate the name to user's locale
     (->> (for [collection collections]
@@ -213,15 +216,15 @@
   never reported -- a snippet -- is never counted either."
   [collection      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models :- [:maybe [:set :keyword]]
-   options         :- collections.children/CollectionChildrenOptions]
+   options         :- collection-items/CollectionChildrenOptions]
   (let [options (dissoc options :models :search-text)
-        models  (set (collections.children/filterable-models collection restrict-models))]
-    (assoc (collections.children/collection-filter-metadata collection restrict-models options)
+        models  (set (collection-items/filterable-models collection restrict-models))]
+    (assoc (collection-items/collection-filter-metadata collection restrict-models options)
            ;; An empty model set means "nothing to count"; `collection-children` would read it as "no restriction".
            :total_items (if (empty? models)
                           0
                           (request/with-limit-and-offset 0 0
-                            (:total (collections.children/collection-children collection (assoc options :models models))))))))
+                            (:total (collection-items/collection-children collection (assoc options :models models))))))))
 
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -231,7 +234,7 @@
       collections.children/prep-collection-for-export
       (t2/hydrate :parent_id
                   :effective_location
-                  [:effective_ancestors :can_write]
+                  :effective_ancestors
                   :can_write
                   :is_personal
                   :can_restore
@@ -329,6 +332,7 @@
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
       (mapv (fn [{:as card :keys [in_dashboards]}]
+              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
               (queries/update-card! {:card-before-update card
                                      :card-updates {:dashboard_id (-> in_dashboards first :id)}
                                      :actor @api/*current-user*
@@ -397,14 +401,14 @@
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
            q include-available-models show-exploration-documents]} :- [:map {:closed true}
-                                                                       [:models                      {:optional true} [:maybe collections.children/Models]]
-                                                                       [:collection-type             {:optional true} collections.children/CollectionType]
+                                                                       [:models                      {:optional true} [:maybe collection-items/Models]]
+                                                                       [:collection-type             {:optional true} collection-items/CollectionType]
                                                                        [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                                                        [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
                                                                        [:include-library             {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:pinned-state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                                                       [:sort-column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                                                       [:sort-direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                                                       [:pinned-state                {:optional true} [:maybe (into [:enum] collection-items/valid-pinned-state-values)]]
+                                                                       [:sort-column                 {:optional true} [:maybe (into [:enum] collection-items/valid-sort-columns)]]
+                                                                       [:sort-direction              {:optional true} [:maybe (into [:enum] collection-items/valid-sort-directions)]]
                                                                        [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:q                           {:optional true} [:maybe :string]]
@@ -414,32 +418,32 @@
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
-        model-kwds      (collections.children/visible-model-kwds root-collection model-set)
-        restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
-                                  (not (mi/can-read? root-collection)))
+        model-kwds      (collection-items/visible-model-kwds root-collection model-set)
+        restrict-models (when (or (not (contains? collection-items/namespaces-holding-non-collection-types namespace))
+                                  (not (mi/can-read? (t2/hydrate root-collection :can_read))))
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
                          :show-exploration-documents? (boolean show-exploration-documents)
                          :collection-types            (some-> collection-type hash-set)
                          :include-library?            include-library
-                         :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
+                         :models                      (if-not (contains? collection-items/namespaces-holding-non-collection-types namespace)
                                                         #{:collection}
                                                         model-kwds)
                          :pinned-state                (keyword pinned-state)
                          :search-text                 q
-                         :sort-info                   {:sort-column                 (or (some-> sort-column collections.children/normalize-sort-choice) :name)
-                                                       :sort-direction              (or (some-> sort-direction collections.children/normalize-sort-choice) :asc)
+                         :sort-info                   {:sort-column                 (or (some-> sort-column collection-items/normalize-sort-choice) :name)
+                                                       :sort-direction              (or (some-> sort-direction collection-items/normalize-sort-choice) :asc)
                                                        ;; default to sorting official collections first, but provide the option not to
                                                        :official-collections-first? (or (nil? official-collections-first)
                                                                                         (boolean official-collections-first))}}]
     ;; scope the document content-gate cache over the listing: each document row's hydration
     ;; adjudicates the gate, and the cache keeps that to once per document (see
-    ;; `post-process-collection-children :document` in `metabase.collections.children`)
+    ;; `post-process-collection-children :document` in `metabase.collection-items.core`)
     (documents/with-content-gate-cache
-      (cond-> (collections.children/collection-children root-collection options)
+      (cond-> (collection-items/collection-children root-collection options)
         include-available-models
-        (merge (collections.children/collection-filter-metadata root-collection restrict-models options))))))
+        (merge (collection-items/collection-filter-metadata root-collection restrict-models options))))))
 
 (api.macros/defendpoint :get "/root/items/metadata" :- ::ItemsMetadata
   "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.
@@ -448,17 +452,17 @@
   [_route-params
    {:keys [models archived namespace pinned-state collection-type include-library
            show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
-                                                                     [:models                     {:optional true} [:maybe collections.children/Models]]
+                                                                     [:models                     {:optional true} [:maybe collection-items/Models]]
                                                                      [:archived                   {:default false} [:maybe ms/BooleanValue]]
                                                                      [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
-                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                                                     [:collection-type            {:optional true} collections.children/CollectionType]
+                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] collection-items/valid-pinned-state-values)]]
+                                                                     [:collection-type            {:optional true} collection-items/CollectionType]
                                                                      [:include-library            {:default false} [:maybe ms/BooleanValue]]
                                                                      [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
                                                                      [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
-        restrict-models (collections.children/visible-model-kwds root-collection model-set)]
+        restrict-models (collection-items/visible-model-kwds root-collection model-set)]
     (collection-items-metadata root-collection restrict-models
                                {:archived?                   (boolean archived)
                                 :show-dashboard-questions?   (boolean show-dashboard-questions)
@@ -472,18 +476,12 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
-;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
-;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
-;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
-;; `validate-new-tenant-collection!`, etc.
-
 (api.macros/defendpoint :post "/" :- ::Collection
   "Create a new Collection."
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:name            ms/NonBlankString]
+            [:name            ::collections.schema/collection.name]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
@@ -607,9 +605,9 @@
                     [:id ms/PositiveInt]]
    _query-params
    collection-updates :- [:map {:closed true}
-                          [:name             {:optional true} [:maybe ms/NonBlankString]]
+                          [:name             {:optional true} [:maybe ::collections.schema/collection.name]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
-                          [:archived         {:default false} [:maybe ms/BooleanValue]]
+                          [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collection-detail (collections/update-collection! id collection-updates)))
@@ -630,7 +628,7 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (t2/with-transaction [_tx]
+    (events/with-batched-events
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
       (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
         (collection/move-collection! child new-children-location))
@@ -656,11 +654,11 @@
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
            show-dashboard-questions show-exploration-documents
            q include-available-models]} :- [:map {:closed true}
-                                            [:models                      {:optional true} [:maybe collections.children/Models]]
+                                            [:models                      {:optional true} [:maybe collection-items/Models]]
                                             [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                            [:pinned-state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                            [:sort-column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                            [:sort-direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                            [:pinned-state                {:optional true} [:maybe (into [:enum] collection-items/valid-pinned-state-values)]]
+                                            [:sort-column                 {:optional true} [:maybe (into [:enum] collection-items/valid-sort-columns)]]
+                                            [:sort-direction              {:optional true} [:maybe (into [:enum] collection-items/valid-sort-directions)]]
                                             [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                             [:show-dashboard-questions    {:default false} [:maybe ms/BooleanValue]]
                                             [:show-exploration-documents  {:default false} [:maybe ms/BooleanValue]]
@@ -676,17 +674,17 @@
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                      :pinned-state                (keyword pinned-state)
                      :search-text                 q
-                     :sort-info                   {:sort-column                 (or (some-> sort-column collections.children/normalize-sort-choice) :name)
-                                                   :sort-direction              (or (some-> sort-direction collections.children/normalize-sort-choice) :asc)
+                     :sort-info                   {:sort-column                 (or (some-> sort-column collection-items/normalize-sort-choice) :name)
+                                                   :sort-direction              (or (some-> sort-direction collection-items/normalize-sort-choice) :asc)
                                                    ;; default to sorting official collections first, except for the trash.
                                                    :official-collections-first? (if (and (nil? official-collections-first)
                                                                                          (not (collection/is-trash? collection)))
                                                                                   true
                                                                                   (boolean official-collections-first))}}
         children    (documents/with-content-gate-cache
-                      (cond-> (collections.children/collection-children collection options)
+                      (cond-> (collection-items/collection-children collection options)
                         include-available-models
-                        (merge (collections.children/collection-filter-metadata collection nil options))))]
+                        (merge (collection-items/collection-filter-metadata collection nil options))))]
     (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
     children))
 
@@ -699,9 +697,9 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state
            show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
-                                                                     [:models                     {:optional true} [:maybe collections.children/Models]]
+                                                                     [:models                     {:optional true} [:maybe collection-items/Models]]
                                                                      [:archived                   {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] collection-items/valid-pinned-state-values)]]
                                                                      [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
                                                                      [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)

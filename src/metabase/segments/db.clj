@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
@@ -19,17 +20,18 @@
   [:and
    (when-not (:include-archived? opts)
      [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
+   [:in (u/qualified-key alias :table_id)
+    ^:allow-subquery {:select [:settings.table_id]
+                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                      :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
 (mu/defn insert-segment!
   "Insert a Segment and return the inserted instance."
-  [table-id :- ::lib.schema.id/table
-   creator-id :- ::lib.schema.id/user
+  [creator-id :- ::lib.schema.id/user
    segment-name :- :string
    description :- [:maybe :string]
    definition :- ::segments.schema/segment.definition]
   (t2/insert-returning-instance! :model/Segment
-                                 :table_id    table-id
                                  :creator_id  creator-id
                                  :name        segment-name
                                  :description description
@@ -45,11 +47,6 @@
   []
   (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn table-database-ids
-  "The set of Database ids of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `id`."
   [id :- ::lib.schema.id/segment
@@ -60,11 +57,6 @@
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
@@ -78,3 +70,17 @@
     (-> (t2/select [:model/Segment :id :name :table_id] :id [:in ids])
         (t2/hydrate [:table [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn dependency-segment-items :- :map
+  "The query of the Segments the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
+  tables the user queries, located by their table."
+  [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
+  {:select    [[:segment.id :entity_id] [:segment.name :name] [:table.display_name :location]]
+   :from      [:segment]
+   :left-join [[:metabase_table :table] [:= :segment.table_id :table.id]]
+   :where     (into [:and]
+                    (remove nil?)
+                    [[:in :segment.table_id ^:allow-subquery {:select [:metabase_table.id]
+                                                              :from   [:metabase_table]
+                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                     (collections.listing/archived-clause :segment include-archived)])})

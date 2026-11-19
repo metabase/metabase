@@ -1,14 +1,25 @@
 (ns metabase.documents.models.document
   (:require
-   [clojure.string :as str]
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.documents.audit :as documents.audit]
+   [metabase.documents.collection-items :as documents.collection-items]
    [metabase.documents.db :as documents.db]
+   [metabase.documents.dependencies :as documents.dependencies]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.recent-views :as documents.recent-views]
    [metabase.documents.schema :as documents.schema]
+   [metabase.documents.search :as documents.search]
+   [metabase.documents.serialization :as documents.serialization]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -17,21 +28,16 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.search.config :as search.config]
-   [metabase.search.spec :as search.spec]
+   [metabase.revisions.core :as revisions]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.instance :as t2.instance]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -47,10 +53,51 @@
 
 (doto :model/Document
   (derive :metabase/model)
-  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/events))
+
+;;; ---------- Hooks ---------------------------------------------------------------------------------------------
+
+(defn- document-parent-archived?
+  "Whether the Collection that `document` is in, or the Exploration it summarizes, is archived."
+  [{:keys [collection_id exploration_id]}]
+  (boolean (or (collection/archived? collection_id)
+               (and exploration_id (documents.db/exploration-archived? exploration_id)))))
+
+(defmethod mi/after-archived-change :model/Document
+  [_model rows changes]
+  (doseq [{:keys [id]} rows]
+    (events/with-event-context {:archived-with [:model/Document id]}
+      (if (:archived changes)
+        (documents.db/archive-document-cards! id)
+        (documents.db/restore-document-cards! id)))))
+
+(t2/define-before-insert :model/Document
+  [document]
+  (collection/check-collection-for :model/Document document)
+  (public-sharing/add-public-uuid-prefix document))
+
+(t2/define-before-update :model/Document
+  [{:keys [id] :as document}]
+  (let [changes (t2/changes document)]
+    (when (contains? changes :collection_id)
+      (collection/check-collection-for :model/Document document))
+    (when (and (contains? changes :public_uuid_prefix)
+               (not (contains? changes :public_uuid)))
+      (throw (ex-info (tru "The public UUID prefix of a Document follows its public UUID; change the public UUID instead.")
+                      {:status-code 400})))
+    (when (contains? changes :collection_id)
+      (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))
+    (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
+      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document #(document-parent-archived? document))))))
+
+(mi/define-update-in-transaction :model/Document)
+(t2/define-after-select :model/Document
+  [document]
+  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
+
+;;; ---------- Permissions ---------------------------------------------------------------------------------------
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -126,47 +173,104 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :read instance)
-        (content-visible? instance)))
-  ([_model pk]
-   (mi/can-read? (documents.db/document pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
+  "Whether the current user reads each of `documents`, as the content of its Collection."
+  [_model _k documents]
+  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? content-visible?}))
 
-(defmethod mi/can-write? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :write instance)
-        (content-visible? instance)))
-  ([_model pk]
-   (mi/can-write? (documents.db/document pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Document :can_write]
+  "Whether the current user writes each of `documents`, as the content of its Collection."
+  [_model _k documents]
+  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? content-visible?}))
 
-(def DocumentName
-  "Validations for the name of a document"
-  (mu/with-api-error-message
-   [:and
-    {:error/message "invalid document name"
-     :json-schema   {:type "string" :minLength 1 :maxLength 254}}
-    [:string {:min 1 :max 254}]
-    [:fn
-     {:error/message "invalid document name"}
-     (complement str/blank?)]]
-   (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
+(defn- collection-writable?
+  "Whether the current user writes the Collection with `collection-id`, or the root Collection for nil."
+  [collection-id]
+  (collection/can-write-collection-or-root? collection-id {:root-namespace nil}))
 
-(defn validate-collection-move-permissions
-  "Validates that the current user has write permissions for both old and new collections
-   when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
-   Throws 403 exception if permissions are insufficient."
-  [old-collection-id new-collection-id]
-  (if old-collection-id
-    (api/write-check :model/Collection old-collection-id)
-    (api/write-check collection/root-collection))
-  (if new-collection-id
-    (do
-      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-      (api/write-check :model/Collection new-collection-id))
-    (api/write-check collection/root-collection)))
+(defmethod mi/can-create? :model/Document
+  [_model {collection-id :collection_id}]
+  (collection-writable? collection-id))
 
-;;; ------------------------------------------------ Write orchestration -------------------------------------------
+(defn- following-cards
+  "The Cards of the Document with `document-id` that archiving it, when `archive?`, or restoring it takes along."
+  [document-id archive?]
+  (if archive?
+    (documents.db/cards-archived-with-document document-id)
+    (documents.db/cards-restored-with-document document-id)))
+
+(defn- archive-followers-updatable?
+  "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
+  [document changes]
+  (mi/archive-followers-updatable? document changes :model/Card (partial following-cards (:id document))))
+
+(defn- summary-owner-writable
+  "A function from one of `documents` to whether the current user writes the Exploration whose Summary it is, or nil
+  for a Document of no Exploration, with the Explorations loaded once, and only when `changes` archive or restore one
+  of `documents` alone."
+  [documents changes]
+  (let [exploration-ids (when (some #(mi/changes-only-archived? % changes) documents)
+                          (not-empty (into [] (comp (keep :exploration_id) (distinct)) documents)))
+        writable        (when exploration-ids
+                          (into #{} (comp (filter mi/can-write?) (map :id))
+                                (t2/hydrate (documents.db/explorations exploration-ids) :can_write)))]
+    (fn [document]
+      (when-let [exploration-id (:exploration_id document)]
+        (contains? writable exploration-id)))))
+
+(defn- can-update-with?
+  "Whether the current user may apply `changes` to `document`, where `summary-owner-writable` answers an archive or
+  restore of a Summary, whose content its Exploration's data decides, at its Exploration."
+  [document changes summary-owner-writable]
+  (boolean
+   (and (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
+          (if (some? owner-writable)
+            owner-writable
+            (mi/can-write? document)))
+        (archive-followers-updatable? document changes)
+        (collection/can-move? document changes)
+        (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
+            (mi/superuser?)))))
+
+(defmethod mi/can-update? :model/Document
+  [document changes]
+  (can-update-with? document changes (summary-owner-writable [document] changes)))
+
+(defmethod mi/can-update-all? :model/Document
+  [_model documents changes]
+  (let [owner-writable (summary-owner-writable documents changes)]
+    (every? #(can-update-with? % changes owner-writable) documents)))
+
+;;; ---------- Hydration -----------------------------------------------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Document :creator]
+  "Hydrate the creator (user) of a document based on the creator_id."
+  [_model k documents]
+  (mi/instances-with-hydrated-data
+   documents k
+   #(when-let [creator-ids (seq (keep :creator_id documents))]
+      (-> (documents.db/user-columns creator-ids)
+          (map (juxt :id identity))
+          (into {})))
+   :creator_id {:default {}}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
+  "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
+  Fetches all cards for all documents in a single batched query to avoid N+1 queries."
+  [_model k documents]
+  (let [document-ids (keep :id documents)
+        ;; Fetch all cards for all documents in one batched query
+        all-cards (when (seq document-ids)
+                    (documents.db/unarchived-cards-for-documents document-ids))
+        ;; Group cards by document_id, then convert each group to a map keyed by card ID
+        cards-by-doc-id (group-by :document_id all-cards)
+        cards-maps-by-doc-id (update-vals cards-by-doc-id
+                                          (fn [cards]
+                                            (zipmap (map :id cards) cards)))]
+    (for [doc documents]
+      (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
+
+;;; ---------- Write orchestration -------------------------------------------------------------------------------
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
@@ -180,7 +284,7 @@
    [:parameter_mappings {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
-   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
+   [:visualization_settings ::lib.schema.visualization/visualization-settings]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -191,7 +295,7 @@
   read access to any card the parameters draw values from, and query permission on the fields the parameter targets
   name."
   [{query :dataset_query :as card} creator]
-  (api/create-check :model/Card {:collection_id (:collection_id card)})
+  (api/create-check :model/Card card)
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   (card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-parameter-field-permissions
@@ -210,9 +314,9 @@
   write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
   clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
   [source-card creator]
-  (api/create-check :model/Card {:collection_id (:collection_id source-card)})
   (card/with-copy-source-card source-card
-    (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator)))
+    (api/create-check :model/Card source-card))
+  (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
@@ -226,9 +330,9 @@
     (map? document)
     (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
                                (and (= type prose-mirror/card-embed-type)
-                                    (contains? card-id-map (get attrs "id"))))
+                                    (contains? card-id-map (:id attrs))))
                              (fn update-card-id [embed]
-                               (update-in embed [:attrs "id"] card-id-map)))))
+                               (update-in embed [:attrs :id] card-id-map)))))
 
 (mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
   "Creates cards for a document from the cards map.
@@ -273,8 +377,8 @@
   - map of old-card-id -> cloned-card-id"
   [{:keys [id collection_id] :as document} :- ::documents.schema/document]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos-int? (get (:attrs %) "id")))
-                                                       (get (:attrs %) "id")))
+                                                                (pos-int? (:id (:attrs %))))
+                                                       (:id (:attrs %))))
         to-clone (when (seq card-ids)
                    (documents.db/cards-not-in-document card-ids id))]
     (with-content-gate-cache
@@ -285,7 +389,7 @@
                        (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
                                          @api/*current-user*))))
               {}
-              to-clone))))
+              (t2/hydrate to-clone :can_read)))))
 
 (defn- hydrate-document
   "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
@@ -318,26 +422,25 @@
           {:document document :content_type content-type}
           (fn [{:keys [type attrs]}]
             (when (and (= prose-mirror/card-embed-type type)
-                       (contains? draft-card-id-map (get attrs "id"))
-                       (get attrs "stored_result_id"))
-              [(get draft-card-id-map (get attrs "id"))
-               (get attrs "stored_result_id")])))
+                       (contains? draft-card-id-map (:id attrs))
+                       (:stored_result_id attrs))
+              [(get draft-card-id-map (:id attrs))
+               (:stored_result_id attrs)])))
          distinct
          vec)))
 
 (mu/defn create-document!
-  "Create a Document, clone any embedded cards the document doesn't own, publish
-  `:event/document-create`, and return the created document. Permission checks
+  "Create a Document, clone any embedded cards the document doesn't own, and return the created document. Permission checks
   (`api/create-check`) are the caller's job, run before this — the same split the REST
   `POST /api/document/` handler uses."
   [{:keys [name document collection_id collection_position cards]}
    :- [:map {:closed true}
-       [:name DocumentName]
+       [:name documents.schema/DocumentName]
        [:document ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
-  (let [created-document (t2/with-transaction [_conn]
+  (let [created-document (events/with-batched-events
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
@@ -371,23 +474,18 @@
                              ;; warehouse data the body embeds, so a document the creator may not read must not
                              ;; come back rendered.
                              (get-document document-id)))]
-    ;; Publish event after successful creation
-    (events/publish-event! :event/document-create
-                           {:object created-document
-                            :user-id api/*current-user-id*})
     created-document))
 
 (mu/defn update-document!
   "Apply `body` (any of `:name`, `:document`, `:collection_id`, `:collection_position`,
   `:cards`, `:archived`) to `existing-document`, clone any newly-embedded cards the document
-  doesn't own, publish `:event/document-update` (or `:event/document-delete` when archiving),
-  and return the updated document. Permission checks (write-check, archived state,
+  doesn't own, and return the updated document. Permission checks (write-check, archived state,
   collection-move) are the caller's job, run before this — the same split the REST
   `PUT /api/document/:id` handler uses."
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}
-       [:name {:optional true} DocumentName]
+       [:name {:optional true} documents.schema/DocumentName]
        [:document {:optional true} ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -397,13 +495,13 @@
        [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
        [:archived {:optional true} [:maybe :boolean]]]]
   (let [document-id (:id existing-document)
-        document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)
+        document-updates (dissoc (api/updates-without-collection-when-archiving existing-document body) :cards)
         ;; The frontend omits `:collection_id` when saving an existing document, so fall back to the document's
         ;; current collection rather than root.
         target-collection-id (if (contains? body :collection_id)
                                collection_id
                                (:collection_id existing-document))]
-    (t2/with-transaction [_conn]
+    (events/with-batched-events
       (when collection_position
         (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
                                                   {:collection_id       target-collection-id
@@ -431,333 +529,95 @@
                                          (assoc :is_placeholder false)))
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
-    (let [updated-document (hydrate-document document-id)]
-      ;; Publish appropriate events
-      (if (:archived document-updates)
-        (events/publish-event! :event/document-delete
-                               {:object updated-document
-                                :user-id api/*current-user-id*})
-        (events/publish-event! :event/document-update
-                               {:object updated-document
-                                :user-id api/*current-user-id*}))
-      updated-document)))
+    (hydrate-document document-id)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Document :creator]
-  "Hydrate the creator (user) of a document based on the creator_id."
-  [_model k documents]
-  (mi/instances-with-hydrated-data
-   documents k
-   #(when-let [creator-ids (seq (keep :creator_id documents))]
-      (-> (documents.db/user-columns creator-ids)
-          (map (juxt :id identity))
-          (into {})))
-   :creator_id {:default {}}))
+;;; --------------------------------------------------- Specs ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
-  "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
-  Fetches all cards for all documents in a single batched query to avoid N+1 queries."
-  [_model k documents]
-  (let [document-ids (keep :id documents)
-        ;; Fetch all cards for all documents in one batched query
-        all-cards (when (seq document-ids)
-                    (documents.db/unarchived-cards-for-documents document-ids))
-        ;; Group cards by document_id, then convert each group to a map keyed by card ID
-        cards-by-doc-id (group-by :document_id all-cards)
-        cards-maps-by-doc-id (update-vals cards-by-doc-id
-                                          (fn [cards]
-                                            (zipmap (map :id cards) cards)))]
-    (for [doc documents]
-      (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
+(defmethod events/spec :model/Document
+  [_model]
+  {:create :event/document-create
+   :update :event/document-update
+   :delete :event/document-delete})
 
-(defn sync-document-cards-collection!
-  "Updates all cards associated with a document to match the document's collection.
-  If the document is archived, also archives all associated cards. "
-  [document-id collection-id & {:keys [archived archived-directly]}]
-  (let [update-map {:collection_id collection-id
-                    :archived (boolean archived)
-                    :archived_directly (boolean archived-directly)}]
-    (documents.db/update-cards-for-document! document-id update-map)))
-
-(t2/define-after-update :model/Document
-  [{:keys [id collection_id archived archived_directly] :as instance}]
-  (sync-document-cards-collection! id collection_id
-                                   :archived archived
-                                   :archived-directly archived_directly)
-  (when-not mi/*deserializing?*
-    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
-    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
-    ;; rejects non-instances with "object must be a model instance" — caught and
-    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
-    ;; recorded for content updates. Promote it to a real instance here so the
-    ;; revisions push can complete cleanly.
-    (events/publish-event! :event/document-update
-                           {:object (if (t2/instance-of? :model/Document instance)
-                                      instance
-                                      (t2.instance/instance :model/Document instance))}))
-  instance)
-
-(t2/define-after-select :model/Document
-  [document]
-  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
-
-;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
-
-;;; ----------------------------------------------- Search ----------------------------------------------------------
-
-(defn- document->search-text
-  "Extract the plain searchable text from a document's prose-mirror body for the search index.
-
-  Receives the raw `:document` value as it comes off the ingestion query (a JSON string). Blindly
-  keywordizing that JSON would leave every node's `:attrs` keyword-keyed too, so it is normalized --
-  stringifying attrs -- before `ast->text` reads them. Returns nil if it can't be parsed, so a
-  malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
-  [document]
-  (when document
-    (try
-      (-> (cond-> document (string? document) json/decode+kw)
-          prose-mirror/normalize-document
-          prose-mirror/ast->text
-          not-empty)
-      (catch Throwable _ nil))))
-
-;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
-;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
-;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
-(defmethod search.config/column->string [:document :document]
-  [value _model _column]
-  (or (document->search-text value) ""))
-
-(search.spec/define-spec "document"
-  {:model :model/Document
-   :attrs {:archived true
-           :collection-id :collection_id
-           :creator-id :creator_id
-           :exploration-id :exploration_id
-           :view-count :view_count
-           :created-at :created_at
-           :updated-at :updated_at
-           :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms {:name true
-                  :document document->search-text}
-   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
-   ;; deliberately excluded from semantic-search embeddings.
-   :embedding-exclude #{:document}
-   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
-   :render-terms {:document-name :name
-                  :document-id :id
-                  :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :collection-type            :collection.type
-                  :archived-directly          true}})
-
-;;; ------------------------------------------------- Staleness ---------------------------------------------------
-
-(defmethod staleness/find-stale-query :model/Document
-  [_model args]
-  ^:allow-subquery
-  {:select [:document.id
-            [(h2x/literal "Document") :model]
-            [:document.name :name]
-            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
-            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
-            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
-            :document.collection_id]
-   :from :document
-   :left-join [:collection [:= :collection.id :document.collection_id]]
-   :where [:and
-           [:= :document.archived false]
-           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
-           [:or
-            [:<= :document.last_viewed_at (-> args :cutoff-date)]
-            [:and
-             [:= :document.view_count 0]
-             [:<= :document.created_at (-> args :cutoff-date)]]]
-           ;; only regular user collections (type nil), not system collections like
-           ;; `instance-analytics`, `trash`, or the `library` collections.
-           [:= :collection.type nil]
-           (when (setting/get :enable-public-sharing)
-             [:= :document.public_uuid nil])
-           (staleness/collection-filter :document.collection_id args)]})
-
-;;; ---------------------------------------------- Serialization --------------------------------------------------
-
-(def ^:private model->serdes-model
-  {"card"      "Card"
-   "dataset"   "Card"
-   "dashboard" "Dashboard"
-   "table"     "Table"})
-
-(def ^:private local-id-card-embed-attrs
-  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a
-  reference, and so must not travel. `:stored_result_id` points at a `stored_result` row — an
-  ephemeral cached-snapshot record, not a first-class serdes entity — so exporting the integer
-  verbatim would, on import, either dangle or silently resolve to an unrelated instance's
-  snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
-  which travels and renders the same query."
-  ["stored_result_id"])
-
-(defn- serdes-rewritable-node?
-  "The AST nodes whose ids serdes rewrites between database ids and entity ids.
-
-  Matches on node *type* only. The id itself cannot be part of this test, because the same predicate
-  runs in both directions and the two directions see different shapes: on export `:id` is a raw
-  database id, but on import it is a serdes path (a vector of `{:model :id}` maps). A guard that
-  expected a positive integer would therefore pass on export and silently skip every node on import,
-  leaving the path unresolved. The id-shape checks belong in the readers, `walk-export-node` and `walk-import-node`."
-  [node]
-  (contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type node)))
-
-(defn- table-path
-  "The path a document names the Table with the `[db-name schema table-name]` reference `table-ref` by."
-  [[db-name schema table-name]]
-  (filterv some? [{:model "Database" :id db-name}
-                  (when schema {:model "Schema" :id schema})
-                  {:model "Table" :id table-name}]))
-
-(defn- table-path->ref
-  "The `[db-name schema table-name]` reference of the Table a document names by `path`."
-  [path]
-  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) path))]
-    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
-
-(defn- walk-export-node
-  "`node`, a cardEmbed or smartLink, with its database id replaced by the path of the entity it names, which `visit`
-  resolves, or unchanged when that entity no longer exists."
-  [visit {{:strs [model] :or {model "card"}} :attrs type :type :as node}]
-  (let [id-key       (if (= prose-mirror/smart-link-type type) "entityId" "id")
-        id           (prose-mirror/node-entity-id node)
-        node         (cond-> node
-                       (= prose-mirror/card-embed-type type)
-                       (update :attrs #(apply dissoc % local-id-card-embed-attrs)))
-        serdes-model (model->serdes-model model)
-        path         (when (and id serdes-model)
-                       (if (= serdes-model "Table")
-                         (when-let [table-ref (serialization/found-or-nil #(visit :model/Table id))]
-                           (cond-> table-ref
-                             (not (serialization/collecting? visit)) table-path))
-                         (when-let [entity-id (serialization/found-or-nil
-                                               #(visit (keyword "model" serdes-model) id))]
-                           [{:model serdes-model :id entity-id}])))]
-    (if path
-      (assoc-in node [:attrs id-key] path)
-      (u/prog1 node
-        (log/warnf "entity_id not found for %s at id: %s" model id)))))
-
-(defn- walk-import-node
-  "`node`, a cardEmbed or smartLink, with the path it names replaced by the id `visit` resolves it to, or unchanged
-  when that entity is missing."
-  [visit {:keys [attrs type] :as node}]
-  (let [id-key                        (if (= prose-mirror/smart-link-type type) "entityId" "id")
-        path                          (get attrs id-key)
-        {:keys [model] entity-id :id} (when (sequential? path) (last path))
-        id                            (cond
-                                        (= model "Table") (visit :model/Table (table-path->ref path))
-                                        (some? model)     (serialization/found-or-nil
-                                                           #(visit (keyword "model" model) entity-id)))]
-    (if id
-      (assoc-in node [:attrs id-key] id)
-      (u/prog1 node
-        (log/warn "Model not found at path" path)))))
-
-(defn- walk-export-document
-  "The exported `:document` of `document`, its node ids replaced by the entity paths `visit` resolves them to."
-  [visit document]
-  (:document
-   (cond-> document
-     (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast serdes-rewritable-node? (partial walk-export-node visit)))))
-
-(defn- walk-import-document
-  "The `:document` of `entity`, normalized, its entity paths replaced by the ids `visit` resolves them to."
-  [visit entity]
-  (:document
-   (cond-> entity
-     (= (:content_type entity) prose-mirror/prose-mirror-content-type)
-     (-> (update :document prose-mirror/normalize-document)
-         (prose-mirror/update-ast serdes-rewritable-node? (partial walk-import-node visit))))))
+(defmethod app-db-copy/spec :model/Document [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Document [_]
-  {:schema    ::documents.schema/external-document
-   :copy      [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip      [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id
-               :is_placeholder]
-   :transform {:document      {:export (fn [store documents _ _]
-                                         (serialization/export-in-bulk store documents walk-export-document))
-                               :import (fn [store entities _ opts]
-                                         (serialization/import-in-bulk store entities opts walk-import-document))}
-               :collection_id (serialization/fk-transform :model/Collection)
-               :creator_id    serialization/user-transform}
-   :defaults  {:archived          false
-               :archived_directly false}})
-
-(defn- document-deps
-  [{:keys [content_type] :as document}]
-  (when (= content_type prose-mirror/prose-mirror-content-type)
-    ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
-    ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
-    ;; with `node-entity-id` here.
-    (set (prose-mirror/collect-ast (update document :document prose-mirror/normalize-document)
-                                   (fn document-deps [{:keys [type attrs]}]
-                                     (cond
-                                       (and (= prose-mirror/smart-link-type type)
-                                            (contains? model->serdes-model (get attrs "model")))
-                                       (get attrs "entityId")
-
-                                       (= prose-mirror/card-embed-type type)
-                                       (get attrs "id")
-
-                                       :else
-                                       nil))))))
-
-(t2/define-before-insert :model/Document [model]
-  (collection/check-allowed-content :model/Document (:collection_id model))
-  (public-sharing/add-public-uuid-prefix model))
-
-(t2/define-before-update :model/Document [model]
-  (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  (public-sharing/add-public-uuid-prefix-if-changed model))
-
-;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
-
-(defn- path-key
-  "The `[model ref]` of the entity a document names by `path`."
-  [path]
-  (let [{:keys [model id]} (last path)]
-    (if (= model "Table")
-      [:model/Table (table-path->ref path)]
-      [(keyword "model" model) id])))
-
-(defmethod serialization/import-dependencies :model/Document [_ entities]
-  (mapv (fn [{:keys [collection_id] :as document}]
-          (set (concat (map path-key (document-deps document))
-                       (when collection_id #{[:model/Collection collection_id]}))))
-        entities))
-
-(defn- linked-entities
-  "The `[model-name id]` of the cards `document` embeds and the entities it smart-links."
-  [document]
-  (when (= prose-mirror/prose-mirror-content-type (:content_type document))
-    (concat
-     (for [card-id (prose-mirror/card-ids document)]
-       ["Card" card-id])
-     (for [{{model "model"} :attrs :as node}
-           (prose-mirror/collect-ast document #(when (= prose-mirror/smart-link-type (:type %)) %))
-           :let  [link-id (prose-mirror/node-entity-id node)]
-           :when (and link-id (contains? model->serdes-model model))]
-       [(model->serdes-model model) link-id]))))
-
-(defmethod serialization/export-dependencies :model/Document [_ documents]
-  (mapv (fn [{:keys [collection_id] :as document}]
-          (set (concat (when collection_id [[:model/Collection collection_id]])
-                       (for [[model-name id] (linked-entities document)]
-                         [(keyword "model" model-name) id]))))
-        documents))
+  {:schema              ::documents.schema/external-document
+   :copy                [:archived :archived_directly :content_type :entity_id :name :collection_position]
+   :skip                [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id
+                         :exploration_id :is_placeholder]
+   :transform           {:document      documents.serialization/document-transform
+                         :collection_id (serialization/fk-transform :model/Collection)
+                         :creator_id    serialization/user-transform}
+   :defaults            {:archived          false
+                         :archived_directly false}
+   :import-dependencies documents.serialization/import-dependencies
+   :export-dependencies documents.serialization/export-dependencies})
 
 (defmethod remote-sync/spec :model/Document
   [_model]
   {:synced-items         documents.db/synced-document-items
    :synced-filter-clause documents.db/synced-documents-clause})
+
+(defmethod revisions/spec :model/Document [_model]
+  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
+           :public_uuid :public_uuid_prefix :view_count]})
+
+(defmethod audit/spec :model/Document [_model]
+  {:track          [:name :collection_id]
+   :track-redacted [:archived :archived_directly :content_type :creator_id :document :exploration_id :is_placeholder
+                    :made_public_by_id :public_uuid :public_uuid_prefix]
+   :skip           [:collection_position :entity_id :last_viewed_at :view_count]
+   :topics         {:create documents.audit/create-topic
+                    :update documents.audit/update-topic
+                    :delete documents.audit/delete-topic}})
+
+(defmethod search/spec :model/Document
+  [_model]
+  {"document"
+   {:attrs {:archived true
+            :collection-id :collection_id
+            :creator-id :creator_id
+            :exploration-id :exploration_id
+            :view-count :view_count
+            :created-at :created_at
+            :updated-at :updated_at
+            :last-viewed-at :last_viewed_at
+            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+    :search-terms {:name true
+                   :document documents.search/document->search-text}
+    :embedding-exclude #{:document}
+    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
+    :render-terms {:document-name :name
+                   :document-id :id
+                   :collection-authority_level :collection.authority_level
+                   :collection-location        :collection.location
+                   :collection-name            :collection.name
+                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                   :collection-position        true
+                   :collection-type            :collection.type
+                   :archived-directly          true}}})
+
+(defmethod dependencies/spec :model/Document [_model]
+  {:type  :document
+   :items documents.db/dependency-document-items
+
+   :dependencies documents.dependencies/dependencies
+
+   :dependency-columns #{:content_type :document}})
+
+(defmethod collection-items/spec :model/Document [_model]
+  {"document" {:items   documents.db/collection-document-items
+               :hydrate documents.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Document [_model]
+  {"document" {:load   documents.db/recent-view-documents
+               :render documents.recent-views/render}})
+
+(defmethod staleness/spec :model/Document [_model]
+  {:candidates documents.db/stale-document-candidates})
+
+(defmethod eid-translation/spec :model/Document [_model]
+  {:names [:document]})

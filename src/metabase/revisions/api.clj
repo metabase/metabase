@@ -3,10 +3,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
@@ -15,6 +12,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 (def ^:private entity->model
@@ -25,7 +23,8 @@
            "segment"   :model/Segment
            "transform" :model/Transform}
     config/ee-available? (assoc "transform-test" :model/TransformTest
-                                "card-test"      :model/CardTest)))
+                                "card-test"      :model/CardTest
+                                "segment-test"   :model/SegmentTest)))
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -108,9 +107,11 @@
 
 (defn- check-new-revision-card-references
   [model id revision]
-  (doseq [card-id (set/difference (revision-card-references revision)
-                                  (stored-card-references model id))]
-    (api/read-check :model/Card card-id))
+  (let [card-ids (vec (set/difference (revision-card-references revision)
+                                      (stored-card-references model id)))
+        id->card (into {} (map (juxt :id identity)) (t2/hydrate (revisions.db/cards-by-ids card-ids) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id))))
   (query-perms/check-parameter-field-permissions (revision-parameter-field-ids model revision)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -126,8 +127,6 @@
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
   (let [model    (entity-model entity)
-        ;; Before any lookup, so that a refusal does not depend on whether `id` exists.
-        _        (revision/check-revert-available model)
         instance (revisions.db/entity model id)
         _        (api/write-check instance)
         revision (api/check-404 (revisions.db/revision (name model) id revision-id))]
@@ -138,23 +137,19 @@
       ;; restoring saved content, so a reverted query may keep referencing columns marked "Do not include"
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
-    (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
-      (api/check-403 (mi/can-write? (merge instance (:object revision)))))
-    ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
-    ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
-    (when (contains? #{:model/Segment :model/Measure} model)
-      (let [table-id (some-> (get-in revision [:object :definition])
-                             not-empty
-                             lib-be/normalize-query
-                             lib/primary-source-table-id)]
-        (api/check-403 (mi/can-write? (cond-> (merge instance (:object revision))
-                                        table-id (assoc :table_id table-id))))))
+    (when (contains? #{:model/TransformTest :model/CardTest :model/SegmentTest} model)
+      (api/check-403 (mi/can-write? (t2/hydrate (merge instance (:object revision)) :can_write))))
+    (when (contains? #{:model/Transform :model/Segment :model/Measure :model/Dashboard :model/Card} model)
+      (api/update-check instance (:object revision)))
     (when (contains? #{:model/Dashboard :model/Card} model)
-      (collection/check-allowed-to-change-collection instance (:object revision))
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
-        (doseq [dashboard-id (keep identity [(:dashboard_id instance)
-                                             (:dashboard_id (:object revision))])]
-          (api/write-check :model/Dashboard dashboard-id)))
+        (let [dashboard-ids (vec (keep identity [(:dashboard_id instance)
+                                                 (:dashboard_id (:object revision))]))
+              id->dashboard (into {}
+                                  (map (juxt :id identity))
+                                  (t2/hydrate (revisions.db/dashboards-by-ids dashboard-ids) :can_write))]
+          (doseq [dashboard-id dashboard-ids]
+            (api/write-check (get id->dashboard dashboard-id)))))
       (check-new-revision-card-references model id revision))
     ;; ok, we're g2g
     (revision/revert!

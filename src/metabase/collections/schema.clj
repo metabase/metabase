@@ -135,7 +135,8 @@
    [:id                ::lib.schema.id/collection]
    [:name              :string]
    [:type              [:maybe :string]]
-   [:personal_owner_id [:maybe ms/PositiveInt]]])
+   [:personal_owner_id [:maybe ms/PositiveInt]]
+   [:can_write         {:optional true} :boolean]])
 
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."
@@ -143,10 +144,19 @@
    [:root [:ref ::root-collection]]
    [:row  [:ref ::collection]]])
 
+(mr/def ::collection.type
+  "The `:type` column of a Collection: nil for a regular Collection, or one of these special types."
+  [:enum {:decode/normalize lib.schema.common/normalize-string-key}
+   "trash" "tenant-specific-root-collection" "instance-analytics"
+   "library" "library-data" "library-metrics" "library-dashboards"])
+
+(mr/def ::collection.name
+  ms/NonBlankString)
+
 (mr/def ::collection.update
   "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
   [:map {:closed true}
-   [:name                 {:optional true} [:maybe :string]]
+   [:name                 {:optional true} [:maybe ::collection.name]]
    [:description          {:optional true} [:maybe :string]]
    [:archived             {:optional true} [:maybe :boolean]]
    [:location             {:optional true} [:maybe :string]]
@@ -156,7 +166,7 @@
    [:authority_level      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:type                 {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:type                 {:optional true} [:maybe ::collection.type]]
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]

@@ -5,8 +5,6 @@ summary: Find the guide for your problem, with likely causes, how to spot them, 
 
 # Troubleshooting guides
 
-Problems, their causes, how to detect them, and how to fix them.
-
 ## Getting diagnostic info
 
 - [Download diagnostic info](./diagnostic-info.md)

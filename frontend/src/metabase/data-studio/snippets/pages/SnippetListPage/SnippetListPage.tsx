@@ -121,7 +121,7 @@ function SnippetsCreateMenu() {
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
+        <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item

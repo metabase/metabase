@@ -1,6 +1,7 @@
 (ns metabase.embedding.models.sdk-react-18-host
   "Model for the host apps that use the React embedding SDK with React 18."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
@@ -22,3 +23,8 @@
   (when-not (mr/validate ::embedding.schema/sdk-react-18-host.host host)
     (throw (ex-info (format "Invalid React 18 SDK host: %s" (pr-str host)) {:host host})))
   row)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/EmbeddingSdkReact18Host [_model]
+  {:skip? true})

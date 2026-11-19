@@ -7,6 +7,7 @@
   table. Lives in the queries module because the snapshot is tied to a query/card, not to
   any one feature that produced it."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
@@ -24,3 +25,8 @@
 (doto :model/StoredResult
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/StoredResult [_model]
+  {:skip? true})

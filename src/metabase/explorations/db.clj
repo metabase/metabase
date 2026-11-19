@@ -4,14 +4,18 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -73,7 +77,7 @@
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
                         [:= :exploration.archived false]
-                        (collection/visible-collection-filter-clause :exploration.collection_id)]
+                        (perms/visible-collections-filter-clause :exploration.collection_id (api/current-user-info) {:root-namespace nil})]
              :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
@@ -101,7 +105,7 @@
 (mu/defn update-exploration!
   "Apply `changes` to the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
-   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :archived_directly :collection_id :collection_position])]
+   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :collection_id :collection_position])]
   (t2/update! :model/Exploration :id exploration-id changes))
 
 (mu/defn delete-exploration!
@@ -329,6 +333,13 @@
   "The ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
+
+(mu/defn pages-by-ids
+  "The ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (if (seq page-ids)
+    (t2/select :model/ExplorationPage :id [:in page-ids])
+    []))
 
 (mu/defn page-block-id-row
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
@@ -739,28 +750,48 @@
   [document :- ::documents.schema/document.update]
   (t2/insert! :model/Document document))
 
+(defn- update-summary-documents!
+  "Apply `changes` to the Summary Documents of the Exploration with `exploration-id` that match `conditions`, and return
+  them as updated."
+  [exploration-id conditions changes]
+  (let [ids (apply t2/select-pks-vec :model/Document :exploration_id exploration-id conditions)]
+    (when (seq ids)
+      (t2/update! :model/Document :id [:in ids] changes)
+      (t2/select :model/Document :id [:in ids]))))
+
+(defn- summary-document-conditions
+  "The conditions of the Summary Documents of an Exploration that an archive of it, when `archive?`, or a restore of it
+  archives or restores along with it."
+  [archive?]
+  (if archive?
+    [:archived false]
+    [:archived true :archived_directly false]))
+
+(mu/defn summary-documents-following
+  "The Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a restore
+  of it archives or restores along with it."
+  [exploration-id :- ms/PositiveInt
+   archive?       :- :boolean]
+  (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
+
 (mu/defn move-summary-documents!
-  "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`."
+  "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`,
+  returning them as updated."
   [exploration-id :- ms/PositiveInt
    collection-id  :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Document :exploration_id exploration-id {:collection_id collection-id}))
+  (update-summary-documents! exploration-id [] {:collection_id collection-id}))
 
 (mu/defn archive-summary-documents!
-  "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly."
+  "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly,
+  returning them as updated."
   [exploration-id :- ms/PositiveInt]
-  (t2/update! :model/Document
-              :exploration_id exploration-id
-              :archived       false
-              {:archived true, :archived_directly false}))
+  (update-summary-documents! exploration-id (summary-document-conditions true) {:archived true}))
 
 (mu/defn unarchive-summary-documents!
-  "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it."
+  "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it, returning them
+  as updated."
   [exploration-id :- ms/PositiveInt]
-  (t2/update! :model/Document
-              :exploration_id    exploration-id
-              :archived          true
-              :archived_directly false
-              {:archived false}))
+  (update-summary-documents! exploration-id (summary-document-conditions false) {:archived false}))
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 
@@ -768,6 +799,13 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."
@@ -851,3 +889,77 @@
                     :target_type     "exploration"
                     :child_target_id [:in child-target-ids]
                     :deleted_at      nil))
+
+(defn- exploration-recent-edits-subquery
+  "The latest edit of each exploration listed under `collection`, taking the newest of the revisions of the Exploration
+  itself and of its Summary Document, whose edits \"Last edited\" must reflect."
+  [collection]
+  (let [listed? (fn [alias]
+                  (if (collection/is-trash? collection)
+                    [:= (keyword (str alias ".archived_directly")) true]
+                    [:= (keyword (str alias ".collection_id")) (:id collection)]))]
+    ^:allow-subquery
+    {:select [:exploration_id
+              :timestamp
+              :user_id
+              [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
+                                                       :order-by     [[:timestamp :desc]]}]] :rn]]
+     :from   [[^:allow-subquery {:union-all
+                                 [^:allow-subquery
+                                  {:select [[:e.id        :exploration_id]
+                                            [:r.timestamp :timestamp]
+                                            [:r.user_id   :user_id]]
+                                   :from   [[:exploration :e]]
+                                   :join   [[:revision :r] [:and
+                                                            [:= :r.model_id :e.id]
+                                                            [:= :r.model (h2x/literal "Exploration")]
+                                                            (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
+                                   :where  (listed? "e")}
+                                  ^:allow-subquery
+                                  {:select [[:d.exploration_id :exploration_id]
+                                            [:r.timestamp      :timestamp]
+                                            [:r.user_id        :user_id]]
+                                   :from   [[:document :d]]
+                                   :join   [[:exploration :e] [:= :e.id :d.exploration_id]
+                                            [:revision :r] [:and
+                                                            [:= :r.model_id :d.id]
+                                                            [:= :r.model (h2x/literal "Document")]
+                                                            (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
+                                   :where  (listed? "e")}]}
+               :all_edits]]}))
+
+(mu/defn collection-exploration-items :- [:maybe :map]
+  "The query of the Explorations in `collection` that the collection items listing of `opts` holds, nil when `opts`
+  restrict the items to those created by a user, which Explorations do not record."
+  [collection                                        :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select [:exploration.id
+              :exploration.name
+              :exploration.description
+              :exploration.entity_id
+              :exploration.collection_id
+              :exploration.collection_position
+              :exploration.archived
+              :exploration.archived_directly
+              [:u.id         :last_edit_user]
+              [:u.email      :last_edit_email]
+              [:u.first_name :last_edit_first_name]
+              [:u.last_name  :last_edit_last_name]
+              [:ere.timestamp :last_edit_timestamp]
+              [(h2x/literal "exploration") :model]]
+     :from [[:exploration :exploration]]
+     :left-join [[(exploration-recent-edits-subquery collection) :ere]
+                 [:and
+                  [:= :ere.exploration_id :exploration.id]
+                  [:= :ere.rn [:inline 1]]]
+                 [:core_user :u] [:= :u.id :ere.user_id]]
+     :where [:and
+             (collections.listing/visible-items-clause :exploration.collection_id archived? {:root-namespace nil})
+             (if (collection/is-trash? collection)
+               [:= :exploration.archived_directly true]
+               [:and
+                [:= :exploration.collection_id (:id collection)]
+                [:= :exploration.archived_directly false]])
+             [:= :exploration.archived (boolean archived?)]
+             (collections.listing/pinned-state->clause pinned-state :exploration.collection_position)]}))

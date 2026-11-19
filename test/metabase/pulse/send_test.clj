@@ -88,8 +88,9 @@
     :or   {pulse-channel :email}}
    f]
   (mt/with-temp [:model/Pulse        {pulse-id :id, :as pulse} (->> pulse
-                                                                    (merge {:name            "Pulse Name"
-                                                                            :alert_condition "rows"}))
+                                                                    (merge {:name "Pulse Name"}
+                                                                           (when-not (:dashboard_id pulse)
+                                                                             {:alert_condition "rows"})))
                  :model/PulseCard    _ (merge {:pulse_id        pulse-id
                                                :card_id         (u/the-id card)
                                                :position        0}

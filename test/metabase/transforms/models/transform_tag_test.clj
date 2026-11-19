@@ -2,6 +2,7 @@
   "Tests for the transform tag model."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-tag :as transform-tag]
@@ -42,17 +43,43 @@
         (mt/with-current-user (mt/user->id :rasta)
           (mt/when-ee-evailable
            (mt/with-premium-features #{:advanced-permissions}
-             (is (mi/can-read? :model/TransformTag 1))
-             (is (mi/can-write? tag))
+             (is (mi/can-read? (t2/hydrate (t2/select-one :model/TransformTag :id 1) :can_read)))
+             (is (mi/can-write? (t2/hydrate tag :can_write)))
              (is (mi/can-create? :model/TransformTag {}))))
           (testing "and none once the feature is gone"
             (mt/with-premium-features #{}
-              (is (not (mi/can-read? :model/TransformTag 1)))
-              (is (not (mi/can-write? tag)))
+              (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/TransformTag :id 1) :can_read))))
+              (is (not (mi/can-write? (t2/hydrate tag :can_write))))
               (is (not (mi/can-create? :model/TransformTag {})))))))
       (testing "a superuser is unaffected"
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-premium-features #{}
-            (is (mi/can-read? :model/TransformTag 1))
-            (is (mi/can-write? tag))
+            (is (mi/can-read? (t2/hydrate (t2/select-one :model/TransformTag :id 1) :can_read)))
+            (is (mi/can-write? (t2/hydrate tag :can_write)))
             (is (mi/can-create? :model/TransformTag {}))))))))
+
+(deftest tag-names-are-unique-test
+  (mt/with-temp [:model/TransformTag tag {}]
+    (is (thrown? Exception (t2/insert! :model/TransformTag {:name (:name tag)})))
+    (mt/with-temp [:model/TransformTag other {}]
+      (is (thrown? Exception (t2/update! :model/TransformTag :id (:id other) {:name (:name tag)}))))))
+
+(deftest tag-check-test
+  (mt/with-temp [:model/TransformTag tag {}]
+    (testing "a superuser may create and update tags"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (some? (api/create-check :model/TransformTag {:name "new"})))
+        (is (some? (api/update-check tag {:name "renamed"})))))
+    (testing "a user with no data analyst access may not"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                              (api/create-check :model/TransformTag {:name "new"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                              (api/update-check tag {:name "renamed"})))))))
+
+(deftest tag-writable-by-tag-id-test
+  (mt/with-temp [:model/TransformTag tag {}]
+    (testing "a tag no transform carries is writable"
+      (is (= {(:id tag) true} (transform-tag/tag-id->writable #{(:id tag)}))))
+    (testing "no tags answer an empty map"
+      (is (= {} (transform-tag/tag-id->writable #{}))))))

@@ -3,7 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [toucan2.core :as t2]
    [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
@@ -91,6 +94,21 @@
                                                   :pk_ref    (by-name "id")
                                                   :value_ref not-in-query})]
               (is (re-find #"Could not identify field by ref.*" response)))))))))
+
+(deftest create-requires-model-test
+  (testing "POST refuses card that is not model"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+      (mt/with-temp [:model/Card question (assoc (mt/card-with-source-metadata-for-query query)
+                                                 :type :question
+                                                 :name "model index question")]
+        (mt/with-model-cleanup [:model/ModelIndex]
+          (is (re-find #"is not a model"
+                       (mt/user-http-request :crowberto :post 400 "/model-index"
+                                             {:model_id  (:id question)
+                                              :pk_ref    (mt/$ids $products.id)
+                                              :value_ref (mt/$ids $products.title)})))
+          (is (empty? (t2/select :model/ModelIndex :model_id (:id question)))))))))
 
 (deftest snowplow-create-model-index-event-test
   (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"

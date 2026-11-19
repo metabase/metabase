@@ -3,13 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.test :as qp]
@@ -268,15 +267,15 @@
               (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
                 (testing "Should not be able to run the parent Card"
                   (mt/with-test-user :rasta
-                    (is (not (mi/can-read? disallowed-collection)))
-                    (is (not (mi/can-read? parent-card))))
+                    (is (not (mi/can-read? (t2/hydrate disallowed-collection :can_read))))
+                    (is (not (mi/can-read? (t2/hydrate parent-card :can_read)))))
                   (is (= "You don't have permissions to do that."
                          (process-query-for-card parent-card))))
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
-                    (is (not (mi/can-read? parent-card)))
-                    (is (mi/can-read? allowed-collection))
-                    (is (mi/can-read? child-card)))
+                    (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
+                    (is (mi/can-read? (t2/hydrate allowed-collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (rasta-view-data-perm= :blocked)
                   (testing "Data perms prohibit running queries"
                     (is (thrown-with-msg?
@@ -320,16 +319,16 @@
               (mt/with-test-user :rasta
                 (rasta-view-data-perm= :blocked)
                 (testing "Should not be able to run the parent Card due to Block permissions"
-                  (is (mi/can-read? parent-card))
+                  (is (mi/can-read? (t2/hydrate parent-card :can_read)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
                        (mt/rows (process-query-for-card child-card)))))
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
-                    (is (mi/can-read? parent-card))
-                    (is (mi/can-read? collection))
-                    (is (mi/can-read? child-card)))
+                    (is (mi/can-read? (t2/hydrate parent-card :can_read)))
+                    (is (mi/can-read? (t2/hydrate collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
@@ -366,9 +365,9 @@
                 (rasta-view-data-perm= :blocked)
                 (testing "Should STILL not be able to do it even without token"
                   (mt/with-test-user :rasta
-                    (is (mi/can-read? parent-card))
-                    (is (mi/can-read? collection))
-                    (is (mi/can-read? child-card)))
+                    (is (mi/can-read? (t2/hydrate parent-card :can_read)))
+                    (is (mi/can-read? (t2/hydrate collection :can_read)))
+                    (is (mi/can-read? (t2/hydrate child-card :can_read))))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
@@ -754,7 +753,7 @@
                       (lib/with-fields $ [(m/find-first (comp  #{(mt/id :orders :id)} :id)
                                                         (lib/fieldable-columns $))]))]
           (mt/with-temp
-            [:model/Card card {:dataset_query (lib.convert/->legacy-MBQL query)}]
+            [:model/Card card {:dataset_query query}]
             (let [results-metadata (-> (qp/process-query query) :data :results_metadata :columns)
                   results-metadata-mismatched (update results-metadata 0
                                                       assoc
@@ -770,7 +769,7 @@
                 (is (=? {:data {:results_metadata {:columns [{:id (mt/id :orders :id)
                                                               :table_id (mt/id :orders)}]}}}
                         (mt/user-http-request :rasta :post "/dataset"
-                                              (lib.convert/->legacy-MBQL card-based-query)))))
+                                              card-based-query))))
               (testing "PUT /card/:id: returns 403 for mismatched result_metadata"
                 (is (=? {:message (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")
                          :required-permissions {(mt/id) {:perms/view-data {(mt/id :products) "unrestricted"}}}}
@@ -783,7 +782,7 @@
                 (is (=? {:status "failed"
                          :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}
                         (mt/user-http-request :rasta :post "/dataset"
-                                              (lib.convert/->legacy-MBQL card-based-query)))))
+                                              card-based-query))))
               (testing "POST /card/query: card with mismatched result_metadtata can not be executed"
                 (is (=? {:status "failed"
                          :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}

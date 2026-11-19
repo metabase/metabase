@@ -4,12 +4,17 @@
   methods, and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -19,13 +24,10 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-(mu/defn synced-field-clause :- [:fn vector?]
-  "The clause over the table aliased `alias`, with a `field_id` column, selecting the rows of synced tables' fields."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
-                                                           :from   [[(t2/table-name :model/Field) :f]]
-                                                           :where  (remote-sync/synced-fk-clause :f :table_id :model/TableUserSettings opts)}])
+(defn copy-fields-select
+  "The HoneySQL fragment by which copying the application database reads all fields in id order."
+  []
+  {:order-by [[:id :asc]]})
 
 (mu/defn synced-table-user-settings-clause :- [:fn vector?]
   "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
@@ -34,6 +36,17 @@
   [:and
    [:= (u/qualified-key alias :is_published) true]
    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
+
+(mu/defn synced-field-clause :- [:fn vector?]
+  "The clause over the table aliased `alias`, with a `field_id` column, selecting the rows of synced tables' fields."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
+                                                           :from   [[(t2/table-name :model/Field) :f]]
+                                                           :where  [:in :f.table_id
+                                                                    ^:allow-subquery {:select [:settings.table_id]
+                                                                                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                                                                                      :where  (synced-table-user-settings-clause :settings opts)}]}])
 
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -141,6 +154,26 @@
   (t2/update! :model/Field {:fk_target_field_id field-id :semantic_type :type/FK} {:semantic_type nil})
   (t2/update! :model/Field {:fk_target_field_id field-id} {:fk_target_field_id nil}))
 
+(mu/defn field-database-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/database]
+  "The ::warehouses.schema/database ID of each ::warehouse-schema.schema/field in `field-ids`, by Field id."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (into {}
+          (map (juxt :id :db_id))
+          (t2/query {:select [:f.id :t.db_id]
+                     :from   [[(t2/table-name :model/Field) :f]]
+                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                     :where  [:in :f.id (vec field-ids)]}))
+    {}))
+
+(mu/defn set-nested-fields-active!
+  "Set the active flag of the Fields of the ::warehouse-schema.schema/table with `table-id` whose NFC path matches the
+  SQL LIKE `nfc-path-pattern`, returning the number updated."
+  [table-id         :- ::lib.schema.id/table
+   nfc-path-pattern :- :string
+   active?          :- :boolean]
+  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+
 (mu/defn delete-child-fields!
   "Delete the Fields nested under the ::warehouse-schema.schema/field with `parent-id`, returning the number deleted."
   [parent-id :- ms/PositiveInt]
@@ -246,6 +279,13 @@
   (if (seq field-ids)
     (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
     0))
+
+(mu/defn unset-user-settings-fk-target!
+  "Unset the user-set FK target of the ::warehouse-schema.schema/field with `field-id` in its settings, returning the
+  number updated."
+  [field-id :- ::lib.schema.id/field]
+  (t2/update! :model/FieldUserSettings {:field_id field-id, :fk_target_field_id [:not= nil]}
+              {:fk_target_field_id nil, :fk_target_field_id_set false}))
 
 (mu/defn clear-user-settings-fk-targets-to-field!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
@@ -371,6 +411,25 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Dimension :field_id field-id))
 
+(mu/defn rename-dimension-for-field!
+  "Set the name of the Dimension of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
+  [field-id       :- ::lib.schema.id/field
+   dimension-name :- :string]
+  (t2/update! :model/Dimension {:field_id field-id} {:name dimension-name}))
+
+(mu/defn delete-dimensions-of-type-for-field!
+  "Delete the `dimension-type` Dimensions of the ::warehouse-schema.schema/field with `field-id`, returning the number
+  deleted."
+  [field-id       :- ::lib.schema.id/field
+   dimension-type :- [:enum :internal :external]]
+  (t2/delete! :model/Dimension :field_id field-id :type dimension-type))
+
+(mu/defn delete-dimensions-reading-field!
+  "Delete the Dimensions whose values come from the ::warehouse-schema.schema/field with `field-id`, returning the
+  number deleted."
+  [field-id :- ::lib.schema.id/field]
+  (t2/delete! :model/Dimension :human_readable_field_id field-id))
+
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -415,6 +474,20 @@
   (t2/delete! :model/FieldValues :field_id field-id :type [:in types]))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
+
+(mu/defn table-publication-columns :- [:map-of ::lib.schema.id/table :map]
+  "The `:is_published` and `:collection_id` of the Tables with `table-ids`, by id."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select-pk->fn #(select-keys % [:is_published :collection_id])
+                      [:model/Table :id :is_published :collection_id]
+                      :id [:in table-ids])
+    {}))
+
+(mu/defn tables-by-ids
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
@@ -552,20 +625,20 @@
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
 (mu/defn synced-table-user-settings-items :- [:sequential ::warehouse-schema.schema/table-user-settings]
-  "The TableUserSettings of the Tables with `ids`, with their Table, and their Collection and its ancestors, as remote sync
+  "The TableUserSettings with `ids`, with their Table, and their Collection and its ancestors, as remote sync
   lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/TableUserSettings :table_id :display_name :collection_id] :table_id [:in ids])
+    (-> (t2/select [:model/TableUserSettings :id :table_id :display_name :collection_id] :id [:in ids])
         (t2/hydrate :table [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
 (mu/defn synced-field-user-settings-items :- [:sequential ::warehouse-schema.schema/field-user-settings]
-  "The FieldUserSettings of the Fields with `ids`, with their Field, its Table, and that Table's Collection and
-  ancestors, as remote sync lists them."
+  "The FieldUserSettings with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote
+  sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/FieldUserSettings :field_id :display_name] :field_id [:in ids])
+    (-> (t2/select [:model/FieldUserSettings :id :field_id :display_name] :id [:in ids])
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [settings]
                      (update-in settings [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
@@ -579,3 +652,69 @@
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [dimension]
                      (update-in dimension [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn dependency-table-items :- :map
+  "The query of the Tables the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those the
+  user queries, active or not, so that dependencies broken by a dropped or hidden table stay visible, without those of
+  the sample and audit databases unless `:include-sample-databases?`, located by their database."
+  [{:keys [include-sample-databases?] :as opts} :- :metabase.dependencies.items/items-opts]
+  {:select    [[:metabase_table.id :entity_id] [:metabase_table.display_name :name] [:database.name :location]]
+   :from      [:metabase_table]
+   :left-join [[:metabase_database :database] [:= :metabase_table.db_id :database.id]]
+   :where     (into [:and]
+                    (remove nil?)
+                    [(collections.listing/visible-tables-clause :metabase_table.id opts)
+                     (when-not include-sample-databases?
+                       [:and [:not :database.is_sample] [:not :database.is_audit]])])})
+
+(mu/defn collection-table-items :- [:maybe :map]
+  "The query of the published tables in `collection` that the user queries and that the collection items listing of
+  `opts` holds, nil when the library is not a feature of the instance or
+  `opts` restrict the items to those created by a user, which tables do not record, and none of them when `opts` restrict
+  the items to the pinned ones, which no table is."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (and (premium-features/has-feature? :library)
+             (nil? created-by-id))
+    {:select [:t.id
+              [:t.id :table_id]
+              [:t.display_name :name]
+              :t.description
+              :t.collection_id
+              [:t.db_id :database_id]
+              [[:!= :t.archived_at nil] :archived]
+              [(h2x/literal "table") :model]]
+     :from   [[(t2/table-name :model/Table) :t]]
+     :where  [:and
+              [:= :t.is_published true]
+              (collections.listing/poison-when-pinned-clause pinned-state)
+              (collections.listing/visible-items-clause :t.collection_id archived? {:root-namespace nil})
+              (perms/visible-tables-filter-clause
+               :t.id
+               (api/current-user-info)
+               {:perms/view-data      :unrestricted
+                :perms/create-queries :query-builder}
+               {:active-only? false, :include-published-via-collection? true})
+              [:= :t.collection_id (:id collection)]
+              (if archived?
+                [:!= :t.archived_at nil]
+                [:= :t.archived_at nil])]}))
+
+(mu/defn recent-view-tables
+  "The non-hidden Tables with `table-ids` with their Database name and sync status."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/hydrate
+   (t2/select :model/Table
+              {:select [:t.id :t.name :t.description
+                        :t.display_name :t.active :t.visibility_type :t.schema
+                        [:db.name :database-name]
+                        [:db.id :db_id]
+                        [:db.initial_sync_status :initial-sync-status]]
+               :from [[(t2/table-name :model/Table) :t]]
+               :where [:and
+                       [:or
+                        [:= :visibility_type nil]
+                        [:!= :visibility_type "hidden"]]
+                       [:in :t.id table-ids]]
+               :left-join [[:metabase_database :db]
+                           [:= :db.id :t.db_id]]}) :can_read :can_write))

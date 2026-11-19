@@ -32,20 +32,14 @@
   [db :- :metabase.warehouses.schema/database]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
-              (perms/full-database-permission-for-user
-               api/*current-user-id*
-               :perms/create-queries
-               (u/the-id db))))
+              (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/create-queries [(u/the-id db)]) (u/the-id db))))
     :write
     :none))
 
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (perms/prime-database-perms-cache {:db-ids (set ids)})
-    (into [] (comp (filter mi/can-read?)
-                   (map #(assoc % :native_permissions (get-native-perms-info %))))
-          (queries.db/databases ids))))
+    (into [] (map #(assoc % :native_permissions (get-native-perms-info %))) (mi/readable (queries.db/databases ids)))))
 
 (defn- field-id->table-id
   [field-ids]
@@ -56,7 +50,7 @@
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
    (when (seq initial-snippet-ids)
-     (let [snippets (into [] (filter mi/can-read?) (queries.db/snippets initial-snippet-ids))]
+     (let [snippets (mi/readable (queries.db/snippets initial-snippet-ids))]
        (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
@@ -69,7 +63,7 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (into [] (filter mi/can-read?) (queries.db/snippets nested-snippet-ids)))]
+                                (mi/readable (queries.db/snippets nested-snippet-ids)))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
@@ -92,8 +86,8 @@
                    [:sequential ::lib.schema.id/card]
                    [:set ::lib.schema.id/card]]]]
   (when (seq ids)
-    (let [cards (into [] (filter mi/can-read?)
-                      (queries.db/cards ids))]
+    (let [cards (into []
+                      (mi/readable (queries.db/cards ids)))]
       (t2/hydrate cards :can_write))))
 
 (mu/defn- batch-fetch-query-metadata*
@@ -196,8 +190,7 @@
 (defn- batch-fetch-linked-dashboards
   [dashboard-ids]
   (when (seq dashboard-ids)
-    (let [dashboards (->> (queries.db/dashboards dashboard-ids)
-                          (filter mi/can-read?))]
+    (let [dashboards (mi/readable (queries.db/dashboards dashboard-ids))]
       (t2/hydrate dashboards :can_write :param_fields))))
 
 (defn- batch-fetch-dashboard-links
