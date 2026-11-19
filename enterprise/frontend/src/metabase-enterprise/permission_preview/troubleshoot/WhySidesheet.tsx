@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Badge, Flex, Icon, Stack, Text } from "metabase/ui";
 
-import type { PreviewCell, PreviewSecurity } from "../api";
+import type { MissingAttribute, PreviewCell, PreviewSecurity } from "../api";
 import { formatList } from "../format-list";
 
 import { AttributeTag } from "./AttributeBar";
@@ -27,6 +27,8 @@ export type WhyTarget = {
   security: PreviewSecurity | null;
   /** Every group's rule that applies to a table; `security` alone when a table's rules aren't listed. */
   policies?: PreviewSecurity[];
+  /** The attributes the person lacks that a rule on this table reads, which fail every query that reaches it. */
+  missingAttributes?: MissingAttribute[];
 };
 
 /** Every row and column security rule or impersonation that applies to a table's View data, one per group. */
@@ -68,13 +70,57 @@ export function getConflictFix(target: WhyTarget) {
   return t`Keep one policy, or give one of the groups Can view on ${table}.`;
 }
 
+/** A table that every query reaching it fails on: two groups' row and column security, or an attribute a rule reads that the person lacks. */
+export function isFailing(target: WhyTarget) {
+  return isConflicting(target) || hasMissingAttributes(target);
+}
+
+export function hasMissingAttributes({ missingAttributes }: WhyTarget) {
+  return (missingAttributes ?? []).length > 0;
+}
+
+/** "Sales needs the attributes category and state, which Sandy Sales doesn't have.", one per group whose rule needs one. */
+export function getMissingAttributeSentences(target: WhyTarget) {
+  const { who, missingAttributes = [] } = target;
+  const groups = getPolicies(target).map(({ group_id, group_name }) => ({
+    group: group_name,
+    attributes: missingAttributes
+      .filter((missing) => missing["group-id"] === group_id)
+      .map(({ attribute }) => attribute),
+  }));
+  return groups
+    .filter(({ attributes }) => attributes.length > 0)
+    .map(({ group, attributes }) => {
+      const list = formatList(attributes);
+      return ngettext(
+        msgid`${group} needs the attribute ${list}, which ${who} doesn't have.`,
+        `${group} needs the attributes ${list}, which ${who} doesn't have.`,
+        attributes.length,
+      );
+    });
+}
+
+/** What fixes it: give the person a value, or try one in the preview. */
+export function getMissingAttributeFix({ who, missingAttributes }: WhyTarget) {
+  const count = new Set(
+    (missingAttributes ?? []).map(({ attribute }) => attribute),
+  ).size;
+  return ngettext(
+    msgid`Set it on ${who}, or pick a value for it in the preview.`,
+    `Set them on ${who}, or pick values for them in the preview.`,
+    count,
+  );
+}
+
 export function WhyContent({ target }: { target: WhyTarget }) {
   const { column, cell } = target;
   const policies = getPolicies(target);
-  const isFailing = isConflicting(target);
-  const option = isFailing
+  const option = isFailing(target)
     ? getPreviewOption("view_data", "blocked")
     : getPreviewOption(column, cell.value);
+  const [firstLine, ...otherLines] = isFailing(target)
+    ? getFailureLines(target)
+    : [getResultSentence(target)];
   const sameValue = getSameValueInEveryGroup(
     cell.groups.map((group) => group.value),
   );
@@ -89,13 +135,11 @@ export function WhyContent({ target }: { target: WhyTarget }) {
             mt="xxs"
             style={{ flexShrink: 0 }}
           />
-          <Text>
-            {isFailing
-              ? getConflictSentence(target)
-              : getResultSentence(target)}
-          </Text>
+          <Text>{firstLine}</Text>
         </Flex>
-        {isFailing && <Text>{getConflictFix(target)}</Text>}
+        {otherLines.map((line) => (
+          <Text key={line}>{line}</Text>
+        ))}
         {cell.note && <Text>{cell.note}</Text>}
       </SidesheetCard>
 
@@ -159,6 +203,21 @@ export function WhyContent({ target }: { target: WhyTarget }) {
       )}
     </>
   );
+}
+
+/** Why every query reaching the table fails, and what fixes it: the conflict first, then the missing attributes. */
+function getFailureLines(target: WhyTarget) {
+  return [
+    ...(isConflicting(target)
+      ? [getConflictSentence(target), getConflictFix(target)]
+      : []),
+    ...(hasMissingAttributes(target)
+      ? [
+          ...getMissingAttributeSentences(target),
+          getMissingAttributeFix(target),
+        ]
+      : []),
+  ];
 }
 
 /** The result as one sentence: "Sandy Sales has View data set to Can view on Sample Database / Orders, from Sales." */

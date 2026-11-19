@@ -250,22 +250,34 @@ export type PermissionDebugRequest = {
   userId: number;
   modelId: number;
   actionType: PermissionDebugActionType;
+  /** The preview whose picked attribute values replace the user's own in the check. */
+  previewId?: string;
+};
+
+/** A user attribute that a group's row and column security on a table reads, which the person lacks. */
+export type MissingAttribute = {
+  attribute: string;
+  "table-id": TableId;
+  "group-id": GroupId;
 };
 
 export type PermissionDebugResponse = {
   decision: "allow" | "denied" | "limited";
   data: {
-    /** A dashboard's cards, and how many of them can't load: a blocked table, or a conflicting one. */
+    /** A dashboard's cards, and how many of them can't load: a blocked table, a conflicting one, or a missing attribute. */
     "card-count"?: number;
     "blocked-card-count"?: number;
     /** The tables the queries reach that more than one group's row and column security applies to. */
     "conflicting-tables"?: TableId[];
-    /** Each card that can't load, with the names of its blocked tables and the ids of its conflicting ones. */
+    /** The attributes the person lacks that a rule on a table the queries reach reads. */
+    "missing-attributes"?: MissingAttribute[];
+    /** Each card that can't load, with the names of its blocked tables, the ids of its conflicting ones and its missing attributes. */
     "blocked-cards"?: {
       id: number;
       name: string;
       tables: string[];
       "conflicting-tables"?: TableId[];
+      "missing-attributes"?: MissingAttribute[];
     }[];
   };
 };
@@ -337,13 +349,14 @@ const permissionPreviewApi = EnterpriseApi.injectEndpoints({
       PermissionDebugResponse,
       PermissionDebugRequest
     >({
-      query: ({ userId, modelId, actionType }) => ({
+      query: ({ userId, modelId, actionType, previewId }) => ({
         method: "GET",
         url: "/api/ee/permission_debug",
         params: {
           user_id: userId,
           model_id: modelId,
           action_type: actionType,
+          preview_id: previewId,
         },
       }),
     }),

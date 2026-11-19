@@ -5,6 +5,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import {
   type ItemDependencies,
+  type MissingAttribute,
   type PermissionDebugRequest,
   type PermissionDebugResponse,
   type PreviewCollection,
@@ -24,6 +25,7 @@ import {
   type WhyTarget,
   getSourceGroupName,
   isConflicting,
+  isFailing,
 } from "./WhySidesheet";
 import type { OpenedItem } from "./item-path";
 import type { PreviewColumn } from "./preview-options";
@@ -66,6 +68,10 @@ export type BlockedCard = {
   tables: WhyTarget[];
   /** The tables it reaches that more than one group's row and column security applies to. */
   conflictingTables: WhyTarget[];
+  /** The tables it reaches whose row and column security reads an attribute the person lacks. */
+  missingAttributeTables: WhyTarget[];
+  /** The names of those attributes. */
+  missingAttributes: string[];
 };
 
 /** A collection: whether the person can open it, and from which group; on Our analytics, also the collections in it. */
@@ -318,6 +324,8 @@ function getCheckRequest(
     userId: preview.userId,
     modelId: item.id,
     actionType: `${item.type}/${check}`,
+    // the values picked in the preview decide whether a row and column security rule has the attribute it reads
+    previewId: check === "query" ? preview.previewId : undefined,
   };
 }
 
@@ -450,18 +458,20 @@ function getItemPage(
   const collectionTargets = collectionTarget != null ? [collectionTarget] : [];
   // a table only its policies' filters reach, like Products for a rule on Orders that filters by its category, fails the item too
   const conflictingTableIds = queryCheck.data["conflicting-tables"] ?? [];
+  const missingAttributes = queryCheck.data["missing-attributes"] ?? [];
   const tables = dataPreview.databases.flatMap((database) =>
     database.tables
       .filter(
         (table) =>
           dependencies.table_ids.includes(table.id) ||
           dependencies.whole_database_ids.includes(database.id) ||
-          conflictingTableIds.includes(table.id),
+          conflictingTableIds.includes(table.id) ||
+          missingAttributes.some((missing) => missing["table-id"] === table.id),
       )
       .map((table) => ({ database, table })),
   );
   const viewTargets = tables.map(({ database, table }) =>
-    getTableWhyTarget(who, database, table, "view_data"),
+    getTableWhyTarget(who, database, table, "view_data", missingAttributes),
   );
   const filtered = viewTargets.filter(isFiltered);
   const tablesInOrder = tables
@@ -492,6 +502,18 @@ function getItemPage(
           (card["conflicting-tables"] ?? []).includes(table.id),
         )
         .map(({ view }) => view),
+      missingAttributeTables: tablesInOrder
+        .filter(({ table }) =>
+          (card["missing-attributes"] ?? []).some(
+            (missing) => missing["table-id"] === table.id,
+          ),
+        )
+        .map(({ view }) => view),
+      missingAttributes: [
+        ...new Set(
+          (card["missing-attributes"] ?? []).map(({ attribute }) => attribute),
+        ),
+      ],
     })),
     filtered,
     collection: collectionTarget,
@@ -511,7 +533,7 @@ function getItemPage(
 
 /** The tables that limit the person come first: blocked or failing, then under row security, then the rest. */
 function getTableRank(target: WhyTarget) {
-  return isBlocking(target) || isConflicting(target)
+  return isBlocking(target) || isFailing(target)
     ? 0
     : target.security != null
       ? 1
@@ -650,6 +672,7 @@ function getTableWhyTarget(
   database: PreviewDatabase,
   table: PreviewTableAccess,
   column: Extract<PreviewColumn, "view_data" | "create_queries">,
+  missingAttributes: MissingAttribute[] = [],
 ): WhyTarget {
   const tableName = table.display_name ?? table.name;
   return {
@@ -661,5 +684,11 @@ function getTableWhyTarget(
     cell: table[column],
     security: column === "view_data" ? table.security : null,
     policies: column === "view_data" ? table.policies : [],
+    missingAttributes:
+      column === "view_data"
+        ? missingAttributes.filter(
+            (missing) => missing["table-id"] === table.id,
+          )
+        : [],
   };
 }

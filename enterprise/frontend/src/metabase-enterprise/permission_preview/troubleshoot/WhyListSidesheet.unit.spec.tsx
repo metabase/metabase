@@ -149,6 +149,68 @@ const PRODUCTS: PreviewTableAccess = {
   policies: [SALES_PRODUCTS_POLICY, FINANCE_PRODUCTS_POLICY],
 };
 
+/** Sandy has no value for the attributes the rules on Orders and Products read. */
+const ORDERS_RULE_WITHOUT_VALUES: PreviewSecurity = {
+  ...ORDERS_SECURITY,
+  filters: [
+    {
+      attribute: "category",
+      value: null,
+      each_member: false,
+      column: "Products.Category",
+    },
+    {
+      attribute: "state",
+      value: null,
+      each_member: false,
+      column: "People.State",
+    },
+  ],
+};
+
+const ORDERS_WITHOUT_VALUES: PreviewTableAccess = {
+  ...ORDERS,
+  security: ORDERS_RULE_WITHOUT_VALUES,
+  policies: [ORDERS_RULE_WITHOUT_VALUES],
+};
+
+const PRODUCTS_RULE_WITHOUT_VALUE: PreviewSecurity = {
+  ...SALES_PRODUCTS_POLICY,
+  filters: [{ ...SALES_PRODUCTS_POLICY.filters[0], value: null }],
+};
+
+const PRODUCTS_WITHOUT_VALUES: PreviewTableAccess = {
+  ...PRODUCTS,
+  security: PRODUCTS_RULE_WITHOUT_VALUE,
+  policies: [PRODUCTS_RULE_WITHOUT_VALUE],
+};
+
+/** What the query check says when the Sales rules on Orders and Products read attributes Sandy lacks. */
+const MISSING_ATTRIBUTES_QUERY: PermissionDebugResponse = {
+  decision: "denied",
+  data: {
+    "card-count": 1,
+    "blocked-card-count": 1,
+    "missing-attributes": [
+      { attribute: "category", "table-id": ORDERS_ID, "group-id": 5 },
+      { attribute: "state", "table-id": ORDERS_ID, "group-id": 5 },
+      { attribute: "category", "table-id": PRODUCTS_ID, "group-id": 5 },
+    ],
+    "blocked-cards": [
+      {
+        id: 134,
+        name: "Revenue by month",
+        tables: [],
+        "missing-attributes": [
+          { attribute: "category", "table-id": ORDERS_ID, "group-id": 5 },
+          { attribute: "state", "table-id": ORDERS_ID, "group-id": 5 },
+          { attribute: "category", "table-id": PRODUCTS_ID, "group-id": 5 },
+        ],
+      },
+    ],
+  },
+};
+
 const REVIEWS: PreviewTableAccess = {
   ...ORDERS,
   id: REVIEWS_ID,
@@ -438,6 +500,107 @@ describe("WhyListSidesheet", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Set by")).toHaveLength(2);
+  });
+
+  it("says the cards can't load when a rule reads attributes the person lacks, naming each table's missing attributes and the group that needs them", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS_WITHOUT_VALUES, PRODUCTS_WITHOUT_VALUES],
+      dashboardQuery: MISSING_ATTRIBUTES_QUERY,
+    });
+
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "Sandy Sales can open this dashboard but can't see any of its cards.",
+    );
+    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
+    expect(screen.getByText("Missing category and state")).toBeInTheDocument();
+    // the failing card's status, and one per table: Products is in the data though the dashboard doesn't query it
+    expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
+      3,
+    );
+    expect(
+      screen.getByText(
+        "Sales needs the attributes category and state, which Sandy Sales doesn't have. Set them on Sandy Sales, or pick values for them in the preview.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Sales needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales, or pick a value for it in the preview.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rows filtered/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the table's detail from its Can't load status, with the missing attributes and the rule that reads them", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS_WITHOUT_VALUES, PRODUCTS_WITHOUT_VALUES],
+      dashboardQuery: MISSING_ATTRIBUTES_QUERY,
+    });
+
+    const [, , tableStatus] = await screen.findAllByRole("button", {
+      name: /Can't load/,
+    });
+    await userEvent.click(tableStatus);
+
+    expect(
+      screen.getByText(
+        "Sales needs the attribute category, which Sandy Sales doesn't have.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Set it on Sandy Sales, or pick a value for it in the preview.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Set by")).toHaveLength(1);
+  });
+
+  it("says both when a table has two groups' row security and each needs an attribute the person lacks", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS_WITHOUT_VALUES, PRODUCTS],
+      dashboardQuery: {
+        decision: "denied",
+        data: {
+          "card-count": 1,
+          "blocked-card-count": 1,
+          "conflicting-tables": [PRODUCTS_ID],
+          "missing-attributes": [
+            { attribute: "category", "table-id": PRODUCTS_ID, "group-id": 5 },
+            { attribute: "category", "table-id": PRODUCTS_ID, "group-id": 8 },
+          ],
+          "blocked-cards": [
+            {
+              id: 134,
+              name: "Revenue by month",
+              tables: [],
+              "conflicting-tables": [PRODUCTS_ID],
+              "missing-attributes": [
+                {
+                  attribute: "category",
+                  "table-id": PRODUCTS_ID,
+                  "group-id": 5,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Sales and Finance readers both set row and column security on Products. Keep one policy, or give one of the groups Can view on Products.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Sales needs the attribute category, which Sandy Sales doesn't have. Finance readers needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales, or pick a value for it in the preview.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("keeps Rows filtered for a table with one group's rule that the dashboard reaches", async () => {

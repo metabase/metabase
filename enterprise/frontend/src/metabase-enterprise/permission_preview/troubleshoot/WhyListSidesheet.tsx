@@ -31,6 +31,8 @@ import {
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
+import { formatList } from "../format-list";
+
 import { CreateQueriesContent } from "./CreateQueriesContent";
 import { TargetName } from "./TargetName";
 import S from "./WhyListSidesheet.module.css";
@@ -40,10 +42,14 @@ import {
   type WhyTarget,
   getConflictFix,
   getConflictSentence,
+  getMissingAttributeFix,
+  getMissingAttributeSentences,
   getPolicies,
   getSourceGroupName,
   getWhyValueLabel,
+  hasMissingAttributes,
   isConflicting,
+  isFailing,
 } from "./WhySidesheet";
 import type { OpenedItem } from "./item-path";
 import { getPreviewColumnName, getPreviewOption } from "./preview-options";
@@ -535,8 +541,8 @@ function CardRows({ children }: { children: ReactNode }) {
 }
 
 /**
- * A dashboard card that can't load: its name, the blocked tables and the ones with conflicting policies that stop it,
- * and a status that opens the first.
+ * A dashboard card that can't load: its name, the blocked tables, the ones with conflicting policies and the missing
+ * attributes that stop it, and a status that opens the first table.
  */
 function BlockedCardRow({
   card,
@@ -545,7 +551,12 @@ function BlockedCardRow({
   card: BlockedCard;
   onOpen: (target: WhyTarget) => void;
 }) {
-  const [table] = [...card.tables, ...card.conflictingTables];
+  const [table] = [
+    ...card.tables,
+    ...card.conflictingTables,
+    ...card.missingAttributeTables,
+  ];
+  const attributeNames = formatList(card.missingAttributes);
   const blockedNames = card.tables.map((target) => target.title).join(", ");
   const conflictingNames = card.conflictingTables
     .map((target) => target.title)
@@ -561,6 +572,7 @@ function BlockedCardRow({
     card.conflictingTables.length > 0
       ? t`Conflicting policies on ${conflictingNames}`
       : null,
+    card.missingAttributes.length > 0 ? t`Missing ${attributeNames}` : null,
   ].filter((cause) => cause != null);
   return (
     <Row
@@ -581,9 +593,9 @@ function BlockedCardRow({
   );
 }
 
-/** The option a target's status shows: a table with conflicting policies fails like a blocked one. */
+/** The option a target's status shows: a table that fails every query fails like a blocked one. */
 function getTargetOption(target: WhyTarget) {
-  return isConflicting(target)
+  return isFailing(target)
     ? getPreviewOption("view_data", "blocked")
     : getPreviewOption(target.column, target.cell.value);
 }
@@ -739,13 +751,22 @@ function DataRows({
 }
 
 /**
- * A table's rules, each with its group. A table with conflicting policies says so first, and what fixes it.
+ * A table's rules, each with its group. A table that fails every query says so first, and what fixes it: conflicting
+ * policies, then missing attributes.
  */
 function PolicyRules({ target }: { target: WhyTarget }) {
   return (
     <Stack gap="sm">
       {isConflicting(target) && (
         <Text>{`${getConflictSentence(target)} ${getConflictFix(target)}`}</Text>
+      )}
+      {hasMissingAttributes(target) && (
+        <Text>
+          {[
+            ...getMissingAttributeSentences(target),
+            getMissingAttributeFix(target),
+          ].join(" ")}
+        </Text>
       )}
       {getPolicies(target).map((policy) => (
         <Stack key={policy.group_id} gap="xs">
@@ -767,7 +788,7 @@ function isFullAccess(target: WhyTarget) {
 
 /** A table's View data in the words of "Data in this dashboard": "Rows filtered", "Blocked", "Full access". */
 function getDataStatusLabel(target: WhyTarget) {
-  if (isConflicting(target)) {
+  if (isFailing(target)) {
     return t`Can't load`;
   }
   switch (target.cell.value) {
@@ -1317,9 +1338,11 @@ function Row({
           {name}
         </Box>
         {detail != null && (
-          <Text id={detailId} size="sm" c="text-secondary" truncate="end">
-            {detail}
-          </Text>
+          <Tooltip label={detail}>
+            <Text id={detailId} size="sm" c="text-secondary" truncate="end">
+              {detail}
+            </Text>
+          </Tooltip>
         )}
       </Box>
       {status}

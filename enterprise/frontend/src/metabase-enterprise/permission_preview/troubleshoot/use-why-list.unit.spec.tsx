@@ -296,6 +296,95 @@ describe("useWhyList", () => {
       });
     });
 
+    it("says a dashboard's cards can't load when a rule reads an attribute the person lacks, on Orders and on Products, which Orders filters through", async () => {
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        orders: { view_data: "sandboxed", security: ORDERS_SANDBOX },
+        productsPolicies: [SALES_PRODUCTS_POLICY],
+        query: {
+          decision: "denied",
+          data: {
+            "card-count": 1,
+            "blocked-card-count": 1,
+            "missing-attributes": [
+              { attribute: "state", "table-id": 1, "group-id": 5 },
+              { attribute: "category", "table-id": 3, "group-id": 5 },
+            ],
+            "blocked-cards": [
+              {
+                id: 134,
+                name: "Revenue by month",
+                tables: [],
+                "missing-attributes": [
+                  { attribute: "state", "table-id": 1, "group-id": 5 },
+                  { attribute: "category", "table-id": 3, "group-id": 5 },
+                ],
+              },
+            ],
+          },
+        },
+      });
+
+      await waitFor(() =>
+        expect(getVerdict(result.current)).toEqual({
+          kind: "partial",
+          text: "Sandy Sales can open this dashboard but can't see any of its cards.",
+        }),
+      );
+      expect(result.current?.page).toMatchObject({
+        blockedCards: [
+          {
+            name: "Revenue by month",
+            tables: [],
+            conflictingTables: [],
+            missingAttributeTables: [
+              { title: "Orders" },
+              { title: "Products" },
+            ],
+            missingAttributes: ["state", "category"],
+          },
+        ],
+        tables: [
+          {
+            title: "Orders",
+            missingAttributes: [
+              { attribute: "state", "table-id": 1, "group-id": 5 },
+            ],
+          },
+          {
+            title: "Products",
+            missingAttributes: [
+              { attribute: "category", "table-id": 3, "group-id": 5 },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("asks whether the data loads with the preview's picked values, and whether the item opens without", async () => {
+      setup({ path: "/dashboard/1-orders-by-state" });
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.called("path:/api/ee/permission_debug", {
+            query: { action_type: "dashboard/query" },
+          }),
+        ).toBe(true),
+      );
+      const queryUrl = new URL(
+        fetchMock.callHistory.lastCall("path:/api/ee/permission_debug", {
+          query: { action_type: "dashboard/query" },
+        })?.url ?? "",
+      );
+      expect(queryUrl.searchParams.get("preview_id")).toBe("preview-1");
+      const readUrl = new URL(
+        fetchMock.callHistory.lastCall("path:/api/ee/permission_debug", {
+          query: { action_type: "dashboard/read" },
+        })?.url ?? "",
+      );
+      expect(readUrl.searchParams.has("preview_id")).toBe(false);
+    });
+
     it("keeps a table with one group's row security out of the failing cards", async () => {
       const { result } = setup({
         path: "/dashboard/1-orders-by-state",
