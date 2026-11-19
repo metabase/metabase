@@ -86,7 +86,7 @@ fi
 
 # Java runs as PID 1 when the container starts as non-root (run_metabase.sh execs it).
 maps=$(docker exec "$container" cat /proc/1/maps)
-echo "$maps" | grep -q '/app/js-isolate/libpolyglotisolate.so' || fail "the JVM didn't load /app/js-isolate/libpolyglotisolate.so"
-echo "$maps" | grep -q '/app/truffle-attach/bin/libtruffleattach.so' || fail "the JVM didn't load /app/truffle-attach/bin/libtruffleattach.so"
+grep -q '/app/js-isolate/libpolyglotisolate.so' <<< "$maps" || fail "the JVM didn't load /app/js-isolate/libpolyglotisolate.so"
+grep -q '/app/truffle-attach/bin/libtruffleattach.so' <<< "$maps" || fail "the JVM didn't load /app/truffle-attach/bin/libtruffleattach.so"
 
 echo "Static-viz rendered in $(docker inspect -f '{{.Architecture}}' "$image") image, as a non-root user on a read-only root filesystem"
