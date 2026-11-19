@@ -1047,7 +1047,7 @@
                          (filter (fn [[_ dc]] (= dashcard_id dc)) stored))
     nil))
 
-(defn- slot-origins
+(defn- stored-slots
   "The stored slots the slot `s` stands for in `dashcard-origins`, one dashcard's origins from [[track-promotions]].
    A slot missing from them stands for itself."
   [dashcard-origins s]
@@ -1066,14 +1066,14 @@
     (cond-> origins
       (int? promoted) (update dashcard_id
                               (fn [m]
-                                (assoc m :card (set/union (slot-origins m :card) (slot-origins m promoted))))))))
+                                (assoc m :card (set/union (stored-slots m :card) (stored-slots m promoted))))))))
 
 (defn- stored-connections
   "The [[slot-connections]] of `dashcards`, with each slot replaced by the stored slots it stands for in `origins`."
   [origins dashcards]
   (into #{}
         (for [[parameter-id dashcard-id s] (slot-connections dashcards)
-              stored-slot                  (slot-origins (get origins dashcard-id) s)]
+              stored-slot                  (stored-slots (get origins dashcard-id) s)]
           [parameter-id dashcard-id stored-slot])))
 
 (defn- apply-op-tracking-drops
@@ -1094,7 +1094,7 @@
    while it is still one, and nil once it is gone."
   [dashcard origins stored-slot]
   (cond
-    (contains? (slot-origins origins :card) stored-slot) :card
+    (contains? (stored-slots origins :card) stored-slot) :card
     (= stored-slot (slot dashcard stored-slot))          stored-slot))
 
 (defn- dropped-connections
