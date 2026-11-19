@@ -73,10 +73,13 @@
   (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
 ;; Read off the metadata `hydrate-checks` sets, so the answer comes once per batch, not once per row. An instance that
-;; skipped `hydrate-checks` is denied.
+;; skipped `hydrate-checks` is denied, and logged, since that means a path to the check left it out.
 (defmethod check-permissions-for-model :indexed-entity
   [_search-ctx instance]
-  (boolean (::queryable-database? (meta instance))))
+  (let [answer (::queryable-database? (meta instance))]
+    (when (nil? answer)
+      (log/warn "Denying an indexed entity search result that was not tagged by hydrate-checks"))
+    (boolean answer)))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
