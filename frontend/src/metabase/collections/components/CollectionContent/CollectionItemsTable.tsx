@@ -39,6 +39,8 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
+import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
+import { useSyncedCollectionIds } from "metabase/nav/prototype/use-synced-collection-ids";
 import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
@@ -372,7 +374,26 @@ const CollectionItemsTableContent = ({
   const { data, isFetching, isLoading, error } =
     useListCollectionItemsQuery(itemsQuery);
 
-  const items = data?.data ?? [];
+  // PROTOTYPE: with git integration on, synced collections live in their own
+  // ("Official") tree, so unsynced collections like "Our analytics" don't list
+  // them. Filtering happens after paging, so a page can come up short.
+  const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
+  const hideSyncedCollections =
+    isGitIntegrationEnabled && collection?.is_remote_synced !== true;
+  const syncedCollectionIds = useSyncedCollectionIds({
+    skip: !hideSyncedCollections,
+  });
+  const items = useMemo(() => {
+    const allItems = data?.data ?? [];
+    return hideSyncedCollections
+      ? allItems.filter(
+          (item) =>
+            item.model !== "collection" ||
+            (item.is_remote_synced !== true &&
+              !syncedCollectionIds.has(item.id)),
+        )
+      : allItems;
+  }, [data, hideSyncedCollections, syncedCollectionIds]);
   const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),

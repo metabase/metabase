@@ -7,6 +7,7 @@ import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { DATA_APPS_ROOT_ID } from "./constants";
+import { SYNCED_CONTENT_ID } from "./hooks/use-synced-content";
 import {
   type EntityPickerProps,
   type OmniPickerCollectionItem,
@@ -34,6 +35,16 @@ export const useGetEntityPickerIcon = () => {
 
       if (item.id === "search-results") {
         icon.name = "search";
+      }
+
+      // The Library (shown as "Data") always gets the nav's repository icon,
+      // even when the item lacks `is_library_root`.
+      if (item.model === "collection" && item.type === "library") {
+        icon.name = "repository";
+      }
+
+      if (item.id === SYNCED_CONTENT_ID) {
+        icon.name = "synced_collection";
       }
 
       if (isSelected && !icon.color) {
@@ -178,6 +189,12 @@ export function getItemFunctions({
   // intermediate items should not be disabled, but can't ultimately be selected
   const isSelectableBase = (item: OmniPickerItem) => {
     if (!isValidItem(item) || isDataAppsRootItem(item)) {
+      return false;
+    }
+
+    // PROTOTYPE: "Synced content" only groups the synced collections; pick
+    // one of them instead.
+    if (item.id === SYNCED_CONTENT_ID) {
       return false;
     }
 

@@ -37,6 +37,7 @@ import type {
 } from "../types";
 import { shouldShowDataApps } from "../utils";
 
+import { getSyncedContentItem, useSyncedContent } from "./use-synced-content";
 import { getDataAppsRootItem, getRootCollectionItem } from "./utils";
 
 const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
@@ -59,6 +60,7 @@ export const useRootItems = () => {
   const hasTenants = useSetting("use-tenants");
   const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
+  const { showSyncedContent } = useSyncedContent();
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
@@ -111,6 +113,7 @@ export const useRootItems = () => {
       currentUser,
       hasTenants,
       dispatch,
+      showSyncedContent,
     })
       .then((rootItems) => {
         setRootItems(rootItems);
@@ -135,6 +138,7 @@ export const useRootItems = () => {
     hasTenants,
     setIsLoadingCollections,
     dispatch,
+    showSyncedContent,
   ]);
 
   const isLoading =
@@ -163,6 +167,7 @@ async function getRootItems({
   currentUser,
   hasTenants,
   dispatch,
+  showSyncedContent,
 }: {
   searchQuery?: string;
   personalCollection?: Collection;
@@ -179,6 +184,7 @@ async function getRootItems({
   currentUser: User | null;
   hasTenants: boolean;
   dispatch: DispatchFn;
+  showSyncedContent: boolean;
 }): Promise<OmniPickerCollectionItem[]> {
   const collectionItems: OmniPickerCollectionItem[] = [];
   const validCollectionModels = getValidCollectionItemModels(models);
@@ -191,6 +197,16 @@ async function getRootItems({
       name: t`Search results for "${searchQuery}"`,
       below: validCollectionModels,
     });
+  }
+
+  // PROTOTYPE: collections synced from git, as their own tree. Only offered
+  // when the instance can push to git, since otherwise they're read-only.
+  if (
+    showSyncedContent &&
+    options?.hasRootCollection &&
+    namespaces.includes(null)
+  ) {
+    collectionItems.push(getSyncedContentItem(validCollectionModels));
   }
 
   if (options.hasLibrary && libraryCollection && namespaces.includes(null)) {

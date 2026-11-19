@@ -15,7 +15,13 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
-import { Button, Group, Loader, Radio, Stack } from "metabase/ui";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsSection,
+} from "metabase/settings-components";
+import { Button, Divider, Group, Loader, Radio, Stack } from "metabase/ui";
 import {
   useCreateLibraryMutation,
   useGetRemoteSyncIsDirtyQuery,
@@ -34,6 +40,7 @@ import {
   trackRemoteSyncSettingsChanged,
 } from "../../analytics";
 import type { SettingsFormValues, SyncableCollection } from "../../types";
+import { SyncActions } from "../SyncActions";
 import { SyncTaskModal } from "../SyncTaskModal";
 
 import { CollectionsField } from "./CollectionsField";
@@ -133,7 +140,7 @@ function LoadedSettingsForm({
     if (initialValues.url !== "" && values.branch !== initialValues.branch) {
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
     }
-    sendToast({ message: t`Remote sync settings saved`, icon: "check" });
+    sendToast({ message: t`Git integration settings saved`, icon: "check" });
     if (task_id != null) {
       setTaskId(task_id);
     } else {
@@ -157,6 +164,9 @@ function LoadedSettingsForm({
           <SettingsFormBody
             regularCollections={regularCollections}
             tenantCollections={tenantCollections}
+            // The admin page lays the form out as settings cards; the Data
+            // Studio modal keeps a single column.
+            layout={triggeredFrom === "admin-settings" ? "cards" : "stack"}
             onCancel={onCancel}
           />
           {unsyncedDependencies != null && (
@@ -179,12 +189,14 @@ function LoadedSettingsForm({
 type SettingsFormBodyProps = {
   regularCollections: SyncableCollection[];
   tenantCollections: SyncableCollection[];
+  layout: "cards" | "stack";
   onCancel?: () => void;
 };
 
 function SettingsFormBody({
   regularCollections,
   tenantCollections,
+  layout,
   onCancel,
 }: SettingsFormBodyProps) {
   const isTenantsEnabled = useSetting("use-tenants");
@@ -199,6 +211,8 @@ function SettingsFormBody({
   );
   const hasUnpushedChanges = dirtyState?.is_dirty === true;
   const isReadOnlyBlocked = isDirtyChecked && dirtyState?.is_dirty !== false;
+  // PROTOTYPE: mocked. There's no setting for this yet, so it isn't saved.
+  const [userContentAccess, setUserContentAccess] = useState("allowed");
 
   useEffect(() => {
     if (isReadOnlyBlocked && values.type === "read-only") {
@@ -206,75 +220,168 @@ function SettingsFormBody({
     }
   }, [isReadOnlyBlocked, values, setFieldValue]);
 
+  const isCards = layout === "cards";
+
+  const connectionFields = (
+    <>
+      <FormTextInput
+        name="url"
+        label={t`Repository URL`}
+        placeholder="https://git-host.example.com/yourcompany/repo.git"
+      />
+      <FormTextInput
+        name="token"
+        type="password"
+        label={t`Access token`}
+        description={t`Required for private repositories, and for git-backed version control, which needs write access.`}
+      />
+      <TestConnectionButton />
+    </>
+  );
+
+  const modeField = (
+    <FormRadioGroup
+      name="type"
+      label={isCards ? undefined : t`How do you want to sync with git?`}
+      aria-label={t`How do you want to sync with git?`}
+    >
+      <Stack gap="md" mt={isCards ? 0 : "xs"}>
+        <Radio
+          value="read-only"
+          label={t`Publish from Git`}
+          description={
+            hasUnpushedChanges
+              ? t`Push your changes first: switching discards changes that aren't pushed yet.`
+              : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Git integration settings are admin-only.
+                t`Content from your synced git repo will appear in Metabase’s navigation, and won’t be editable.`
+          }
+          disabled={isReadOnlyBlocked}
+        />
+        <Radio
+          value="read-write"
+          label={t`Use git-backed version control`}
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Git integration settings are admin-only.
+          description={t`Metabase acts as a git client, allowing both pushing and pulling to the git repo.`}
+        />
+      </Stack>
+    </FormRadioGroup>
+  );
+
+  // Settings the design doesn't place: they live under Advanced.
+  const advancedFields = (
+    <>
+      <FormTextInput
+        name="branch"
+        label={t`Branch`}
+        description={t`Leave empty to use the repository's default branch.`}
+      />
+      {isReadWrite ? (
+        <>
+          <CollectionsField
+            title={t`Collections to sync`}
+            description={t`Library and transforms always sync.`}
+            emptyMessage={t`There are no top-level collections yet.`}
+            collections={regularCollections}
+          />
+          {isTenantsEnabled && (
+            <CollectionsField
+              title={t`Shared tenant collections to sync`}
+              emptyMessage={t`There are no shared tenant collections yet.`}
+              collections={tenantCollections}
+            />
+          )}
+        </>
+      ) : (
+        <FormSwitch name="autoImport" label={t`Pull changes automatically`} />
+      )}
+    </>
+  );
+
+  const footer = (
+    <>
+      <FormErrorMessage />
+      <Group justify="flex-end" gap="sm">
+        {onCancel && (
+          <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+        )}
+        <FormSubmitButton
+          label={isEnabled ? t`Save changes` : t`Set up git integration`}
+          variant="filled"
+          disabled={!dirty || values.url.length === 0}
+        />
+      </Group>
+    </>
+  );
+
+  if (!isCards) {
+    return (
+      <Form>
+        <Stack gap="lg">
+          {connectionFields}
+          {modeField}
+          {advancedFields}
+          {footer}
+        </Stack>
+      </Form>
+    );
+  }
+
   return (
     <Form>
-      <Stack gap="lg">
-        <FormTextInput
-          name="url"
-          label={t`Repository URL`}
-          placeholder="https://github.com/your-org/your-repo.git"
-        />
-        <FormTextInput
-          name="token"
-          type="password"
-          label={t`Access token`}
-          description={t`A token with access to the repository. Read-write sync needs write access.`}
-        />
-        <TestConnectionButton />
-        <FormRadioGroup name="type" label={t`Sync mode`}>
-          <Stack gap="sm" mt="xs">
-            <Radio
-              value="read-write"
-              label={t`Read-write`}
-              description={t`Edit content here and push it to the repository.`}
-            />
-            <Radio
-              value="read-only"
-              label={t`Read-only`}
-              description={
-                hasUnpushedChanges
-                  ? t`Push your changes first: switching to read-only discards changes that aren't pushed yet.`
-                  : t`Pull content from the repository; synced content can't be edited here.`
-              }
-              disabled={isReadOnlyBlocked}
-            />
-          </Stack>
-        </FormRadioGroup>
-        <FormTextInput
-          name="branch"
-          label={t`Branch`}
-          description={t`Leave empty to use the repository's default branch.`}
-        />
-        {isReadWrite ? (
-          <>
-            <CollectionsField
-              title={t`Collections to sync`}
-              description={t`Library and transforms always sync.`}
-              emptyMessage={t`There are no top-level collections yet.`}
-              collections={regularCollections}
-            />
-            {isTenantsEnabled && (
-              <CollectionsField
-                title={t`Shared tenant collections to sync`}
-                emptyMessage={t`There are no shared tenant collections yet.`}
-                collections={tenantCollections}
+      <Stack gap="xl">
+        <SettingsSection
+          title={t`How do you want to sync with git?`}
+          titleProps={SETTINGS_CARD_TITLE_PROPS}
+          stackProps={SETTINGS_CARD_STACK_PROPS}
+        >
+          {modeField}
+        </SettingsSection>
+        <SettingsSection
+          title={t`Also allow user-generated content?`}
+          titleProps={SETTINGS_CARD_TITLE_PROPS}
+          stackProps={SETTINGS_CARD_STACK_PROPS}
+        >
+          <Radio.Group
+            value={userContentAccess}
+            onChange={setUserContentAccess}
+            aria-label={t`Also allow user-generated content?`}
+          >
+            <Stack gap="md">
+              <Radio
+                value="allowed"
+                label={t`Yes`}
+                description={t`Content from your git repo will coexist with user-generated content, which will appear in a separate section of the nav.`}
               />
+              <Radio
+                value="blocked"
+                label={t`No`}
+                description={t`Only content from the synced repository will appear. Users won’t be able to save dashboards, documents, or reports. Existing user generated content will be hidden, not deleted.`}
+              />
+            </Stack>
+          </Radio.Group>
+        </SettingsSection>
+        <SettingsSection
+          title={t`Connect to a repository`}
+          titleProps={SETTINGS_CARD_TITLE_PROPS}
+          stackProps={SETTINGS_CARD_STACK_PROPS}
+        >
+          {connectionFields}
+        </SettingsSection>
+        <CollapsibleSettingsSection
+          title={t`Advanced`}
+          description={t`By default, this instance will regularly auto-sync with the main branch in git.`}
+        >
+          <Stack gap="lg">
+            {advancedFields}
+            {isEnabled && (
+              <>
+                <Divider />
+                <SyncActions />
+              </>
             )}
-          </>
-        ) : (
-          <FormSwitch name="autoImport" label={t`Pull changes automatically`} />
-        )}
-        <FormErrorMessage />
-        <Group justify="flex-end" gap="sm">
-          {onCancel && (
-            <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
-          )}
-          <FormSubmitButton
-            label={isEnabled ? t`Save changes` : t`Set up remote sync`}
-            variant="filled"
-            disabled={!dirty || values.url.length === 0}
-          />
-        </Group>
+          </Stack>
+        </CollapsibleSettingsSection>
+        {footer}
       </Stack>
     </Form>
   );

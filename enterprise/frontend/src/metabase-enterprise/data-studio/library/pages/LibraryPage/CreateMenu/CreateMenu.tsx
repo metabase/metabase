@@ -19,11 +19,14 @@ export const CreateMenu = ({
   canWriteToMetricCollection,
   dataCollectionId,
   canWriteToDataCollection,
+  canPublishTable = true,
 }: {
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
   dataCollectionId?: CollectionId;
   canWriteToDataCollection?: boolean;
+  /** Offer "Published table"; off on pages that only list metrics. */
+  canPublishTable?: boolean;
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -48,13 +51,15 @@ export const CreateMenu = ({
     null;
 
   const menuItems = [
-    <Menu.Item
-      key="publish-table"
-      leftSection={<FixedSizeIcon name="publish" />}
-      onClick={openPublishTableModal}
-    >
-      {t`Published table`}
-    </Menu.Item>,
+    canPublishTable && (
+      <Menu.Item
+        key="publish-table"
+        leftSection={<FixedSizeIcon name="publish" />}
+        onClick={openPublishTableModal}
+      >
+        {t`Published table`}
+      </Menu.Item>
+    ),
     canCreateMetric && (
       <Menu.Item
         key="metric"

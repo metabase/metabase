@@ -23,7 +23,12 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Navigate, Route, redirect } from "metabase/router";
+import {
+  Navigate,
+  Route,
+  type RouteComponent,
+  redirect,
+} from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import {
@@ -129,7 +134,14 @@ const logLevelsModal = () =>
     loadCodeEditor(),
   ]).then(([{ LogLevelsModal }]) => LogLevelsModal);
 
-export function getMonitorRoutes() {
+/**
+ * `usageAnalyticsPage` loads the Usage analytics collection page shown in
+ * Monitor's Content management section; the page is left out without it. The
+ * app routes pass it in, since Monitor can't import the collections feature.
+ */
+export function getMonitorRoutes(
+  usageAnalyticsPage?: () => Promise<{ Component: RouteComponent }>,
+) {
   return (
     <Route element={<CanAccessMonitor />}>
       <Route path="monitor" lazy={monitorLayout}>
@@ -200,6 +212,10 @@ export function getMonitorRoutes() {
             </Route>
           )}
         </Route>
+
+        {usageAnalyticsPage && (
+          <Route path="usage-analytics" lazy={usageAnalyticsPage} />
+        )}
 
         <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>

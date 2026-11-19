@@ -23,6 +23,7 @@ import {
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { useRootCollectionName } from "metabase/nav/prototype/use-root-collection-name";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
@@ -46,6 +47,8 @@ function ItemName({
   id: CollectionId;
   namespace: CollectionNamespace;
 }) {
+  const rootCollectionName = useRootCollectionName();
+
   if (namespace === "snippets") {
     return <SnippetCollectionName id={id} />;
   }
@@ -65,6 +68,12 @@ function ItemName({
     if (namespaceDisplayName) {
       return <span>{namespaceDisplayName}</span>;
     }
+  }
+
+  // PROTOTYPE: the root collection is named after the nav heading its folders
+  // sit under, never "Our analytics".
+  if ((id === null || id === "root") && namespace === null) {
+    return <span>{rootCollectionName}</span>;
   }
 
   return <CollectionName id={id} />;

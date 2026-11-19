@@ -47,6 +47,7 @@ export const getDataAppItem = (dataApp: DataApp): OmniPickerDataAppItem => ({
 export const getOurAnalytics = (): OmniPickerCollectionItem => ({
   model: "collection",
   id: "root",
+  // PROTOTYPE: pickers display this with useRootCollectionName instead.
   name: t`Our analytics`,
   here: ["collection"],
   below: allCollectionModels,

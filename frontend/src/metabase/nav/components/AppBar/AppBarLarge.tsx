@@ -85,7 +85,8 @@ export const AppBarLarge = ({
       align="center"
       gap="lg"
       h={APP_BAR_HEIGHT}
-      pl="1.325rem"
+      // Centers the 36px sidebar toggle over the nav's icon column (42px).
+      pl="xl"
       pr="lg"
       bg="background_page-primary"
     >
