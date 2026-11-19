@@ -8,11 +8,12 @@ export function getSearchBar() {
  *
  * @param {Object} options - Options for the test.
  * @param {Object[]} options.expectedSearchResults - An array of search result items to compare against.
- * @param {string} options.expectedSearchResults[].name - The name of the search result item.
- * @param {string} options.expectedSearchResults[].description - The description of the search result item.
- * @param {string} options.expectedSearchResults[].collection - The collection label of the search result item.
- * @param {string} options.expectedSearchResults[].timestamp - The timestamp label of the search result item .
- * @param {boolean} [strict=true] - Whether to check if the contents AND length of search results are the same
+ * @param {string | RegExp} options.expectedSearchResults[].name - The name of the search result item.
+ * @param {string} [options.expectedSearchResults[].description] - The description of the search result item.
+ * @param {string} [options.expectedSearchResults[].collection] - The collection label of the search result item.
+ * @param {string} [options.expectedSearchResults[].timestamp] - The timestamp label of the search result item .
+ * @param {import("metabase/ui").IconName} [options.expectedSearchResults[].icon] - The result icon.
+ * @param {boolean} [options.strict=true] - Whether to also check the result count.
  */
 export function expectSearchResultContent({
   expectedSearchResults,

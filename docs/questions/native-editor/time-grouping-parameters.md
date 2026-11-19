@@ -5,8 +5,6 @@ summary: Add a parameter to a SQL question that lets people switch between group
 
 # Time grouping parameter
 
-You can add a parameter to SQL questions to change how results are grouped by time: by day, week, month, and so on.
-
 To add a time grouping parameter, you'll need:
 
 - An aggregation (like `COUNT`).

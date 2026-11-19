@@ -48,6 +48,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
+  (derive :hook/change-log)
   (derive ::mi/read-policy.full-perms-for-perms-set))
 
 (def ^:private transform-pulse-parameters
