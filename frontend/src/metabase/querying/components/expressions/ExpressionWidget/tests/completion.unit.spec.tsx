@@ -2,19 +2,29 @@ jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
   REVIEWS_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersTableDatasetColumns,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
   blurEditor,
+  focusEditor,
   getCompletionLabels,
   getEditorValue,
+  getEditorView,
   getSelectedCompletionLabel,
   pasteText,
   pressKey,
@@ -94,6 +104,52 @@ describe("ExpressionWidget > completion", () => {
 
     await pressKey("Tab");
     expect(await screen.findByText(/Unknown column/)).toBeInTheDocument();
+  });
+
+  it("should be possible to fill in snippet arguments after validation runs (metabase#55164)", async () => {
+    await setup({ query: createOrdersQuery() });
+
+    await typeText("coalesc");
+    await waitForCompletions();
+    await pressKey("Tab");
+    expect(getEditorValue()).toBe("coalesce(value1, value2)");
+
+    await waitForValidationDebounce();
+
+    await typeText("[Tax]");
+    await pressKey("Tab");
+    await typeText("[User ID]");
+    expect(getEditorValue()).toBe("coalesce([Tax], [User ID])");
+  });
+
+  it("should not show the default period in the name of a date column of a saved question (metabase#36631)", async () => {
+    const card = createMockCard({
+      id: 1,
+      name: "Base question",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+      result_metadata: createOrdersTableDatasetColumns().map((column) =>
+        column.name === "CREATED_AT"
+          ? createOrdersCreatedAtDatasetColumn({ unit: "default" })
+          : column,
+      ),
+    });
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      }),
+    });
+    const query = Lib.createTestQuery(provider, {
+      stages: [{ source: { type: "card", id: card.id } }],
+    });
+    await setup({ query });
+
+    await typeText("[cre");
+    const labels = await waitForCompletions();
+    expect(labels).toContain("Created At");
+    expect(labels.filter((label) => /default period/i.test(label))).toEqual([]);
   });
 
   it("should suggest a custom column that renames another custom column", async () => {
@@ -298,7 +354,77 @@ describe("ExpressionWidget > validation", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
   });
+
+  it("should not allow formatting or saving an invalid expression, and validate it when typing", async () => {
+    const { onChangeClause, onClose } = await setup({
+      query: createOrdersQuery(),
+    });
+    const doneButton = screen.getByRole("button", { name: "Done" });
+
+    // non-existent column
+    await typeText("abcdef");
+    await typeName("A custom expression");
+    expect(
+      await screen.findByText(/^Unknown column: abcdef/i),
+    ).toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+
+    // argument validation
+    await replaceSource("SUBSTRING('foo', 0, 1)");
+    await blurEditor();
+    expect(
+      await screen.findByText("Expected positive integer but found 0"),
+    ).toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+
+    // incomplete expression
+    await replaceSource("concat('foo', ");
+    await blurEditor();
+    expect(
+      await screen.findByText("Expecting a closing parenthesis"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Auto-format" }),
+    ).not.toBeInTheDocument();
+    expect(doneButton).toBeDisabled();
+    await userEvent.type(screen.getByTestId("expression-name"), "{enter}");
+    expect(screen.getByTestId("expression-editor")).toBeInTheDocument();
+    expect(onChangeClause).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    // fix the expression
+    await focusEditorAndWaitForHelpText();
+    await pressKey("ArrowLeft");
+    await typeText("'bar')");
+    await blurEditor();
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    expect(
+      screen.getByRole("button", { name: "Auto-format" }),
+    ).toBeInTheDocument();
+    expect(getEditorValue()).toBe("concat('foo','bar') ");
+  });
 });
+
+/**
+ * Focuses the editor inside a function call and waits for the help text. Its
+ * example is formatted asynchronously, so the focus happens inside `waitFor`,
+ * where that update cannot escape `act`.
+ */
+async function focusEditorAndWaitForHelpText() {
+  await waitFor(() => {
+    const view = getEditorView();
+    if (!view.hasFocus) {
+      view.focus();
+    }
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(/\S/);
+  });
+}
+
+async function replaceSource(source: string) {
+  await focusEditor();
+  await selectRange(0, getEditorValue().length);
+  await pasteText(source);
+}
 
 async function typeName(name: string) {
   await userEvent.type(screen.getByTestId("expression-name"), name);
