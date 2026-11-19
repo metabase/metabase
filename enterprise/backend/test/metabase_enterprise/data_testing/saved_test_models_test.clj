@@ -85,13 +85,17 @@
 
 (deftest a-test-is-read-and-written-through-its-subject-test
   (do-with-each-test-type!
-   (fn [{:keys [model test-id]}]
+   (fn [{:keys [model subject-key test-id]}]
      (testing "an admin may read and write the test"
        (is (true? (hydrated? :crowberto model test-id :can_read mi/can-read?)))
        (is (true? (hydrated? :crowberto model test-id :can_write mi/can-write?))))
      (testing "a user who may not read the subject may neither read nor write the test"
        (is (false? (hydrated? :rasta model test-id :can_read mi/can-read?)))
        (is (false? (hydrated? :rasta model test-id :can_write mi/can-write?))))
+     (testing "nobody, not even an admin, may read a test whose subject no longer exists"
+       (is (false? (mt/with-test-user :crowberto
+                     (mi/can-read? (t2/hydrate (t2/instance model {:id test-id subject-key Integer/MAX_VALUE})
+                                               :can_read))))))
      (testing "an admin may rename the test; a user who may not read the subject may not"
        (let [saved-test (t2/select-one model :id test-id)]
          (is (true? (can-update? :crowberto saved-test {:name "Renamed"})))
@@ -101,33 +105,47 @@
          (is (true? (mt/with-test-user :crowberto (boolean (mi/can-create? model new-test)))))
          (is (false? (mt/with-test-user :rasta (boolean (mi/can-create? model new-test))))))))))
 
-(deftest can-write-of-a-batch-follows-each-tests-own-subject-test
+(deftest a-batch-gives-each-test-the-answer-for-its-own-subject-test
   ;; Card tests only: a non-admin's write on a transform or a segment needs the data analyst role, not a collection,
   ;; and only a superuser may write an action.
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {writable :id}       {}
                      :model/Collection {read-only :id}      {}
+                     :model/Collection {hidden :id}         {}
                      :model/Card       {writable-card :id}  {:collection_id writable
                                                              :dataset_query (data-testing.test-util/categories-query)}
                      :model/Card       {read-only-card :id} {:collection_id read-only
                                                              :dataset_query (data-testing.test-util/categories-query)}
+                     :model/Card       {hidden-card :id}    {:collection_id hidden
+                                                             :dataset_query (data-testing.test-util/categories-query)}
                      :model/CardTest   {writable-test :id}  {:card_id writable-card :name "On the writable card"}
-                     :model/CardTest   {read-only-test :id} {:card_id read-only-card :name "On the read-only card"}]
+                     :model/CardTest   {read-only-test :id} {:card_id read-only-card :name "On the read-only card"}
+                     :model/CardTest   {hidden-test :id}    {:card_id hidden-card :name "On the hidden card"}
+                     :model/CardTest   {hidden-test-2 :id}  {:card_id hidden-card :name "Also on the hidden card"}]
         (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable)
         (perms/grant-collection-read-permissions! (perms/all-users-group) read-only)
-        (let [batch (fn [user test-ids]
+        (let [batch (fn [user k check test-ids]
                       (mt/with-test-user user
-                        (mapv (comp boolean mi/can-write?)
-                              (t2/hydrate (mapv #(t2/select-one :model/CardTest :id %) test-ids) :can_write))))]
+                        (mapv (comp boolean check)
+                              (t2/hydrate (mapv #(t2/select-one :model/CardTest :id %) test-ids) k))))]
           (testing "premise: hydrated alone, Rasta may write the test of the writable card and not the other"
             (is (true? (hydrated? :rasta :model/CardTest writable-test :can_write mi/can-write?)))
             (is (false? (hydrated? :rasta :model/CardTest read-only-test :can_write mi/can-write?))))
+          (testing "premise: hydrated alone, Rasta may read the test of the read-only card and not of the hidden one"
+            (is (true? (hydrated? :rasta :model/CardTest read-only-test :can_read mi/can-read?)))
+            (is (false? (hydrated? :rasta :model/CardTest hidden-test :can_read mi/can-read?))))
           (testing "in one batch, each test gets the answer for its own card, whichever comes first"
-            (is (= [true false] (batch :rasta [writable-test read-only-test])))
-            (is (= [false true] (batch :rasta [read-only-test writable-test]))))
-          (testing "control: an admin may write both tests of the batch"
-            (is (= [true true] (batch :crowberto [writable-test read-only-test])))))))))
+            (is (= [true false] (batch :rasta :can_write mi/can-write? [writable-test read-only-test])))
+            (is (= [false true] (batch :rasta :can_write mi/can-write? [read-only-test writable-test])))
+            (is (= [true false true false]
+                   (batch :rasta :can_read mi/can-read? [read-only-test hidden-test writable-test hidden-test-2])))
+            (is (= [false true false]
+                   (batch :rasta :can_read mi/can-read? [hidden-test-2 read-only-test hidden-test]))))
+          (testing "control: an admin may read and write every test of the batch"
+            (is (= [true true] (batch :crowberto :can_write mi/can-write? [writable-test read-only-test])))
+            (is (= [true true true]
+                   (batch :crowberto :can_read mi/can-read? [hidden-test read-only-test writable-test])))))))))
 
 (deftest only-transform-tests-are-read-only-on-a-read-only-instance-test
   (do-with-each-test-type!

@@ -71,7 +71,6 @@
   [_model]
   {:test-type   :segment
    :subject-key :segment_id
-   :subject     data-testing.db/segment
    :subjects    data-testing.db/segments-by-ids
    :can-save?   can-save-test?})
 

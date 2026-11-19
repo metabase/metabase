@@ -110,7 +110,6 @@
   [_model]
   {:test-type   :action
    :subject-key :action_id
-   :subject     data-testing.db/action
    :subjects    data-testing.db/actions-by-ids
    :can-save?   can-save-test?})
 

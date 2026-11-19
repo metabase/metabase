@@ -71,7 +71,6 @@
   [_model]
   {:test-type   :card
    :subject-key :card_id
-   :subject     data-testing.db/card
    :subjects    data-testing.db/cards-by-ids
    :can-save?   can-save-test?})
 

@@ -115,9 +115,6 @@
    [:subject-key
     {:description "The column that holds the subject's id."}
     :keyword]
-   [:subject
-    {:description "A function from a subject id to the subject, or nil when no subject has that id."}
-    ifn?]
    [:subjects
     {:description "A function from subject ids to the subjects that exist."}
     ifn?]
@@ -147,10 +144,23 @@
   [model _k saved-tests]
   (with-last-runs (:test-type (saved-test-spec model)) saved-tests))
 
-(methodical/defmethod t2/simple-hydrate [::saved-test :can_read]
-  [model k instance]
-  (let [{:keys [subject subject-key]} (saved-test-spec model)]
-    (vary-meta instance assoc k (boolean (some-> (subject (subject-key instance)) (t2/hydrate :can_read) mi/can-read?)))))
+(defn- readable-subject-ids
+  "The ids of the subjects of `saved-tests`, saved tests of `model`, that the current user may read. A subject that no
+  longer exists is not among them."
+  [model saved-tests]
+  (let [{:keys [subjects subject-key]} (saved-test-spec model)]
+    (into #{}
+          (comp (filter mi/can-read?) (map :id))
+          (t2/hydrate (subjects (into [] (comp (keep subject-key) (distinct)) saved-tests)) :can_read))))
+
+(methodical/defmethod t2/batched-hydrate [::saved-test :can_read]
+  "Add whether the current user can read each saved test, which they can when they read its subject."
+  [model k saved-tests]
+  (let [{:keys [subject-key]} (saved-test-spec model)
+        readable              (readable-subject-ids model saved-tests)]
+    (for [saved-test saved-tests]
+      (when saved-test
+        (vary-meta saved-test assoc k (contains? readable (subject-key saved-test)))))))
 
 (defn- remote-sync-refuses-writes?
   "Whether the remote-sync rule of the saved-test `model` refuses writes now."
@@ -190,11 +200,9 @@
 (defmethod revision/revisions-readable? ::saved-test
   [model objects]
   ;; An older revision can name a subject that has since been deleted; nobody may read a revision about it.
-  (let [{:keys [subjects subject-key]} (saved-test-spec model)
-        readable-ids (into #{}
-                           (comp (filter mi/can-read?) (map :id))
-                           (t2/hydrate (subjects (into [] (comp (keep subject-key) (distinct)) objects)) :can_read))]
-    (mapv #(contains? readable-ids (subject-key %)) objects)))
+  (let [{:keys [subject-key]} (saved-test-spec model)
+        readable              (readable-subject-ids model objects)]
+    (mapv #(contains? readable (subject-key %)) objects)))
 
 (t2/define-after-insert ::saved-test [saved-test]
   (when-not mi/*deserializing?*
@@ -227,7 +235,6 @@
   [_model]
   {:test-type          :transform
    :subject-key        :transform_id
-   :subject            data-testing.db/transform
    :subjects           data-testing.db/transforms
    :can-save?          can-save?
    :remote-sync-guard? true})
